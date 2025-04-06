@@ -6,6 +6,14 @@ export default function SystemsPage() {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  
+  // System settings state
+  const [settings, setSettings] = useState({
+    notifications: false,
+    darkTheme: true,
+    autoSync: true,
+    aiAssistant: true
+  });
 
   // Generate an avatar from initials for the user
   const getInitials = (name: string) => {
@@ -18,6 +26,14 @@ export default function SystemsPage() {
 
   const toggleProfileDropdown = () => {
     setShowProfileDropdown(!showProfileDropdown);
+  };
+  
+  // Toggle setting by name
+  const toggleSetting = (setting: keyof typeof settings) => {
+    setSettings(prev => ({
+      ...prev,
+      [setting]: !prev[setting]
+    }));
   };
   
   // Close dropdown when clicking outside
@@ -74,16 +90,11 @@ export default function SystemsPage() {
               aria-labelledby="profile-menu-button"
             >
               <div className="px-4 py-3 border-b border-primary/20">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/30 flex items-center justify-center neon-glow">
-                    <span className="font-bold text-md">{getInitials(username)}</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-orbitron">{username}</p>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <span className="material-icons text-[#36F1CD] text-xs">auto_graph</span>
-                      <p className="text-xs text-[#7DAAB2]">Level {stats.experience.level}</p>
-                    </div>
+                <div>
+                  <p className="text-sm font-orbitron">{username}</p>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="material-icons text-[#36F1CD] text-xs">auto_graph</span>
+                    <p className="text-xs text-[#7DAAB2]">Level {stats.experience.level}</p>
                   </div>
                 </div>
                 
@@ -291,44 +302,80 @@ export default function SystemsPage() {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
             <div className="flex items-center">
               <span className="material-icons text-primary text-sm mr-2">notifications</span>
               <span className="text-sm">Notifications</span>
             </div>
-            <div className="w-10 h-5 rounded-full bg-primary/20 relative cursor-pointer">
-              <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-primary"></div>
-            </div>
+            <button 
+              onClick={() => toggleSetting('notifications')} 
+              className="w-10 h-5 rounded-full bg-primary/20 relative cursor-pointer"
+              aria-pressed={settings.notifications}
+              role="switch"
+            >
+              <div 
+                className={`absolute top-0.5 w-4 h-4 rounded-full bg-primary transition-all duration-200 ${
+                  settings.notifications ? 'left-5' : 'left-0.5'
+                }`}
+              ></div>
+            </button>
           </div>
           
-          <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
             <div className="flex items-center">
               <span className="material-icons text-primary text-sm mr-2">dark_mode</span>
               <span className="text-sm">Dark Theme</span>
             </div>
-            <div className="w-10 h-5 rounded-full bg-primary/20 relative cursor-pointer">
-              <div className="absolute top-0.5 left-5 w-4 h-4 rounded-full bg-primary"></div>
-            </div>
+            <button 
+              onClick={() => toggleSetting('darkTheme')} 
+              className="w-10 h-5 rounded-full bg-primary/20 relative cursor-pointer"
+              aria-pressed={settings.darkTheme}
+              role="switch"
+            >
+              <div 
+                className={`absolute top-0.5 w-4 h-4 rounded-full bg-primary transition-all duration-200 ${
+                  settings.darkTheme ? 'left-5' : 'left-0.5'
+                }`}
+              ></div>
+            </button>
           </div>
           
-          <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
             <div className="flex items-center">
               <span className="material-icons text-primary text-sm mr-2">sync</span>
               <span className="text-sm">Auto Sync</span>
             </div>
-            <div className="w-10 h-5 rounded-full bg-primary/20 relative cursor-pointer">
-              <div className="absolute top-0.5 left-5 w-4 h-4 rounded-full bg-primary"></div>
-            </div>
+            <button 
+              onClick={() => toggleSetting('autoSync')} 
+              className="w-10 h-5 rounded-full bg-primary/20 relative cursor-pointer"
+              aria-pressed={settings.autoSync}
+              role="switch"
+            >
+              <div 
+                className={`absolute top-0.5 w-4 h-4 rounded-full bg-primary transition-all duration-200 ${
+                  settings.autoSync ? 'left-5' : 'left-0.5'
+                }`}
+              ></div>
+            </button>
           </div>
           
-          <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
             <div className="flex items-center">
               <span className="material-icons text-primary text-sm mr-2">smart_toy</span>
               <span className="text-sm">AI Assistant</span>
             </div>
-            <div className="w-10 h-5 rounded-full bg-primary/20 relative cursor-pointer">
-              <div className="absolute top-0.5 left-5 w-4 h-4 rounded-full bg-primary"></div>
-            </div>
+            <button 
+              onClick={() => toggleSetting('aiAssistant')} 
+              className="w-10 h-5 rounded-full bg-primary/20 relative cursor-pointer"
+              aria-pressed={settings.aiAssistant}
+              role="switch"
+            >
+              <div 
+                className={`absolute top-0.5 w-4 h-4 rounded-full bg-primary transition-all duration-200 ${
+                  settings.aiAssistant ? 'left-5' : 'left-0.5'
+                }`}
+              ></div>
+            </button>
           </div>
         </div>
       </div>
