@@ -1,13 +1,132 @@
+import { useState, useRef, useEffect } from "react";
 import { useLifeOS } from "../lib/context";
 
 export default function SystemsPage() {
-  const { stats } = useLifeOS();
+  const { stats, username } = useLifeOS();
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // Generate an avatar from initials for the user
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase();
+  };
+
+  const toggleProfileDropdown = () => {
+    setShowProfileDropdown(!showProfileDropdown);
+  };
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current && 
+        buttonRef.current && 
+        !dropdownRef.current.contains(event.target as Node) && 
+        !buttonRef.current.contains(event.target as Node)
+      ) {
+        setShowProfileDropdown(false);
+      }
+    }
+
+    // Add event listener when dropdown is open
+    if (showProfileDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    
+    // Cleanup event listener
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showProfileDropdown]);
 
   return (
     <>
-      <div className="mb-6">
-        <h1 className="text-2xl font-orbitron mb-1">Systems</h1>
-        <p className="text-[#7DAAB2]">Manage your personal operating system settings and view analytics.</p>
+      <div className="mb-6 flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-orbitron mb-1">Systems</h1>
+          <p className="text-[#7DAAB2]">Manage your personal operating system settings and view analytics.</p>
+        </div>
+        
+        {/* Profile Icon */}
+        <div className="relative">
+          <button 
+            ref={buttonRef}
+            onClick={toggleProfileDropdown}
+            className={`flex items-center justify-center h-10 w-10 rounded-full bg-primary text-background font-bold hover:opacity-90 transition neon-glow ${showProfileDropdown ? 'ring-2 ring-primary' : ''}`}
+            aria-label="Open profile menu"
+            aria-expanded={showProfileDropdown}
+            aria-haspopup="true"
+          >
+            {getInitials(username)}
+          </button>
+          
+          {showProfileDropdown && (
+            <div 
+              ref={dropdownRef}
+              className="absolute right-0 mt-2 w-64 rounded-md glassmorphic p-2 shadow-lg z-10 neon-border"
+              role="menu"
+              aria-orientation="vertical"
+              aria-labelledby="profile-menu-button"
+            >
+              <div className="px-4 py-3 border-b border-primary/20">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-primary/30 flex items-center justify-center neon-glow">
+                    <span className="font-bold text-md">{getInitials(username)}</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-orbitron">{username}</p>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className="material-icons text-[#36F1CD] text-xs">auto_graph</span>
+                      <p className="text-xs text-[#7DAAB2]">Level {stats.experience.level}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mt-2 pt-2 border-t border-primary/10">
+                  <div className="text-xs text-[#7DAAB2] mb-1 flex justify-between">
+                    <span>XP: {stats.experience.current}/{stats.experience.max}</span>
+                    <span className="text-[#36F1CD]">{Math.round((stats.experience.current / stats.experience.max) * 100)}%</span>
+                  </div>
+                  <div className="h-1 bg-[#36F1CD]/30 rounded-full">
+                    <div 
+                      className="h-full bg-[#36F1CD] rounded-full transition-all duration-500" 
+                      style={{ width: `${(stats.experience.current / stats.experience.max) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="py-1">
+                <button 
+                  className="flex w-full items-center px-4 py-2 text-sm hover:bg-primary/20 rounded-md transition"
+                  role="menuitem"
+                >
+                  <span className="material-icons text-primary text-sm mr-2">person</span>
+                  Profile
+                </button>
+                <button 
+                  className="flex w-full items-center px-4 py-2 text-sm hover:bg-primary/20 rounded-md transition"
+                  role="menuitem"
+                >
+                  <span className="material-icons text-primary text-sm mr-2">settings</span>
+                  Settings
+                </button>
+                <button 
+                  className="flex w-full items-center px-4 py-2 text-sm hover:bg-primary/20 rounded-md transition"
+                  role="menuitem"
+                >
+                  <span className="material-icons text-primary text-sm mr-2">logout</span>
+                  Logout
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
       
       {/* Stats Overview */}

@@ -54,6 +54,16 @@
   .neon-border {
     @apply shadow-[0_0_5px_rgba(0,224,255,0.3)] border border-primary/30;
   }
+  
+  /* Neon glow for profile icon */
+  .neon-glow {
+    @apply transition-all duration-300;
+    box-shadow: 0 0 5px rgba(0, 224, 255, 0.5), 0 0 10px rgba(0, 224, 255, 0.3);
+  }
+  
+  .neon-glow:hover, .neon-glow:focus {
+    box-shadow: 0 0 10px rgba(0, 224, 255, 0.7), 0 0 20px rgba(0, 224, 255, 0.5);
+  }
 
   /* Progress bar styling for stats */
   .progress-bar {
