@@ -1,17 +1,159 @@
-import { pgTable, text, serial, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { relations } from "drizzle-orm";
 
+// Users table
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// User Stats table
+export const userStats = pgTable("user_stats", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  timeTokensCurrent: integer("time_tokens_current").notNull().default(10),
+  timeTokensMax: integer("time_tokens_max").notNull().default(10),
+  energyPointsCurrent: integer("energy_points_current").notNull().default(10),
+  energyPointsMax: integer("energy_points_max").notNull().default(10),
+  healthPointsCurrent: integer("health_points_current").notNull().default(10),
+  healthPointsMax: integer("health_points_max").notNull().default(10),
+  experienceCurrent: integer("experience_current").notNull().default(0),
+  experienceMax: integer("experience_max").notNull().default(100),
+  level: integer("level").notNull().default(1),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Quests table
+export const quests = pgTable("quests", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  completed: boolean("completed").notNull().default(false),
+  energyCost: integer("energy_cost").notNull().default(1),
+  experienceReward: integer("experience_reward").notNull().default(10),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// AI Messages table
+export const aiMessages = pgTable("ai_messages", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  sender: text("sender").notNull(), // 'ai' or 'user'
+  content: text("content").notNull(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+});
+
+// Calendar Events table
+export const calendarEvents = pgTable("calendar_events", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  startTime: text("start_time").notNull(), // format: "HH:MM"
+  duration: text("duration").notNull(),
+  category: text("category").notNull(), // 'work', 'personal', or 'health'
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Relationships
+export const usersRelations = relations(users, ({ one, many }) => ({
+  stats: one(userStats, {
+    fields: [users.id],
+    references: [userStats.userId],
+  }),
+  quests: many(quests),
+  messages: many(aiMessages),
+  events: many(calendarEvents),
+}));
+
+export const userStatsRelations = relations(userStats, ({ one }) => ({
+  user: one(users, {
+    fields: [userStats.userId],
+    references: [users.id],
+  }),
+}));
+
+export const questsRelations = relations(quests, ({ one }) => ({
+  user: one(users, {
+    fields: [quests.userId],
+    references: [users.id],
+  }),
+}));
+
+export const aiMessagesRelations = relations(aiMessages, ({ one }) => ({
+  user: one(users, {
+    fields: [aiMessages.userId],
+    references: [users.id],
+  }),
+}));
+
+export const calendarEventsRelations = relations(calendarEvents, ({ one }) => ({
+  user: one(users, {
+    fields: [calendarEvents.userId],
+    references: [users.id],
+  }),
+}));
+
+// Insert Schemas
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
 });
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
+export const insertUserStatsSchema = createInsertSchema(userStats).pick({
+  userId: true,
+  timeTokensCurrent: true,
+  timeTokensMax: true,
+  energyPointsCurrent: true,
+  energyPointsMax: true,
+  healthPointsCurrent: true,
+  healthPointsMax: true,
+  experienceCurrent: true,
+  experienceMax: true,
+  level: true,
+});
+
+export const insertQuestSchema = createInsertSchema(quests).pick({
+  userId: true,
+  title: true,
+  description: true,
+  completed: true,
+  energyCost: true,
+  experienceReward: true,
+});
+
+export const insertAIMessageSchema = createInsertSchema(aiMessages).pick({
+  userId: true,
+  sender: true,
+  content: true,
+});
+
+export const insertCalendarEventSchema = createInsertSchema(calendarEvents).pick({
+  userId: true,
+  title: true,
+  description: true,
+  startTime: true,
+  duration: true,
+  category: true,
+});
+
+// Types
 export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export type UserStats = typeof userStats.$inferSelect;
+export type InsertUserStats = z.infer<typeof insertUserStatsSchema>;
+
+export type Quest = typeof quests.$inferSelect;
+export type InsertQuest = z.infer<typeof insertQuestSchema>;
+
+export type AIMessage = typeof aiMessages.$inferSelect;
+export type InsertAIMessage = z.infer<typeof insertAIMessageSchema>;
+
+export type CalendarEvent = typeof calendarEvents.$inferSelect;
+export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
