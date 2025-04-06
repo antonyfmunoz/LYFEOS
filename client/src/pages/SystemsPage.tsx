@@ -57,10 +57,11 @@ export default function SystemsPage() {
           <button 
             ref={buttonRef}
             onClick={toggleProfileDropdown}
-            className={`flex items-center justify-center h-10 w-10 rounded-full bg-primary text-background font-bold hover:opacity-90 transition neon-glow ${showProfileDropdown ? 'ring-2 ring-primary' : ''}`}
+            className={`flex items-center justify-center h-10 w-10 rounded-full text-background font-bold hover:opacity-90 transition neon-glow ${showProfileDropdown ? 'ring-2 ring-[#00E0FF]' : ''}`}
             aria-label="Open profile menu"
             aria-expanded={showProfileDropdown}
             aria-haspopup="true"
+            style={{ backgroundColor: '#1A3A40', color: '#00E0FF' }}
           >
             {getInitials(username)}
           </button>
@@ -74,16 +75,11 @@ export default function SystemsPage() {
               aria-labelledby="profile-menu-button"
             >
               <div className="px-4 py-3 border-b border-primary/20">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/30 flex items-center justify-center neon-glow">
-                    <span className="font-bold text-md">{getInitials(username)}</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-orbitron">{username}</p>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <span className="material-icons text-[#36F1CD] text-xs">auto_graph</span>
-                      <p className="text-xs text-[#7DAAB2]">Level {stats.experience.level}</p>
-                    </div>
+                <div>
+                  <p className="text-sm font-orbitron">{username}</p>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="material-icons text-[#36F1CD] text-xs">auto_graph</span>
+                    <p className="text-xs text-[#7DAAB2]">Level {stats.experience.level}</p>
                   </div>
                 </div>
                 
