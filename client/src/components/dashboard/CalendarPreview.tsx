@@ -8,10 +8,8 @@ export default function CalendarPreview() {
     <div className="glassmorphic rounded-xl p-4 neon-border">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-orbitron">Today's Schedule</h2>
-        <Link href="/systems">
-          <a className="text-xs text-primary font-medium hover:text-opacity-80 transition">
-            VIEW CALENDAR
-          </a>
+        <Link href="/systems" className="text-xs text-primary font-medium hover:text-opacity-80 transition">
+          VIEW CALENDAR
         </Link>
       </div>
       

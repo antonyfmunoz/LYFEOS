@@ -34,13 +34,15 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
       
       <div className="flex justify-around">
         {navItems.map((item) => (
-          <Link key={item.id} href={`/${item.id}`}>
-            <a className={`flex flex-col items-center py-3 px-4 ${
+          <Link 
+            key={item.id} 
+            href={`/${item.id}`}
+            className={`flex flex-col items-center py-3 px-4 ${
               currentPage === item.id ? "text-primary" : "text-[#7DAAB2]"
-            }`}>
-              <span className="material-icons text-sm">{item.icon}</span>
-              <span className="text-xs mt-1 font-medium">{item.label}</span>
-            </a>
+            }`}
+          >
+            <span className="material-icons text-sm">{item.icon}</span>
+            <span className="text-xs mt-1 font-medium">{item.label}</span>
           </Link>
         ))}
       </div>

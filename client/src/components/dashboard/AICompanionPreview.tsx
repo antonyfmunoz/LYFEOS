@@ -23,10 +23,8 @@ export default function AICompanionPreview() {
     <div className="glassmorphic rounded-xl p-4 neon-border">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-orbitron">AI Companion</h2>
-        <Link href="/ai">
-          <a className="text-xs text-primary font-medium hover:text-opacity-80 transition">
-            OPEN CHAT
-          </a>
+        <Link href="/ai" className="text-xs text-primary font-medium hover:text-opacity-80 transition">
+          OPEN CHAT
         </Link>
       </div>
       

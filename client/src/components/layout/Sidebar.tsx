@@ -40,17 +40,15 @@ export default function Sidebar({ currentPage, username }: SidebarProps) {
         <ul className="space-y-2">
           {navItems.map((item) => (
             <li key={item.id}>
-              <Link href={`/${item.id}`}>
-                <a
-                  className={`flex items-center py-2 px-3 rounded-lg
-                    ${currentPage === item.id
-                      ? "bg-card bg-opacity-50 border border-primary border-opacity-30 shadow-[0_0_5px_rgba(0,224,255,0.3)] text-primary"
-                      : "hover:bg-card hover:bg-opacity-30 text-[#7DAAB2] transition duration-200"
-                    }`}
-                >
-                  <span className="material-icons text-sm mr-3">{item.icon}</span>
-                  <span className="font-medium">{item.label}</span>
-                </a>
+              <Link href={`/${item.id}`}
+                className={`flex items-center py-2 px-3 rounded-lg
+                  ${currentPage === item.id
+                    ? "bg-card bg-opacity-50 border border-primary border-opacity-30 shadow-[0_0_5px_rgba(0,224,255,0.3)] text-primary"
+                    : "hover:bg-card hover:bg-opacity-30 text-[#7DAAB2] transition duration-200"
+                  }`}
+              >
+                <span className="material-icons text-sm mr-3">{item.icon}</span>
+                <span className="font-medium">{item.label}</span>
               </Link>
             </li>
           ))}

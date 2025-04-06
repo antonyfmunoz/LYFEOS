@@ -20,28 +20,26 @@ export default function StatWidget({
   const percentage = (current / max) * 100;
   
   return (
-    <Link href={`/${type}`}>
-      <a className="glassmorphic rounded-xl p-4 neon-border hover:shadow-[0_0_10px_rgba(0,224,255,0.5)] transition-shadow duration-300">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center">
-            <span className={`material-icons ${
-              type === 'time' ? 'text-primary' : 
-              type === 'energy' ? 'text-secondary' : 
-              'text-accent'
-            } mr-2`}>{icon}</span>
-            <h3 className="font-orbitron text-[#D6F4FF]">{title}</h3>
-          </div>
-          <div className="text-right">
-            <p className="text-[#D6F4FF] font-mono text-xl">
-              {current}<span className="text-[#7DAAB2] text-sm">/{max}</span>
-            </p>
-          </div>
+    <Link href={`/${type}`} className="glassmorphic rounded-xl p-4 neon-border hover:shadow-[0_0_10px_rgba(0,224,255,0.5)] transition-shadow duration-300 block">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center">
+          <span className={`material-icons ${
+            type === 'time' ? 'text-primary' : 
+            type === 'energy' ? 'text-secondary' : 
+            'text-accent'
+          } mr-2`}>{icon}</span>
+          <h3 className="font-orbitron text-[#D6F4FF]">{title}</h3>
         </div>
-        <div className={`progress-bar ${progressClass}`}>
-          <div className="progress-fill" style={{ width: `${percentage}%` }}></div>
+        <div className="text-right">
+          <p className="text-[#D6F4FF] font-mono text-xl">
+            {current}<span className="text-[#7DAAB2] text-sm">/{max}</span>
+          </p>
         </div>
-        <p className="text-xs text-[#7DAAB2] mt-2">{description}</p>
-      </a>
+      </div>
+      <div className={`progress-bar ${progressClass}`}>
+        <div className="progress-fill" style={{ width: `${percentage}%` }}></div>
+      </div>
+      <p className="text-xs text-[#7DAAB2] mt-2">{description}</p>
     </Link>
   );
 }
