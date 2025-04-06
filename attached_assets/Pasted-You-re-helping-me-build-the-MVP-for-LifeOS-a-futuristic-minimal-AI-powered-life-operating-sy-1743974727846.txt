@@ -1,0 +1,104 @@
+You're helping me build the MVP for **LifeOS** — a futuristic, minimal, AI-powered life operating system that gamifies real life using Time, Energy, Health, and Experience as core stats.
+
+---
+
+## Tech Stack:
+
+- Frontend: React + TailwindCSS (or vanilla CSS modules if needed)
+- Backend: Firebase (for auth + database)
+- AI: Optional OpenAI integration (placeholder for now)
+
+---
+
+## MVP FEATURES TO IMPLEMENT:
+
+### 1. ✅ **Dashboard Page (/dashboard)**
+
+- Dark, futuristic Apple-style UI with glassmorphic or gradient background
+- Show 3 stat widgets (top of screen):
+  - TT = Time Tokens (e.g., 12/24 hours)
+  - EP = Energy Points (e.g., 65/100)
+  - HP = Health Points (e.g., 80/100)
+- Each stat should be:
+  - Clearly labeled (with icon and description tooltip)
+  - Clickable — route to `/time`, `/energy`, or `/health` respectively
+
+- Below stats: Show 3 "Daily Quests" in card layout (e.g., “Deep Work Block”, “Morning Ritual”, “Launch Plan”)
+  - Each card shows XP reward and EP cost
+  - Marking a quest "complete" deducts EP, adds XP
+
+---
+
+### 2. ✅ **Stat Logic (Frontend Only for Now)**
+
+- TT resets daily (24h)
+- EP drains per action, regenerates partially daily
+- HP decreases if rituals are skipped, increases slowly if they’re completed
+- XP system with Levels (e.g., 100 XP per level)
+- Dummy user data for now (simulate state)
+
+---
+
+### 3. ✅ **Navigation Bar (Bottom or Top)**
+
+Use a fixed bottom navigation bar with these 5 tabs (icons or simple buttons):
+
+1. Home (Dashboard)
+2. Quests
+3. AI (companion chat window placeholder)
+4. Codex (journals, rituals, reflections)
+5. Systems (stats, skill trees, calendar overview)
+
+Each button should navigate to its corresponding page.
+
+---
+
+### 4. ✅ **Routing + Detail Pages**
+
+Use React Router to navigate between:
+- `/dashboard`
+- `/quests`
+- `/ai`
+- `/codex`
+- `/systems`
+- `/time` — detail view of TT stats + time breakdown
+- `/energy` — EP history + recovery tips
+- `/health` — HP overview + rituals
+
+Each detail page can include:
+- A stat progress bar or ring
+- Sample logs
+- Placeholder text and “Back” button
+
+---
+
+### 5. ✅ **Onboarding Page (/onboarding)**
+
+- Ask for username (e.g. “Who is entering the simulation?”)
+- Ask which “season of life” they’re in (dropdown or multi-choice)
+- Let them pick 1–2 intentions (e.g. “Clarity”, “Creation”, “Healing”)
+- Assign default TT/EP/HP values
+- Redirect to `/dashboard`
+
+---
+
+### 6. 🔄 (Optional, Stretch Goals)
+
+- Store user data in Firebase
+- Animate stat bars when changed
+- Add AI prompt window on `/ai` with dummy responses (e.g. “What drained your energy today?”)
+
+---
+
+### Design Style Guide:
+
+- Apple-inspired, dark minimalist UI
+- Rounded corners, high contrast text, subtle glow accents
+- Use Inter, SF Pro, or similar font
+- Responsive on desktop + mobile web
+
+---
+
+Start by building the **Dashboard page** with stat widgets, dummy data, and navigation.
+
+Let’s begin.

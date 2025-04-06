@@ -1,0 +1,69 @@
+You’re helping me build the **LifeOS dashboard UI component**. This panel should mirror the futuristic, glowing, minimal aesthetic seen in sci-fi HUDs (like Mass Effect, Blade Runner 2049, or Starfield). The design must match the style from this reference:
+
+🧠 Core Aesthetic:
+- Futuristic life control panel
+- Cyberpunk HUD style
+- Dark neon-glow theme
+- Minimal but immersive (Apple-meets-Iron-Man feel)
+
+---
+
+📱 What to Build:
+Create a **React + TailwindCSS** component called `LifePanel`. This component should include:
+
+1. **User Stats (glowing horizontal bars)**:
+   - **MONEY** (text only): value = 9810
+   - **TT** (Time Tokens): 235 / 500
+   - **EP** (Energy Points): 120 / 150
+   - **HP** (Health Points): 75 / 100
+   - **EXP** (Experience): 9420 / 10000
+   - Each stat has:
+     - Label
+     - Value (e.g., 120/150)
+     - Neon horizontal progress bar with glow
+
+2. **Tasks Section**:
+   - 3 items (checkboxes):  
+     - "Complete project report"  
+     - "Exercise for 30 minutes"  
+     - "Read a book chapter"  
+   - Clean neon-border boxes with glowing check states
+
+3. **Bottom Buttons**:
+   - “JOURNAL”, “GOALS”, “SCHEDULE”
+   - Pill-shaped glowing buttons with hover effect
+
+4. **User Avatar (circular)**:
+   - Top right corner of panel
+   - Placeholder image or empty circle
+
+---
+
+🎨 Style Guide (Tailwind + Custom CSS):
+- Background: `#030B17` (dark navy)
+- Accent glow: `#00E0FF` (neon teal)
+- Border: `rgba(0, 224, 255, 0.2)`
+- Font: `Orbitron` or `Rajdhani` for headings, `Inter` for body
+- Text: `#D6F4FF` (primary), `#7DAAB2` (secondary)
+- Bars: glowing fill, rounded edges
+- All elements have soft shadows or outer glows
+
+---
+
+📦 Functional Requirements:
+- Stats update via props
+- Tasks toggle check/uncheck state with animated glow
+- Buttons can have `onClick` handlers passed as props
+- Avatar can accept an `imgUrl` prop
+
+---
+
+📁 Suggested File Structure:
+- `components/LifePanel.tsx`
+- `components/styles/lifePanel.module.css` (if needed)
+- Tailwind config extended for custom colors + fonts
+
+---
+
+Start by building the full `LifePanel` component with hardcoded values and dummy interactions. I will expand functionality and dynamic behavior after.
+
