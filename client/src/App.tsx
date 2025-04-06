@@ -7,6 +7,7 @@ import AIPage from "./pages/AIPage";
 import CodexPage from "./pages/CodexPage";
 import SystemsPage from "./pages/SystemsPage";
 import OnboardingPage from "./pages/OnboardingPage";
+import ProfilePage from "./pages/ProfilePage";
 import StatDetailPage from "./pages/StatDetailPage";
 import NotFound from "./pages/not-found";
 import RootLayout from "./components/layout/RootLayout";
@@ -63,6 +64,10 @@ function Router() {
         <RootLayout>
           <StatDetailPage stat="health" />
         </RootLayout>
+      </Route>
+      
+      <Route path="/profile">
+        <ProfilePage />
       </Route>
       
       {/* Redirect to dashboard from root */}

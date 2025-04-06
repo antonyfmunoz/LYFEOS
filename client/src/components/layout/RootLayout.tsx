@@ -4,6 +4,7 @@ import MobileNav from "./MobileNav";
 import AICompanionPanel from "../ai/AICompanionPanel";
 import { useLifeOS } from "../../lib/context";
 import { useLocation } from "wouter";
+import { Link } from "wouter";
 
 interface RootLayoutProps {
   children: ReactNode;
@@ -24,6 +25,11 @@ export default function RootLayout({ children }: RootLayoutProps) {
   // Toggle profile dropdown
   const toggleProfileDropdown = () => {
     setShowProfileDropdown(!showProfileDropdown);
+  };
+  
+  // Close dropdown
+  const closeDropdown = () => {
+    setShowProfileDropdown(false);
   };
   
   // Close dropdown when clicking outside
@@ -106,27 +112,33 @@ export default function RootLayout({ children }: RootLayoutProps) {
                   </div>
                   
                   <div className="py-1">
-                    <button 
+                    <Link 
+                      href="/profile"
+                      onClick={closeDropdown}
                       className="flex w-full items-center px-4 py-2 text-sm hover:bg-[#36F1CD]/10 rounded-md transition"
                       role="menuitem"
                     >
                       <span className="material-icons text-[#36F1CD] text-sm mr-2">person</span>
                       Profile
-                    </button>
-                    <button 
+                    </Link>
+                    <Link 
+                      href="/systems"
+                      onClick={closeDropdown}
                       className="flex w-full items-center px-4 py-2 text-sm hover:bg-[#36F1CD]/10 rounded-md transition"
                       role="menuitem"
                     >
                       <span className="material-icons text-[#36F1CD] text-sm mr-2">settings</span>
                       Settings
-                    </button>
-                    <button 
+                    </Link>
+                    <Link
+                      href="/dashboard"
+                      onClick={closeDropdown} 
                       className="flex w-full items-center px-4 py-2 text-sm hover:bg-[#36F1CD]/10 rounded-md transition"
                       role="menuitem"
                     >
                       <span className="material-icons text-[#36F1CD] text-sm mr-2">logout</span>
                       Logout
-                    </button>
+                    </Link>
                   </div>
                 </div>
               )}
