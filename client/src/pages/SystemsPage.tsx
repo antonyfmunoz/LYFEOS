@@ -73,18 +73,20 @@ export default function SystemsPage() {
           <button 
             ref={buttonRef}
             onClick={toggleProfileDropdown}
-            className={`flex items-center justify-center h-10 w-10 rounded-full bg-primary text-background font-bold hover:opacity-90 transition neon-glow ${showProfileDropdown ? 'ring-2 ring-primary' : ''}`}
+            className={`flex items-center justify-center h-10 w-10 rounded-full border border-[#36F1CD]/50 bg-[#001E26]/30 text-primary hover:bg-[#36F1CD]/10 transition backdrop-blur-sm ${showProfileDropdown ? 'ring-1 ring-[#36F1CD]' : ''}`}
             aria-label="Open profile menu"
             aria-expanded={showProfileDropdown}
             aria-haspopup="true"
+            style={{ boxShadow: '0 0 8px rgba(54, 241, 205, 0.3)' }}
           >
-            {getInitials(username)}
+            <span className="material-icons text-[#36F1CD] text-lg">person</span>
           </button>
           
           {showProfileDropdown && (
             <div 
               ref={dropdownRef}
-              className="absolute right-0 mt-2 w-64 rounded-md glassmorphic p-2 shadow-lg z-10 neon-border"
+              className="absolute right-0 mt-2 w-64 rounded-md glassmorphic p-2 shadow-lg z-10"
+              style={{ boxShadow: '0 0 15px rgba(54, 241, 205, 0.15)', border: '1px solid rgba(54, 241, 205, 0.3)' }}
               role="menu"
               aria-orientation="vertical"
               aria-labelledby="profile-menu-button"
@@ -114,24 +116,24 @@ export default function SystemsPage() {
               
               <div className="py-1">
                 <button 
-                  className="flex w-full items-center px-4 py-2 text-sm hover:bg-primary/20 rounded-md transition"
+                  className="flex w-full items-center px-4 py-2 text-sm hover:bg-[#36F1CD]/10 rounded-md transition"
                   role="menuitem"
                 >
-                  <span className="material-icons text-primary text-sm mr-2">person</span>
+                  <span className="material-icons text-[#36F1CD] text-sm mr-2">person</span>
                   Profile
                 </button>
                 <button 
-                  className="flex w-full items-center px-4 py-2 text-sm hover:bg-primary/20 rounded-md transition"
+                  className="flex w-full items-center px-4 py-2 text-sm hover:bg-[#36F1CD]/10 rounded-md transition"
                   role="menuitem"
                 >
-                  <span className="material-icons text-primary text-sm mr-2">settings</span>
+                  <span className="material-icons text-[#36F1CD] text-sm mr-2">settings</span>
                   Settings
                 </button>
                 <button 
-                  className="flex w-full items-center px-4 py-2 text-sm hover:bg-primary/20 rounded-md transition"
+                  className="flex w-full items-center px-4 py-2 text-sm hover:bg-[#36F1CD]/10 rounded-md transition"
                   role="menuitem"
                 >
-                  <span className="material-icons text-primary text-sm mr-2">logout</span>
+                  <span className="material-icons text-[#36F1CD] text-sm mr-2">logout</span>
                   Logout
                 </button>
               </div>
@@ -304,17 +306,17 @@ export default function SystemsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
             <div className="flex items-center">
-              <span className="material-icons text-primary text-sm mr-2">notifications</span>
+              <span className="material-icons text-[#36F1CD] text-sm mr-2">notifications</span>
               <span className="text-sm">Notifications</span>
             </div>
             <button 
               onClick={() => toggleSetting('notifications')} 
-              className="w-10 h-5 rounded-full bg-primary/20 relative cursor-pointer"
+              className="w-10 h-5 rounded-full bg-[#36F1CD]/20 relative cursor-pointer"
               aria-pressed={settings.notifications}
               role="switch"
             >
               <div 
-                className={`absolute top-0.5 w-4 h-4 rounded-full bg-primary transition-all duration-200 ${
+                className={`absolute top-0.5 w-4 h-4 rounded-full bg-[#36F1CD] transition-all duration-200 ${
                   settings.notifications ? 'left-5' : 'left-0.5'
                 }`}
               ></div>
@@ -323,17 +325,17 @@ export default function SystemsPage() {
           
           <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
             <div className="flex items-center">
-              <span className="material-icons text-primary text-sm mr-2">dark_mode</span>
+              <span className="material-icons text-[#36F1CD] text-sm mr-2">dark_mode</span>
               <span className="text-sm">Dark Theme</span>
             </div>
             <button 
               onClick={() => toggleSetting('darkTheme')} 
-              className="w-10 h-5 rounded-full bg-primary/20 relative cursor-pointer"
+              className="w-10 h-5 rounded-full bg-[#36F1CD]/20 relative cursor-pointer"
               aria-pressed={settings.darkTheme}
               role="switch"
             >
               <div 
-                className={`absolute top-0.5 w-4 h-4 rounded-full bg-primary transition-all duration-200 ${
+                className={`absolute top-0.5 w-4 h-4 rounded-full bg-[#36F1CD] transition-all duration-200 ${
                   settings.darkTheme ? 'left-5' : 'left-0.5'
                 }`}
               ></div>
@@ -342,17 +344,17 @@ export default function SystemsPage() {
           
           <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
             <div className="flex items-center">
-              <span className="material-icons text-primary text-sm mr-2">sync</span>
+              <span className="material-icons text-[#36F1CD] text-sm mr-2">sync</span>
               <span className="text-sm">Auto Sync</span>
             </div>
             <button 
               onClick={() => toggleSetting('autoSync')} 
-              className="w-10 h-5 rounded-full bg-primary/20 relative cursor-pointer"
+              className="w-10 h-5 rounded-full bg-[#36F1CD]/20 relative cursor-pointer"
               aria-pressed={settings.autoSync}
               role="switch"
             >
               <div 
-                className={`absolute top-0.5 w-4 h-4 rounded-full bg-primary transition-all duration-200 ${
+                className={`absolute top-0.5 w-4 h-4 rounded-full bg-[#36F1CD] transition-all duration-200 ${
                   settings.autoSync ? 'left-5' : 'left-0.5'
                 }`}
               ></div>
@@ -361,17 +363,17 @@ export default function SystemsPage() {
           
           <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
             <div className="flex items-center">
-              <span className="material-icons text-primary text-sm mr-2">smart_toy</span>
+              <span className="material-icons text-[#36F1CD] text-sm mr-2">smart_toy</span>
               <span className="text-sm">AI Assistant</span>
             </div>
             <button 
               onClick={() => toggleSetting('aiAssistant')} 
-              className="w-10 h-5 rounded-full bg-primary/20 relative cursor-pointer"
+              className="w-10 h-5 rounded-full bg-[#36F1CD]/20 relative cursor-pointer"
               aria-pressed={settings.aiAssistant}
               role="switch"
             >
               <div 
-                className={`absolute top-0.5 w-4 h-4 rounded-full bg-primary transition-all duration-200 ${
+                className={`absolute top-0.5 w-4 h-4 rounded-full bg-[#36F1CD] transition-all duration-200 ${
                   settings.aiAssistant ? 'left-5' : 'left-0.5'
                 }`}
               ></div>
