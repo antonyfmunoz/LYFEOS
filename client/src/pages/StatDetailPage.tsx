@@ -94,7 +94,10 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
             <div className="flex items-end justify-between mb-2">
               <div>
                 <h2 className="text-3xl font-orbitron">
-                  {config.current}<span className="text-[#7DAAB2] text-lg">/{config.max}</span>
+                  {stat === 'time' 
+                    ? <>{config.current}<span className="text-[#7DAAB2] text-lg">/{config.max}</span></>
+                    : <>{Math.round(percentage)}%</>
+                  }
                 </h2>
                 <p className="text-sm text-[#7DAAB2]">{config.description}</p>
               </div>

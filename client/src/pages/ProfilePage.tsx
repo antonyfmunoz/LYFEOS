@@ -71,7 +71,7 @@ export default function ProfilePage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-[#7DAAB2]">Points</span>
-                    <span className="text-white">{stats.energyPoints.current}/{stats.energyPoints.max}</span>
+                    <span className="text-white">{Math.round((stats.energyPoints.current / stats.energyPoints.max) * 100)}%</span>
                   </div>
                 </div>
                 
@@ -83,7 +83,7 @@ export default function ProfilePage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-[#7DAAB2]">Points</span>
-                    <span className="text-white">{stats.healthPoints.current}/{stats.healthPoints.max}</span>
+                    <span className="text-white">{Math.round((stats.healthPoints.current / stats.healthPoints.max) * 100)}%</span>
                   </div>
                 </div>
               </div>

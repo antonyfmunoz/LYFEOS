@@ -31,9 +31,15 @@ export default function StatWidget({
           <h3 className="font-orbitron text-[#D6F4FF]">{title}</h3>
         </div>
         <div className="text-right">
-          <p className="text-[#D6F4FF] font-mono text-xl">
-            {current}<span className="text-[#7DAAB2] text-sm">/{max}</span>
-          </p>
+          {type === 'time' ? (
+            <p className="text-[#D6F4FF] font-mono text-xl">
+              {current}<span className="text-[#7DAAB2] text-sm">/{max}</span>
+            </p>
+          ) : (
+            <p className="text-[#D6F4FF] font-mono text-xl">
+              {Math.round((current / max) * 100)}<span className="text-[#7DAAB2] text-sm">%</span>
+            </p>
+          )}
         </div>
       </div>
       <div className={`progress-bar ${progressClass}`}>
