@@ -141,7 +141,7 @@ export function LifeOSProvider({ children }: { children: ReactNode }) {
               toast({
                 title: "Level Up!",
                 description: `You've reached level ${newLevel}! Keep up the good work!`,
-                variant: "success",
+                variant: "default",
                 className: "bg-[#001E26] border border-[#36F1CD] text-white",
                 duration: 5000,
               });
@@ -165,7 +165,7 @@ export function LifeOSProvider({ children }: { children: ReactNode }) {
           toast({
             title: "Quest Completed",
             description: `${quest.title} — +${quest.experienceReward} XP`,
-            variant: "success",
+            variant: "default",
             className: "bg-[#001E26] border border-[#36F1CD] text-white",
             duration: 3000,
           });
@@ -209,7 +209,8 @@ export function LifeOSProvider({ children }: { children: ReactNode }) {
           toast({
             title: "Quest Unmarked",
             description: `${quest.title} has been marked as incomplete`,
-            variant: "default",
+            variant: "destructive",
+            className: "bg-[#181818] border border-red-500 text-white",
             duration: 3000,
           });
         }
