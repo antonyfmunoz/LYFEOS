@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { UserStats, Quest, AIMessage, CalendarEvent } from "./types";
+import { toast } from "@/hooks/use-toast";
 
 // Initial stats data
 const initialStats: UserStats = {
@@ -113,10 +114,13 @@ export function LifeOSProvider({ children }: { children: ReactNode }) {
 
   // Toggle quest completion
   const toggleQuestCompletion = (id: string) => {
+    const currentQuest = quests.find(quest => quest.id === id);
+    if (!currentQuest) return;
+    
+    const completed = !currentQuest.completed;
+    
     const updatedQuests = quests.map((quest) => {
       if (quest.id === id) {
-        const completed = !quest.completed;
-        
         // Update stats based on quest completion
         if (completed) {
           // Deduct energy and add XP
@@ -132,6 +136,15 @@ export function LifeOSProvider({ children }: { children: ReactNode }) {
             if (newExperience >= prevStats.experience.max) {
               newExperience = newExperience - prevStats.experience.max;
               newLevel += 1;
+              
+              // Show level up toast
+              toast({
+                title: "Level Up!",
+                description: `You've reached level ${newLevel}! Keep up the good work!`,
+                variant: "success",
+                className: "bg-[#001E26] border border-[#36F1CD] text-white",
+                duration: 5000,
+              });
             }
             
             return {
@@ -146,6 +159,15 @@ export function LifeOSProvider({ children }: { children: ReactNode }) {
                 level: newLevel,
               },
             };
+          });
+          
+          // Show quest completed toast
+          toast({
+            title: "Quest Completed",
+            description: `${quest.title} — +${quest.experienceReward} XP`,
+            variant: "success",
+            className: "bg-[#001E26] border border-[#36F1CD] text-white",
+            duration: 3000,
           });
         } else {
           // Restore energy and remove XP if uncompleting
@@ -181,6 +203,14 @@ export function LifeOSProvider({ children }: { children: ReactNode }) {
                 level: newLevel,
               },
             };
+          });
+          
+          // Show quest unmarked toast
+          toast({
+            title: "Quest Unmarked",
+            description: `${quest.title} has been marked as incomplete`,
+            variant: "default",
+            duration: 3000,
           });
         }
         
