@@ -60,6 +60,31 @@ export function CustomTimePicker({
     setIsOpen(false);
   };
 
+  // Get popup position with viewport boundary checks
+  const getPopupPosition = () => {
+    if (!dropdownRef.current) return { top: '0px', left: '0px' };
+    
+    const rect = dropdownRef.current.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Default positions
+    let top = rect.bottom + 'px';
+    let left = rect.left + 'px';
+    
+    // Check if dropdown would go off the right edge
+    if (rect.left + 264 > viewportWidth) { // 264 = popup width (w-64 = 16rem = 256px) + some margin
+      left = (viewportWidth - 264) + 'px';
+    }
+    
+    // Check if dropdown would go off the bottom edge
+    if (rect.bottom + 320 > viewportHeight) { // Approximate height of the dropdown
+      top = (rect.top - 320) + 'px'; // Position above the input
+    }
+    
+    return { top, left };
+  };
+
   // Close the dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -118,7 +143,8 @@ export function CustomTimePicker({
       {/* Main time input display */}
       <div 
         className={cn(
-          "flex items-center relative cursor-pointer bg-[#00141A] border border-primary/30 text-[#D6F4FF] rounded-md py-2 px-3",
+          "flex items-center relative cursor-pointer bg-[#00141A] border border-primary/30 text-[#D6F4FF] rounded-md py-2 px-3 transition-all duration-200",
+          isOpen ? "border-primary shadow-[0_0_5px_rgba(0,224,255,0.3)] bg-[#001219]" : "hover:border-primary/50",
           className
         )}
         onClick={() => setIsOpen(!isOpen)}
@@ -131,9 +157,20 @@ export function CustomTimePicker({
         </div>
       </div>
 
+      {/* Backdrop for mobile */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[9998]" 
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+      
       {/* Dropdown picker */}
       {isOpen && (
-        <div className="absolute z-50 mt-1 p-4 bg-[#001824] border border-primary/30 rounded-md shadow-lg shadow-primary/10 w-64 glassmorphic">
+        <div 
+          className="fixed z-[9999] mt-1 p-4 bg-[#001824] border border-primary/30 rounded-md shadow-lg shadow-primary/20 w-64 glassmorphic animate-in fade-in-50 zoom-in-95 duration-100 neon-border" 
+          style={getPopupPosition()}
+          onClick={(e) => e.stopPropagation()}>
           <div className="text-center font-mono mb-3 text-[#D6F4FF]">Select Time</div>
           
           <div className="flex justify-center items-center gap-2">
