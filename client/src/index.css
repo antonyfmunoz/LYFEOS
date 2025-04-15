@@ -1,8 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
-@import './styles/solo-leveling-theme.css';
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -46,285 +41,89 @@
   
   body {
     @apply font-sans antialiased bg-background text-foreground;
-    background-color: #030B17; /* Deep navy background */
+    background-color: #030B17;
     color: #D6F4FF;
-    position: relative;
-    overflow-x: hidden;
-  }
-  
-  body::before {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: 
-      radial-gradient(circle at 10% 10%, rgba(10, 16, 31, 0.8), transparent 40%),
-      radial-gradient(circle at 90% 90%, rgba(0, 9, 17, 0.8), transparent 40%);
-    z-index: -1;
-    pointer-events: none;
-  }
-  
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 'Orbitron', sans-serif;
-    text-shadow: 0 0 10px rgba(54, 241, 205, 0.3);
-  }
-  
-  p, span, div, a, input, textarea, button {
-    font-family: 'Rajdhani', sans-serif;
-  }
-  
-  /* Animated scan line effect */
-  @keyframes scanline {
-    0% {
-      transform: translateY(-100%);
-    }
-    100% {
-      transform: translateY(100%);
-    }
-  }
-  
-  .main-container::after {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 2px;
-    background: linear-gradient(90deg, 
-      transparent 0%, 
-      rgba(54, 241, 205, 0.2) 20%, 
-      rgba(54, 241, 205, 0.5) 50%, 
-      rgba(54, 241, 205, 0.2) 80%, 
-      transparent 100%);
-    opacity: 0.3;
-    z-index: 1000;
-    pointer-events: none;
-    animation: scanline 8s linear infinite;
   }
   
   /* Glassmorphic effect */
   .glassmorphic {
-    @apply backdrop-blur-md border border-primary/20;
-    background: rgba(1, 13, 20, 0.75);
-    box-shadow: 0 0 20px rgba(0, 9, 17, 0.6);
-    position: relative;
-    overflow: hidden;
-  }
-
-  /* HUD Corners */
-  .glassmorphic::before,
-  .glassmorphic::after,
-  .glassmorphic .corner-tl,
-  .glassmorphic .corner-br {
-    content: '';
-    position: absolute;
-    width: 15px;
-    height: 15px;
-    border-color: rgba(54, 241, 205, 0.4);
-    border-style: solid;
-    z-index: 1;
-  }
-
-  .glassmorphic::before,
-  .glassmorphic .corner-tl {
-    top: 0;
-    left: 0;
-    border-width: 2px 0 0 2px;
-  }
-
-  .glassmorphic::after,
-  .glassmorphic .corner-br {
-    bottom: 0;
-    right: 0;
-    border-width: 0 2px 2px 0;
+    @apply bg-card/70 backdrop-blur-md border border-primary/20;
   }
 
   /* Neon border */
   .neon-border {
-    box-shadow: 0 0 10px rgba(0, 224, 255, 0.3);
-    transition: all 0.3s ease;
-    border: 1px solid rgba(54, 241, 205, 0.3);
-  }
-  
-  .neon-border:hover {
-    box-shadow: 0 0 20px rgba(0, 224, 255, 0.5);
+    @apply shadow-[0_0_5px_rgba(0,224,255,0.3)] border border-primary/30;
   }
   
   /* Neon glow for profile icon */
   .neon-glow {
-    transition: all 0.5s ease;
+    @apply transition-all duration-300;
     box-shadow: 0 0 5px rgba(0, 224, 255, 0.5), 0 0 10px rgba(0, 224, 255, 0.3);
   }
   
   .neon-glow:hover, .neon-glow:focus {
-    box-shadow: 0 0 15px rgba(0, 224, 255, 0.7), 0 0 30px rgba(0, 224, 255, 0.5);
-    transform: translateY(-2px);
+    box-shadow: 0 0 10px rgba(0, 224, 255, 0.7), 0 0 20px rgba(0, 224, 255, 0.5);
   }
 
-  /* Progress bar styling for stats - enhanced */
+  /* Progress bar styling for stats */
   .progress-bar {
-    height: 4px;
-    background: rgba(0, 20, 26, 0.5);
-    border-radius: 2px;
-    overflow: hidden;
-    position: relative;
+    @apply h-2 bg-card/70 rounded-full overflow-hidden relative;
   }
 
   .progress-fill {
-    height: 100%;
-    border-radius: 2px;
-    position: relative;
-    transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    @apply h-full rounded-full relative transition-all duration-500;
   }
 
   .progress-fill::after {
     content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    border-radius: 2px;
-    background: linear-gradient(90deg, 
-      transparent, 
-      rgba(255, 255, 255, 0.2), 
-      transparent
-    );
-    animation: shimmer 2s infinite;
-  }
-  
-  @keyframes shimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
+    @apply absolute inset-0 rounded-full shadow-[0_0_10px_rgba(0,224,255,0.7)] z-10;
   }
 
   .progress-tt .progress-fill {
-    background: linear-gradient(90deg, rgba(0, 224, 255, 0.7), #00e0ff);
-    box-shadow: 0 0 10px rgba(0, 224, 255, 0.5);
+    @apply bg-gradient-to-r from-primary/70 to-primary;
   }
 
   .progress-ep .progress-fill {
-    background: linear-gradient(90deg, rgba(166, 82, 255, 0.7), #a652ff);
-    box-shadow: 0 0 10px rgba(166, 82, 255, 0.5);
+    @apply bg-gradient-to-r from-secondary/70 to-secondary;
   }
 
   .progress-hp .progress-fill {
-    background: linear-gradient(90deg, rgba(255, 82, 161, 0.7), #ff52a1);
-    box-shadow: 0 0 10px rgba(255, 82, 161, 0.5);
+    @apply bg-gradient-to-r from-accent/70 to-accent;
   }
 
   .progress-xp .progress-fill {
-    background: linear-gradient(90deg, rgba(54, 241, 205, 0.7), #36f1cd);
-    box-shadow: 0 0 10px rgba(54, 241, 205, 0.5);
+    @apply bg-gradient-to-r from-emerald-400/70 to-emerald-400;
   }
 
-  /* Custom checkbox with animated check */
+  /* Custom checkbox */
   .custom-checkbox {
-    appearance: none;
-    width: 18px;
-    height: 18px;
-    border-radius: 3px;
-    border: 1px solid rgba(54, 241, 205, 0.5);
-    background-color: transparent;
-    display: inline-block;
-    position: relative;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 0 5px rgba(0, 224, 255, 0.2);
+    @apply appearance-none w-5 h-5 rounded border border-primary/30 bg-transparent relative cursor-pointer outline-none;
   }
 
   .custom-checkbox:checked {
-    background-color: rgba(54, 241, 205, 0.15);
-    border-color: rgba(54, 241, 205, 0.8);
-    box-shadow: 0 0 8px rgba(54, 241, 205, 0.4);
+    @apply bg-primary/20 border-primary/70 shadow-[0_0_8px_rgba(0,224,255,0.5)];
   }
 
   .custom-checkbox:checked::after {
     content: '✓';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: #36F1CD;
-    font-size: 12px;
-    animation: checkmark 0.3s ease-in-out;
-    text-shadow: 0 0 3px rgba(54, 241, 205, 0.8);
-  }
-  
-  @keyframes checkmark {
-    0% { 
-      opacity: 0; 
-      transform: translate(-50%, -50%) scale(0); 
-    }
-    50% { 
-      opacity: 1; 
-      transform: translate(-50%, -50%) scale(1.2); 
-    }
-    100% { 
-      transform: translate(-50%, -50%) scale(1); 
-    }
+    @apply absolute text-primary text-sm top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2;
   }
 
-  /* Scrollbar styling - enhanced for solo leveling theme */
+  /* Scrollbar styling */
   ::-webkit-scrollbar {
-    width: 6px;
+    @apply w-1.5;
   }
 
   ::-webkit-scrollbar-track {
-    background: rgba(1, 13, 20, 0.3);
+    @apply bg-card/50;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: linear-gradient(to bottom, rgba(54, 241, 205, 0.3), rgba(0, 224, 255, 0.5));
-    border-radius: 3px;
-    border: 1px solid rgba(54, 241, 205, 0.1);
+    @apply bg-primary/50 rounded-full;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(to bottom, rgba(54, 241, 205, 0.5), rgba(0, 224, 255, 0.7));
-  }
-  
-  /* Input and textarea enhancements */
-  input, textarea, select {
-    background-color: rgba(0, 20, 26, 0.7) !important;
-    border: 1px solid rgba(54, 241, 205, 0.3) !important;
-    color: #D6F4FF !important;
-    transition: all 0.3s ease !important;
-  }
-
-  input:focus, textarea:focus, select:focus {
-    border-color: rgba(54, 241, 205, 0.8) !important;
-    box-shadow: 0 0 5px rgba(54, 241, 205, 0.4) !important;
-    outline: none !important;
-  }
-  
-  /* Button styles */
-  button, .button {
-    position: relative;
-    overflow: hidden;
-    transition: all 0.3s ease;
-  }
-  
-  button::after, .button::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-      90deg, 
-      transparent, 
-      rgba(54, 241, 205, 0.2), 
-      transparent
-    );
-    transition: left 0.5s ease;
-  }
-  
-  button:hover::after, .button:hover::after {
-    left: 100%;
+    @apply bg-primary/70;
   }
 }
 
@@ -333,43 +132,7 @@
     font-family: 'Orbitron', sans-serif;
   }
 
-  .font-rajdhani {
-    font-family: 'Rajdhani', sans-serif;
-  }
-
   .font-mono {
     font-family: 'JetBrains Mono', monospace;
-  }
-  
-  .text-gradient {
-    background: linear-gradient(to right, #D6F4FF, #36F1CD);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    color: transparent;
-  }
-  
-  .text-glow {
-    text-shadow: 0 0 10px rgba(54, 241, 205, 0.5);
-  }
-  
-  /* Animations */
-  .fade-in {
-    animation: fadeIn 0.5s ease forwards;
-  }
-  
-  @keyframes fadeIn {
-    0% { opacity: 0; transform: translateY(10px); }
-    100% { opacity: 1; transform: translateY(0); }
-  }
-  
-  .pulse {
-    animation: pulse 2s infinite;
-  }
-  
-  @keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(54, 241, 205, 0.4); }
-    70% { box-shadow: 0 0 0 5px rgba(54, 241, 205, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(54, 241, 205, 0); }
   }
 }
