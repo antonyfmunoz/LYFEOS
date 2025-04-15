@@ -1,0 +1,170 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lyfe OS - Daily Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>🧠 Lyfe OS: Daily Dashboard</h1>
+
+    <!-- Routine Builder -->
+    <section id="routine-builder">
+      <h2>🔧 Customize Your Rituals</h2>
+      <form id="routine-form">
+        <input type="text" placeholder="Time Block (e.g., 5:00am - 6:00am)" id="timeBlock" required />
+        <input type="text" placeholder="Block Name (e.g., Morning Ritual)" id="blockName" required />
+        <textarea placeholder="Tasks (comma-separated)" id="blockTasks"></textarea>
+        <button type="submit">Add Block</button>
+      </form>
+      <ul id="routine-list"></ul>
+    </section>
+
+    <!-- Daily Log -->
+    <section id="daily-log">
+      <h2>📓 Daily Note — <span id="date"></span></h2>
+      <div id="generated-routine">
+        <h3>Today’s Routine</h3>
+        <ul id="today-routine"></ul>
+      </div>
+
+      <div class="section">
+        <h3>🧘‍♂️ Reflection & Energy</h3>
+        <label>Mental:</label><input type="number" id="mental" min="1" max="10" />
+        <label>Physical:</label><input type="number" id="physical" min="1" max="10" />
+        <label>Emotional:</label><input type="number" id="emotional" min="1" max="10" />
+        <textarea id="reflection" placeholder="Gratitude / Reflection"></textarea>
+      </div>
+
+      <div class="section">
+        <h3>📥 Thought Capture</h3>
+        <textarea id="thoughts" placeholder="Ideas, insights, downloads..."></textarea>
+      </div>
+
+      <div class="section">
+        <h3>📚 Content Consumed</h3>
+        <textarea id="content" placeholder="Podcasts, videos, books..."></textarea>
+      </div>
+
+      <button id="saveBtn">💾 Save Log</button>
+      <p id="saveStatus"></p>
+    </section>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
+
+/* style.css */
+body {
+  background: #0f0f0f;
+  color: #f3f3f3;
+  font-family: 'Segoe UI', sans-serif;
+  margin: 0;
+  padding: 2rem;
+}
+
+.container {
+  max-width: 800px;
+  margin: auto;
+}
+
+h1, h2, h3 {
+  color: #ffffff;
+}
+
+input, textarea {
+  width: 100%;
+  padding: 0.75rem;
+  margin: 0.5rem 0;
+  border-radius: 6px;
+  border: none;
+  background: #1c1c1c;
+  color: #fff;
+}
+
+button {
+  padding: 0.75rem 1.5rem;
+  background: #3b82f6;
+  border: none;
+  color: #fff;
+  font-weight: bold;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 1rem;
+}
+
+button:hover {
+  background: #2563eb;
+}
+
+ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.section {
+  margin-top: 2rem;
+}
+
+/* app.js */
+const today = new Date().toISOString().split('T')[0];
+document.getElementById("date").textContent = today;
+
+let routineData = JSON.parse(localStorage.getItem("routineData")) || [];
+
+function renderRoutine() {
+  const list = document.getElementById("routine-list");
+  const todayList = document.getElementById("today-routine");
+  list.innerHTML = "";
+  todayList.innerHTML = "";
+
+  routineData.forEach((block, index) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<strong>${block.time}</strong> | ${block.name} — ${block.tasks.join(", ")} <button onclick="deleteBlock(${index})">❌</button>`;
+    list.appendChild(li);
+
+    const tli = document.createElement("li");
+    tli.innerHTML = `<strong>${block.time}</strong> | ${block.name}<ul>${block.tasks.map(task => `<li>${task}</li>`).join("")}</ul>`;
+    todayList.appendChild(tli);
+  });
+}
+
+function deleteBlock(index) {
+  routineData.splice(index, 1);
+  localStorage.setItem("routineData", JSON.stringify(routineData));
+  renderRoutine();
+}
+
+document.getElementById("routine-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const time = document.getElementById("timeBlock").value;
+  const name = document.getElementById("blockName").value;
+  const tasks = document.getElementById("blockTasks").value.split(",").map(t => t.trim());
+
+  routineData.push({ time, name, tasks });
+  localStorage.setItem("routineData", JSON.stringify(routineData));
+  e.target.reset();
+  renderRoutine();
+});
+
+renderRoutine();
+
+document.getElementById("saveBtn").addEventListener("click", () => {
+  const log = {
+    date: today,
+    mental: document.getElementById("mental").value,
+    physical: document.getElementById("physical").value,
+    emotional: document.getElementById("emotional").value,
+    reflection: document.getElementById("reflection").value,
+    thoughts: document.getElementById("thoughts").value,
+    content: document.getElementById("content").value
+  };
+
+  localStorage.setItem(`dailyLog-${today}`, JSON.stringify(log));
+  document.getElementById("saveStatus").innerText = "✅ Log Saved!";
+});
