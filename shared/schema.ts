@@ -60,30 +60,6 @@ export const calendarEvents = pgTable("calendar_events", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Routine Blocks table
-export const routineBlocks = pgTable("routine_blocks", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
-  timeBlock: text("time_block").notNull(), // format: "HH:MM - HH:MM"
-  blockName: text("block_name").notNull(),
-  tasks: text("tasks").array().notNull(), // Array of tasks
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-// Daily Logs table
-export const dailyLogs = pgTable("daily_logs", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
-  date: text("date").notNull(), // format: "YYYY-MM-DD"
-  mentalRating: integer("mental_rating").notNull(),
-  physicalRating: integer("physical_rating").notNull(),
-  emotionalRating: integer("emotional_rating").notNull(),
-  reflection: text("reflection"),
-  thoughts: text("thoughts"),
-  contentConsumed: text("content_consumed"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
 // Relationships
 export const usersRelations = relations(users, ({ one, many }) => ({
   stats: one(userStats, {
@@ -93,8 +69,6 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   quests: many(quests),
   messages: many(aiMessages),
   events: many(calendarEvents),
-  routineBlocks: many(routineBlocks),
-  dailyLogs: many(dailyLogs),
 }));
 
 export const userStatsRelations = relations(userStats, ({ one }) => ({
@@ -121,20 +95,6 @@ export const aiMessagesRelations = relations(aiMessages, ({ one }) => ({
 export const calendarEventsRelations = relations(calendarEvents, ({ one }) => ({
   user: one(users, {
     fields: [calendarEvents.userId],
-    references: [users.id],
-  }),
-}));
-
-export const routineBlocksRelations = relations(routineBlocks, ({ one }) => ({
-  user: one(users, {
-    fields: [routineBlocks.userId],
-    references: [users.id],
-  }),
-}));
-
-export const dailyLogsRelations = relations(dailyLogs, ({ one }) => ({
-  user: one(users, {
-    fields: [dailyLogs.userId],
     references: [users.id],
   }),
 }));
