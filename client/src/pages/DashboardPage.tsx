@@ -347,7 +347,7 @@ export default function DashboardPage() {
       {/* Routine Execution Panel */}
       <section className="mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-orbitron">Daily Routine</h2>
+          <h2 className="text-xl font-orbitron">⏱️ Daily Routine</h2>
           <div className="flex items-center text-sm text-[#36F1CD] font-mono">
             <span>XP Earned Today: +{totalXpEarned}</span>
           </div>
@@ -570,7 +570,7 @@ export default function DashboardPage() {
       {/* Reflection & Calibration Panel */}
       <section className="mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-orbitron">Reflection & Calibration</h2>
+          <h2 className="text-xl font-orbitron">🧘‍♂️ Reflection & Calibration</h2>
         </div>
         
         <div className="glassmorphic rounded-xl p-4 neon-border">
@@ -688,69 +688,85 @@ export default function DashboardPage() {
               </div>
             </div>
             
-            {/* Daily Log section */}
-            <div className="border-t border-primary/10 pt-4">
-              <h3 className="text-sm flex items-center text-[#7DAAB2] mb-3">
-                <BookOpen className="h-4 w-4 text-primary mr-2" />
-                Daily Log
-              </h3>
+            {/* End of Intention Setter Section */}
+            
+            {/* Save button */}
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                className="bg-primary hover:bg-primary/90"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Save Daily Log
+              </Button>
+            </div>
+          </form>
+        </div>
+      </section>
+      
+      {/* Daily Log Panel - Separate Widget */}
+      <section className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-orbitron">📓 Daily Log</h2>
+        </div>
+        
+        <div className="glassmorphic rounded-xl p-4 neon-border">
+          <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); saveReflection(); }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Today's Thoughts */}
+              <div className="space-y-2">
+                <label className="text-sm flex items-center text-[#7DAAB2]">
+                  <Brain className="h-4 w-4 text-primary" />
+                  <span className="ml-2">Today's Thoughts</span>
+                </label>
+                <Textarea
+                  placeholder="Ideas worth saving..."
+                  className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
+                  value={reflection.thoughts}
+                  onChange={(e) => updateReflection("thoughts", e.target.value)}
+                />
+              </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Today's Thoughts */}
-                <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
-                    <Brain className="h-4 w-4 text-primary" />
-                    <span className="ml-2">Today's Thoughts</span>
-                  </label>
-                  <Textarea
-                    placeholder="Ideas worth saving..."
-                    className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
-                    value={reflection.thoughts}
-                    onChange={(e) => updateReflection("thoughts", e.target.value)}
-                  />
-                </div>
-                
-                {/* Content Consumed */}
-                <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
-                    <Book className="h-4 w-4 text-primary" />
-                    <span className="ml-2">Content Consumed</span>
-                  </label>
-                  <Textarea
-                    placeholder="Books, podcasts, videos..."
-                    className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
-                    value={reflection.contentConsumed}
-                    onChange={(e) => updateReflection("contentConsumed", e.target.value)}
-                  />
-                </div>
-                
-                {/* Today's Research */}
-                <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
-                    <BookOpen className="h-4 w-4 text-primary" />
-                    <span className="ml-2">Today's Research</span>
-                  </label>
-                  <Textarea
-                    placeholder="Summarize learnings or add links..."
-                    className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
-                    value={reflection.research}
-                    onChange={(e) => updateReflection("research", e.target.value)}
-                  />
-                </div>
-                
-                {/* New To-Do-List Ideas */}
-                <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
-                    <ListChecks className="h-4 w-4 text-primary" />
-                    <span className="ml-2">New To-Do-List Ideas</span>
-                  </label>
-                  <Textarea
-                    placeholder="Add to Brain Dump..."
-                    className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
-                    value={reflection.todoIdeas}
-                    onChange={(e) => updateReflection("todoIdeas", e.target.value)}
-                  />
-                </div>
+              {/* Content Consumed */}
+              <div className="space-y-2">
+                <label className="text-sm flex items-center text-[#7DAAB2]">
+                  <Book className="h-4 w-4 text-primary" />
+                  <span className="ml-2">Content Consumed</span>
+                </label>
+                <Textarea
+                  placeholder="Books, podcasts, videos..."
+                  className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
+                  value={reflection.contentConsumed}
+                  onChange={(e) => updateReflection("contentConsumed", e.target.value)}
+                />
+              </div>
+              
+              {/* Today's Research */}
+              <div className="space-y-2">
+                <label className="text-sm flex items-center text-[#7DAAB2]">
+                  <BookOpen className="h-4 w-4 text-primary" />
+                  <span className="ml-2">Today's Research</span>
+                </label>
+                <Textarea
+                  placeholder="Summarize learnings or add links..."
+                  className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
+                  value={reflection.research}
+                  onChange={(e) => updateReflection("research", e.target.value)}
+                />
+              </div>
+              
+              {/* New To-Do-List Ideas */}
+              <div className="space-y-2">
+                <label className="text-sm flex items-center text-[#7DAAB2]">
+                  <ListChecks className="h-4 w-4 text-primary" />
+                  <span className="ml-2">New To-Do-List Ideas</span>
+                </label>
+                <Textarea
+                  placeholder="Add to Brain Dump..."
+                  className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
+                  value={reflection.todoIdeas}
+                  onChange={(e) => updateReflection("todoIdeas", e.target.value)}
+                />
               </div>
             </div>
             
