@@ -53,7 +53,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
   }, [showProfileDropdown]);
   
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen main-container">
       {/* Main content area */}
       <div className="flex flex-grow overflow-hidden">
         {/* Desktop sidebar */}
@@ -63,18 +63,17 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <div className="flex-grow overflow-y-auto p-4 lg:p-6">
           {/* Mobile header (visible on mobile only) */}
           <div className="flex items-center justify-between mb-6 lg:hidden">
-            <span className="text-2xl text-primary font-orbitron font-bold">Life<span className="text-white">OS</span></span>
+            <span className="text-2xl text-primary font-orbitron font-bold text-gradient">Life<span className="text-white">OS</span></span>
             
             {/* Profile Icon with dropdown */}
             <div className="relative">
               <button 
                 ref={buttonRef}
                 onClick={toggleProfileDropdown}
-                className={`flex items-center justify-center h-10 w-10 rounded-full border border-[#36F1CD]/50 bg-[#001E26]/30 text-primary hover:bg-[#36F1CD]/10 transition backdrop-blur-sm ${showProfileDropdown ? 'ring-1 ring-[#36F1CD]' : ''}`}
+                className={`flex items-center justify-center h-10 w-10 rounded-full border border-[#36F1CD]/50 bg-[#001E26]/30 text-primary hover:bg-[#36F1CD]/10 transition backdrop-blur-sm neon-glow ${showProfileDropdown ? 'ring-1 ring-[#36F1CD]' : ''}`}
                 aria-label="Open profile menu"
                 aria-expanded={showProfileDropdown}
                 aria-haspopup="true"
-                style={{ boxShadow: '0 0 8px rgba(54, 241, 205, 0.3)' }}
               >
                 <span className="material-icons text-[#36F1CD] text-lg">person</span>
               </button>
