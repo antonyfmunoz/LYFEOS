@@ -108,11 +108,6 @@ export function CustomTimePicker({
     }
   };
 
-  // Toggle AM/PM
-  const togglePeriod = () => {
-    setPeriod(prevPeriod => prevPeriod === "AM" ? "PM" : "AM");
-  };
-
   return (
     <div className="relative" ref={dropdownRef}>
       {/* Main time input display */}
@@ -133,7 +128,13 @@ export function CustomTimePicker({
 
       {/* Dropdown picker */}
       {isOpen && (
-        <div className="absolute z-50 mt-1 p-4 bg-[#001824] border border-primary/30 rounded-md shadow-lg shadow-primary/10 w-64 glassmorphic">
+        <div 
+          className="fixed z-[999] mt-1 p-4 bg-[#001824] border border-primary/30 rounded-md shadow-lg shadow-primary/10 w-64 glassmorphic"
+          style={{
+            top: dropdownRef.current ? dropdownRef.current.getBoundingClientRect().bottom + window.scrollY + 5 : 0,
+            left: dropdownRef.current ? dropdownRef.current.getBoundingClientRect().left + window.scrollX : 0,
+          }}
+        >
           <div className="text-center font-mono mb-3 text-[#D6F4FF]">Select Time</div>
           
           <div className="flex justify-center items-center gap-2">
