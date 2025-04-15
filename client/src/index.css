@@ -127,6 +127,21 @@
   }
 }
 
+/* Custom styling for time inputs */
+input[type="time"] {
+  @apply bg-[#00141A] border border-primary/30 text-[#D6F4FF] rounded-md py-2 px-3;
+  color-scheme: dark;
+}
+
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(0.8) sepia(100%) saturate(500%) hue-rotate(170deg);
+  opacity: 0.7;
+}
+
+input[type="time"]:focus {
+  @apply outline-none border-primary/50 shadow-[0_0_8px_rgba(0,224,255,0.3)];
+}
+
 @layer utilities {
   .font-orbitron {
     font-family: 'Orbitron', sans-serif;

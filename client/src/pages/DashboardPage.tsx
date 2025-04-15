@@ -382,14 +382,14 @@ export default function DashboardPage() {
                         />
                         <Input 
                           type="time"
-                          className="w-28 bg-[#00141A] border-primary/30 text-[#D6F4FF]"
+                          className="w-28 custom-time-input"
                           value={block.startTime}
                           onChange={(e) => saveBlockEdit(block.id, 'startTime', e.target.value)}
                         />
                         <span className="text-[#7DAAB2] self-center"> - </span>
                         <Input 
                           type="time"
-                          className="w-28 bg-[#00141A] border-primary/30 text-[#D6F4FF]"
+                          className="w-28 custom-time-input"
                           value={block.endTime}
                           onChange={(e) => saveBlockEdit(block.id, 'endTime', e.target.value)}
                         />
@@ -547,14 +547,14 @@ export default function DashboardPage() {
             <div className="flex items-center sm:col-span-2">
               <Input 
                 type="time"
-                className="bg-[#00141A] border-primary/30 text-[#D6F4FF]"
+                className="custom-time-input"
                 value={newBlockStartTime}
                 onChange={(e) => setNewBlockStartTime(e.target.value)}
               />
               <span className="mx-2 text-[#7DAAB2]">-</span>
               <Input 
                 type="time"
-                className="bg-[#00141A] border-primary/30 text-[#D6F4FF]"
+                className="custom-time-input"
                 value={newBlockEndTime}
                 onChange={(e) => setNewBlockEndTime(e.target.value)}
               />
@@ -590,7 +590,7 @@ export default function DashboardPage() {
                 </label>
                 <Input
                   type="time"
-                  className="bg-[#00141A] border-primary/30 text-[#D6F4FF]"
+                  className="custom-time-input" 
                   value={reflection.wakeTime}
                   onChange={(e) => updateReflection("wakeTime", e.target.value)}
                 />
@@ -603,7 +603,7 @@ export default function DashboardPage() {
                 </label>
                 <Input
                   type="time"
-                  className="bg-[#00141A] border-primary/30 text-[#D6F4FF]"
+                  className="custom-time-input"
                   value={reflection.sleepTime}
                   onChange={(e) => updateReflection("sleepTime", e.target.value)}
                 />
