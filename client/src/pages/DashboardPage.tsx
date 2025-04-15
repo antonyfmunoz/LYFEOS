@@ -282,17 +282,20 @@ export default function DashboardPage() {
     <div className="dashboard-container">
       {/* Date Header - Cinematic HUD Style */}
       <section className="mb-6">
-        <div className="glassmorphic rounded-xl p-3 neon-border">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+        <div className="glassmorphic rounded-xl p-4 neon-border hud-panel relative fade-in">
+          <div className="grid-lines"></div>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center relative z-10">
             <div className="flex items-center">
               <CalendarDays className="h-5 w-5 text-primary mr-2" />
-              <h1 className="text-xl sm:text-2xl font-orbitron text-[#D6F4FF]">{formattedDate}</h1>
+              <h1 className="text-xl sm:text-2xl font-orbitron text-[#D6F4FF] text-glow">{formattedDate}</h1>
             </div>
             <div className="flex items-center mt-2 sm:mt-0">
-              <Clock className="h-4 w-4 text-[#7DAAB2] mr-2" />
-              <span className="text-[#7DAAB2] font-mono">{formattedTime}</span>
+              <Clock className="h-4 w-4 text-[#36F1CD] mr-2" />
+              <span className="time-display">{formattedTime}</span>
             </div>
           </div>
+          <div className="absolute top-2 right-2 w-3 h-3 border-r-2 border-t-2 border-primary/30"></div>
+          <div className="absolute bottom-2 left-2 w-3 h-3 border-l-2 border-b-2 border-primary/30"></div>
         </div>
       </section>
       
