@@ -60,10 +60,17 @@ export function CustomTimePicker({
     setIsOpen(false);
   };
 
-  // Close the dropdown when clicking outside
+  // Special handler for dropdown management - we need a separate ref for the dropdown
+  const dropdownPopupRef = useRef<HTMLDivElement>(null);
+  
+  // Close the dropdown when clicking outside both the input and the dropdown
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      // Only close if the click is outside both the input AND the dropdown popup
+      const clickedInsideInput = dropdownRef.current && dropdownRef.current.contains(event.target as Node);
+      const clickedInsidePopup = dropdownPopupRef.current && dropdownPopupRef.current.contains(event.target as Node);
+      
+      if (!clickedInsideInput && !clickedInsidePopup) {
         setIsOpen(false);
       }
     }
@@ -73,7 +80,13 @@ export function CustomTimePicker({
   }, []);
 
   // Handle hour increment/decrement
-  const adjustHours = (amount: number) => {
+  const adjustHours = (amount: number, e?: React.MouseEvent) => {
+    // Prevent event bubbling to keep the dropdown open
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     let newHours = hours + amount;
     if (newHours > 12) newHours = 1;
     if (newHours < 1) newHours = 12;
@@ -81,11 +94,28 @@ export function CustomTimePicker({
   };
 
   // Handle minute increment/decrement
-  const adjustMinutes = (amount: number) => {
+  const adjustMinutes = (amount: number, e?: React.MouseEvent) => {
+    // Prevent event bubbling to keep the dropdown open
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     let newMinutes = minutes + amount;
     if (newMinutes >= 60) newMinutes = 0;
     if (newMinutes < 0) newMinutes = 59;
     setMinutes(newMinutes);
+  };
+  
+  // Handle setting AM/PM periods
+  const handleSetPeriod = (newPeriod: "AM" | "PM", e?: React.MouseEvent) => {
+    // Prevent event bubbling to keep the dropdown open
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    setPeriod(newPeriod);
   };
 
   // Handle direct number input for hours
@@ -129,6 +159,7 @@ export function CustomTimePicker({
       {/* Dropdown picker */}
       {isOpen && (
         <div 
+          ref={dropdownPopupRef}
           className="fixed z-[999] mt-1 p-4 bg-[#001824] border border-primary/30 rounded-md shadow-lg shadow-primary/10 w-64 glassmorphic"
           style={{
             top: dropdownRef.current ? dropdownRef.current.getBoundingClientRect().bottom + window.scrollY + 5 : 0,
@@ -144,7 +175,7 @@ export function CustomTimePicker({
                 variant="ghost" 
                 size="sm" 
                 className="text-primary hover:bg-primary/10 rounded-full p-1 h-8 w-8"
-                onClick={() => adjustHours(1)}
+                onClick={(e) => adjustHours(1, e)}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
               </Button>
@@ -159,7 +190,7 @@ export function CustomTimePicker({
                 variant="ghost" 
                 size="sm" 
                 className="text-primary hover:bg-primary/10 rounded-full p-1 h-8 w-8"
-                onClick={() => adjustHours(-1)}
+                onClick={(e) => adjustHours(-1, e)}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
               </Button>
@@ -175,7 +206,7 @@ export function CustomTimePicker({
                 variant="ghost" 
                 size="sm" 
                 className="text-primary hover:bg-primary/10 rounded-full p-1 h-8 w-8"
-                onClick={() => adjustMinutes(1)}
+                onClick={(e) => adjustMinutes(1, e)}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
               </Button>
@@ -190,7 +221,7 @@ export function CustomTimePicker({
                 variant="ghost" 
                 size="sm" 
                 className="text-primary hover:bg-primary/10 rounded-full p-1 h-8 w-8"
-                onClick={() => adjustMinutes(-1)}
+                onClick={(e) => adjustMinutes(-1, e)}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
               </Button>
@@ -206,7 +237,7 @@ export function CustomTimePicker({
                     ? "bg-primary/20 text-primary border-t border-l border-r border-primary/30" 
                     : "bg-[#001824] text-[#7DAAB2] hover:bg-[#001C26]"
                 }`}
-                onClick={() => setPeriod("AM")}
+                onClick={(e) => handleSetPeriod("AM", e)}
                 type="button"
               >
                 AM
@@ -217,7 +248,7 @@ export function CustomTimePicker({
                     ? "bg-primary/20 text-primary border-b border-l border-r border-primary/30" 
                     : "bg-[#001824] text-[#7DAAB2] hover:bg-[#001C26]"
                 }`}
-                onClick={() => setPeriod("PM")}
+                onClick={(e) => handleSetPeriod("PM", e)}
                 type="button"
               >
                 PM
