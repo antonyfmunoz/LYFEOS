@@ -173,6 +173,52 @@ input[type="time"]::-webkit-datetime-edit-ampm-field:focus {
   color: #00E0FF;
 }
 
+/* Style the time picker popup - as much as browsers allow */
+::-webkit-time-picker,
+::-webkit-datetime-edit-popup,
+::-webkit-calendar-picker,
+::-webkit-datetime-picker,
+::-webkit-time-picker-popup {
+  @apply bg-[#001824] border border-primary/30 shadow-[0_0_15px_rgba(0,224,255,0.2)];
+  color-scheme: dark;
+}
+
+/* Attempt to style specific browser time picker elements */
+::-webkit-time-picker-hour-field,
+::-webkit-time-picker-minute-field,
+::-webkit-time-picker-ampm-field,
+::-webkit-time-picker-second-field {
+  @apply bg-[#002637] text-[#D6F4FF] border border-primary/20;
+}
+
+/* Style for time picker (Chrome specific hacks) */
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  filter: invert(1) brightness(1) sepia(100%) saturate(500%) hue-rotate(170deg);
+  opacity: 1;
+}
+
+/* Remove system UI from time inputs for better styling control */
+input[type="time"]::-webkit-inner-spin-button, 
+input[type="time"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  right: 0;
+  height: 100%;
+  width: 2.5rem;
+  background: linear-gradient(90deg, rgba(0,28,38,0) 0%, rgba(0,28,38,0.5) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-left: 1px solid rgba(0,224,255,0.1);
+}
+
+/* For Firefox */
+@-moz-document url-prefix() {
+  input[type="time"] {
+    @apply bg-[#00141A] border border-primary/30 text-[#D6F4FF] py-2 px-3;
+    border-radius: 0.375rem;
+  }
+}
+
 @layer utilities {
   .font-orbitron {
     font-family: 'Orbitron', sans-serif;

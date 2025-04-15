@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { CustomTimePicker } from "@/components/ui/custom-time-picker";
 
 // Define types
 interface TimeBlock {
@@ -392,16 +393,12 @@ export default function DashboardPage() {
                           </div>
                         </div>
                         <span className="text-[#7DAAB2] self-center"> - </span>
-                        <div className="relative w-28">
-                          <Input 
-                            type="time"
-                            className="w-full custom-time-input font-mono pr-8"
+                        <div className="w-32">
+                          <CustomTimePicker
                             value={block.endTime}
-                            onChange={(e) => saveBlockEdit(block.id, 'endTime', e.target.value)}
+                            onChange={(value) => saveBlockEdit(block.id, 'endTime', value)}
+                            icon={<Clock className="h-3 w-3 text-primary/70" />}
                           />
-                          <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
-                            <Clock className="h-3 w-3 text-primary/70" />
-                          </div>
                         </div>
                       </div>
                     ) : (
@@ -555,16 +552,12 @@ export default function DashboardPage() {
             />
             
             <div className="flex items-center sm:col-span-2">
-              <div className="relative flex-1">
-                <Input 
-                  type="time"
-                  className="custom-time-input font-mono w-full pr-8"
+              <div className="flex-1">
+                <CustomTimePicker
                   value={newBlockStartTime}
-                  onChange={(e) => setNewBlockStartTime(e.target.value)}
+                  onChange={setNewBlockStartTime}
+                  icon={<Clock className="h-3 w-3 text-primary/70" />}
                 />
-                <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
-                  <Clock className="h-3 w-3 text-primary/70" />
-                </div>
               </div>
               <span className="mx-2 text-[#7DAAB2]">-</span>
               <div className="relative flex-1">
@@ -608,17 +601,12 @@ export default function DashboardPage() {
                   <AlarmClock className="h-4 w-4 text-primary" />
                   <span className="ml-2">Wake Up Time</span>
                 </label>
-                <div className="relative">
-                  <Input
-                    type="time"
-                    className="custom-time-input font-mono" 
-                    value={reflection.wakeTime}
-                    onChange={(e) => updateReflection("wakeTime", e.target.value)}
-                  />
-                  <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                    <Clock className="h-4 w-4 text-primary/70" />
-                  </div>
-                </div>
+                <CustomTimePicker
+                  value={reflection.wakeTime}
+                  onChange={(value) => updateReflection("wakeTime", value)}
+                  icon={<AlarmClock className="h-4 w-4 text-primary/70" />}
+                  className="w-full"
+                />
               </div>
               
               <div className="space-y-2">
@@ -626,17 +614,12 @@ export default function DashboardPage() {
                   <MoonStar className="h-4 w-4 text-primary" />
                   <span className="ml-2">Sleep Time</span>
                 </label>
-                <div className="relative">
-                  <Input
-                    type="time"
-                    className="custom-time-input font-mono"
-                    value={reflection.sleepTime}
-                    onChange={(e) => updateReflection("sleepTime", e.target.value)}
-                  />
-                  <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                    <MoonStar className="h-4 w-4 text-primary/70" />
-                  </div>
-                </div>
+                <CustomTimePicker
+                  value={reflection.sleepTime}
+                  onChange={(value) => updateReflection("sleepTime", value)}
+                  icon={<MoonStar className="h-4 w-4 text-primary/70" />}
+                  className="w-full"
+                />
               </div>
             </div>
             

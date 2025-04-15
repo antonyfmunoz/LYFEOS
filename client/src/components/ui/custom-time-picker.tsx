@@ -1,0 +1,250 @@
+import React, { useState, useEffect, useRef } from "react";
+import { Clock } from "lucide-react";
+import { Button } from "./button";
+import { Input } from "./input";
+import { cn } from "@/lib/utils";
+
+interface CustomTimePickerProps {
+  value: string;
+  onChange: (value: string) => void;
+  className?: string;
+  icon?: React.ReactNode;
+}
+
+export function CustomTimePicker({ 
+  value, 
+  onChange, 
+  className,
+  icon = <Clock className="h-4 w-4 text-primary/70" />
+}: CustomTimePickerProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [hours, setHours] = useState<number>(0);
+  const [minutes, setMinutes] = useState<number>(0);
+  const [period, setPeriod] = useState<"AM" | "PM">("AM");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Parse the value (HH:MM format) into hours, minutes and period
+  useEffect(() => {
+    if (value) {
+      const [hoursStr, minutesStr] = value.split(":");
+      let parsedHours = parseInt(hoursStr, 10);
+      const parsedMinutes = parseInt(minutesStr, 10);
+      
+      // Convert 24h to 12h format
+      let newPeriod: "AM" | "PM" = parsedHours >= 12 ? "PM" : "AM";
+      if (parsedHours > 12) {
+        parsedHours -= 12;
+      } else if (parsedHours === 0) {
+        parsedHours = 12;
+      }
+      
+      setHours(parsedHours);
+      setMinutes(parsedMinutes);
+      setPeriod(newPeriod);
+    }
+  }, [value]);
+
+  // Convert internal state back to 24-hour format and update parent
+  const updateTime = () => {
+    let h = hours;
+    
+    // Convert from 12h to 24h format
+    if (period === "PM" && h < 12) {
+      h += 12;
+    } else if (period === "AM" && h === 12) {
+      h = 0;
+    }
+    
+    const newValue = `${h.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    onChange(newValue);
+    setIsOpen(false);
+  };
+
+  // Close the dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Handle hour increment/decrement
+  const adjustHours = (amount: number) => {
+    let newHours = hours + amount;
+    if (newHours > 12) newHours = 1;
+    if (newHours < 1) newHours = 12;
+    setHours(newHours);
+  };
+
+  // Handle minute increment/decrement
+  const adjustMinutes = (amount: number) => {
+    let newMinutes = minutes + amount;
+    if (newMinutes >= 60) newMinutes = 0;
+    if (newMinutes < 0) newMinutes = 59;
+    setMinutes(newMinutes);
+  };
+
+  // Handle direct number input for hours
+  const handleHoursInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = parseInt(e.target.value, 10);
+    if (!isNaN(newValue) && newValue >= 1 && newValue <= 12) {
+      setHours(newValue);
+    } else if (e.target.value === "") {
+      setHours(12); // Default to 12 if field is empty
+    }
+  };
+
+  // Handle direct number input for minutes
+  const handleMinutesInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = parseInt(e.target.value, 10);
+    if (!isNaN(newValue) && newValue >= 0 && newValue <= 59) {
+      setMinutes(newValue);
+    } else if (e.target.value === "") {
+      setMinutes(0); // Default to 0 if field is empty
+    }
+  };
+
+  // Toggle AM/PM
+  const togglePeriod = () => {
+    setPeriod(prevPeriod => prevPeriod === "AM" ? "PM" : "AM");
+  };
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      {/* Main time input display */}
+      <div 
+        className={cn(
+          "flex items-center relative cursor-pointer bg-[#00141A] border border-primary/30 text-[#D6F4FF] rounded-md py-2 px-3",
+          className
+        )}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <span className="font-mono flex-grow">
+          {hours.toString().padStart(2, '0')}:{minutes.toString().padStart(2, '0')} {period}
+        </span>
+        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+          {icon}
+        </div>
+      </div>
+
+      {/* Dropdown picker */}
+      {isOpen && (
+        <div className="absolute z-50 mt-1 p-4 bg-[#001824] border border-primary/30 rounded-md shadow-lg shadow-primary/10 w-64 glassmorphic">
+          <div className="text-center font-mono mb-3 text-[#D6F4FF]">Select Time</div>
+          
+          <div className="flex justify-center items-center gap-2">
+            {/* Hours column */}
+            <div className="flex flex-col items-center">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-primary hover:bg-primary/10 rounded-full p-1 h-8 w-8"
+                onClick={() => adjustHours(1)}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+              </Button>
+              
+              <Input
+                className="w-14 text-center bg-[#00141A] border-primary/30 font-mono my-1 p-1 h-9"
+                value={hours.toString()}
+                onChange={handleHoursInput}
+              />
+              
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-primary hover:bg-primary/10 rounded-full p-1 h-8 w-8"
+                onClick={() => adjustHours(-1)}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </Button>
+              
+              <span className="text-xs text-[#7DAAB2] mt-1">Hours</span>
+            </div>
+            
+            <span className="text-primary text-xl">:</span>
+            
+            {/* Minutes column */}
+            <div className="flex flex-col items-center">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-primary hover:bg-primary/10 rounded-full p-1 h-8 w-8"
+                onClick={() => adjustMinutes(1)}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+              </Button>
+              
+              <Input
+                className="w-14 text-center bg-[#00141A] border-primary/30 font-mono my-1 p-1 h-9"
+                value={minutes.toString().padStart(2, '0')}
+                onChange={handleMinutesInput}
+              />
+              
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-primary hover:bg-primary/10 rounded-full p-1 h-8 w-8"
+                onClick={() => adjustMinutes(-1)}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </Button>
+              
+              <span className="text-xs text-[#7DAAB2] mt-1">Minutes</span>
+            </div>
+            
+            {/* AM/PM toggle */}
+            <div className="flex flex-col items-center ml-2">
+              <button
+                className={`w-14 rounded-t-md py-1 transition-colors ${
+                  period === "AM" 
+                    ? "bg-primary/20 text-primary border-t border-l border-r border-primary/30" 
+                    : "bg-[#001824] text-[#7DAAB2] hover:bg-[#001C26]"
+                }`}
+                onClick={() => setPeriod("AM")}
+                type="button"
+              >
+                AM
+              </button>
+              <button
+                className={`w-14 rounded-b-md py-1 transition-colors ${
+                  period === "PM" 
+                    ? "bg-primary/20 text-primary border-b border-l border-r border-primary/30" 
+                    : "bg-[#001824] text-[#7DAAB2] hover:bg-[#001C26]"
+                }`}
+                onClick={() => setPeriod("PM")}
+                type="button"
+              >
+                PM
+              </button>
+              
+              <span className="text-xs text-[#7DAAB2] mt-3">Period</span>
+            </div>
+          </div>
+          
+          <div className="flex justify-end mt-4">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-[#7DAAB2] hover:bg-[#001C26] mr-2"
+              onClick={() => setIsOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={updateTime}
+            >
+              Apply
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
