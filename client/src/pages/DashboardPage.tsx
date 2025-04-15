@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLifeOS } from "../lib/context";
 import StatWidget from "../components/dashboard/StatWidget";
 import ExperienceBar from "../components/dashboard/ExperienceBar";
-import { CalendarDays, Clock, Edit, PlusCircle, Save, Brain, HeartPulse, Smile, BookOpen, Book } from "lucide-react";
+import { CalendarDays, Clock, Edit, PlusCircle, Save, Brain, HeartPulse, Smile, BookOpen, Book, AlarmClock, MoonStar, TargetIcon, ListChecks } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,10 +21,15 @@ interface DailyReflection {
   mentalState: number;
   physicalState: number;
   emotionalState: number;
-  reflection: string;
+  wakeTime: string;
+  sleepTime: string;
   gratitude: string;
+  tomorrowGoals: string;
+  annualGoals: string;
   thoughts: string;
   contentConsumed: string;
+  research: string;
+  todoIdeas: string;
   date: string; // YYYY-MM-DD format
 }
 
@@ -50,10 +55,15 @@ export default function DashboardPage() {
     mentalState: 5,
     physicalState: 5,
     emotionalState: 5,
-    reflection: "",
+    wakeTime: "06:00",
+    sleepTime: "22:00",
     gratitude: "",
+    tomorrowGoals: "",
+    annualGoals: "",
     thoughts: "",
     contentConsumed: "",
+    research: "",
+    todoIdeas: "",
     date: new Date().toISOString().split('T')[0]
   });
   
@@ -565,86 +575,182 @@ export default function DashboardPage() {
         
         <div className="glassmorphic rounded-xl p-4 neon-border">
           <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); saveReflection(); }}>
-            {/* State ratings - in a row for desktop, stacked for mobile */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {renderStateSelector(
-                reflection.mentalState,
-                (value) => updateReflection("mentalState", value),
-                "Mental State",
-                <Brain className="h-4 w-4 text-primary" />
-              )}
+            {/* Time settings */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+              <div className="space-y-2">
+                <label className="text-sm flex items-center text-[#7DAAB2]">
+                  <AlarmClock className="h-4 w-4 text-primary" />
+                  <span className="ml-2">Wake Up Time</span>
+                </label>
+                <Input
+                  type="time"
+                  className="bg-[#00141A] border-primary/30 text-[#D6F4FF]"
+                  value={reflection.wakeTime}
+                  onChange={(e) => updateReflection("wakeTime", e.target.value)}
+                />
+              </div>
               
-              {renderStateSelector(
-                reflection.physicalState,
-                (value) => updateReflection("physicalState", value),
-                "Physical State",
-                <HeartPulse className="h-4 w-4 text-primary" />
-              )}
-              
-              {renderStateSelector(
-                reflection.emotionalState,
-                (value) => updateReflection("emotionalState", value),
-                "Emotional State",
-                <Smile className="h-4 w-4 text-primary" />
-              )}
+              <div className="space-y-2">
+                <label className="text-sm flex items-center text-[#7DAAB2]">
+                  <MoonStar className="h-4 w-4 text-primary" />
+                  <span className="ml-2">Sleep Time</span>
+                </label>
+                <Input
+                  type="time"
+                  className="bg-[#00141A] border-primary/30 text-[#D6F4FF]"
+                  value={reflection.sleepTime}
+                  onChange={(e) => updateReflection("sleepTime", e.target.value)}
+                />
+              </div>
             </div>
             
-            {/* Reflection fields - in a 2x2 grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Daily Reflection */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <BookOpen className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Daily Reflection</span>
-                </label>
-                <Textarea
-                  placeholder="What did you accomplish today? What insights did you gain?"
-                  className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
-                  value={reflection.reflection}
-                  onChange={(e) => updateReflection("reflection", e.target.value)}
-                />
-              </div>
+            {/* State ratings - in a row for desktop, stacked for mobile */}
+            <div className="border-t border-primary/10 pt-4 mb-2">
+              <label className="text-sm flex items-center text-[#7DAAB2] mb-3">
+                <Brain className="h-4 w-4 text-primary" />
+                <span className="ml-2">Energy Recap (Mental / Physical / Emotional)</span>
+              </label>
               
-              {/* Gratitude */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <Smile className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Gratitude</span>
-                </label>
-                <Textarea
-                  placeholder="What are you grateful for today?"
-                  className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
-                  value={reflection.gratitude}
-                  onChange={(e) => updateReflection("gratitude", e.target.value)}
-                />
-              </div>
-              
-              {/* Thoughts Capture */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {renderStateSelector(
+                  reflection.mentalState,
+                  (value) => updateReflection("mentalState", value),
+                  "Mental State",
                   <Brain className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Thought Capture</span>
-                </label>
-                <Textarea
-                  placeholder="Capture any interesting thoughts, ideas, or realizations..."
-                  className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
-                  value={reflection.thoughts}
-                  onChange={(e) => updateReflection("thoughts", e.target.value)}
-                />
+                )}
+                
+                {renderStateSelector(
+                  reflection.physicalState,
+                  (value) => updateReflection("physicalState", value),
+                  "Physical State",
+                  <HeartPulse className="h-4 w-4 text-primary" />
+                )}
+                
+                {renderStateSelector(
+                  reflection.emotionalState,
+                  (value) => updateReflection("emotionalState", value),
+                  "Emotional State",
+                  <Smile className="h-4 w-4 text-primary" />
+                )}
               </div>
+            </div>
+            
+            <div className="border-t border-primary/10 pt-4">
+              <h3 className="text-sm flex items-center text-[#7DAAB2] mb-3">
+                <TargetIcon className="h-4 w-4 text-primary mr-2" />
+                Intention Setter
+              </h3>
               
-              {/* Content Consumed */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <Book className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Content Consumed</span>
-                </label>
-                <Textarea
-                  placeholder="What books, articles, or other content did you consume today?"
-                  className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
-                  value={reflection.contentConsumed}
-                  onChange={(e) => updateReflection("contentConsumed", e.target.value)}
-                />
+              <div className="space-y-4">
+                {/* Gratitude */}
+                <div className="space-y-2">
+                  <label className="text-sm flex items-center text-[#7DAAB2]">
+                    <Smile className="h-4 w-4 text-primary" />
+                    <span className="ml-2">Gratitude</span>
+                  </label>
+                  <Textarea
+                    placeholder="- 
+- 
+-"
+                    className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[80px]"
+                    value={reflection.gratitude}
+                    onChange={(e) => updateReflection("gratitude", e.target.value)}
+                  />
+                </div>
+                
+                {/* Tomorrow's Goals */}
+                <div className="space-y-2">
+                  <label className="text-sm flex items-center text-[#7DAAB2]">
+                    <ListChecks className="h-4 w-4 text-primary" />
+                    <span className="ml-2">Tomorrow's Goals</span>
+                  </label>
+                  <Textarea
+                    placeholder="What do you want to accomplish tomorrow?"
+                    className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[60px]"
+                    value={reflection.tomorrowGoals}
+                    onChange={(e) => updateReflection("tomorrowGoals", e.target.value)}
+                  />
+                </div>
+                
+                {/* Annual Goals */}
+                <div className="space-y-2">
+                  <label className="text-sm flex items-center text-[#7DAAB2]">
+                    <TargetIcon className="h-4 w-4 text-primary" />
+                    <span className="ml-2">Annual Goals</span>
+                  </label>
+                  <Textarea
+                    placeholder="Your big targets for the year"
+                    className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[80px]"
+                    value={reflection.annualGoals}
+                    onChange={(e) => updateReflection("annualGoals", e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {/* Daily Log section */}
+            <div className="border-t border-primary/10 pt-4">
+              <h3 className="text-sm flex items-center text-[#7DAAB2] mb-3">
+                <BookOpen className="h-4 w-4 text-primary mr-2" />
+                Daily Log
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Today's Thoughts */}
+                <div className="space-y-2">
+                  <label className="text-sm flex items-center text-[#7DAAB2]">
+                    <Brain className="h-4 w-4 text-primary" />
+                    <span className="ml-2">Today's Thoughts</span>
+                  </label>
+                  <Textarea
+                    placeholder="Ideas worth saving..."
+                    className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
+                    value={reflection.thoughts}
+                    onChange={(e) => updateReflection("thoughts", e.target.value)}
+                  />
+                </div>
+                
+                {/* Content Consumed */}
+                <div className="space-y-2">
+                  <label className="text-sm flex items-center text-[#7DAAB2]">
+                    <Book className="h-4 w-4 text-primary" />
+                    <span className="ml-2">Content Consumed</span>
+                  </label>
+                  <Textarea
+                    placeholder="Books, podcasts, videos..."
+                    className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
+                    value={reflection.contentConsumed}
+                    onChange={(e) => updateReflection("contentConsumed", e.target.value)}
+                  />
+                </div>
+                
+                {/* Today's Research */}
+                <div className="space-y-2">
+                  <label className="text-sm flex items-center text-[#7DAAB2]">
+                    <BookOpen className="h-4 w-4 text-primary" />
+                    <span className="ml-2">Today's Research</span>
+                  </label>
+                  <Textarea
+                    placeholder="Summarize learnings or add links..."
+                    className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
+                    value={reflection.research}
+                    onChange={(e) => updateReflection("research", e.target.value)}
+                  />
+                </div>
+                
+                {/* New To-Do-List Ideas */}
+                <div className="space-y-2">
+                  <label className="text-sm flex items-center text-[#7DAAB2]">
+                    <ListChecks className="h-4 w-4 text-primary" />
+                    <span className="ml-2">New To-Do-List Ideas</span>
+                  </label>
+                  <Textarea
+                    placeholder="Add to Brain Dump..."
+                    className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
+                    value={reflection.todoIdeas}
+                    onChange={(e) => updateReflection("todoIdeas", e.target.value)}
+                  />
+                </div>
               </div>
             </div>
             
@@ -655,7 +761,7 @@ export default function DashboardPage() {
                 className="bg-primary hover:bg-primary/90"
               >
                 <Save className="h-4 w-4 mr-2" />
-                Save Reflection
+                Save Daily Log
               </Button>
             </div>
           </form>
