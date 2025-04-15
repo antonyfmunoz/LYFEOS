@@ -560,16 +560,12 @@ export default function DashboardPage() {
                 />
               </div>
               <span className="mx-2 text-[#7DAAB2]">-</span>
-              <div className="relative flex-1">
-                <Input 
-                  type="time"
-                  className="custom-time-input font-mono w-full pr-8"
+              <div className="flex-1">
+                <CustomTimePicker
                   value={newBlockEndTime}
-                  onChange={(e) => setNewBlockEndTime(e.target.value)}
+                  onChange={setNewBlockEndTime}
+                  icon={<Clock className="h-3 w-3 text-primary/70" />}
                 />
-                <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
-                  <Clock className="h-3 w-3 text-primary/70" />
-                </div>
               </div>
             </div>
             
