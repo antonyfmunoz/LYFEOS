@@ -340,9 +340,13 @@ export default function DashboardPage() {
       {/* Routine Execution Panel */}
       <section className="mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-orbitron">Daily Routine</h2>
-          <div className="flex items-center text-sm text-[#36F1CD] font-mono">
-            <span>XP Earned Today: +{totalXpEarned}</span>
+          <h2 className="text-xl font-orbitron text-glow flex items-center">
+            <span className="w-1 h-6 bg-primary mr-2 opacity-70"></span>
+            Daily Routine
+          </h2>
+          <div className="flex items-center text-sm text-[#36F1CD] font-mono bg-[#00141A]/60 py-1 px-3 rounded-md border border-primary/20 shadow-lg">
+            <span className="material-icons text-primary text-sm mr-1 flicker">star</span>
+            <span className="tracking-wider">XP EARNED: <span className="text-white font-orbitron">+{totalXpEarned}</span></span>
           </div>
         </div>
         
@@ -563,102 +567,128 @@ export default function DashboardPage() {
       {/* Reflection & Calibration Panel */}
       <section className="mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-orbitron">Reflection & Calibration</h2>
+          <h2 className="text-xl font-orbitron text-glow flex items-center">
+            <span className="w-1 h-6 bg-primary mr-2 opacity-70"></span>
+            Reflection & Calibration
+          </h2>
+          <div className="text-xs text-[#7DAAB2] font-mono tracking-wide opacity-70">
+            SYSTEM//HUNTER_LEVEL_ASSESSMENT
+          </div>
         </div>
         
-        <div className="glassmorphic rounded-xl p-4 neon-border">
-          <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); saveReflection(); }}>
-            {/* State ratings - in a row for desktop, stacked for mobile */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {renderStateSelector(
-                reflection.mentalState,
-                (value) => updateReflection("mentalState", value),
-                "Mental State",
-                <Brain className="h-4 w-4 text-primary" />
-              )}
-              
-              {renderStateSelector(
-                reflection.physicalState,
-                (value) => updateReflection("physicalState", value),
-                "Physical State",
-                <HeartPulse className="h-4 w-4 text-primary" />
-              )}
-              
-              {renderStateSelector(
-                reflection.emotionalState,
-                (value) => updateReflection("emotionalState", value),
-                "Emotional State",
-                <Smile className="h-4 w-4 text-primary" />
-              )}
+        <div className="daily-log-panel rounded-xl p-5 neon-border hud-corner relative fade-in">
+          <div className="grid-lines"></div>
+          <div className="absolute top-2 right-2 w-4 h-4 border-r-2 border-t-2 border-primary/30"></div>
+          <div className="absolute bottom-2 left-2 w-4 h-4 border-l-2 border-b-2 border-primary/30"></div>
+          
+          <form className="space-y-5 relative z-10" onSubmit={(e) => { e.preventDefault(); saveReflection(); }}>
+            {/* State ratings with enhanced styling */}
+            <div className="stat-panel p-4 mb-2">
+              <div className="text-sm text-[#D6F4FF] font-orbitron mb-3 opacity-90 flex items-center">
+                <span className="material-icons text-primary text-base mr-1">equalizer</span>
+                CURRENT STATUS METRICS
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {renderStateSelector(
+                  reflection.mentalState,
+                  (value) => updateReflection("mentalState", value),
+                  "Mental State",
+                  <Brain className="h-4 w-4 text-[#36F1CD]" />
+                )}
+                
+                {renderStateSelector(
+                  reflection.physicalState,
+                  (value) => updateReflection("physicalState", value),
+                  "Physical State",
+                  <HeartPulse className="h-4 w-4 text-[#36F1CD]" />
+                )}
+                
+                {renderStateSelector(
+                  reflection.emotionalState,
+                  (value) => updateReflection("emotionalState", value),
+                  "Emotional State",
+                  <Smile className="h-4 w-4 text-[#36F1CD]" />
+                )}
+              </div>
             </div>
             
-            {/* Reflection fields - in a 2x2 grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Reflection fields - in a 2x2 grid with enhanced styling */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Daily Reflection */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <BookOpen className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Daily Reflection</span>
+              <div className="space-y-2 stat-panel p-4 rounded-lg">
+                <label className="text-sm flex items-center text-[#D6F4FF] font-rajdhani font-medium">
+                  <BookOpen className="h-4 w-4 text-[#36F1CD] mr-2" />
+                  <span className="font-orbitron text-xs uppercase tracking-wider">Daily Reflection</span>
+                  <span className="ml-auto text-xs text-[#7DAAB2]">LOG//ENTRY</span>
                 </label>
                 <Textarea
                   placeholder="What did you accomplish today? What insights did you gain?"
-                  className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
+                  className="reflection-textarea"
                   value={reflection.reflection}
                   onChange={(e) => updateReflection("reflection", e.target.value)}
                 />
               </div>
               
               {/* Gratitude */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <Smile className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Gratitude</span>
+              <div className="space-y-2 stat-panel p-4 rounded-lg">
+                <label className="text-sm flex items-center text-[#D6F4FF] font-rajdhani font-medium">
+                  <Smile className="h-4 w-4 text-[#36F1CD] mr-2" />
+                  <span className="font-orbitron text-xs uppercase tracking-wider">Gratitude</span>
+                  <span className="ml-auto text-xs text-[#7DAAB2]">AURA//POSITIVE</span>
                 </label>
                 <Textarea
                   placeholder="What are you grateful for today?"
-                  className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
+                  className="reflection-textarea"
                   value={reflection.gratitude}
                   onChange={(e) => updateReflection("gratitude", e.target.value)}
                 />
               </div>
               
               {/* Thoughts Capture */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <Brain className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Thought Capture</span>
+              <div className="space-y-2 stat-panel p-4 rounded-lg">
+                <label className="text-sm flex items-center text-[#D6F4FF] font-rajdhani font-medium">
+                  <Brain className="h-4 w-4 text-[#36F1CD] mr-2" />
+                  <span className="font-orbitron text-xs uppercase tracking-wider">Thought Capture</span>
+                  <span className="ml-auto text-xs text-[#7DAAB2]">MIND//SCAN</span>
                 </label>
                 <Textarea
                   placeholder="Capture any interesting thoughts, ideas, or realizations..."
-                  className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
+                  className="reflection-textarea"
                   value={reflection.thoughts}
                   onChange={(e) => updateReflection("thoughts", e.target.value)}
                 />
               </div>
               
               {/* Content Consumed */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <Book className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Content Consumed</span>
+              <div className="space-y-2 stat-panel p-4 rounded-lg">
+                <label className="text-sm flex items-center text-[#D6F4FF] font-rajdhani font-medium">
+                  <Book className="h-4 w-4 text-[#36F1CD] mr-2" />
+                  <span className="font-orbitron text-xs uppercase tracking-wider">Content Consumed</span>
+                  <span className="ml-auto text-xs text-[#7DAAB2]">KNOWL//GET</span>
                 </label>
                 <Textarea
                   placeholder="What books, articles, or other content did you consume today?"
-                  className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
+                  className="reflection-textarea"
                   value={reflection.contentConsumed}
                   onChange={(e) => updateReflection("contentConsumed", e.target.value)}
                 />
               </div>
             </div>
             
-            {/* Save button */}
-            <div className="flex justify-end">
+            {/* Save button with enhanced styling */}
+            <div className="flex justify-end pt-2">
               <Button
                 type="submit"
-                className="bg-primary hover:bg-primary/90"
+                className="premium-button relative group"
               >
-                <Save className="h-4 w-4 mr-2" />
-                Save Reflection
+                <span className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                <span className="absolute top-0 left-0 w-full h-full overflow-hidden">
+                  <span className="absolute top-0 left-0 w-12 h-full bg-gradient-to-r from-transparent via-primary/20 to-transparent transform -skew-x-20 -translate-x-20 group-hover:translate-x-[200%] transition-transform duration-1000"></span>
+                </span>
+                <span className="relative flex items-center z-10">
+                  <Save className="h-4 w-4 mr-2 text-[#36F1CD]" />
+                  <span className="font-orbitron text-sm tracking-wide">SAVE REFLECTION</span>
+                </span>
               </Button>
             </div>
           </form>
