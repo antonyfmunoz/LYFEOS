@@ -131,6 +131,29 @@
 input[type="time"] {
   @apply bg-[#00141A] border border-primary/30 text-[#D6F4FF] rounded-md py-2 px-3;
   color-scheme: dark;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* Create a custom time selector */
+input[type="time"]::-webkit-datetime-edit {
+  @apply text-[#D6F4FF] font-mono;
+  padding: 1px;
+}
+
+input[type="time"]::-webkit-datetime-edit-fields-wrapper {
+  @apply text-[#D6F4FF];
+}
+
+input[type="time"]::-webkit-datetime-edit-text {
+  @apply text-primary;
+}
+
+input[type="time"]::-webkit-datetime-edit-hour-field,
+input[type="time"]::-webkit-datetime-edit-minute-field,
+input[type="time"]::-webkit-datetime-edit-ampm-field {
+  @apply bg-[#001C26] py-0.5 px-1 rounded border border-primary/10;
 }
 
 input[type="time"]::-webkit-calendar-picker-indicator {
@@ -140,6 +163,14 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 
 input[type="time"]:focus {
   @apply outline-none border-primary/50 shadow-[0_0_8px_rgba(0,224,255,0.3)];
+}
+
+/* Custom time selector keyboard focus */
+input[type="time"]::-webkit-datetime-edit-hour-field:focus,
+input[type="time"]::-webkit-datetime-edit-minute-field:focus,
+input[type="time"]::-webkit-datetime-edit-ampm-field:focus {
+  @apply bg-primary/10 shadow-[0_0_5px_rgba(0,224,255,0.5)] border-primary/40;
+  color: #00E0FF;
 }
 
 @layer utilities {

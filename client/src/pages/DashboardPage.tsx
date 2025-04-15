@@ -380,19 +380,29 @@ export default function DashboardPage() {
                           onChange={(e) => saveBlockEdit(block.id, 'name', e.target.value)}
                           placeholder="Block Name"
                         />
-                        <Input 
-                          type="time"
-                          className="w-28 custom-time-input"
-                          value={block.startTime}
-                          onChange={(e) => saveBlockEdit(block.id, 'startTime', e.target.value)}
-                        />
+                        <div className="relative w-28">
+                          <Input 
+                            type="time"
+                            className="w-full custom-time-input font-mono pr-8"
+                            value={block.startTime}
+                            onChange={(e) => saveBlockEdit(block.id, 'startTime', e.target.value)}
+                          />
+                          <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
+                            <Clock className="h-3 w-3 text-primary/70" />
+                          </div>
+                        </div>
                         <span className="text-[#7DAAB2] self-center"> - </span>
-                        <Input 
-                          type="time"
-                          className="w-28 custom-time-input"
-                          value={block.endTime}
-                          onChange={(e) => saveBlockEdit(block.id, 'endTime', e.target.value)}
-                        />
+                        <div className="relative w-28">
+                          <Input 
+                            type="time"
+                            className="w-full custom-time-input font-mono pr-8"
+                            value={block.endTime}
+                            onChange={(e) => saveBlockEdit(block.id, 'endTime', e.target.value)}
+                          />
+                          <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
+                            <Clock className="h-3 w-3 text-primary/70" />
+                          </div>
+                        </div>
                       </div>
                     ) : (
                       <div>
@@ -545,19 +555,29 @@ export default function DashboardPage() {
             />
             
             <div className="flex items-center sm:col-span-2">
-              <Input 
-                type="time"
-                className="custom-time-input"
-                value={newBlockStartTime}
-                onChange={(e) => setNewBlockStartTime(e.target.value)}
-              />
+              <div className="relative flex-1">
+                <Input 
+                  type="time"
+                  className="custom-time-input font-mono w-full pr-8"
+                  value={newBlockStartTime}
+                  onChange={(e) => setNewBlockStartTime(e.target.value)}
+                />
+                <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
+                  <Clock className="h-3 w-3 text-primary/70" />
+                </div>
+              </div>
               <span className="mx-2 text-[#7DAAB2]">-</span>
-              <Input 
-                type="time"
-                className="custom-time-input"
-                value={newBlockEndTime}
-                onChange={(e) => setNewBlockEndTime(e.target.value)}
-              />
+              <div className="relative flex-1">
+                <Input 
+                  type="time"
+                  className="custom-time-input font-mono w-full pr-8"
+                  value={newBlockEndTime}
+                  onChange={(e) => setNewBlockEndTime(e.target.value)}
+                />
+                <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
+                  <Clock className="h-3 w-3 text-primary/70" />
+                </div>
+              </div>
             </div>
             
             <Button
@@ -588,12 +608,17 @@ export default function DashboardPage() {
                   <AlarmClock className="h-4 w-4 text-primary" />
                   <span className="ml-2">Wake Up Time</span>
                 </label>
-                <Input
-                  type="time"
-                  className="custom-time-input" 
-                  value={reflection.wakeTime}
-                  onChange={(e) => updateReflection("wakeTime", e.target.value)}
-                />
+                <div className="relative">
+                  <Input
+                    type="time"
+                    className="custom-time-input font-mono" 
+                    value={reflection.wakeTime}
+                    onChange={(e) => updateReflection("wakeTime", e.target.value)}
+                  />
+                  <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                    <Clock className="h-4 w-4 text-primary/70" />
+                  </div>
+                </div>
               </div>
               
               <div className="space-y-2">
@@ -601,12 +626,17 @@ export default function DashboardPage() {
                   <MoonStar className="h-4 w-4 text-primary" />
                   <span className="ml-2">Sleep Time</span>
                 </label>
-                <Input
-                  type="time"
-                  className="custom-time-input"
-                  value={reflection.sleepTime}
-                  onChange={(e) => updateReflection("sleepTime", e.target.value)}
-                />
+                <div className="relative">
+                  <Input
+                    type="time"
+                    className="custom-time-input font-mono"
+                    value={reflection.sleepTime}
+                    onChange={(e) => updateReflection("sleepTime", e.target.value)}
+                  />
+                  <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                    <MoonStar className="h-4 w-4 text-primary/70" />
+                  </div>
+                </div>
               </div>
             </div>
             
