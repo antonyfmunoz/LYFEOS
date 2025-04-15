@@ -347,7 +347,10 @@ export default function DashboardPage() {
       {/* Routine Execution Panel */}
       <section className="mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-orbitron">⏱️ Daily Routine</h2>
+          <h2 className="text-xl font-orbitron flex items-center">
+            <Clock className="h-5 w-5 text-primary mr-2" />
+            <span>Daily Routine</span>
+          </h2>
           <div className="flex items-center text-sm text-[#36F1CD] font-mono">
             <span>XP Earned Today: +{totalXpEarned}</span>
           </div>
@@ -570,7 +573,10 @@ export default function DashboardPage() {
       {/* Reflection & Calibration Panel */}
       <section className="mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-orbitron">🧘‍♂️ Reflection & Calibration</h2>
+          <h2 className="text-xl font-orbitron flex items-center">
+            <Brain className="h-5 w-5 text-primary mr-2" />
+            <span>Reflection & Calibration</span>
+          </h2>
         </div>
         
         <div className="glassmorphic rounded-xl p-4 neon-border">
@@ -707,7 +713,10 @@ export default function DashboardPage() {
       {/* Daily Log Panel - Separate Widget */}
       <section className="mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-orbitron">📓 Daily Log</h2>
+          <h2 className="text-xl font-orbitron flex items-center">
+            <BookOpen className="h-5 w-5 text-primary mr-2" />
+            <span>Daily Log</span>
+          </h2>
         </div>
         
         <div className="glassmorphic rounded-xl p-4 neon-border">
