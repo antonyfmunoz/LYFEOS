@@ -309,6 +309,14 @@ export default function DashboardPage() {
       
       {/* Stats and Progress Section */}
       <section className="mb-6">
+        <div className="mb-3">
+          <ExperienceBar
+            current={stats.experience.current}
+            max={stats.experience.max}
+            level={stats.experience.level}
+          />
+        </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <StatWidget
             type="time"
@@ -333,14 +341,6 @@ export default function DashboardPage() {
             current={stats.healthPoints.current}
             max={stats.healthPoints.max}
             description="Overall physical and mental wellness"
-          />
-        </div>
-        
-        <div className="mt-3">
-          <ExperienceBar
-            current={stats.experience.current}
-            max={stats.experience.max}
-            level={stats.experience.level}
           />
         </div>
       </section>
