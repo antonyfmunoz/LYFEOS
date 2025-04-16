@@ -22,7 +22,6 @@ export function CustomTimePicker({
   const [minutes, setMinutes] = useState<number>(0);
   const [period, setPeriod] = useState<"AM" | "PM">("AM");
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const pickerRef = useRef<HTMLDivElement>(null);
 
   // Parse the value (HH:MM format) into hours, minutes and period
   useEffect(() => {
@@ -74,20 +73,14 @@ export function CustomTimePicker({
   // Close the dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (
-        isOpen && 
-        dropdownRef.current && 
-        !dropdownRef.current.contains(event.target as Node) &&
-        pickerRef.current && 
-        !pickerRef.current.contains(event.target as Node)
-      ) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     }
     
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
+  }, []);
 
   // Handle hour increment/decrement
   const adjustHours = (amount: number) => {
@@ -149,17 +142,6 @@ export function CustomTimePicker({
     }
   };
 
-  // Calculate position for dropdown
-  const getDropdownPosition = () => {
-    if (!dropdownRef.current) return { top: 0, left: 0 };
-    
-    const rect = dropdownRef.current.getBoundingClientRect();
-    return {
-      top: rect.bottom + window.scrollY + 5,
-      left: rect.left + window.scrollX
-    };
-  };
-
   return (
     <div className="relative" ref={dropdownRef}>
       {/* Main time input display */}
@@ -183,17 +165,9 @@ export function CustomTimePicker({
         </div>
       </div>
 
-      {/* Dropdown Render - Using Portal Pattern */}
+      {/* Dropdown picker */}
       {isOpen && (
-        <div 
-          ref={pickerRef}
-          className="fixed z-[9999] p-4 bg-[#001824] border border-primary/30 rounded-md shadow-lg shadow-primary/10 w-64 glassmorphic neon-border animate-in fade-in-50 duration-100"
-          style={{
-            position: 'fixed',
-            top: getDropdownPosition().top,
-            left: getDropdownPosition().left,
-          }}
-        >
+        <div className="absolute top-full left-0 z-[9999] mt-1 p-4 bg-[#001824] border border-primary/30 rounded-md shadow-lg shadow-primary/10 w-64 glassmorphic neon-border animate-in fade-in-50 duration-100">
           <div className="text-center font-orbitron mb-3 text-[#D6F4FF] text-sm">Select Time</div>
           
           <div className="flex justify-center items-center gap-2">
