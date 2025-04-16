@@ -55,6 +55,12 @@ function Router() {
         </RootLayout>
       </Route>
       
+      <Route path="/attention">
+        <RootLayout>
+          <StatDetailPage stat="attention" />
+        </RootLayout>
+      </Route>
+      
       <Route path="/time">
         <RootLayout>
           <StatDetailPage stat="time" />

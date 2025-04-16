@@ -11,7 +11,7 @@ interface StatInfoDialogProps {
   titleColor?: string;
   description: string;
   additionalInfo?: string;
-  statType?: "time" | "energy" | "health" | "experience";
+  statType?: "attention" | "time" | "energy" | "health" | "experience";
 }
 
 export function StatInfoDialog({
@@ -28,6 +28,8 @@ export function StatInfoDialog({
   // Map statType to the correct URL
   const getDetailUrl = () => {
     switch (statType) {
+      case "attention":
+        return "/attention";
       case "time":
         return "/time";
       case "energy":
@@ -44,6 +46,8 @@ export function StatInfoDialog({
   // Map statType to border color
   const getBorderColor = () => {
     switch (statType) {
+      case "attention":
+        return "border-[#9C6ADE]";
       case "time":
         return "border-primary";
       case "energy":
@@ -117,6 +121,7 @@ export function StatInfoDialog({
               "ring-offset-background transition-colors",
               "border border-white/10 hover:bg-white/5",
               "focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2",
+              statType === "attention" ? "text-[#9C6ADE]" :
               statType === "time" ? "text-primary" : 
               statType === "energy" ? "text-[#FCD34D]" : 
               statType === "health" ? "text-[#EC4899]" : 

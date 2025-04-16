@@ -87,6 +87,14 @@
     @apply bg-gradient-to-r from-secondary/70 to-secondary;
   }
 
+  .progress-at .progress-fill {
+    @apply bg-gradient-to-r from-purple-500/70 to-purple-500;
+  }
+  
+  .progress-at .progress-fill::after {
+    @apply shadow-[0_0_10px_rgba(156,106,222,0.7)];
+  }
+
   .progress-hp .progress-fill {
     @apply bg-gradient-to-r from-accent/70 to-accent;
   }
