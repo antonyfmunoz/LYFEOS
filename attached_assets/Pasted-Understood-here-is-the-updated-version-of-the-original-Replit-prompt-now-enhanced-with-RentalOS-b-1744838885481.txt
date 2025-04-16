@@ -1,0 +1,98 @@
+Understood — here is the updated version of the original Replit prompt, now enhanced with RentalOS brand guidelines, your Figma UX system, and backend infrastructure logic, added onto the existing structure rather than replacing it.
+
+This version is drop-in ready for Replit, and assumes full continuity with the original SaaS white-label car rental product architecture.
+
+✅ Replit Prompt (Updated – Full with RentalOS Enhancements)
+txt
+Copy
+Edit
+Build a full-stack white-label SaaS platform modeled after https://zadart.com/. The platform must support:
+
+1. **Core Functionality (Client-Facing App)**
+   - Vehicle discovery by location, category, and availability date
+   - Real-time booking with tiered pricing logic (hourly, daily, multi-day)
+   - Account creation with license upload & identity verification (KYC flow)
+   - Payment integration (Stripe) with deposit hold and refund logic
+   - Push notifications and SMS reminders (e.g. Twilio)
+   - Review & rating system for cars + experience
+   - NFT-based car ownership verification (optional module)
+   - GPS/telematics API integration (placeholder module)
+   - Exportable analytics dashboard (CSV, PDF)
+
+2. **Admin + Operator Dashboard**
+   - Fleet management: Add/edit vehicles with images, specs, pricing
+   - Booking manager: calendar view, status tracking, manual override
+   - Customer CRM: View user documents, flag high-risk users
+   - Earnings & payouts: transaction logs, revenue breakdown
+   - Custom branding: Logo upload, color theme selector, font and URL routing
+   - Multi-role access: Admin, Staff, Read-only per tenant
+
+3. **White-Label Architecture**
+   - Multi-tenant support with isolated customer data
+   - Dynamic subdomain provisioning (e.g. brandname.mycarapp.com)
+   - Theming system with per-tenant branding:
+     - Primary Color: Gold `#DDBD82`
+     - Background: Grey `#161615`
+     - Font: League Gothic
+     - Logos, favicon, hero imagery (per-tenant static assets)
+   - API-first structure for tenant-based routing and UI injection
+
+4. **Tech Stack Requirements**
+   - Frontend: React + TailwindCSS (mobile-first, responsive)
+   - Backend: Node.js + Express or Fastify
+   - Database: PostgreSQL (with Prisma ORM)
+   - Auth: JWT + OAuth (Google/Apple optional)
+   - Hosting: Vercel (frontend), Railway/Fly.io (backend)
+   - Dev structure: `/client`, `/server`, `/prisma`, `/public/assets/branding`
+
+5. **Design System (Figma Integration)**
+   - Follow UX layout from:  
+     https://www.figma.com/design/O2DFgfI2RarG31vfajvB5d/Rhino-Exotic-Rentals-UX-Design
+   - Home Page: Cinematic hero → call-to-action (search + reserve)
+   - Vehicle Cards: Gold on black, price overlay, star ratings
+   - Detail Page: Availability calendar + price calculator
+   - Booking Flow: Stepper → License Upload → Payment Checkout
+   - User Dashboard: Rentals history, reviews, status tracker
+
+6. **RentalOS Brand System (Inject Into UI & Logic)**
+   - Brand Identity:
+     - Name: RentalOS
+     - Voice: Curious, Galvanized, Empowered
+     - Traits: Youthful, Luxurious, Masculine, Modern, Subdued
+     - Emotional Goals: Inspire curiosity + empowerment through clean luxury
+   - UI Color Tokens (Tailwind):
+     - Primary: `#DDBD82` (Gold)
+     - Background: `#161615`
+     - Text: `#FFFFFF`
+     - Font: League Gothic (Header, Subheader, Body)
+   - Tenant themes should be injected dynamically via `tenant` config from DB and applied globally via Tailwind/React Context
+
+7. **Bonus Features**
+   - Stripe Connect for payout routing to vehicle owners (optional)
+   - NFT wallet signature verification (car ownership module)
+   - Telematics/GPS integration for real-time fleet data
+   - Email template + SMS template system based on tone of voice
+
+8. **Platform Structure**
+   - `/app`: Client-facing experience
+   - `/admin`: Operator dashboard
+   - `/api`: Secured backend logic
+   - `/tenant/[id]`: Dynamic routing for white-label instances
+
+9. **Seed Requirements**
+   - Seed with 2–3 demo tenants (brands), each with:
+     - 3–5 exotic vehicles (Lambo, Rolls Royce, McLaren)
+     - Unique theming config (logo, colors, city)
+   - Include test users with KYC flow partially complete
+   - Include 2–3 fake bookings for analytics dashboard display
+
+---
+
+Prioritize:
+- Multi-tenant architecture
+- Production-grade code structure
+- Clean component system (Figma-matched)
+- Branding fidelity (RentalOS visual + emotional tone)
+- Future-proof modules (GPS, NFTs, analytics)
+
+Deliver a modular codebase with full DB schema (Prisma), file tree, theming system, and demo data.

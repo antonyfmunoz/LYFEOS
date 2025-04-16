@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar, Clock, Award, Zap, Info } from "lucide-react";
@@ -178,29 +179,11 @@ export default function EnhancedMissionWidget({
                       'bg-green-400/5 border border-green-400/20' : 
                       'bg-primary/5 border border-primary/20 hover:border-primary/40'}`}
                 >
-                  <StatInfoDialog
-                    trigger={
-                      <button className="absolute top-4 right-4 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary">
-                        <Info className="h-4 w-4" />
-                      </button>
-                    }
-                    title={event.title}
-                    titleColor={categoryColor}
-                    description={event.description || "Complete this mission to earn XP and progress through your daily goals."}
-                    additionalInfo={`Category: ${getCategoryText(event.category)} | Time: ${event.startTime} | Duration: ${event.duration}`}
-                    statType="time"
-                  >
-                    <div className="mt-4 flex justify-between">
-                      <div>
-                        <h4 className="text-sm font-semibold">Energy Cost</h4>
-                        <p className="text-sm text-red-400 font-mono">-5 EP</p>
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-semibold">XP Reward</h4>
-                        <p className="text-sm text-primary font-mono">+15 XP</p>
-                      </div>
-                    </div>
-                  </StatInfoDialog>
+                  <Link href={`/mission/${event.id}`}>
+                    <button className="absolute top-4 right-4 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary">
+                      <Info className="h-4 w-4" />
+                    </button>
+                  </Link>
                   
                   <div className="flex items-start">
                     <Checkbox

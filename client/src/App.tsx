@@ -9,6 +9,7 @@ import SystemsPage from "./pages/SystemsPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ProfilePage from "./pages/ProfilePage";
 import StatDetailPage from "./pages/StatDetailPage";
+import MissionDetailPage from "./pages/MissionDetailPage";
 import CalendarPage from "./pages/CalendarPage";
 import NotFound from "./pages/not-found";
 import RootLayout from "./components/layout/RootLayout";
@@ -87,6 +88,12 @@ function Router() {
       
       <Route path="/profile">
         <ProfilePage />
+      </Route>
+      
+      <Route path="/mission/:missionId">
+        <RootLayout>
+          <MissionDetailPage />
+        </RootLayout>
       </Route>
       
       {/* Redirect to dashboard from root */}
