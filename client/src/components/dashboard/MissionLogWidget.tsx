@@ -139,13 +139,10 @@ export default function MissionLogWidget({
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-3">
-                          <div className="px-2 py-1 rounded-md bg-red-500/10 text-xs font-mono text-red-400 border border-red-500/30">
-                            -5 EP
-                          </div>
-                          <div className="px-2 py-1 rounded-md bg-primary/10 text-xs font-mono text-primary border border-primary/30">
-                            +15 XP
-                          </div>
+                        <div className="flex items-center space-x-1">
+                          <span className="text-red-400 text-xs font-mono">-5 EP</span>
+                          <span className="mx-1 text-[#7DAAB2]">•</span>
+                          <span className="text-primary text-xs font-mono">+15 XP</span>
                         </div>
                       </div>
                     </div>
@@ -229,9 +226,11 @@ export default function MissionLogWidget({
                       </div>
                     </div>
                     
-                    {/* XP Badge */}
-                    <div className="xp-badge px-2.5 py-1 bg-[#003c3c] text-[#00f2a3] text-xs font-bold rounded-lg border border-[#00f2a3] whitespace-nowrap h-fit mt-1.5 transition-opacity duration-300">
-                      +15 XP
+                    {/* EP/XP Text */}
+                    <div className="flex items-center space-x-1 h-fit mt-1.5">
+                      <span className="text-red-400 text-xs font-mono">-5 EP</span>
+                      <span className="mx-1 text-[#7DAAB2]">•</span>
+                      <span className="text-primary text-xs font-mono">+15 XP</span>
                     </div>
                   </li>
                 );
