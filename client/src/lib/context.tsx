@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { UserStats, Quest, AIMessage, CalendarEvent } from "./types";
+import { UserStats, Quest, AIMessage, CalendarEvent, MissionPage } from "./types";
 import { toast } from "@/hooks/use-toast";
 
 // Initial stats data
@@ -99,6 +99,7 @@ interface LYFEOSContextType {
   quests: Quest[];
   messages: AIMessage[];
   events: CalendarEvent[];
+  missionPages: MissionPage[];
   toggleQuestCompletion: (id: string) => void;
   sendMessage: (content: string) => void;
   username: string;
@@ -106,17 +107,33 @@ interface LYFEOSContextType {
   addEvent: (event: Omit<CalendarEvent, "id">) => void;
   updateEvent: (id: string, eventData: Partial<CalendarEvent>) => void;
   deleteEvent: (id: string) => void;
+  createMissionPage: (mission: Omit<MissionPage, "id">) => MissionPage;
+  updateMissionPage: (id: string, pageData: Partial<MissionPage>) => void;
+  getMissionPageBySlug: (slug: string) => MissionPage | undefined;
+  getMissionPageById: (id: string) => MissionPage | undefined;
 }
 
 // Create the context
 const LYFEOSContext = createContext<LYFEOSContextType | undefined>(undefined);
 
 // Provider component
+// Helper to generate slugs for mission pages
+const createSlug = (title: string): string => {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, '')
+    .replace(/\s+/g, '-');
+};
+
+// Initial mission pages (empty array for now)
+const initialMissionPages: MissionPage[] = [];
+
 export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const [stats, setStats] = useState<UserStats>(initialStats);
   const [quests, setQuests] = useState<Quest[]>(initialQuests);
   const [messages, setMessages] = useState<AIMessage[]>(initialMessages);
   const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
+  const [missionPages, setMissionPages] = useState<MissionPage[]>(initialMissionPages);
   const [username, setUsername] = useState<string>("Alex Chen");
 
   // Toggle quest completion
@@ -311,6 +328,57 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       });
     }
   };
+  
+  // Mission Pages Functions
+  
+  // Create a new mission page
+  const createMissionPage = (mission: Omit<MissionPage, "id">): MissionPage => {
+    const newMissionPage: MissionPage = {
+      ...mission,
+      id: `mission-${Date.now()}`,
+    };
+    
+    setMissionPages((prev) => [...prev, newMissionPage]);
+    
+    // Show mission page created toast
+    toast({
+      title: "Mission Page Created",
+      description: `${newMissionPage.title} page has been created`,
+      variant: "default",
+      className: "bg-[#001E26] border border-[#36F1CD] text-white",
+      duration: 3000,
+    });
+    
+    return newMissionPage;
+  };
+  
+  // Update an existing mission page
+  const updateMissionPage = (id: string, pageData: Partial<MissionPage>) => {
+    setMissionPages((prev) => 
+      prev.map((page) => 
+        page.id === id ? { ...page, ...pageData, updatedAt: new Date().toISOString() } : page
+      )
+    );
+    
+    // Show mission page updated toast
+    toast({
+      title: "Mission Page Updated",
+      description: "Your mission page has been updated",
+      variant: "default",
+      className: "bg-[#001E26] border border-[#36F1CD] text-white",
+      duration: 3000,
+    });
+  };
+  
+  // Get mission page by slug
+  const getMissionPageBySlug = (slug: string): MissionPage | undefined => {
+    return missionPages.find(page => page.slug === slug);
+  };
+  
+  // Get mission page by ID
+  const getMissionPageById = (id: string): MissionPage | undefined => {
+    return missionPages.find(page => page.id === id);
+  };
 
   // Reset time tokens daily (simulation)
   useEffect(() => {
@@ -342,6 +410,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         quests,
         messages,
         events,
+        missionPages,
         toggleQuestCompletion,
         sendMessage,
         username,
@@ -349,6 +418,10 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         addEvent,
         updateEvent,
         deleteEvent,
+        createMissionPage,
+        updateMissionPage,
+        getMissionPageBySlug,
+        getMissionPageById,
       }}
     >
       {children}

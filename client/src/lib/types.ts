@@ -47,4 +47,17 @@ export interface CalendarEvent {
   category: "work" | "personal" | "health";
 }
 
+export interface MissionPage {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  completed: boolean;
+  xpValue: number;
+  tags: string[];
+  eventId?: string; // Reference to the original calendar event if applicable
+}
+
 export type StatType = "attention" | "time" | "energy" | "health" | "experience";

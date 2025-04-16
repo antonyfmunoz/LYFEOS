@@ -1,0 +1,110 @@
+Perfect. Here's **Phase 2** — the markdown page system upgrade that builds directly on top of your Phase 1 Mission Log.
+
+This will give every mission its own auto-generated, linkable, and editable page — just like Obsidian.
+
+---
+
+## **PHASE 2: MARKDOWN PAGE SYSTEM (Obsidian-Style Expansion)**
+
+```plaintext
+Enhance the Mission Log system by implementing a dynamic markdown page engine for every mission. Each task becomes its own page, stored, linkable, and editable like in Obsidian.
+
+---
+
+### 1. AUTO-GENERATED PAGES FOR EACH MISSION
+
+- When a mission is created (via input or added to the log):
+  - Automatically generate a **dedicated page** stored by its title.
+  - Example: “Morning Routine” → creates `/pages/morning-routine`
+  - Page content should include:
+    - Mission title
+    - Body/content field (rich text or markdown-style)
+    - Metadata (e.g. XP, created date, tags, completed: true/false)
+
+---
+
+### 2. PAGE STRUCTURE & EDITING
+
+Each mission page should:
+- Be **editable** like a notes document
+- Support **basic markdown** or rich text:
+  - `# Heading`
+  - `- Bullet list`
+  - `[[Internal Links]]` (Phase 3 for backlinks)
+- Include a “Save” button that persists the content in local storage or a database.
+
+---
+
+### 3. PAGE VIEW ROUTING (STATIC OR SPA)
+
+Enable routing so clicking a mission title or **“View Full Report”** from the info popup opens its page.
+
+- If using a single-page app (SPA): Use dynamic views or modals.
+- If multi-page: Use `/pages/:title` structure.
+- Display the full editable content and metadata.
+
+---
+
+### 4. PAGE STORAGE SYSTEM
+
+- Each page must be stored in an object or lightweight database as:
+```js
+{
+  title: "Morning Routine",
+  slug: "morning-routine",
+  content: "## Objectives\n- Wake early\n- Stretch\n...",
+  createdAt: "2025-04-16T09:00:00",
+  completed: false,
+  xp: 10,
+  tags: ["Routine", "Wellness"]
+}
+```
+
+- Store using:
+  - **LocalStorage** (MVP)
+  - Or expandable to Firebase, Supabase, or file-based system later
+
+---
+
+### 5. INLINE LINK SUPPORT (OPTIONAL START)
+
+Add inline support for:
+- Typing `[[Another Mission]]` creates/links to that page
+- Autocomplete suggestion (optional)
+- Clicking the link takes the user to that page
+
+---
+
+### 6. UI DESIGN SUGGESTIONS
+
+- Editor: textarea or markdown editor with real-time preview
+- Metadata visible in a side column or header
+- Page has “Back to Mission Log” button
+- Styled like Obsidian: clean, dark/light toggle, minimal UI chrome
+
+---
+
+### 7. HOOK INTO EXISTING MISSION LOG
+
+- When a user creates a new mission:
+  - Auto-create and link its page in the background
+- When a user clicks a mission or info modal’s **[View Full Report]**:
+  - Open its linked page
+- Marking it complete should update both the Mission Log and the page metadata (`completed: true`)
+
+---
+
+### FUTURE HOOKS (DO NOT BUILD YET):
+- Backlinking graph between pages
+- Embedded content (`![[Page]]`)
+- Rich block embeds (quotes, images, task checklists)
+```
+
+---
+
+When you're ready, I can generate the **code scaffold** for:
+- Mission Log + auto page creation
+- Basic markdown editor
+- LocalStorage page manager
+
+Would you like it in **React**, **Vanilla JS**, or a full **Next.js stack**?
