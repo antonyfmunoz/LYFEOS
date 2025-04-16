@@ -87,18 +87,31 @@ function remarkObsidianLinks() {
 
 // Custom component for rendering Obsidian-style checkboxes [x] or [ ]
 const obsidianComponents = {
-  li: ({ node, ...props }: any) => {
-    const { children } = props;
+  li: ({ node, children, ...props }: any) => {
+    // Safety check - if children is undefined or empty, just render a regular li
+    if (!children || children.length === 0) {
+      return <li {...props} />;
+    }
     
-    // Check if this is a task item (contains [ ] or [x])
-    if (
-      children[0] &&
-      typeof children[0] === 'object' &&
-      children[0].props &&
-      typeof children[0].props.children === 'string'
+    // Check if first child is a text node or has text content we can examine
+    let textContent = '';
+    let firstChild = children[0];
+    
+    // Try to extract text content from different possible structures
+    if (typeof firstChild === 'string') {
+      textContent = firstChild;
+    } else if (
+      firstChild && 
+      typeof firstChild === 'object' && 
+      firstChild.props && 
+      typeof firstChild.props.children === 'string'
     ) {
-      const text = children[0].props.children;
-      const taskMatch = text.match(/^\s*\[([ x])\]\s*(.*)$/);
+      textContent = firstChild.props.children;
+    }
+    
+    // If we have text content to check
+    if (textContent) {
+      const taskMatch = textContent.match(/^\s*\[([ x])\]\s*(.*)$/);
       
       if (taskMatch) {
         const isCompleted = taskMatch[1] === 'x';
@@ -119,7 +132,8 @@ const obsidianComponents = {
       }
     }
     
-    return <li {...props} />;
+    // Default to standard list item rendering
+    return <li {...props}>{children}</li>;
   }
 };
 
