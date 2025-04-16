@@ -759,19 +759,12 @@ export default function DashboardPage() {
                   <span className="ml-2">Today's Thoughts</span>
                 </label>
                 <div className="flex flex-col space-y-2">
-                  <Textarea
+                  <MarkdownEditor
                     placeholder="Ideas worth saving..."
-                    className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
                     value={reflection.thoughts}
-                    onChange={(e) => updateReflection("thoughts", e.target.value)}
+                    onChange={(value) => updateReflection("thoughts", value)}
+                    minHeight="100px"
                   />
-                  {reflection.thoughts && (
-                    <div className="p-3 rounded-md bg-primary/5 border border-primary/10">
-                      <ObsidianMarkdown className="text-[#D6F4FF]">
-                        {reflection.thoughts}
-                      </ObsidianMarkdown>
-                    </div>
-                  )}
                 </div>
               </div>
               
@@ -782,19 +775,12 @@ export default function DashboardPage() {
                   <span className="ml-2">Content Consumed</span>
                 </label>
                 <div className="flex flex-col space-y-2">
-                  <Textarea
+                  <MarkdownEditor
                     placeholder="Books, podcasts, videos..."
-                    className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
                     value={reflection.contentConsumed}
-                    onChange={(e) => updateReflection("contentConsumed", e.target.value)}
+                    onChange={(value) => updateReflection("contentConsumed", value)}
+                    minHeight="100px"
                   />
-                  {reflection.contentConsumed && (
-                    <div className="p-3 rounded-md bg-primary/5 border border-primary/10">
-                      <ObsidianMarkdown className="text-[#D6F4FF]">
-                        {reflection.contentConsumed}
-                      </ObsidianMarkdown>
-                    </div>
-                  )}
                 </div>
               </div>
               
@@ -805,19 +791,12 @@ export default function DashboardPage() {
                   <span className="ml-2">Today's Research</span>
                 </label>
                 <div className="flex flex-col space-y-2">
-                  <Textarea
+                  <MarkdownEditor
                     placeholder="Summarize learnings or add links..."
-                    className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
                     value={reflection.research}
-                    onChange={(e) => updateReflection("research", e.target.value)}
+                    onChange={(value) => updateReflection("research", value)}
+                    minHeight="100px"
                   />
-                  {reflection.research && (
-                    <div className="p-3 rounded-md bg-primary/5 border border-primary/10">
-                      <ObsidianMarkdown className="text-[#D6F4FF]">
-                        {reflection.research}
-                      </ObsidianMarkdown>
-                    </div>
-                  )}
                 </div>
               </div>
               
@@ -828,19 +807,12 @@ export default function DashboardPage() {
                   <span className="ml-2">New To-Do-List Ideas</span>
                 </label>
                 <div className="flex flex-col space-y-2">
-                  <Textarea
+                  <MarkdownEditor
                     placeholder="Add to Brain Dump..."
-                    className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
                     value={reflection.todoIdeas}
-                    onChange={(e) => updateReflection("todoIdeas", e.target.value)}
+                    onChange={(value) => updateReflection("todoIdeas", value)}
+                    minHeight="100px"
                   />
-                  {reflection.todoIdeas && (
-                    <div className="p-3 rounded-md bg-primary/5 border border-primary/10">
-                      <ObsidianMarkdown className="text-[#D6F4FF]">
-                        {reflection.todoIdeas}
-                      </ObsidianMarkdown>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
