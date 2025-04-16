@@ -70,6 +70,7 @@ export function MissionInfoDialog({
     }
   };
   
+  // If not open, show the trigger that will open the dialog
   if (!open) {
     return (
       <div onClick={(e) => { 
@@ -81,37 +82,38 @@ export function MissionInfoDialog({
     );
   }
   
+  // When open, render the dialog
   return (
     <>
+      {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[99]"
         onClick={() => setOpen(false)}
       />
+      
+      {/* Dialog content */}
       <div 
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={`dialog-title-${mission.id}`}
-        aria-describedby={`dialog-desc-${mission.id}`}
         className={cn(
-          "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 max-w-[500px] w-[90%] z-[100]",
-          "border bg-[#001E26]/80 text-white shadow-lg rounded-md p-6 pr-8",
-          "backdrop-blur-lg animate-in fade-in-0 zoom-in-90 duration-100",
+          "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100]",
+          "max-w-[500px] w-[90%] p-6 pr-8 rounded-md",
+          "border bg-[#001E26]/80 text-white shadow-lg backdrop-blur-lg",
           getBorderColor()
         )}
+        role="dialog"
+        aria-modal="true"
       >
+        {/* Close button */}
         <button 
           onClick={() => setOpen(false)}
-          className="absolute right-2 top-2 rounded-md p-1 text-white/70 transition-opacity hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          className="absolute right-2 top-2 rounded-md p-1 text-white/70 hover:text-white"
           aria-label="Close"
         >
           <X className="h-4 w-4" />
         </button>
         
-        <div className="grid gap-1">
-          <h3 
-            id={`dialog-title-${mission.id}`}
-            className="text-lg font-bold text-white tracking-wide font-orbitron"
-          >
+        {/* Title and content */}
+        <div className="space-y-2">
+          <h3 className="text-lg font-bold text-white tracking-wide font-orbitron">
             {mission.title}
           </h3>
           
@@ -119,10 +121,8 @@ export function MissionInfoDialog({
             {getCategoryText()}
           </p>
           
-          <div 
-            id={`dialog-desc-${mission.id}`}
-            className="mt-4 space-y-4"
-          >
+          <div className="mt-4 space-y-4">
+            {/* Time info */}
             <div className="flex items-center justify-between px-1">
               <div className="flex items-center space-x-2">
                 <Clock className="h-4 w-4 text-muted-foreground" />
@@ -131,18 +131,23 @@ export function MissionInfoDialog({
               <span className="text-sm text-muted-foreground">Duration: {mission.duration}</span>
             </div>
             
+            {/* Description */}
             <div className="bg-primary/5 p-4 rounded-md">
               <h4 className="text-sm font-semibold mb-2">Description</h4>
-              <p className="text-sm leading-relaxed">{mission.description || "Complete this mission to earn XP and progress through your daily goals."}</p>
+              <p className="text-sm leading-relaxed text-gray-200">
+                {mission.description || "Complete this mission to earn XP and progress through your daily goals."}
+              </p>
             </div>
             
+            {/* Location */}
             <div className="bg-primary/5 p-4 rounded-md">
               <h4 className="text-sm font-semibold mb-2">Location</h4>
-              <p className="text-sm leading-relaxed">
+              <p className="text-sm leading-relaxed text-gray-200">
                 {getLocationName()}
               </p>
             </div>
             
+            {/* Rewards section */}
             <div className="flex justify-between bg-primary/5 p-4 rounded-md">
               <div>
                 <h4 className="text-sm font-semibold mb-2">Energy Cost</h4>
@@ -158,6 +163,7 @@ export function MissionInfoDialog({
           </div>
         </div>
         
+        {/* Action button */}
         <div className="mt-6 flex justify-end">
           <Button
             className="bg-primary/20 hover:bg-primary/30 text-primary"

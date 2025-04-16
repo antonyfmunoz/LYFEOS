@@ -9,12 +9,11 @@ interface MissionInfoButtonProps {
 
 export default function MissionInfoButton({ mission }: MissionInfoButtonProps) {
   // Create the info button as the trigger
-  const infoButton = (
+  const infoTrigger = (
     <Button
       variant="outline"
       size="icon"
       className="h-6 w-6 p-0 bg-primary/10 text-primary hover:bg-primary/20 transition rounded-full border border-primary"
-      onClick={(e) => e.stopPropagation()}
     >
       <Info className="h-3.5 w-3.5" />
     </Button>
@@ -22,7 +21,7 @@ export default function MissionInfoButton({ mission }: MissionInfoButtonProps) {
   
   return (
     <MissionInfoDialog 
-      trigger={infoButton}
+      trigger={infoTrigger}
       mission={mission}
     />
   );
