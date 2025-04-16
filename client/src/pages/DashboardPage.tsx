@@ -734,11 +734,9 @@ export default function DashboardPage() {
                     />
                     {reflection.annualGoals && (
                       <div className="p-3 rounded-md bg-primary/5 border border-primary/10">
-                        <div className="text-[#D6F4FF] prose prose-invert prose-sm max-w-none">
-                          <ReactMarkdown>
-                            {reflection.annualGoals}
-                          </ReactMarkdown>
-                        </div>
+                        <ObsidianMarkdown className="text-[#D6F4FF]">
+                          {reflection.annualGoals}
+                        </ObsidianMarkdown>
                       </div>
                     )}
                   </div>
@@ -789,11 +787,9 @@ export default function DashboardPage() {
                   />
                   {reflection.thoughts && (
                     <div className="p-3 rounded-md bg-primary/5 border border-primary/10">
-                      <div className="text-[#D6F4FF] prose prose-invert prose-sm max-w-none">
-                        <ReactMarkdown>
-                          {reflection.thoughts}
-                        </ReactMarkdown>
-                      </div>
+                      <ObsidianMarkdown className="text-[#D6F4FF]">
+                        {reflection.thoughts}
+                      </ObsidianMarkdown>
                     </div>
                   )}
                 </div>
@@ -814,11 +810,9 @@ export default function DashboardPage() {
                   />
                   {reflection.contentConsumed && (
                     <div className="p-3 rounded-md bg-primary/5 border border-primary/10">
-                      <div className="text-[#D6F4FF] prose prose-invert prose-sm max-w-none">
-                        <ReactMarkdown>
-                          {reflection.contentConsumed}
-                        </ReactMarkdown>
-                      </div>
+                      <ObsidianMarkdown className="text-[#D6F4FF]">
+                        {reflection.contentConsumed}
+                      </ObsidianMarkdown>
                     </div>
                   )}
                 </div>
@@ -839,11 +833,9 @@ export default function DashboardPage() {
                   />
                   {reflection.research && (
                     <div className="p-3 rounded-md bg-primary/5 border border-primary/10">
-                      <div className="text-[#D6F4FF] prose prose-invert prose-sm max-w-none">
-                        <ReactMarkdown>
-                          {reflection.research}
-                        </ReactMarkdown>
-                      </div>
+                      <ObsidianMarkdown className="text-[#D6F4FF]">
+                        {reflection.research}
+                      </ObsidianMarkdown>
                     </div>
                   )}
                 </div>
@@ -864,11 +856,9 @@ export default function DashboardPage() {
                   />
                   {reflection.todoIdeas && (
                     <div className="p-3 rounded-md bg-primary/5 border border-primary/10">
-                      <div className="text-[#D6F4FF] prose prose-invert prose-sm max-w-none">
-                        <ReactMarkdown>
-                          {reflection.todoIdeas}
-                        </ReactMarkdown>
-                      </div>
+                      <ObsidianMarkdown className="text-[#D6F4FF]">
+                        {reflection.todoIdeas}
+                      </ObsidianMarkdown>
                     </div>
                   )}
                 </div>
