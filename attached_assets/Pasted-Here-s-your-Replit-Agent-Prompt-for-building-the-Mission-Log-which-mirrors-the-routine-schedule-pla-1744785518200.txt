@@ -1,0 +1,77 @@
+Here’s your Replit Agent Prompt for building the Mission Log, which mirrors the routine/schedule/planner system in your Obsidian doc — but with one key difference:
+
+The Mission Log is a read-only display that pulls in scheduled missions from other pages/sources (like a goal planner or calendar module), and shows what was planned for today.
+
+⸻
+
+✅ COPY + PASTE THIS REPLIT AGENT PROMPT
+
+Create a **Mission Log** module for my Lyfe OS web app.
+
+This Mission Log should work like the Routine/Schedule/Planner we discussed from Obsidian, but be **read-only** — not editable. Its purpose is to simply show what was already scheduled from another part of the app (such as a calendar, routine planner, or goal system).
+
+The Mission Log should display a structured list of scheduled time blocks (missions), formatted in a visually immersive and clean timeline-style view. Each block includes:
+
+1. **Time Block**: (e.g., 09:00 AM – 10:00 AM)
+2. **Mission Title**: (e.g., “Deep Work” or “Leg Day Training”)
+3. **Linked Goal/Tag**: (optional — e.g., [Health], [Business])
+4. **XP Value** (optional, non-interactive — e.g., “+15 XP”)
+
+Here’s what I need implemented:
+
+–––––––––––––––––––––––––––––––––––––––
+
+🗓️ 1. **Pull From Saved Data**
+- Read mission schedule from `localStorage` (key: `routineData` or `missionSchedule`)
+- Render only the entries **for today’s date**
+- Sort by time
+
+–––––––––––––––––––––––––––––––––––––––
+
+🧠 2. **Visual Layout**
+- Display each mission as a card or block
+- Use a timeline style with time ranges on the left and mission title on the right
+- Use neon blue, cyan, or violet highlights to match the Solo Leveling theme
+- Mission cards should be scrollable if more than 5 exist
+
+–––––––––––––––––––––––––––––––––––––––
+
+🧩 3. **Non-Editable**
+- Users cannot add/edit/delete from this module
+- It is a visual log only — not a planner
+- Clicking a mission may show details (optional for future)
+
+–––––––––––––––––––––––––––––––––––––––
+
+📁 4. **Code Structure**
+- `index.html`: Insert section with id `missionLog`
+- `style.css`: Create `.mission-log`, `.mission-card`, `.time-label`, etc.
+- `app.js`: Load data from storage, filter by today’s date, and render
+
+–––––––––––––––––––––––––––––––––––––––
+
+📅 5. **Calendar Integration**
+- Assume the source calendar or planner exists in another module
+- Only display missions that were created elsewhere (do NOT allow new creation here)
+
+–––––––––––––––––––––––––––––––––––––––
+
+🧩 CONTEXT:
+This is part of “Lyfe OS” — a gamified operating system inside a personal development program. The Mission Log shows a Player what they **planned to do today**, helping them reflect and align their day with their original intentions.
+
+Make the visual and structural experience immersive, elegant, and clean.
+
+Output the full HTML, CSS, and JS code. No modals. Fully responsive. Designed for use inside an existing `/dashboard`.
+
+
+
+⸻
+
+This will generate a Mission Log module that reflects your Obsidian MVP’s “Planner” but keeps it read-only, synced to your calendar/goals page, and visually aligned with your gamified Lyfe OS aesthetic.
+
+Let me know when you want:
+	•	A toggle to show “Completed vs Planned”
+	•	XP auto-tracking based on Mission completion
+	•	Journal or Reflection linking from the Mission Log
+
+Ready to deploy.
