@@ -43,6 +43,7 @@ export function ObsidianMarkdown({ children, className }: ObsidianMarkdownProps)
           ),
           ul: ({ node, ...props }) => <ul className="list-disc ml-6 my-2" {...props} />,
           ol: ({ node, ...props }) => <ol className="list-decimal ml-6 my-2" {...props} />,
+          // @ts-ignore - ReactMarkdown types don't include the checked prop for li
           li: ({ node, checked, ...props }) => {
             if (checked === null) {
               return <li {...props} />;
@@ -66,6 +67,7 @@ export function ObsidianMarkdown({ children, className }: ObsidianMarkdownProps)
           h2: ({ node, ...props }) => <h2 className="text-xl font-bold mt-5 mb-3 text-[#D6F4FF]" {...props} />,
           h3: ({ node, ...props }) => <h3 className="text-lg font-bold mt-4 mb-2 text-[#D6F4FF]" {...props} />,
           p: ({ node, ...props }) => <p className="my-2" {...props} />,
+          // @ts-ignore - ReactMarkdown types don't include the inline prop for code
           code: ({ node, inline, ...props }) => 
             inline ? 
               <code className="bg-[#001A20] px-1.5 py-0.5 rounded text-[#36F1CD] font-mono text-sm" {...props} /> :

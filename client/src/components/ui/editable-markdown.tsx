@@ -61,9 +61,18 @@ export function EditableMarkdown({
   
   // Handle keyboard event
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      handleBlur();
+    // Render markdown on regular Enter (without Shift)
+    if (e.key === 'Enter') {
+      if (e.ctrlKey || e.metaKey) {
+        // Ctrl+Enter or Cmd+Enter always saves and exits
+        e.preventDefault();
+        handleBlur();
+      } else if (!e.shiftKey) {
+        // Regular Enter (without Shift) also saves and exits
+        e.preventDefault();
+        handleBlur();
+      }
+      // Shift+Enter will allow multi-line editing (default behavior)
     }
   };
 
@@ -90,7 +99,7 @@ export function EditableMarkdown({
             {value}
           </div>
           <div className="text-xs text-[#7DAAB2]/50 mt-2 text-right">
-            Press Ctrl+Enter to save
+            Press Enter to save • Shift+Enter for new line
           </div>
         </>
       ) : (
