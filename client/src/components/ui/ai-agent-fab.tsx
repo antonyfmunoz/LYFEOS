@@ -11,7 +11,7 @@ export function AIAgentFAB() {
   const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const { toast } = useToast();
-  const { messages, sendMessage } = useLYFEOS();
+  const { messages, sendMessage, stats } = useLYFEOS();
   
   // Toggle the AI chat panel
   const toggleChat = () => {
@@ -38,7 +38,7 @@ export function AIAgentFAB() {
       // Show toast on completion
       toast({
         title: "AI Response",
-        description: "Your quest has been analyzed by the AI agent",
+        description: "LYFE OS AI has replied to your message",
         className: "bg-[#001E26] border border-purple-500 text-white",
       });
     }, 2000);
@@ -71,7 +71,7 @@ export function AIAgentFAB() {
                     <div className="h-8 w-8 rounded-full bg-purple-500/20 flex items-center justify-center mr-2">
                       <Bot className="h-4 w-4 text-purple-400" />
                     </div>
-                    <h3 className="font-orbitron text-purple-400">Quest AI Agent</h3>
+                    <h3 className="font-orbitron text-purple-400">LYFE OS AI</h3>
                   </div>
                   <Button
                     variant="ghost"
@@ -88,8 +88,8 @@ export function AIAgentFAB() {
                 {recentMessages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-center">
                     <Sparkles className="text-purple-400 mb-2 h-6 w-6" />
-                    <p className="text-[#7DAAB2]">Ask for quest assistance</p>
-                    <p className="text-xs text-[#7DAAB2] mt-1">Your AI agent can help optimize your quests</p>
+                    <p className="text-[#7DAAB2]">How can I assist you today?</p>
+                    <p className="text-xs text-[#7DAAB2] mt-1">Your LYFE OS AI assistant is here to help</p>
                   </div>
                 ) : (
                   recentMessages.map((msg) => (
@@ -123,7 +123,7 @@ export function AIAgentFAB() {
               <form onSubmit={handleSendMessage} className="p-3 border-t border-purple-500/20">
                 <div className="flex space-x-2">
                   <Input
-                    placeholder="Ask about your quests..."
+                    placeholder="Ask me anything..."
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     className="bg-slate-700/30 border-purple-500/30 focus-visible:ring-purple-500/30"
