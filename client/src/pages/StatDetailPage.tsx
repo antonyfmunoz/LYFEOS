@@ -62,6 +62,21 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
         { label: "Mental", value: 85 },
       ],
     },
+    experience: {
+      title: "Experience Points",
+      icon: <Award className="w-8 h-8" />,
+      color: "experience",
+      current: stats.experience.current,
+      max: stats.experience.max,
+      description: `Level ${stats.experience.level} progress`,
+      progressClass: "progress-xp",
+      dataPoints: [
+        { label: "Quests", value: 65 },
+        { label: "Daily Log", value: 20 },
+        { label: "Systems", value: 10 },
+        { label: "Codex", value: 5 },
+      ],
+    },
   };
   
   const config = statConfig[stat];
@@ -86,12 +101,14 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
           <div className={`w-16 h-16 rounded-full ${
             stat === 'time' ? 'bg-primary/20' : 
             stat === 'energy' ? 'bg-[#FCD34D]/20' : 
-            'bg-[#EC4899]/20'
+            stat === 'health' ? 'bg-[#EC4899]/20' :
+            'bg-[#36F1CD]/20'
           } flex items-center justify-center mr-4 mb-4 md:mb-0`}>
             <div className={
               stat === 'time' ? 'text-primary' : 
               stat === 'energy' ? 'text-[#FCD34D]' : 
-              'text-[#EC4899]'
+              stat === 'health' ? 'text-[#EC4899]' :
+              'text-[#36F1CD]'
             }>
               {config.icon}
             </div>
@@ -138,7 +155,8 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
                       className={`h-full ${
                         stat === 'time' ? 'bg-primary' : 
                         stat === 'energy' ? 'bg-[#FCD34D]' : 
-                        'bg-[#EC4899]'
+                        stat === 'health' ? 'bg-[#EC4899]' :
+                        'bg-[#36F1CD]'
                       }`}
                       style={{ 
                         width: `${stat === 'time' 
@@ -163,7 +181,8 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
         <h2 className="text-xl font-orbitron mb-4">
           {stat === 'time' ? 'Time Management Tips' : 
            stat === 'energy' ? 'Energy Recovery Tips' : 
-           'Health Optimization Tips'}
+           stat === 'health' ? 'Health Optimization Tips' :
+           'Experience Growth Tips'}
         </h2>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

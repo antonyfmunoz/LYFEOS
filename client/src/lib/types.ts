@@ -43,4 +43,4 @@ export interface CalendarEvent {
   category: "work" | "personal" | "health";
 }
 
-export type StatType = "time" | "energy" | "health";
+export type StatType = "time" | "energy" | "health" | "experience";
