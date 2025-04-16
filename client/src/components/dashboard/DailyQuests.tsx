@@ -1,8 +1,8 @@
-import { useLifeOS } from "../../lib/context";
+import { useLYFEOS } from "../../lib/context";
 import QuestItem from "./QuestItem";
 
 export default function DailyQuests() {
-  const { quests, toggleQuestCompletion } = useLifeOS();
+  const { quests, toggleQuestCompletion } = useLYFEOS();
 
   return (
     <div className="mb-6">

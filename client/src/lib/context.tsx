@@ -90,7 +90,7 @@ const initialEvents: CalendarEvent[] = [
 ];
 
 // Create context types
-interface LifeOSContextType {
+interface LYFEOSContextType {
   stats: UserStats;
   quests: Quest[];
   messages: AIMessage[];
@@ -102,10 +102,10 @@ interface LifeOSContextType {
 }
 
 // Create the context
-const LifeOSContext = createContext<LifeOSContextType | undefined>(undefined);
+const LYFEOSContext = createContext<LYFEOSContextType | undefined>(undefined);
 
 // Provider component
-export function LifeOSProvider({ children }: { children: ReactNode }) {
+export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const [stats, setStats] = useState<UserStats>(initialStats);
   const [quests, setQuests] = useState<Quest[]>(initialQuests);
   const [messages, setMessages] = useState<AIMessage[]>(initialMessages);
@@ -272,7 +272,7 @@ export function LifeOSProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <LifeOSContext.Provider
+    <LYFEOSContext.Provider
       value={{
         stats,
         quests,
@@ -285,15 +285,15 @@ export function LifeOSProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
-    </LifeOSContext.Provider>
+    </LYFEOSContext.Provider>
   );
 }
 
 // Custom hook to use the context
-export function useLifeOS() {
-  const context = useContext(LifeOSContext);
+export function useLYFEOS() {
+  const context = useContext(LYFEOSContext);
   if (context === undefined) {
-    throw new Error("useLifeOS must be used within a LifeOSProvider");
+    throw new Error("useLYFEOS must be used within a LYFEOSProvider");
   }
   return context;
 }

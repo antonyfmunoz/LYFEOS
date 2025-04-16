@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useLifeOS } from "../../lib/context";
+import { useLYFEOS } from "../../lib/context";
 
 export default function AICompanionPanel() {
-  const { messages, sendMessage } = useLifeOS();
+  const { messages, sendMessage } = useLYFEOS();
   const [inputText, setInputText] = useState("");
   
   const handleSendMessage = (e: React.FormEvent) => {

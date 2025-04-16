@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useLifeOS } from "../../lib/context";
+import { useLYFEOS } from "../../lib/context";
 import { Link } from "wouter";
 
 export default function AICompanionPreview() {
-  const { messages, sendMessage } = useLifeOS();
+  const { messages, sendMessage } = useLYFEOS();
   const [inputText, setInputText] = useState("");
   
   // Get the latest AI message for preview

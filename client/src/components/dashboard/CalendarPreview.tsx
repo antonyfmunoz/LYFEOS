@@ -1,8 +1,8 @@
-import { useLifeOS } from "../../lib/context";
+import { useLYFEOS } from "../../lib/context";
 import { Link } from "wouter";
 
 export default function CalendarPreview() {
-  const { events } = useLifeOS();
+  const { events } = useLYFEOS();
 
   return (
     <div className="glassmorphic rounded-xl p-4 neon-border">

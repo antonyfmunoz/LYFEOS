@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLifeOS } from "../lib/context";
+import { useLYFEOS } from "../lib/context";
 import StatWidget from "../components/dashboard/StatWidget";
 import ExperienceBar from "../components/dashboard/ExperienceBar";
 import { CalendarDays, Clock, Edit, PlusCircle, Save, Brain, HeartPulse, Smile, BookOpen, Book, AlarmClock, MoonStar, TargetIcon, ListChecks } from "lucide-react";
@@ -35,7 +35,7 @@ interface DailyReflection {
 }
 
 export default function DashboardPage() {
-  const { stats, username } = useLifeOS();
+  const { stats, username } = useLYFEOS();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentTime, setCurrentTime] = useState(new Date());
   const [totalXpEarned, setTotalXpEarned] = useState(0);

@@ -1,10 +1,10 @@
 import React from "react";
 import RootLayout from "../components/layout/RootLayout";
-import { useLifeOS } from "../lib/context";
+import { useLYFEOS } from "../lib/context";
 import { Link } from "wouter";
 
 export default function ProfilePage() {
-  const { username, stats } = useLifeOS();
+  const { username, stats } = useLYFEOS();
 
   return (
     <RootLayout>

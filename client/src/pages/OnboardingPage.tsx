@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useLifeOS } from "../lib/context";
+import { useLYFEOS } from "../lib/context";
 import { useLocation } from "wouter";
 
 export default function OnboardingPage() {
-  const { setUsername } = useLifeOS();
+  const { setUsername } = useLYFEOS();
   const [, navigate] = useLocation();
   
   const [step, setStep] = useState(1);
@@ -71,7 +71,7 @@ export default function OnboardingPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
       <div className="text-center mb-8">
-        <h1 className="text-4xl text-primary font-orbitron mb-2">Life<span className="text-white">OS</span></h1>
+        <h1 className="text-4xl text-primary font-orbitron mb-2">LYFE<span className="text-white">OS</span></h1>
         <p className="text-[#7DAAB2]">Your personal life operating system</p>
       </div>
       

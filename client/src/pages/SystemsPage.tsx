@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useLifeOS } from "../lib/context";
+import { useLYFEOS } from "../lib/context";
 
 export default function SystemsPage() {
-  const { stats } = useLifeOS();
+  const { stats } = useLYFEOS();
   
   // System settings state
   const [settings, setSettings] = useState({

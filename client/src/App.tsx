@@ -1,6 +1,6 @@
 import { Route, Switch } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
-import { LifeOSProvider } from "./lib/context";
+import { LYFEOSProvider } from "./lib/context";
 import DashboardPage from "./pages/DashboardPage";
 import QuestsPage from "./pages/QuestsPage";
 import AIPage from "./pages/AIPage";
@@ -85,10 +85,10 @@ function Router() {
 
 function App() {
   return (
-    <LifeOSProvider>
+    <LYFEOSProvider>
       <Router />
       <Toaster />
-    </LifeOSProvider>
+    </LYFEOSProvider>
   );
 }
 

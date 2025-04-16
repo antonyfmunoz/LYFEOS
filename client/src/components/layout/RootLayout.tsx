@@ -2,7 +2,7 @@ import { ReactNode, useState, useRef, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import MobileNav from "./MobileNav";
 import AICompanionPanel from "../ai/AICompanionPanel";
-import { useLifeOS } from "../../lib/context";
+import { useLYFEOS } from "../../lib/context";
 import { useLocation } from "wouter";
 import { Link } from "wouter";
 
@@ -11,7 +11,7 @@ interface RootLayoutProps {
 }
 
 export default function RootLayout({ children }: RootLayoutProps) {
-  const { username, stats } = useLifeOS();
+  const { username, stats } = useLYFEOS();
   const [location] = useLocation();
   
   // Profile dropdown state and refs

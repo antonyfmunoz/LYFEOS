@@ -1,4 +1,4 @@
-import { useLifeOS } from "../lib/context";
+import { useLYFEOS } from "../lib/context";
 import { StatType } from "../lib/types";
 import { Link } from "wouter";
 
@@ -7,7 +7,7 @@ interface StatDetailPageProps {
 }
 
 export default function StatDetailPage({ stat }: StatDetailPageProps) {
-  const { stats } = useLifeOS();
+  const { stats } = useLYFEOS();
   
   // Configure based on stat type
   const statConfig = {

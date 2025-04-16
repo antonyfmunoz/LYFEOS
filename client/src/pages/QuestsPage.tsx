@@ -1,8 +1,8 @@
-import { useLifeOS } from "../lib/context";
+import { useLYFEOS } from "../lib/context";
 import QuestItem from "../components/dashboard/QuestItem";
 
 export default function QuestsPage() {
-  const { quests, toggleQuestCompletion } = useLifeOS();
+  const { quests, toggleQuestCompletion } = useLYFEOS();
   
   const activeQuests = quests.filter(quest => !quest.completed);
   const completedQuests = quests.filter(quest => quest.completed);
