@@ -1,324 +1,247 @@
-import React, { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
-import { Clock } from "lucide-react";
-import { Button } from "./button";
-import { Input } from "./input";
+import React, { useState, useRef, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Clock, ChevronUp, ChevronDown } from "lucide-react";
 
 interface CustomTimePickerProps {
   value: string;
   onChange: (value: string) => void;
   className?: string;
-  icon?: React.ReactNode;
 }
 
-export function CustomTimePicker({ 
-  value, 
-  onChange, 
-  className,
-  icon = <Clock className="h-4 w-4 text-primary/70" />
-}: CustomTimePickerProps) {
+export function CustomTimePicker({ value, onChange, className }: CustomTimePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [hours, setHours] = useState<number>(12);
-  const [minutes, setMinutes] = useState<number>(0);
-  const [period, setPeriod] = useState<"AM" | "PM">("AM");
+  const [hours, setHours] = useState<number>(
+    value ? parseInt(value.split(":")[0]) : 9
+  );
+  const [minutes, setMinutes] = useState<number>(
+    value ? parseInt(value.split(":")[1]) : 0
+  );
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Parse the value (HH:MM format) into hours, minutes and period
+  // Format the time value
+  const formatTime = (h: number, m: number) => {
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+  };
+
+  // Update the parent component when time changes
   useEffect(() => {
-    if (value) {
-      const [hoursStr, minutesStr] = value.split(":");
-      let parsedHours = parseInt(hoursStr, 10);
-      const parsedMinutes = parseInt(minutesStr, 10);
-      
-      if (!isNaN(parsedHours) && !isNaN(parsedMinutes)) {
-        // Convert 24h to 12h format
-        let newPeriod: "AM" | "PM" = parsedHours >= 12 ? "PM" : "AM";
-        if (parsedHours > 12) {
-          parsedHours -= 12;
-        } else if (parsedHours === 0) {
-          parsedHours = 12;
-        }
-        
-        setHours(parsedHours);
-        setMinutes(parsedMinutes);
-        setPeriod(newPeriod);
-      }
-    }
-  }, [value]);
-  
-  // Cleanup any portals when component unmounts
+    onChange(formatTime(hours, minutes));
+  }, [hours, minutes, onChange]);
+
+  // Handle click outside to close the dropdown
   useEffect(() => {
-    return () => {
-      // If this component is unmounted while dropdown is open,
-      // make sure any portal elements are cleaned up
-      if (isOpen) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
-  }, [isOpen]);
 
-  // Convert internal state back to 24-hour format and update parent
-  const updateTime = () => {
-    // Make sure hours is a valid number
-    let h = hours || 12;
-    if (h > 12) h = 12;
-    if (h < 1) h = 1;
-    
-    // Make sure minutes is a valid number
-    let m = minutes || 0;
-    if (m > 59) m = 59;
-    if (m < 0) m = 0;
-    
-    // Convert from 12h to 24h format
-    if (period === "PM" && h < 12) {
-      h += 12;
-    } else if (period === "AM" && h === 12) {
-      h = 0;
-    }
-    
-    const newValue = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-    onChange(newValue);
-    setIsOpen(false);
-  };
-
-  // Close the dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      // Only run this check if the dropdown is open
-      if (!isOpen) return;
-      
-      // Check if click was on or inside the input field container
-      if (dropdownRef.current && dropdownRef.current.contains(event.target as Node)) {
-        return;
-      }
-      
-      // Check if click was on any element with class 'time-dropdown' (our portal)
-      const timeDropdowns = document.querySelectorAll('.time-dropdown');
-      for (let i = 0; i < timeDropdowns.length; i++) {
-        if (timeDropdowns[i].contains(event.target as Node)) {
-          return;
-        }
-      }
-      
-      // If we got here, the click was outside both the input and the dropdown
-      setIsOpen(false);
-    }
-    
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
-  // Handle hour increment/decrement
-  const adjustHours = (amount: number) => {
-    let newHours = hours + amount;
-    if (newHours > 12) newHours = 1;
-    if (newHours < 1) newHours = 12;
-    setHours(newHours);
+  // Increment/decrement hours
+  const incrementHours = () => {
+    setHours((prev) => (prev === 23 ? 0 : prev + 1));
   };
 
-  // Handle minute increment/decrement
-  const adjustMinutes = (amount: number) => {
-    let newMinutes = minutes + amount;
-    if (newMinutes >= 60) newMinutes = 0;
-    if (newMinutes < 0) newMinutes = 59;
-    setMinutes(newMinutes);
+  const decrementHours = () => {
+    setHours((prev) => (prev === 0 ? 23 : prev - 1));
   };
 
-  // Handle direct number input for hours
-  const handleHoursInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = parseInt(e.target.value, 10);
-    if (!isNaN(newValue) && newValue >= 1 && newValue <= 12) {
-      setHours(newValue);
-    } else if (e.target.value === "") {
-      setHours(12); // Default to 12 if field is empty
+  // Increment/decrement minutes
+  const incrementMinutes = () => {
+    const newMinutes = minutes + 15;
+    if (newMinutes >= 60) {
+      setMinutes(0);
+      incrementHours();
+    } else {
+      setMinutes(newMinutes);
     }
   };
 
-  // Handle direct number input for minutes
-  const handleMinutesInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = parseInt(e.target.value, 10);
-    if (!isNaN(newValue) && newValue >= 0 && newValue <= 59) {
-      setMinutes(newValue);
-    } else if (e.target.value === "") {
-      setMinutes(0); // Default to 0 if field is empty
+  const decrementMinutes = () => {
+    const newMinutes = minutes - 15;
+    if (newMinutes < 0) {
+      setMinutes(45);
+      decrementHours();
+    } else {
+      setMinutes(newMinutes);
     }
   };
 
-  // Toggle AM/PM
-  const togglePeriod = () => {
-    setPeriod(prevPeriod => prevPeriod === "AM" ? "PM" : "AM");
+  // Normalize minutes to quarters (0, 15, 30, 45)
+  const normalizeMinutes = (mins: number) => {
+    const remainder = mins % 15;
+    if (remainder === 0) return mins;
+    return mins - remainder;
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    // Space or Enter opens/closes the dropdown
-    if (e.key === " " || e.key === "Enter") {
-      e.preventDefault();
-      setIsOpen(!isOpen);
+  // Handle manual input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const timeValue = e.target.value;
+    
+    if (/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeValue)) {
+      const [newHours, newMinutes] = timeValue.split(":").map(Number);
+      setHours(newHours);
+      setMinutes(normalizeMinutes(newMinutes));
+      onChange(formatTime(newHours, normalizeMinutes(newMinutes)));
+    } else {
+      // Just set the raw value and let validation happen on blur
+      e.target.value = timeValue;
+    }
+  };
+
+  // Handle blur to validate and normalize time
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const timeValue = e.target.value;
+    
+    if (/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeValue)) {
+      const [newHours, newMinutes] = timeValue.split(":").map(Number);
+      setHours(newHours);
+      setMinutes(normalizeMinutes(newMinutes));
     }
     
-    // Escape closes the dropdown
-    if (e.key === "Escape" && isOpen) {
-      setIsOpen(false);
-    }
-    
-    // Tab - if dropdown is open, prevent default behavior and focus the correct element
-    if (e.key === "Tab" && isOpen) {
-      e.preventDefault();
-      // Logic for tabbing through dropdown could be added here
-    }
+    // Reset to valid value
+    e.target.value = formatTime(hours, minutes);
   };
 
   return (
-    <div className="relative overflow-visible time-picker-container" ref={dropdownRef}>
-      {/* Main time input display */}
-      <div 
-        className={cn(
-          "flex items-center relative cursor-pointer bg-[#00141A] border border-primary/30 text-[#D6F4FF] rounded-md py-2 px-3",
-          className
-        )}
-        onClick={() => setIsOpen(!isOpen)}
-        onKeyDown={handleKeyDown}
-        role="button"
-        tabIndex={0}
-        aria-haspopup="true"
-        aria-expanded={isOpen}
-      >
-        <span className="font-mono">
-          {hours.toString().padStart(2, '0')}:{minutes.toString().padStart(2, '0')} {period}
-        </span>
-        <div className="ml-auto flex items-center pointer-events-none">
-          {icon}
-        </div>
+    <div
+      className={cn(
+        "relative inline-block w-full",
+        className
+      )}
+      ref={dropdownRef}
+    >
+      <div className="relative">
+        <Input
+          type="text"
+          value={formatTime(hours, minutes)}
+          onChange={handleInputChange}
+          onBlur={handleBlur}
+          onClick={() => setIsOpen(true)}
+          className="pr-10 font-mono"
+          placeholder="HH:MM"
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => setIsOpen(!isOpen)}
+          className="absolute right-0 top-0 h-full px-3 text-muted-foreground hover:text-foreground"
+        >
+          <Clock className="h-4 w-4" />
+        </Button>
       </div>
 
-      {/* Dropdown picker using portal */}
-      {isOpen && createPortal(
-        <div 
-          className="fixed z-[999999] p-4 bg-[#001824] border border-primary/30 rounded-md shadow-lg shadow-primary/10 w-64 glassmorphic neon-border animate-in fade-in-50 duration-100 time-dropdown"
-          style={{
-            position: 'fixed',
-            top: dropdownRef.current ? dropdownRef.current.getBoundingClientRect().bottom + window.scrollY + 5 : 0,
-            left: dropdownRef.current ? dropdownRef.current.getBoundingClientRect().left + window.scrollX : 0
-          }}
-        >
-          <div className="text-center font-orbitron mb-3 text-[#D6F4FF] text-sm">Select Time</div>
-          
-          <div className="flex justify-center items-center gap-2">
-            {/* Hours column */}
-            <div className="flex flex-col items-center">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-primary hover:bg-primary/20 rounded-full p-1 h-8 w-8 hover:shadow-[0_0_5px_rgba(0,224,255,0.5)] transition-all"
-                onClick={() => adjustHours(1)}
-                type="button"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
-              </Button>
-              
-              <Input
-                className="w-14 text-center bg-[#00141A] border-primary/30 hover:border-primary/50 focus:border-primary/70 font-mono my-1 p-1 h-9 focus:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition-all font-bold"
-                value={hours.toString()}
-                onChange={handleHoursInput}
-              />
-              
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-primary hover:bg-primary/20 rounded-full p-1 h-8 w-8 hover:shadow-[0_0_5px_rgba(0,224,255,0.5)] transition-all"
-                onClick={() => adjustHours(-1)}
-                type="button"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-              </Button>
-              
-              <span className="text-xs text-[#7DAAB2] mt-1">Hours</span>
+      {isOpen && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-background shadow-md">
+          <div className="p-3">
+            <div className="flex justify-between items-center mb-2">
+              <div className="text-xs font-medium">Hours</div>
+              <div className="text-xs font-medium">Minutes</div>
             </div>
             
-            <span className="text-primary text-xl">:</span>
-            
-            {/* Minutes column */}
-            <div className="flex flex-col items-center">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-primary hover:bg-primary/20 rounded-full p-1 h-8 w-8 hover:shadow-[0_0_5px_rgba(0,224,255,0.5)] transition-all"
-                onClick={() => adjustMinutes(1)}
-                type="button"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
-              </Button>
+            <div className="flex justify-between">
+              <div className="flex flex-col items-center">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={incrementHours}
+                  className="h-8 w-8"
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+                <div className="font-mono text-lg py-1">{hours.toString().padStart(2, "0")}</div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={decrementHours}
+                  className="h-8 w-8"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </div>
               
-              <Input
-                className="w-14 text-center bg-[#00141A] border-primary/30 hover:border-primary/50 focus:border-primary/70 font-mono my-1 p-1 h-9 focus:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition-all font-bold"
-                value={minutes.toString().padStart(2, '0')}
-                onChange={handleMinutesInput}
-              />
+              <div className="text-lg py-2">:</div>
               
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-primary hover:bg-primary/20 rounded-full p-1 h-8 w-8 hover:shadow-[0_0_5px_rgba(0,224,255,0.5)] transition-all"
-                onClick={() => adjustMinutes(-1)}
-                type="button"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-              </Button>
-              
-              <span className="text-xs text-[#7DAAB2] mt-1">Minutes</span>
+              <div className="flex flex-col items-center">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={incrementMinutes}
+                  className="h-8 w-8"
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+                <div className="font-mono text-lg py-1">{minutes.toString().padStart(2, "0")}</div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={decrementMinutes}
+                  className="h-8 w-8"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
             
-            {/* AM/PM toggle */}
-            <div className="flex flex-col items-center ml-2">
-              <button
-                className={`w-14 rounded-t-md py-1 transition-all font-mono ${
-                  period === "AM" 
-                    ? "bg-primary/20 text-primary border-t border-l border-r border-primary/50 shadow-[0_0_5px_rgba(0,224,255,0.3)]" 
-                    : "bg-[#001824] text-[#7DAAB2] hover:bg-[#001C26] border-t border-l border-r border-primary/10 hover:border-primary/30"
-                }`}
-                onClick={() => setPeriod("AM")}
-                type="button"
+            <div className="flex justify-between mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsOpen(false)}
+                className="text-xs"
               >
-                AM
-              </button>
-              <button
-                className={`w-14 rounded-b-md py-1 transition-all font-mono ${
-                  period === "PM" 
-                    ? "bg-primary/20 text-primary border-b border-l border-r border-primary/50 shadow-[0_0_5px_rgba(0,224,255,0.3)]" 
-                    : "bg-[#001824] text-[#7DAAB2] hover:bg-[#001C26] border-b border-l border-r border-primary/10 hover:border-primary/30"
-                }`}
-                onClick={() => setPeriod("PM")}
-                type="button"
-              >
-                PM
-              </button>
+                Close
+              </Button>
               
-              <span className="text-xs text-[#7DAAB2] mt-3">Period</span>
+              <div className="space-x-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setHours(9);
+                    setMinutes(0);
+                  }}
+                  className="text-xs"
+                >
+                  9:00
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setHours(12);
+                    setMinutes(0);
+                  }}
+                  className="text-xs"
+                >
+                  12:00
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setHours(15);
+                    setMinutes(0);
+                  }}
+                  className="text-xs"
+                >
+                  15:00
+                </Button>
+              </div>
             </div>
           </div>
-          
-          <div className="flex justify-end mt-4">
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-[#7DAAB2] hover:bg-[#001C26] hover:text-[#D6F4FF] mr-2 transition-all font-mono"
-              onClick={() => setIsOpen(false)}
-              type="button"
-            >
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              className="bg-primary/90 text-primary-foreground hover:bg-primary/100 hover:shadow-[0_0_5px_rgba(0,224,255,0.5)] transition-all font-mono"
-              onClick={updateTime}
-              type="button"
-            >
-              Apply
-            </Button>
-          </div>
-        </div>,
-        document.body
+        </div>
       )}
     </div>
   );

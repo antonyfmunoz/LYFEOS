@@ -342,6 +342,9 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         sendMessage,
         username,
         setUsername,
+        addEvent,
+        updateEvent,
+        deleteEvent,
       }}
     >
       {children}

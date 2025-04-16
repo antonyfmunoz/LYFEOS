@@ -628,12 +628,14 @@ export default function DashboardPage() {
                     <span className="ml-2">Wake Up Time</span>
                   </label>
                   <div className="flex items-center gap-2">
-                    <CustomTimePicker
-                      value={reflection.wakeTime}
-                      onChange={(value) => updateReflection("wakeTime", value)}
-                      icon={<AlarmClock className="h-4 w-4 text-primary/70" />}
-                      className="flex-grow"
-                    />
+                    <div className="flex items-center gap-2 w-full">
+                      <AlarmClock className="h-4 w-4 text-primary/70" />
+                      <CustomTimePicker
+                        value={reflection.wakeTime}
+                        onChange={(value) => updateReflection("wakeTime", value)}
+                        className="flex-grow"
+                      />
+                    </div>
                   </div>
                 </div>
                 
@@ -643,12 +645,14 @@ export default function DashboardPage() {
                     <span className="ml-2">Sleep Time</span>
                   </label>
                   <div className="flex items-center gap-2">
-                    <CustomTimePicker
-                      value={reflection.sleepTime}
-                      onChange={(value) => updateReflection("sleepTime", value)}
-                      icon={<MoonStar className="h-4 w-4 text-primary/70" />}
-                      className="flex-grow"
-                    />
+                    <div className="flex items-center gap-2 w-full">
+                      <MoonStar className="h-4 w-4 text-primary/70" />
+                      <CustomTimePicker
+                        value={reflection.sleepTime}
+                        onChange={(value) => updateReflection("sleepTime", value)}
+                        className="flex-grow"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
