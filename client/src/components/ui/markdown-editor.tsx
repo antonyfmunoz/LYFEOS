@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ObsidianMarkdown } from './obsidian-markdown';
 import { cn } from '@/lib/utils';
+import { Edit2, Save, CheckSquare } from 'lucide-react';
 
 interface MarkdownEditorProps {
   value: string;
@@ -37,8 +38,20 @@ export function MarkdownEditor({
     setCursorPosition(e.target.selectionStart || 0);
   };
 
-  // Toggle between edit and preview mode
-  const handleContainerClick = (e: React.MouseEvent) => {
+  // Toggle to edit mode
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEditing(true);
+  };
+
+  // Toggle to read mode
+  const handleSaveClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEditing(false);
+  };
+
+  // Handle double-clicking on the read view to edit
+  const handleDoubleClick = (e: React.MouseEvent) => {
     if (!isEditing) {
       setIsEditing(true);
     }
@@ -56,9 +69,40 @@ export function MarkdownEditor({
     } else if (e.key === 'k' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       insertFormatting('[', '](url)');
+    } else if (e.key === 't' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      insertTaskCheckbox();
     } else if (e.key === 'Escape') {
       setIsEditing(false);
+    } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      setIsEditing(false);
     }
+  };
+
+  // Insert task checkbox at cursor position
+  const insertTaskCheckbox = () => {
+    if (!textareaRef.current) return;
+    
+    const textarea = textareaRef.current;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = value.substring(start, end);
+    
+    const before = value.substring(0, start);
+    const after = value.substring(end);
+    
+    // Check if we're at the beginning of a line
+    const isStartOfLine = start === 0 || value.charAt(start - 1) === '\n';
+    const linePrefix = isStartOfLine ? '' : '\n';
+    
+    const newValue = before + linePrefix + '- [ ] ' + selectedText + after;
+    onChange(newValue);
+    
+    // Move cursor to after the checkbox
+    const newCursorPos = start + linePrefix.length + 6 + selectedText.length;
+    setTimeout(() => {
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
   };
 
   // Insert formatting characters around selection or at cursor position
@@ -107,24 +151,44 @@ export function MarkdownEditor({
     <div 
       ref={wrapperRef}
       className={cn(
-        "relative rounded-md border border-primary/30 bg-[#00141A] min-h-[100px]",
+        "relative rounded-md border border-primary/30 bg-[#00141A] min-h-[100px] group",
         className
       )}
       style={{ minHeight }}
-      onClick={handleContainerClick}
     >
       {isEditing ? (
-        <textarea
-          ref={textareaRef}
-          value={value}
-          onChange={handleInput}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          className="p-3 w-full h-full focus:outline-none focus:ring-0 bg-[#00141A] text-[#D6F4FF] resize-y placeholder-[#7DAAB2]/50 border-0 rounded-md"
-          style={{ minHeight }}
-        />
+        <>
+          <textarea
+            ref={textareaRef}
+            value={value}
+            onChange={handleInput}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+            className="p-3 w-full h-full focus:outline-none focus:ring-0 bg-[#00141A] text-[#D6F4FF] resize-y placeholder-[#7DAAB2]/50 border-0 rounded-md"
+            style={{ minHeight }}
+          />
+          <div className="absolute top-2 right-2 flex space-x-1">
+            <button
+              onClick={handleSaveClick}
+              className="p-1 bg-primary/10 rounded hover:bg-primary/20 text-primary"
+              title="Save (Esc)"
+            >
+              <Save size={14} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                insertTaskCheckbox();
+              }}
+              className="p-1 bg-primary/10 rounded hover:bg-primary/20 text-primary"
+              title="Insert Task Checkbox (Ctrl+T)"
+            >
+              <CheckSquare size={14} />
+            </button>
+          </div>
+        </>
       ) : (
-        <div className="p-3 cursor-text">
+        <div className="p-3 cursor-default" onDoubleClick={handleDoubleClick}>
           {value ? (
             <ObsidianMarkdown className="text-[#D6F4FF]">
               {value}
@@ -132,13 +196,20 @@ export function MarkdownEditor({
           ) : (
             <div className="text-[#7DAAB2]/50">{placeholder}</div>
           )}
+          <button 
+            onClick={handleEditClick}
+            className="absolute top-2 right-2 p-1 bg-primary/10 rounded hover:bg-primary/20 text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+            title="Edit (Double-click text)"
+          >
+            <Edit2 size={14} />
+          </button>
         </div>
       )}
       
       {/* Small hint in bottom-right corner when editing */}
       {isEditing && (
         <div className="absolute bottom-2 right-2 text-xs text-[#7DAAB2]/50">
-          Esc to exit
+          Ctrl+Enter or Esc to save
         </div>
       )}
     </div>

@@ -246,10 +246,19 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   color: #00E0FF;
   text-decoration: none;
   border-bottom: 1px dashed #00E0FF;
+  padding: 0 2px;
+  border-radius: 2px;
+  transition: background-color 0.15s ease;
 }
 
 .obsidian-wikilink:hover {
+  background-color: rgba(0, 224, 255, 0.15);
+}
+
+/* Highlight selection in markdown editor */
+.markdown-editor-highlight {
   background-color: rgba(0, 224, 255, 0.1);
+  border-radius: 2px;
 }
 
 .obsidian-task-list-item {
