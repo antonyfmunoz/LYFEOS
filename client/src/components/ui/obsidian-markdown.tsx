@@ -3,154 +3,96 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-
-// Custom plugin to handle Obsidian-style wiki links [[Link]]
-function remarkObsidianLinks() {
-  return (tree: any) => {
-    // Look for text nodes that contain [[...]] patterns
-    const visitor = (node: any, index: number, parent: any) => {
-      if (node.type !== 'text') return;
-      
-      const wikiLinkRegex = /\[\[(.*?)\]\]/g;
-      const parts = [];
-      let lastIndex = 0;
-      let match;
-      
-      while ((match = wikiLinkRegex.exec(node.value)) !== null) {
-        // Push text before the match
-        if (match.index > lastIndex) {
-          parts.push({
-            type: 'text',
-            value: node.value.slice(lastIndex, match.index)
-          });
-        }
-        
-        // Extract the link text
-        const linkText = match[1];
-        const [target, label] = linkText.includes('|') 
-          ? linkText.split('|') 
-          : [linkText, linkText];
-        
-        // Push a link node
-        parts.push({
-          type: 'link',
-          url: `#${target.trim().replace(/\s+/g, '-').toLowerCase()}`,
-          children: [{
-            type: 'text',
-            value: label.trim()
-          }],
-          data: {
-            hProperties: {
-              className: 'obsidian-wikilink'
-            }
-          }
-        });
-        
-        lastIndex = match.index + match[0].length;
-      }
-      
-      // Push remaining text after all matches
-      if (lastIndex < node.value.length) {
-        parts.push({
-          type: 'text',
-          value: node.value.slice(lastIndex)
-        });
-      }
-      
-      // Replace the current node with the new parts if we found any wiki links
-      if (parts.length > 1) {
-        parent.children.splice(index, 1, ...parts);
-        return index + parts.length;
-      }
-    };
-    
-    // @ts-ignore - simplified for this example
-    const transform = (tree: any) => {
-      for (let i = 0; i < tree.children?.length || 0; i++) {
-        const node = tree.children[i];
-        if (node.children) {
-          // Process this node's children
-          transform(node);
-        } else if (node.type === 'text') {
-          // This is a text node, check for wiki links
-          const newIndex = visitor(node, i, tree);
-          if (newIndex !== undefined) {
-            i = newIndex - 1; // Adjust for the newly inserted nodes
-          }
-        }
-      }
-    };
-    
-    transform(tree);
-  };
-}
-
-// Custom component for rendering Obsidian-style checkboxes [x] or [ ]
-const obsidianComponents = {
-  li: ({ node, children, ...props }: any) => {
-    // Safety check - if children is undefined or empty, just render a regular li
-    if (!children || children.length === 0) {
-      return <li {...props} />;
-    }
-    
-    // Check if first child is a text node or has text content we can examine
-    let textContent = '';
-    let firstChild = children[0];
-    
-    // Try to extract text content from different possible structures
-    if (typeof firstChild === 'string') {
-      textContent = firstChild;
-    } else if (
-      firstChild && 
-      typeof firstChild === 'object' && 
-      firstChild.props && 
-      typeof firstChild.props.children === 'string'
-    ) {
-      textContent = firstChild.props.children;
-    }
-    
-    // If we have text content to check
-    if (textContent) {
-      const taskMatch = textContent.match(/^\s*\[([ x])\]\s*(.*)$/);
-      
-      if (taskMatch) {
-        const isCompleted = taskMatch[1] === 'x';
-        const content = taskMatch[2];
-        
-        return (
-          <li {...props} className="obsidian-task-list-item">
-            <div className="flex items-start">
-              <span className={`obsidian-checkbox ${isCompleted ? 'checked' : ''}`}>
-                {isCompleted ? '✓' : ''}
-              </span>
-              <span className={isCompleted ? 'line-through opacity-70' : ''}>
-                {content}
-              </span>
-            </div>
-          </li>
-        );
-      }
-    }
-    
-    // Default to standard list item rendering
-    return <li {...props}>{children}</li>;
-  }
-};
+import { cn } from '@/lib/utils';
 
 interface ObsidianMarkdownProps {
   children: string;
   className?: string;
 }
 
-export function ObsidianMarkdown({ children, className = '' }: ObsidianMarkdownProps) {
+export function ObsidianMarkdown({ children, className }: ObsidianMarkdownProps) {
+  // Process Obsidian-specific syntax before rendering markdown
+  const processedContent = React.useMemo(() => {
+    let content = children;
+    
+    // Process Obsidian wiki links [[Link]]
+    content = content.replace(/\[\[(.*?)\]\]/g, (_, text) => {
+      return `[${text}](/${text.toLowerCase().replace(/\s+/g, '-')})`;
+    });
+    
+    // Process Obsidian tasks
+    content = content.replace(/- \[ \] (.*)/g, '- [ ] $1');
+    content = content.replace(/- \[x\] (.*)/g, '- [x] $1');
+    
+    return content;
+  }, [children]);
+
   return (
-    <div className={`prose prose-invert prose-sm max-w-none ${className}`}>
+    <div className={cn("prose prose-invert max-w-none prose-cyan", className)}>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkMath, remarkObsidianLinks]}
+        remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex]}
-        components={obsidianComponents}
+        components={{
+          a: ({ node, ...props }) => (
+            <a 
+              {...props} 
+              className="text-primary hover:text-primary/80 underline underline-offset-4" 
+              target="_blank" 
+              rel="noreferrer"
+            />
+          ),
+          ul: ({ node, ...props }) => <ul className="list-disc ml-6 my-2" {...props} />,
+          ol: ({ node, ...props }) => <ol className="list-decimal ml-6 my-2" {...props} />,
+          li: ({ node, checked, ...props }) => {
+            if (checked === null) {
+              return <li {...props} />;
+            }
+            
+            return (
+              <li className="flex items-start my-1">
+                <input 
+                  type="checkbox" 
+                  checked={checked} 
+                  readOnly 
+                  className="mt-1 mr-2 h-4 w-4 rounded border-primary bg-background text-primary" 
+                />
+                <span className={cn(checked && "line-through text-muted-foreground")}>
+                  {props.children}
+                </span>
+              </li>
+            );
+          },
+          h1: ({ node, ...props }) => <h1 className="text-2xl font-bold mt-6 mb-4 text-[#D6F4FF]" {...props} />,
+          h2: ({ node, ...props }) => <h2 className="text-xl font-bold mt-5 mb-3 text-[#D6F4FF]" {...props} />,
+          h3: ({ node, ...props }) => <h3 className="text-lg font-bold mt-4 mb-2 text-[#D6F4FF]" {...props} />,
+          p: ({ node, ...props }) => <p className="my-2" {...props} />,
+          code: ({ node, inline, ...props }) => 
+            inline ? 
+              <code className="bg-[#001A20] px-1.5 py-0.5 rounded text-[#36F1CD] font-mono text-sm" {...props} /> :
+              <code className="block bg-[#001A20] p-3 rounded font-mono text-sm overflow-x-auto text-[#D6F4FF]" {...props} />,
+          blockquote: ({ node, ...props }) => (
+            <blockquote className="border-l-4 border-primary/30 pl-4 italic text-[#7DAAB2]" {...props} />
+          ),
+          img: ({ node, ...props }) => (
+            <img className="max-w-full rounded-md my-4" {...props} />
+          ),
+          hr: ({ node, ...props }) => (
+            <hr className="my-6 border-primary/20" {...props} />
+          ),
+          table: ({ node, ...props }) => (
+            <div className="overflow-x-auto">
+              <table className="border-collapse table-auto w-full my-4" {...props} />
+            </div>
+          ),
+          th: ({ node, ...props }) => (
+            <th className="border border-primary/30 bg-primary/10 px-4 py-2 text-left font-semibold" {...props} />
+          ),
+          td: ({ node, ...props }) => (
+            <td className="border border-primary/20 px-4 py-2" {...props} />
+          ),
+        }}
       >
-        {children}
+        {processedContent}
       </ReactMarkdown>
     </div>
   );
