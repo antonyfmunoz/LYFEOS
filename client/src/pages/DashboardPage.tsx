@@ -701,6 +701,7 @@ export default function DashboardPage() {
                       value={reflection.gratitude}
                       onChange={(value) => updateReflection("gratitude", value)}
                       minHeight="80px"
+                      autoBullets={true}
                     />
                   </div>
                 </div>
@@ -717,6 +718,7 @@ export default function DashboardPage() {
                       value={reflection.tomorrowGoals}
                       onChange={(value) => updateReflection("tomorrowGoals", value)}
                       minHeight="60px"
+                      autoBullets={true}
                     />
                   </div>
                 </div>
@@ -768,6 +770,7 @@ export default function DashboardPage() {
                     value={reflection.thoughts}
                     onChange={(value) => updateReflection("thoughts", value)}
                     minHeight="100px"
+                    autoBullets={true}
                   />
                 </div>
               </div>
@@ -784,6 +787,7 @@ export default function DashboardPage() {
                     value={reflection.contentConsumed}
                     onChange={(value) => updateReflection("contentConsumed", value)}
                     minHeight="100px"
+                    autoBullets={true}
                   />
                 </div>
               </div>
@@ -800,6 +804,7 @@ export default function DashboardPage() {
                     value={reflection.research}
                     onChange={(value) => updateReflection("research", value)}
                     minHeight="100px"
+                    autoBullets={true}
                   />
                 </div>
               </div>
