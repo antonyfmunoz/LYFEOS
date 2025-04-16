@@ -9,7 +9,7 @@ import { CustomTimePicker } from "@/components/ui/custom-time-picker";
 import { useLYFEOS } from "@/lib/context";
 import { CalendarEvent } from "@/lib/types";
 import { format } from "date-fns";
-import { Plus, Edit, Trash, Clock, ArrowLeft, Info } from "lucide-react";
+import { Plus, Edit, Trash, Clock, ArrowLeft, Info, ExternalLink } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 
@@ -427,15 +427,20 @@ export default function CalendarPage() {
             >
               Close
             </Button>
-            <Button
-              className="bg-primary/20 hover:bg-primary/30 text-primary"
-              onClick={() => {
-                setIsInfoEventOpen(false);
-                handleEditEvent(selectedEvent!);
-              }}
-            >
-              Edit Event
-            </Button>
+            <Link href={selectedEvent ? `/mission/${selectedEvent.id}` : '#'} onClick={() => setIsInfoEventOpen(false)}>
+              <Button className={cn(
+                "inline-flex h-9 items-center justify-center rounded-md px-4 py-2 text-sm font-medium",
+                "ring-offset-background transition-colors",
+                "border border-white/10 hover:bg-white/5",
+                "focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2",
+                selectedEvent?.category === "work" ? "text-blue-400" : 
+                selectedEvent?.category === "health" ? "text-red-400" : 
+                selectedEvent?.category === "personal" ? "text-purple-400" : 
+                "text-primary"
+              )}>
+                <ExternalLink size={14} className="mr-2" /> More Details
+              </Button>
+            </Link>
           </DialogFooter>
         </DialogContent>
       </Dialog>
