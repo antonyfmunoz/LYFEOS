@@ -173,14 +173,15 @@ export default function CalendarPage() {
                       <div className="flex items-center space-x-2">
                         <Clock className="h-3.5 w-3.5 text-[#7DAAB2]" />
                         <span className="text-xs text-[#7DAAB2]">{event.duration}</span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-5 w-5 rounded-full text-[#7DAAB2]"
-                          onClick={(e) => handleViewEventInfo(event, e)}
-                        >
-                          <Info className="h-3.5 w-3.5" />
-                        </Button>
+                        <Link href={`/mission/${event.id}`} onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 rounded-full text-[#7DAAB2]"
+                          >
+                            <Info className="h-3.5 w-3.5" />
+                          </Button>
+                        </Link>
                       </div>
                     </div>
                     <p className="text-sm text-[#7DAAB2] mt-1">{event.description}</p>

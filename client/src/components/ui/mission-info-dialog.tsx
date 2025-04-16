@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Clock, X } from "lucide-react";
+import { Clock, X, ExternalLink } from "lucide-react";
+import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { CalendarEvent } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -165,15 +166,22 @@ export function MissionInfoDialog({
         
         {/* Action button */}
         <div className="mt-6 flex justify-end">
-          <Button
-            className="bg-primary/20 hover:bg-primary/30 text-primary"
-            onClick={() => {
-              setOpen(false);
-              // In the future, this would link to a full mission report page
-            }}
-          >
-            View Full Report
-          </Button>
+          <Link href={`/mission/${mission.id}`} onClick={() => setOpen(false)}>
+            <Button
+              className={cn(
+                "inline-flex h-9 items-center justify-center rounded-md px-4 py-2 text-sm font-medium",
+                "ring-offset-background transition-colors",
+                "border border-white/10 hover:bg-white/5",
+                "focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2",
+                mission.category === "work" ? "text-blue-400" : 
+                mission.category === "health" ? "text-red-400" : 
+                mission.category === "personal" ? "text-purple-400" : 
+                "text-primary"
+              )}
+            >
+              <ExternalLink size={14} className="mr-2" /> More Details
+            </Button>
+          </Link>
         </div>
       </div>
     </>
