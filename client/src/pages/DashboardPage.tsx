@@ -457,7 +457,6 @@ export default function DashboardPage() {
   return (
     <div className="dashboard-container">
       <AIAgentFAB />
-      <AIAgentFAB />
       {/* Date Header - Cinematic HUD Style */}
       <section className="mb-6">
         <div className="glassmorphic rounded-xl p-3 neon-border">
