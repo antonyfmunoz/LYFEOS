@@ -590,32 +590,39 @@ export default function DashboardPage() {
         
         <div className="glassmorphic rounded-xl p-4 neon-border">
           <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); saveReflection(); }}>
-            {/* Time settings */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <AlarmClock className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Wake Up Time</span>
-                </label>
-                <CustomTimePicker
-                  value={reflection.wakeTime}
-                  onChange={(value) => updateReflection("wakeTime", value)}
-                  icon={<AlarmClock className="h-4 w-4 text-primary/70" />}
-                  className="w-full"
-                />
-              </div>
+            {/* Sleep Tracker Section */}
+            <div className="mb-3">
+              <h3 className="text-sm flex items-center text-[#7DAAB2] mb-3">
+                <MoonStar className="h-4 w-4 text-primary mr-2" />
+                Sleep Tracker
+              </h3>
               
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <MoonStar className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Sleep Time</span>
-                </label>
-                <CustomTimePicker
-                  value={reflection.sleepTime}
-                  onChange={(value) => updateReflection("sleepTime", value)}
-                  icon={<MoonStar className="h-4 w-4 text-primary/70" />}
-                  className="w-full"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm flex items-center text-[#7DAAB2]">
+                    <AlarmClock className="h-4 w-4 text-primary" />
+                    <span className="ml-2">Wake Up Time</span>
+                  </label>
+                  <CustomTimePicker
+                    value={reflection.wakeTime}
+                    onChange={(value) => updateReflection("wakeTime", value)}
+                    icon={<AlarmClock className="h-4 w-4 text-primary/70" />}
+                    className="w-full"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm flex items-center text-[#7DAAB2]">
+                    <MoonStar className="h-4 w-4 text-primary" />
+                    <span className="ml-2">Sleep Time</span>
+                  </label>
+                  <CustomTimePicker
+                    value={reflection.sleepTime}
+                    onChange={(value) => updateReflection("sleepTime", value)}
+                    icon={<MoonStar className="h-4 w-4 text-primary/70" />}
+                    className="w-full"
+                  />
+                </div>
               </div>
             </div>
             
