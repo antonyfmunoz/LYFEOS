@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { Award, Clock, Zap, Heart, ArrowRight, Info } from "lucide-react";
+import { Award, Clock, Zap, Heart, ArrowRight, Info, BrainCircuit } from "lucide-react";
 import { UserStats } from "@/lib/types";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 
@@ -11,6 +11,7 @@ interface StatsWidgetProps {
 export default function StatsWidget({ stats }: StatsWidgetProps) {
   // Calculate percentage for progress bars
   const xpPercentage = (stats.experience.current / stats.experience.max) * 100;
+  const atPercentage = (stats.attentionTokens.current / stats.attentionTokens.max) * 100;
   const ttPercentage = (stats.timeTokens.current / stats.timeTokens.max) * 100;
   const epPercentage = (stats.energyPoints.current / stats.energyPoints.max) * 100;
   const hpPercentage = (stats.healthPoints.current / stats.healthPoints.max) * 100;
@@ -57,7 +58,42 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
       <div className="border-t border-primary/10 mb-4"></div>
       
       {/* Other Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        {/* Attention Tokens */}
+        <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-3 transition-all cursor-pointer border border-primary/20 relative">
+          <StatInfoDialog
+            trigger={
+              <button className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#9C6ADE]">
+                <Info className="h-4 w-4" />
+              </button>
+            }
+            title="Attention Tokens"
+            titleColor="text-[#9C6ADE]"
+            description="Measures your focus capacity and attention allocation. High-quality focus time and mental clarity increase your Attention Tokens."
+            additionalInfo="Managing your Attention Tokens helps maintain deep focus on important tasks and prevent mental fatigue."
+            statType="attention"
+          />
+          
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center">
+              <BrainCircuit className="h-4 w-4 text-[#9C6ADE] mr-2" />
+              <h3 className="text-sm font-orbitron text-[#D6F4FF]">ATTENTION TOKENS</h3>
+            </div>
+            <div className="mr-6">
+              <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+          </div>
+          <div className="progress-bar progress-at mb-2">
+            <div className="progress-fill" style={{ width: `${atPercentage}%` }}></div>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-[#D6F4FF] font-mono text-base">
+              {Math.round(atPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
+            </span>
+            <span className="text-xs text-[#7DAAB2] self-end">focus</span>
+          </div>
+        </div>
+        
         {/* Time Tokens */}
         <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-3 transition-all cursor-pointer border border-primary/20 relative">
           <StatInfoDialog
