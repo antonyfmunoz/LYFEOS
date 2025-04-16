@@ -11,6 +11,7 @@ import { CustomTimePicker } from "@/components/ui/custom-time-picker";
 import { ObsidianMarkdown } from "@/components/ui/obsidian-markdown";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { WysiwygEditor } from "@/components/ui/wysiwyg-editor";
+import { ContentEditableMarkdown } from "@/components/ui/contenteditable-markdown";
 
 // Define types
 interface TimeBlock {
@@ -682,7 +683,7 @@ export default function DashboardPage() {
                     <span className="ml-2">Gratitude</span>
                   </label>
                   <div className="flex flex-col space-y-2">
-                    <WysiwygEditor
+                    <ContentEditableMarkdown
                       placeholder="What three things are you most grateful for today?"
                       value={reflection.gratitude}
                       onChange={(value) => updateReflection("gratitude", value)}
