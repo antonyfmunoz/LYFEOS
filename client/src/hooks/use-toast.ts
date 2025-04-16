@@ -160,6 +160,11 @@ function toast({ ...props }: Toast) {
       },
     },
   })
+  
+  // Auto-dismiss immediately
+  setTimeout(() => {
+    dispatch({ type: "REMOVE_TOAST", toastId: id })
+  }, TOAST_REMOVE_DELAY)
 
   return {
     id: id,

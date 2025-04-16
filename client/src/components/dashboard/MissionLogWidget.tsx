@@ -50,7 +50,7 @@ export default function MissionLogWidget({
     
     if (event && isCompleting) {
       // Show toast notification for completed mission
-      toast({
+      const { dismiss } = toast({
         title: "Mission Completed",
         description: (
           <div className="flex flex-col space-y-2">
