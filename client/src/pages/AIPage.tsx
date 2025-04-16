@@ -1,31 +1,70 @@
 import { useState, useRef, useEffect } from "react";
 import { useLYFEOS } from "../lib/context";
-import { Bot, Send, ChevronRight, Edit2, Check, X, Sparkles, Brain, Zap, Settings } from "lucide-react";
+import { 
+  Bot, Send, ChevronRight, Edit2, Check, X, Sparkles, Brain, Zap, Settings, 
+  PlusCircle, Trash2, MessageSquare, MoreVertical
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import { AIMessage, ChatSession } from "../lib/types";
 
 export default function AIPage() {
-  const { messages, sendMessage, aiCompanionName, setAICompanionName } = useLYFEOS();
+  const { 
+    messages, 
+    chatSessions, 
+    activeChatSessionId, 
+    sendMessageInSession, 
+    createChatSession, 
+    deleteChatSession, 
+    setActiveChatSession, 
+    updateChatSessionTitle,
+    aiCompanionName, 
+    setAICompanionName 
+  } = useLYFEOS();
+  
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(aiCompanionName);
+  const [isCreatingChat, setIsCreatingChat] = useState(false);
+  const [newChatTitle, setNewChatTitle] = useState("");
+  const [isEditingChatTitle, setIsEditingChatTitle] = useState(false);
+  const [chatTitleInput, setChatTitleInput] = useState("");
+  const [editingChatId, setEditingChatId] = useState("");
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const newChatInputRef = useRef<HTMLInputElement>(null);
+  const editChatInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  
+  // Get active chat session
+  const activeChat = chatSessions.find(chat => chat.id === activeChatSessionId);
   
   // Scroll to bottom of messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [activeChat?.messages]);
   
-  // Focus the name input field when editing
+  // Focus input fields when editing
   useEffect(() => {
     if (isEditingName && nameInputRef.current) {
       nameInputRef.current.focus();
     }
-  }, [isEditingName]);
+    if (isCreatingChat && newChatInputRef.current) {
+      newChatInputRef.current.focus();
+    }
+    if (isEditingChatTitle && editChatInputRef.current) {
+      editChatInputRef.current.focus();
+    }
+  }, [isEditingName, isCreatingChat, isEditingChatTitle]);
   
   const handleSaveName = () => {
     if (nameInput.trim()) {
@@ -41,10 +80,41 @@ export default function AIPage() {
     }
   };
   
+  // For backward compatibility with existing code
+  const sendMessage = (content: string) => {
+    if (activeChatSessionId) {
+      sendMessageInSession(activeChatSessionId, content);
+    }
+  };
+
+  const handleCreateChat = () => {
+    if (newChatTitle.trim()) {
+      const newChat = createChatSession(newChatTitle);
+      setActiveChatSession(newChat.id);
+      setNewChatTitle("");
+      setIsCreatingChat(false);
+    }
+  };
+  
+  const handleUpdateChatTitle = () => {
+    if (chatTitleInput.trim() && editingChatId) {
+      updateChatSessionTitle(editingChatId, chatTitleInput);
+      setIsEditingChatTitle(false);
+      setEditingChatId("");
+      setChatTitleInput("");
+    }
+  };
+  
+  const handleStartEditingChat = (chat: ChatSession) => {
+    setEditingChatId(chat.id);
+    setChatTitleInput(chat.title);
+    setIsEditingChatTitle(true);
+  };
+  
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputText.trim()) {
-      sendMessage(inputText);
+    if (inputText.trim() && activeChatSessionId) {
+      sendMessageInSession(activeChatSessionId, inputText);
       setInputText("");
       
       // Show loading indicator
@@ -128,14 +198,176 @@ export default function AIPage() {
       
       {/* Main Chat Area */}
       <div className="flex-grow flex">
-        {/* Left Sidebar - Quick Prompts */}
-        <div className="hidden lg:block w-60 mr-6 pr-4 border-r border-purple-500/20">
+        {/* Left Sidebar - Chat Sessions & Quick Prompts */}
+        <div className="hidden lg:flex flex-col w-60 mr-6 pr-4 border-r border-purple-500/20">
+          {/* Chat Sessions */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-[#D6F4FF]">Chats</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 text-[#7DAAB2] hover:text-purple-400 hover:bg-purple-500/20 rounded-full"
+                onClick={() => setIsCreatingChat(true)}
+              >
+                <PlusCircle className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            {isCreatingChat ? (
+              <div className="flex items-center mb-2">
+                <Input
+                  ref={newChatInputRef}
+                  value={newChatTitle}
+                  onChange={(e) => setNewChatTitle(e.target.value)}
+                  className="h-8 text-sm bg-slate-700/30 border-purple-500/30 focus-visible:ring-purple-500/30 mr-2"
+                  placeholder="New chat name"
+                  maxLength={30}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleCreateChat();
+                    } else if (e.key === 'Escape') {
+                      setIsCreatingChat(false);
+                      setNewChatTitle("");
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleCreateChat}
+                  className="h-7 w-7 p-0 text-purple-400 hover:bg-purple-500/20"
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setIsCreatingChat(false);
+                    setNewChatTitle("");
+                  }}
+                  className="h-7 w-7 p-0 text-[#7DAAB2] hover:bg-red-500/20 ml-1"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : null}
+            
+            <div className="space-y-1 max-h-[200px] overflow-y-auto custom-scrollbar">
+              {chatSessions.map((chat) => (
+                <div key={chat.id} className="relative group">
+                  {isEditingChatTitle && editingChatId === chat.id ? (
+                    <div className="flex items-center mb-1">
+                      <Input
+                        ref={editChatInputRef}
+                        value={chatTitleInput}
+                        onChange={(e) => setChatTitleInput(e.target.value)}
+                        className="h-8 text-sm bg-slate-700/30 border-purple-500/30 focus-visible:ring-purple-500/30 mr-2"
+                        placeholder="Chat name"
+                        maxLength={30}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleUpdateChatTitle();
+                          } else if (e.key === 'Escape') {
+                            setIsEditingChatTitle(false);
+                            setEditingChatId("");
+                            setChatTitleInput("");
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={handleUpdateChatTitle}
+                        className="h-7 w-7 p-0 text-purple-400 hover:bg-purple-500/20"
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setIsEditingChatTitle(false);
+                          setEditingChatId("");
+                          setChatTitleInput("");
+                        }}
+                        className="h-7 w-7 p-0 text-[#7DAAB2] hover:bg-red-500/20 ml-1"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div 
+                      className={`flex items-center justify-between px-2 py-2 rounded hover:bg-slate-800/50 cursor-pointer ${
+                        chat.id === activeChatSessionId ? 'bg-purple-500/10 border border-purple-500/20' : ''
+                      }`}
+                      onClick={() => setActiveChatSession(chat.id)}
+                    >
+                      <div className="flex items-center flex-grow overflow-hidden mr-2">
+                        <MessageSquare className="h-4 w-4 mr-2 text-purple-400 flex-shrink-0" />
+                        <span className="text-sm truncate pr-2">{chat.title}</span>
+                      </div>
+                      
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-[#7DAAB2] hover:text-white hover:bg-slate-700/50 rounded-full"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreVertical className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-[#0F1923] border border-purple-500/20">
+                          <DropdownMenuItem 
+                            className="text-[#D6F4FF] hover:bg-purple-500/10 focus:bg-purple-500/10 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStartEditingChat(chat);
+                            }}
+                          >
+                            <Edit2 className="h-3.5 w-3.5 mr-2 text-purple-400" />
+                            Rename
+                          </DropdownMenuItem>
+                          
+                          <DropdownMenuItem 
+                            className="text-red-400 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-400 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteChatSession(chat.id);
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          {/* Quick Prompts Section */}
           <h3 className="text-sm font-semibold mb-3 text-[#D6F4FF]">Quick Prompts</h3>
           
           <div className="space-y-2">
             <Button 
               variant="ghost" 
               className="w-full justify-start text-sm h-auto py-2 px-3 bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20"
+              onClick={() => {
+                setInputText("Analyze my day and suggest focus areas.");
+                if (activeChatSessionId) {
+                  sendMessageInSession(activeChatSessionId, "Analyze my day and suggest focus areas.");
+                }
+              }}
             >
               <Brain className="h-4 w-4 mr-2 text-purple-400" />
               <span className="text-left">Analyze my day</span>
@@ -144,6 +376,12 @@ export default function AIPage() {
             <Button 
               variant="ghost" 
               className="w-full justify-start text-sm h-auto py-2 px-3 bg-slate-700/30 hover:bg-slate-700/50"
+              onClick={() => {
+                setInputText("Generate 3 creative ideas for my current challenge.");
+                if (activeChatSessionId) {
+                  sendMessageInSession(activeChatSessionId, "Generate 3 creative ideas for my current challenge.");
+                }
+              }}
             >
               <Sparkles className="h-4 w-4 mr-2 text-purple-400" />
               <span className="text-left">Generate creative ideas</span>
@@ -152,6 +390,12 @@ export default function AIPage() {
             <Button 
               variant="ghost" 
               className="w-full justify-start text-sm h-auto py-2 px-3 bg-slate-700/30 hover:bg-slate-700/50"
+              onClick={() => {
+                setInputText("Optimize my schedule to maximize productivity.");
+                if (activeChatSessionId) {
+                  sendMessageInSession(activeChatSessionId, "Optimize my schedule to maximize productivity.");
+                }
+              }}
             >
               <Zap className="h-4 w-4 mr-2 text-purple-400" />
               <span className="text-left">Optimize my schedule</span>
@@ -163,7 +407,7 @@ export default function AIPage() {
         <div className="flex-grow flex flex-col glassmorphic rounded-xl p-4 neon-border-purple h-full">
           {/* Messages area */}
           <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar">
-            {messages.length === 0 ? (
+            {!activeChat || activeChat.messages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-6">
                 <div className="w-16 h-16 rounded-full bg-purple-500/20 flex items-center justify-center mb-4">
                   <Bot className="h-8 w-8 text-purple-400" />
@@ -202,7 +446,7 @@ export default function AIPage() {
               </div>
             ) : (
               <div className="flex flex-col space-y-6 pt-2">
-                {messages.map((message) => (
+                {activeChat.messages.map((message) => (
                   <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`flex max-w-[90%] lg:max-w-[70%]`}>
                       {message.sender === 'ai' && (
