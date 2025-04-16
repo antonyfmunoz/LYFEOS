@@ -1,230 +1,96 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
+ 
 @layer base {
   :root {
-    --background: 222 47% 5%;
-    --foreground: 192 100% 92%;
-    
-    --card: 218 48% 12%;
-    --card-foreground: 192 100% 92%;
-    
-    --popover: 218 48% 12%;
-    --popover-foreground: 192 100% 92%;
-    
+    --background: 195 100% 5%;
+    --foreground: 195 10% 95%;
+    --card: 195 80% 8%;
+    --card-foreground: 195 10% 95%;
+    --popover: 195 80% 8%;
+    --popover-foreground: 195 10% 95%;
     --primary: 188 100% 50%;
-    --primary-foreground: 222 47% 5%;
-    
-    --secondary: 262 100% 68%;
-    --secondary-foreground: 218 48% 12%;
-    
-    --accent: 338 100% 68%;
-    --accent-foreground: 218 48% 12%;
-    
-    --muted: 218 30% 30%;
-    --muted-foreground: 188 20% 70%;
-    
-    --destructive: 350 100% 60%;
-    --destructive-foreground: 192 100% 92%;
-    
-    --border: 188 100% 50% / 0.2;
-    --input: 188 100% 50% / 0.2;
-    --ring: 188 100% 50% / 0.5;
-
-    --radius: 0.5rem;
+    --primary-foreground: 188 10% 5%;
+    --secondary: 188 50% 20%;
+    --secondary-foreground: 188 10% 95%;
+    --muted: 188 30% 15%;
+    --muted-foreground: 188 10% 70%;
+    --accent: 188 50% 20%;
+    --accent-foreground: 188 10% 95%;
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 10 10% 95%;
+    --border: 188 30% 20%;
+    --input: 188 30% 20%;
+    --ring: 188 100% 50%;
+    --radius: 0.75rem;
   }
-  
+}
+ 
+@layer base {
   * {
     @apply border-border;
   }
-  
   body {
-    @apply font-sans antialiased bg-background text-foreground;
-    background-color: #030B17;
-    color: #D6F4FF;
-  }
-  
-  /* Glassmorphic effect */
-  .glassmorphic {
-    @apply bg-card/70 backdrop-blur-md border border-primary/20;
-  }
-
-  /* Neon border */
-  .neon-border {
-    @apply shadow-[0_0_5px_rgba(0,224,255,0.3)] border border-primary/30;
-  }
-  
-  /* Neon glow for profile icon */
-  .neon-glow {
-    @apply transition-all duration-300;
-    box-shadow: 0 0 5px rgba(0, 224, 255, 0.5), 0 0 10px rgba(0, 224, 255, 0.3);
-  }
-  
-  .neon-glow:hover, .neon-glow:focus {
-    box-shadow: 0 0 10px rgba(0, 224, 255, 0.7), 0 0 20px rgba(0, 224, 255, 0.5);
-  }
-
-  /* Progress bar styling for stats */
-  .progress-bar {
-    @apply h-2 bg-card/70 rounded-full overflow-hidden relative;
-  }
-
-  .progress-fill {
-    @apply h-full rounded-full relative transition-all duration-500;
-  }
-
-  .progress-fill::after {
-    content: '';
-    @apply absolute inset-0 rounded-full shadow-[0_0_10px_rgba(0,224,255,0.7)] z-10;
-  }
-
-  .progress-tt .progress-fill {
-    @apply bg-gradient-to-r from-primary/70 to-primary;
-  }
-
-  .progress-ep .progress-fill {
-    @apply bg-gradient-to-r from-secondary/70 to-secondary;
-  }
-
-  .progress-hp .progress-fill {
-    @apply bg-gradient-to-r from-accent/70 to-accent;
-  }
-
-  .progress-xp .progress-fill {
-    @apply bg-gradient-to-r from-emerald-400/70 to-emerald-400;
-  }
-
-  /* Custom checkbox */
-  .custom-checkbox {
-    @apply appearance-none w-5 h-5 rounded border border-primary/30 bg-transparent relative cursor-pointer outline-none;
-  }
-
-  .custom-checkbox:checked {
-    @apply bg-primary/20 border-primary/70 shadow-[0_0_8px_rgba(0,224,255,0.5)];
-  }
-
-  .custom-checkbox:checked::after {
-    content: '✓';
-    @apply absolute text-primary text-sm top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2;
-  }
-
-  /* Scrollbar styling */
-  ::-webkit-scrollbar {
-    @apply w-1.5;
-  }
-
-  ::-webkit-scrollbar-track {
-    @apply bg-card/50;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    @apply bg-primary/50 rounded-full;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-primary/70;
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
-/* Custom styling for time inputs */
-input[type="time"] {
-  @apply bg-[#00141A] border border-primary/30 text-[#D6F4FF] rounded-md py-2 px-3;
-  color-scheme: dark;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
+/* Glassmorphic effect */
+.glassmorphic {
+  backdrop-filter: blur(10px);
+  background: rgba(0, 20, 26, 0.7);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 224, 255, 0.1);
 }
 
-/* Create a custom time selector */
-input[type="time"]::-webkit-datetime-edit {
-  @apply text-[#D6F4FF] font-mono;
-  padding: 1px;
+/* Neon border effect */
+.neon-border {
+  box-shadow: 0 0 5px rgba(0, 224, 255, 0.3), inset 0 0 5px rgba(0, 224, 255, 0.1);
+  border: 1px solid rgba(0, 224, 255, 0.3);
 }
 
-input[type="time"]::-webkit-datetime-edit-fields-wrapper {
-  @apply text-[#D6F4FF];
+/* Futuristic font */
+@font-face {
+  font-family: 'Orbitron';
+  src: url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&display=swap');
 }
 
-input[type="time"]::-webkit-datetime-edit-text {
-  @apply text-primary;
+.font-orbitron {
+  font-family: 'Orbitron', sans-serif;
 }
 
-input[type="time"]::-webkit-datetime-edit-hour-field,
-input[type="time"]::-webkit-datetime-edit-minute-field,
-input[type="time"]::-webkit-datetime-edit-ampm-field {
-  @apply bg-[#001C26] py-0.5 px-1 rounded border border-primary/10;
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-input[type="time"]::-webkit-calendar-picker-indicator {
-  filter: invert(1) brightness(0.8) sepia(100%) saturate(500%) hue-rotate(170deg);
-  opacity: 0.7;
+::-webkit-scrollbar-track {
+  background: rgba(0, 20, 26, 0.4);
 }
 
-input[type="time"]:focus {
-  @apply outline-none border-primary/50 shadow-[0_0_8px_rgba(0,224,255,0.3)];
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 224, 255, 0.3);
+  border-radius: 3px;
 }
 
-/* Custom time selector keyboard focus */
-input[type="time"]::-webkit-datetime-edit-hour-field:focus,
-input[type="time"]::-webkit-datetime-edit-minute-field:focus,
-input[type="time"]::-webkit-datetime-edit-ampm-field:focus {
-  @apply bg-primary/10 shadow-[0_0_5px_rgba(0,224,255,0.5)] border-primary/40;
-  color: #00E0FF;
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 224, 255, 0.5);
 }
 
-/* Style the time picker popup - as much as browsers allow */
-::-webkit-time-picker,
-::-webkit-datetime-edit-popup,
-::-webkit-calendar-picker,
-::-webkit-datetime-picker,
-::-webkit-time-picker-popup {
-  @apply bg-[#001824] border border-primary/30 shadow-[0_0_15px_rgba(0,224,255,0.2)];
-  color-scheme: dark;
+/* Time Picker Fixes - Ensure Proper Layering */
+.time-block-container, 
+.dashboard-container, 
+.reflection-section,
+section {
+  overflow: visible !important;
+  position: relative;
 }
 
-/* Attempt to style specific browser time picker elements */
-::-webkit-time-picker-hour-field,
-::-webkit-time-picker-minute-field,
-::-webkit-time-picker-ampm-field,
-::-webkit-time-picker-second-field {
-  @apply bg-[#002637] text-[#D6F4FF] border border-primary/20;
-}
-
-/* Style for time picker (Chrome specific hacks) */
-input[type="time"]::-webkit-calendar-picker-indicator:hover {
-  filter: invert(1) brightness(1) sepia(100%) saturate(500%) hue-rotate(170deg);
-  opacity: 1;
-}
-
-/* Remove system UI from time inputs for better styling control */
-input[type="time"]::-webkit-inner-spin-button, 
-input[type="time"]::-webkit-calendar-picker-indicator {
-  position: absolute;
-  right: 0;
-  height: 100%;
-  width: 2.5rem;
-  background: linear-gradient(90deg, rgba(0,28,38,0) 0%, rgba(0,28,38,0.5) 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-left: 1px solid rgba(0,224,255,0.1);
-}
-
-/* For Firefox */
-@-moz-document url-prefix() {
-  input[type="time"] {
-    @apply bg-[#00141A] border border-primary/30 text-[#D6F4FF] py-2 px-3;
-    border-radius: 0.375rem;
-  }
-}
-
-@layer utilities {
-  .font-orbitron {
-    font-family: 'Orbitron', sans-serif;
-  }
-
-  .font-mono {
-    font-family: 'JetBrains Mono', monospace;
-  }
+/* Force time picker dropdown to top layer */
+.custom-time-picker-dropdown {
+  position: absolute !important;
+  z-index: 9999 !important;
 }

@@ -537,7 +537,7 @@ export default function DashboardPage() {
         </div>
         
         {/* Add New Block Section */}
-        <div className="mt-4 glassmorphic rounded-xl p-4 neon-border">
+        <div className="mt-4 glassmorphic rounded-xl p-4 neon-border time-block-container" style={{ overflow: 'visible' }}>
           <h3 className="font-medium text-[#D6F4FF] mb-3 flex items-center">
             <PlusCircle className="h-4 w-4 mr-2 text-primary" />
             Add New Time Block
@@ -580,7 +580,7 @@ export default function DashboardPage() {
       </section>
       
       {/* Reflection & Calibration Panel */}
-      <section className="mb-6">
+      <section className="mb-6 reflection-section">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-orbitron flex items-center">
             <Brain className="h-5 w-5 text-primary mr-2" />
@@ -588,7 +588,7 @@ export default function DashboardPage() {
           </h2>
         </div>
         
-        <div className="glassmorphic rounded-xl p-4 neon-border">
+        <div className="glassmorphic rounded-xl p-4 neon-border" style={{ overflow: 'visible' }}>
           <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); saveReflection(); }}>
             {/* Time settings */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
@@ -720,7 +720,7 @@ export default function DashboardPage() {
       </section>
       
       {/* Daily Log Panel - Separate Widget */}
-      <section className="mb-6">
+      <section className="mb-6 daily-log-section">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-orbitron flex items-center">
             <BookOpen className="h-5 w-5 text-primary mr-2" />
@@ -728,7 +728,7 @@ export default function DashboardPage() {
           </h2>
         </div>
         
-        <div className="glassmorphic rounded-xl p-4 neon-border">
+        <div className="glassmorphic rounded-xl p-4 neon-border" style={{ overflow: 'visible' }}>
           <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); saveReflection(); }}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Today's Thoughts */}
