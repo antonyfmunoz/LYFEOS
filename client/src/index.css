@@ -55,6 +55,20 @@
     @apply shadow-[0_0_5px_rgba(0,224,255,0.3)] border border-primary/30;
   }
   
+  /* Purple neon border */
+  .neon-border-purple {
+    @apply shadow-[0_0_5px_rgba(156,106,222,0.3)] border border-purple-500/30;
+  }
+  
+  /* Custom scrollbar with purple theme */
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-purple-500/50 rounded-full;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-purple-500/70;
+  }
+  
   /* Neon glow for profile icon */
   .neon-glow {
     @apply transition-all duration-300;
