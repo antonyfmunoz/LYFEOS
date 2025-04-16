@@ -17,16 +17,17 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
   return (
     <div className="glassmorphic rounded-xl p-4 neon-border">
       {/* Experience Bar */}
-      <div className="mb-5">
+      <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-3 transition-all cursor-pointer border border-primary/20 mb-5">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center">
-            <Award className="h-5 w-5 text-[#36F1CD] mr-2" />
+            <Award className="h-4 w-4 text-[#36F1CD] mr-2" />
             <h3 className="font-orbitron text-[#D6F4FF] text-sm">LEVEL PROGRESS</h3>
           </div>
-          <div className="text-right">
-            <span className="bg-[#36F1CD] bg-opacity-20 text-[#36F1CD] px-2 py-1 rounded-md text-xs font-orbitron">
+          <div className="flex items-center">
+            <span className="bg-[#36F1CD] bg-opacity-20 text-[#36F1CD] px-2 py-1 rounded-md text-xs font-orbitron mr-2">
               LEVEL {stats.experience.level}
             </span>
+            <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
         </div>
         <div className="progress-bar progress-xp mb-2">
@@ -44,7 +45,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
       {/* Other Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Time Tokens */}
-        <div className="stat-block group hover:bg-primary/5 rounded-lg p-3 transition-all cursor-pointer">
+        <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-3 transition-all cursor-pointer border border-primary/20">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
               <Clock className="h-4 w-4 text-primary mr-2" />
@@ -64,7 +65,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
         </div>
         
         {/* Energy Points */}
-        <div className="stat-block group hover:bg-primary/5 rounded-lg p-3 transition-all cursor-pointer">
+        <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-3 transition-all cursor-pointer border border-primary/20">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
               <Zap className="h-4 w-4 text-[#FCD34D] mr-2" />
@@ -84,7 +85,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
         </div>
         
         {/* Health Points */}
-        <div className="stat-block group hover:bg-primary/5 rounded-lg p-3 transition-all cursor-pointer">
+        <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-3 transition-all cursor-pointer border border-primary/20">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
               <Heart className="h-4 w-4 text-[#EC4899] mr-2" />
