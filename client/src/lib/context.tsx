@@ -104,6 +104,8 @@ interface LYFEOSContextType {
   sendMessage: (content: string) => void;
   username: string;
   setUsername: (name: string) => void;
+  aiCompanionName: string;
+  setAICompanionName: (name: string) => void;
   addEvent: (event: Omit<CalendarEvent, "id">) => void;
   updateEvent: (id: string, eventData: Partial<CalendarEvent>) => void;
   deleteEvent: (id: string) => void;
@@ -135,6 +137,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
   const [missionPages, setMissionPages] = useState<MissionPage[]>(initialMissionPages);
   const [username, setUsername] = useState<string>("Alex Chen");
+  const [aiCompanionName, setAICompanionName] = useState<string>("Nova");
 
   // Toggle quest completion
   const toggleQuestCompletion = (id: string) => {
@@ -415,6 +418,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         sendMessage,
         username,
         setUsername,
+        aiCompanionName,
+        setAICompanionName,
         addEvent,
         updateEvent,
         deleteEvent,

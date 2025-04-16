@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Bot, X, Send, Sparkles } from "lucide-react";
+import { Bot, X, Send, Sparkles, Edit2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -10,8 +10,10 @@ export function AIAgentFAB() {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState("");
   const { toast } = useToast();
-  const { messages, sendMessage, stats } = useLYFEOS();
+  const { messages, sendMessage, stats, aiCompanionName, setAICompanionName } = useLYFEOS();
   
   // Toggle the AI chat panel
   const toggleChat = () => {
