@@ -21,6 +21,7 @@ import {
   Zap
 } from "lucide-react";
 import MissionLogWidget from "@/components/dashboard/MissionLogWidget";
+import EnhancedMissionWidget from "@/components/dashboard/EnhancedMissionWidget";
 import MissionLogSystem from "@/components/dashboard/MissionLogSystem";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
