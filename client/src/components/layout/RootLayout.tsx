@@ -156,9 +156,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
       
       {/* Mobile navigation */}
       <MobileNav currentPage={currentPage} />
-      
-      {/* Quick Action Menu */}
-      <QuickActionMenu />
     </div>
   );
 }

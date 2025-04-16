@@ -1,5 +1,6 @@
 import { useLYFEOS } from "../lib/context";
 import QuestItem from "../components/dashboard/QuestItem";
+import { AIAgentFAB } from "../components/ui/ai-agent-fab";
 
 export default function QuestsPage() {
   const { quests, toggleQuestCompletion } = useLYFEOS();
@@ -9,6 +10,8 @@ export default function QuestsPage() {
 
   return (
     <>
+      <AIAgentFAB />
+      
       <div className="mb-6">
         <h1 className="text-2xl font-orbitron mb-1">Quests</h1>
         <p className="text-[#7DAAB2]">Complete quests to earn XP and reach your goals.</p>
