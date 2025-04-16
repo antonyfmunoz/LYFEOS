@@ -122,23 +122,21 @@ export default function MissionLogWidget({
                             checked={isCompleted}
                             onCheckedChange={() => toggleMission(event.id)}
                           />
-                          <div>
-                            <div className="flex items-center">
+                          <div className="ml-1 flex-grow">
+                            <div className="flex justify-between">
                               <h3 className={`font-orbitron text-base ${isCompleted ? 'line-through text-[#7DAAB2]' : 'text-[#D6F4FF]'}`}>
                                 {event.title}
                               </h3>
-                              <span className="ml-2 text-xs font-mono text-[#7DAAB2]">{event.startTime}</span>
+                              <div className="flex items-center">
+                                <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
+                                <span className="text-primary text-xs font-mono">+15 XP</span>
+                              </div>
                             </div>
                             <p className={`text-xs text-[#7DAAB2] mt-0.5 ${isCompleted ? 'line-through' : ''}`}>
                               {event.category === 'work' ? 'Conference Room 3' : 
-                              event.category === 'health' ? 'Gym' : 'Virtual'} | {event.duration}
+                              event.category === 'health' ? 'Gym' : 'Virtual'} | {event.duration} | {event.startTime}
                             </p>
                           </div>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <span className="text-red-400 text-xs font-mono">-5 EP</span>
-                          <span className="mx-1 text-[#7DAAB2]">•</span>
-                          <span className="text-primary text-xs font-mono">+15 XP</span>
                         </div>
                       </div>
                     </div>
@@ -219,9 +217,15 @@ export default function MissionLogWidget({
                       }`}></div>
                       
                       {/* Mission Info */}
-                      <div className="mission-info flex flex-col ml-3">
-                        <div className={`mission-title text-base font-semibold mb-1.5 ${isCompleted ? 'line-through' : ''} text-white`}>
-                          {event.title}
+                      <div className="mission-info flex-grow flex flex-col ml-3">
+                        <div className="flex justify-between">
+                          <div className={`mission-title text-base font-semibold mb-1.5 ${isCompleted ? 'line-through' : ''} text-white`}>
+                            {event.title}
+                          </div>
+                          <div className="flex items-center">
+                            <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
+                            <span className="text-primary text-xs font-mono">+15 XP</span>
+                          </div>
                         </div>
                         
                         <div className={`mission-subtext text-sm ${isCompleted ? 'line-through' : ''} text-[#8aaac2]`}>
@@ -229,13 +233,6 @@ export default function MissionLogWidget({
                           event.category === 'health' ? 'Gym' : 'Virtual'} | {event.duration}
                         </div>
                       </div>
-                    </div>
-                    
-                    {/* EP/XP Text */}
-                    <div className="flex items-center space-x-1 h-fit mt-1.5">
-                      <span className="text-red-400 text-xs font-mono">-5 EP</span>
-                      <span className="mx-1 text-[#7DAAB2]">•</span>
-                      <span className="text-primary text-xs font-mono">+15 XP</span>
                     </div>
                   </li>
                 );
