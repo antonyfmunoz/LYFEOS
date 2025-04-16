@@ -715,9 +715,11 @@ export default function DashboardPage() {
                     />
                     {reflection.tomorrowGoals && (
                       <div className="p-3 rounded-md bg-primary/5 border border-primary/10">
-                        <ReactMarkdown className="text-[#D6F4FF] prose prose-invert prose-sm max-w-none">
-                          {reflection.tomorrowGoals}
-                        </ReactMarkdown>
+                        <div className="text-[#D6F4FF] prose prose-invert prose-sm max-w-none">
+                          <ReactMarkdown>
+                            {reflection.tomorrowGoals}
+                          </ReactMarkdown>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -738,9 +740,11 @@ export default function DashboardPage() {
                     />
                     {reflection.annualGoals && (
                       <div className="p-3 rounded-md bg-primary/5 border border-primary/10">
-                        <ReactMarkdown className="text-[#D6F4FF] prose prose-invert prose-sm max-w-none">
-                          {reflection.annualGoals}
-                        </ReactMarkdown>
+                        <div className="text-[#D6F4FF] prose prose-invert prose-sm max-w-none">
+                          <ReactMarkdown>
+                            {reflection.annualGoals}
+                          </ReactMarkdown>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -782,12 +786,23 @@ export default function DashboardPage() {
                   <Brain className="h-4 w-4 text-primary" />
                   <span className="ml-2">Today's Thoughts</span>
                 </label>
-                <Textarea
-                  placeholder="Ideas worth saving..."
-                  className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
-                  value={reflection.thoughts}
-                  onChange={(e) => updateReflection("thoughts", e.target.value)}
-                />
+                <div className="flex flex-col space-y-2">
+                  <Textarea
+                    placeholder="Ideas worth saving... Supports markdown formatting."
+                    className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
+                    value={reflection.thoughts}
+                    onChange={(e) => updateReflection("thoughts", e.target.value)}
+                  />
+                  {reflection.thoughts && (
+                    <div className="p-3 rounded-md bg-primary/5 border border-primary/10">
+                      <div className="text-[#D6F4FF] prose prose-invert prose-sm max-w-none">
+                        <ReactMarkdown>
+                          {reflection.thoughts}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               
               {/* Content Consumed */}
@@ -796,12 +811,23 @@ export default function DashboardPage() {
                   <Book className="h-4 w-4 text-primary" />
                   <span className="ml-2">Content Consumed</span>
                 </label>
-                <Textarea
-                  placeholder="Books, podcasts, videos..."
-                  className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
-                  value={reflection.contentConsumed}
-                  onChange={(e) => updateReflection("contentConsumed", e.target.value)}
-                />
+                <div className="flex flex-col space-y-2">
+                  <Textarea
+                    placeholder="Books, podcasts, videos... Supports markdown."
+                    className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
+                    value={reflection.contentConsumed}
+                    onChange={(e) => updateReflection("contentConsumed", e.target.value)}
+                  />
+                  {reflection.contentConsumed && (
+                    <div className="p-3 rounded-md bg-primary/5 border border-primary/10">
+                      <div className="text-[#D6F4FF] prose prose-invert prose-sm max-w-none">
+                        <ReactMarkdown>
+                          {reflection.contentConsumed}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               
               {/* Today's Research */}
@@ -810,12 +836,23 @@ export default function DashboardPage() {
                   <BookOpen className="h-4 w-4 text-primary" />
                   <span className="ml-2">Today's Research</span>
                 </label>
-                <Textarea
-                  placeholder="Summarize learnings or add links..."
-                  className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
-                  value={reflection.research}
-                  onChange={(e) => updateReflection("research", e.target.value)}
-                />
+                <div className="flex flex-col space-y-2">
+                  <Textarea
+                    placeholder="Summarize learnings or add links... Markdown supported."
+                    className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
+                    value={reflection.research}
+                    onChange={(e) => updateReflection("research", e.target.value)}
+                  />
+                  {reflection.research && (
+                    <div className="p-3 rounded-md bg-primary/5 border border-primary/10">
+                      <div className="text-[#D6F4FF] prose prose-invert prose-sm max-w-none">
+                        <ReactMarkdown>
+                          {reflection.research}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               
               {/* New To-Do-List Ideas */}
@@ -824,12 +861,23 @@ export default function DashboardPage() {
                   <ListChecks className="h-4 w-4 text-primary" />
                   <span className="ml-2">New To-Do-List Ideas</span>
                 </label>
-                <Textarea
-                  placeholder="Add to Brain Dump..."
-                  className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
-                  value={reflection.todoIdeas}
-                  onChange={(e) => updateReflection("todoIdeas", e.target.value)}
-                />
+                <div className="flex flex-col space-y-2">
+                  <Textarea
+                    placeholder="Add to Brain Dump... Markdown supported for lists and formatting."
+                    className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
+                    value={reflection.todoIdeas}
+                    onChange={(e) => updateReflection("todoIdeas", e.target.value)}
+                  />
+                  {reflection.todoIdeas && (
+                    <div className="p-3 rounded-md bg-primary/5 border border-primary/10">
+                      <div className="text-[#D6F4FF] prose prose-invert prose-sm max-w-none">
+                        <ReactMarkdown>
+                          {reflection.todoIdeas}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             
