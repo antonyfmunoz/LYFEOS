@@ -514,9 +514,8 @@ export default function DashboardPage() {
       
       {/* Mission Log Panel */}
       <section className="mb-6">
-        <MissionLogWidget 
+        <EnhancedMissionWidget 
           events={events} 
-          questStyle={true} 
           maxHeight="96"
         />
       </section>
