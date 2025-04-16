@@ -681,9 +681,7 @@ export default function DashboardPage() {
                   </label>
                   <div className="flex flex-col space-y-2">
                     <Textarea
-                      placeholder="- Item 1 I'm grateful for
-- Item 2 I'm grateful for
-- **Bold text** and *italic* supported"
+                      placeholder="What three things are you most grateful for today?"
                       className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[80px]"
                       value={reflection.gratitude}
                       onChange={(e) => updateReflection("gratitude", e.target.value)}
@@ -708,7 +706,7 @@ export default function DashboardPage() {
                   </label>
                   <div className="flex flex-col space-y-2">
                     <Textarea
-                      placeholder="What do you want to accomplish tomorrow? Markdown supported."
+                      placeholder="What three things do you want to accomplish tomorrow?"
                       className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[60px]"
                       value={reflection.tomorrowGoals}
                       onChange={(e) => updateReflection("tomorrowGoals", e.target.value)}
@@ -733,7 +731,7 @@ export default function DashboardPage() {
                   </label>
                   <div className="flex flex-col space-y-2">
                     <Textarea
-                      placeholder="Your big targets for the year. Supports markdown formatting."
+                      placeholder="What are your three big targets for the year?"
                       className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[80px]"
                       value={reflection.annualGoals}
                       onChange={(e) => updateReflection("annualGoals", e.target.value)}
@@ -788,7 +786,7 @@ export default function DashboardPage() {
                 </label>
                 <div className="flex flex-col space-y-2">
                   <Textarea
-                    placeholder="Ideas worth saving... Supports markdown formatting."
+                    placeholder="Ideas worth saving..."
                     className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
                     value={reflection.thoughts}
                     onChange={(e) => updateReflection("thoughts", e.target.value)}
@@ -813,7 +811,7 @@ export default function DashboardPage() {
                 </label>
                 <div className="flex flex-col space-y-2">
                   <Textarea
-                    placeholder="Books, podcasts, videos... Supports markdown."
+                    placeholder="Books, podcasts, videos..."
                     className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
                     value={reflection.contentConsumed}
                     onChange={(e) => updateReflection("contentConsumed", e.target.value)}
@@ -838,7 +836,7 @@ export default function DashboardPage() {
                 </label>
                 <div className="flex flex-col space-y-2">
                   <Textarea
-                    placeholder="Summarize learnings or add links... Markdown supported."
+                    placeholder="Summarize learnings or add links..."
                     className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
                     value={reflection.research}
                     onChange={(e) => updateReflection("research", e.target.value)}
@@ -863,7 +861,7 @@ export default function DashboardPage() {
                 </label>
                 <div className="flex flex-col space-y-2">
                   <Textarea
-                    placeholder="Add to Brain Dump... Markdown supported for lists and formatting."
+                    placeholder="Add to Brain Dump..."
                     className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[100px]"
                     value={reflection.todoIdeas}
                     onChange={(e) => updateReflection("todoIdeas", e.target.value)}
