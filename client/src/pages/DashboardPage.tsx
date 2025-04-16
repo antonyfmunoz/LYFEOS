@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { CustomTimePicker } from "@/components/ui/custom-time-picker";
+import ReactMarkdown from 'react-markdown';
 
 // Define types
 interface TimeBlock {
@@ -678,14 +679,25 @@ export default function DashboardPage() {
                     <Smile className="h-4 w-4 text-primary" />
                     <span className="ml-2">Gratitude</span>
                   </label>
-                  <Textarea
-                    placeholder="- 
-- 
--"
-                    className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[80px]"
-                    value={reflection.gratitude}
-                    onChange={(e) => updateReflection("gratitude", e.target.value)}
-                  />
+                  <div className="flex flex-col space-y-2">
+                    <Textarea
+                      placeholder="- Item 1 I'm grateful for
+- Item 2 I'm grateful for
+- **Bold text** and *italic* supported"
+                      className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[80px]"
+                      value={reflection.gratitude}
+                      onChange={(e) => updateReflection("gratitude", e.target.value)}
+                    />
+                    {reflection.gratitude && (
+                      <div className="p-3 rounded-md bg-primary/5 border border-primary/10">
+                        <div className="text-[#D6F4FF] prose prose-invert prose-sm max-w-none">
+                          <ReactMarkdown>
+                            {reflection.gratitude}
+                          </ReactMarkdown>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
                 {/* Tomorrow's Goals */}
@@ -694,12 +706,21 @@ export default function DashboardPage() {
                     <ListChecks className="h-4 w-4 text-primary" />
                     <span className="ml-2">Tomorrow's Goals</span>
                   </label>
-                  <Textarea
-                    placeholder="What do you want to accomplish tomorrow?"
-                    className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[60px]"
-                    value={reflection.tomorrowGoals}
-                    onChange={(e) => updateReflection("tomorrowGoals", e.target.value)}
-                  />
+                  <div className="flex flex-col space-y-2">
+                    <Textarea
+                      placeholder="What do you want to accomplish tomorrow? Markdown supported."
+                      className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[60px]"
+                      value={reflection.tomorrowGoals}
+                      onChange={(e) => updateReflection("tomorrowGoals", e.target.value)}
+                    />
+                    {reflection.tomorrowGoals && (
+                      <div className="p-3 rounded-md bg-primary/5 border border-primary/10">
+                        <ReactMarkdown className="text-[#D6F4FF] prose prose-invert prose-sm max-w-none">
+                          {reflection.tomorrowGoals}
+                        </ReactMarkdown>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
                 {/* Annual Goals */}
@@ -708,12 +729,21 @@ export default function DashboardPage() {
                     <TargetIcon className="h-4 w-4 text-primary" />
                     <span className="ml-2">Annual Goals</span>
                   </label>
-                  <Textarea
-                    placeholder="Your big targets for the year"
-                    className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[80px]"
-                    value={reflection.annualGoals}
-                    onChange={(e) => updateReflection("annualGoals", e.target.value)}
-                  />
+                  <div className="flex flex-col space-y-2">
+                    <Textarea
+                      placeholder="Your big targets for the year. Supports markdown formatting."
+                      className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[80px]"
+                      value={reflection.annualGoals}
+                      onChange={(e) => updateReflection("annualGoals", e.target.value)}
+                    />
+                    {reflection.annualGoals && (
+                      <div className="p-3 rounded-md bg-primary/5 border border-primary/10">
+                        <ReactMarkdown className="text-[#D6F4FF] prose prose-invert prose-sm max-w-none">
+                          {reflection.annualGoals}
+                        </ReactMarkdown>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
