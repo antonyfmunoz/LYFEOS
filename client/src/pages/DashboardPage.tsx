@@ -552,10 +552,26 @@ export default function DashboardPage() {
           </Button>
         </div>
         
-        {/* Timeline Style Mission Log with Completed toggle */}
+        {/* Mission Log Schedule */}
         {(() => {
           const MissionTimeline = ({ events }: { events: CalendarEvent[] }) => {
-            const [completedMissions, setCompletedMissions] = useState<Record<string, boolean>>({});
+            // Load completed missions from localStorage
+            const loadCompletedMissions = (): Record<string, boolean> => {
+              try {
+                const stored = localStorage.getItem("completedMissions");
+                return stored ? JSON.parse(stored) : {};
+              } catch (e) {
+                console.error("Failed to load completed missions:", e);
+                return {};
+              }
+            };
+            
+            const [completedMissions, setCompletedMissions] = useState<Record<string, boolean>>(loadCompletedMissions);
+            
+            // Save to localStorage whenever completedMissions changes
+            useEffect(() => {
+              localStorage.setItem("completedMissions", JSON.stringify(completedMissions));
+            }, [completedMissions]);
             
             const toggleMission = (id: string) => {
               setCompletedMissions(prev => ({
@@ -567,7 +583,7 @@ export default function DashboardPage() {
             return (
               <div className="mission-schedule py-2 max-h-96 overflow-y-auto">
                 {events.length > 0 ? (
-                  <ul className="list-none p-0">
+                  <ul className="list-none p-0 m-0">
                     {events
                       .sort((a, b) => a.startTime.localeCompare(b.startTime))
                       .map((event) => {
@@ -576,40 +592,36 @@ export default function DashboardPage() {
                         return (
                           <li 
                             key={event.id}
-                            className={`mission-block flex items-start mb-8 cursor-pointer ${isCompleted ? 'opacity-70' : ''}`}
+                            className={`mission-block flex justify-between items-start mb-7 cursor-pointer transition-all duration-300 ${isCompleted ? 'opacity-50' : ''}`}
                             onClick={() => toggleMission(event.id)}
                           >
-                            {/* Time Column */}
-                            <div className="time-col w-16 font-mono text-[#d0f0ff] mt-1 text-right pr-3">
-                              {event.startTime}
-                            </div>
-                            
-                            {/* Divider Line */}
-                            <div className={`divider w-[2px] h-full mx-5 self-stretch rounded ${
-                              event.category === 'work' ? 'bg-[#00f2fe]' : 
-                              event.category === 'health' ? 'bg-[#ff5f78]' : 'bg-[#c280ff]'
-                            }`}></div>
-                            
-                            {/* Mission Info */}
-                            <div className="mission-info flex-1">
-                              <div className={`mission-title text-lg font-semibold mb-1 ${isCompleted ? 'line-through text-[#8aaac2]' : 'text-white'}`}>
-                                {event.title}
-                                {isCompleted && (
-                                  <span className="ml-2 text-xs text-[#2ecc71] font-normal">COMPLETED</span>
-                                )}
+                            <div className="mission-left flex items-start">
+                              {/* Time Column */}
+                              <div className="time-col w-14 font-mono text-[#d0f0ff] mt-1">
+                                {event.startTime}
                               </div>
                               
-                              <div className="mission-subtext text-sm text-[#8aaac2]">
-                                {event.category === 'work' ? 'Virtual' : 
-                                 event.category === 'health' ? 'Gym' : 'Personal'} | {event.duration}
-                                {event.description && (
-                                  <span className="mt-1 block text-xs italic">{event.description}</span>
-                                )}
+                              {/* Divider Line */}
+                              <div className={`divider w-0.5 h-full mx-2 rounded-full self-stretch ${
+                                event.category === 'work' ? 'bg-[#00f2fe]' : 
+                                event.category === 'health' ? 'bg-[#ff5f78]' : 'bg-[#c280ff]'
+                              }`}></div>
+                              
+                              {/* Mission Info */}
+                              <div className="mission-info flex flex-col ml-5">
+                                <div className={`mission-title text-base font-semibold mb-1.5 ${isCompleted ? 'line-through' : ''} text-white`}>
+                                  {event.title}
+                                </div>
+                                
+                                <div className={`mission-subtext text-sm ${isCompleted ? 'line-through' : ''} text-[#8aaac2]`}>
+                                  {event.category === 'work' ? 'Conference Room 3' : 
+                                  event.category === 'health' ? 'Gym' : 'Virtual'} | {event.duration}
+                                </div>
                               </div>
                             </div>
                             
-                            {/* XP Award */}
-                            <div className="xp-tag ml-2 px-2 py-0.5 bg-[#00f2fe]/10 rounded text-xs font-mono text-[#36F1CD] self-start mt-1">
+                            {/* XP Badge */}
+                            <div className="xp-badge px-2.5 py-1 bg-[#003c3c] text-[#00f2a3] text-xs font-bold rounded-lg border border-[#00f2a3] whitespace-nowrap h-fit mt-1.5 transition-opacity duration-300">
                               +15 XP
                             </div>
                           </li>
@@ -632,16 +644,9 @@ export default function DashboardPage() {
           return <MissionTimeline events={events} />;
         })()}
         
-        {/* Hint Text */}
-        <div className="mt-4 flex justify-center items-center">
-          <div className="text-xs text-[#7DAAB2] italic flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
-              <path d="M12 19c.828 0 1.5-.672 1.5-1.5S12.828 16 12 16s-1.5.672-1.5 1.5.672 1.5 1.5 1.5Z"/>
-              <path d="M12 15V3"/>
-              <path d="M8 7h8"/>
-            </svg>
-            Click missions to mark them as completed
-          </div>
+        {/* Mission Note */}
+        <div className="mission-note text-center text-xs mt-5 text-[#7da4b6] italic opacity-80">
+          <span>↴ Click missions to mark them as completed</span>
         </div>
       </section>
       
