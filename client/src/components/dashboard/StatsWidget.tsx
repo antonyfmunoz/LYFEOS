@@ -15,13 +15,13 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
   const hpPercentage = (stats.healthPoints.current / stats.healthPoints.max) * 100;
   
   return (
-    <div className="glassmorphic rounded-xl p-5 neon-border">
+    <div className="glassmorphic rounded-xl p-4 neon-border">
       {/* Experience Bar */}
       <div className="mb-5">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center">
             <Award className="h-5 w-5 text-[#36F1CD] mr-2" />
-            <h3 className="font-orbitron text-[#D6F4FF]">LEVEL PROGRESS</h3>
+            <h3 className="font-orbitron text-[#D6F4FF] text-sm">LEVEL PROGRESS</h3>
           </div>
           <div className="text-right">
             <span className="bg-[#36F1CD] bg-opacity-20 text-[#36F1CD] px-2 py-1 rounded-md text-xs font-orbitron">
@@ -48,7 +48,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
               <Clock className="h-4 w-4 text-primary mr-2" />
-              <h3 className="text-sm font-medium text-[#D6F4FF]">TIME TOKENS</h3>
+              <h3 className="text-sm font-orbitron text-[#D6F4FF]">TIME TOKENS</h3>
             </div>
             <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
@@ -56,7 +56,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <div className="progress-fill" style={{ width: `${ttPercentage}%` }}></div>
           </div>
           <div className="flex justify-between">
-            <span className="text-[#D6F4FF] font-mono text-lg">
+            <span className="text-[#D6F4FF] font-mono text-base">
               {stats.timeTokens.current}<span className="text-[#7DAAB2] text-xs">/{stats.timeTokens.max}</span>
             </span>
             <span className="text-xs text-[#7DAAB2] self-end">remaining today</span>
@@ -68,7 +68,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
               <Zap className="h-4 w-4 text-[#FCD34D] mr-2" />
-              <h3 className="text-sm font-medium text-[#D6F4FF]">ENERGY POINTS</h3>
+              <h3 className="text-sm font-orbitron text-[#D6F4FF]">ENERGY POINTS</h3>
             </div>
             <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
@@ -76,7 +76,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <div className="progress-fill" style={{ width: `${epPercentage}%` }}></div>
           </div>
           <div className="flex justify-between">
-            <span className="text-[#D6F4FF] font-mono text-lg">
+            <span className="text-[#D6F4FF] font-mono text-base">
               {Math.round(epPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
             </span>
             <span className="text-xs text-[#7DAAB2] self-end">capacity</span>
@@ -88,7 +88,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
               <Heart className="h-4 w-4 text-[#EC4899] mr-2" />
-              <h3 className="text-sm font-medium text-[#D6F4FF]">HEALTH POINTS</h3>
+              <h3 className="text-sm font-orbitron text-[#D6F4FF]">HEALTH POINTS</h3>
             </div>
             <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
@@ -96,7 +96,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <div className="progress-fill" style={{ width: `${hpPercentage}%` }}></div>
           </div>
           <div className="flex justify-between">
-            <span className="text-[#D6F4FF] font-mono text-lg">
+            <span className="text-[#D6F4FF] font-mono text-base">
               {Math.round(hpPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
             </span>
             <span className="text-xs text-[#7DAAB2] self-end">wellness</span>
