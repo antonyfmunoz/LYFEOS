@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Fragment } from 'react';
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, CheckCircle2, Clock, ArrowRight, Award, Zap } from "lucide-react";
+import { Calendar, CheckCircle2, Clock, ArrowRight, Award, Zap, Info } from "lucide-react";
 import { CalendarEvent } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface MissionLogWidgetProps {
   events: CalendarEvent[];
@@ -32,6 +33,8 @@ export default function MissionLogWidget({
   };
   
   const [completedMissions, setCompletedMissions] = useState<Record<string, boolean>>(loadCompletedMissions);
+  const [selectedMission, setSelectedMission] = useState<CalendarEvent | null>(null);
+  const [infoDialogOpen, setInfoDialogOpen] = useState(false);
   const { toast } = useToast();
   
   // Save to localStorage whenever completedMissions changes
@@ -145,162 +148,249 @@ export default function MissionLogWidget({
       </p>
     </div>
   );
+  
+  // Open mission info dialog
+  const openMissionInfo = (event: CalendarEvent) => {
+    setSelectedMission(event);
+    setInfoDialogOpen(true);
+  };
 
-  if (questStyle) {
-    // Quest-style rendering
-    const upcomingEvents = getUpcomingEvents(3);
-    
-    return (
-      <div className={`quest-log-box glassmorphic rounded-xl p-6 neon-border ${className}`}>
-        {!compact && (
-          <div className="relative mb-6">
-            <h2 className="text-xl font-orbitron text-[#dff9ff] flex items-center">
-              <Calendar className="h-5 w-5 text-primary mr-2" />
-              <span>Mission Log</span>
-            </h2>
-            <Button
-              variant="outline"
-              size="sm"
-              className="absolute top-0 right-0 text-[#00f2fe] text-xs py-1 px-2 h-auto border-[#00f2fe]/30 hover:bg-[#00f2fe]/5 hover:text-[#00f2fe]"
-              onClick={() => window.location.href = '/calendar'}
-            >
-              <Calendar className="h-3 w-3 mr-1" /> Calendar
-            </Button>
-          </div>
-        )}
-        
-        <div className={`py-2 max-h-${maxHeight} overflow-y-auto`}>
-          {events.length === 0 ? (
-            renderEmptyState()
-          ) : upcomingEvents.length === 0 ? (
-            renderAllCompletedState()
-          ) : (
-            <div className="space-y-3">
-              {upcomingEvents.map((event) => {
-                const isCompleted = completedMissions[event.id] || false;
-                
-                return (
-                  <div 
-                    key={event.id}
-                    className={`p-4 rounded-lg transition-all duration-200 relative 
-                      ${isCompleted ? 
-                        'bg-green-400/5 border border-green-400/20' : 
-                        'bg-primary/5 border border-primary/20 hover:border-primary/40'}`}
-                  >
-                    <div className="flex items-start">
-                      <Checkbox
-                        className={`mt-1 rounded border transition-all duration-200
-                        ${event.category === 'work' ? 'border-blue-500/50 data-[state=checked]:bg-blue-500/20 data-[state=checked]:text-blue-400' : 
-                          event.category === 'health' ? 'border-red-500/50 data-[state=checked]:bg-red-500/20 data-[state=checked]:text-red-400' : 
-                          'border-purple-500/50 data-[state=checked]:bg-purple-500/20 data-[state=checked]:text-purple-400'}`}
-                        checked={isCompleted}
-                        onCheckedChange={() => toggleMission(event.id)}
-                      />
-                      <div className="ml-3 flex-grow">
-                        <div className="flex justify-between">
-                          <h3 className={`font-orbitron text-base ${isCompleted ? 'line-through text-[#7DAAB2]' : 'text-[#D6F4FF]'}`}>
-                            {event.title}
-                          </h3>
-                          <div className="flex items-center">
-                            <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
-                            <span className="text-primary text-xs font-mono">+15 XP</span>
+  // Render the appropriate mission log UI based on style
+  const upcomingEvents = getUpcomingEvents(3);
+  
+  // Render quest-style or timeline-style content based on props
+  const renderMissionContent = () => {
+    if (questStyle) {
+      // Quest-style rendering
+      return (
+        <div className={`quest-log-box glassmorphic rounded-xl p-6 neon-border ${className}`}>
+          {!compact && (
+            <div className="relative mb-6">
+              <h2 className="text-xl font-orbitron text-[#dff9ff] flex items-center">
+                <Calendar className="h-5 w-5 text-primary mr-2" />
+                <span>Mission Log</span>
+              </h2>
+              <Button
+                variant="outline"
+                size="sm"
+                className="absolute top-0 right-0 text-[#00f2fe] text-xs py-1 px-2 h-auto border-[#00f2fe]/30 hover:bg-[#00f2fe]/5 hover:text-[#00f2fe]"
+                onClick={() => window.location.href = '/calendar'}
+              >
+                <Calendar className="h-3 w-3 mr-1" /> Calendar
+              </Button>
+            </div>
+          )}
+          
+          <div className={`py-2 max-h-${maxHeight} overflow-y-auto`}>
+            {events.length === 0 ? (
+              renderEmptyState()
+            ) : upcomingEvents.length === 0 ? (
+              renderAllCompletedState()
+            ) : (
+              <div className="space-y-3">
+                {upcomingEvents.map((event) => {
+                  const isCompleted = completedMissions[event.id] || false;
+                  
+                  return (
+                    <div 
+                      key={event.id}
+                      className={`p-4 rounded-lg transition-all duration-200 relative 
+                        ${isCompleted ? 
+                          'bg-green-400/5 border border-green-400/20' : 
+                          'bg-primary/5 border border-primary/20 hover:border-primary/40'}`}
+                    >
+                      <div className="flex items-start">
+                        <Checkbox
+                          className={`mt-1 rounded border transition-all duration-200
+                          ${event.category === 'work' ? 'border-blue-500/50 data-[state=checked]:bg-blue-500/20 data-[state=checked]:text-blue-400' : 
+                            event.category === 'health' ? 'border-red-500/50 data-[state=checked]:bg-red-500/20 data-[state=checked]:text-red-400' : 
+                            'border-purple-500/50 data-[state=checked]:bg-purple-500/20 data-[state=checked]:text-purple-400'}`}
+                          checked={isCompleted}
+                          onCheckedChange={() => toggleMission(event.id)}
+                        />
+                        <div className="ml-3 flex-grow">
+                          <div className="flex justify-between">
+                            <h3 className={`font-orbitron text-base ${isCompleted ? 'line-through text-[#7DAAB2]' : 'text-[#D6F4FF]'}`}>
+                              {event.title}
+                            </h3>
+                            <div className="flex items-center">
+                              <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
+                              <span className="text-primary text-xs font-mono mr-2">+15 XP</span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 p-0 text-primary/50 hover:text-primary transition"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openMissionInfo(event);
+                                }}
+                              >
+                                <Info className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
+                          <p className={`text-xs text-[#7DAAB2] mt-0.5 ${isCompleted ? 'line-through' : ''}`}>
+                            {event.category === 'work' ? 'Conference Room 3' : 
+                            event.category === 'health' ? 'Gym' : 'Virtual'} | {event.duration} | {event.startTime}
+                          </p>
                         </div>
-                        <p className={`text-xs text-[#7DAAB2] mt-0.5 ${isCompleted ? 'line-through' : ''}`}>
-                          {event.category === 'work' ? 'Conference Room 3' : 
-                          event.category === 'health' ? 'Gym' : 'Virtual'} | {event.duration} | {event.startTime}
-                        </p>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          
+          {!compact && (
+            <div className="mission-note text-center text-xs mt-5 text-[#7da4b6] italic opacity-80">
+              <span>↴ Click the checkbox to mark missions as completed</span>
             </div>
           )}
         </div>
-        
-        {!compact && (
-          <div className="mission-note text-center text-xs mt-5 text-[#7da4b6] italic opacity-80">
-            <span>↴ Click the checkbox to mark missions as completed</span>
-          </div>
-        )}
-      </div>
-    );
-  }
-  
-  // Timeline-style rendering (original)
-  const upcomingEvents = getUpcomingEvents(3);
-  
-  return (
-    <div className={`mission-log-box bg-[#0d131f] border border-[#00f2fe] rounded-xl p-6 ${className}`}>
-      {!compact && (
-        <div className="relative mb-6">
-          <h2 className="text-xl font-orbitron text-[#dff9ff]">
-            Mission Log
-          </h2>
-          <Button
-            variant="outline"
-            size="sm"
-            className="absolute top-0 right-0 text-[#00f2fe] text-xs py-1 px-2 h-auto border-[#00f2fe]/30 hover:bg-[#00f2fe]/5 hover:text-[#00f2fe]"
-            onClick={() => window.location.href = '/calendar'}
-          >
-            <Calendar className="h-3 w-3 mr-1" /> Calendar
-          </Button>
-        </div>
-      )}
-      
-      <div className={`mission-schedule py-2 max-h-${maxHeight} overflow-y-auto`}>
-        {events.length === 0 ? (
-          renderEmptyState()
-        ) : upcomingEvents.length === 0 ? (
-          renderAllCompletedState()
-        ) : (
-          <ul className="list-none p-0 m-0">
-            {upcomingEvents.map((event) => {
-              const isCompleted = completedMissions[event.id] || false;
-              
-              return (
-                <li 
-                  key={event.id}
-                  className={`mission-block mb-7 transition-all duration-300 p-3 rounded-lg border border-[#00f2fe]/30 ${isCompleted ? 'opacity-50' : ''}`}
-                >
-                  <div className="flex items-start">
-                    <Checkbox
-                      className={`mt-1 rounded border transition-all duration-200
-                      ${event.category === 'work' ? 'border-blue-500/50 data-[state=checked]:bg-blue-500/20 data-[state=checked]:text-blue-400' : 
-                        event.category === 'health' ? 'border-red-500/50 data-[state=checked]:bg-red-500/20 data-[state=checked]:text-red-400' : 
-                        'border-purple-500/50 data-[state=checked]:bg-purple-500/20 data-[state=checked]:text-purple-400'}`}
-                      checked={isCompleted}
-                      onCheckedChange={() => toggleMission(event.id)}
-                    />
-                    <div className="ml-3 flex-grow">
-                      <div className="flex justify-between">
-                        <h3 className={`text-base font-semibold ${isCompleted ? 'line-through text-[#7DAAB2]' : 'text-white'}`}>
-                          {event.title}
-                        </h3>
-                        <div className="flex items-center">
-                          <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
-                          <span className="text-primary text-xs font-mono">+15 XP</span>
+      );
+    } else {
+      // Timeline-style rendering (original)
+      return (
+        <div className={`mission-log-box bg-[#0d131f] border border-[#00f2fe] rounded-xl p-6 ${className}`}>
+          {!compact && (
+            <div className="relative mb-6">
+              <h2 className="text-xl font-orbitron text-[#dff9ff]">
+                Mission Log
+              </h2>
+              <Button
+                variant="outline"
+                size="sm"
+                className="absolute top-0 right-0 text-[#00f2fe] text-xs py-1 px-2 h-auto border-[#00f2fe]/30 hover:bg-[#00f2fe]/5 hover:text-[#00f2fe]"
+                onClick={() => window.location.href = '/calendar'}
+              >
+                <Calendar className="h-3 w-3 mr-1" /> Calendar
+              </Button>
+            </div>
+          )}
+          
+          <div className={`mission-schedule py-2 max-h-${maxHeight} overflow-y-auto`}>
+            {events.length === 0 ? (
+              renderEmptyState()
+            ) : upcomingEvents.length === 0 ? (
+              renderAllCompletedState()
+            ) : (
+              <ul className="list-none p-0 m-0">
+                {upcomingEvents.map((event) => {
+                  const isCompleted = completedMissions[event.id] || false;
+                  
+                  return (
+                    <li 
+                      key={event.id}
+                      className={`mission-block mb-7 transition-all duration-300 p-3 rounded-lg border border-[#00f2fe]/30 ${isCompleted ? 'opacity-50' : ''}`}
+                    >
+                      <div className="flex items-start">
+                        <Checkbox
+                          className={`mt-1 rounded border transition-all duration-200
+                          ${event.category === 'work' ? 'border-blue-500/50 data-[state=checked]:bg-blue-500/20 data-[state=checked]:text-blue-400' : 
+                            event.category === 'health' ? 'border-red-500/50 data-[state=checked]:bg-red-500/20 data-[state=checked]:text-red-400' : 
+                            'border-purple-500/50 data-[state=checked]:bg-purple-500/20 data-[state=checked]:text-purple-400'}`}
+                          checked={isCompleted}
+                          onCheckedChange={() => toggleMission(event.id)}
+                        />
+                        <div className="ml-3 flex-grow">
+                          <div className="flex justify-between">
+                            <h3 className={`text-base font-semibold ${isCompleted ? 'line-through text-[#7DAAB2]' : 'text-white'}`}>
+                              {event.title}
+                            </h3>
+                            <div className="flex items-center">
+                              <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
+                              <span className="text-primary text-xs font-mono mr-2">+15 XP</span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 p-0 text-primary/50 hover:text-primary transition"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openMissionInfo(event);
+                                }}
+                              >
+                                <Info className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className={`text-sm ${isCompleted ? 'line-through' : ''} text-[#8aaac2]`}>
+                            {event.category === 'work' ? 'Conference Room 3' : 
+                            event.category === 'health' ? 'Gym' : 'Virtual'} | {event.duration} | {event.startTime}
+                          </div>
                         </div>
                       </div>
-                      <div className={`text-sm ${isCompleted ? 'line-through' : ''} text-[#8aaac2]`}>
-                        {event.category === 'work' ? 'Conference Room 3' : 
-                        event.category === 'health' ? 'Gym' : 'Virtual'} | {event.duration} | {event.startTime}
-                      </div>
-                    </div>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
-      
-      {!compact && (
-        <div className="mission-note text-center text-xs mt-5 text-[#7da4b6] italic opacity-80">
-          <span>↴ Click the checkbox to mark missions as completed</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+          
+          {!compact && (
+            <div className="mission-note text-center text-xs mt-5 text-[#7da4b6] italic opacity-80">
+              <span>↴ Click the checkbox to mark missions as completed</span>
+            </div>
+          )}
         </div>
-      )}
+      );
+    }
+  };
+  
+  // Render the dialog component 
+  return (
+    <div>
+      {renderMissionContent()}
+      
+      <Dialog open={infoDialogOpen} onOpenChange={setInfoDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-orbitron">{selectedMission?.title}</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="text-sm text-muted-foreground">
+              {selectedMission?.description}
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="flex flex-col">
+                <span className="text-xs text-muted-foreground">Time</span>
+                <span className="font-mono">{selectedMission?.startTime}</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs text-muted-foreground">Duration</span>
+                <span>{selectedMission?.duration}</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs text-muted-foreground">Category</span>
+                <span className="capitalize">{selectedMission?.category}</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs text-muted-foreground">XP Reward</span>
+                <span className="text-primary font-mono">+15 XP</span>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter className="flex justify-between items-center">
+            <Button 
+              variant="outline" 
+              onClick={() => setInfoDialogOpen(false)}
+            >
+              Close
+            </Button>
+            <Button 
+              onClick={() => {
+                setInfoDialogOpen(false);
+                // In the future, this would link to a full mission report page
+              }}
+            >
+              View Full Report
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
