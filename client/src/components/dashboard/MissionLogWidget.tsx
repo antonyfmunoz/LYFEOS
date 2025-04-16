@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar, CheckCircle2, Clock, ArrowRight } from "lucide-react";
 import { CalendarEvent } from "@/lib/types";
 
@@ -113,19 +114,14 @@ export default function MissionLogWidget({
                     >
                       <div className="flex justify-between items-center">
                         <div className="flex items-center space-x-3">
-                          <div 
-                            className={`w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200
-                            ${isCompleted ? 'bg-green-500/20 hover:bg-green-500/30' : 
-                              event.category === 'work' ? 'bg-blue-500/20 hover:bg-blue-500/30' : 
-                              event.category === 'health' ? 'bg-red-500/20 hover:bg-red-500/30' : 'bg-purple-500/20 hover:bg-purple-500/30'}`}
-                            onClick={() => toggleMission(event.id)}
-                          >
-                            {isCompleted ? (
-                              <CheckCircle2 className="h-4 w-4 text-green-400" />
-                            ) : (
-                              <Clock className="h-4 w-4 text-primary" />
-                            )}
-                          </div>
+                          <Checkbox
+                            className={`w-5 h-5 rounded border transition-all duration-200
+                            ${event.category === 'work' ? 'border-blue-500/50 data-[state=checked]:bg-blue-500/20 data-[state=checked]:text-blue-400' : 
+                              event.category === 'health' ? 'border-red-500/50 data-[state=checked]:bg-red-500/20 data-[state=checked]:text-red-400' : 
+                              'border-purple-500/50 data-[state=checked]:bg-purple-500/20 data-[state=checked]:text-purple-400'}`}
+                            checked={isCompleted}
+                            onCheckedChange={() => toggleMission(event.id)}
+                          />
                           <div>
                             <div className="flex items-center">
                               <h3 className={`font-orbitron text-base ${isCompleted ? 'line-through text-[#7DAAB2]' : 'text-[#D6F4FF]'}`}>
@@ -198,13 +194,22 @@ export default function MissionLogWidget({
                 return (
                   <li 
                     key={event.id}
-                    className={`mission-block flex justify-between items-start mb-7 cursor-pointer transition-all duration-300 ${isCompleted ? 'opacity-50' : ''}`}
-                    onClick={() => toggleMission(event.id)}
+                    className={`mission-block flex justify-between items-start mb-7 transition-all duration-300 ${isCompleted ? 'opacity-50' : ''}`}
                   >
                     <div className="mission-left flex items-start">
-                      {/* Time Column */}
-                      <div className="time-col w-14 font-mono text-[#d0f0ff] mt-1">
-                        {event.startTime}
+                      {/* Checkbox and Time Column */}
+                      <div className="flex flex-col items-center">
+                        <Checkbox
+                          className={`w-5 h-5 mb-1 rounded border transition-all duration-200
+                          ${event.category === 'work' ? 'border-blue-500/50 data-[state=checked]:bg-blue-500/20 data-[state=checked]:text-blue-400' : 
+                            event.category === 'health' ? 'border-red-500/50 data-[state=checked]:bg-red-500/20 data-[state=checked]:text-red-400' : 
+                            'border-purple-500/50 data-[state=checked]:bg-purple-500/20 data-[state=checked]:text-purple-400'}`}
+                          checked={isCompleted}
+                          onCheckedChange={() => toggleMission(event.id)}
+                        />
+                        <div className="time-col text-center font-mono text-[#d0f0ff] text-xs">
+                          {event.startTime}
+                        </div>
                       </div>
                       
                       {/* Divider Line */}
@@ -214,7 +219,7 @@ export default function MissionLogWidget({
                       }`}></div>
                       
                       {/* Mission Info */}
-                      <div className="mission-info flex flex-col ml-5">
+                      <div className="mission-info flex flex-col ml-3">
                         <div className={`mission-title text-base font-semibold mb-1.5 ${isCompleted ? 'line-through' : ''} text-white`}>
                           {event.title}
                         </div>
