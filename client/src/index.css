@@ -283,35 +283,64 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   background-color: rgba(0, 224, 255, 0.2);
 }
 
-/* In-editor Markdown styling */
-.markdown-editor-wrapper {
-  position: relative;
+/* WYSIWYG Markdown Editor */
+[contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
-.markdown-editor-content {
-  min-height: inherit;
-  padding: 0.75rem;
-  color: #D6F4FF;
-  width: 100%;
-  background: transparent;
+[contenteditable]:focus {
   outline: none;
-  border: none;
 }
 
-.markdown-editor-content:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(0, 224, 255, 0.3);
+/* Ensure the caret is visible on transparent text */
+[contenteditable]::selection {
+  background-color: rgba(0, 224, 255, 0.3);
 }
 
-.markdown-editor-preview {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+/* Highlight the current line in editor */
+[contenteditable]:focus {
+  caret-color: #00E0FF;
+}
+
+/* Temporary character hints */
+.temp-char {
+  color: rgba(0, 224, 255, 0.7);
+  opacity: 0.7;
   pointer-events: none;
-  padding: 0.75rem;
-  overflow: auto;
+}
+
+/* Style toolbar buttons */
+.wysiwyg-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border-bottom: 1px solid rgba(0, 224, 255, 0.2);
+  background-color: rgba(0, 20, 26, 0.8);
+}
+
+.toolbar-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  color: #7DAAB2;
+  background: transparent;
+  transition: all 0.15s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.toolbar-button:hover {
+  background-color: rgba(0, 224, 255, 0.15);
+  color: #00E0FF;
+}
+
+.toolbar-button:active {
+  background-color: rgba(0, 224, 255, 0.25);
 }
 
 /* Additional Markdown styling */
