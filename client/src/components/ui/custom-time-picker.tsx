@@ -167,7 +167,7 @@ export function CustomTimePicker({
 
       {/* Dropdown picker */}
       {isOpen && (
-        <div className="absolute z-50 mt-1 p-4 bg-[#001824] border border-primary/30 rounded-md shadow-lg shadow-primary/10 w-64 glassmorphic neon-border animate-in fade-in-50 duration-200">
+        <div className="absolute z-[1000] mt-1 p-4 bg-[#001824] border border-primary/30 rounded-md shadow-lg shadow-primary/10 w-64 glassmorphic neon-border animate-in fade-in-50 duration-200">
           <div className="text-center font-orbitron mb-3 text-[#D6F4FF] text-sm">Select Time</div>
           
           <div className="flex justify-center items-center gap-2">
