@@ -235,19 +235,32 @@ export default function CalendarPage() {
             
             <div className="space-y-2">
               <Label htmlFor="duration">Duration</Label>
-              <Select value={eventDuration} onValueChange={setEventDuration}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select duration" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="30 mins">30 minutes</SelectItem>
-                  <SelectItem value="45 mins">45 minutes</SelectItem>
-                  <SelectItem value="1 hour">1 hour</SelectItem>
-                  <SelectItem value="1.5 hours">1.5 hours</SelectItem>
-                  <SelectItem value="2 hours">2 hours</SelectItem>
-                  <SelectItem value="3 hours">3 hours</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex space-x-2">
+                <Select value={eventDuration} onValueChange={setEventDuration} className="flex-1">
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select duration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="15 mins">15 minutes</SelectItem>
+                    <SelectItem value="30 mins">30 minutes</SelectItem>
+                    <SelectItem value="45 mins">45 minutes</SelectItem>
+                    <SelectItem value="1 hour">1 hour</SelectItem>
+                    <SelectItem value="1.5 hours">1.5 hours</SelectItem>
+                    <SelectItem value="2 hours">2 hours</SelectItem>
+                    <SelectItem value="3 hours">3 hours</SelectItem>
+                    <SelectItem value="4 hours">4 hours</SelectItem>
+                    <SelectItem value="custom">Custom...</SelectItem>
+                  </SelectContent>
+                </Select>
+                {eventDuration === "custom" && (
+                  <Input
+                    placeholder="e.g. 2.5 hours"
+                    value={eventDuration === "custom" ? "" : eventDuration}
+                    onChange={(e) => setEventDuration(e.target.value)}
+                    className="flex-1"
+                  />
+                )}
+              </div>
             </div>
             
             <div className="space-y-2">
@@ -325,19 +338,32 @@ export default function CalendarPage() {
             
             <div className="space-y-2">
               <Label htmlFor="edit-duration">Duration</Label>
-              <Select value={eventDuration} onValueChange={setEventDuration}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select duration" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="30 mins">30 minutes</SelectItem>
-                  <SelectItem value="45 mins">45 minutes</SelectItem>
-                  <SelectItem value="1 hour">1 hour</SelectItem>
-                  <SelectItem value="1.5 hours">1.5 hours</SelectItem>
-                  <SelectItem value="2 hours">2 hours</SelectItem>
-                  <SelectItem value="3 hours">3 hours</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex space-x-2">
+                <Select value={eventDuration} onValueChange={setEventDuration} className="flex-1">
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select duration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="15 mins">15 minutes</SelectItem>
+                    <SelectItem value="30 mins">30 minutes</SelectItem>
+                    <SelectItem value="45 mins">45 minutes</SelectItem>
+                    <SelectItem value="1 hour">1 hour</SelectItem>
+                    <SelectItem value="1.5 hours">1.5 hours</SelectItem>
+                    <SelectItem value="2 hours">2 hours</SelectItem>
+                    <SelectItem value="3 hours">3 hours</SelectItem>
+                    <SelectItem value="4 hours">4 hours</SelectItem>
+                    <SelectItem value="custom">Custom...</SelectItem>
+                  </SelectContent>
+                </Select>
+                {eventDuration === "custom" && (
+                  <Input
+                    placeholder="e.g. 2.5 hours"
+                    value={eventDuration === "custom" ? "" : eventDuration}
+                    onChange={(e) => setEventDuration(e.target.value)}
+                    className="flex-1"
+                  />
+                )}
+              </div>
             </div>
             
             <div className="space-y-2">

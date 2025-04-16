@@ -2,6 +2,7 @@ import { ReactNode, useState, useRef, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import MobileNav from "./MobileNav";
 import AICompanionPanel from "../ai/AICompanionPanel";
+import { QuickActionMenu } from "../ui/quick-action-menu";
 import { useLYFEOS } from "../../lib/context";
 import { useLocation } from "wouter";
 import { Link } from "wouter";
@@ -155,6 +156,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
       
       {/* Mobile navigation */}
       <MobileNav currentPage={currentPage} />
+      
+      {/* Quick Action Menu */}
+      <QuickActionMenu />
     </div>
   );
 }
