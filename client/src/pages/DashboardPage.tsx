@@ -27,8 +27,7 @@ import { CustomTimePicker } from "@/components/ui/custom-time-picker";
 import { ObsidianMarkdown } from "@/components/ui/obsidian-markdown";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { Checkbox } from "@/components/ui/checkbox";
-import ExperienceBar from "@/components/dashboard/ExperienceBar";
-import StatWidget from "@/components/dashboard/StatWidget";
+import StatsWidget from "@/components/dashboard/StatsWidget";
 import { StatType, CalendarEvent } from "@/lib/types";
 
 // Define types
@@ -508,40 +507,7 @@ export default function DashboardPage() {
           </h2>
         </div>
         
-        <div className="mb-3">
-          <ExperienceBar
-            current={stats.experience.current}
-            max={stats.experience.max}
-            level={stats.experience.level}
-          />
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <StatWidget
-            type="time"
-            icon="schedule"
-            title="TIME TOKENS"
-            current={stats.timeTokens.current}
-            max={stats.timeTokens.max}
-            description="Unallocated time remaining today"
-          />
-          <StatWidget
-            type="energy"
-            icon="bolt"
-            title="ENERGY POINTS"
-            current={stats.energyPoints.current}
-            max={stats.energyPoints.max}
-            description="Current cognitive and physical capacity"
-          />
-          <StatWidget
-            type="health"
-            icon="favorite"
-            title="HEALTH POINTS"
-            current={stats.healthPoints.current}
-            max={stats.healthPoints.max}
-            description="Overall physical and mental wellness"
-          />
-        </div>
+        <StatsWidget stats={stats} />
       </section>
       
       {/* Mission Log Panel */}
