@@ -49,6 +49,36 @@ export function MarkdownEditor({
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     onChange(newValue);
+    
+    if (autoBullets) {
+      // Ensure cursor is always after the bullet point on the current line
+      const cursorPos = e.target.selectionStart || 0;
+      const textBeforeCursor = newValue.substring(0, cursorPos);
+      const lastNewlineBeforeCursor = textBeforeCursor.lastIndexOf('\n');
+      const currentLineStart = lastNewlineBeforeCursor === -1 ? 0 : lastNewlineBeforeCursor + 1;
+      const currentLine = textBeforeCursor.substring(currentLineStart);
+      
+      // Check if current line starts with a bullet
+      const bulletMatch = currentLine.match(/^(\s*)([-*+•]|(\d+)\.)(\s+)/);
+      
+      if (bulletMatch) {
+        const [fullMatch] = bulletMatch;
+        const bulletLength = fullMatch.length;
+        
+        // If cursor is placed before bullet, move it after bullet
+        if (cursorPos < currentLineStart + bulletLength) {
+          const newCursorPos = currentLineStart + bulletLength;
+          setTimeout(() => {
+            if (textareaRef.current) {
+              textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+              setCursorPosition(newCursorPos);
+            }
+          }, 0);
+          return;
+        }
+      }
+    }
+    
     setCursorPosition(e.target.selectionStart || 0);
   };
 
@@ -94,6 +124,39 @@ export function MarkdownEditor({
       // Auto-generate bullet points on Enter for this field
       e.preventDefault();
       insertAutoBullet();
+    } else if (autoBullets && (e.key === 'ArrowLeft' || e.key === 'Home')) {
+      // Prevent navigating before the bullet with arrow keys
+      const textarea = e.currentTarget;
+      const cursorPos = textarea.selectionStart || 0;
+      const textBeforeCursor = value.substring(0, cursorPos);
+      const lastNewlineBeforeCursor = textBeforeCursor.lastIndexOf('\n');
+      const currentLineStart = lastNewlineBeforeCursor === -1 ? 0 : lastNewlineBeforeCursor + 1;
+      const currentLine = textBeforeCursor.substring(currentLineStart);
+      
+      // Check if current line starts with a bullet
+      const bulletMatch = currentLine.match(/^(\s*)([-*+•]|(\d+)\.)(\s+)/);
+      
+      if (bulletMatch) {
+        const [fullMatch] = bulletMatch;
+        const bulletLength = fullMatch.length;
+        
+        // If cursor is right after bullet and user presses left arrow, prevent it
+        if (cursorPos === currentLineStart + bulletLength && e.key === 'ArrowLeft') {
+          e.preventDefault();
+          return;
+        }
+        
+        // If Home key is pressed, go to position after bullet, not start of line
+        if (e.key === 'Home') {
+          e.preventDefault();
+          const newCursorPos = currentLineStart + bulletLength;
+          setTimeout(() => {
+            textarea.setSelectionRange(newCursorPos, newCursorPos);
+            setCursorPosition(newCursorPos);
+          }, 0);
+          return;
+        }
+      }
     }
   };
 
@@ -253,6 +316,67 @@ export function MarkdownEditor({
             value={value}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
+            onClick={(e) => {
+              if (autoBullets) {
+                // Ensure clicks don't place cursor before bullet points
+                const textarea = e.currentTarget;
+                const cursorPos = textarea.selectionStart || 0;
+                const textBeforeCursor = value.substring(0, cursorPos);
+                const lastNewlineBeforeCursor = textBeforeCursor.lastIndexOf('\n');
+                const currentLineStart = lastNewlineBeforeCursor === -1 ? 0 : lastNewlineBeforeCursor + 1;
+                const currentLine = textBeforeCursor.substring(currentLineStart);
+                
+                // Check if current line starts with a bullet
+                const bulletMatch = currentLine.match(/^(\s*)([-*+•]|(\d+)\.)(\s+)/);
+                
+                if (bulletMatch) {
+                  const [fullMatch] = bulletMatch;
+                  const bulletLength = fullMatch.length;
+                  
+                  // If cursor is placed before bullet, move it after bullet
+                  if (cursorPos < currentLineStart + bulletLength) {
+                    const newCursorPos = currentLineStart + bulletLength;
+                    setTimeout(() => {
+                      textarea.setSelectionRange(newCursorPos, newCursorPos);
+                      setCursorPosition(newCursorPos);
+                    }, 0);
+                  }
+                }
+              }
+            }}
+            onMouseMove={(e) => {
+              if (autoBullets) {
+                // Also monitor mouse movement to prevent text selection before bullet
+                const textarea = e.currentTarget;
+                if (textarea.selectionStart !== textarea.selectionEnd) {
+                  // Only handle when there's no selection (just cursor movement)
+                  return;
+                }
+                
+                const cursorPos = textarea.selectionStart || 0;
+                const textBeforeCursor = value.substring(0, cursorPos);
+                const lastNewlineBeforeCursor = textBeforeCursor.lastIndexOf('\n');
+                const currentLineStart = lastNewlineBeforeCursor === -1 ? 0 : lastNewlineBeforeCursor + 1;
+                const currentLine = textBeforeCursor.substring(currentLineStart);
+                
+                // Check if current line starts with a bullet
+                const bulletMatch = currentLine.match(/^(\s*)([-*+•]|(\d+)\.)(\s+)/);
+                
+                if (bulletMatch) {
+                  const [fullMatch] = bulletMatch;
+                  const bulletLength = fullMatch.length;
+                  
+                  // If cursor is placed before bullet, move it after bullet
+                  if (cursorPos < currentLineStart + bulletLength) {
+                    const newCursorPos = currentLineStart + bulletLength;
+                    setTimeout(() => {
+                      textarea.setSelectionRange(newCursorPos, newCursorPos);
+                      setCursorPosition(newCursorPos);
+                    }, 0);
+                  }
+                }
+              }
+            }}
             placeholder={placeholder}
             className="p-3 w-full h-full focus:outline-none focus:ring-0 bg-[#00141A] text-[#D6F4FF] resize-y placeholder-[#7DAAB2]/50 border-0 rounded-md"
             style={{ minHeight }}
