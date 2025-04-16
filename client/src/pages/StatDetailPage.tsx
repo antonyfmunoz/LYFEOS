@@ -87,10 +87,8 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
   return (
     <>
       <div className="mb-6 flex items-center">
-        <Link href="/dashboard">
-          <a className="mr-3 flex items-center text-[#7DAAB2] hover:text-primary transition">
-            <ArrowLeft size={20} />
-          </a>
+        <Link href="/dashboard" className="mr-3 flex items-center text-[#7DAAB2] hover:text-primary transition">
+          <ArrowLeft size={20} />
         </Link>
         <h1 className="text-2xl font-orbitron">{config.title}</h1>
       </div>

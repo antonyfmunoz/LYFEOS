@@ -112,8 +112,7 @@ export function StatInfoDialog({
         </div>
         
         <div className="mt-6 flex justify-end">
-          <Link href={getDetailUrl()}>
-            <button className={cn(
+          <Link href={getDetailUrl()} className={cn(
               "inline-flex h-9 items-center justify-center rounded-md px-4 py-2 text-sm font-medium",
               "ring-offset-background transition-colors",
               "border border-white/10 hover:bg-white/5",
@@ -124,7 +123,6 @@ export function StatInfoDialog({
               "text-[#36F1CD]"
             )}>
               <ExternalLink size={14} className="mr-2" /> More Details
-            </button>
           </Link>
         </div>
       </div>

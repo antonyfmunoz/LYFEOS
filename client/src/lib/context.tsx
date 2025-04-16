@@ -99,6 +99,9 @@ interface LYFEOSContextType {
   sendMessage: (content: string) => void;
   username: string;
   setUsername: (name: string) => void;
+  addEvent: (event: Omit<CalendarEvent, "id">) => void;
+  updateEvent: (id: string, eventData: Partial<CalendarEvent>) => void;
+  deleteEvent: (id: string) => void;
 }
 
 // Create the context
@@ -246,6 +249,63 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       
       setMessages((prev) => [...prev, aiMessage]);
     }, 1000);
+  };
+  
+  // Add a new calendar event
+  const addEvent = (event: Omit<CalendarEvent, "id">) => {
+    const newEvent: CalendarEvent = {
+      ...event,
+      id: `event-${Date.now()}`,
+    };
+    
+    setEvents((prev) => [...prev, newEvent]);
+    
+    // Show event added toast
+    toast({
+      title: "Event Added",
+      description: `${newEvent.title} - ${newEvent.startTime}`,
+      variant: "default",
+      className: "bg-[#001E26] border border-[#36F1CD] text-white",
+      duration: 3000,
+    });
+  };
+  
+  // Update an existing calendar event
+  const updateEvent = (id: string, eventData: Partial<CalendarEvent>) => {
+    setEvents((prev) => 
+      prev.map((event) => 
+        event.id === id ? { ...event, ...eventData } : event
+      )
+    );
+    
+    // Show event updated toast
+    toast({
+      title: "Event Updated",
+      description: "Calendar event has been updated",
+      variant: "default",
+      className: "bg-[#001E26] border border-[#36F1CD] text-white",
+      duration: 3000,
+    });
+  };
+  
+  // Delete a calendar event
+  const deleteEvent = (id: string) => {
+    // Find the event to show in toast
+    const eventToDelete = events.find(event => event.id === id);
+    
+    // Remove the event
+    setEvents((prev) => prev.filter((event) => event.id !== id));
+    
+    // Show event deleted toast
+    if (eventToDelete) {
+      toast({
+        title: "Event Deleted",
+        description: `${eventToDelete.title} has been removed`,
+        variant: "destructive",
+        className: "bg-[#181818] border border-red-500 text-white",
+        duration: 3000,
+      });
+    }
   };
 
   // Reset time tokens daily (simulation)
