@@ -17,7 +17,8 @@ import {
   TargetIcon,
   ListChecks,
   Calendar,
-  CheckCircle2
+  CheckCircle2,
+  Zap
 } from "lucide-react";
 import MissionLogWidget from "@/components/dashboard/MissionLogWidget";
 import { Input } from "@/components/ui/input";
@@ -500,6 +501,13 @@ export default function DashboardPage() {
       
       {/* Stats and Progress Section */}
       <section className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-orbitron flex items-center">
+            <Zap className="h-5 w-5 text-primary mr-2" />
+            <span>Stat Log</span>
+          </h2>
+        </div>
+        
         <div className="mb-3">
           <ExperienceBar
             current={stats.experience.current}
