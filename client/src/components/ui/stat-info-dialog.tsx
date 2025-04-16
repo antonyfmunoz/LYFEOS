@@ -83,7 +83,7 @@ export function StatInfoDialog({
           getBorderColor()
         )}
       >
-        <DialogClose className="absolute right-2 top-2 rounded-md p-1 text-white/70 opacity-0 transition-opacity hover:text-white focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 group-hover:opacity-100">
+        <DialogClose className="absolute right-2 top-2 rounded-md p-1 text-white/70 transition-opacity hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 group-hover:opacity-100">
           <X className="h-4 w-4" />
         </DialogClose>
         
@@ -92,13 +92,13 @@ export function StatInfoDialog({
             {title}
           </DialogTitle>
           
-          <DialogDescription className="text-sm opacity-90 text-gray-200 mt-2">
-            <div className="leading-relaxed">{description}</div>
+          <div className="text-sm opacity-90 text-gray-200 mt-2">
+            <p className="leading-relaxed">{description}</p>
             {additionalInfo && (
-              <div className="text-sm text-[#7DAAB2] italic mt-3">{additionalInfo}</div>
+              <p className="text-sm text-[#7DAAB2] italic mt-3">{additionalInfo}</p>
             )}
             {children}
-          </DialogDescription>
+          </div>
         </div>
         
         <div className="mt-6 flex justify-end">
