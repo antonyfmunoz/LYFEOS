@@ -4,6 +4,10 @@ import { toast } from "@/hooks/use-toast";
 
 // Initial stats data
 const initialStats: UserStats = {
+  attentionTokens: {
+    current: 80,
+    max: 100,
+  },
   timeTokens: {
     current: 12,
     max: 24,

@@ -4,7 +4,7 @@ import { Link } from "wouter";
 import { 
   ArrowLeft, Clock, Zap, Heart, ChevronRight, 
   Lightbulb, History, TrendingDown, TrendingUp, 
-  Activity, Plus, RotateCcw, Award
+  Activity, Plus, RotateCcw, Award, Focus, BrainCircuit
 } from "lucide-react";
 
 interface StatDetailPageProps {
@@ -16,6 +16,21 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
   
   // Configure based on stat type
   const statConfig = {
+    attention: {
+      title: "Attention Tokens",
+      icon: <BrainCircuit className="w-8 h-8" />,
+      color: "purple",
+      current: stats.attentionTokens.current,
+      max: stats.attentionTokens.max,
+      description: "Focus and attention allocation capacity",
+      progressClass: "progress-at",
+      dataPoints: [
+        { label: "Deep Work", value: 35 },
+        { label: "Creative", value: 25 },
+        { label: "Learning", value: 20 },
+        { label: "Available", value: 20 },
+      ],
+    },
     time: {
       title: "Time Tokens",
       icon: <Clock className="w-8 h-8" />,
@@ -97,12 +112,14 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
       <div className="glassmorphic rounded-xl p-6 neon-border mb-8">
         <div className="flex flex-col md:flex-row md:items-center mb-4">
           <div className={`w-16 h-16 rounded-full ${
+            stat === 'attention' ? 'bg-[#9C6ADE]/20' :
             stat === 'time' ? 'bg-primary/20' : 
             stat === 'energy' ? 'bg-[#FCD34D]/20' : 
             stat === 'health' ? 'bg-[#EC4899]/20' :
             'bg-[#36F1CD]/20'
           } flex items-center justify-center mr-4 mb-4 md:mb-0`}>
             <div className={
+              stat === 'attention' ? 'text-[#9C6ADE]' :
               stat === 'time' ? 'text-primary' : 
               stat === 'energy' ? 'text-[#FCD34D]' : 
               stat === 'health' ? 'text-[#EC4899]' :

@@ -1,4 +1,8 @@
 export interface UserStats {
+  attentionTokens: {
+    current: number;
+    max: number;
+  };
   timeTokens: {
     current: number;
     max: number;
@@ -43,4 +47,4 @@ export interface CalendarEvent {
   category: "work" | "personal" | "health";
 }
 
-export type StatType = "time" | "energy" | "health" | "experience";
+export type StatType = "attention" | "time" | "energy" | "health" | "experience";
