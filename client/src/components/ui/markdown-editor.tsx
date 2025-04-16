@@ -333,7 +333,32 @@ export function MarkdownEditor({
             onChange={handleInput}
             onKeyDown={handleKeyDown}
             onClick={(e) => {
-              handleBulletPointCursorConstraint(e);
+              if (autoBullets) {
+                // Ensure clicks don't place cursor before bullet points
+                const textarea = e.currentTarget;
+                const cursorPos = textarea.selectionStart || 0;
+                const textBeforeCursor = value.substring(0, cursorPos);
+                const lastNewlineBeforeCursor = textBeforeCursor.lastIndexOf('\n');
+                const currentLineStart = lastNewlineBeforeCursor === -1 ? 0 : lastNewlineBeforeCursor + 1;
+                const currentLine = textBeforeCursor.substring(currentLineStart);
+                
+                // Check if current line starts with a bullet
+                const bulletMatch = currentLine.match(/^(\s*)([-*+•]|(\d+)\.)(\s+)/);
+                
+                if (bulletMatch) {
+                  const [fullMatch] = bulletMatch;
+                  const bulletLength = fullMatch.length;
+                  
+                  // If cursor is placed before bullet, move it after bullet
+                  if (cursorPos < currentLineStart + bulletLength) {
+                    const newCursorPos = currentLineStart + bulletLength;
+                    setTimeout(() => {
+                      textarea.setSelectionRange(newCursorPos, newCursorPos);
+                      setCursorPosition(newCursorPos);
+                    }, 0);
+                  }
+                }
+              }
             }}
             onMouseDown={(e) => {
               if (autoBullets) {
