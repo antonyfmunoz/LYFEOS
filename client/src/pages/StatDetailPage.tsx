@@ -1,6 +1,11 @@
-import { useLYFEOS } from "../lib/context";
-import { StatType } from "../lib/types";
+import { useLYFEOS } from "@/lib/context";
+import { StatType } from "@/lib/types";
 import { Link } from "wouter";
+import { 
+  ArrowLeft, Clock, Zap, Heart, ChevronRight, 
+  Lightbulb, History, TrendingDown, TrendingUp, 
+  Activity, Plus, RotateCcw
+} from "lucide-react";
 
 interface StatDetailPageProps {
   stat: StatType;
@@ -69,7 +74,7 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
       <div className="mb-6 flex items-center">
         <Link href="/dashboard">
           <a className="mr-3 flex items-center text-[#7DAAB2] hover:text-primary transition">
-            <span className="material-icons">arrow_back</span>
+            <ArrowLeft size={20} />
           </a>
         </Link>
         <h1 className="text-2xl font-orbitron">{config.title}</h1>

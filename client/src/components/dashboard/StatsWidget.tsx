@@ -29,6 +29,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
           titleColor="text-[#36F1CD]"
           description="XP tracks your overall progress and achievements in LYFEOS. Complete quests, log activities, and maintain streaks to increase your level."
           additionalInfo="Higher levels unlock premium features and special abilities within the LYFEOS system."
+          statType="experience"
         />
         
         <div className="flex items-center justify-between mb-2">
@@ -69,6 +70,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             titleColor="text-primary"
             description="Represents your available productive time for the day. Completing tasks consumes tokens, which replenish daily."
             additionalInfo="Managing your Time Tokens helps balance productivity and prevents burnout by encouraging appropriate work limits."
+            statType="time"
           />
           
           <div className="flex items-center justify-between mb-2">
@@ -103,6 +105,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             titleColor="text-[#FCD34D]"
             description="Measures your mental and physical energy levels. Rest, nutrition, and wellness activities increase your Energy Points."
             additionalInfo="Higher energy enables you to tackle more challenging tasks effectively and sustain focus throughout the day."
+            statType="energy"
           />
           
           <div className="flex items-center justify-between mb-2">
@@ -137,6 +140,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             titleColor="text-[#EC4899]"
             description="Indicates your overall physical wellbeing. Exercise, sleep, and self-care activities contribute to higher Health Points."
             additionalInfo="Maintaining high Health Points improves resilience, prevents illness, and enhances long-term performance."
+            statType="health"
           />
           
           <div className="flex items-center justify-between mb-2">
