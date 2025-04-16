@@ -11,16 +11,10 @@ import {
 
 export function Toaster() {
   const { toasts } = useToast()
-  const [showBackdrop, setShowBackdrop] = useState(false)
-  
-  // Update backdrop state immediately when toasts change
-  useEffect(() => {
-    setShowBackdrop(toasts.length > 0)
-  }, [toasts.length])
 
   return (
     <ToastProvider>
-      {showBackdrop && (
+      {toasts.length > 0 && (
         <div 
           className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[99]" 
         />
