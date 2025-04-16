@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, CheckCircle2, Clock, ArrowRight } from "lucide-react";
+import { Calendar, CheckCircle2, Clock, ArrowRight, Award, Zap } from "lucide-react";
 import { CalendarEvent } from "@/lib/types";
+import { useToast } from "@/hooks/use-toast";
 
 interface MissionLogWidgetProps {
   events: CalendarEvent[];
@@ -31,6 +32,7 @@ export default function MissionLogWidget({
   };
   
   const [completedMissions, setCompletedMissions] = useState<Record<string, boolean>>(loadCompletedMissions);
+  const { toast } = useToast();
   
   // Save to localStorage whenever completedMissions changes
   useEffect(() => {
@@ -38,10 +40,35 @@ export default function MissionLogWidget({
   }, [completedMissions]);
   
   const toggleMission = (id: string) => {
+    const event = events.find(e => e.id === id);
+    const isCompleting = !completedMissions[id];
+    
     setCompletedMissions(prev => ({
       ...prev,
-      [id]: !prev[id]
+      [id]: isCompleting
     }));
+    
+    if (event && isCompleting) {
+      // Show toast notification for completed mission
+      toast({
+        title: "Mission Completed",
+        description: (
+          <div className="flex flex-col space-y-2">
+            <div className="font-semibold text-base">{event.title}</div>
+            <div className="flex space-x-4 text-sm mt-2">
+              <div className="flex items-center text-red-400">
+                <Zap className="h-4 w-4 mr-1" />
+                <span>-5 Energy Points</span>
+              </div>
+              <div className="flex items-center text-[#36F1CD]">
+                <Award className="h-4 w-4 mr-1" />
+                <span>+15 Experience</span>
+              </div>
+            </div>
+          </div>
+        ),
+      });
+    }
   };
 
   // Helper function to get end time
