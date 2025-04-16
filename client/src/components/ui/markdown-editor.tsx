@@ -49,44 +49,7 @@ export function MarkdownEditor({
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     onChange(newValue);
-    
-    // Get cursor position
-    const cursorPos = e.target.selectionStart || 0;
-    
-    // If autoBullets is enabled, prevent cursor from going before bullet points
-    if (autoBullets) {
-      // Check if cursor is at the beginning of a line with a bullet
-      const lines = newValue.split('\n');
-      let charCount = 0;
-      
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        // If we've passed the cursor position, we're done
-        if (charCount + line.length >= cursorPos) {
-          // Calculate position within the current line
-          const posInLine = cursorPos - charCount;
-          const bulletMatch = line.match(/^(\s*)([-*+•]|(\d+)\.)(\s+)/);
-          
-          // If there's a bullet and cursor is before or in the bullet
-          if (bulletMatch && posInLine <= bulletMatch[0].length) {
-            // Move cursor to after the bullet
-            const newPos = charCount + bulletMatch[0].length;
-            setTimeout(() => {
-              if (textareaRef.current) {
-                textareaRef.current.setSelectionRange(newPos, newPos);
-                setCursorPosition(newPos);
-              }
-            }, 0);
-            return;
-          }
-          break;
-        }
-        // Add line length plus the newline character
-        charCount += line.length + 1;
-      }
-    }
-    
-    setCursorPosition(cursorPos);
+    setCursorPosition(e.target.selectionStart || 0);
   };
 
   // Toggle to edit mode
@@ -131,46 +94,6 @@ export function MarkdownEditor({
       // Auto-generate bullet points on Enter for this field
       e.preventDefault();
       insertAutoBullet();
-    } else if (e.key === 'ArrowLeft' && autoBullets && textareaRef.current) {
-      // Prevent cursor from going before bullet points when pressing left arrow
-      const pos = textareaRef.current.selectionStart;
-      const value = textareaRef.current.value;
-      
-      // Find the current line
-      const beforeCursor = value.substring(0, pos);
-      const lastNewline = beforeCursor.lastIndexOf('\n');
-      const lineStart = lastNewline === -1 ? 0 : lastNewline + 1;
-      const currentLine = beforeCursor.substring(lineStart);
-      
-      // If cursor is at the beginning of bullet content, prevent moving left
-      const bulletMatch = currentLine.match(/^(\s*)([-*+•]|(\d+)\.)(\s+)/);
-      if (bulletMatch && pos === lineStart + bulletMatch[0].length) {
-        e.preventDefault();
-      }
-    } else if (e.key === 'Home' && autoBullets && textareaRef.current) {
-      // When Home key is pressed, move to start of content after bullet point, not to start of line
-      e.preventDefault();
-      
-      const pos = textareaRef.current.selectionStart;
-      const value = textareaRef.current.value;
-      
-      // Find the current line
-      const beforeCursor = value.substring(0, pos);
-      const lastNewline = beforeCursor.lastIndexOf('\n');
-      const lineStart = lastNewline === -1 ? 0 : lastNewline + 1;
-      
-      // Check if line has a bullet
-      const currentLine = value.substring(lineStart, value.indexOf('\n', lineStart) === -1 ? undefined : value.indexOf('\n', lineStart));
-      const bulletMatch = currentLine.match(/^(\s*)([-*+•]|(\d+)\.)(\s+)/);
-      
-      if (bulletMatch) {
-        // Move cursor to start of content (after bullet)
-        const newPos = lineStart + bulletMatch[0].length;
-        textareaRef.current.setSelectionRange(newPos, newPos);
-      } else {
-        // If no bullet, move to line start as normal
-        textareaRef.current.setSelectionRange(lineStart, lineStart);
-      }
     }
   };
 
