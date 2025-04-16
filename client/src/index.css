@@ -227,4 +227,16 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   .font-mono {
     font-family: 'JetBrains Mono', monospace;
   }
+  
+  /* Time dropdown picker - appears above all elements */
+  .time-dropdown {
+    position: absolute !important;
+    z-index: 999999 !important;
+  }
+
+  /* Time picker parent container */
+  .time-picker-container {
+    position: relative !important;
+    overflow: visible !important;
+  }
 }
