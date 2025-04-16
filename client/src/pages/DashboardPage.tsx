@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { CustomTimePicker } from "@/components/ui/custom-time-picker";
 import { ObsidianMarkdown } from "@/components/ui/obsidian-markdown";
-import { EditableMarkdown } from "@/components/ui/editable-markdown";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 
 // Define types
 interface TimeBlock {
@@ -681,7 +681,7 @@ export default function DashboardPage() {
                     <span className="ml-2">Gratitude</span>
                   </label>
                   <div className="flex flex-col space-y-2">
-                    <EditableMarkdown
+                    <MarkdownEditor
                       placeholder="What three things are you most grateful for today?"
                       value={reflection.gratitude}
                       onChange={(value) => updateReflection("gratitude", value)}
@@ -697,7 +697,7 @@ export default function DashboardPage() {
                     <span className="ml-2">Tomorrow's Goals</span>
                   </label>
                   <div className="flex flex-col space-y-2">
-                    <EditableMarkdown
+                    <MarkdownEditor
                       placeholder="What three things do you want to accomplish tomorrow?"
                       value={reflection.tomorrowGoals}
                       onChange={(value) => updateReflection("tomorrowGoals", value)}
@@ -713,7 +713,7 @@ export default function DashboardPage() {
                     <span className="ml-2">Annual Goals</span>
                   </label>
                   <div className="flex flex-col space-y-2">
-                    <EditableMarkdown
+                    <MarkdownEditor
                       placeholder="What are your three big targets for the year?"
                       value={reflection.annualGoals}
                       onChange={(value) => updateReflection("annualGoals", value)}
@@ -759,7 +759,7 @@ export default function DashboardPage() {
                   <span className="ml-2">Today's Thoughts</span>
                 </label>
                 <div className="flex flex-col space-y-2">
-                  <EditableMarkdown
+                  <MarkdownEditor
                     placeholder="Ideas worth saving..."
                     value={reflection.thoughts}
                     onChange={(value) => updateReflection("thoughts", value)}
@@ -775,7 +775,7 @@ export default function DashboardPage() {
                   <span className="ml-2">Content Consumed</span>
                 </label>
                 <div className="flex flex-col space-y-2">
-                  <EditableMarkdown
+                  <MarkdownEditor
                     placeholder="Books, podcasts, videos..."
                     value={reflection.contentConsumed}
                     onChange={(value) => updateReflection("contentConsumed", value)}
@@ -791,7 +791,7 @@ export default function DashboardPage() {
                   <span className="ml-2">Today's Research</span>
                 </label>
                 <div className="flex flex-col space-y-2">
-                  <EditableMarkdown
+                  <MarkdownEditor
                     placeholder="Summarize learnings or add links..."
                     value={reflection.research}
                     onChange={(value) => updateReflection("research", value)}
@@ -807,7 +807,7 @@ export default function DashboardPage() {
                   <span className="ml-2">New To-Do-List Ideas</span>
                 </label>
                 <div className="flex flex-col space-y-2">
-                  <EditableMarkdown
+                  <MarkdownEditor
                     placeholder="Add to Brain Dump..."
                     value={reflection.todoIdeas}
                     onChange={(value) => updateReflection("todoIdeas", value)}
