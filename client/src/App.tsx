@@ -66,6 +66,12 @@ function Router() {
         </RootLayout>
       </Route>
       
+      <Route path="/experience">
+        <RootLayout>
+          <StatDetailPage stat="experience" />
+        </RootLayout>
+      </Route>
+      
       <Route path="/profile">
         <ProfilePage />
       </Route>

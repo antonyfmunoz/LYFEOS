@@ -36,15 +36,15 @@ export function StatInfoDialog({
   const getDetailUrl = () => {
     switch (statType) {
       case "time":
-        return "/stat/time";
+        return "/time";
       case "energy":
-        return "/stat/energy";
+        return "/energy";
       case "health":
-        return "/stat/health";
+        return "/health";
       case "experience":
-        return "/stat/experience";
+        return "/experience";
       default:
-        return "/stats";
+        return "/dashboard";
     }
   };
   

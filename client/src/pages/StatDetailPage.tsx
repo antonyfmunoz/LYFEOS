@@ -4,7 +4,7 @@ import { Link } from "wouter";
 import { 
   ArrowLeft, Clock, Zap, Heart, ChevronRight, 
   Lightbulb, History, TrendingDown, TrendingUp, 
-  Activity, Plus, RotateCcw
+  Activity, Plus, RotateCcw, Award
 } from "lucide-react";
 
 interface StatDetailPageProps {
@@ -18,7 +18,7 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
   const statConfig = {
     time: {
       title: "Time Tokens",
-      icon: "schedule",
+      icon: <Clock className="w-8 h-8" />,
       color: "primary",
       current: stats.timeTokens.current,
       max: stats.timeTokens.max,
@@ -34,7 +34,7 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
     },
     energy: {
       title: "Energy Points",
-      icon: "bolt",
+      icon: <Zap className="w-8 h-8" />,
       color: "secondary",
       current: stats.energyPoints.current,
       max: stats.energyPoints.max,
@@ -49,7 +49,7 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
     },
     health: {
       title: "Health Points",
-      icon: "favorite",
+      icon: <Heart className="w-8 h-8" />,
       color: "accent",
       current: stats.healthPoints.current,
       max: stats.healthPoints.max,
@@ -85,14 +85,16 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
         <div className="flex flex-col md:flex-row md:items-center mb-4">
           <div className={`w-16 h-16 rounded-full ${
             stat === 'time' ? 'bg-primary/20' : 
-            stat === 'energy' ? 'bg-secondary/20' : 
-            'bg-accent/20'
+            stat === 'energy' ? 'bg-[#FCD34D]/20' : 
+            'bg-[#EC4899]/20'
           } flex items-center justify-center mr-4 mb-4 md:mb-0`}>
-            <span className={`material-icons text-3xl ${
+            <div className={
               stat === 'time' ? 'text-primary' : 
-              stat === 'energy' ? 'text-secondary' : 
-              'text-accent'
-            }`}>{config.icon}</span>
+              stat === 'energy' ? 'text-[#FCD34D]' : 
+              'text-[#EC4899]'
+            }>
+              {config.icon}
+            </div>
           </div>
           
           <div className="flex-grow">
@@ -135,8 +137,8 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
                     <div 
                       className={`h-full ${
                         stat === 'time' ? 'bg-primary' : 
-                        stat === 'energy' ? 'bg-secondary' : 
-                        'bg-accent'
+                        stat === 'energy' ? 'bg-[#FCD34D]' : 
+                        'bg-[#EC4899]'
                       }`}
                       style={{ 
                         width: `${stat === 'time' 
@@ -169,14 +171,14 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
             <div className="flex items-start">
               <div className={`w-8 h-8 rounded-full ${
                 stat === 'time' ? 'bg-primary/20' : 
-                stat === 'energy' ? 'bg-secondary/20' : 
-                'bg-accent/20'
+                stat === 'energy' ? 'bg-[#FCD34D]/20' : 
+                'bg-[#EC4899]/20'
               } flex items-center justify-center mr-3 flex-shrink-0 mt-0.5`}>
-                <span className={`material-icons text-sm ${
+                <Lightbulb className={`w-4 h-4 ${
                   stat === 'time' ? 'text-primary' : 
-                  stat === 'energy' ? 'text-secondary' : 
-                  'text-accent'
-                }`}>lightbulb</span>
+                  stat === 'energy' ? 'text-[#FCD34D]' : 
+                  'text-[#EC4899]'
+                }`} />
               </div>
               <div>
                 <h3 className="font-medium mb-1">
@@ -199,14 +201,14 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
             <div className="flex items-start">
               <div className={`w-8 h-8 rounded-full ${
                 stat === 'time' ? 'bg-primary/20' : 
-                stat === 'energy' ? 'bg-secondary/20' : 
-                'bg-accent/20'
+                stat === 'energy' ? 'bg-[#FCD34D]/20' : 
+                'bg-[#EC4899]/20'
               } flex items-center justify-center mr-3 flex-shrink-0 mt-0.5`}>
-                <span className={`material-icons text-sm ${
+                <Lightbulb className={`w-4 h-4 ${
                   stat === 'time' ? 'text-primary' : 
-                  stat === 'energy' ? 'text-secondary' : 
-                  'text-accent'
-                }`}>lightbulb</span>
+                  stat === 'energy' ? 'text-[#FCD34D]' : 
+                  'text-[#EC4899]'
+                }`} />
               </div>
               <div>
                 <h3 className="font-medium mb-1">
@@ -235,11 +237,13 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
           <div className="space-y-3">
             <div className="flex items-center justify-between p-2 border-b border-primary/10">
               <div className="flex items-center">
-                <span className="material-icons text-sm text-[#7DAAB2] mr-2">
-                  {stat === 'time' ? 'history' : 
-                   stat === 'energy' ? 'trending_down' : 
-                   'monitor_heart'}
-                </span>
+                {stat === 'time' ? (
+                  <History className="h-4 w-4 text-[#7DAAB2] mr-2" />
+                ) : stat === 'energy' ? (
+                  <TrendingDown className="h-4 w-4 text-[#7DAAB2] mr-2" />
+                ) : (
+                  <Activity className="h-4 w-4 text-[#7DAAB2] mr-2" />
+                )}
                 <span>
                   {stat === 'time' ? 'Deep Work Session' : 
                    stat === 'energy' ? 'Energy Depleted' : 
@@ -251,11 +255,11 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
             
             <div className="flex items-center justify-between p-2 border-b border-primary/10">
               <div className="flex items-center">
-                <span className="material-icons text-sm text-[#7DAAB2] mr-2">
-                  {stat === 'time' ? 'add' : 
-                   stat === 'energy' ? 'trending_up' : 
-                   'trending_up'}
-                </span>
+                {stat === 'time' ? (
+                  <Plus className="h-4 w-4 text-[#7DAAB2] mr-2" />
+                ) : (
+                  <TrendingUp className="h-4 w-4 text-[#7DAAB2] mr-2" />
+                )}
                 <span>
                   {stat === 'time' ? 'Time Token Added' : 
                    stat === 'energy' ? 'Energy Recovered' : 
@@ -267,11 +271,7 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
             
             <div className="flex items-center justify-between p-2">
               <div className="flex items-center">
-                <span className="material-icons text-sm text-[#7DAAB2] mr-2">
-                  {stat === 'time' ? 'update' : 
-                   stat === 'energy' ? 'update' : 
-                   'update'}
-                </span>
+                <RotateCcw className="h-4 w-4 text-[#7DAAB2] mr-2" />
                 <span>
                   {stat === 'time' ? 'Daily Reset' : 
                    stat === 'energy' ? 'Weekly Analysis' : 
