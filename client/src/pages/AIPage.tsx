@@ -48,6 +48,13 @@ export default function AIPage() {
   // Get active chat session
   const activeChat = chatSessions.find(chat => chat.id === activeChatSessionId);
   
+  // Debug messages
+  useEffect(() => {
+    console.log("Active chat session:", activeChatSessionId);
+    console.log("Chat sessions:", chatSessions);
+    console.log("Active chat:", activeChat);
+  }, [activeChatSessionId, chatSessions, activeChat]);
+
   // Scroll to bottom of messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

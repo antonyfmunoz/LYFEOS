@@ -61,6 +61,15 @@
   }
   
   /* Custom scrollbar with purple theme */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  
   .custom-scrollbar::-webkit-scrollbar-thumb {
     @apply bg-purple-500/50 rounded-full;
   }
