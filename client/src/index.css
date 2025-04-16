@@ -240,3 +240,97 @@ input[type="time"]::-webkit-calendar-picker-indicator {
     overflow: visible !important;
   }
 }
+
+/* Obsidian-like markdown styles */
+.obsidian-wikilink {
+  color: #00E0FF;
+  text-decoration: none;
+  border-bottom: 1px dashed #00E0FF;
+}
+
+.obsidian-wikilink:hover {
+  background-color: rgba(0, 224, 255, 0.1);
+}
+
+.obsidian-task-list-item {
+  list-style-type: none;
+  margin-left: -1.5em;
+}
+
+.obsidian-checkbox {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 1.2em;
+  height: 1.2em;
+  border: 1px solid #00E0FF;
+  border-radius: 0.2em;
+  margin-right: 0.5em;
+  color: #00E0FF;
+  font-size: 0.8em;
+}
+
+.obsidian-checkbox.checked {
+  background-color: rgba(0, 224, 255, 0.2);
+}
+
+/* Additional Markdown styling */
+.prose code {
+  background-color: rgba(0, 224, 255, 0.1);
+  padding: 0.2em 0.4em;
+  border-radius: 0.2em;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.prose blockquote {
+  border-left: 3px solid #00E0FF;
+  padding-left: 1em;
+  margin-left: 0;
+  color: #7DAAB2;
+}
+
+.prose table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+.prose table th, 
+.prose table td {
+  border: 1px solid rgba(125, 170, 178, 0.3);
+  padding: 0.5em;
+}
+
+.prose table th {
+  background-color: rgba(0, 224, 255, 0.1);
+}
+
+/* Obsidian-style callouts */
+.prose .callout {
+  border-left: 4px solid #00E0FF;
+  background-color: rgba(0, 224, 255, 0.05);
+  padding: 1em;
+  margin: 1em 0;
+  border-radius: 0.3em;
+}
+
+.prose .callout-info {
+  border-color: #00E0FF;
+}
+
+.prose .callout-warning {
+  border-color: #FFC107;
+}
+
+.prose .callout-danger {
+  border-color: #F44336;
+}
+
+/* Code block syntax highlighting */
+.prose pre {
+  background-color: #001824;
+  border-radius: 0.3em;
+  padding: 1em;
+  border: 1px solid rgba(0, 224, 255, 0.2);
+  overflow-x: auto;
+}

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { CustomTimePicker } from "@/components/ui/custom-time-picker";
-import ReactMarkdown from 'react-markdown';
+import { ObsidianMarkdown } from "@/components/ui/obsidian-markdown";
 
 // Define types
 interface TimeBlock {
@@ -688,11 +688,9 @@ export default function DashboardPage() {
                     />
                     {reflection.gratitude && (
                       <div className="p-3 rounded-md bg-primary/5 border border-primary/10">
-                        <div className="text-[#D6F4FF] prose prose-invert prose-sm max-w-none">
-                          <ReactMarkdown>
-                            {reflection.gratitude}
-                          </ReactMarkdown>
-                        </div>
+                        <ObsidianMarkdown className="text-[#D6F4FF]">
+                          {reflection.gratitude}
+                        </ObsidianMarkdown>
                       </div>
                     )}
                   </div>
@@ -713,11 +711,9 @@ export default function DashboardPage() {
                     />
                     {reflection.tomorrowGoals && (
                       <div className="p-3 rounded-md bg-primary/5 border border-primary/10">
-                        <div className="text-[#D6F4FF] prose prose-invert prose-sm max-w-none">
-                          <ReactMarkdown>
-                            {reflection.tomorrowGoals}
-                          </ReactMarkdown>
-                        </div>
+                        <ObsidianMarkdown className="text-[#D6F4FF]">
+                          {reflection.tomorrowGoals}
+                        </ObsidianMarkdown>
                       </div>
                     )}
                   </div>
