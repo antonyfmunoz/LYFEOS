@@ -225,20 +225,28 @@ export default function AIPage() {
           variant="ghost"
           size="sm"
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="absolute top-0 left-4 sm:hidden z-20 h-9 w-9 p-0 rounded-full bg-slate-800/80 text-purple-400 shadow-md mb-4"
+          className="fixed top-[100px] left-4 sm:hidden z-30 h-10 w-10 p-0 rounded-full bg-purple-500/30 text-white shadow-md border border-purple-500/50"
         >
           {sidebarOpen ? <CloseIcon className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </Button>
         
+        {/* Backdrop overlay for mobile - only visible when sidebar is open */}
+        {sidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-10 sm:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+        
         {/* Left Sidebar - Chat Sessions & Quick Prompts - Collapsible */}
         <div className={`
-          absolute sm:relative z-10 top-0 left-0 h-full 
+          fixed sm:static inset-y-0 left-0 z-20
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full sm:translate-x-0'} 
           transition-transform duration-200 ease-in-out
-          flex flex-col w-4/5 sm:w-60 sm:mb-0 sm:mr-6 sm:pr-4 
-          bg-slate-900/95 sm:bg-transparent backdrop-blur-md sm:backdrop-blur-none 
-          sm:border-r border-purple-500/20 
-          pt-12 sm:pt-0 px-4 sm:px-0
+          flex flex-col w-[280px] sm:w-72 h-[calc(100vh-140px)]
+          bg-[#0F1923] sm:bg-transparent border-r border-purple-500/20 
+          pt-12 sm:pt-0 px-4 sm:px-1 sm:mr-4
+          overflow-y-auto
         `}>
           {/* Chat Sessions */}
           <div className="mb-6">
@@ -453,7 +461,7 @@ export default function AIPage() {
         </div>
         
         {/* Main Chat Window */}
-        <div className="flex-grow flex flex-col glassmorphic rounded-xl p-4 neon-border-purple h-full min-w-0">
+        <div className="flex-1 flex flex-col glassmorphic rounded-xl p-4 neon-border-purple h-full ml-0 sm:ml-4 md:ml-6 mt-12 sm:mt-0 relative min-w-0">
           {/* Messages area */}
           <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar">
             {!activeChat || activeChat.messages.length === 0 ? (
@@ -505,8 +513,8 @@ export default function AIPage() {
                       )}
                       
                       <div className={`${message.sender === 'ai' 
-                        ? 'ml-3 bg-slate-800/60 border border-purple-500/30 rounded-2xl rounded-tl-none' 
-                        : 'mr-0 bg-purple-500/10 border border-purple-500/20 rounded-2xl rounded-tr-none'} p-4`}
+                        ? 'ml-3 bg-slate-800/70 border border-purple-500/30 rounded-2xl rounded-tl-sm text-white' 
+                        : 'mr-0 bg-purple-500/20 border border-purple-500/30 rounded-2xl rounded-tr-sm text-white'} p-4 shadow-sm`}
                       >
                         {message.sender === 'ai' && (
                           <div className="text-xs text-purple-400 mb-1 font-semibold">{aiCompanionName}</div>
@@ -536,7 +544,7 @@ export default function AIPage() {
                         <Bot className="h-5 w-5 text-purple-400" />
                       </div>
                       
-                      <div className="ml-3 bg-slate-800/60 border border-purple-500/30 rounded-2xl rounded-tl-none p-4">
+                      <div className="ml-3 bg-slate-800/70 border border-purple-500/30 rounded-2xl rounded-tl-sm p-4 shadow-sm">
                         <div className="text-xs text-purple-400 mb-1 font-semibold">{aiCompanionName}</div>
                         <div className="flex space-x-2">
                           <div className="h-2 w-2 rounded-full bg-purple-400 animate-bounce"></div>
@@ -554,23 +562,34 @@ export default function AIPage() {
           </div>
           
           {/* Input area */}
-          <form onSubmit={handleSendMessage} className="mt-4 pt-4 border-t border-purple-500/20">
-            <div className="relative">
+          <form onSubmit={handleSendMessage} className="mt-4 pt-4 border-t border-purple-500/20 relative">
+            <div className="relative rounded-2xl border border-purple-500/30 bg-slate-800/30 shadow-inner overflow-hidden">
               <Input 
-                placeholder={`Ask ${aiCompanionName} anything...`}
+                placeholder={`Message ${aiCompanionName}...`}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                className="pr-12 py-6 bg-slate-800/30 border-purple-500/30 focus-visible:ring-purple-500/30"
+                className="border-0 bg-transparent pr-12 py-6 min-h-[60px] focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none text-white"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (inputText.trim()) {
+                      handleSendMessage(e);
+                    }
+                  }
+                }}
               />
               <Button 
                 type="submit"
                 size="sm"
                 disabled={!inputText.trim()}
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-9 w-9 p-0 rounded-full bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors"
+                className="absolute right-2 bottom-2 h-9 w-9 p-0 rounded-lg bg-purple-500/50 text-white hover:bg-purple-500/70 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <Send className="h-4 w-4" />
               </Button>
             </div>
+            <p className="text-xs text-slate-400 mt-2 text-center">
+              {aiCompanionName} can make mistakes. Consider checking important information.
+            </p>
           </form>
         </div>
       </div>
