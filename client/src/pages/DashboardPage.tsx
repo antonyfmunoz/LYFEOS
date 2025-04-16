@@ -621,10 +621,18 @@ export default function DashboardPage() {
             
             {/* State ratings - in a row for desktop, stacked for mobile */}
             <div className="border-t border-primary/10 pt-4 mb-2">
-              <label className="text-sm flex items-center text-[#7DAAB2] mb-3">
-                <Brain className="h-4 w-4 text-primary" />
-                <span className="ml-2">Energy Recap (Mental / Physical / Emotional)</span>
-              </label>
+              <div className="flex items-center justify-between text-sm mb-3">
+                <label className="flex items-center text-[#7DAAB2]">
+                  <Brain className="h-4 w-4 text-primary" />
+                  <span className="ml-2">Energy Recap</span>
+                </label>
+                <div className="flex items-center">
+                  <span className="text-[#7DAAB2] mr-2">Daily Total:</span>
+                  <span className="text-[#D6F4FF] font-mono">
+                    {Math.round(((reflection.mentalState + reflection.physicalState + reflection.emotionalState) / 30) * 100)}%
+                  </span>
+                </div>
+              </div>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {renderStateSelector(
