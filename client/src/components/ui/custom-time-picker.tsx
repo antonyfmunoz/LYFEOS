@@ -118,12 +118,12 @@ export function CustomTimePicker({
       {/* Main time input display */}
       <div 
         className={cn(
-          "flex items-center relative cursor-pointer bg-[#00141A] border border-primary/30 text-[#D6F4FF] rounded-md py-2 px-3 transition-all hover:border-primary/50 hover:shadow-[0_0_4px_rgba(0,224,255,0.3)]",
+          "flex items-center relative cursor-pointer bg-[#00141A] border border-primary/30 text-[#D6F4FF] rounded-md py-2 px-3",
           className
         )}
         onClick={() => setIsOpen(!isOpen)}
       >
-        <span className="font-mono flex-grow tracking-wider">
+        <span className="font-mono flex-grow">
           {hours.toString().padStart(2, '0')}:{minutes.toString().padStart(2, '0')} {period}
         </span>
         <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
@@ -133,13 +133,7 @@ export function CustomTimePicker({
 
       {/* Dropdown picker */}
       {isOpen && (
-        <div 
-          className="absolute z-[100] mt-1 p-4 bg-[#001824] border border-primary/30 rounded-md shadow-lg shadow-primary/10 w-72 glassmorphic neon-border"
-          style={{
-            left: window.innerWidth <= 640 ? '50%' : '0',
-            transform: window.innerWidth <= 640 ? 'translateX(-50%)' : 'none',
-            maxWidth: window.innerWidth <= 640 ? 'calc(100vw - 40px)' : '100%'
-          }}>
+        <div className="absolute z-50 mt-1 p-4 bg-[#001824] border border-primary/30 rounded-md shadow-lg shadow-primary/10 w-64 glassmorphic">
           <div className="text-center font-mono mb-3 text-[#D6F4FF]">Select Time</div>
           
           <div className="flex justify-center items-center gap-2">
@@ -155,8 +149,8 @@ export function CustomTimePicker({
               </Button>
               
               <Input
-                className="w-16 text-center bg-[#00141A] border-primary/30 font-mono my-1 p-1 h-9 text-[#D6F4FF] hover:border-primary/50 transition-colors"
-                value={hours.toString().padStart(2, '0')}
+                className="w-14 text-center bg-[#00141A] border-primary/30 font-mono my-1 p-1 h-9"
+                value={hours.toString()}
                 onChange={handleHoursInput}
               />
               
@@ -186,7 +180,7 @@ export function CustomTimePicker({
               </Button>
               
               <Input
-                className="w-16 text-center bg-[#00141A] border-primary/30 font-mono my-1 p-1 h-9 text-[#D6F4FF] hover:border-primary/50 transition-colors"
+                className="w-14 text-center bg-[#00141A] border-primary/30 font-mono my-1 p-1 h-9"
                 value={minutes.toString().padStart(2, '0')}
                 onChange={handleMinutesInput}
               />
@@ -205,30 +199,28 @@ export function CustomTimePicker({
             
             {/* AM/PM toggle */}
             <div className="flex flex-col items-center ml-2">
-              <div className="flex flex-col bg-[#001824] border border-primary/30 rounded-md overflow-hidden hover:shadow-[0_0_4px_rgba(0,224,255,0.3)] transition-all">
-                <button
-                  className={`w-14 py-1 font-mono text-sm transition-colors ${
-                    period === "AM" 
-                      ? "bg-primary/20 text-primary border-b border-primary/30" 
-                      : "bg-[#001824] text-[#7DAAB2] hover:bg-[#001C26]"
-                  }`}
-                  onClick={() => setPeriod("AM")}
-                  type="button"
-                >
-                  AM
-                </button>
-                <button
-                  className={`w-14 py-1 font-mono text-sm transition-colors ${
-                    period === "PM" 
-                      ? "bg-primary/20 text-primary" 
-                      : "bg-[#001824] text-[#7DAAB2] hover:bg-[#001C26]"
-                  }`}
-                  onClick={() => setPeriod("PM")}
-                  type="button"
-                >
-                  PM
-                </button>
-              </div>
+              <button
+                className={`w-14 rounded-t-md py-1 transition-colors ${
+                  period === "AM" 
+                    ? "bg-primary/20 text-primary border-t border-l border-r border-primary/30" 
+                    : "bg-[#001824] text-[#7DAAB2] hover:bg-[#001C26]"
+                }`}
+                onClick={() => setPeriod("AM")}
+                type="button"
+              >
+                AM
+              </button>
+              <button
+                className={`w-14 rounded-b-md py-1 transition-colors ${
+                  period === "PM" 
+                    ? "bg-primary/20 text-primary border-b border-l border-r border-primary/30" 
+                    : "bg-[#001824] text-[#7DAAB2] hover:bg-[#001C26]"
+                }`}
+                onClick={() => setPeriod("PM")}
+                type="button"
+              >
+                PM
+              </button>
               
               <span className="text-xs text-[#7DAAB2] mt-3">Period</span>
             </div>
