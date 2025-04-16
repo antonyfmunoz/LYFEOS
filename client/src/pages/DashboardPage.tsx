@@ -461,40 +461,38 @@ export default function DashboardPage() {
               <CalendarDays className="h-5 w-5 text-primary mr-2" />
               <h1 className="text-xl sm:text-2xl font-orbitron text-[#D6F4FF]">{formattedDate}</h1>
             </div>
-            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 mt-2 sm:mt-0">
-              <div className="flex items-center">
-                <Clock className="h-4 w-4 text-[#7DAAB2] mr-2" />
-                <span className="text-[#7DAAB2] font-mono">{formattedTime}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <select 
-                  value={timezone}
-                  onChange={(e) => setTimezone(e.target.value)}
-                  className="bg-[#00141A] border border-primary/30 rounded text-xs text-[#7DAAB2] p-1"
-                >
-                  {[
-                    { label: 'EST', value: 'America/New_York' },
-                    { label: 'CST', value: 'America/Chicago' },
-                    { label: 'MST', value: 'America/Denver' },
-                    { label: 'PST', value: 'America/Los_Angeles' },
-                    { label: 'GMT', value: 'Europe/London' },
-                    { label: 'CET', value: 'Europe/Paris' },
-                    { label: 'JST', value: 'Asia/Tokyo' },
-                    { label: 'AEST', value: 'Australia/Sydney' },
-                    { label: 'NZST', value: 'Pacific/Auckland' }
-                  ].map(tz => (
-                    <option key={tz.value} value={tz.value}>
-                      {tz.label}
-                    </option>
-                  ))}
-                </select>
-                <button 
-                  onClick={() => setTimeFormat(prev => prev === '12h' ? '24h' : '12h')}
-                  className="bg-primary/10 hover:bg-primary/20 text-primary rounded px-2 py-1 text-xs"
-                >
-                  {timeFormat === '12h' ? '24h' : '12h'}
-                </button>
-              </div>
+            <div className="flex items-center gap-2 mt-2 sm:mt-0">
+              <Clock className="h-4 w-4 text-[#7DAAB2] mr-2" />
+              <span className="text-[#7DAAB2] font-mono">{formattedTime}</span>
+              
+              <select 
+                value={timezone}
+                onChange={(e) => setTimezone(e.target.value)}
+                className="ml-3 bg-[#00141A] border border-primary/30 rounded text-xs text-[#7DAAB2] p-1"
+              >
+                {[
+                  { label: 'EST', value: 'America/New_York' },
+                  { label: 'CST', value: 'America/Chicago' },
+                  { label: 'MST', value: 'America/Denver' },
+                  { label: 'PST', value: 'America/Los_Angeles' },
+                  { label: 'GMT', value: 'Europe/London' },
+                  { label: 'CET', value: 'Europe/Paris' },
+                  { label: 'JST', value: 'Asia/Tokyo' },
+                  { label: 'AEST', value: 'Australia/Sydney' },
+                  { label: 'NZST', value: 'Pacific/Auckland' }
+                ].map(tz => (
+                  <option key={tz.value} value={tz.value}>
+                    {tz.label}
+                  </option>
+                ))}
+              </select>
+              
+              <button 
+                onClick={() => setTimeFormat(prev => prev === '12h' ? '24h' : '12h')}
+                className="bg-primary/10 hover:bg-primary/20 text-primary rounded px-2 py-1 text-xs"
+              >
+                {timeFormat === '12h' ? '24h' : '12h'}
+              </button>
             </div>
           </div>
         </div>
@@ -655,12 +653,14 @@ export default function DashboardPage() {
                     <AlarmClock className="h-4 w-4 text-primary" />
                     <span className="ml-2">Wake Up Time</span>
                   </label>
-                  <CustomTimePicker
-                    value={reflection.wakeTime}
-                    onChange={(value) => updateReflection("wakeTime", value)}
-                    icon={<AlarmClock className="h-4 w-4 text-primary/70" />}
-                    className="w-full"
-                  />
+                  <div className="flex items-center gap-2">
+                    <CustomTimePicker
+                      value={reflection.wakeTime}
+                      onChange={(value) => updateReflection("wakeTime", value)}
+                      icon={<AlarmClock className="h-4 w-4 text-primary/70" />}
+                      className="flex-grow"
+                    />
+                  </div>
                 </div>
                 
                 <div className="space-y-2">
@@ -668,12 +668,14 @@ export default function DashboardPage() {
                     <MoonStar className="h-4 w-4 text-primary" />
                     <span className="ml-2">Sleep Time</span>
                   </label>
-                  <CustomTimePicker
-                    value={reflection.sleepTime}
-                    onChange={(value) => updateReflection("sleepTime", value)}
-                    icon={<MoonStar className="h-4 w-4 text-primary/70" />}
-                    className="w-full"
-                  />
+                  <div className="flex items-center gap-2">
+                    <CustomTimePicker
+                      value={reflection.sleepTime}
+                      onChange={(value) => updateReflection("sleepTime", value)}
+                      icon={<MoonStar className="h-4 w-4 text-primary/70" />}
+                      className="flex-grow"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

@@ -184,10 +184,10 @@ export function CustomTimePicker({
         aria-haspopup="true"
         aria-expanded={isOpen}
       >
-        <span className="font-mono flex-grow">
+        <span className="font-mono">
           {hours.toString().padStart(2, '0')}:{minutes.toString().padStart(2, '0')} {period}
         </span>
-        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+        <div className="ml-auto flex items-center pointer-events-none">
           {icon}
         </div>
       </div>
