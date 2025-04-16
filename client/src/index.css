@@ -321,10 +321,27 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   padding-left: 1.5em;
 }
 
-.prose ul .obsidian-task-list-item {
+.prose ul .obsidian-task-list-item,
+.prose ul li.obsidian-task-list-item,
+.prose ol li.obsidian-task-list-item,
+.prose li.obsidian-task-list-item {
   list-style-type: none !important;
   padding-left: 0 !important;
   margin-left: 0 !important;
+  display: flex !important;
+  align-items: flex-start !important;
+}
+
+.prose ul .obsidian-task-list-item::before,
+.prose ul li.obsidian-task-list-item::before,
+.prose ol li.obsidian-task-list-item::before,
+.prose li.obsidian-task-list-item::before,
+.prose ul .obsidian-task-list-item::marker,
+.prose ul li.obsidian-task-list-item::marker,
+.prose ol li.obsidian-task-list-item::marker,
+.prose li.obsidian-task-list-item::marker {
+  display: none !important;
+  content: '' !important;
 }
 
 .prose code {
