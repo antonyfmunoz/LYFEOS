@@ -112,31 +112,29 @@ export default function MissionLogWidget({
                           'bg-green-400/5 border border-green-400/20' : 
                           'bg-primary/5 border border-primary/20 hover:border-primary/40'}`}
                     >
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center space-x-3">
-                          <Checkbox
-                            className={`w-5 h-5 rounded border transition-all duration-200
-                            ${event.category === 'work' ? 'border-blue-500/50 data-[state=checked]:bg-blue-500/20 data-[state=checked]:text-blue-400' : 
-                              event.category === 'health' ? 'border-red-500/50 data-[state=checked]:bg-red-500/20 data-[state=checked]:text-red-400' : 
-                              'border-purple-500/50 data-[state=checked]:bg-purple-500/20 data-[state=checked]:text-purple-400'}`}
-                            checked={isCompleted}
-                            onCheckedChange={() => toggleMission(event.id)}
-                          />
-                          <div className="ml-1 flex-grow">
-                            <div className="flex justify-between">
-                              <h3 className={`font-orbitron text-base ${isCompleted ? 'line-through text-[#7DAAB2]' : 'text-[#D6F4FF]'}`}>
-                                {event.title}
-                              </h3>
-                              <div className="flex items-center">
-                                <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
-                                <span className="text-primary text-xs font-mono">+15 XP</span>
-                              </div>
-                            </div>
-                            <p className={`text-xs text-[#7DAAB2] mt-0.5 ${isCompleted ? 'line-through' : ''}`}>
-                              {event.category === 'work' ? 'Conference Room 3' : 
-                              event.category === 'health' ? 'Gym' : 'Virtual'} | {event.duration} | {event.startTime}
-                            </p>
-                          </div>
+                      {/* EP/XP at the top right corner */}
+                      <div className="absolute top-2 right-3 flex items-center">
+                        <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
+                        <span className="text-primary text-xs font-mono">+15 XP</span>
+                      </div>
+                      
+                      <div className="flex items-center mt-2">
+                        <Checkbox
+                          className={`w-5 h-5 rounded border transition-all duration-200
+                          ${event.category === 'work' ? 'border-blue-500/50 data-[state=checked]:bg-blue-500/20 data-[state=checked]:text-blue-400' : 
+                            event.category === 'health' ? 'border-red-500/50 data-[state=checked]:bg-red-500/20 data-[state=checked]:text-red-400' : 
+                            'border-purple-500/50 data-[state=checked]:bg-purple-500/20 data-[state=checked]:text-purple-400'}`}
+                          checked={isCompleted}
+                          onCheckedChange={() => toggleMission(event.id)}
+                        />
+                        <div className="ml-3">
+                          <h3 className={`font-orbitron text-base ${isCompleted ? 'line-through text-[#7DAAB2]' : 'text-[#D6F4FF]'}`}>
+                            {event.title}
+                          </h3>
+                          <p className={`text-xs text-[#7DAAB2] mt-0.5 ${isCompleted ? 'line-through' : ''}`}>
+                            {event.category === 'work' ? 'Conference Room 3' : 
+                            event.category === 'health' ? 'Gym' : 'Virtual'} | {event.duration} | {event.startTime}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -192,9 +190,15 @@ export default function MissionLogWidget({
                 return (
                   <li 
                     key={event.id}
-                    className={`mission-block flex justify-between items-start mb-7 transition-all duration-300 ${isCompleted ? 'opacity-50' : ''}`}
+                    className={`mission-block relative mb-7 transition-all duration-300 ${isCompleted ? 'opacity-50' : ''}`}
                   >
-                    <div className="mission-left flex items-start">
+                    {/* EP/XP at the top right corner */}
+                    <div className="absolute top-0 right-0 flex items-center">
+                      <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
+                      <span className="text-primary text-xs font-mono">+15 XP</span>
+                    </div>
+                    
+                    <div className="mission-left flex items-start mt-5">
                       {/* Checkbox and Time Column */}
                       <div className="flex flex-col items-center">
                         <Checkbox
@@ -218,14 +222,8 @@ export default function MissionLogWidget({
                       
                       {/* Mission Info */}
                       <div className="mission-info flex-grow flex flex-col ml-3">
-                        <div className="flex justify-between">
-                          <div className={`mission-title text-base font-semibold mb-1.5 ${isCompleted ? 'line-through' : ''} text-white`}>
-                            {event.title}
-                          </div>
-                          <div className="flex items-center">
-                            <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
-                            <span className="text-primary text-xs font-mono">+15 XP</span>
-                          </div>
+                        <div className={`mission-title text-base font-semibold mb-1.5 ${isCompleted ? 'line-through' : ''} text-white`}>
+                          {event.title}
                         </div>
                         
                         <div className={`mission-subtext text-sm ${isCompleted ? 'line-through' : ''} text-[#8aaac2]`}>
