@@ -63,14 +63,18 @@ export function EditableMarkdown({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     // Render markdown on regular Enter (without Shift)
     if (e.key === 'Enter') {
-      if (e.ctrlKey || e.metaKey) {
-        // Ctrl+Enter or Cmd+Enter always saves and exits
+      if (!e.shiftKey) {
+        // Regular Enter exits edit mode immediately
         e.preventDefault();
-        handleBlur();
-      } else if (!e.shiftKey) {
-        // Regular Enter (without Shift) also saves and exits
-        e.preventDefault();
-        handleBlur();
+        
+        // Get the raw markdown text
+        if (editableRef.current) {
+          const rawText = editableRef.current.innerText;
+          onChange(rawText);
+        }
+        
+        // Immediately exit edit mode
+        setIsEditing(false);
       }
       // Shift+Enter will allow multi-line editing (default behavior)
     }
