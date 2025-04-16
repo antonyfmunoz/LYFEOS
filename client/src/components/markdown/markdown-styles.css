@@ -1,0 +1,143 @@
+/* Styles for Obsidian-like markdown rendering */
+
+/* Task lists */
+.obsidian-task-list-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 0.5em;
+  list-style-type: none;
+}
+
+.task-checkbox {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 1.2em;
+  height: 1.2em;
+  border: 1px solid rgba(139, 190, 232, 0.4);
+  border-radius: 3px;
+  margin-right: 0.5em;
+  background-color: rgba(24, 36, 50, 0.3);
+  cursor: pointer;
+  user-select: none;
+}
+
+.task-checkbox.checked {
+  background-color: rgba(72, 191, 161, 0.2);
+  border-color: rgba(72, 191, 161, 0.4);
+  color: #48bfa1;
+}
+
+.task-text.completed {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+/* Wiki links */
+a[href^="/mission-page/"] {
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(72, 191, 161, 0.5);
+  color: #48bfa1;
+  transition: all 0.2s ease;
+}
+
+a[href^="/mission-page/"]:hover {
+  background-color: rgba(72, 191, 161, 0.1);
+  border-bottom: 1px solid rgba(72, 191, 161, 0.8);
+}
+
+/* Code blocks */
+pre {
+  background-color: rgba(0, 10, 20, 0.6) !important;
+  border: 1px solid rgba(100, 130, 150, 0.2) !important;
+  border-radius: 4px !important;
+}
+
+code {
+  font-family: 'Fira Code', monospace !important;
+  font-size: 0.85em !important;
+}
+
+/* Headings */
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3,
+.markdown-preview h4,
+.markdown-preview h5,
+.markdown-preview h6 {
+  font-family: 'Orbitron', sans-serif;
+  margin-top: 1.5em;
+  margin-bottom: 0.75em;
+  color: #D6F4FF;
+}
+
+.markdown-preview h1 {
+  font-size: 1.8em;
+  border-bottom: 1px solid rgba(72, 191, 161, 0.3);
+  padding-bottom: 0.3em;
+}
+
+.markdown-preview h2 {
+  font-size: 1.5em;
+  border-bottom: 1px solid rgba(100, 130, 150, 0.2);
+  padding-bottom: 0.2em;
+}
+
+/* Blockquotes */
+.markdown-preview blockquote {
+  border-left: 3px solid rgba(72, 191, 161, 0.5);
+  background-color: rgba(24, 36, 50, 0.3);
+  padding: 0.5em 1em;
+  margin: 1em 0;
+}
+
+/* Tables */
+.markdown-preview table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+.markdown-preview th,
+.markdown-preview td {
+  border: 1px solid rgba(100, 130, 150, 0.2);
+  padding: 0.5em 0.8em;
+}
+
+.markdown-preview th {
+  background-color: rgba(24, 36, 50, 0.5);
+  font-weight: bold;
+}
+
+.markdown-preview tr:nth-child(even) {
+  background-color: rgba(24, 36, 50, 0.2);
+}
+
+/* Links */
+.markdown-preview a {
+  color: #36F1CD;
+  text-decoration: none;
+}
+
+.markdown-preview a:hover {
+  text-decoration: underline;
+}
+
+/* Lists */
+.markdown-preview ul,
+.markdown-preview ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+/* Horizontal rules */
+.markdown-preview hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, 
+    rgba(24, 36, 50, 0), 
+    rgba(72, 191, 161, 0.5),
+    rgba(24, 36, 50, 0)
+  );
+  margin: 1.5em 0;
+}
