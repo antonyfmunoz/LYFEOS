@@ -39,6 +39,27 @@ export default function MissionLogWidget({
     localStorage.setItem("completedMissions", JSON.stringify(completedMissions));
   }, [completedMissions]);
   
+  // Get current time in 24-hour format
+  const getCurrentTimeString = (): string => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    return `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+  };
+  
+  // Filter and sort upcoming events
+  const getUpcomingEvents = (limit: number = 3) => {
+    const currentTimeString = getCurrentTimeString();
+    
+    return events
+      .filter(event => {
+        const isEventCompleted = completedMissions[event.id] || false;
+        return !isEventCompleted && event.startTime >= currentTimeString;
+      })
+      .sort((a, b) => a.startTime.localeCompare(b.startTime))
+      .slice(0, limit);
+  };
+  
   const toggleMission = (id: string) => {
     const event = events.find(e => e.id === id);
     const isCompleting = !completedMissions[id];
@@ -102,9 +123,33 @@ export default function MissionLogWidget({
     // Format the end time
     return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
   };
+  
+  // Render empty state when no events are scheduled
+  const renderEmptyState = () => (
+    <div className="glassmorphic rounded-xl p-6 text-center opacity-80 mt-2">
+      <Calendar className="h-10 w-10 text-primary/50 mx-auto mb-3" />
+      <p className="text-[#7DAAB2]">No missions scheduled for today</p>
+      <p className="text-xs text-[#7DAAB2] mt-2">
+        Visit the Calendar page to add missions to your daily schedule
+      </p>
+    </div>
+  );
+  
+  // Render empty state when all upcoming events are completed
+  const renderAllCompletedState = () => (
+    <div className="glassmorphic rounded-xl p-6 text-center opacity-80 mt-2">
+      <Calendar className="h-10 w-10 text-primary/50 mx-auto mb-3" />
+      <p className="text-[#7DAAB2]">All missions completed for now</p>
+      <p className="text-xs text-[#7DAAB2] mt-2">
+        Great job! Check back later for new missions
+      </p>
+    </div>
+  );
 
   if (questStyle) {
     // Quest-style rendering
+    const upcomingEvents = getUpcomingEvents(3);
+    
     return (
       <div className={`quest-log-box glassmorphic rounded-xl p-6 neon-border ${className}`}>
         {!compact && (
@@ -125,57 +170,51 @@ export default function MissionLogWidget({
         )}
         
         <div className={`py-2 max-h-${maxHeight} overflow-y-auto`}>
-          {events.length > 0 ? (
+          {events.length === 0 ? (
+            renderEmptyState()
+          ) : upcomingEvents.length === 0 ? (
+            renderAllCompletedState()
+          ) : (
             <div className="space-y-3">
-              {events
-                .sort((a, b) => a.startTime.localeCompare(b.startTime))
-                .map((event) => {
-                  const isCompleted = completedMissions[event.id] || false;
-                  
-                  return (
-                    <div 
-                      key={event.id}
-                      className={`p-4 rounded-lg transition-all duration-200 relative 
-                        ${isCompleted ? 
-                          'bg-green-400/5 border border-green-400/20' : 
-                          'bg-primary/5 border border-primary/20 hover:border-primary/40'}`}
-                    >
-                      <div className="flex items-start">
-                        <Checkbox
-                          className={`mt-1 rounded border transition-all duration-200
-                          ${event.category === 'work' ? 'border-blue-500/50 data-[state=checked]:bg-blue-500/20 data-[state=checked]:text-blue-400' : 
-                            event.category === 'health' ? 'border-red-500/50 data-[state=checked]:bg-red-500/20 data-[state=checked]:text-red-400' : 
-                            'border-purple-500/50 data-[state=checked]:bg-purple-500/20 data-[state=checked]:text-purple-400'}`}
-                          checked={isCompleted}
-                          onCheckedChange={() => toggleMission(event.id)}
-                        />
-                        <div className="ml-3 flex-grow">
-                          <div className="flex justify-between">
-                            <h3 className={`font-orbitron text-base ${isCompleted ? 'line-through text-[#7DAAB2]' : 'text-[#D6F4FF]'}`}>
-                              {event.title}
-                            </h3>
-                            <div className="flex items-center">
-                              <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
-                              <span className="text-primary text-xs font-mono">+15 XP</span>
-                            </div>
+              {upcomingEvents.map((event) => {
+                const isCompleted = completedMissions[event.id] || false;
+                
+                return (
+                  <div 
+                    key={event.id}
+                    className={`p-4 rounded-lg transition-all duration-200 relative 
+                      ${isCompleted ? 
+                        'bg-green-400/5 border border-green-400/20' : 
+                        'bg-primary/5 border border-primary/20 hover:border-primary/40'}`}
+                  >
+                    <div className="flex items-start">
+                      <Checkbox
+                        className={`mt-1 rounded border transition-all duration-200
+                        ${event.category === 'work' ? 'border-blue-500/50 data-[state=checked]:bg-blue-500/20 data-[state=checked]:text-blue-400' : 
+                          event.category === 'health' ? 'border-red-500/50 data-[state=checked]:bg-red-500/20 data-[state=checked]:text-red-400' : 
+                          'border-purple-500/50 data-[state=checked]:bg-purple-500/20 data-[state=checked]:text-purple-400'}`}
+                        checked={isCompleted}
+                        onCheckedChange={() => toggleMission(event.id)}
+                      />
+                      <div className="ml-3 flex-grow">
+                        <div className="flex justify-between">
+                          <h3 className={`font-orbitron text-base ${isCompleted ? 'line-through text-[#7DAAB2]' : 'text-[#D6F4FF]'}`}>
+                            {event.title}
+                          </h3>
+                          <div className="flex items-center">
+                            <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
+                            <span className="text-primary text-xs font-mono">+15 XP</span>
                           </div>
-                          <p className={`text-xs text-[#7DAAB2] mt-0.5 ${isCompleted ? 'line-through' : ''}`}>
-                            {event.category === 'work' ? 'Conference Room 3' : 
-                            event.category === 'health' ? 'Gym' : 'Virtual'} | {event.duration} | {event.startTime}
-                          </p>
                         </div>
+                        <p className={`text-xs text-[#7DAAB2] mt-0.5 ${isCompleted ? 'line-through' : ''}`}>
+                          {event.category === 'work' ? 'Conference Room 3' : 
+                          event.category === 'health' ? 'Gym' : 'Virtual'} | {event.duration} | {event.startTime}
+                        </p>
                       </div>
                     </div>
-                  );
-                })}
-            </div>
-          ) : (
-            <div className="glassmorphic rounded-xl p-6 text-center opacity-80">
-              <Calendar className="h-10 w-10 text-primary/50 mx-auto mb-3" />
-              <p className="text-[#7DAAB2]">No missions scheduled for today</p>
-              <p className="text-xs text-[#7DAAB2] mt-2">
-                Visit the Calendar page to add missions to your daily schedule
-              </p>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -190,6 +229,8 @@ export default function MissionLogWidget({
   }
   
   // Timeline-style rendering (original)
+  const upcomingEvents = getUpcomingEvents(3);
+  
   return (
     <div className={`mission-log-box bg-[#0d131f] border border-[#00f2fe] rounded-xl p-6 ${className}`}>
       {!compact && (
@@ -209,55 +250,49 @@ export default function MissionLogWidget({
       )}
       
       <div className={`mission-schedule py-2 max-h-${maxHeight} overflow-y-auto`}>
-        {events.length > 0 ? (
+        {events.length === 0 ? (
+          renderEmptyState()
+        ) : upcomingEvents.length === 0 ? (
+          renderAllCompletedState()
+        ) : (
           <ul className="list-none p-0 m-0">
-            {events
-              .sort((a, b) => a.startTime.localeCompare(b.startTime))
-              .map((event) => {
-                const isCompleted = completedMissions[event.id] || false;
-                
-                return (
-                  <li 
-                    key={event.id}
-                    className={`mission-block mb-7 transition-all duration-300 p-3 rounded-lg border border-[#00f2fe]/30 ${isCompleted ? 'opacity-50' : ''}`}
-                  >
-                    <div className="flex items-start">
-                      <Checkbox
-                        className={`mt-1 rounded border transition-all duration-200
-                        ${event.category === 'work' ? 'border-blue-500/50 data-[state=checked]:bg-blue-500/20 data-[state=checked]:text-blue-400' : 
-                          event.category === 'health' ? 'border-red-500/50 data-[state=checked]:bg-red-500/20 data-[state=checked]:text-red-400' : 
-                          'border-purple-500/50 data-[state=checked]:bg-purple-500/20 data-[state=checked]:text-purple-400'}`}
-                        checked={isCompleted}
-                        onCheckedChange={() => toggleMission(event.id)}
-                      />
-                      <div className="ml-3 flex-grow">
-                        <div className="flex justify-between">
-                          <h3 className={`text-base font-semibold ${isCompleted ? 'line-through text-[#7DAAB2]' : 'text-white'}`}>
-                            {event.title}
-                          </h3>
-                          <div className="flex items-center">
-                            <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
-                            <span className="text-primary text-xs font-mono">+15 XP</span>
-                          </div>
-                        </div>
-                        <div className={`text-sm ${isCompleted ? 'line-through' : ''} text-[#8aaac2]`}>
-                          {event.category === 'work' ? 'Conference Room 3' : 
-                          event.category === 'health' ? 'Gym' : 'Virtual'} | {event.duration} | {event.startTime}
+            {upcomingEvents.map((event) => {
+              const isCompleted = completedMissions[event.id] || false;
+              
+              return (
+                <li 
+                  key={event.id}
+                  className={`mission-block mb-7 transition-all duration-300 p-3 rounded-lg border border-[#00f2fe]/30 ${isCompleted ? 'opacity-50' : ''}`}
+                >
+                  <div className="flex items-start">
+                    <Checkbox
+                      className={`mt-1 rounded border transition-all duration-200
+                      ${event.category === 'work' ? 'border-blue-500/50 data-[state=checked]:bg-blue-500/20 data-[state=checked]:text-blue-400' : 
+                        event.category === 'health' ? 'border-red-500/50 data-[state=checked]:bg-red-500/20 data-[state=checked]:text-red-400' : 
+                        'border-purple-500/50 data-[state=checked]:bg-purple-500/20 data-[state=checked]:text-purple-400'}`}
+                      checked={isCompleted}
+                      onCheckedChange={() => toggleMission(event.id)}
+                    />
+                    <div className="ml-3 flex-grow">
+                      <div className="flex justify-between">
+                        <h3 className={`text-base font-semibold ${isCompleted ? 'line-through text-[#7DAAB2]' : 'text-white'}`}>
+                          {event.title}
+                        </h3>
+                        <div className="flex items-center">
+                          <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
+                          <span className="text-primary text-xs font-mono">+15 XP</span>
                         </div>
                       </div>
+                      <div className={`text-sm ${isCompleted ? 'line-through' : ''} text-[#8aaac2]`}>
+                        {event.category === 'work' ? 'Conference Room 3' : 
+                        event.category === 'health' ? 'Gym' : 'Virtual'} | {event.duration} | {event.startTime}
+                      </div>
                     </div>
-                  </li>
-                );
-              })}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
-        ) : (
-          <div className="glassmorphic rounded-xl p-6 text-center opacity-80 mt-6">
-            <Calendar className="h-10 w-10 text-primary/50 mx-auto mb-3" />
-            <p className="text-[#7DAAB2]">No missions scheduled for today</p>
-            <p className="text-xs text-[#7DAAB2] mt-2">
-              Visit the Calendar page to add missions to your daily schedule
-            </p>
-          </div>
         )}
       </div>
       
