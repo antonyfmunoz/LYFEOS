@@ -38,6 +38,14 @@ export interface AIMessage {
   timestamp: Date;
 }
 
+export interface ChatSession {
+  id: string;
+  title: string;
+  messages: AIMessage[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface CalendarEvent {
   id: string;
   title: string;

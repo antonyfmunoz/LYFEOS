@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { UserStats, Quest, AIMessage, CalendarEvent, MissionPage } from "./types";
+import { UserStats, Quest, AIMessage, CalendarEvent, MissionPage, ChatSession } from "./types";
 import { toast } from "@/hooks/use-toast";
 
 // Initial stats data
@@ -55,15 +55,26 @@ const initialQuests: Quest[] = [
   },
 ];
 
-// Initial AI messages
-const initialMessages: AIMessage[] = [
+// Initial Chat Sessions
+const initialChatSessions: ChatSession[] = [
   {
-    id: "msg1",
-    sender: "ai",
-    content: "Looking at your energy levels and upcoming tasks, would you like me to suggest an optimized schedule for today?",
-    timestamp: new Date(),
-  },
+    id: "chat1",
+    title: "Getting Started",
+    messages: [
+      {
+        id: "msg1",
+        sender: "ai",
+        content: "Looking at your energy levels and upcoming tasks, would you like me to suggest an optimized schedule for today?",
+        timestamp: new Date(),
+      }
+    ],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }
 ];
+
+// Initial AI messages (for backward compatibility)
+const initialMessages: AIMessage[] = initialChatSessions[0].messages;
 
 // Initial calendar events
 const initialEvents: CalendarEvent[] = [
@@ -100,8 +111,11 @@ interface LYFEOSContextType {
   messages: AIMessage[];
   events: CalendarEvent[];
   missionPages: MissionPage[];
+  chatSessions: ChatSession[];
+  activeChatSessionId: string;
   toggleQuestCompletion: (id: string) => void;
   sendMessage: (content: string) => void;
+  sendMessageInSession: (sessionId: string, content: string) => void;
   username: string;
   setUsername: (name: string) => void;
   aiCompanionName: string;
@@ -113,6 +127,10 @@ interface LYFEOSContextType {
   updateMissionPage: (id: string, pageData: Partial<MissionPage>) => void;
   getMissionPageBySlug: (slug: string) => MissionPage | undefined;
   getMissionPageById: (id: string) => MissionPage | undefined;
+  createChatSession: (title: string) => ChatSession;
+  deleteChatSession: (id: string) => void;
+  setActiveChatSession: (id: string) => void;
+  updateChatSessionTitle: (id: string, title: string) => void;
 }
 
 // Create the context
@@ -138,6 +156,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const [missionPages, setMissionPages] = useState<MissionPage[]>(initialMissionPages);
   const [username, setUsername] = useState<string>("Alex Chen");
   const [aiCompanionName, setAICompanionName] = useState<string>("Nova");
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>(initialChatSessions);
+  const [activeChatSessionId, setActiveChatSessionId] = useState<string>(initialChatSessions[0].id);
 
   // Toggle quest completion
   const toggleQuestCompletion = (id: string) => {
@@ -382,6 +402,166 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const getMissionPageById = (id: string): MissionPage | undefined => {
     return missionPages.find(page => page.id === id);
   };
+  
+  // Chat Sessions Functions
+  
+  // Send a message in a specific chat session
+  const sendMessageInSession = (sessionId: string, content: string) => {
+    // Add user message
+    const userMessage: AIMessage = {
+      id: `msg-user-${Date.now()}`,
+      sender: "user",
+      content,
+      timestamp: new Date(),
+    };
+    
+    // Update chat session with new message
+    setChatSessions((prev) => 
+      prev.map((session) => {
+        if (session.id === sessionId) {
+          const updatedMessages = [...session.messages, userMessage];
+          return {
+            ...session, 
+            messages: updatedMessages,
+            updatedAt: new Date()
+          };
+        }
+        return session;
+      })
+    );
+    
+    // Update legacy messages if this is the active session
+    if (sessionId === activeChatSessionId) {
+      setMessages((prev) => [...prev, userMessage]);
+    }
+    
+    // Simulate AI response
+    setTimeout(() => {
+      const aiMessage: AIMessage = {
+        id: `msg-ai-${Date.now()}`,
+        sender: "ai",
+        content: "I understand. Based on your current priorities and energy levels, I'd recommend focusing on completing your Deep Work Block first.",
+        timestamp: new Date(),
+      };
+      
+      // Update chat session with AI response
+      setChatSessions((prev) => 
+        prev.map((session) => {
+          if (session.id === sessionId) {
+            const updatedMessages = [...session.messages, aiMessage];
+            return {
+              ...session, 
+              messages: updatedMessages,
+              updatedAt: new Date()
+            };
+          }
+          return session;
+        })
+      );
+      
+      // Update legacy messages if this is the active session
+      if (sessionId === activeChatSessionId) {
+        setMessages((prev) => [...prev, aiMessage]);
+      }
+    }, 1000);
+  };
+  
+  // Create a new chat session
+  const createChatSession = (title: string): ChatSession => {
+    const newChatSession: ChatSession = {
+      id: `chat-${Date.now()}`,
+      title,
+      messages: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    setChatSessions((prev) => [...prev, newChatSession]);
+    
+    // Show chat created toast
+    toast({
+      title: "New Chat Created",
+      description: `${title}`,
+      variant: "default",
+      className: "bg-[#001E26] border border-purple-500 text-white",
+      duration: 3000,
+    });
+    
+    return newChatSession;
+  };
+  
+  // Delete a chat session
+  const deleteChatSession = (id: string) => {
+    // Find the chat to show in toast
+    const chatToDelete = chatSessions.find(chat => chat.id === id);
+    
+    // Don't allow deleting the last chat
+    if (chatSessions.length <= 1) {
+      toast({
+        title: "Cannot Delete",
+        description: "You need to have at least one chat session",
+        variant: "destructive",
+        className: "bg-[#181818] border border-red-500 text-white",
+        duration: 3000,
+      });
+      return;
+    }
+    
+    // Check if this is the active session
+    if (id === activeChatSessionId) {
+      // Find another session to make active
+      const remainingChats = chatSessions.filter(chat => chat.id !== id);
+      setActiveChatSessionId(remainingChats[0].id);
+      
+      // Update legacy messages array for backward compatibility
+      setMessages(remainingChats[0].messages);
+    }
+    
+    // Remove the chat session
+    setChatSessions((prev) => prev.filter((chat) => chat.id !== id));
+    
+    // Show chat deleted toast
+    if (chatToDelete) {
+      toast({
+        title: "Chat Deleted",
+        description: `${chatToDelete.title} has been removed`,
+        variant: "destructive",
+        className: "bg-[#181818] border border-red-500 text-white",
+        duration: 3000,
+      });
+    }
+  };
+  
+  // Set the active chat session
+  const setActiveChatSession = (id: string) => {
+    // Find the session
+    const session = chatSessions.find(chat => chat.id === id);
+    if (!session) return;
+    
+    // Set as active
+    setActiveChatSessionId(id);
+    
+    // Update legacy messages for backward compatibility
+    setMessages(session.messages);
+  };
+  
+  // Update chat session title
+  const updateChatSessionTitle = (id: string, title: string) => {
+    setChatSessions((prev) => 
+      prev.map((session) => 
+        session.id === id ? { ...session, title, updatedAt: new Date() } : session
+      )
+    );
+    
+    // Show title updated toast
+    toast({
+      title: "Chat Updated",
+      description: "Chat title has been updated",
+      variant: "default",
+      className: "bg-[#001E26] border border-purple-500 text-white",
+      duration: 3000,
+    });
+  };
 
   // Reset time tokens daily (simulation)
   useEffect(() => {
@@ -414,8 +594,11 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         messages,
         events,
         missionPages,
+        chatSessions,
+        activeChatSessionId,
         toggleQuestCompletion,
         sendMessage,
+        sendMessageInSession,
         username,
         setUsername,
         aiCompanionName,
@@ -427,6 +610,10 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         updateMissionPage,
         getMissionPageBySlug,
         getMissionPageById,
+        createChatSession,
+        deleteChatSession,
+        setActiveChatSession,
+        updateChatSessionTitle,
       }}
     >
       {children}
