@@ -513,12 +513,12 @@ export default function DashboardPage() {
         </div>
       </section>
       
-      {/* Entry Log Panel - Separate Widget */}
+      {/* Data Entry Log Panel */}
       <section className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-orbitron flex items-center">
             <BookOpen className="h-5 w-5 text-primary mr-2" />
-            <span>Entry Log</span>
+            <span>Data Entry Log</span>
           </h2>
         </div>
         
