@@ -63,7 +63,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <div className="flex-grow overflow-y-auto p-4 lg:p-6">
           {/* Mobile header (visible on mobile only) */}
           <div className="flex items-center justify-between mb-6 lg:hidden">
-            <span className="text-2xl text-primary font-orbitron font-bold">Life<span className="text-white">OS</span></span>
+            <span className="text-2xl text-primary font-orbitron font-bold">LYFE<span className="text-white">OS</span></span>
             
             {/* Profile Icon with dropdown */}
             <div className="relative">

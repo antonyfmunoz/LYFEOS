@@ -18,7 +18,7 @@ export default function Sidebar({ currentPage, username }: SidebarProps) {
     <div className="hidden lg:flex lg:flex-col w-64 border-r border-opacity-20 border-primary p-4 glassmorphic">
       {/* App logo */}
       <div className="flex items-center mb-8">
-        <span className="text-3xl text-primary font-orbitron font-bold">Life<span className="text-white">OS</span></span>
+        <span className="text-3xl text-primary font-orbitron font-bold">LYFE<span className="text-white">OS</span></span>
       </div>
 
       {/* User profile section */}
