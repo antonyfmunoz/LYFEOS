@@ -59,12 +59,12 @@ const initialQuests: Quest[] = [
 const initialChatSessions: ChatSession[] = [
   {
     id: "chat1",
-    title: "Getting Started",
+    title: "General Assistance",
     messages: [
       {
         id: "msg1",
         sender: "ai",
-        content: "Looking at your energy levels and upcoming tasks, would you like me to suggest an optimized schedule for today?",
+        content: "Welcome to your AI companion. How can I assist you today? I can help with task prioritization, creative brainstorming, or just a friendly chat.",
         timestamp: new Date(),
       }
     ],
