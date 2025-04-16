@@ -551,19 +551,19 @@ export default function DashboardPage() {
               onChange={(e) => setNewBlockName(e.target.value)}
             />
             
-            <div className="flex items-center sm:col-span-2">
+            <div className="flex items-center gap-2 sm:col-span-2">
               <div className="flex-1">
                 <CustomTimePicker
                   value={newBlockStartTime}
-                  onChange={setNewBlockStartTime}
+                  onChange={(value) => setNewBlockStartTime(value)}
                   icon={<Clock className="h-3 w-3 text-primary/70" />}
                 />
               </div>
-              <span className="mx-2 text-[#7DAAB2]">-</span>
+              <span className="text-[#7DAAB2]">-</span>
               <div className="flex-1">
                 <CustomTimePicker
                   value={newBlockEndTime}
-                  onChange={setNewBlockEndTime}
+                  onChange={(value) => setNewBlockEndTime(value)}
                   icon={<Clock className="h-3 w-3 text-primary/70" />}
                 />
               </div>
