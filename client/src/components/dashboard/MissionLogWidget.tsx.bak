@@ -5,7 +5,6 @@ import { Calendar, CheckCircle2, Clock, ArrowRight, Award, Zap, Info } from "luc
 import { CalendarEvent } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import InfoIconButton from './InfoIconButton';
 
 interface MissionLogWidgetProps {
   events: CalendarEvent[];
@@ -155,21 +154,6 @@ export default function MissionLogWidget({
     setSelectedMission(event);
     setInfoDialogOpen(true);
   };
-  
-  // Info Button Component
-  const InfoButton = ({ event }: { event: CalendarEvent }) => (
-    <Button
-      variant="outline"
-      size="icon"
-      className="h-6 w-6 p-0 bg-primary/10 text-primary hover:bg-primary/20 transition rounded-full border border-primary"
-      onClick={(e) => {
-        e.stopPropagation();
-        openMissionInfo(event);
-      }}
-    >
-      <Info className="h-3.5 w-3.5" />
-    </Button>
-  );
 
   // Render the appropriate mission log UI based on style
   const upcomingEvents = getUpcomingEvents(3);
