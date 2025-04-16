@@ -398,6 +398,89 @@ export default function DashboardPage() {
         </div>
       </section>
       
+      {/* Mission Log Panel */}
+      <section className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-orbitron flex items-center">
+            <Calendar className="h-5 w-5 text-primary mr-2" />
+            <span>Mission Log</span>
+          </h2>
+          <div className="flex items-center text-sm text-[#36F1CD] font-mono">
+            <span>XP Earned Today: +{totalXpEarned}</span>
+          </div>
+        </div>
+        
+        {/* Calendar Events */}
+        <div className="space-y-3">
+          {events
+            .sort((a, b) => a.startTime.localeCompare(b.startTime))
+            .map((event) => (
+              <div 
+                key={event.id} 
+                className="glassmorphic rounded-xl p-4 neon-border hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition"
+              >
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 
+                      ${event.category === 'work' ? 'bg-blue-500/20' : 
+                        event.category === 'health' ? 'bg-green-500/20' : 'bg-purple-500/20'}`}>
+                      {event.category === 'work' ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                      ) : event.category === 'health' ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-9.33-5"/><path d="m10.67 21.33-.67-1.33"/><path d="M3 7v2"/><path d="M7 3h2"/><path d="M5.67 5.67 4.33 4.33"/><path d="M18 21l3-3h-6l3-3"/><path d="M16 3h5v5"/><path d="m16 8-5-5"/></svg>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <h3 className="font-medium text-[#D6F4FF]">{event.title}</h3>
+                      <div className="flex items-center mt-1">
+                        <Clock className="h-3 w-3 text-primary mr-1" />
+                        <p className="text-xs text-[#7DAAB2]">{event.startTime} • {event.duration}</p>
+                      </div>
+                      {event.description && (
+                        <p className="text-xs text-[#7DAAB2] mt-1 italic">{event.description}</p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col items-end">
+                    <div className={`text-xs font-semibold rounded-full px-2 py-0.5 
+                      ${event.category === 'work' ? 'bg-blue-500/10 text-blue-400' : 
+                        event.category === 'health' ? 'bg-green-500/10 text-green-400' : 
+                          'bg-purple-500/10 text-purple-400'}`}>
+                      {event.category.charAt(0).toUpperCase() + event.category.slice(1)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            {events.length === 0 && (
+              <div className="glassmorphic rounded-xl p-6 text-center opacity-80">
+                <Calendar className="h-10 w-10 text-primary/50 mx-auto mb-3" />
+                <p className="text-[#7DAAB2]">No events scheduled for today</p>
+                <p className="text-xs text-[#7DAAB2] mt-2">
+                  Visit the Calendar page to add events to your schedule
+                </p>
+              </div>
+            )}
+        </div>
+        
+        {/* Link to Calendar Section */}
+        <div className="mt-4 flex justify-end">
+          <Button
+            variant="outline"
+            className="text-primary border-primary/30 hover:bg-primary/10"
+            onClick={() => window.location.href = '/calendar'}
+          >
+            <Calendar className="h-4 w-4 mr-2" />
+            View Full Calendar
+          </Button>
+        </div>
+      </section>
+      
       {/* Entry Log Panel - Separate Widget */}
       <section className="mb-6">
         <div className="flex items-center justify-between mb-4">
