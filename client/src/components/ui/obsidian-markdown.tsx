@@ -87,81 +87,60 @@ function remarkObsidianLinks() {
 
 // Custom components for rendering Obsidian-style elements
 const obsidianComponents = {
+  // Handle standard lists - let ReactMarkdown handle the bullets
   ul: ({ node, children, ...props }: any) => {
-    return <div className="obsidian-list">{children}</div>;
+    return <ul {...props}>{children}</ul>;
   },
   
-  li: ({ node, children, ...props }: any) => {
-    // Safety check - if children is undefined or empty, just render a regular li
-    if (!children || children.length === 0) {
-      return <li {...props} className="normal-list-item" />;
+  ol: ({ node, children, ...props }: any) => {
+    return <ol {...props}>{children}</ol>;
+  },
+  
+  // Handle task lists with checkboxes (Obsidian style)
+  li: ({ node, children, checked, className, ...props }: any) => {
+    // If this is a task item with a checkbox (ReactMarkdown passes the 'checked' prop)
+    if (checked !== undefined) {
+      return (
+        <li className="task-list-item" style={{ listStyleType: 'none', display: 'flex', alignItems: 'flex-start' }}>
+          <input
+            type="checkbox"
+            checked={checked}
+            readOnly
+            style={{
+              appearance: 'none',
+              display: 'inline-flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              width: '1.2em',
+              height: '1.2em',
+              border: '1px solid #00E0FF',
+              borderRadius: '0.2em',
+              marginRight: '0.5em',
+              color: '#00E0FF',
+              backgroundColor: checked ? 'rgba(0, 224, 255, 0.2)' : 'transparent',
+              position: 'relative'
+            }}
+          />
+          {checked && (
+            <span style={{ 
+              position: 'absolute', 
+              color: '#00E0FF',
+              fontSize: '0.8em',
+              marginLeft: '0.25em',
+              marginTop: '0.15em'
+            }}>
+              ✓
+            </span>
+          )}
+          <span className={checked ? 'line-through opacity-70' : ''}>
+            {children}
+          </span>
+        </li>
+      );
     }
     
-    // Check if first child is a text node or has text content we can examine
-    let textContent = '';
-    let firstChild = children[0];
-    
-    // Try to extract text content from different possible structures
-    if (typeof firstChild === 'string') {
-      textContent = firstChild;
-    } else if (
-      firstChild && 
-      typeof firstChild === 'object' && 
-      firstChild.props && 
-      typeof firstChild.props.children === 'string'
-    ) {
-      textContent = firstChild.props.children;
-    }
-    
-    // If we have text content to check
-    if (textContent) {
-      const taskMatch = textContent.match(/^\s*\[([ x])\]\s*(.*)$/);
-      
-      if (taskMatch) {
-        const isCompleted = taskMatch[1] === 'x';
-        const content = taskMatch[2];
-        
-        // Completely custom rendering with no reliance on li element
-        return (
-          <div 
-            className="task-item-container flex items-start my-1"
-            style={{ display: 'flex', alignItems: 'flex-start' }}
-          >
-            <div 
-              className={`task-checkbox ${isCompleted ? 'checked' : ''}`}
-              style={{ 
-                display: 'inline-flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                width: '1.2em',
-                height: '1.2em',
-                border: '1px solid #00E0FF',
-                borderRadius: '0.2em',
-                marginRight: '0.5em',
-                color: '#00E0FF',
-                backgroundColor: isCompleted ? 'rgba(0, 224, 255, 0.2)' : 'transparent'
-              }}
-            >
-              {isCompleted ? '✓' : ''}
-            </div>
-            <div 
-              className={isCompleted ? 'line-through opacity-70' : ''}
-              style={{ flexGrow: 1 }}
-            >
-              {content}
-            </div>
-          </div>
-        );
-      }
-    }
-    
-    // For regular list items, add bullet manually
-    return (
-      <div className="normal-list-item flex items-start my-1">
-        <span className="bullet-point mr-2" style={{ color: '#7DAAB2' }}>•</span>
-        <div>{children}</div>
-      </div>
-    );
+    // For regular list items, use standard <li> with proper classes
+    return <li {...props} className={className}>{children}</li>;
   }
 };
 

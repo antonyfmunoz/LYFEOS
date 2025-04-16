@@ -321,25 +321,42 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   padding-left: 1.5em;
 }
 
-.prose ul .obsidian-task-list-item,
-.prose ul li.obsidian-task-list-item,
-.prose ol li.obsidian-task-list-item,
-.prose li.obsidian-task-list-item {
+/* Remove bullets for task checkboxes - Obsidian style */
+.prose li > input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+.prose ul li:has(> input[type="checkbox"]),
+.prose ol li:has(> input[type="checkbox"]),
+.prose li.task-list-item {
+  list-style-type: none !important;
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+}
+
+/* Also handle ReactMarkdown-generated task list items */
+.prose li.contains-task-list {
   list-style-type: none !important;
   padding-left: 0 !important;
   margin-left: 0 !important;
-  display: flex !important;
-  align-items: flex-start !important;
 }
 
-.prose ul .obsidian-task-list-item::before,
-.prose ul li.obsidian-task-list-item::before,
-.prose ol li.obsidian-task-list-item::before,
-.prose li.obsidian-task-list-item::before,
-.prose ul .obsidian-task-list-item::marker,
-.prose ul li.obsidian-task-list-item::marker,
-.prose ol li.obsidian-task-list-item::marker,
-.prose li.obsidian-task-list-item::marker {
+.prose ul li:has(.task-list-item),
+.prose ol li:has(.task-list-item) {
+  list-style-type: none !important;
+  padding-left: 0 !important;
+  margin-left: 0 !important;
+}
+
+/* Override any pseudo-elements that might add bullets */
+.prose ul li:has(> input[type="checkbox"])::before,
+.prose ul li:has(> input[type="checkbox"])::marker,
+.prose ol li:has(> input[type="checkbox"])::before,
+.prose ol li:has(> input[type="checkbox"])::marker,
+.prose li.task-list-item::before,
+.prose li.task-list-item::marker,
+.prose li.contains-task-list::before,
+.prose li.contains-task-list::marker {
   display: none !important;
   content: '' !important;
 }
