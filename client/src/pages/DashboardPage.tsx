@@ -21,6 +21,7 @@ import {
   Zap
 } from "lucide-react";
 import MissionLogWidget from "@/components/dashboard/MissionLogWidget";
+import MissionLogSystem from "@/components/dashboard/MissionLogSystem";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CustomTimePicker } from "@/components/ui/custom-time-picker";
@@ -511,6 +512,18 @@ export default function DashboardPage() {
       </section>
       
       {/* Mission Log Panel */}
+      <section className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-orbitron flex items-center">
+            <CheckCircle2 className="h-5 w-5 text-primary mr-2" />
+            <span>Mission Log</span>
+          </h2>
+        </div>
+        
+        <MissionLogSystem />
+      </section>
+      
+      {/* Calendar Events Panel */}
       <section className="mb-6">
         <MissionLogWidget 
           events={events} 

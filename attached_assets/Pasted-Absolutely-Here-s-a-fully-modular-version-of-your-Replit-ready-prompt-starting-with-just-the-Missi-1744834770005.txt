@@ -1,0 +1,90 @@
+Absolutely. Here’s a fully modular version of your Replit-ready prompt, starting with just the Mission Log system — clean, clickable, and built for future markdown page integration.
+
+⸻
+
+PHASE 1: MISSION LOG SYSTEM ONLY (Foundational UI + Logic)
+
+Build a responsive web interface for a Mission Log system that functions like a tactical task list.
+
+### CORE OBJECTIVE:
+Create a daily Mission Log interface with interactive checkbox widgets and expandable mission summaries.
+
+---
+
+### 1. MISSION LOG UI:
+
+Each mission should be displayed as a list item with:
+
+- [ ] **Checkbox**: Clicking marks the task as complete and awards XP.
+- **Mission Title**: Displayed as editable inline text or static.
+- **ⓘ Icon (Info Button)**:
+  - Clicking opens a **popup modal** with:
+    - Mission title
+    - Short summary description
+    - A **[View Full Report]** button (this can be a placeholder for now)
+
+- On mission completion:
+  - Animate check off (e.g., strikethrough or fade)
+  - Increment a persistent XP tracker (display XP at top of UI)
+
+---
+
+### 2. INPUT SYSTEM:
+
+Include a "New Mission" input field at the top of the list.
+
+- On submitting a new mission:
+  - Instantly add it to the Mission Log list.
+  - Generate a checkbox + title + info icon as described above.
+  - Store this mission in an internal state or simple local storage.
+
+---
+
+### 3. STATE & STORAGE:
+
+- Use JavaScript (or React state) to store:
+  - Mission title
+  - Completion status (true/false)
+  - Short description (hardcoded for now or set via modal)
+  - XP value (e.g., 10 per completed mission)
+- Use **LocalStorage** or **IndexedDB** to persist across sessions (optional MVP)
+
+---
+
+### 4. XP TRACKING:
+
+- Display an XP counter at the top right or left of the UI.
+- Completing a mission increases the XP count.
+- XP should persist during the session (use local storage for now).
+
+---
+
+### OPTIONAL STYLES (Design Suggestions):
+
+- Clean, military-inspired UI (dark mode or grayscale theme)
+- Checkbox = sleek box with smooth animation on check
+- Info icon = encircled "i", right-aligned
+- Popup = modal card that slides in or fades on click
+
+---
+
+### FUTURE EXPANSION HOOKS (Do not build yet):
+
+- Each mission will later generate a markdown-linked page (`[[Mission Title]]`)
+- Info icon popup’s **[View Full Report]** button will link to that page
+- Full markdown page editor and backlink system will come in Phase 2
+
+---
+
+### TECH SUGGESTIONS:
+- HTML/CSS/JS for MVP
+- Or use React (for state & future markdown linking)
+- Optional: TailwindCSS for clean UI
+
+
+
+⸻
+
+Once this is complete and working smoothly, we’ll layer in Phase 2: The Markdown Page System, so every mission becomes its own fully editable page just like in Obsidian.
+
+Would you like me to now prep the Phase 2 prompt so you can build sequentially? Or want me to scaffold example code for Phase 1 first?

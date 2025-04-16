@@ -25,10 +25,14 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
     return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
   };
 
-  // Update the parent component when time changes
+  // Update the parent component when time changes, but avoid infinite loops
   useEffect(() => {
-    onChange(formatTime(hours, minutes));
-  }, [hours, minutes, onChange]);
+    // Only update if the formatted value is different from current value
+    const formattedTime = formatTime(hours, minutes);
+    if (formattedTime !== value) {
+      onChange(formattedTime);
+    }
+  }, [hours, minutes, onChange, value]);
 
   // Handle click outside to close the dropdown
   useEffect(() => {
