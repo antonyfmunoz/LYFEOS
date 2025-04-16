@@ -343,44 +343,63 @@ export default function MissionLogWidget({
       {renderMissionContent()}
       
       <Dialog open={infoDialogOpen} onOpenChange={setInfoDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="glassmorphic backdrop-blur-lg border-primary/30 max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-lg font-orbitron">{selectedMission?.title}</DialogTitle>
+            <DialogTitle className="font-orbitron">{selectedMission?.title}</DialogTitle>
+            <DialogDescription className="opacity-90">
+              {selectedMission?.category === "work" ? (
+                <span className="text-primary">Work Mission</span>
+              ) : selectedMission?.category === "personal" ? (
+                <span className="text-[#7e57c2]">Personal Mission</span>
+              ) : (
+                <span className="text-[#EC4899]">Health Mission</span>
+              )}
+            </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
-            <div className="text-sm text-muted-foreground">
-              {selectedMission?.description}
+          <div className="space-y-4 py-2">
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center space-x-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-mono">{selectedMission?.startTime}</span>
+              </div>
+              <span className="text-sm text-muted-foreground">Duration: {selectedMission?.duration}</span>
             </div>
             
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="flex flex-col">
-                <span className="text-xs text-muted-foreground">Time</span>
-                <span className="font-mono">{selectedMission?.startTime}</span>
+            <div className="bg-primary/5 p-4 rounded-md">
+              <h4 className="text-sm font-semibold mb-2">Description</h4>
+              <p className="text-sm leading-relaxed">{selectedMission?.description || "Complete this mission to earn XP and progress through your daily goals."}</p>
+            </div>
+            
+            <div className="bg-primary/5 p-4 rounded-md">
+              <h4 className="text-sm font-semibold mb-2">Location</h4>
+              <p className="text-sm leading-relaxed">
+                {selectedMission?.category === "work" ? "Conference Room 3" : 
+                 selectedMission?.category === "personal" ? "Virtual" : "Gym"}
+              </p>
+            </div>
+            
+            <div className="flex justify-between bg-primary/5 p-4 rounded-md">
+              <div>
+                <h4 className="text-sm font-semibold mb-2">Energy Cost</h4>
+                <p className="text-sm leading-relaxed text-red-400 font-mono">-5 EP</p>
               </div>
-              <div className="flex flex-col">
-                <span className="text-xs text-muted-foreground">Duration</span>
-                <span>{selectedMission?.duration}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs text-muted-foreground">Category</span>
-                <span className="capitalize">{selectedMission?.category}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs text-muted-foreground">XP Reward</span>
-                <span className="text-primary font-mono">+15 XP</span>
+              <div>
+                <h4 className="text-sm font-semibold mb-2">XP Reward</h4>
+                <p className="text-sm leading-relaxed text-primary font-mono">+15 XP</p>
               </div>
             </div>
           </div>
           
-          <DialogFooter className="flex justify-between items-center">
-            <Button 
-              variant="outline" 
+          <DialogFooter>
+            <Button
+              variant="outline"
               onClick={() => setInfoDialogOpen(false)}
             >
               Close
             </Button>
-            <Button 
+            <Button
+              className="bg-primary/20 hover:bg-primary/30 text-primary"
               onClick={() => {
                 setInfoDialogOpen(false);
                 // In the future, this would link to a full mission report page
