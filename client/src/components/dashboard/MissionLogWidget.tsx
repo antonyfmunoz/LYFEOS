@@ -106,18 +106,20 @@ export default function MissionLogWidget({
                   return (
                     <div 
                       key={event.id}
-                      className={`p-4 rounded-lg transition-all duration-200 cursor-pointer relative 
+                      className={`p-4 rounded-lg transition-all duration-200 relative 
                         ${isCompleted ? 
                           'bg-green-400/5 border border-green-400/20' : 
                           'bg-primary/5 border border-primary/20 hover:border-primary/40'}`}
-                      onClick={() => toggleMission(event.id)}
                     >
                       <div className="flex justify-between items-center">
                         <div className="flex items-center space-x-3">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center
-                            ${isCompleted ? 'bg-green-500/20' : 
-                              event.category === 'work' ? 'bg-blue-500/20' : 
-                              event.category === 'health' ? 'bg-red-500/20' : 'bg-purple-500/20'}`}>
+                          <div 
+                            className={`w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200
+                            ${isCompleted ? 'bg-green-500/20 hover:bg-green-500/30' : 
+                              event.category === 'work' ? 'bg-blue-500/20 hover:bg-blue-500/30' : 
+                              event.category === 'health' ? 'bg-red-500/20 hover:bg-red-500/30' : 'bg-purple-500/20 hover:bg-purple-500/30'}`}
+                            onClick={() => toggleMission(event.id)}
+                          >
                             {isCompleted ? (
                               <CheckCircle2 className="h-4 w-4 text-green-400" />
                             ) : (
@@ -163,7 +165,7 @@ export default function MissionLogWidget({
         
         {!compact && (
           <div className="mission-note text-center text-xs mt-5 text-[#7da4b6] italic opacity-80">
-            <span>↴ Click missions to mark them as completed</span>
+            <span>↴ Click the checkbox to mark missions as completed</span>
           </div>
         )}
       </div>
@@ -248,7 +250,7 @@ export default function MissionLogWidget({
       
       {!compact && (
         <div className="mission-note text-center text-xs mt-5 text-[#7da4b6] italic opacity-80">
-          <span>↴ Click missions to mark them as completed</span>
+          <span>↴ Click the checkbox to mark missions as completed</span>
         </div>
       )}
     </div>
