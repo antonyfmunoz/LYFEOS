@@ -18,6 +18,25 @@ export function AIAgentFAB() {
   // Toggle the AI chat panel
   const toggleChat = () => {
     setIsOpen(!isOpen);
+    // Initialize the name input when opening the panel
+    if (!isOpen && !isEditingName) {
+      setNameInput(aiCompanionName);
+    }
+  };
+  
+  // Handle name save
+  const handleSaveName = () => {
+    if (nameInput.trim()) {
+      setAICompanionName(nameInput);
+      setIsEditingName(false);
+      
+      // Show toast on name change
+      toast({
+        title: "AI Companion Updated",
+        description: `Your AI companion is now named ${nameInput}`,
+        className: "bg-[#001E26] border border-purple-500 text-white",
+      });
+    }
   };
   
   // Handle sending a message to the AI
@@ -40,7 +59,7 @@ export function AIAgentFAB() {
       // Show toast on completion
       toast({
         title: "AI Response",
-        description: "LYFE OS AI has replied to your message",
+        description: `${aiCompanionName} has replied to your message`,
         className: "bg-[#001E26] border border-purple-500 text-white",
       });
     }, 2000);
@@ -84,6 +103,58 @@ export function AIAgentFAB() {
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
+                
+                {/* AI Companion Name Editor */}
+                <div className="flex items-center mt-2">
+                  {isEditingName ? (
+                    <div className="flex items-center w-full">
+                      <Input
+                        value={nameInput}
+                        onChange={(e) => setNameInput(e.target.value)}
+                        className="bg-slate-700/30 border-purple-500/30 focus-visible:ring-purple-500/30 py-1 text-sm h-8 mr-2"
+                        placeholder="Enter AI name"
+                        maxLength={20}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={handleSaveName}
+                        className="h-7 w-7 p-0 text-purple-400 hover:bg-purple-500/20"
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setNameInput(aiCompanionName);
+                          setIsEditingName(false);
+                        }}
+                        className="h-7 w-7 p-0 text-[#7DAAB2] hover:bg-red-500/20 ml-1"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center">
+                        <span className="text-purple-400 text-sm mr-1">AI Companion:</span>
+                        <span className="text-white font-semibold text-sm">{aiCompanionName}</span>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setIsEditingName(true)}
+                        className="h-6 w-6 p-0 text-[#7DAAB2] hover:text-purple-400 hover:bg-purple-500/20"
+                      >
+                        <Edit2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
               
               <div className="p-3 h-[260px] overflow-y-auto flex flex-col space-y-3">
@@ -103,6 +174,9 @@ export function AIAgentFAB() {
                           : "bg-slate-700/30 border border-slate-700/50"
                       }`}
                     >
+                      {msg.sender === 'ai' && (
+                        <div className="text-xs text-purple-400 mb-1 font-semibold">{aiCompanionName}</div>
+                      )}
                       <p className="text-sm">{msg.content}</p>
                       <p className="text-right text-xs text-[#7DAAB2] mt-1">
                         {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -125,7 +199,7 @@ export function AIAgentFAB() {
               <form onSubmit={handleSendMessage} className="p-3 border-t border-purple-500/20">
                 <div className="flex space-x-2">
                   <Input
-                    placeholder="Ask me anything..."
+                    placeholder={`Ask ${aiCompanionName} anything...`}
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     className="bg-slate-700/30 border-purple-500/30 focus-visible:ring-purple-500/30"
