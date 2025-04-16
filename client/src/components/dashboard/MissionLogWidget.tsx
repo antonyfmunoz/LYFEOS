@@ -78,20 +78,19 @@ export default function MissionLogWidget({
   if (questStyle) {
     // Quest-style rendering
     return (
-      <div className={`quest-log-box glassmorphic rounded-xl p-6 ${className}`}>
+      <div className={`quest-log-box glassmorphic rounded-xl p-6 neon-border ${className}`}>
         {!compact && (
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-medium text-[#d6f4ff] flex items-center">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-orbitron text-[#dff9ff] flex items-center">
               <Calendar className="h-5 w-5 text-primary mr-2" />
               <span>Today's Missions</span>
             </h2>
             <Button
-              variant="outline"
-              className="text-primary border-primary/30 hover:bg-primary/10"
+              variant="ghost"
+              className="text-[#00f2fe] font-bold text-sm p-0 hover:bg-transparent hover:text-[#00f2fe] hover:underline"
               onClick={() => window.location.href = '/calendar'}
             >
-              <Calendar className="h-4 w-4 mr-2" />
-              View Calendar
+              VIEW CALENDAR
             </Button>
           </div>
         )}
@@ -127,7 +126,7 @@ export default function MissionLogWidget({
                           </div>
                           <div>
                             <div className="flex items-center">
-                              <h3 className={`font-medium ${isCompleted ? 'line-through text-[#7DAAB2]' : 'text-[#D6F4FF]'}`}>
+                              <h3 className={`font-orbitron text-base ${isCompleted ? 'line-through text-[#7DAAB2]' : 'text-[#D6F4FF]'}`}>
                                 {event.title}
                               </h3>
                               <span className="ml-2 text-xs font-mono text-[#7DAAB2]">{event.startTime}</span>
@@ -138,13 +137,13 @@ export default function MissionLogWidget({
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center">
-                          <div className="px-2 py-1 rounded-md bg-primary/10 text-xs font-mono text-primary">
+                        <div className="flex items-center space-x-3">
+                          <div className="px-2 py-1 rounded-md bg-red-500/10 text-xs font-mono text-red-400 border border-red-500/30">
+                            -5 EP
+                          </div>
+                          <div className="px-2 py-1 rounded-md bg-primary/10 text-xs font-mono text-primary border border-primary/30">
                             +15 XP
                           </div>
-                          <Button variant="ghost" size="icon" className="ml-2 h-8 w-8">
-                            <ArrowRight className="h-4 w-4 text-primary" />
-                          </Button>
                         </div>
                       </div>
                     </div>
@@ -163,8 +162,8 @@ export default function MissionLogWidget({
         </div>
         
         {!compact && (
-          <div className="text-center text-xs mt-4 text-[#7da4b6] italic opacity-80">
-            <span>Click missions to mark them as completed</span>
+          <div className="mission-note text-center text-xs mt-5 text-[#7da4b6] italic opacity-80">
+            <span>↴ Click missions to mark them as completed</span>
           </div>
         )}
       </div>
