@@ -124,8 +124,8 @@ export function MarkdownEditor({
       // Auto-generate bullet points on Enter for this field
       e.preventDefault();
       insertAutoBullet();
-    } else if (autoBullets && (e.key === 'ArrowLeft' || e.key === 'Home')) {
-      // Prevent navigating before the bullet with arrow keys
+    } else if (autoBullets && (e.key === 'ArrowLeft' || e.key === 'Home' || e.key === 'Backspace')) {
+      // Prevent navigating before the bullet with arrow keys and handle Backspace
       const textarea = e.currentTarget;
       const cursorPos = textarea.selectionStart || 0;
       const textBeforeCursor = value.substring(0, cursorPos);
@@ -140,8 +140,24 @@ export function MarkdownEditor({
         const [fullMatch] = bulletMatch;
         const bulletLength = fullMatch.length;
         
-        // If cursor is right after bullet and user presses left arrow, prevent it
-        if (cursorPos === currentLineStart + bulletLength && e.key === 'ArrowLeft') {
+        // Prevent any cursor movement that would place it before the bullet end
+        if (e.key === 'ArrowLeft' && cursorPos <= currentLineStart + bulletLength) {
+          // Don't allow cursor to go before the bullet
+          e.preventDefault();
+          
+          // If cursor tries to go before bullet, force it after the bullet
+          if (cursorPos <= currentLineStart + bulletLength) {
+            const newCursorPos = currentLineStart + bulletLength;
+            setTimeout(() => {
+              textarea.setSelectionRange(newCursorPos, newCursorPos);
+              setCursorPosition(newCursorPos);
+            }, 0);
+          }
+          return;
+        }
+        
+        // Prevent backspace from deleting bullet
+        if (e.key === 'Backspace' && cursorPos <= currentLineStart + bulletLength) {
           e.preventDefault();
           return;
         }
@@ -317,29 +333,59 @@ export function MarkdownEditor({
             onChange={handleInput}
             onKeyDown={handleKeyDown}
             onClick={(e) => {
+              handleBulletPointCursorConstraint(e);
+            }}
+            onMouseDown={(e) => {
               if (autoBullets) {
-                // Ensure clicks don't place cursor before bullet points
+                // Prevent clicks from placing cursor before bullet points
+                // This catches the cursor before placement
                 const textarea = e.currentTarget;
-                const cursorPos = textarea.selectionStart || 0;
-                const textBeforeCursor = value.substring(0, cursorPos);
-                const lastNewlineBeforeCursor = textBeforeCursor.lastIndexOf('\n');
-                const currentLineStart = lastNewlineBeforeCursor === -1 ? 0 : lastNewlineBeforeCursor + 1;
-                const currentLine = textBeforeCursor.substring(currentLineStart);
                 
-                // Check if current line starts with a bullet
-                const bulletMatch = currentLine.match(/^(\s*)([-*+•]|(\d+)\.)(\s+)/);
+                // Get the approximate cursor position from click coordinates
+                const clickX = e.clientX;
+                const clickY = e.clientY;
+                const containerRect = textarea.getBoundingClientRect();
                 
-                if (bulletMatch) {
-                  const [fullMatch] = bulletMatch;
-                  const bulletLength = fullMatch.length;
+                // If we can't accurately detect, let the onClick handler manage it
+                if (clickX < containerRect.left || clickX > containerRect.right ||
+                    clickY < containerRect.top || clickY > containerRect.bottom) {
+                  return;
+                }
+                
+                // Analyze text to estimate if click was near beginning of line
+                const lines = value.split('\n');
+                const clickOffsetY = clickY - containerRect.top;
+                const lineHeight = parseInt(getComputedStyle(textarea).lineHeight || '20');
+                const approxLineIndex = Math.floor(clickOffsetY / lineHeight);
+                
+                // Safety check for out of bounds
+                if (approxLineIndex >= 0 && approxLineIndex < lines.length) {
+                  const line = lines[approxLineIndex];
+                  const bulletMatch = line.match(/^(\s*)([-*+•]|(\d+)\.)(\s+)/);
                   
-                  // If cursor is placed before bullet, move it after bullet
-                  if (cursorPos < currentLineStart + bulletLength) {
-                    const newCursorPos = currentLineStart + bulletLength;
-                    setTimeout(() => {
-                      textarea.setSelectionRange(newCursorPos, newCursorPos);
-                      setCursorPosition(newCursorPos);
-                    }, 0);
+                  // If line has a bullet and click was in the beginning area
+                  if (bulletMatch) {
+                    const bulletEndPosition = bulletMatch[0].length;
+                    const charWidth = 8; // Approximate character width
+                    const bulletWidthInPx = bulletEndPosition * charWidth;
+                    
+                    // If click appears to be within the bullet area
+                    if ((clickX - containerRect.left) <= bulletWidthInPx + 5) { // Add small margin
+                      e.preventDefault(); // Prevent the default cursor placement
+                      
+                      // Wait for next cycle to get the correct textarea state
+                      setTimeout(() => {
+                        // Find the correct index for this line in the text
+                        let lineStartIndex = 0;
+                        for (let i = 0; i < approxLineIndex; i++) {
+                          lineStartIndex += lines[i].length + 1; // +1 for the newline character
+                        }
+                        // Place cursor after bullet
+                        const cursorPosition = lineStartIndex + bulletEndPosition;
+                        textarea.setSelectionRange(cursorPosition, cursorPosition);
+                        setCursorPosition(cursorPosition);
+                      }, 0);
+                    }
                   }
                 }
               }
