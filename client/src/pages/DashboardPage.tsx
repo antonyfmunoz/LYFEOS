@@ -56,6 +56,8 @@ export default function DashboardPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentTime, setCurrentTime] = useState(new Date());
   const [totalXpEarned, setTotalXpEarned] = useState(0);
+  const [timeFormat, setTimeFormat] = useState<'12h' | '24h'>('12h');
+  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
   
   // Time blocks state
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
@@ -97,7 +99,8 @@ export default function DashboardPage() {
   const formattedTime = currentTime.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
-    hour12: true
+    hour12: timeFormat === '12h',
+    timeZone: timezone
   });
   
   // Update time every minute
@@ -316,9 +319,40 @@ export default function DashboardPage() {
               <CalendarDays className="h-5 w-5 text-primary mr-2" />
               <h1 className="text-xl sm:text-2xl font-orbitron text-[#D6F4FF]">{formattedDate}</h1>
             </div>
-            <div className="flex items-center mt-2 sm:mt-0">
-              <Clock className="h-4 w-4 text-[#7DAAB2] mr-2" />
-              <span className="text-[#7DAAB2] font-mono">{formattedTime}</span>
+            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 mt-2 sm:mt-0">
+              <div className="flex items-center">
+                <Clock className="h-4 w-4 text-[#7DAAB2] mr-2" />
+                <span className="text-[#7DAAB2] font-mono">{formattedTime}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <select 
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                  className="bg-[#00141A] border border-primary/30 rounded text-xs text-[#7DAAB2] p-1"
+                >
+                  {[
+                    'America/New_York',
+                    'America/Chicago',
+                    'America/Denver',
+                    'America/Los_Angeles',
+                    'Europe/London',
+                    'Europe/Paris',
+                    'Asia/Tokyo',
+                    'Australia/Sydney',
+                    'Pacific/Auckland'
+                  ].map(tz => (
+                    <option key={tz} value={tz}>
+                      {tz.split('/')[1].replace('_', ' ')}
+                    </option>
+                  ))}
+                </select>
+                <button 
+                  onClick={() => setTimeFormat(prev => prev === '12h' ? '24h' : '12h')}
+                  className="bg-primary/10 hover:bg-primary/20 text-primary rounded px-2 py-1 text-xs"
+                >
+                  {timeFormat === '12h' ? '24h' : '12h'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

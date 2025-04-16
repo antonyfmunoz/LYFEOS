@@ -389,16 +389,6 @@ export function MarkdownEditor({
             >
               <Save size={14} />
             </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                insertTaskCheckbox();
-              }}
-              className="p-1 bg-primary/10 rounded hover:bg-primary/20 text-primary"
-              title="Insert Task Checkbox (Ctrl+T)"
-            >
-              <CheckSquare size={14} />
-            </button>
           </div>
         </>
       ) : (
