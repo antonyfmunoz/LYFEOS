@@ -54,7 +54,7 @@ interface DailyReflection {
 }
 
 export default function DashboardPage() {
-  const { stats, username } = useLYFEOS();
+  const { stats, username, events } = useLYFEOS();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentTime, setCurrentTime] = useState(new Date());
   const [totalXpEarned, setTotalXpEarned] = useState(0);
@@ -398,237 +398,86 @@ export default function DashboardPage() {
         </div>
       </section>
       
-      {/* Routine Execution Panel */}
+      {/* Daily Schedule Panel */}
       <section className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-orbitron flex items-center">
-            <Clock className="h-5 w-5 text-primary mr-2" />
-            <span>Daily Routine</span>
+            <Calendar className="h-5 w-5 text-primary mr-2" />
+            <span>Daily Schedule</span>
           </h2>
           <div className="flex items-center text-sm text-[#36F1CD] font-mono">
             <span>XP Earned Today: +{totalXpEarned}</span>
           </div>
         </div>
         
-        {/* Time Blocks */}
+        {/* Calendar Events */}
         <div className="space-y-3">
-          {timeBlocks
+          {events
             .sort((a, b) => a.startTime.localeCompare(b.startTime))
-            .map((block) => (
+            .map((event) => (
               <div 
-                key={block.id} 
+                key={event.id} 
                 className="glassmorphic rounded-xl p-4 neon-border hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition"
               >
-                {/* Block Header */}
-                <div className="flex justify-between items-center mb-3">
+                <div className="flex justify-between items-center">
                   <div className="flex items-center">
-                    <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center mr-3">
-                      <Clock className="h-4 w-4 text-primary" />
-                    </div>
-                    
-                    {editingBlockId === block.id ? (
-                      <div className="flex flex-wrap gap-2">
-                        <Input 
-                          className="w-full sm:w-40 mb-1 sm:mb-0 bg-[#00141A] border-primary/30 text-[#D6F4FF]"
-                          value={block.name}
-                          onChange={(e) => saveBlockEdit(block.id, 'name', e.target.value)}
-                          placeholder="Block Name"
-                        />
-                        <div className="relative w-28">
-                          <Input 
-                            type="time"
-                            className="w-full custom-time-input font-mono pr-8"
-                            value={block.startTime}
-                            onChange={(e) => saveBlockEdit(block.id, 'startTime', e.target.value)}
-                          />
-                          <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
-                            <Clock className="h-3 w-3 text-primary/70" />
-                          </div>
-                        </div>
-                        <span className="text-[#7DAAB2] self-center"> - </span>
-                        <div className="w-32">
-                          <CustomTimePicker
-                            value={block.endTime}
-                            onChange={(value) => saveBlockEdit(block.id, 'endTime', value)}
-                            icon={<Clock className="h-3 w-3 text-primary/70" />}
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <h3 className="font-medium text-[#D6F4FF]">{block.name}</h3>
-                        <p className="text-xs text-[#7DAAB2]">{block.startTime} - {block.endTime}</p>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="flex">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-primary hover:bg-primary/10"
-                      onClick={() => editingBlockId === block.id ? setEditingBlockId(null) : setEditingBlockId(block.id)}
-                    >
-                      {editingBlockId === block.id ? <Save className="h-4 w-4" /> : <Edit className="h-4 w-4" />}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:bg-destructive/10 ml-1"
-                      onClick={() => handleDeleteBlock(block.id)}
-                    >
-                      <span className="sr-only">Delete</span>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                    </Button>
-                  </div>
-                </div>
-                
-                {/* Tasks */}
-                <div className="space-y-2 ml-12 mt-3">
-                  {block.tasks.map((task) => (
-                    <div key={task.id} className="flex items-start group">
-                      <div className="flex items-center h-5 mt-0.5">
-                        <Checkbox
-                          id={task.id}
-                          checked={task.completed}
-                          onCheckedChange={() => toggleTaskCompletion(block.id, task.id)}
-                          className="border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
-                        />
-                      </div>
-                      
-                      {editingTaskId === task.id ? (
-                        <div className="flex-grow flex ml-2">
-                          <Input 
-                            className="bg-[#00141A] border-primary/30 text-[#D6F4FF] flex-grow"
-                            value={newTaskText}
-                            onChange={(e) => setNewTaskText(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                saveTaskEdit(block.id, task.id, newTaskText);
-                              }
-                            }}
-                          />
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="ml-1 text-primary"
-                            onClick={() => saveTaskEdit(block.id, task.id, newTaskText)}
-                          >
-                            <Save className="h-3 w-3" />
-                          </Button>
-                        </div>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 
+                      ${event.category === 'work' ? 'bg-blue-500/20' : 
+                        event.category === 'health' ? 'bg-green-500/20' : 'bg-purple-500/20'}`}>
+                      {event.category === 'work' ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                      ) : event.category === 'health' ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
                       ) : (
-                        <>
-                          <label
-                            htmlFor={task.id}
-                            className={`ml-2 flex-grow text-sm ${
-                              task.completed 
-                                ? "text-[#7DAAB2] line-through" 
-                                : "text-[#D6F4FF]"
-                            }`}
-                          >
-                            {task.text}
-                          </label>
-                          
-                          <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-5 w-5 p-0 text-primary"
-                              onClick={() => {
-                                setEditingTaskId(task.id);
-                                setNewTaskText(task.text);
-                              }}
-                            >
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-5 w-5 p-0 text-destructive ml-1"
-                              onClick={() => handleDeleteTask(block.id, task.id)}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                            </Button>
-                          </div>
-                          
-                          {task.completed && (
-                            <span className="text-xs text-[#36F1CD] font-mono ml-2">
-                              +10 XP
-                            </span>
-                          )}
-                        </>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-9.33-5"/><path d="m10.67 21.33-.67-1.33"/><path d="M3 7v2"/><path d="M7 3h2"/><path d="M5.67 5.67 4.33 4.33"/><path d="M18 21l3-3h-6l3-3"/><path d="M16 3h5v5"/><path d="m16 8-5-5"/></svg>
                       )}
                     </div>
-                  ))}
+                    
+                    <div>
+                      <h3 className="font-medium text-[#D6F4FF]">{event.title}</h3>
+                      <div className="flex items-center mt-1">
+                        <Clock className="h-3 w-3 text-primary mr-1" />
+                        <p className="text-xs text-[#7DAAB2]">{event.startTime} • {event.duration}</p>
+                      </div>
+                      {event.description && (
+                        <p className="text-xs text-[#7DAAB2] mt-1 italic">{event.description}</p>
+                      )}
+                    </div>
+                  </div>
                   
-                  {/* Add Task Input */}
-                  <div className="flex items-center mt-3">
-                    <Input 
-                      className="bg-[#00141A] border-primary/30 text-[#D6F4FF] flex-grow text-sm h-8 placeholder:text-[#7DAAB2]/50"
-                      placeholder="Add new task..."
-                      value={editingBlockId === block.id ? newTaskText : ""}
-                      onChange={(e) => setNewTaskText(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newTaskText.trim()) {
-                          handleAddTask(block.id, newTaskText);
-                        }
-                      }}
-                    />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="ml-1 text-primary h-8"
-                      onClick={() => handleAddTask(block.id, newTaskText)}
-                    >
-                      <PlusCircle className="h-4 w-4" />
-                    </Button>
+                  <div className="flex flex-col items-end">
+                    <div className={`text-xs font-semibold rounded-full px-2 py-0.5 
+                      ${event.category === 'work' ? 'bg-blue-500/10 text-blue-400' : 
+                        event.category === 'health' ? 'bg-green-500/10 text-green-400' : 
+                          'bg-purple-500/10 text-purple-400'}`}>
+                      {event.category.charAt(0).toUpperCase() + event.category.slice(1)}
+                    </div>
                   </div>
                 </div>
               </div>
             ))}
+            
+            {events.length === 0 && (
+              <div className="glassmorphic rounded-xl p-6 text-center opacity-80">
+                <Calendar className="h-10 w-10 text-primary/50 mx-auto mb-3" />
+                <p className="text-[#7DAAB2]">No events scheduled for today</p>
+                <p className="text-xs text-[#7DAAB2] mt-2">
+                  Visit the Calendar page to add events to your schedule
+                </p>
+              </div>
+            )}
         </div>
         
-        {/* Add New Block Section */}
-        <div className="mt-4 glassmorphic rounded-xl p-4 neon-border">
-          <h3 className="font-medium text-[#D6F4FF] mb-3 flex items-center">
-            <PlusCircle className="h-4 w-4 mr-2 text-primary" />
-            Add New Time Block
-          </h3>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
-            <Input 
-              className="bg-[#00141A] border-primary/30 text-[#D6F4FF] sm:col-span-2"
-              placeholder="Block Name"
-              value={newBlockName}
-              onChange={(e) => setNewBlockName(e.target.value)}
-            />
-            
-            <div className="flex items-center gap-2 sm:col-span-2">
-              <div className="flex-1">
-                <CustomTimePicker
-                  value={newBlockStartTime}
-                  onChange={(value) => setNewBlockStartTime(value)}
-                  icon={<Clock className="h-3 w-3 text-primary/70" />}
-                />
-              </div>
-              <span className="text-[#7DAAB2]">-</span>
-              <div className="flex-1">
-                <CustomTimePicker
-                  value={newBlockEndTime}
-                  onChange={(value) => setNewBlockEndTime(value)}
-                  icon={<Clock className="h-3 w-3 text-primary/70" />}
-                />
-              </div>
-            </div>
-            
-            <Button
-              className="bg-primary text-primary-foreground hover:bg-primary/90 w-full"
-              onClick={handleAddTimeBlock}
-            >
-              Add Block
-            </Button>
-          </div>
+        {/* Link to Calendar Section */}
+        <div className="mt-4 flex justify-end">
+          <Button
+            variant="outline"
+            className="text-primary border-primary/30 hover:bg-primary/10"
+            onClick={() => window.location.href = '/calendar'}
+          >
+            <Calendar className="h-4 w-4 mr-2" />
+            View Full Calendar
+          </Button>
         </div>
       </section>
       
