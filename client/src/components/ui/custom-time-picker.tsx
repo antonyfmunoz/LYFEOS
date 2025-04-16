@@ -165,122 +165,117 @@ export function CustomTimePicker({
         </div>
       </div>
 
-      {/* Modal Overlay */}
+      {/* Dropdown picker */}
       {isOpen && (
-        <div className="fixed inset-0 bg-black/20 z-[9999] flex items-center justify-center" onClick={() => setIsOpen(false)}>
-          <div 
-            className="bg-[#001824] border border-primary/30 rounded-md shadow-lg shadow-primary/20 w-64 glassmorphic neon-border animate-in fade-in-50 duration-100 p-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-center font-orbitron mb-3 text-[#D6F4FF] text-sm">Select Time</div>
-            
-            <div className="flex justify-center items-center gap-2">
-              {/* Hours column */}
-              <div className="flex flex-col items-center">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-primary hover:bg-primary/20 rounded-full p-1 h-8 w-8 hover:shadow-[0_0_5px_rgba(0,224,255,0.5)] transition-all"
-                  onClick={() => adjustHours(1)}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
-                </Button>
-                
-                <Input
-                  className="w-14 text-center bg-[#00141A] border-primary/30 hover:border-primary/50 focus:border-primary/70 font-mono my-1 p-1 h-9 focus:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition-all font-bold"
-                  value={hours.toString()}
-                  onChange={handleHoursInput}
-                />
-                
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-primary hover:bg-primary/20 rounded-full p-1 h-8 w-8 hover:shadow-[0_0_5px_rgba(0,224,255,0.5)] transition-all"
-                  onClick={() => adjustHours(-1)}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                </Button>
-                
-                <span className="text-xs text-[#7DAAB2] mt-1">Hours</span>
-              </div>
+        <div className="absolute top-full left-0 z-[9999] mt-1 p-4 bg-[#001824] border border-primary/30 rounded-md shadow-lg shadow-primary/10 w-64 glassmorphic neon-border animate-in fade-in-50 duration-100">
+          <div className="text-center font-orbitron mb-3 text-[#D6F4FF] text-sm">Select Time</div>
+          
+          <div className="flex justify-center items-center gap-2">
+            {/* Hours column */}
+            <div className="flex flex-col items-center">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-primary hover:bg-primary/20 rounded-full p-1 h-8 w-8 hover:shadow-[0_0_5px_rgba(0,224,255,0.5)] transition-all"
+                onClick={() => adjustHours(1)}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+              </Button>
               
-              <span className="text-primary text-xl">:</span>
+              <Input
+                className="w-14 text-center bg-[#00141A] border-primary/30 hover:border-primary/50 focus:border-primary/70 font-mono my-1 p-1 h-9 focus:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition-all font-bold"
+                value={hours.toString()}
+                onChange={handleHoursInput}
+              />
               
-              {/* Minutes column */}
-              <div className="flex flex-col items-center">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-primary hover:bg-primary/20 rounded-full p-1 h-8 w-8 hover:shadow-[0_0_5px_rgba(0,224,255,0.5)] transition-all"
-                  onClick={() => adjustMinutes(1)}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
-                </Button>
-                
-                <Input
-                  className="w-14 text-center bg-[#00141A] border-primary/30 hover:border-primary/50 focus:border-primary/70 font-mono my-1 p-1 h-9 focus:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition-all font-bold"
-                  value={minutes.toString().padStart(2, '0')}
-                  onChange={handleMinutesInput}
-                />
-                
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-primary hover:bg-primary/20 rounded-full p-1 h-8 w-8 hover:shadow-[0_0_5px_rgba(0,224,255,0.5)] transition-all"
-                  onClick={() => adjustMinutes(-1)}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                </Button>
-                
-                <span className="text-xs text-[#7DAAB2] mt-1">Minutes</span>
-              </div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-primary hover:bg-primary/20 rounded-full p-1 h-8 w-8 hover:shadow-[0_0_5px_rgba(0,224,255,0.5)] transition-all"
+                onClick={() => adjustHours(-1)}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </Button>
               
-              {/* AM/PM toggle */}
-              <div className="flex flex-col items-center ml-2">
-                <button
-                  className={`w-14 rounded-t-md py-1 transition-all font-mono ${
-                    period === "AM" 
-                      ? "bg-primary/20 text-primary border-t border-l border-r border-primary/50 shadow-[0_0_5px_rgba(0,224,255,0.3)]" 
-                      : "bg-[#001824] text-[#7DAAB2] hover:bg-[#001C26] border-t border-l border-r border-primary/10 hover:border-primary/30"
-                  }`}
-                  onClick={() => setPeriod("AM")}
-                  type="button"
-                >
-                  AM
-                </button>
-                <button
-                  className={`w-14 rounded-b-md py-1 transition-all font-mono ${
-                    period === "PM" 
-                      ? "bg-primary/20 text-primary border-b border-l border-r border-primary/50 shadow-[0_0_5px_rgba(0,224,255,0.3)]" 
-                      : "bg-[#001824] text-[#7DAAB2] hover:bg-[#001C26] border-b border-l border-r border-primary/10 hover:border-primary/30"
-                  }`}
-                  onClick={() => setPeriod("PM")}
-                  type="button"
-                >
-                  PM
-                </button>
-                
-                <span className="text-xs text-[#7DAAB2] mt-3">Period</span>
-              </div>
+              <span className="text-xs text-[#7DAAB2] mt-1">Hours</span>
             </div>
             
-            <div className="flex justify-end mt-4">
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-[#7DAAB2] hover:bg-[#001C26] hover:text-[#D6F4FF] mr-2 transition-all font-mono"
-                onClick={() => setIsOpen(false)}
+            <span className="text-primary text-xl">:</span>
+            
+            {/* Minutes column */}
+            <div className="flex flex-col items-center">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-primary hover:bg-primary/20 rounded-full p-1 h-8 w-8 hover:shadow-[0_0_5px_rgba(0,224,255,0.5)] transition-all"
+                onClick={() => adjustMinutes(1)}
               >
-                Cancel
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
               </Button>
-              <Button
-                size="sm"
-                className="bg-primary/90 text-primary-foreground hover:bg-primary/100 hover:shadow-[0_0_5px_rgba(0,224,255,0.5)] transition-all font-mono"
-                onClick={updateTime}
+              
+              <Input
+                className="w-14 text-center bg-[#00141A] border-primary/30 hover:border-primary/50 focus:border-primary/70 font-mono my-1 p-1 h-9 focus:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition-all font-bold"
+                value={minutes.toString().padStart(2, '0')}
+                onChange={handleMinutesInput}
+              />
+              
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-primary hover:bg-primary/20 rounded-full p-1 h-8 w-8 hover:shadow-[0_0_5px_rgba(0,224,255,0.5)] transition-all"
+                onClick={() => adjustMinutes(-1)}
               >
-                Apply
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
               </Button>
+              
+              <span className="text-xs text-[#7DAAB2] mt-1">Minutes</span>
             </div>
+            
+            {/* AM/PM toggle */}
+            <div className="flex flex-col items-center ml-2">
+              <button
+                className={`w-14 rounded-t-md py-1 transition-all font-mono ${
+                  period === "AM" 
+                    ? "bg-primary/20 text-primary border-t border-l border-r border-primary/50 shadow-[0_0_5px_rgba(0,224,255,0.3)]" 
+                    : "bg-[#001824] text-[#7DAAB2] hover:bg-[#001C26] border-t border-l border-r border-primary/10 hover:border-primary/30"
+                }`}
+                onClick={() => setPeriod("AM")}
+                type="button"
+              >
+                AM
+              </button>
+              <button
+                className={`w-14 rounded-b-md py-1 transition-all font-mono ${
+                  period === "PM" 
+                    ? "bg-primary/20 text-primary border-b border-l border-r border-primary/50 shadow-[0_0_5px_rgba(0,224,255,0.3)]" 
+                    : "bg-[#001824] text-[#7DAAB2] hover:bg-[#001C26] border-b border-l border-r border-primary/10 hover:border-primary/30"
+                }`}
+                onClick={() => setPeriod("PM")}
+                type="button"
+              >
+                PM
+              </button>
+              
+              <span className="text-xs text-[#7DAAB2] mt-3">Period</span>
+            </div>
+          </div>
+          
+          <div className="flex justify-end mt-4">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-[#7DAAB2] hover:bg-[#001C26] hover:text-[#D6F4FF] mr-2 transition-all font-mono"
+              onClick={() => setIsOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="bg-primary/90 text-primary-foreground hover:bg-primary/100 hover:shadow-[0_0_5px_rgba(0,224,255,0.5)] transition-all font-mono"
+              onClick={updateTime}
+            >
+              Apply
+            </Button>
           </div>
         </div>
       )}
