@@ -812,10 +812,11 @@ export default function DashboardPage() {
                 </label>
                 <div className="flex flex-col space-y-2">
                   <MarkdownEditor
-                    placeholder="Add to Brain Dump..."
+                    placeholder="Add anything..."
                     value={reflection.todoIdeas}
                     onChange={(value) => updateReflection("todoIdeas", value)}
                     minHeight="100px"
+                    autoBullets={true}
                   />
                 </div>
               </div>
