@@ -1,0 +1,175 @@
+import React, { useState } from "react";
+import { Clock, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { CalendarEvent } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+
+interface MissionInfoDialogProps {
+  children?: React.ReactNode;
+  trigger: React.ReactNode;
+  mission: CalendarEvent;
+}
+
+export function MissionInfoDialog({
+  children,
+  trigger,
+  mission,
+}: MissionInfoDialogProps) {
+  const [open, setOpen] = useState(false);
+  
+  // Map category to border color
+  const getBorderColor = () => {
+    switch (mission.category) {
+      case "work":
+        return "border-blue-500";
+      case "health":
+        return "border-red-500";
+      case "personal":
+        return "border-purple-500";
+      default:
+        return "border-primary";
+    }
+  };
+  
+  const getCategoryText = () => {
+    switch (mission.category) {
+      case "work":
+        return "Work Mission";
+      case "health":
+        return "Health Mission";
+      case "personal":
+        return "Personal Mission";
+      default:
+        return "Mission";
+    }
+  };
+  
+  const getCategoryColor = () => {
+    switch (mission.category) {
+      case "work":
+        return "text-blue-400";
+      case "health":
+        return "text-red-400";
+      case "personal":
+        return "text-purple-400";
+      default:
+        return "text-primary";
+    }
+  };
+  
+  const getLocationName = () => {
+    switch (mission.category) {
+      case "work":
+        return "Conference Room 3";
+      case "health":
+        return "Gym";
+      case "personal":
+        return "Virtual";
+      default:
+        return "Unknown";
+    }
+  };
+  
+  if (!open) {
+    return (
+      <div onClick={(e) => { 
+        e.stopPropagation();
+        setOpen(true);
+      }}>
+        {trigger}
+      </div>
+    );
+  }
+  
+  return (
+    <>
+      <div 
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[99]"
+        onClick={() => setOpen(false)}
+      />
+      <div 
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`dialog-title-${mission.id}`}
+        aria-describedby={`dialog-desc-${mission.id}`}
+        className={cn(
+          "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 max-w-[500px] w-[90%] z-[100]",
+          "border bg-[#001E26]/80 text-white shadow-lg rounded-md p-6 pr-8",
+          "backdrop-blur-lg animate-in fade-in-0 zoom-in-90 duration-100",
+          getBorderColor()
+        )}
+      >
+        <button 
+          onClick={() => setOpen(false)}
+          className="absolute right-2 top-2 rounded-md p-1 text-white/70 transition-opacity hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          aria-label="Close"
+        >
+          <X className="h-4 w-4" />
+        </button>
+        
+        <div className="grid gap-1">
+          <h3 
+            id={`dialog-title-${mission.id}`}
+            className="text-lg font-bold text-white tracking-wide font-orbitron"
+          >
+            {mission.title}
+          </h3>
+          
+          <p className={cn("text-sm opacity-90", getCategoryColor())}>
+            {getCategoryText()}
+          </p>
+          
+          <div 
+            id={`dialog-desc-${mission.id}`}
+            className="mt-4 space-y-4"
+          >
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center space-x-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-mono">{mission.startTime}</span>
+              </div>
+              <span className="text-sm text-muted-foreground">Duration: {mission.duration}</span>
+            </div>
+            
+            <div className="bg-primary/5 p-4 rounded-md">
+              <h4 className="text-sm font-semibold mb-2">Description</h4>
+              <p className="text-sm leading-relaxed">{mission.description || "Complete this mission to earn XP and progress through your daily goals."}</p>
+            </div>
+            
+            <div className="bg-primary/5 p-4 rounded-md">
+              <h4 className="text-sm font-semibold mb-2">Location</h4>
+              <p className="text-sm leading-relaxed">
+                {getLocationName()}
+              </p>
+            </div>
+            
+            <div className="flex justify-between bg-primary/5 p-4 rounded-md">
+              <div>
+                <h4 className="text-sm font-semibold mb-2">Energy Cost</h4>
+                <p className="text-sm leading-relaxed text-red-400 font-mono">-5 EP</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold mb-2">XP Reward</h4>
+                <p className="text-sm leading-relaxed text-primary font-mono">+15 XP</p>
+              </div>
+            </div>
+            
+            {children}
+          </div>
+        </div>
+        
+        <div className="mt-6 flex justify-end">
+          <Button
+            className="bg-primary/20 hover:bg-primary/30 text-primary"
+            onClick={() => {
+              setOpen(false);
+              // In the future, this would link to a full mission report page
+            }}
+          >
+            View Full Report
+          </Button>
+        </div>
+      </div>
+    </>
+  );
+}
