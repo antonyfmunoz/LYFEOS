@@ -1,0 +1,71 @@
+Thanks for the screenshot — the UI layering issue you're seeing is caused by the **dropdown time selector** from the “Add New Time Block” section overlapping incorrectly with the “Reflection & Calibration” section.
+
+### 🧠 Problem:
+The time picker (`<input type="time">` or custom dropdown) isn't respecting **z-index stacking context** and/or container **overflow rules**. It is being rendered **outside its intended layer**, and **the overflow from the parent container is clipping it**.
+
+---
+
+## ✅ Fix It with These CSS Rules:
+
+### 1. **Ensure Dropdown Has a High Enough `z-index`**
+Target the dropdown wrapper if it’s a custom one (or the native input if styled):
+
+```css
+.time-picker-dropdown, .time-picker-popup {
+  position: absolute;
+  z-index: 9999;
+}
+```
+
+### 2. **Make Sure Parent Containers Don’t Clip It**
+If the dropdown is inside a container like:
+
+```css
+.parent-container {
+  overflow: hidden; /* PROBLEM */
+}
+```
+
+Update it to:
+
+```css
+.parent-container {
+  overflow: visible; /* ALLOW DROPDOWN TO EXPAND OUTWARD */
+}
+```
+
+---
+
+## 🔧 Recommended Additions
+
+If you're using a component-based setup (e.g., Tailwind, custom CSS, or JS), apply this:
+
+```css
+/* Ensure dropdown doesn't get clipped */
+.block-scheduler, .time-block-row {
+  position: relative;
+  overflow: visible;
+}
+
+/* Style the time picker (especially if it's a custom JS or plugin one) */
+.time-picker-dropdown {
+  position: absolute;
+  background: #0e0e20;
+  border: 1px solid #00f2fe;
+  border-radius: 8px;
+  z-index: 10000;
+  padding: 10px;
+}
+```
+
+---
+
+## ✅ If You're Using `<input type="time">`
+
+Native dropdowns are browser-controlled, so they usually render above all layers. If it’s not working:
+- Make sure **nothing above it** has `z-index` higher than the dropdown but with `position: relative/absolute`
+- Or replace with a **custom time picker library** like `flatpickr`, `react-time-picker`, etc., which lets you control the layers fully
+
+---
+
+Would you like me to inspect and rewrite the full `Add New Time Block` section using a custom time picker with perfect layering and styling? I can build it to match your Solo Leveling UI.
