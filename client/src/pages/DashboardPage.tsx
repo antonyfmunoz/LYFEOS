@@ -539,14 +539,17 @@ export default function DashboardPage() {
       
       {/* Mission Log Panel */}
       <section className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-orbitron flex items-center">
-            <Calendar className="h-5 w-5 text-primary mr-2" />
-            <span>Mission Log</span>
+        <div className="mission-log-header flex items-center justify-between mb-6">
+          <h2 className="text-xl font-orbitron text-[#dff9ff]">
+            Today's Schedule
           </h2>
-          <div className="flex items-center text-sm text-[#36F1CD] font-mono">
-            <span>Today's Scheduled XP: +{totalXpEarned}</span>
-          </div>
+          <Button
+            variant="ghost"
+            className="text-[#00f2fe] font-bold text-sm p-0 hover:bg-transparent hover:text-[#00f2fe] hover:underline"
+            onClick={() => window.location.href = '/calendar'}
+          >
+            VIEW CALENDAR
+          </Button>
         </div>
         
         {/* Timeline Style Mission Log with Completed toggle */}
@@ -562,87 +565,57 @@ export default function DashboardPage() {
             };
             
             return (
-              <div className="relative pl-10 pr-2 py-2 max-h-96 overflow-y-auto mission-timeline-container">
-                {/* Vertical Timeline Line */}
-                <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-gradient-to-b from-primary/80 via-primary/30 to-primary/10 z-0"></div>
-                
+              <div className="mission-schedule py-2 max-h-96 overflow-y-auto">
                 {events.length > 0 ? (
-                  events
-                    .sort((a, b) => a.startTime.localeCompare(b.startTime))
-                    .map((event) => {
-                      const isCompleted = completedMissions[event.id] || false;
-                      
-                      return (
-                        <div 
-                          key={event.id}
-                          className={`mb-5 relative mission-block ${isCompleted ? 'opacity-60' : ''}`}
-                        >
-                          {/* Timeline Dot */}
-                          <div className={`absolute left-[-20px] top-2 w-4 h-4 rounded-full bg-black border-2 
-                            ${event.category === 'work' ? 'border-blue-500' : 
-                              event.category === 'health' ? 'border-green-500' : 'border-purple-500'}`}>
-                          </div>
-                          
-                          {/* Time Label */}
-                          <div className="absolute left-[-130px] top-1 w-24 text-right">
-                            <span className="text-xs font-mono text-[#7DAAB2]">{event.startTime}</span>
-                          </div>
-                          
-                          {/* Mission Card */}
-                          <div 
-                            className={`glassmorphic rounded-xl p-4 neon-border hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition ml-2 cursor-pointer ${isCompleted ? 'border-green-400/30 bg-green-400/5' : ''}`}
+                  <ul className="list-none p-0">
+                    {events
+                      .sort((a, b) => a.startTime.localeCompare(b.startTime))
+                      .map((event) => {
+                        const isCompleted = completedMissions[event.id] || false;
+                        
+                        return (
+                          <li 
+                            key={event.id}
+                            className={`mission-block flex items-start mb-8 cursor-pointer ${isCompleted ? 'opacity-70' : ''}`}
                             onClick={() => toggleMission(event.id)}
                           >
-                            <div className="flex justify-between items-center">
-                              <div className="flex items-center">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 
-                                  ${isCompleted ? 'bg-green-500/20' :
-                                    event.category === 'work' ? 'bg-blue-500/20' : 
-                                    event.category === 'health' ? 'bg-green-500/20' : 'bg-purple-500/20'}`}>
-                                  {isCompleted ? (
-                                    <CheckCircle2 className="h-5 w-5 text-green-400" />
-                                  ) : event.category === 'work' ? (
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-                                  ) : event.category === 'health' ? (
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-                                  ) : (
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-9.33-5"/><path d="m10.67 21.33-.67-1.33"/><path d="M3 7v2"/><path d="M7 3h2"/><path d="M5.67 5.67 4.33 4.33"/><path d="M18 21l3-3h-6l3-3"/><path d="M16 3h5v5"/><path d="m16 8-5-5"/></svg>
-                                  )}
-                                </div>
-                                
-                                <div>
-                                  <div className="flex items-center">
-                                    <h3 className={`font-medium ${isCompleted ? 'line-through text-[#7DAAB2]' : 'text-[#D6F4FF]'}`}>{event.title}</h3>
-                                    <div className="ml-2 px-2 py-0.5 bg-primary/10 rounded text-xs font-mono text-[#36F1CD]">
-                                      +15 XP
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="flex items-center mt-1">
-                                    <Clock className="h-3 w-3 text-primary mr-1" />
-                                    <p className="text-xs text-[#7DAAB2]">{event.startTime} – {getEndTime(event.startTime, event.duration)}</p>
-                                  </div>
-                                  
-                                  {event.description && (
-                                    <p className={`text-xs text-[#7DAAB2] mt-1 italic ${isCompleted ? 'line-through' : ''}`}>{event.description}</p>
-                                  )}
-                                </div>
+                            {/* Time Column */}
+                            <div className="time-col w-16 font-mono text-[#d0f0ff] mt-1 text-right pr-3">
+                              {event.startTime}
+                            </div>
+                            
+                            {/* Divider Line */}
+                            <div className={`divider w-[2px] h-full mx-5 self-stretch rounded ${
+                              event.category === 'work' ? 'bg-[#00f2fe]' : 
+                              event.category === 'health' ? 'bg-[#ff5f78]' : 'bg-[#c280ff]'
+                            }`}></div>
+                            
+                            {/* Mission Info */}
+                            <div className="mission-info flex-1">
+                              <div className={`mission-title text-lg font-semibold mb-1 ${isCompleted ? 'line-through text-[#8aaac2]' : 'text-white'}`}>
+                                {event.title}
+                                {isCompleted && (
+                                  <span className="ml-2 text-xs text-[#2ecc71] font-normal">COMPLETED</span>
+                                )}
                               </div>
                               
-                              <div className="flex flex-col items-end">
-                                <div className={`text-xs font-semibold rounded-full px-2 py-0.5 
-                                  ${isCompleted ? 'bg-green-500/10 text-green-400' :
-                                    event.category === 'work' ? 'bg-blue-500/10 text-blue-400' : 
-                                    event.category === 'health' ? 'bg-green-500/10 text-green-400' : 
-                                      'bg-purple-500/10 text-purple-400'}`}>
-                                  {isCompleted ? 'Completed' : event.category.charAt(0).toUpperCase() + event.category.slice(1)}
-                                </div>
+                              <div className="mission-subtext text-sm text-[#8aaac2]">
+                                {event.category === 'work' ? 'Virtual' : 
+                                 event.category === 'health' ? 'Gym' : 'Personal'} | {event.duration}
+                                {event.description && (
+                                  <span className="mt-1 block text-xs italic">{event.description}</span>
+                                )}
                               </div>
                             </div>
-                          </div>
-                        </div>
-                      );
-                    })
+                            
+                            {/* XP Award */}
+                            <div className="xp-tag ml-2 px-2 py-0.5 bg-[#00f2fe]/10 rounded text-xs font-mono text-[#36F1CD] self-start mt-1">
+                              +15 XP
+                            </div>
+                          </li>
+                        );
+                      })}
+                  </ul>
                 ) : (
                   <div className="glassmorphic rounded-xl p-6 text-center opacity-80 mt-6">
                     <Calendar className="h-10 w-10 text-primary/50 mx-auto mb-3" />
@@ -659,8 +632,8 @@ export default function DashboardPage() {
           return <MissionTimeline events={events} />;
         })()}
         
-        {/* Read-Only Indication and Link to Calendar */}
-        <div className="mt-4 flex justify-between items-center">
+        {/* Hint Text */}
+        <div className="mt-4 flex justify-center items-center">
           <div className="text-xs text-[#7DAAB2] italic flex items-center">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
               <path d="M12 19c.828 0 1.5-.672 1.5-1.5S12.828 16 12 16s-1.5.672-1.5 1.5.672 1.5 1.5 1.5Z"/>
@@ -669,14 +642,6 @@ export default function DashboardPage() {
             </svg>
             Click missions to mark them as completed
           </div>
-          <Button
-            variant="outline"
-            className="text-primary border-primary/30 hover:bg-primary/10"
-            onClick={() => window.location.href = '/calendar'}
-          >
-            <Calendar className="h-4 w-4 mr-2" />
-            View & Edit Schedule
-          </Button>
         </div>
       </section>
       
