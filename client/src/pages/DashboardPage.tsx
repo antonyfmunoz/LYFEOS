@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { CustomTimePicker } from "@/components/ui/custom-time-picker";
 import { ObsidianMarkdown } from "@/components/ui/obsidian-markdown";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 
 // Define types
 interface TimeBlock {
@@ -680,19 +681,12 @@ export default function DashboardPage() {
                     <span className="ml-2">Gratitude</span>
                   </label>
                   <div className="flex flex-col space-y-2">
-                    <Textarea
+                    <MarkdownEditor
                       placeholder="What three things are you most grateful for today?"
-                      className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[80px]"
                       value={reflection.gratitude}
-                      onChange={(e) => updateReflection("gratitude", e.target.value)}
+                      onChange={(value) => updateReflection("gratitude", value)}
+                      minHeight="80px"
                     />
-                    {reflection.gratitude && (
-                      <div className="p-3 rounded-md bg-primary/5 border border-primary/10">
-                        <ObsidianMarkdown className="text-[#D6F4FF]">
-                          {reflection.gratitude}
-                        </ObsidianMarkdown>
-                      </div>
-                    )}
                   </div>
                 </div>
                 
@@ -703,19 +697,12 @@ export default function DashboardPage() {
                     <span className="ml-2">Tomorrow's Goals</span>
                   </label>
                   <div className="flex flex-col space-y-2">
-                    <Textarea
+                    <MarkdownEditor
                       placeholder="What three things do you want to accomplish tomorrow?"
-                      className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[60px]"
                       value={reflection.tomorrowGoals}
-                      onChange={(e) => updateReflection("tomorrowGoals", e.target.value)}
+                      onChange={(value) => updateReflection("tomorrowGoals", value)}
+                      minHeight="60px"
                     />
-                    {reflection.tomorrowGoals && (
-                      <div className="p-3 rounded-md bg-primary/5 border border-primary/10">
-                        <ObsidianMarkdown className="text-[#D6F4FF]">
-                          {reflection.tomorrowGoals}
-                        </ObsidianMarkdown>
-                      </div>
-                    )}
                   </div>
                 </div>
                 
@@ -726,19 +713,12 @@ export default function DashboardPage() {
                     <span className="ml-2">Annual Goals</span>
                   </label>
                   <div className="flex flex-col space-y-2">
-                    <Textarea
+                    <MarkdownEditor
                       placeholder="What are your three big targets for the year?"
-                      className="bg-[#00141A] border-primary/30 text-[#D6F4FF] placeholder-[#7DAAB2]/50 resize-y min-h-[80px]"
                       value={reflection.annualGoals}
-                      onChange={(e) => updateReflection("annualGoals", e.target.value)}
+                      onChange={(value) => updateReflection("annualGoals", value)}
+                      minHeight="80px"
                     />
-                    {reflection.annualGoals && (
-                      <div className="p-3 rounded-md bg-primary/5 border border-primary/10">
-                        <ObsidianMarkdown className="text-[#D6F4FF]">
-                          {reflection.annualGoals}
-                        </ObsidianMarkdown>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
