@@ -112,25 +112,25 @@ export default function MissionLogWidget({
                           'bg-green-400/5 border border-green-400/20' : 
                           'bg-primary/5 border border-primary/20 hover:border-primary/40'}`}
                     >
-                      {/* EP/XP at the top right corner */}
-                      <div className="absolute top-2 right-3 flex items-center">
-                        <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
-                        <span className="text-primary text-xs font-mono">+15 XP</span>
-                      </div>
-                      
-                      <div className="flex items-center mt-2">
+                      <div className="flex items-start">
                         <Checkbox
-                          className={`w-5 h-5 rounded border transition-all duration-200
+                          className={`mt-1 rounded border transition-all duration-200
                           ${event.category === 'work' ? 'border-blue-500/50 data-[state=checked]:bg-blue-500/20 data-[state=checked]:text-blue-400' : 
                             event.category === 'health' ? 'border-red-500/50 data-[state=checked]:bg-red-500/20 data-[state=checked]:text-red-400' : 
                             'border-purple-500/50 data-[state=checked]:bg-purple-500/20 data-[state=checked]:text-purple-400'}`}
                           checked={isCompleted}
                           onCheckedChange={() => toggleMission(event.id)}
                         />
-                        <div className="ml-3">
-                          <h3 className={`font-orbitron text-base ${isCompleted ? 'line-through text-[#7DAAB2]' : 'text-[#D6F4FF]'}`}>
-                            {event.title}
-                          </h3>
+                        <div className="ml-3 flex-grow">
+                          <div className="flex justify-between">
+                            <h3 className={`font-orbitron text-base ${isCompleted ? 'line-through text-[#7DAAB2]' : 'text-[#D6F4FF]'}`}>
+                              {event.title}
+                            </h3>
+                            <div className="flex items-center">
+                              <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
+                              <span className="text-primary text-xs font-mono">+15 XP</span>
+                            </div>
+                          </div>
                           <p className={`text-xs text-[#7DAAB2] mt-0.5 ${isCompleted ? 'line-through' : ''}`}>
                             {event.category === 'work' ? 'Conference Room 3' : 
                             event.category === 'health' ? 'Gym' : 'Virtual'} | {event.duration} | {event.startTime}
@@ -190,45 +190,30 @@ export default function MissionLogWidget({
                 return (
                   <li 
                     key={event.id}
-                    className={`mission-block relative mb-7 transition-all duration-300 ${isCompleted ? 'opacity-50' : ''}`}
+                    className={`mission-block mb-7 transition-all duration-300 p-3 rounded-lg border border-[#00f2fe]/30 ${isCompleted ? 'opacity-50' : ''}`}
                   >
-                    {/* EP/XP at the top right corner */}
-                    <div className="absolute top-0 right-0 flex items-center">
-                      <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
-                      <span className="text-primary text-xs font-mono">+15 XP</span>
-                    </div>
-                    
-                    <div className="mission-left flex items-start mt-5">
-                      {/* Checkbox and Time Column */}
-                      <div className="flex flex-col items-center">
-                        <Checkbox
-                          className={`w-5 h-5 mb-1 rounded border transition-all duration-200
-                          ${event.category === 'work' ? 'border-blue-500/50 data-[state=checked]:bg-blue-500/20 data-[state=checked]:text-blue-400' : 
-                            event.category === 'health' ? 'border-red-500/50 data-[state=checked]:bg-red-500/20 data-[state=checked]:text-red-400' : 
-                            'border-purple-500/50 data-[state=checked]:bg-purple-500/20 data-[state=checked]:text-purple-400'}`}
-                          checked={isCompleted}
-                          onCheckedChange={() => toggleMission(event.id)}
-                        />
-                        <div className="time-col text-center font-mono text-[#d0f0ff] text-xs">
-                          {event.startTime}
+                    <div className="flex items-start">
+                      <Checkbox
+                        className={`mt-1 rounded border transition-all duration-200
+                        ${event.category === 'work' ? 'border-blue-500/50 data-[state=checked]:bg-blue-500/20 data-[state=checked]:text-blue-400' : 
+                          event.category === 'health' ? 'border-red-500/50 data-[state=checked]:bg-red-500/20 data-[state=checked]:text-red-400' : 
+                          'border-purple-500/50 data-[state=checked]:bg-purple-500/20 data-[state=checked]:text-purple-400'}`}
+                        checked={isCompleted}
+                        onCheckedChange={() => toggleMission(event.id)}
+                      />
+                      <div className="ml-3 flex-grow">
+                        <div className="flex justify-between">
+                          <h3 className={`text-base font-semibold ${isCompleted ? 'line-through text-[#7DAAB2]' : 'text-white'}`}>
+                            {event.title}
+                          </h3>
+                          <div className="flex items-center">
+                            <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
+                            <span className="text-primary text-xs font-mono">+15 XP</span>
+                          </div>
                         </div>
-                      </div>
-                      
-                      {/* Divider Line */}
-                      <div className={`divider w-0.5 h-full mx-2 rounded-full self-stretch ${
-                        event.category === 'work' ? 'bg-[#00f2fe]' : 
-                        event.category === 'health' ? 'bg-[#ff5f78]' : 'bg-[#c280ff]'
-                      }`}></div>
-                      
-                      {/* Mission Info */}
-                      <div className="mission-info flex-grow flex flex-col ml-3">
-                        <div className={`mission-title text-base font-semibold mb-1.5 ${isCompleted ? 'line-through' : ''} text-white`}>
-                          {event.title}
-                        </div>
-                        
-                        <div className={`mission-subtext text-sm ${isCompleted ? 'line-through' : ''} text-[#8aaac2]`}>
+                        <div className={`text-sm ${isCompleted ? 'line-through' : ''} text-[#8aaac2]`}>
                           {event.category === 'work' ? 'Conference Room 3' : 
-                          event.category === 'health' ? 'Gym' : 'Virtual'} | {event.duration}
+                          event.category === 'health' ? 'Gym' : 'Virtual'} | {event.duration} | {event.startTime}
                         </div>
                       </div>
                     </div>
