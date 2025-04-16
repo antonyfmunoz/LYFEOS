@@ -1,30 +1,15 @@
-import React, { useState, useEffect } from "react";
-import { useLYFEOS } from "@/lib/context";
-import { cn } from "@/lib/utils";
-import {
-  Brain,
-  BookOpen,
-  Edit,
-  Save,
-  AlarmClock,
-  Clock,
-  CalendarDays,
-  PlusCircle,
-  Book,
-  Smile,
-  MoonStar,
-  HeartPulse,
-  TargetIcon,
-  ListChecks
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { useLYFEOS } from "../lib/context";
+import StatWidget from "../components/dashboard/StatWidget";
+import ExperienceBar from "../components/dashboard/ExperienceBar";
+import { CalendarDays, Clock, Edit, PlusCircle, Save, Brain, HeartPulse, Smile, BookOpen, Book, AlarmClock, MoonStar, TargetIcon, ListChecks } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { CustomTimePicker } from "@/components/ui/custom-time-picker";
 import { ObsidianMarkdown } from "@/components/ui/obsidian-markdown";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
-import { Checkbox } from "@/components/ui/checkbox";
-import ExperienceBar from "@/components/dashboard/ExperienceBar";
-import StatWidget from "@/components/dashboard/StatWidget";
 
 // Define types
 interface TimeBlock {
@@ -155,12 +140,6 @@ export default function DashboardPage() {
     localStorage.setItem("routineData", JSON.stringify(timeBlocks));
   }, [timeBlocks]);
   
-  // Auto-save the reflection to localStorage whenever it changes
-  useEffect(() => {
-    const key = `dailyLog-${reflection.date}`;
-    localStorage.setItem(key, JSON.stringify(reflection));
-  }, [reflection]);
-  
   // Handle adding a new time block
   const handleAddTimeBlock = () => {
     const newBlock: TimeBlock = {
@@ -269,6 +248,12 @@ export default function DashboardPage() {
       [field]: value
     }));
   };
+  
+  // Auto-save the reflection to localStorage whenever it changes
+  useEffect(() => {
+    const key = `dailyLog-${reflection.date}`;
+    localStorage.setItem(key, JSON.stringify(reflection));
+  }, [reflection]);
   
   // Render state selector (1-10 scale)
   const renderStateSelector = (
@@ -739,8 +724,19 @@ export default function DashboardPage() {
               </div>
             </div>
             
-            {/* Auto-saved, no button needed */}
-          </div>
+            {/* End of Intention Setter Section */}
+            
+            {/* Save button */}
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                className="bg-primary hover:bg-primary/90"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Save Daily Log
+              </Button>
+            </div>
+          </form>
         </div>
       </section>
       
@@ -821,8 +817,17 @@ export default function DashboardPage() {
               </div>
             </div>
             
-            {/* Auto-saved, no button needed */}
-          </div>
+            {/* Save button */}
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                className="bg-primary hover:bg-primary/90"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Save Daily Log
+              </Button>
+            </div>
+          </form>
         </div>
       </section>
     </div>
