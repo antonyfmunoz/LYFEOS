@@ -264,9 +264,9 @@ export default function MarkdownEditor({
             remarkPlugins={[remarkGfm, remarkMath]}
             rehypePlugins={[rehypeKatex]}
             components={{
-              li: ({ node, className, children, checked, ...props }) => {
-                if (typeof checked === 'boolean') {
-                  return <TaskListRenderer checked={checked}>{children}</TaskListRenderer>;
+              li: ({ node, className, children, ...props }: any) => {
+                if (props.checked !== undefined) {
+                  return <TaskListRenderer checked={props.checked}>{children}</TaskListRenderer>;
                 }
                 return <li className={className} {...props}>{children}</li>;
               }

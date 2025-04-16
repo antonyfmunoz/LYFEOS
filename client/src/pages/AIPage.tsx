@@ -204,9 +204,9 @@ export default function AIPage() {
       </div>
       
       {/* Main Chat Area */}
-      <div className="flex-grow flex">
+      <div className="flex-grow flex flex-col sm:flex-row">
         {/* Left Sidebar - Chat Sessions & Quick Prompts */}
-        <div className="hidden lg:flex flex-col w-60 mr-6 pr-4 border-r border-purple-500/20">
+        <div className="flex flex-col w-full sm:w-60 mb-4 sm:mb-0 sm:mr-6 sm:pr-4 sm:border-r border-purple-500/20">
           {/* Chat Sessions */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-3">
@@ -411,7 +411,7 @@ export default function AIPage() {
         </div>
         
         {/* Main Chat Window */}
-        <div className="flex-grow flex flex-col glassmorphic rounded-xl p-4 neon-border-purple h-full">
+        <div className="flex-grow flex flex-col glassmorphic rounded-xl p-4 neon-border-purple h-full min-w-0">
           {/* Messages area */}
           <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar">
             {!activeChat || activeChat.messages.length === 0 ? (
