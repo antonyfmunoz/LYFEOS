@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Clock } from "lucide-react";
 import { Button } from "./button";
 import { Input } from "./input";
@@ -45,6 +46,17 @@ export function CustomTimePicker({
       }
     }
   }, [value]);
+  
+  // Cleanup any portals when component unmounts
+  useEffect(() => {
+    return () => {
+      // If this component is unmounted while dropdown is open,
+      // make sure any portal elements are cleaned up
+      if (isOpen) {
+        setIsOpen(false);
+      }
+    };
+  }, [isOpen]);
 
   // Convert internal state back to 24-hour format and update parent
   const updateTime = () => {
@@ -73,14 +85,29 @@ export function CustomTimePicker({
   // Close the dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
+      // Only run this check if the dropdown is open
+      if (!isOpen) return;
+      
+      // Check if click was on or inside the input field container
+      if (dropdownRef.current && dropdownRef.current.contains(event.target as Node)) {
+        return;
       }
+      
+      // Check if click was on any element with class 'time-dropdown' (our portal)
+      const timeDropdowns = document.querySelectorAll('.time-dropdown');
+      for (let i = 0; i < timeDropdowns.length; i++) {
+        if (timeDropdowns[i].contains(event.target as Node)) {
+          return;
+        }
+      }
+      
+      // If we got here, the click was outside both the input and the dropdown
+      setIsOpen(false);
     }
     
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [isOpen]);
 
   // Handle hour increment/decrement
   const adjustHours = (amount: number) => {
@@ -165,9 +192,16 @@ export function CustomTimePicker({
         </div>
       </div>
 
-      {/* Dropdown picker */}
-      {isOpen && (
-        <div className="absolute top-full left-0 z-[999999] mt-1 p-4 bg-[#001824] border border-primary/30 rounded-md shadow-lg shadow-primary/10 w-64 glassmorphic neon-border animate-in fade-in-50 duration-100 time-dropdown">
+      {/* Dropdown picker using portal */}
+      {isOpen && createPortal(
+        <div 
+          className="fixed z-[999999] p-4 bg-[#001824] border border-primary/30 rounded-md shadow-lg shadow-primary/10 w-64 glassmorphic neon-border animate-in fade-in-50 duration-100 time-dropdown"
+          style={{
+            position: 'fixed',
+            top: dropdownRef.current ? dropdownRef.current.getBoundingClientRect().bottom + window.scrollY + 5 : 0,
+            left: dropdownRef.current ? dropdownRef.current.getBoundingClientRect().left + window.scrollX : 0
+          }}
+        >
           <div className="text-center font-orbitron mb-3 text-[#D6F4FF] text-sm">Select Time</div>
           
           <div className="flex justify-center items-center gap-2">
@@ -178,6 +212,7 @@ export function CustomTimePicker({
                 size="sm" 
                 className="text-primary hover:bg-primary/20 rounded-full p-1 h-8 w-8 hover:shadow-[0_0_5px_rgba(0,224,255,0.5)] transition-all"
                 onClick={() => adjustHours(1)}
+                type="button"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
               </Button>
@@ -193,6 +228,7 @@ export function CustomTimePicker({
                 size="sm" 
                 className="text-primary hover:bg-primary/20 rounded-full p-1 h-8 w-8 hover:shadow-[0_0_5px_rgba(0,224,255,0.5)] transition-all"
                 onClick={() => adjustHours(-1)}
+                type="button"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
               </Button>
@@ -209,6 +245,7 @@ export function CustomTimePicker({
                 size="sm" 
                 className="text-primary hover:bg-primary/20 rounded-full p-1 h-8 w-8 hover:shadow-[0_0_5px_rgba(0,224,255,0.5)] transition-all"
                 onClick={() => adjustMinutes(1)}
+                type="button"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
               </Button>
@@ -224,6 +261,7 @@ export function CustomTimePicker({
                 size="sm" 
                 className="text-primary hover:bg-primary/20 rounded-full p-1 h-8 w-8 hover:shadow-[0_0_5px_rgba(0,224,255,0.5)] transition-all"
                 onClick={() => adjustMinutes(-1)}
+                type="button"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
               </Button>
@@ -266,6 +304,7 @@ export function CustomTimePicker({
               variant="ghost"
               className="text-[#7DAAB2] hover:bg-[#001C26] hover:text-[#D6F4FF] mr-2 transition-all font-mono"
               onClick={() => setIsOpen(false)}
+              type="button"
             >
               Cancel
             </Button>
@@ -273,11 +312,13 @@ export function CustomTimePicker({
               size="sm"
               className="bg-primary/90 text-primary-foreground hover:bg-primary/100 hover:shadow-[0_0_5px_rgba(0,224,255,0.5)] transition-all font-mono"
               onClick={updateTime}
+              type="button"
             >
               Apply
             </Button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
