@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useLYFEOS } from "../lib/context";
 import { 
   Bot, Send, ChevronRight, Edit2, Check, X, Sparkles, Brain, Zap, Settings, 
-  PlusCircle, Trash2, MessageSquare, MoreVertical
+  PlusCircle, Trash2, MessageSquare, MoreVertical, Menu, X as CloseIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { AIMessage, ChatSession } from "../lib/types";
+import { useIsMobile } from "../hooks/use-mobile";
 
 export default function AIPage() {
   const { 
@@ -38,12 +39,14 @@ export default function AIPage() {
   const [isEditingChatTitle, setIsEditingChatTitle] = useState(false);
   const [chatTitleInput, setChatTitleInput] = useState("");
   const [editingChatId, setEditingChatId] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const newChatInputRef = useRef<HTMLInputElement>(null);
   const editChatInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   
   // Get active chat session
   const activeChat = chatSessions.find(chat => chat.id === activeChatSessionId);
@@ -100,6 +103,10 @@ export default function AIPage() {
       setActiveChatSession(newChat.id);
       setNewChatTitle("");
       setIsCreatingChat(false);
+      // Auto-close sidebar on mobile after selection
+      if (isMobile) {
+        setSidebarOpen(false);
+      }
     }
   };
   
@@ -129,6 +136,14 @@ export default function AIPage() {
       setTimeout(() => {
         setIsLoading(false);
       }, 1000);
+    }
+  };
+
+  const handleChatSelect = (chatId: string) => {
+    setActiveChatSession(chatId);
+    // Auto-close sidebar on mobile after selection
+    if (isMobile) {
+      setSidebarOpen(false);
     }
   };
 
@@ -203,10 +218,28 @@ export default function AIPage() {
         </Button>
       </div>
       
-      {/* Main Chat Area */}
-      <div className="flex-grow flex flex-col sm:flex-row">
-        {/* Left Sidebar - Chat Sessions & Quick Prompts */}
-        <div className="flex flex-col w-full sm:w-60 mb-4 sm:mb-0 sm:mr-6 sm:pr-4 sm:border-r border-purple-500/20">
+      {/* Main Chat Area with Collapsible Sidebar */}
+      <div className="flex-grow flex flex-col sm:flex-row relative">
+        {/* Mobile Menu Toggle Button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="absolute top-0 left-4 sm:hidden z-20 h-9 w-9 p-0 rounded-full bg-slate-800/80 text-purple-400 shadow-md mb-4"
+        >
+          {sidebarOpen ? <CloseIcon className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </Button>
+        
+        {/* Left Sidebar - Chat Sessions & Quick Prompts - Collapsible */}
+        <div className={`
+          absolute sm:relative z-10 top-0 left-0 h-full 
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full sm:translate-x-0'} 
+          transition-transform duration-200 ease-in-out
+          flex flex-col w-4/5 sm:w-60 sm:mb-0 sm:mr-6 sm:pr-4 
+          bg-slate-900/95 sm:bg-transparent backdrop-blur-md sm:backdrop-blur-none 
+          sm:border-r border-purple-500/20 
+          pt-12 sm:pt-0 px-4 sm:px-0
+        `}>
           {/* Chat Sessions */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-3">
@@ -313,7 +346,7 @@ export default function AIPage() {
                       className={`flex items-center justify-between px-2 py-2 rounded hover:bg-slate-800/50 cursor-pointer ${
                         chat.id === activeChatSessionId ? 'bg-purple-500/10 border border-purple-500/20' : ''
                       }`}
-                      onClick={() => setActiveChatSession(chat.id)}
+                      onClick={() => handleChatSelect(chat.id)}
                     >
                       <div className="flex items-center flex-grow overflow-hidden mr-2">
                         <MessageSquare className="h-4 w-4 mr-2 text-purple-400 flex-shrink-0" />
@@ -374,6 +407,9 @@ export default function AIPage() {
                 if (activeChatSessionId) {
                   sendMessageInSession(activeChatSessionId, "Analyze my day and suggest focus areas.");
                 }
+                if (isMobile) {
+                  setSidebarOpen(false);
+                }
               }}
             >
               <Brain className="h-4 w-4 mr-2 text-purple-400" />
@@ -388,6 +424,9 @@ export default function AIPage() {
                 if (activeChatSessionId) {
                   sendMessageInSession(activeChatSessionId, "Generate 3 creative ideas for my current challenge.");
                 }
+                if (isMobile) {
+                  setSidebarOpen(false);
+                }
               }}
             >
               <Sparkles className="h-4 w-4 mr-2 text-purple-400" />
@@ -401,6 +440,9 @@ export default function AIPage() {
                 setInputText("Optimize my schedule to maximize productivity.");
                 if (activeChatSessionId) {
                   sendMessageInSession(activeChatSessionId, "Optimize my schedule to maximize productivity.");
+                }
+                if (isMobile) {
+                  setSidebarOpen(false);
                 }
               }}
             >
@@ -497,7 +539,7 @@ export default function AIPage() {
                       <div className="ml-3 bg-slate-800/60 border border-purple-500/30 rounded-2xl rounded-tl-none p-4">
                         <div className="text-xs text-purple-400 mb-1 font-semibold">{aiCompanionName}</div>
                         <div className="flex space-x-2">
-                          <div className="h-2 w-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: "0ms" }}></div>
+                          <div className="h-2 w-2 rounded-full bg-purple-400 animate-bounce"></div>
                           <div className="h-2 w-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: "150ms" }}></div>
                           <div className="h-2 w-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: "300ms" }}></div>
                         </div>
@@ -506,7 +548,6 @@ export default function AIPage() {
                   </div>
                 )}
                 
-                {/* Invisible div to scroll to */}
                 <div ref={messagesEndRef} />
               </div>
             )}
@@ -517,21 +558,19 @@ export default function AIPage() {
             <div className="relative">
               <Input 
                 placeholder={`Ask ${aiCompanionName} anything...`}
-                className="bg-slate-800/30 border border-purple-500/30 rounded-lg text-sm py-6 pl-4 pr-12 focus-visible:ring-purple-500/30"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
+                className="pr-12 py-6 bg-slate-800/30 border-purple-500/30 focus-visible:ring-purple-500/30"
               />
               <Button 
                 type="submit"
-                size="icon"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-9 w-9 rounded-full bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 border border-purple-500/30"
+                size="sm"
+                disabled={!inputText.trim()}
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-9 w-9 p-0 rounded-full bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors"
               >
                 <Send className="h-4 w-4" />
               </Button>
             </div>
-            <p className="text-xs text-[#7DAAB2] mt-2 text-center">
-              {aiCompanionName} is powered by the LYFEOS neural framework. Responses are generated to assist your personal growth.
-            </p>
           </form>
         </div>
       </div>
