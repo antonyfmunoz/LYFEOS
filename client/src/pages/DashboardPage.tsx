@@ -398,12 +398,12 @@ export default function DashboardPage() {
         </div>
       </section>
       
-      {/* Daily Schedule Panel */}
+      {/* Mission Log Panel */}
       <section className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-orbitron flex items-center">
             <Calendar className="h-5 w-5 text-primary mr-2" />
-            <span>Daily Schedule</span>
+            <span>Mission Log</span>
           </h2>
           <div className="flex items-center text-sm text-[#36F1CD] font-mono">
             <span>XP Earned Today: +{totalXpEarned}</span>
@@ -632,12 +632,12 @@ export default function DashboardPage() {
         </div>
       </section>
       
-      {/* Daily Log Panel - Separate Widget */}
+      {/* Entry Log Panel - Separate Widget */}
       <section className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-orbitron flex items-center">
             <BookOpen className="h-5 w-5 text-primary mr-2" />
-            <span>Daily Log</span>
+            <span>Entry Log</span>
           </h2>
         </div>
         
