@@ -1,18 +1,65 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useParams } from "wouter";
-import { ArrowLeft, Calendar, Clock, MapPin, Zap, Award, Save, Edit2 } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, MapPin, Zap, Award, Save, Edit2, Tag } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import MarkdownEditor from "@/components/markdown/MarkdownEditor";
+import { MissionPage as MissionPageType } from "@/lib/types";
 
 export default function MissionDetailPage() {
   const { missionId } = useParams();
-  const { events, updateEvent } = useLYFEOS();
+  const { 
+    events, 
+    updateEvent, 
+    missionPages, 
+    createMissionPage, 
+    updateMissionPage, 
+    getMissionPageById 
+  } = useLYFEOS();
   const { toast } = useToast();
   
   // Find the mission from events based on ID
   const mission = events.find(event => event.id === missionId);
+  
+  // Find or create a mission page for this event
+  const [missionPage, setMissionPage] = useState<MissionPageType | null>(null);
+  const [content, setContent] = useState("");
+  
+  // Track when the content is modified and unsaved
+  const [isDirty, setIsDirty] = useState(false);
+  
+  // Initialize or load mission page
+  useEffect(() => {
+    if (mission) {
+      // Try to find an existing mission page
+      const existingPage = missionPages.find(page => page.eventId === mission.id);
+      
+      if (existingPage) {
+        // Page exists, use it
+        setMissionPage(existingPage);
+        setContent(existingPage.content);
+      } else {
+        // Create a new mission page
+        const categoryTag = mission.category.charAt(0).toUpperCase() + mission.category.slice(1);
+        const newPage = createMissionPage({
+          title: mission.title,
+          slug: mission.title.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-'),
+          content: `# ${mission.title}\n\n${mission.description || 'Start documenting this mission...'}\n\n## Notes\n\n- [ ] Add your task items here\n- [ ] Use checkboxes for tasks\n\n## Details\n\n* Time: ${mission.startTime}\n* Duration: ${mission.duration}\n* Category: ${categoryTag}`,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          completed: false,
+          xpValue: 15, // Default XP value
+          tags: [categoryTag, 'Mission'],
+          eventId: mission.id
+        });
+        
+        setMissionPage(newPage);
+        setContent(newPage.content);
+      }
+    }
+  }, [mission, missionPages, createMissionPage]);
   
   // Handle if mission isn't found
   if (!mission) {
@@ -30,10 +77,6 @@ export default function MissionDetailPage() {
       </div>
     );
   }
-  
-  // Editing state
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedDescription, setEditedDescription] = useState(mission.description || "");
 
   // Get category-specific styling
   const getCategoryColor = (category: string) => {
@@ -88,17 +131,32 @@ export default function MissionDetailPage() {
     }
   };
   
+  // Handle content changes in the markdown editor
+  const handleContentChange = (newContent: string) => {
+    setContent(newContent);
+  };
+  
+  // Save changes to the mission page
   const handleSave = () => {
-    updateEvent(mission.id, { description: editedDescription });
-    setIsEditing(false);
-    
-    toast({
-      title: "Mission Updated",
-      description: "Your notes have been saved successfully",
-      variant: "default",
-      className: "bg-[#001E26] border border-[#36F1CD] text-white",
-      duration: 3000,
-    });
+    if (missionPage) {
+      updateMissionPage(missionPage.id, { 
+        content,
+        updatedAt: new Date().toISOString()
+      });
+      
+      // Also update the mission description for backward compatibility
+      updateEvent(mission.id, { 
+        description: content.substring(0, 100) + (content.length > 100 ? '...' : '') 
+      });
+      
+      toast({
+        title: "Mission Page Updated",
+        description: "Your mission document has been saved successfully",
+        variant: "default",
+        className: "bg-[#001E26] border border-[#36F1CD] text-white",
+        duration: 3000,
+      });
+    }
   };
   
   return (
@@ -167,69 +225,46 @@ export default function MissionDetailPage() {
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-orbitron text-lg">Mission Details</h2>
               
-              {isEditing ? (
-                <div className="flex space-x-2">
+              {missionPage && (
+                <div className="flex items-center space-x-2">
+                  {missionPage.tags.map((tag, index) => (
+                    <div 
+                      key={index} 
+                      className="text-xs px-2 py-1 rounded-md bg-slate-700/50 border border-slate-600/50"
+                    >
+                      <Tag className="h-3 w-3 inline mr-1" />
+                      {tag}
+                    </div>
+                  ))}
+                  
                   <Button 
                     size="sm" 
                     variant="outline" 
-                    className="h-8 px-3"
+                    className="h-8 px-3 ml-2"
                     onClick={handleSave}
                   >
                     <Save className="h-4 w-4 mr-1" /> Save
                   </Button>
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
-                    className="h-8 px-3"
-                    onClick={() => {
-                      setEditedDescription(mission.description || "");
-                      setIsEditing(false);
-                    }}
-                  >
-                    Cancel
-                  </Button>
                 </div>
-              ) : (
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="h-8 px-3"
-                  onClick={() => setIsEditing(true)}
-                >
-                  <Edit2 className="h-4 w-4 mr-1" /> Edit
-                </Button>
               )}
             </div>
             
-            {isEditing ? (
-              <div className="relative mb-4">
-                <textarea
-                  value={editedDescription}
-                  onChange={(e) => setEditedDescription(e.target.value)}
-                  placeholder="Enter mission details, notes, and any relevant information..."
-                  className="w-full min-h-[300px] p-4 rounded-lg bg-card/50 border border-primary/30 
-                            focus:outline-none focus:ring-2 focus:ring-primary/50 
-                            transition-all font-mono text-sm leading-relaxed"
-                />
-              </div>
+            {/* Markdown Editor */}
+            {missionPage ? (
+              <MarkdownEditor
+                content={content}
+                onChange={handleContentChange}
+                onSave={handleSave}
+                className="mb-4"
+              />
             ) : (
-              <div className="prose prose-invert prose-cyan max-w-none">
-                {mission.description ? (
-                  <div className="bg-card/30 p-4 rounded-lg border border-primary/20 min-h-[300px]">
-                    {mission.description.split('\n').map((paragraph, idx) => (
-                      <p key={idx} className="mb-4">{paragraph}</p>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center p-8 bg-card/30 rounded-lg border border-primary/20">
-                    <p className="text-[#7DAAB2] italic">No details available for this mission. Click Edit to add notes.</p>
-                  </div>
-                )}
+              <div className="text-center p-8 bg-card/30 rounded-lg border border-primary/20">
+                <p className="text-[#7DAAB2] italic">Loading mission document...</p>
               </div>
             )}
             
             <div className="text-xs text-[#7DAAB2] mt-4">
-              <p>This mission document is stored in your Codex for future reference.</p>
+              <p>This mission document supports Markdown, including task lists using "- [ ]" syntax and wiki-style links with "[[Page Name]]".</p>
             </div>
           </div>
         </div>
