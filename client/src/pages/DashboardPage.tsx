@@ -19,6 +19,7 @@ import {
   Calendar,
   CheckCircle2
 } from "lucide-react";
+import MissionLogWidget from "@/components/dashboard/MissionLogWidget";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CustomTimePicker } from "@/components/ui/custom-time-picker";
@@ -539,115 +540,11 @@ export default function DashboardPage() {
       
       {/* Mission Log Panel */}
       <section className="mb-6">
-        <div className="mission-log-header flex items-center justify-between mb-6">
-          <h2 className="text-xl font-orbitron text-[#dff9ff]">
-            Today's Schedule
-          </h2>
-          <Button
-            variant="ghost"
-            className="text-[#00f2fe] font-bold text-sm p-0 hover:bg-transparent hover:text-[#00f2fe] hover:underline"
-            onClick={() => window.location.href = '/calendar'}
-          >
-            VIEW CALENDAR
-          </Button>
-        </div>
-        
-        {/* Mission Log Schedule */}
-        {(() => {
-          const MissionTimeline = ({ events }: { events: CalendarEvent[] }) => {
-            // Load completed missions from localStorage
-            const loadCompletedMissions = (): Record<string, boolean> => {
-              try {
-                const stored = localStorage.getItem("completedMissions");
-                return stored ? JSON.parse(stored) : {};
-              } catch (e) {
-                console.error("Failed to load completed missions:", e);
-                return {};
-              }
-            };
-            
-            const [completedMissions, setCompletedMissions] = useState<Record<string, boolean>>(loadCompletedMissions);
-            
-            // Save to localStorage whenever completedMissions changes
-            useEffect(() => {
-              localStorage.setItem("completedMissions", JSON.stringify(completedMissions));
-            }, [completedMissions]);
-            
-            const toggleMission = (id: string) => {
-              setCompletedMissions(prev => ({
-                ...prev,
-                [id]: !prev[id]
-              }));
-            };
-            
-            return (
-              <div className="mission-schedule py-2 max-h-96 overflow-y-auto">
-                {events.length > 0 ? (
-                  <ul className="list-none p-0 m-0">
-                    {events
-                      .sort((a, b) => a.startTime.localeCompare(b.startTime))
-                      .map((event) => {
-                        const isCompleted = completedMissions[event.id] || false;
-                        
-                        return (
-                          <li 
-                            key={event.id}
-                            className={`mission-block flex justify-between items-start mb-7 cursor-pointer transition-all duration-300 ${isCompleted ? 'opacity-50' : ''}`}
-                            onClick={() => toggleMission(event.id)}
-                          >
-                            <div className="mission-left flex items-start">
-                              {/* Time Column */}
-                              <div className="time-col w-14 font-mono text-[#d0f0ff] mt-1">
-                                {event.startTime}
-                              </div>
-                              
-                              {/* Divider Line */}
-                              <div className={`divider w-0.5 h-full mx-2 rounded-full self-stretch ${
-                                event.category === 'work' ? 'bg-[#00f2fe]' : 
-                                event.category === 'health' ? 'bg-[#ff5f78]' : 'bg-[#c280ff]'
-                              }`}></div>
-                              
-                              {/* Mission Info */}
-                              <div className="mission-info flex flex-col ml-5">
-                                <div className={`mission-title text-base font-semibold mb-1.5 ${isCompleted ? 'line-through' : ''} text-white`}>
-                                  {event.title}
-                                </div>
-                                
-                                <div className={`mission-subtext text-sm ${isCompleted ? 'line-through' : ''} text-[#8aaac2]`}>
-                                  {event.category === 'work' ? 'Conference Room 3' : 
-                                  event.category === 'health' ? 'Gym' : 'Virtual'} | {event.duration}
-                                </div>
-                              </div>
-                            </div>
-                            
-                            {/* XP Badge */}
-                            <div className="xp-badge px-2.5 py-1 bg-[#003c3c] text-[#00f2a3] text-xs font-bold rounded-lg border border-[#00f2a3] whitespace-nowrap h-fit mt-1.5 transition-opacity duration-300">
-                              +15 XP
-                            </div>
-                          </li>
-                        );
-                      })}
-                  </ul>
-                ) : (
-                  <div className="glassmorphic rounded-xl p-6 text-center opacity-80 mt-6">
-                    <Calendar className="h-10 w-10 text-primary/50 mx-auto mb-3" />
-                    <p className="text-[#7DAAB2]">No missions scheduled for today</p>
-                    <p className="text-xs text-[#7DAAB2] mt-2">
-                      Visit the Calendar page to add missions to your daily schedule
-                    </p>
-                  </div>
-                )}
-              </div>
-            );
-          };
-          
-          return <MissionTimeline events={events} />;
-        })()}
-        
-        {/* Mission Note */}
-        <div className="mission-note text-center text-xs mt-5 text-[#7da4b6] italic opacity-80">
-          <span>↴ Click missions to mark them as completed</span>
-        </div>
+        <MissionLogWidget 
+          events={events} 
+          questStyle={true} 
+          maxHeight="96"
+        />
       </section>
       
       {/* Data Entry Log Panel */}
