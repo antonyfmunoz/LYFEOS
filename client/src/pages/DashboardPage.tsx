@@ -331,18 +331,18 @@ export default function DashboardPage() {
                   className="bg-[#00141A] border border-primary/30 rounded text-xs text-[#7DAAB2] p-1"
                 >
                   {[
-                    'America/New_York',
-                    'America/Chicago',
-                    'America/Denver',
-                    'America/Los_Angeles',
-                    'Europe/London',
-                    'Europe/Paris',
-                    'Asia/Tokyo',
-                    'Australia/Sydney',
-                    'Pacific/Auckland'
+                    { label: 'EST', value: 'America/New_York' },
+                    { label: 'CST', value: 'America/Chicago' },
+                    { label: 'MST', value: 'America/Denver' },
+                    { label: 'PST', value: 'America/Los_Angeles' },
+                    { label: 'GMT', value: 'Europe/London' },
+                    { label: 'CET', value: 'Europe/Paris' },
+                    { label: 'JST', value: 'Asia/Tokyo' },
+                    { label: 'AEST', value: 'Australia/Sydney' },
+                    { label: 'NZST', value: 'Pacific/Auckland' }
                   ].map(tz => (
-                    <option key={tz} value={tz}>
-                      {tz.split('/')[1].replace('_', ' ')}
+                    <option key={tz.value} value={tz.value}>
+                      {tz.label}
                     </option>
                   ))}
                 </select>
