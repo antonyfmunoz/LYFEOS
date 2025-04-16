@@ -12,6 +12,7 @@ import StatDetailPage from "./pages/StatDetailPage";
 import MissionDetailPage from "./pages/MissionDetailPage";
 import CalendarPage from "./pages/CalendarPage";
 import NotFound from "./pages/not-found";
+import MissionPage from "./components/markdown/MissionPage";
 import RootLayout from "./components/layout/RootLayout";
 
 function Router() {
@@ -93,6 +94,15 @@ function Router() {
       <Route path="/mission/:missionId">
         <RootLayout>
           <MissionDetailPage />
+        </RootLayout>
+      </Route>
+      
+      {/* Mission Page route with slug */}
+      <Route path="/mission-page/:slug">
+        <RootLayout>
+          <div className="container max-w-4xl py-6">
+            <MissionPage />
+          </div>
         </RootLayout>
       </Route>
       
