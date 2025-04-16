@@ -643,7 +643,7 @@ export default function DashboardPage() {
           <div className="space-y-4">
             {/* Sleep Tracker Section */}
             <div className="mb-3">
-              <h3 className="text-sm flex items-center text-[#7DAAB2] mb-3">
+              <h3 className="text-sm flex items-center text-[#7DAAB2] mb-3 font-bold">
                 <MoonStar className="h-4 w-4 text-primary mr-2" />
                 Sleep Tracker
               </h3>
@@ -680,7 +680,7 @@ export default function DashboardPage() {
             {/* State ratings - in a row for desktop, stacked for mobile */}
             <div className="border-t border-primary/10 pt-4 mb-2">
               <div className="flex items-center justify-between text-sm mb-3">
-                <label className="flex items-center text-[#7DAAB2]">
+                <label className="flex items-center text-[#7DAAB2] font-bold">
                   <Brain className="h-4 w-4 text-primary" />
                   <span className="ml-2">Energy Recap</span>
                 </label>
@@ -717,7 +717,7 @@ export default function DashboardPage() {
             </div>
             
             <div className="border-t border-primary/10 pt-4">
-              <h3 className="text-sm flex items-center text-[#7DAAB2] mb-3">
+              <h3 className="text-sm flex items-center text-[#7DAAB2] mb-3 font-bold">
                 <TargetIcon className="h-4 w-4 text-primary mr-2" />
                 Intention Setter
               </h3>
