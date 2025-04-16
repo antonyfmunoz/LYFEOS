@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Clock, Award, Zap } from "lucide-react";
+import { Calendar, Clock, Award, Zap, Info } from "lucide-react";
 import { CalendarEvent } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import MissionInfoButton from './MissionInfoButton';
+import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 
 interface EnhancedMissionWidgetProps {
   events: CalendarEvent[];
@@ -111,6 +111,34 @@ export default function EnhancedMissionWidget({
     </div>
   );
   
+  // Helper to get category color
+  const getCategoryColor = (category: string) => {
+    switch (category) {
+      case "work":
+        return "text-blue-400";
+      case "health":
+        return "text-red-400";
+      case "personal":
+        return "text-purple-400";
+      default:
+        return "text-primary";
+    }
+  };
+  
+  // Helper to get category text
+  const getCategoryText = (category: string) => {
+    switch (category) {
+      case "work":
+        return "Work Mission";
+      case "health":
+        return "Health Mission";
+      case "personal":
+        return "Personal Mission";
+      default:
+        return "Mission";
+    }
+  };
+  
   // Render mission widget
   const upcomingEvents = getUpcomingEvents(3);
   
@@ -140,6 +168,7 @@ export default function EnhancedMissionWidget({
           <div className="space-y-3">
             {upcomingEvents.map((event) => {
               const isCompleted = completedMissions[event.id] || false;
+              const categoryColor = getCategoryColor(event.category);
               
               return (
                 <div 
@@ -149,6 +178,30 @@ export default function EnhancedMissionWidget({
                       'bg-green-400/5 border border-green-400/20' : 
                       'bg-primary/5 border border-primary/20 hover:border-primary/40'}`}
                 >
+                  <StatInfoDialog
+                    trigger={
+                      <button className="absolute top-4 right-4 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary">
+                        <Info className="h-4 w-4" />
+                      </button>
+                    }
+                    title={event.title}
+                    titleColor={categoryColor}
+                    description={event.description || "Complete this mission to earn XP and progress through your daily goals."}
+                    additionalInfo={`Category: ${getCategoryText(event.category)} | Time: ${event.startTime} | Duration: ${event.duration}`}
+                    statType="time"
+                  >
+                    <div className="mt-4 flex justify-between">
+                      <div>
+                        <h4 className="text-sm font-semibold">Energy Cost</h4>
+                        <p className="text-sm text-red-400 font-mono">-5 EP</p>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-semibold">XP Reward</h4>
+                        <p className="text-sm text-primary font-mono">+15 XP</p>
+                      </div>
+                    </div>
+                  </StatInfoDialog>
+                  
                   <div className="flex items-start">
                     <Checkbox
                       className={`mt-1 rounded border transition-all duration-200
@@ -163,10 +216,9 @@ export default function EnhancedMissionWidget({
                         <h3 className={`font-orbitron text-base ${isCompleted ? 'line-through text-[#7DAAB2]' : 'text-[#D6F4FF]'}`}>
                           {event.title}
                         </h3>
-                        <div className="flex items-center">
+                        <div className="flex items-center mr-8">
                           <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
                           <span className="text-primary text-xs font-mono mr-2">+15 XP</span>
-                          <MissionInfoButton mission={event} />
                         </div>
                       </div>
                       <p className={`text-xs text-[#7DAAB2] mt-0.5 ${isCompleted ? 'line-through' : ''}`}>
