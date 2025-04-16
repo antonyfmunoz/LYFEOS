@@ -51,10 +51,10 @@ export default function MissionLogWidget({
     if (event && isCompleting) {
       // Show toast notification for completed mission
       const { dismiss } = toast({
-        title: "Mission Completed",
+        title: "Mission Completed!",
         description: (
           <div className="flex flex-col space-y-2">
-            <div className="font-semibold text-base">{event.title}</div>
+            <div className="text-sm opacity-90">{event.title}</div>
             <div className="flex space-x-4 text-sm mt-2">
               <div className="flex items-center text-red-400">
                 <Zap className="h-4 w-4 mr-1" />
