@@ -81,17 +81,18 @@ export default function MissionLogWidget({
     return (
       <div className={`quest-log-box glassmorphic rounded-xl p-6 neon-border ${className}`}>
         {!compact && (
-          <div className="flex items-center justify-between mb-6">
+          <div className="relative mb-6">
             <h2 className="text-xl font-orbitron text-[#dff9ff] flex items-center">
               <Calendar className="h-5 w-5 text-primary mr-2" />
               <span>Today's Missions</span>
             </h2>
             <Button
-              variant="ghost"
-              className="text-[#00f2fe] font-bold text-sm p-0 hover:bg-transparent hover:text-[#00f2fe] hover:underline"
+              variant="outline"
+              size="sm"
+              className="absolute top-0 right-0 text-[#00f2fe] text-xs py-1 px-2 h-auto border-[#00f2fe]/30 hover:bg-[#00f2fe]/5 hover:text-[#00f2fe]"
               onClick={() => window.location.href = '/calendar'}
             >
-              VIEW CALENDAR
+              <Calendar className="h-3 w-3 mr-1" /> Calendar
             </Button>
           </div>
         )}
@@ -165,16 +166,17 @@ export default function MissionLogWidget({
   return (
     <div className={`mission-log-box bg-[#0d131f] border border-[#00f2fe] rounded-xl p-6 ${className}`}>
       {!compact && (
-        <div className="mission-log-header flex items-center justify-between mb-6">
+        <div className="relative mb-6">
           <h2 className="text-xl font-orbitron text-[#dff9ff]">
             Today's Schedule
           </h2>
           <Button
-            variant="ghost"
-            className="text-[#00f2fe] font-bold text-sm p-0 hover:bg-transparent hover:text-[#00f2fe] hover:underline"
+            variant="outline"
+            size="sm"
+            className="absolute top-0 right-0 text-[#00f2fe] text-xs py-1 px-2 h-auto border-[#00f2fe]/30 hover:bg-[#00f2fe]/5 hover:text-[#00f2fe]"
             onClick={() => window.location.href = '/calendar'}
           >
-            VIEW CALENDAR
+            <Calendar className="h-3 w-3 mr-1" /> Calendar
           </Button>
         </div>
       )}
