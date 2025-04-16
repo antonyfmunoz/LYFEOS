@@ -15,7 +15,8 @@ import {
   MoonStar,
   HeartPulse,
   TargetIcon,
-  ListChecks
+  ListChecks,
+  Calendar
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { Checkbox } from "@/components/ui/checkbox";
 import ExperienceBar from "@/components/dashboard/ExperienceBar";
 import StatWidget from "@/components/dashboard/StatWidget";
+import { StatType, CalendarEvent } from "@/lib/types";
 
 // Define types
 interface TimeBlock {
