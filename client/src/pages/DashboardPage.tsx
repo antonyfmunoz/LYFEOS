@@ -631,12 +631,12 @@ export default function DashboardPage() {
         </div>
       </section>
       
-      {/* Calibration Log Panel */}
+      {/* Recalibration Log Panel */}
       <section className="mb-6" style={{ position: 'relative', zIndex: 1 }}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-orbitron flex items-center">
             <Brain className="h-5 w-5 text-primary mr-2" />
-            <span>Calibration Log</span>
+            <span>Recalibration Log</span>
           </h2>
         </div>
         
