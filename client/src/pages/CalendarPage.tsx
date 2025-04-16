@@ -9,7 +9,7 @@ import { CustomTimePicker } from "@/components/ui/custom-time-picker";
 import { useLYFEOS } from "@/lib/context";
 import { CalendarEvent } from "@/lib/types";
 import { format } from "date-fns";
-import { Plus, Edit, Trash, Clock, ArrowLeft } from "lucide-react";
+import { Plus, Edit, Trash, Clock, ArrowLeft, Info } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +18,7 @@ export default function CalendarPage() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
   const [isEditEventOpen, setIsEditEventOpen] = useState(false);
+  const [isInfoEventOpen, setIsInfoEventOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   
   // Form states
@@ -107,6 +108,13 @@ export default function CalendarPage() {
     setSelectedEvent(null);
   };
   
+  // Handle viewing event info
+  const handleViewEventInfo = (event: CalendarEvent, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering the edit dialog
+    setSelectedEvent(event);
+    setIsInfoEventOpen(true);
+  };
+  
   return (
     <div className="container mx-auto p-4">
       <div className="mb-6 flex items-center justify-between">
@@ -165,6 +173,14 @@ export default function CalendarPage() {
                       <div className="flex items-center space-x-2">
                         <Clock className="h-3.5 w-3.5 text-[#7DAAB2]" />
                         <span className="text-xs text-[#7DAAB2]">{event.duration}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 rounded-full text-[#7DAAB2]"
+                          onClick={(e) => handleViewEventInfo(event, e)}
+                        >
+                          <Info className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     </div>
                     <p className="text-sm text-[#7DAAB2] mt-1">{event.description}</p>
@@ -359,6 +375,65 @@ export default function CalendarPage() {
               className="bg-primary/20 hover:bg-primary/30 text-primary"
             >
               <Edit className="h-4 w-4 mr-2" /> Update
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View-only Event Info Dialog */}
+      <Dialog open={isInfoEventOpen} onOpenChange={setIsInfoEventOpen}>
+        <DialogContent className="glassmorphic backdrop-blur-lg border-primary/30 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-orbitron">{selectedEvent?.title}</DialogTitle>
+            <DialogDescription className="opacity-90">
+              {selectedEvent?.category === "work" ? (
+                <span className="text-primary">Work Event</span>
+              ) : selectedEvent?.category === "personal" ? (
+                <span className="text-[#7e57c2]">Personal Event</span>
+              ) : (
+                <span className="text-[#EC4899]">Health Event</span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-2">
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center space-x-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-mono">{selectedEvent?.startTime}</span>
+              </div>
+              <span className="text-sm text-muted-foreground">Duration: {selectedEvent?.duration}</span>
+            </div>
+            
+            <div className="bg-primary/5 p-4 rounded-md">
+              <h4 className="text-sm font-semibold mb-2">Description</h4>
+              <p className="text-sm leading-relaxed">{selectedEvent?.description}</p>
+            </div>
+            
+            <div className="bg-primary/5 p-4 rounded-md">
+              <h4 className="text-sm font-semibold mb-2">Location</h4>
+              <p className="text-sm leading-relaxed">
+                {selectedEvent?.category === "work" ? "Conference Room 3" : 
+                 selectedEvent?.category === "personal" ? "Virtual" : "Gym"}
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsInfoEventOpen(false)}
+            >
+              Close
+            </Button>
+            <Button
+              className="bg-primary/20 hover:bg-primary/30 text-primary"
+              onClick={() => {
+                setIsInfoEventOpen(false);
+                handleEditEvent(selectedEvent!);
+              }}
+            >
+              Edit Event
             </Button>
           </DialogFooter>
         </DialogContent>
