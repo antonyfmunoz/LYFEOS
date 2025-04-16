@@ -118,7 +118,7 @@ const obsidianComponents = {
         const content = taskMatch[2];
         
         return (
-          <li {...props} className="obsidian-task-list-item">
+          <li {...props} className="obsidian-task-list-item list-none">
             <div className="flex items-start">
               <span className={`obsidian-checkbox ${isCompleted ? 'checked' : ''}`}>
                 {isCompleted ? '✓' : ''}
