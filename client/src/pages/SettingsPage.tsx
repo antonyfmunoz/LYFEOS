@@ -13,7 +13,6 @@ import {
 import { useLocation } from 'wouter';
 import { useLYFEOS } from '@/lib/context';
 import { useOnboarding, APP_GUIDES } from '@/lib/onboardingContext';
-import { useTheme } from '@/lib/themeContext';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,75 +37,7 @@ export default function SettingsPage() {
     dismissTooltip, 
     completeTooltip 
   } = useOnboarding();
-  const { theme, toggleTheme, reloadWithTheme } = useTheme();
-  const [themeMode, setThemeMode] = useState<'light' | 'dark'>(theme === 'dark' ? 'dark' : 'light');
-  
-  // Simple visual detection for primary color (synchronous)
-  const detectColorSync = (): string => {
-    try {
-      if (typeof window === 'undefined') return 'cyan';
-      
-      const primaryBtn = document.querySelector('.bg-primary');
-      if (primaryBtn) {
-        const btnColor = window.getComputedStyle(primaryBtn).backgroundColor;
-        
-        // Map RGB color back to our theme colors
-        if (btnColor.includes('0, 224, 255') || btnColor.includes('0,224,255')) {
-          return "cyan";
-        } else if (btnColor.includes('197, 139, 255') || btnColor.includes('197,139,255')) {
-          return "purple";
-        } else if (btnColor.includes('59, 130, 246') || btnColor.includes('59,130,246')) {
-          return "blue";
-        } else if (btnColor.includes('34, 197, 94') || btnColor.includes('34,197,94')) {
-          return "green";
-        } else if (btnColor.includes('255, 120, 10') || btnColor.includes('255,120,10')) {
-          return "orange";
-        }
-      }
-    } catch (e) {
-      console.error("Error in synchronous color detection:", e);
-    }
-    
-    return 'cyan';
-  };
-  
-  // Improved function to detect current primary color from theme.json (asynchronous)
-  const getCurrentPrimaryColor = async (): Promise<string> => {
-    // Default to cyan if detection fails
-    let defaultColor = "cyan";
-    
-    try {
-      // Mapping HSL values to our color names
-      const hslToColorMap: Record<string, string> = {
-        "hsl(188 100% 50%)": "cyan",
-        "hsl(265 89% 78%)": "purple",
-        "hsl(217 91% 60%)": "blue", 
-        "hsl(142 71% 45%)": "green",
-        "hsl(24 94% 50%)": "orange"
-      };
-      
-      // Attempt to fetch theme.json directly to get the exact primary color
-      const response = await fetch('/theme.json');
-      if (response.ok) {
-        const themeData = await response.json();
-        const primaryHsl = themeData.primary;
-        
-        // Return the matching color name if found in our map
-        if (primaryHsl && hslToColorMap[primaryHsl]) {
-          return hslToColorMap[primaryHsl];
-        }
-        
-        // If we couldn't determine from HSL, fallback to visual detection
-        return detectColorSync();
-      }
-    } catch (e) {
-      console.error("Error detecting primary color from theme.json:", e);
-    }
-    
-    return defaultColor;
-  };
-  
-  // Set initial state to 'cyan', we'll update it in the useEffect
+  const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>('dark');
   const [primaryColor, setPrimaryColor] = useState<string>('cyan');
   const [savedName, setSavedName] = useState<string>(username);
   const [savedAiName, setSavedAiName] = useState<string>(aiCompanionName);
@@ -124,7 +55,7 @@ export default function SettingsPage() {
       toast({
         title: "Username Updated",
         description: "Your username has been updated successfully.",
-        className: "bg-background border border-primary text-foreground",
+        className: "bg-[#001E26] border border-[#36F1CD] text-white",
       });
     }
   };
@@ -140,108 +71,35 @@ export default function SettingsPage() {
       toast({
         title: "AI Companion Name Updated",
         description: `Your AI companion is now named ${savedAiName}.`,
-        className: "bg-background border border-primary text-foreground",
+        className: "bg-[#001E26] border border-[#36F1CD] text-white",
       });
     }
   };
   
   // Handle appearance changes
-  const changeTheme = async (value: 'light' | 'dark') => {
+  const changeTheme = (value: 'light' | 'dark' | 'system') => {
     setThemeMode(value);
     
-    try {
-      // Update theme in theme.json with the appropriate appearance value
-      const response = await fetch('/api/settings/theme', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          appearance: value
-        })
-      });
-      
-      if (response.ok) {
-        // Apply the theme change using the themeContext
-        if (value === 'light' && theme === 'dark') {
-          toggleTheme(); // Switch from dark to light
-        } else if (value === 'dark' && theme === 'light') {
-          toggleTheme(); // Switch from light to dark
-        }
-        
-        const themeName = value.charAt(0).toUpperCase() + value.slice(1);
-        
-        toast({
-          title: "Theme Updated",
-          description: `Theme changed to ${themeName}. Click OK to apply all styling.`,
-          className: "bg-background border border-primary text-foreground",
-          action: (
-            <Button 
-              onClick={() => {
-                // Use our reloadWithTheme function from ThemeContext
-                reloadWithTheme();
-              }}
-              className="bg-primary text-primary-foreground"
-            >
-              OK
-            </Button>
-          ),
-        });
-      } else {
-        throw new Error('Failed to update theme');
-      }
-    } catch (error) {
-      console.error('Error updating theme:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update the theme. Please try again.",
-        variant: "destructive",
-      });
-    }
+    // In a real implementation, this would actually change the theme
+    // For now, we'll just show a toast
+    const themeName = value === 'system' ? 'System Default' : value.charAt(0).toUpperCase() + value.slice(1);
+    
+    toast({
+      title: "Theme Updated",
+      description: `Theme changed to ${themeName}`,
+      className: "bg-[#001E26] border border-[#36F1CD] text-white",
+    });
   };
   
-  const changePrimaryColor = async (value: string) => {
-    // Map color name to HSL value
-    const colorValues: Record<string, string> = {
-      "cyan": "hsl(188 100% 50%)",
-      "purple": "hsl(265 89% 78%)",
-      "blue": "hsl(217 91% 60%)",
-      "green": "hsl(142 71% 45%)",
-      "orange": "hsl(24 94% 50%)"
-    };
+  const changePrimaryColor = (value: string) => {
+    setPrimaryColor(value);
     
-    try {
-      // First update UI immediately to provide instant feedback
-      setPrimaryColor(value);
-      setPrimaryColor(value as any); // Cast to any as we know these values match our PrimaryColor type
-      
-      // Then update theme.json on the server
-      const response = await fetch('/api/settings/theme', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ primary: colorValues[value] })
-      });
-      
-      if (response.ok) {
-        // Show success message with less prominent toast that doesn't require action
-        toast({
-          title: "Color Theme Updated",
-          description: `Primary color changed to ${value}`,
-          className: "bg-background border border-primary text-foreground",
-        });
-      } else {
-        throw new Error('Failed to update theme');
-      }
-    } catch (error) {
-      console.error('Error updating theme:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update the theme color. Please try again.",
-        variant: "destructive",
-      });
-    }
+    // In a real implementation, this would actually change the theme color
+    toast({
+      title: "Color Theme Updated",
+      description: `Primary color changed to ${value}`,
+      className: "bg-[#001E26] border border-[#36F1CD] text-white",
+    });
   };
   
   // Handle onboarding reset
@@ -250,7 +108,7 @@ export default function SettingsPage() {
     toast({
       title: "Onboarding Reset",
       description: "Onboarding tutorial has been reset. Refresh to start the tutorial again.",
-      className: "bg-background border border-primary text-foreground",
+      className: "bg-[#001E26] border border-[#36F1CD] text-white",
     });
   };
   
@@ -259,25 +117,6 @@ export default function SettingsPage() {
     setGuideEnabled(id, enabled);
   };
   
-  // Update primaryColor after component mounts
-  useEffect(() => {
-    const detectAndSetColor = async () => {
-      if (typeof window !== 'undefined') {
-        try {
-          const detectedColor = await getCurrentPrimaryColor();
-          if (detectedColor !== primaryColor) {
-            setPrimaryColor(detectedColor);
-          }
-        } catch (e) {
-          console.error('Error detecting primary color:', e);
-        }
-      }
-    };
-    
-    detectAndSetColor();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // Removed welcome tooltip
 
   return (
@@ -310,7 +149,7 @@ export default function SettingsPage() {
         </TabsList>
         
         <TabsContent value="account" className="space-y-6">
-          <div className="glassmorphic p-6 rounded-lg border border-primary/20">
+          <div className="glassmorphic p-6 rounded-lg border border-slate-700/50">
             <h2 className="text-xl font-orbitron mb-4">Account Settings</h2>
             
             <div className="space-y-4">
@@ -341,7 +180,7 @@ export default function SettingsPage() {
         </TabsContent>
         
         <TabsContent value="appearance" className="space-y-6">
-          <div className="glassmorphic p-6 rounded-lg border border-primary/20">
+          <div className="glassmorphic p-6 rounded-lg border border-slate-700/50">
             <h2 className="text-xl font-orbitron mb-4">Theme Settings</h2>
             
             <div className="space-y-6">
@@ -351,7 +190,7 @@ export default function SettingsPage() {
                   <Button 
                     variant={themeMode === 'light' ? "default" : "outline"} 
                     onClick={() => changeTheme('light')}
-                    className="flex items-center gap-2 text-foreground"
+                    className="flex items-center gap-2"
                   >
                     <Sun className="h-4 w-4" />
                     Light
@@ -360,98 +199,44 @@ export default function SettingsPage() {
                   <Button 
                     variant={themeMode === 'dark' ? "default" : "outline"} 
                     onClick={() => changeTheme('dark')}
-                    className="flex items-center gap-2 text-foreground"
+                    className="flex items-center gap-2"
                   >
                     <Moon className="h-4 w-4" />
                     Dark
+                  </Button>
+                  
+                  <Button 
+                    variant={themeMode === 'system' ? "default" : "outline"} 
+                    onClick={() => changeTheme('system')}
+                    className="flex items-center gap-2"
+                  >
+                    <Monitor className="h-4 w-4" />
+                    System
                   </Button>
                 </div>
               </div>
               
               <div className="space-y-2 pt-2">
                 <Label>Primary Color</Label>
-                <div>
-                  <h4 className="text-sm font-medium mb-2">Select a primary color:</h4>
-                  <div className="flex flex-wrap gap-3">
-                    <Button 
-                      variant="outline"
-                      className={`w-24 relative font-medium border-2 ${primaryColor === 'cyan' ? 'border-[#00e0ff] shadow-[0_0_10px_rgba(0,224,255,0.5)]' : 'border-transparent'}`}
-                      onClick={() => changePrimaryColor('cyan')}
-                      style={{
-                        backgroundColor: primaryColor === 'cyan' ? 'rgba(0, 224, 255, 0.2)' : 'transparent',
-                        color: 'hsl(188 100% 50%)'
-                      }}
-                    >
-                      {primaryColor === 'cyan' && (
-                        <div className="absolute top-1 left-1 w-3 h-3 rounded-full bg-[#00e0ff]"></div>
-                      )}
-                      Cyan
-                    </Button>
-                    <Button 
-                      variant="outline"
-                      className={`w-24 relative font-medium border-2 ${primaryColor === 'purple' ? 'border-[#c58bff] shadow-[0_0_10px_rgba(197,139,255,0.5)]' : 'border-transparent'}`}
-                      onClick={() => changePrimaryColor('purple')}
-                      style={{
-                        backgroundColor: primaryColor === 'purple' ? 'rgba(197, 139, 255, 0.2)' : 'transparent',
-                        color: 'hsl(265 89% 78%)'
-                      }}
-                    >
-                      {primaryColor === 'purple' && (
-                        <div className="absolute top-1 left-1 w-3 h-3 rounded-full bg-[#c58bff]"></div>
-                      )}
-                      Purple
-                    </Button>
-                    <Button 
-                      variant="outline"
-                      className={`w-24 relative font-medium border-2 ${primaryColor === 'blue' ? 'border-[#3b82f6] shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'border-transparent'}`}
-                      onClick={() => changePrimaryColor('blue')}
-                      style={{
-                        backgroundColor: primaryColor === 'blue' ? 'rgba(59, 130, 246, 0.2)' : 'transparent',
-                        color: 'hsl(217 91% 60%)'
-                      }}
-                    >
-                      {primaryColor === 'blue' && (
-                        <div className="absolute top-1 left-1 w-3 h-3 rounded-full bg-[#3b82f6]"></div>
-                      )}
-                      Blue
-                    </Button>
-                    <Button 
-                      variant="outline"
-                      className={`w-24 relative font-medium border-2 ${primaryColor === 'green' ? 'border-[#22c55e] shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'border-transparent'}`}
-                      onClick={() => changePrimaryColor('green')}
-                      style={{
-                        backgroundColor: primaryColor === 'green' ? 'rgba(34, 197, 94, 0.2)' : 'transparent',
-                        color: 'hsl(142 71% 45%)'
-                      }}
-                    >
-                      {primaryColor === 'green' && (
-                        <div className="absolute top-1 left-1 w-3 h-3 rounded-full bg-[#22c55e]"></div>
-                      )}
-                      Green
-                    </Button>
-                    <Button 
-                      variant="outline"
-                      className={`w-24 relative font-medium border-2 ${primaryColor === 'orange' ? 'border-[#ff780a] shadow-[0_0_10px_rgba(255,120,10,0.5)]' : 'border-transparent'}`}
-                      onClick={() => changePrimaryColor('orange')}
-                      style={{
-                        backgroundColor: primaryColor === 'orange' ? 'rgba(255, 120, 10, 0.2)' : 'transparent',
-                        color: 'hsl(24 94% 50%)'
-                      }}
-                    >
-                      {primaryColor === 'orange' && (
-                        <div className="absolute top-1 left-1 w-3 h-3 rounded-full bg-[#ff780a]"></div>
-                      )}
-                      Orange
-                    </Button>
-                  </div>
-                </div>
+                <Select value={primaryColor} onValueChange={changePrimaryColor}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Select a color" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cyan">Cyan</SelectItem>
+                    <SelectItem value="purple">Purple</SelectItem>
+                    <SelectItem value="blue">Blue</SelectItem>
+                    <SelectItem value="green">Green</SelectItem>
+                    <SelectItem value="orange">Orange</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               
               <div className="pt-4">
                 <Label className="mb-2 block">Preview</Label>
-                <div className="p-4 rounded-lg bg-background border border-primary/50">
-                  <p className="text-primary font-medium mb-2">This is how your theme will look</p>
-                  <p className="text-sm text-muted-foreground">Text and UI elements will be styled according to your preferences.</p>
+                <div className={`p-4 rounded-lg bg-[#001E26] border border-[#36F1CD]/50`}>
+                  <p className="text-[#36F1CD] font-medium mb-2">This is how your theme will look</p>
+                  <p className="text-sm text-slate-300">Text and UI elements will be styled according to your preferences.</p>
                   <div className="flex gap-2 mt-3">
                     <Button size="sm">Primary Button</Button>
                     <Button size="sm" variant="outline">Secondary</Button>
@@ -463,7 +248,7 @@ export default function SettingsPage() {
         </TabsContent>
         
         <TabsContent value="assistant" className="space-y-6">
-          <div className="glassmorphic p-6 rounded-lg border border-primary/20">
+          <div className="glassmorphic p-6 rounded-lg border border-slate-700/50">
             <h2 className="text-xl font-orbitron mb-4">AI Assistant Settings</h2>
             
             <div className="space-y-6">
@@ -486,7 +271,7 @@ export default function SettingsPage() {
                   <Switch id="voice" />
                   <Label htmlFor="voice" className="cursor-pointer">Enable Voice Interaction</Label>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Allow your AI companion to speak responses (coming soon)</p>
+                <p className="text-xs text-slate-400 mt-1">Allow your AI companion to speak responses (coming soon)</p>
               </div>
               
               <div className="space-y-2 pt-4">
@@ -495,7 +280,7 @@ export default function SettingsPage() {
                   <Switch id="memory" defaultChecked />
                   <Label htmlFor="memory" className="cursor-pointer">Remember Chat History</Label>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Your AI companion will remember previous conversations</p>
+                <p className="text-xs text-slate-400 mt-1">Your AI companion will remember previous conversations</p>
               </div>
               
               <div className="pt-6">
@@ -506,14 +291,14 @@ export default function SettingsPage() {
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Reset AI Memory
                 </Button>
-                <p className="text-xs text-muted-foreground mt-1">This will clear all chat history and AI memory</p>
+                <p className="text-xs text-slate-400 mt-1">This will clear all chat history and AI memory</p>
               </div>
             </div>
           </div>
         </TabsContent>
         
         <TabsContent value="help" className="space-y-6">
-          <div className="glassmorphic p-6 rounded-lg border border-primary/20">
+          <div className="glassmorphic p-6 rounded-lg border border-slate-700/50">
             <h2 className="text-xl font-orbitron mb-4">Help & Tutorials</h2>
             
             <div className="space-y-6">
@@ -522,7 +307,7 @@ export default function SettingsPage() {
                 <div className="space-y-3">
                   <Button 
                     variant="outline" 
-                    className="w-full justify-start text-foreground" 
+                    className="w-full justify-start" 
                     onClick={handleRestartOnboarding}
                   >
                     <RotateCcw className="h-4 w-4 mr-2" />
@@ -531,7 +316,7 @@ export default function SettingsPage() {
                   
                   <Button 
                     variant="outline" 
-                    className="w-full justify-start text-foreground"
+                    className="w-full justify-start"
                     onClick={() => navigate('/dashboard')}
                   >
                     <Settings className="h-4 w-4 mr-2" />
@@ -540,7 +325,7 @@ export default function SettingsPage() {
                   
                   <Button 
                     variant="outline" 
-                    className="w-full justify-start text-foreground"
+                    className="w-full justify-start"
                     onClick={() => navigate('/ai')}
                   >
                     <Bot className="h-4 w-4 mr-2" />
@@ -551,10 +336,10 @@ export default function SettingsPage() {
               
               <div className="pt-4">
                 <h3 className="text-lg font-medium mb-2">Guide Settings</h3>
-                <div className="space-y-6 border border-primary/20 rounded-lg p-4">
+                <div className="space-y-6 border border-slate-700/50 rounded-lg p-4">
                   {/* Dashboard Guides */}
                   <div>
-                    <h4 className="text-md font-medium text-primary mb-2">Dashboard Guides</h4>
+                    <h4 className="text-md font-medium text-[#36F1CD] mb-2">Dashboard Guides</h4>
                     <div className="space-y-3">
                       {['dashboard_welcome', 'stats_overview', 'mission_log', 'data_entry', 'recalibration_log'].map((id) => {
                         const guide = APP_GUIDES[id] || {
@@ -579,7 +364,7 @@ export default function SettingsPage() {
                   
                   {/* Codex Guides */}
                   <div>
-                    <h4 className="text-md font-medium text-primary mb-2">Codex Guides</h4>
+                    <h4 className="text-md font-medium text-[#36F1CD] mb-2">Codex Guides</h4>
                     <div className="space-y-3">
                       {['codex_welcome', 'mission_page_create', 'markdown_basics', 'wiki_links'].map((id) => {
                         const guide = APP_GUIDES[id] || {
@@ -604,7 +389,7 @@ export default function SettingsPage() {
                   
                   {/* AI Companion Guides */}
                   <div>
-                    <h4 className="text-md font-medium text-primary mb-2">AI Companion Guides</h4>
+                    <h4 className="text-md font-medium text-[#36F1CD] mb-2">AI Companion Guides</h4>
                     <div className="space-y-3">
                       {['ai_companion_intro', 'chat_session', 'companion_name'].map((id) => {
                         const guide = APP_GUIDES[id] || {
@@ -628,7 +413,7 @@ export default function SettingsPage() {
                   </div>
                   
                   {/* Additional Settings */}
-                  <div className="pt-4 border-t border-primary/10">
+                  <div className="pt-4 border-t border-slate-700/20">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="guide-all" className="cursor-pointer font-medium">
                         Enable All Guides
@@ -636,7 +421,6 @@ export default function SettingsPage() {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        className="text-foreground"
                         onClick={() => {
                           // Enable all guides
                           Object.keys(APP_GUIDES).forEach(id => {
@@ -645,7 +429,7 @@ export default function SettingsPage() {
                           toast({
                             title: "Guides Enabled",
                             description: "All guides have been enabled.",
-                            className: "bg-background border border-primary text-foreground",
+                            className: "bg-[#001E26] border border-[#36F1CD] text-white",
                           });
                         }}
                       >
@@ -659,13 +443,13 @@ export default function SettingsPage() {
               <div className="pt-4">
                 <h3 className="text-lg font-medium mb-2">Additional Resources</h3>
                 <div className="space-y-2">
-                  <Button variant="link" className="text-primary hover:text-primary/80">
+                  <Button variant="link" className="text-[#36F1CD] hover:text-[#36F1CD]/80">
                     Documentation & User Guide
                   </Button>
-                  <Button variant="link" className="text-primary hover:text-primary/80">
+                  <Button variant="link" className="text-[#36F1CD] hover:text-[#36F1CD]/80">
                     Keyboard Shortcuts
                   </Button>
-                  <Button variant="link" className="text-primary hover:text-primary/80">
+                  <Button variant="link" className="text-[#36F1CD] hover:text-[#36F1CD]/80">
                     Frequently Asked Questions
                   </Button>
                 </div>

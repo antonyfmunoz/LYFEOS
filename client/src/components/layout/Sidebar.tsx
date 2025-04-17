@@ -70,9 +70,7 @@ export default function Sidebar({ currentPage, username }: SidebarProps) {
             ONLINE
           </span>
         </div>
-        <div className="flex items-center justify-between mt-2">
-          <div className="text-xs text-[#7DAAB2] font-mono">v0.9.0-alpha</div>
-        </div>
+        <div className="text-xs text-[#7DAAB2] mt-1 font-mono">v0.9.0-alpha</div>
         
         <Button
           variant="ghost"

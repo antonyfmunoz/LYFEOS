@@ -3,8 +3,6 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
 import bcrypt from "bcrypt";
-import fs from 'fs';
-import path from 'path';
 import { 
   insertUserSchema, 
   insertQuestSchema, 
@@ -518,36 +516,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(200).json({ message: "Mission page deleted successfully" });
     } catch (error) {
       return res.status(500).json({ error: "Internal server error" });
-    }
-  });
-  
-  // Theme settings route
-  app.post("/api/settings/theme", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      // Read the current theme.json
-      const themePath = path.join(process.cwd(), 'theme.json');
-      const themeData = JSON.parse(await fs.promises.readFile(themePath, 'utf8'));
-      
-      // Update the primary color if provided
-      if (req.body.primary) {
-        themeData.primary = req.body.primary;
-      }
-      
-      // Update the appearance if provided
-      if (req.body.appearance) {
-        themeData.appearance = req.body.appearance;
-      }
-      
-      // Write the updated theme back to the file
-      await fs.promises.writeFile(themePath, JSON.stringify(themeData, null, 2));
-      
-      return res.status(200).json({ 
-        message: "Theme updated successfully",
-        theme: themeData
-      });
-    } catch (error) {
-      console.error(`[Update Theme] Error: ${error}`);
-      return res.status(500).json({ error: "Failed to update theme" });
     }
   });
 
