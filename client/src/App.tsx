@@ -14,7 +14,7 @@ import StatDetailPage from "./pages/StatDetailPage";
 import MissionDetailPage from "./pages/MissionDetailPage";
 import CalendarPage from "./pages/CalendarPage";
 import NotFound from "./pages/not-found";
-import MissionPage from "./components/markdown/MissionPage";
+import MissionPage from "./pages/MissionPage";
 import RootLayout from "./components/layout/RootLayout";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";

@@ -166,6 +166,7 @@ interface LYFEOSContextType {
   deleteEvent: (id: string) => void;
   createMissionPage: (mission: Omit<MissionPage, "id">) => MissionPage;
   updateMissionPage: (id: string, pageData: Partial<MissionPage>) => void;
+  deleteMissionPage: (id: string) => void;
   getMissionPageBySlug: (slug: string) => MissionPage | undefined;
   getMissionPageById: (id: string) => MissionPage | undefined;
   createChatSession: (title: string) => ChatSession;
