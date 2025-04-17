@@ -49,11 +49,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // USER ROUTES
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
+      console.log("Register attempt:", req.body);
+      
       // Validate user data
-      const userData = insertUserSchema.parse(req.body);
+      const userData = {
+        ...req.body,
+        displayName: req.body.username,
+        title: "COMMANDER"
+      };
+      
+      // Basic validation
+      if (!userData.username || !userData.password) {
+        console.log("Register failed: Missing username or password");
+        return res.status(400).json({ error: "Username and password are required" });
+      }
+      
       const existingUser = await storage.getUserByUsername(userData.username);
       
       if (existingUser) {
+        console.log("Register failed: Username already exists");
         return res.status(400).json({ error: "Username already exists" });
       }
       
@@ -62,17 +76,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hashedPassword = await bcrypt.hash(userData.password, saltRounds);
       
       // Save user with hashed password
+      console.log("Creating new user:", userData.username);
       const user = await storage.createUser({
-        ...userData,
-        password: hashedPassword
+        username: userData.username,
+        password: hashedPassword,
+        displayName: userData.displayName,
+        title: userData.title
+      });
+      
+      console.log("User created successfully with ID:", user.id);
+      
+      // Create initial user stats
+      console.log("Creating initial stats for user:", user.id);
+      await storage.createUserStats({
+        userId: user.id,
+        experience: {
+          level: 1,
+          current: 0,
+          max: 100
+        },
+        timeTokens: {
+          current: 10,
+          max: 10
+        },
+        energyPoints: {
+          current: 100,
+          max: 100
+        },
+        healthPoints: {
+          current: 100,
+          max: 100
+        },
+        attentionTokens: {
+          current: 5,
+          max: 5
+        },
+        aiAssistantName: "NOVA"
       });
       
       // Create session
       req.session.userId = user.id;
       req.session.username = user.username;
       
+      console.log("Registration successful, session created for user:", user.username);
+      
       return res.status(201).json({ user: { id: user.id, username: user.username } });
     } catch (error) {
+      console.error("Registration error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
       }

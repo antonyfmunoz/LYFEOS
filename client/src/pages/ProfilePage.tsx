@@ -75,8 +75,7 @@ export default function ProfilePage() {
     queryKey: ["/api/users", user?.id, "profile"],
     queryFn: async () => {
       if (!user?.id) return null;
-      const response = await apiRequest<UserProfile>(`/api/users/${user.id}/profile`);
-      return response;
+      return apiRequest<UserProfile>(`/api/users/${user.id}/profile`);
     },
     enabled: !!user?.id,
   });
@@ -87,9 +86,6 @@ export default function ProfilePage() {
       if (!user?.id) throw new Error("User not authenticated");
       return apiRequest<UserProfile>(`/api/users/${user.id}/profile`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify(data),
       });
     },

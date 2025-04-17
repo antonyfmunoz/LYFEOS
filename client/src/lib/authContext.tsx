@@ -13,6 +13,7 @@ interface AuthResponse {
     id: number;
     username: string;
   };
+  error?: string;
 }
 
 interface AuthContextType {
@@ -57,19 +58,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (username: string, password: string) => {
     try {
       setIsLoading(true);
+      console.log("Attempting to login with:", username);
+      
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ username, password }),
+        credentials: "include"
       });
       
-      if (!response.ok) {
-        throw new Error("Login failed");
+      const responseText = await response.text();
+      console.log("Login response status:", response.status);
+      console.log("Login response text:", responseText);
+      
+      let data;
+      try {
+        data = JSON.parse(responseText) as AuthResponse;
+      } catch (e) {
+        console.error("Failed to parse JSON response:", e);
+        throw new Error("Invalid server response");
       }
       
-      const data = await response.json() as AuthResponse;
+      if (!response.ok) {
+        throw new Error(data.error || "Login failed");
+      }
       
       if (data && data.user) {
         setUser(data.user);
@@ -97,19 +111,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (username: string, password: string) => {
     try {
       setIsLoading(true);
+      console.log("Attempting to register with:", username);
+      
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ username, password }),
+        credentials: "include"
       });
       
-      if (!response.ok) {
-        throw new Error("Registration failed");
+      const responseText = await response.text();
+      console.log("Register response status:", response.status);
+      console.log("Register response text:", responseText);
+      
+      let data;
+      try {
+        data = JSON.parse(responseText) as AuthResponse;
+      } catch (e) {
+        console.error("Failed to parse JSON response:", e);
+        throw new Error("Invalid server response");
       }
       
-      const data = await response.json() as AuthResponse;
+      if (!response.ok) {
+        throw new Error(data.error || "Registration failed");
+      }
       
       if (data && data.user) {
         setUser(data.user);
@@ -119,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: `Welcome to LYFEOS, ${data.user.username}!`,
           className: "bg-background border border-primary text-foreground",
         });
-        navigate("/onboarding");
+        navigate("/dashboard");
       }
     } catch (error) {
       console.error("Registration error:", error);
