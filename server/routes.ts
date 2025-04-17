@@ -22,6 +22,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // USER ROUTES
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
+      // Validate user data
       const userData = insertUserSchema.parse(req.body);
       const existingUser = await storage.getUserByUsername(userData.username);
       
@@ -29,7 +30,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Username already exists" });
       }
       
-      const user = await storage.createUser(userData);
+      // Hash password
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(userData.password, saltRounds);
+      
+      // Save user with hashed password
+      const user = await storage.createUser({
+        ...userData,
+        password: hashedPassword
+      });
+      
+      // Create session
+      req.session.userId = user.id;
+      req.session.username = user.username;
+      
       return res.status(201).json({ user: { id: user.id, username: user.username } });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -46,15 +60,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Username and password are required" });
       }
       
+      // Find user
       const user = await storage.getUserByUsername(username);
-      if (!user || user.password !== password) {
+      if (!user) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
+      
+      // Verify password
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+      
+      // Create session
+      req.session.userId = user.id;
+      req.session.username = user.username;
       
       return res.status(200).json({ user: { id: user.id, username: user.username } });
     } catch (error) {
       return res.status(500).json({ error: "Internal server error" });
     }
+  });
+  
+  app.post("/api/auth/logout", (req: Request, res: Response) => {
+    try {
+      // Destroy session
+      req.session.destroy((err) => {
+        if (err) {
+          return res.status(500).json({ error: "Failed to logout" });
+        }
+        
+        res.clearCookie("connect.sid");
+        return res.status(200).json({ message: "Logged out successfully" });
+      });
+    } catch (error) {
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.get("/api/auth/me", (req: Request, res: Response) => {
+    // Check if user is authenticated
+    if (req.session.userId) {
+      return res.status(200).json({ 
+        user: { 
+          id: req.session.userId, 
+          username: req.session.username 
+        }
+      });
+    }
+    
+    return res.status(401).json({ error: "Not authenticated" });
   });
 
   // USER STATS ROUTES

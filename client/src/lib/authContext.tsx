@@ -34,17 +34,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Check if the user is logged in on initial load
   useEffect(() => {
     const checkAuth = async () => {
-      const storedUser = localStorage.getItem("lyfeos_user");
-      if (storedUser) {
-        try {
-          const userData = JSON.parse(storedUser);
-          setUser(userData);
-        } catch (error) {
-          console.error("Failed to parse stored user data:", error);
+      try {
+        const response = await fetch("/api/auth/me");
+        
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data.user);
+        } else {
+          // Clear any stored user data if not authenticated
           localStorage.removeItem("lyfeos_user");
         }
+      } catch (error) {
+        console.error("Failed to check authentication status:", error);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     checkAuth();
@@ -130,15 +134,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("lyfeos_user");
-    toast({
-      title: "Logged Out",
-      description: "You have been logged out successfully",
-      className: "bg-background border border-primary text-foreground",
-    });
-    navigate("/login");
+  const logout = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error("Logout failed");
+      }
+      
+      // Clear user state regardless of response
+      setUser(null);
+      localStorage.removeItem("lyfeos_user");
+      
+      toast({
+        title: "Logged Out",
+        description: "You have been logged out successfully",
+        className: "bg-background border border-primary text-foreground",
+      });
+      
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Still clear user state even if the request fails
+      setUser(null);
+      localStorage.removeItem("lyfeos_user");
+      navigate("/login");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
