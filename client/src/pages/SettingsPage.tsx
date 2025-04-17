@@ -41,33 +41,45 @@ export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>(theme === 'dark' ? 'dark' : 'light');
   
-  // Determine current primary color from CSS variables
+  // Simplified function to get current primary color - uses a simpler approach
   const getCurrentPrimaryColor = (): string => {
-    // Map HSL values to color names
-    const hslToPrimaryColor: Record<string, string> = {
-      "188 100% 50%": "cyan",
-      "265 89% 78%": "purple",
-      "217 91% 60%": "blue",
-      "142 71% 45%": "green",
-      "24 94% 50%": "orange"
-    };
+    // Instead of relying on CSS variables, we'll check theme.json values directly
+    let defaultColor = "cyan";
     
-    // Get CSS variable value
-    const primaryHue = getComputedStyle(document.documentElement).getPropertyValue('--primary-hue').trim();
-    const primarySat = getComputedStyle(document.documentElement).getPropertyValue('--primary-saturation').trim();
-    const primaryLight = getComputedStyle(document.documentElement).getPropertyValue('--primary-lightness').trim();
-    
-    const primaryHsl = `${primaryHue} ${primarySat} ${primaryLight}`;
-    
-    // Try to find a matching color name
-    for (const [hsl, colorName] of Object.entries(hslToPrimaryColor)) {
-      if (primaryHsl.includes(hsl) || hsl.includes(primaryHsl)) {
-        return colorName;
+    try {
+      // Create a mapping of HSL values to simple color names
+      const colorMap: Record<string, string> = {
+        "hsl(188 100% 50%)": "cyan",
+        "hsl(265 89% 78%)": "purple",
+        "hsl(217 91% 60%)": "blue", 
+        "hsl(142 71% 45%)": "green",
+        "hsl(24 94% 50%)": "orange"
+      };
+      
+      // Get the actual primary color value
+      const primaryBtn = document.querySelector('.bg-primary');
+      if (primaryBtn) {
+        const btnColor = window.getComputedStyle(primaryBtn).backgroundColor;
+        
+        // Map RGB color back to our theme colors
+        // This is a simplistic approach - we'll just use our default mapping
+        if (btnColor.includes('0, 224, 255') || btnColor.includes('0,224,255')) {
+          return "cyan";
+        } else if (btnColor.includes('197, 139, 255') || btnColor.includes('197,139,255')) {
+          return "purple";
+        } else if (btnColor.includes('59, 130, 246') || btnColor.includes('59,130,246')) {
+          return "blue";
+        } else if (btnColor.includes('34, 197, 94') || btnColor.includes('34,197,94')) {
+          return "green";
+        } else if (btnColor.includes('255, 120, 10') || btnColor.includes('255,120,10')) {
+          return "orange";
+        }
       }
+    } catch (e) {
+      console.error("Error detecting primary color:", e);
     }
     
-    // Default to cyan if no match found
-    return "cyan";
+    return defaultColor;
   };
   
   const [primaryColor, setPrimaryColor] = useState<string>(() => {
@@ -369,18 +381,46 @@ export default function SettingsPage() {
               
               <div className="space-y-2 pt-2">
                 <Label>Primary Color</Label>
-                <Select value={primaryColor} onValueChange={changePrimaryColor}>
-                  <SelectTrigger className="w-[180px] text-foreground">
-                    <SelectValue placeholder="Select a color" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cyan" className="text-foreground">Cyan</SelectItem>
-                    <SelectItem value="purple" className="text-foreground">Purple</SelectItem>
-                    <SelectItem value="blue" className="text-foreground">Blue</SelectItem>
-                    <SelectItem value="green" className="text-foreground">Green</SelectItem>
-                    <SelectItem value="orange" className="text-foreground">Orange</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Select a primary color:</h4>
+                  <div className="flex flex-wrap gap-3">
+                    <Button 
+                      variant={primaryColor === 'cyan' ? 'default' : 'outline'}
+                      className="w-24 bg-[#00e0ff] text-black hover:text-black hover:bg-[#00e0ff]/90"
+                      onClick={() => changePrimaryColor('cyan')}
+                    >
+                      Cyan
+                    </Button>
+                    <Button 
+                      variant={primaryColor === 'purple' ? 'default' : 'outline'}
+                      className="w-24 bg-[#c58bff] text-black hover:text-black hover:bg-[#c58bff]/90"
+                      onClick={() => changePrimaryColor('purple')}
+                    >
+                      Purple
+                    </Button>
+                    <Button 
+                      variant={primaryColor === 'blue' ? 'default' : 'outline'}
+                      className="w-24 bg-[#3b82f6] text-white hover:text-white hover:bg-[#3b82f6]/90"
+                      onClick={() => changePrimaryColor('blue')}
+                    >
+                      Blue
+                    </Button>
+                    <Button 
+                      variant={primaryColor === 'green' ? 'default' : 'outline'}
+                      className="w-24 bg-[#22c55e] text-white hover:text-white hover:bg-[#22c55e]/90"
+                      onClick={() => changePrimaryColor('green')}
+                    >
+                      Green
+                    </Button>
+                    <Button 
+                      variant={primaryColor === 'orange' ? 'default' : 'outline'}
+                      className="w-24 bg-[#ff780a] text-white hover:text-white hover:bg-[#ff780a]/90"
+                      onClick={() => changePrimaryColor('orange')}
+                    >
+                      Orange
+                    </Button>
+                  </div>
+                </div>
               </div>
               
               <div className="pt-4">
