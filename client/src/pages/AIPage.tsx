@@ -97,17 +97,25 @@ export default function AIPage() {
     }
   };
 
+  // Create a new chat with a temporary name and automatically open it
   const handleCreateChat = () => {
-    if (newChatTitle.trim()) {
-      const newChat = createChatSession(newChatTitle);
-      setActiveChatSession(newChat.id);
-      setNewChatTitle("");
-      setIsCreatingChat(false);
-      // Auto-close sidebar on mobile after selection
-      if (isMobile) {
-        setSidebarOpen(false);
-      }
+    // If a title is provided, use it, otherwise use a default title that will be updated later
+    const title = newChatTitle.trim() ? newChatTitle : "New Chat";
+    const newChat = createChatSession(title);
+    setActiveChatSession(newChat.id);
+    setNewChatTitle("");
+    setIsCreatingChat(false);
+    // Auto-close sidebar on mobile after selection
+    if (isMobile) {
+      setSidebarOpen(false);
     }
+    // Focus on message input field after creating a new chat
+    setTimeout(() => {
+      const inputField = document.getElementById('messageInput');
+      if (inputField) {
+        inputField.focus();
+      }
+    }, 100);
   };
   
   const handleUpdateChatTitle = () => {
@@ -128,7 +136,29 @@ export default function AIPage() {
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputText.trim() && activeChatSessionId) {
+      // Check if this is the first message in the chat
+      const currentChat = chatSessions.find(chat => chat.id === activeChatSessionId);
+      const isFirstMessage = currentChat && currentChat.messages.length === 0;
+      
+      // Send the message first
       sendMessageInSession(activeChatSessionId, inputText);
+      
+      // If this is the first message, update the chat title based on this message
+      if (isFirstMessage) {
+        // Generate a chat title from the first user message
+        // Limit title to first 30 chars of message or up to the first period if shorter
+        let newTitle = inputText.trim();
+        const periodIndex = newTitle.indexOf('.');
+        if (periodIndex > 0 && periodIndex < 30) {
+          newTitle = newTitle.substring(0, periodIndex);
+        } else if (newTitle.length > 30) {
+          newTitle = newTitle.substring(0, 30) + '...';
+        }
+        
+        // Update the chat title
+        updateChatSessionTitle(activeChatSessionId, newTitle);
+      }
+      
       setInputText("");
       
       // Show loading indicator
