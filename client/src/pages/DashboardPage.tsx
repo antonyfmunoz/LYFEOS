@@ -457,30 +457,10 @@ export default function DashboardPage() {
     </div>
   );
   
-  // Check for welcome tooltip on component mount
-  useEffect(() => {
-    // Show welcome guide toast on first load
-    if (enabledGuides.dashboard_welcome !== false) {
-      showGuideToast(
-        "Your LYFE OS dashboard is active. Hover over section headers to learn more about each component. Visit Settings to customize your experience.",
-        "System Online",
-        "Nova"
-      );
-    }
-  }, [enabledGuides.dashboard_welcome, showGuideToast]);
+  // Welcome tooltip removed
 
   return (
     <div className="dashboard-container">
-      <NovaGuideTooltip
-        guide={{
-          ...APP_GUIDES.dashboard_welcome,
-          forceShow: enabledGuides.dashboard_welcome !== false
-        }}
-        onDismiss={dismissTooltip}
-        onComplete={completeTooltip}
-      >
-        <div className="mb-4"></div>
-      </NovaGuideTooltip>
       <AIAgentFAB />
       {/* Date Header - Cinematic HUD Style */}
       <section className="mb-6">
@@ -530,19 +510,10 @@ export default function DashboardPage() {
       {/* Stats and Progress Section */}
       <section className="mb-6">
         <div className="flex items-center justify-between mb-4">
-          <NovaGuideTooltip
-            guide={{
-              ...APP_GUIDES.stats_overview,
-              forceShow: enabledGuides.stats_overview !== false
-            }}
-            onDismiss={dismissTooltip}
-            onComplete={completeTooltip}
-          >
-            <h2 className="text-xl font-orbitron flex items-center">
-              <Zap className="h-5 w-5 text-primary mr-2" />
-              <span>Stat Log</span>
-            </h2>
-          </NovaGuideTooltip>
+          <h2 className="text-xl font-orbitron flex items-center">
+            <Zap className="h-5 w-5 text-primary mr-2" />
+            <span>Stat Log</span>
+          </h2>
         </div>
         
         <StatsWidget stats={stats} />
@@ -551,19 +522,10 @@ export default function DashboardPage() {
       {/* Mission Log Panel */}
       <section className="mb-6">
         <div className="flex items-center justify-between mb-4">
-          <SystemGuideTooltip
-            guide={{
-              ...APP_GUIDES.mission_log,
-              forceShow: enabledGuides.mission_log !== false
-            }}
-            onDismiss={dismissTooltip}
-            onComplete={completeTooltip}
-          >
-            <h2 className="text-xl font-orbitron flex items-center">
-              <ListChecks className="h-5 w-5 text-primary mr-2" />
-              <span>Mission Log</span>
-            </h2>
-          </SystemGuideTooltip>
+          <h2 className="text-xl font-orbitron flex items-center">
+            <ListChecks className="h-5 w-5 text-primary mr-2" />
+            <span>Mission Log</span>
+          </h2>
         </div>
         
         <EnhancedMissionWidget 

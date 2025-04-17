@@ -117,31 +117,11 @@ export default function SettingsPage() {
     setGuideEnabled(id, enabled);
   };
   
-  // Show welcome guidance when opening settings
-  useEffect(() => {
-    if (enabledGuides.settings_intro !== false) {
-      toast({
-        title: "Settings Control Center",
-        description: "Customize your LYFE OS experience here. You can personalize your AI companion, modify appearance settings, and manage your guided tutorials.",
-        variant: "default",
-        className: "bg-[#001E26] border border-[#36F1CD]/50 text-white",
-        duration: 5000,
-      });
-    }
-  }, []);
+  // Removed welcome tooltip
 
   return (
     <div>
-      <NovaGuideTooltip
-        guide={{
-          ...APP_GUIDES.settings_intro,
-          forceShow: enabledGuides.settings_intro !== false
-        }}
-        onDismiss={dismissTooltip}
-        onComplete={completeTooltip}
-      >
-        <h1 className="text-2xl font-orbitron mb-6">Settings</h1>
-      </NovaGuideTooltip>
+      <h1 className="text-2xl font-orbitron mb-6">Settings</h1>
       
       <Tabs 
         defaultValue="account" 
@@ -274,24 +254,15 @@ export default function SettingsPage() {
             <div className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="aiName">AI Companion Name</Label>
-                <NovaGuideTooltip 
-                  guide={{ 
-                    ...APP_GUIDES.companion_name,
-                    forceShow: enabledGuides.companion_name !== false
-                  }}
-                  onDismiss={dismissTooltip}
-                  onComplete={completeTooltip}
-                >
-                  <div className="flex gap-2">
-                    <Input
-                      id="aiName"
-                      value={savedAiName}
-                      onChange={handleAiNameChange}
-                      className="flex-1"
-                    />
-                    <Button onClick={saveAiName}>Save</Button>
-                  </div>
-                </NovaGuideTooltip>
+                <div className="flex gap-2">
+                  <Input
+                    id="aiName"
+                    value={savedAiName}
+                    onChange={handleAiNameChange}
+                    className="flex-1"
+                  />
+                  <Button onClick={saveAiName}>Save</Button>
+                </div>
               </div>
               
               <div className="space-y-2 pt-4">
