@@ -41,7 +41,36 @@ export default function SettingsPage() {
   const { theme, toggleTheme, reloadWithTheme } = useTheme();
   const [themeMode, setThemeMode] = useState<'light' | 'dark'>(theme === 'dark' ? 'dark' : 'light');
   
-  // Improved function to detect current primary color from theme.json
+  // Simple visual detection for primary color (synchronous)
+  const detectColorSync = (): string => {
+    try {
+      if (typeof window === 'undefined') return 'cyan';
+      
+      const primaryBtn = document.querySelector('.bg-primary');
+      if (primaryBtn) {
+        const btnColor = window.getComputedStyle(primaryBtn).backgroundColor;
+        
+        // Map RGB color back to our theme colors
+        if (btnColor.includes('0, 224, 255') || btnColor.includes('0,224,255')) {
+          return "cyan";
+        } else if (btnColor.includes('197, 139, 255') || btnColor.includes('197,139,255')) {
+          return "purple";
+        } else if (btnColor.includes('59, 130, 246') || btnColor.includes('59,130,246')) {
+          return "blue";
+        } else if (btnColor.includes('34, 197, 94') || btnColor.includes('34,197,94')) {
+          return "green";
+        } else if (btnColor.includes('255, 120, 10') || btnColor.includes('255,120,10')) {
+          return "orange";
+        }
+      }
+    } catch (e) {
+      console.error("Error in synchronous color detection:", e);
+    }
+    
+    return 'cyan';
+  };
+  
+  // Improved function to detect current primary color from theme.json (asynchronous)
   const getCurrentPrimaryColor = async (): Promise<string> => {
     // Default to cyan if detection fails
     let defaultColor = "cyan";
@@ -67,43 +96,18 @@ export default function SettingsPage() {
           return hslToColorMap[primaryHsl];
         }
         
-        // Fallback to visual detection if HSL not in our map
-        const primaryBtn = document.querySelector('.bg-primary');
-        if (primaryBtn) {
-          const btnColor = window.getComputedStyle(primaryBtn).backgroundColor;
-          
-          // Map RGB color back to our theme colors
-          if (btnColor.includes('0, 224, 255') || btnColor.includes('0,224,255')) {
-            return "cyan";
-          } else if (btnColor.includes('197, 139, 255') || btnColor.includes('197,139,255')) {
-            return "purple";
-          } else if (btnColor.includes('59, 130, 246') || btnColor.includes('59,130,246')) {
-            return "blue";
-          } else if (btnColor.includes('34, 197, 94') || btnColor.includes('34,197,94')) {
-            return "green";
-          } else if (btnColor.includes('255, 120, 10') || btnColor.includes('255,120,10')) {
-            return "orange";
-          }
-        }
+        // If we couldn't determine from HSL, fallback to visual detection
+        return detectColorSync();
       }
     } catch (e) {
-      console.error("Error detecting primary color:", e);
+      console.error("Error detecting primary color from theme.json:", e);
     }
     
     return defaultColor;
   };
   
-  const [primaryColor, setPrimaryColor] = useState<string>(() => {
-    // We need to run this in useEffect since it accesses the DOM
-    if (typeof window !== 'undefined') {
-      try {
-        return getCurrentPrimaryColor();
-      } catch (e) {
-        return 'cyan';
-      }
-    }
-    return 'cyan';
-  });
+  // Set initial state to 'cyan', we'll update it in the useEffect
+  const [primaryColor, setPrimaryColor] = useState<string>('cyan');
   const [savedName, setSavedName] = useState<string>(username);
   const [savedAiName, setSavedAiName] = useState<string>(aiCompanionName);
   const [activeTab, setActiveTab] = useState<string>('account');
@@ -265,16 +269,20 @@ export default function SettingsPage() {
   
   // Update primaryColor after component mounts
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const detectedColor = getCurrentPrimaryColor();
-        if (detectedColor !== primaryColor) {
-          setPrimaryColor(detectedColor);
+    const detectAndSetColor = async () => {
+      if (typeof window !== 'undefined') {
+        try {
+          const detectedColor = await getCurrentPrimaryColor();
+          if (detectedColor !== primaryColor) {
+            setPrimaryColor(detectedColor);
+          }
+        } catch (e) {
+          console.error('Error detecting primary color:', e);
         }
-      } catch (e) {
-        console.error('Error detecting primary color:', e);
       }
-    }
+    };
+    
+    detectAndSetColor();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
