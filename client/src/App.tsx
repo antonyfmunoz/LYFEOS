@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { LYFEOSProvider } from "./lib/context";
 import { AuthProvider, useAuth } from "./lib/authContext";
 import { OnboardingProvider } from "./lib/onboardingContext";
+import { ThemeProvider } from "./lib/themeContext";
 import DashboardPage from "./pages/DashboardPage";
 import QuestsPage from "./pages/QuestsPage";
 import AIPage from "./pages/AIPage";
@@ -224,12 +225,14 @@ function Router() {
 function App() {
   return (
     <AuthProvider>
-      <LYFEOSProvider>
-        <OnboardingProvider>
-          <Router />
-          <Toaster />
-        </OnboardingProvider>
-      </LYFEOSProvider>
+      <ThemeProvider>
+        <LYFEOSProvider>
+          <OnboardingProvider>
+            <Router />
+            <Toaster />
+          </OnboardingProvider>
+        </LYFEOSProvider>
+      </ThemeProvider>
     </AuthProvider>
   );
 }

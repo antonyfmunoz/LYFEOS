@@ -3,6 +3,7 @@ import Sidebar from "./Sidebar";
 import MobileNav from "./MobileNav";
 import AICompanionPanel from "../ai/AICompanionPanel";
 import { QuickActionMenu } from "../ui/quick-action-menu";
+import { ThemeToggle } from "../ui/theme-toggle";
 import { useLYFEOS } from "../../lib/context";
 import { useLocation } from "wouter";
 import { Link } from "wouter";
@@ -66,83 +67,89 @@ export default function RootLayout({ children }: RootLayoutProps) {
           <div className="flex items-center justify-between mb-6 lg:hidden">
             <span className="text-2xl text-primary font-orbitron font-bold">LYFE<span className="text-white">OS</span></span>
             
-            {/* Profile Icon with dropdown */}
-            <div className="relative">
-              <button 
-                ref={buttonRef}
-                onClick={toggleProfileDropdown}
-                className={`flex items-center justify-center h-10 w-10 rounded-full border border-[#36F1CD]/50 bg-[#001E26]/30 text-primary hover:bg-[#36F1CD]/10 transition backdrop-blur-sm ${showProfileDropdown ? 'ring-1 ring-[#36F1CD]' : ''}`}
-                aria-label="Open profile menu"
-                aria-expanded={showProfileDropdown}
-                aria-haspopup="true"
-                style={{ boxShadow: '0 0 8px rgba(54, 241, 205, 0.3)' }}
-              >
-                <span className="material-icons text-[#36F1CD] text-lg">person</span>
-              </button>
-              
-              {showProfileDropdown && (
-                <div 
-                  ref={dropdownRef}
-                  className="absolute right-0 mt-2 w-64 rounded-md glassmorphic p-2 shadow-lg z-10"
-                  style={{ boxShadow: '0 0 15px rgba(54, 241, 205, 0.15)', border: '1px solid rgba(54, 241, 205, 0.3)' }}
-                  role="menu"
-                  aria-orientation="vertical"
-                  aria-labelledby="profile-menu-button"
+            {/* Mobile header right side */}
+            <div className="flex items-center gap-2">
+              {/* Theme toggle */}
+              <ThemeToggle />
+            
+              {/* Profile Icon with dropdown */}
+              <div className="relative">
+                <button 
+                  ref={buttonRef}
+                  onClick={toggleProfileDropdown}
+                  className={`flex items-center justify-center h-10 w-10 rounded-full border border-[#36F1CD]/50 bg-[#001E26]/30 text-primary hover:bg-[#36F1CD]/10 transition backdrop-blur-sm ${showProfileDropdown ? 'ring-1 ring-[#36F1CD]' : ''}`}
+                  aria-label="Open profile menu"
+                  aria-expanded={showProfileDropdown}
+                  aria-haspopup="true"
+                  style={{ boxShadow: '0 0 8px rgba(54, 241, 205, 0.3)' }}
                 >
-                  <div className="px-4 py-3 border-b border-primary/20">
-                    <div>
-                      <p className="text-sm font-orbitron">{username}</p>
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <span className="material-icons text-[#36F1CD] text-xs">auto_graph</span>
-                        <p className="text-xs text-[#7DAAB2]">Level {stats.experience.level}</p>
+                  <span className="material-icons text-[#36F1CD] text-lg">person</span>
+                </button>
+                
+                {showProfileDropdown && (
+                  <div 
+                    ref={dropdownRef}
+                    className="absolute right-0 mt-2 w-64 rounded-md glassmorphic p-2 shadow-lg z-10"
+                    style={{ boxShadow: '0 0 15px rgba(54, 241, 205, 0.15)', border: '1px solid rgba(54, 241, 205, 0.3)' }}
+                    role="menu"
+                    aria-orientation="vertical"
+                    aria-labelledby="profile-menu-button"
+                  >
+                    <div className="px-4 py-3 border-b border-primary/20">
+                      <div>
+                        <p className="text-sm font-orbitron">{username}</p>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="material-icons text-[#36F1CD] text-xs">auto_graph</span>
+                          <p className="text-xs text-[#7DAAB2]">Level {stats.experience.level}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-2 pt-2 border-t border-primary/10">
+                        <div className="text-xs text-[#7DAAB2] mb-1 flex justify-between">
+                          <span>XP: {stats.experience.current}/{stats.experience.max}</span>
+                          <span className="text-[#36F1CD]">{Math.round((stats.experience.current / stats.experience.max) * 100)}%</span>
+                        </div>
+                        <div className="h-1 bg-[#36F1CD]/30 rounded-full">
+                          <div 
+                            className="h-full bg-[#36F1CD] rounded-full transition-all duration-500" 
+                            style={{ width: `${(stats.experience.current / stats.experience.max) * 100}%` }}
+                          ></div>
+                        </div>
                       </div>
                     </div>
                     
-                    <div className="mt-2 pt-2 border-t border-primary/10">
-                      <div className="text-xs text-[#7DAAB2] mb-1 flex justify-between">
-                        <span>XP: {stats.experience.current}/{stats.experience.max}</span>
-                        <span className="text-[#36F1CD]">{Math.round((stats.experience.current / stats.experience.max) * 100)}%</span>
-                      </div>
-                      <div className="h-1 bg-[#36F1CD]/30 rounded-full">
-                        <div 
-                          className="h-full bg-[#36F1CD] rounded-full transition-all duration-500" 
-                          style={{ width: `${(stats.experience.current / stats.experience.max) * 100}%` }}
-                        ></div>
-                      </div>
+                    <div className="py-1">
+                      <Link 
+                        href="/profile"
+                        onClick={closeDropdown}
+                        className="flex w-full items-center px-4 py-2 text-sm hover:bg-[#36F1CD]/10 rounded-md transition"
+                        role="menuitem"
+                      >
+                        <span className="material-icons text-[#36F1CD] text-sm mr-2">person</span>
+                        Profile
+                      </Link>
+                      <Link 
+                        href="/settings"
+                        onClick={closeDropdown}
+                        className="flex w-full items-center px-4 py-2 text-sm hover:bg-[#36F1CD]/10 rounded-md transition"
+                        role="menuitem"
+                      >
+                        <span className="material-icons text-[#36F1CD] text-sm mr-2">settings</span>
+                        Settings
+                      </Link>
+                      <Link
+                        href="/dashboard"
+                        onClick={closeDropdown} 
+                        className="flex w-full items-center px-4 py-2 text-sm hover:bg-[#36F1CD]/10 rounded-md transition"
+                        role="menuitem"
+                      >
+                        <span className="material-icons text-[#36F1CD] text-sm mr-2">logout</span>
+                        Logout
+                      </Link>
                     </div>
                   </div>
-                  
-                  <div className="py-1">
-                    <Link 
-                      href="/profile"
-                      onClick={closeDropdown}
-                      className="flex w-full items-center px-4 py-2 text-sm hover:bg-[#36F1CD]/10 rounded-md transition"
-                      role="menuitem"
-                    >
-                      <span className="material-icons text-[#36F1CD] text-sm mr-2">person</span>
-                      Profile
-                    </Link>
-                    <Link 
-                      href="/settings"
-                      onClick={closeDropdown}
-                      className="flex w-full items-center px-4 py-2 text-sm hover:bg-[#36F1CD]/10 rounded-md transition"
-                      role="menuitem"
-                    >
-                      <span className="material-icons text-[#36F1CD] text-sm mr-2">settings</span>
-                      Settings
-                    </Link>
-                    <Link
-                      href="/dashboard"
-                      onClick={closeDropdown} 
-                      className="flex w-full items-center px-4 py-2 text-sm hover:bg-[#36F1CD]/10 rounded-md transition"
-                      role="menuitem"
-                    >
-                      <span className="material-icons text-[#36F1CD] text-sm mr-2">logout</span>
-                      Logout
-                    </Link>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
           
