@@ -13,6 +13,7 @@ import {
 import { useLocation } from 'wouter';
 import { useLYFEOS } from '@/lib/context';
 import { useOnboarding, APP_GUIDES } from '@/lib/onboardingContext';
+import { useTheme } from '@/lib/themeContext';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,7 +38,8 @@ export default function SettingsPage() {
     dismissTooltip, 
     completeTooltip 
   } = useOnboarding();
-  const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>('dark');
+  const { theme, toggleTheme } = useTheme();
+  const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>(theme === 'dark' ? 'dark' : 'light');
   const [primaryColor, setPrimaryColor] = useState<string>('cyan');
   const [savedName, setSavedName] = useState<string>(username);
   const [savedAiName, setSavedAiName] = useState<string>(aiCompanionName);
@@ -80,8 +82,20 @@ export default function SettingsPage() {
   const changeTheme = (value: 'light' | 'dark' | 'system') => {
     setThemeMode(value);
     
-    // In a real implementation, this would actually change the theme
-    // For now, we'll just show a toast
+    // Apply the theme change using the themeContext
+    if (value === 'light' && theme === 'dark') {
+      toggleTheme(); // Switch from dark to light
+    } else if (value === 'dark' && theme === 'light') {
+      toggleTheme(); // Switch from light to dark
+    } else if (value === 'system') {
+      // For system preference, we'd need to check the system preference
+      // and apply the appropriate theme
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if ((prefersDark && theme === 'light') || (!prefersDark && theme === 'dark')) {
+        toggleTheme();
+      }
+    }
+    
     const themeName = value === 'system' ? 'System Default' : value.charAt(0).toUpperCase() + value.slice(1);
     
     toast({
@@ -190,7 +204,7 @@ export default function SettingsPage() {
                   <Button 
                     variant={themeMode === 'light' ? "default" : "outline"} 
                     onClick={() => changeTheme('light')}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 text-foreground"
                   >
                     <Sun className="h-4 w-4" />
                     Light
@@ -199,7 +213,7 @@ export default function SettingsPage() {
                   <Button 
                     variant={themeMode === 'dark' ? "default" : "outline"} 
                     onClick={() => changeTheme('dark')}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 text-foreground"
                   >
                     <Moon className="h-4 w-4" />
                     Dark
@@ -208,7 +222,7 @@ export default function SettingsPage() {
                   <Button 
                     variant={themeMode === 'system' ? "default" : "outline"} 
                     onClick={() => changeTheme('system')}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 text-foreground"
                   >
                     <Monitor className="h-4 w-4" />
                     System
@@ -219,15 +233,15 @@ export default function SettingsPage() {
               <div className="space-y-2 pt-2">
                 <Label>Primary Color</Label>
                 <Select value={primaryColor} onValueChange={changePrimaryColor}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-[180px] text-foreground">
                     <SelectValue placeholder="Select a color" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cyan">Cyan</SelectItem>
-                    <SelectItem value="purple">Purple</SelectItem>
-                    <SelectItem value="blue">Blue</SelectItem>
-                    <SelectItem value="green">Green</SelectItem>
-                    <SelectItem value="orange">Orange</SelectItem>
+                    <SelectItem value="cyan" className="text-foreground">Cyan</SelectItem>
+                    <SelectItem value="purple" className="text-foreground">Purple</SelectItem>
+                    <SelectItem value="blue" className="text-foreground">Blue</SelectItem>
+                    <SelectItem value="green" className="text-foreground">Green</SelectItem>
+                    <SelectItem value="orange" className="text-foreground">Orange</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -307,7 +321,7 @@ export default function SettingsPage() {
                 <div className="space-y-3">
                   <Button 
                     variant="outline" 
-                    className="w-full justify-start" 
+                    className="w-full justify-start text-foreground" 
                     onClick={handleRestartOnboarding}
                   >
                     <RotateCcw className="h-4 w-4 mr-2" />
@@ -316,7 +330,7 @@ export default function SettingsPage() {
                   
                   <Button 
                     variant="outline" 
-                    className="w-full justify-start"
+                    className="w-full justify-start text-foreground"
                     onClick={() => navigate('/dashboard')}
                   >
                     <Settings className="h-4 w-4 mr-2" />
@@ -325,7 +339,7 @@ export default function SettingsPage() {
                   
                   <Button 
                     variant="outline" 
-                    className="w-full justify-start"
+                    className="w-full justify-start text-foreground"
                     onClick={() => navigate('/ai')}
                   >
                     <Bot className="h-4 w-4 mr-2" />
@@ -421,6 +435,7 @@ export default function SettingsPage() {
                       <Button 
                         variant="outline" 
                         size="sm"
+                        className="text-foreground"
                         onClick={() => {
                           // Enable all guides
                           Object.keys(APP_GUIDES).forEach(id => {
