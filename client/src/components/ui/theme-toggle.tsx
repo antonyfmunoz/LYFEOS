@@ -15,7 +15,7 @@ export function ThemeToggle() {
       title: `${theme === "dark" ? "Light" : "Dark"} Mode Activated`,
       description: `LYFEOS interface has switched to ${theme === "dark" ? "light" : "dark"} mode.`,
       variant: "default",
-      className: `bg-${theme === "dark" ? "white" : "[#001E26]"} border border-primary text-${theme === "dark" ? "[#001E26]" : "white"}`,
+      className: "bg-background border border-primary text-foreground",
       duration: 3000,
     });
   };
@@ -25,7 +25,7 @@ export function ThemeToggle() {
       variant="ghost"
       size="icon"
       onClick={handleToggle}
-      className="rounded-full hover:bg-primary/10"
+      className="rounded-full border border-primary/30 bg-card/30 hover:bg-primary/10 shadow-[0_0_5px_rgba(0,224,255,0.2)]"
       aria-label="Toggle theme"
     >
       {theme === "dark" ? (

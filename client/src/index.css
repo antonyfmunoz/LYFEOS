@@ -4,6 +4,25 @@
 
 @layer base {
   :root {
+    /* Light mode */
+    --background: 200 25% 96%;
+    --foreground: 222 47% 11%;
+    
+    --card: 200 25% 98%;
+    --card-foreground: 222 47% 11%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    
+    --primary: 188 100% 40%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 262 50% 60%;
+    --secondary-foreground: 0 0% 100%;
+  }
+
+  .dark {
+    /* Dark mode */
     --background: 222 47% 5%;
     --foreground: 192 100% 92%;
     
@@ -41,23 +60,36 @@
   
   body {
     @apply font-sans antialiased bg-background text-foreground;
-    background-color: #030B17;
-    color: #D6F4FF;
+  }
+  
+  /* Light mode specific styles */
+  :root {
+    --shadow-color: rgba(0, 159, 181, 0.35);
+    --glow-strength: 0.3;
+  }
+  
+  /* Dark mode specific styles */
+  .dark {
+    --shadow-color: rgba(0, 224, 255, 0.5);
+    --glow-strength: 0.5;
   }
   
   /* Glassmorphic effect */
   .glassmorphic {
-    @apply bg-card/70 backdrop-blur-md border border-primary/20;
+    @apply bg-card/70 backdrop-blur-md;
+    border: 1px solid rgba(var(--primary), 0.2);
   }
 
   /* Neon border */
   .neon-border {
-    @apply shadow-[0_0_5px_rgba(0,224,255,0.3)] border border-primary/30;
+    border: 1px solid rgba(var(--primary), 0.3);
+    box-shadow: 0 0 5px var(--shadow-color);
   }
   
   /* Purple neon border */
   .neon-border-purple {
-    @apply shadow-[0_0_5px_rgba(156,106,222,0.3)] border border-purple-500/30;
+    border: 1px solid rgba(156, 106, 222, 0.3);
+    box-shadow: 0 0 5px rgba(156, 106, 222, calc(var(--glow-strength) - 0.1));
   }
   
   /* Custom scrollbar with purple theme */
@@ -160,7 +192,7 @@
 
 /* Custom styling for time inputs */
 input[type="time"] {
-  @apply bg-[#00141A] border border-primary/30 text-[#D6F4FF] rounded-md py-2 px-3;
+  @apply bg-card border border-primary/30 text-foreground rounded-md py-2 px-3;
   color-scheme: dark;
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -245,7 +277,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 /* For Firefox */
 @-moz-document url-prefix() {
   input[type="time"] {
-    @apply bg-[#00141A] border border-primary/30 text-[#D6F4FF] py-2 px-3;
+    @apply bg-card border border-primary/30 text-foreground py-2 px-3;
     border-radius: 0.375rem;
   }
 }
