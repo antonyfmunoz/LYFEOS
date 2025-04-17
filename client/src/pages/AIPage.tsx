@@ -595,6 +595,7 @@ export default function AIPage() {
           <form onSubmit={handleSendMessage} className="mt-4 pt-4 border-t border-primary/20 relative">
             <div className="relative rounded-2xl border border-primary/30 bg-card/30 shadow-inner overflow-hidden">
               <Input 
+                id="messageInput"
                 placeholder={`Message ${aiCompanionName}...`}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
