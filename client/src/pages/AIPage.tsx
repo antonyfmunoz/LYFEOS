@@ -18,6 +18,9 @@ import { AIMessage, ChatSession } from "../lib/types";
 import { useIsMobile } from "../hooks/use-mobile";
 
 export default function AIPage() {
+  // Set the page title
+  usePageTitle('AI Companion');
+
   const { 
     messages, 
     chatSessions, 

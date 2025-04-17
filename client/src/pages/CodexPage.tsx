@@ -1,8 +1,12 @@
 import { Link, useLocation } from "wouter";
 import { useLYFEOS } from "@/lib/context";
+import { usePageTitle } from "@/hooks/use-page-title";
 import { FileText, Clock, Tag, Calendar, Award } from "lucide-react";
 
 export default function CodexPage() {
+  // Set the page title
+  usePageTitle('Codex');
+  
   const { missionPages } = useLYFEOS();
   const [, navigate] = useLocation();
   

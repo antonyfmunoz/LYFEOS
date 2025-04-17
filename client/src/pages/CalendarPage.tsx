@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CustomTimePicker } from "@/components/ui/custom-time-picker";
 import { useLYFEOS } from "@/lib/context";
+import { usePageTitle } from "@/hooks/use-page-title";
 import { CalendarEvent } from "@/lib/types";
 import { format } from "date-fns";
 import { Plus, Edit, Trash, Clock, ArrowLeft, Info, ExternalLink } from "lucide-react";
@@ -14,6 +15,9 @@ import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 
 export default function CalendarPage() {
+  // Set the page title
+  usePageTitle('Calendar');
+  
   const { events, addEvent, updateEvent, deleteEvent } = useLYFEOS();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
