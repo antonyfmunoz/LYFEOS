@@ -24,6 +24,7 @@ export const userStats = pgTable("user_stats", {
   experienceCurrent: integer("experience_current").notNull().default(0),
   experienceMax: integer("experience_max").notNull().default(100),
   level: integer("level").notNull().default(1),
+  aiAssistantName: text("ai_assistant_name").default("Lyfe").notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
@@ -144,6 +145,7 @@ export const insertUserStatsSchema = createInsertSchema(userStats).pick({
   experienceCurrent: true,
   experienceMax: true,
   level: true,
+  aiAssistantName: true,
 });
 
 export const insertQuestSchema = createInsertSchema(quests).pick({

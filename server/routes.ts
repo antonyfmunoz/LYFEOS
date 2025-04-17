@@ -173,6 +173,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ error: "Internal server error" });
     }
   });
+  
+  // Specific endpoint for updating AI assistant name
+  app.patch("/api/users/:userId/ai-assistant-name", isOwner, async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+      
+      const { name } = req.body;
+      if (!name || typeof name !== 'string') {
+        return res.status(400).json({ error: "Valid name is required" });
+      }
+      
+      const updatedStats = await storage.updateUserStats(userId, { aiAssistantName: name });
+      
+      return res.status(200).json({ 
+        success: true,
+        aiAssistantName: updatedStats.aiAssistantName 
+      });
+    } catch (error) {
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
 
   // QUEST ROUTES
   app.get("/api/users/:userId/quests", isOwner, async (req: Request, res: Response) => {
