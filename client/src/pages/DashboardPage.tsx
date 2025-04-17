@@ -200,6 +200,7 @@ const getEndTime = (startTime: string, duration: string): string => {
 
 export default function DashboardPage() {
   const { stats, username, events } = useLYFEOS();
+  const { dismissTooltip, completeTooltip, enabledGuides, showGuideToast } = useOnboarding();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentTime, setCurrentTime] = useState(new Date());
   const [totalXpEarned, setTotalXpEarned] = useState(0);
@@ -456,8 +457,30 @@ export default function DashboardPage() {
     </div>
   );
   
+  // Check for welcome tooltip on component mount
+  useEffect(() => {
+    // Show welcome guide toast on first load
+    if (enabledGuides.dashboard_welcome !== false) {
+      showGuideToast(
+        "Welcome to your LYFE OS command center. This is your daily dashboard for tracking progress, logging thoughts, and managing your life operating system.",
+        "Welcome Commander",
+        "Nova"
+      );
+    }
+  }, []);
+
   return (
     <div className="dashboard-container">
+      <NovaGuideTooltip
+        guide={{
+          ...APP_GUIDES.dashboard_welcome,
+          forceShow: enabledGuides.dashboard_welcome !== false
+        }}
+        onDismiss={dismissTooltip}
+        onComplete={completeTooltip}
+      >
+        <div className="mb-4"></div>
+      </NovaGuideTooltip>
       <AIAgentFAB />
       {/* Date Header - Cinematic HUD Style */}
       <section className="mb-6">
@@ -507,10 +530,19 @@ export default function DashboardPage() {
       {/* Stats and Progress Section */}
       <section className="mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-orbitron flex items-center">
-            <Zap className="h-5 w-5 text-primary mr-2" />
-            <span>Stat Log</span>
-          </h2>
+          <NovaGuideTooltip
+            guide={{
+              ...APP_GUIDES.stats_overview,
+              forceShow: enabledGuides.stats_overview !== false
+            }}
+            onDismiss={dismissTooltip}
+            onComplete={completeTooltip}
+          >
+            <h2 className="text-xl font-orbitron flex items-center">
+              <Zap className="h-5 w-5 text-primary mr-2" />
+              <span>Stat Log</span>
+            </h2>
+          </NovaGuideTooltip>
         </div>
         
         <StatsWidget stats={stats} />
@@ -518,6 +550,22 @@ export default function DashboardPage() {
       
       {/* Mission Log Panel */}
       <section className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <SystemGuideTooltip
+            guide={{
+              ...APP_GUIDES.mission_log,
+              forceShow: enabledGuides.mission_log !== false
+            }}
+            onDismiss={dismissTooltip}
+            onComplete={completeTooltip}
+          >
+            <h2 className="text-xl font-orbitron flex items-center">
+              <ListChecks className="h-5 w-5 text-primary mr-2" />
+              <span>Mission Log</span>
+            </h2>
+          </SystemGuideTooltip>
+        </div>
+        
         <EnhancedMissionWidget 
           events={events} 
           maxHeight="96"
