@@ -149,84 +149,92 @@ export default function AIPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-80px)]">
-      {/* AI Companion Header with integrated hamburger menu */}
-      <div className="flex items-center justify-between mb-4 pb-4 border-b border-purple-500/20">
+      {/* App Header - Clean, minimal like OpenAI */}
+      <div className="flex items-center justify-between py-3 px-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0F1923]">
         <div className="flex items-center">
           {/* Hamburger Menu for mobile - static in header */}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="sm:hidden mr-2 p-0 h-9 w-9 text-purple-400 hover:bg-purple-500/10"
+            className="sm:hidden mr-2 p-0 h-9 w-9 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
           >
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
 
-          <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center mr-3">
-            <Bot className="h-5 w-5 text-purple-400" />
-          </div>
-          
-          <div>
-            <h1 className="text-xl font-orbitron text-white mb-1">AI Companion</h1>
-            
-            {/* AI Name Editor */}
-            {isEditingName ? (
-              <div className="flex items-center">
-                <Input
-                  ref={nameInputRef}
-                  value={nameInput}
-                  onChange={(e) => setNameInput(e.target.value)}
-                  className="h-8 text-sm bg-slate-700/30 border-purple-500/30 focus-visible:ring-purple-500/30 mr-2 w-48"
-                  placeholder="Enter AI name"
-                  maxLength={20}
-                />
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleSaveName}
-                  className="h-7 w-7 p-0 text-purple-400 hover:bg-purple-500/20"
-                >
-                  <Check className="h-4 w-4" />
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setNameInput(aiCompanionName);
-                    setIsEditingName(false);
-                  }}
-                  className="h-7 w-7 p-0 text-[#7DAAB2] hover:bg-red-500/20 ml-1"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center">
-                <p className="text-sm text-purple-400 mr-2">{aiCompanionName}</p>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setIsEditingName(true)}
-                  className="h-6 w-6 p-0 text-[#7DAAB2] hover:text-purple-400 hover:bg-purple-500/20"
-                >
-                  <Edit2 className="h-3 w-3" />
-                </Button>
-              </div>
-            )}
+          <div className="flex items-center">
+            <Bot className="h-5 w-5 text-gray-700 dark:text-gray-300 mr-2" />
+            <h1 className="text-base font-medium text-gray-700 dark:text-gray-300">
+              {aiCompanionName} <span className="text-xs font-normal text-gray-500">4.0</span>
+            </h1>
           </div>
         </div>
         
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-9 w-9 rounded-full p-0 text-[#7DAAB2] hover:text-white hover:bg-slate-700"
-        >
-          <Settings className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center space-x-2">
+          {/* Rename button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsEditingName(true)}
+            className="h-8 px-2 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+          >
+            Rename
+          </Button>
+
+          {/* Saved memory indicator - like in OpenAI */}
+          <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
+            <span>Saved memory</span>
+            <span className="ml-1 text-gray-400 dark:text-gray-500">full</span>
+          </div>
+
+          {/* Temporary button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-3 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+          >
+            Temporary
+          </Button>
+        </div>
       </div>
+
+      {/* Name Editor Modal */}
+      {isEditingName && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-[#1E2A35] rounded-lg shadow-lg w-80 p-4">
+            <h3 className="text-lg font-medium mb-4 text-gray-800 dark:text-white">Rename AI companion</h3>
+            <Input
+              ref={nameInputRef}
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              className="mb-4 bg-gray-50 dark:bg-gray-900 border-gray-300 dark:border-gray-700"
+              placeholder="Enter AI name"
+              maxLength={20}
+            />
+            <div className="flex justify-end space-x-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setNameInput(aiCompanionName);
+                  setIsEditingName(false);
+                }}
+                className="text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSaveName}
+                className="bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
+              >
+                Save
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       
       {/* Main Chat Area with Collapsible Sidebar */}
       <div className="flex-grow flex flex-col sm:flex-row relative">
@@ -238,56 +246,57 @@ export default function AIPage() {
           />
         )}
         
-        {/* Left Sidebar - Chat Sessions & Quick Prompts - Collapsible */}
+        {/* Left Sidebar - OpenAI style with Projects list */}
         <div className={`
           fixed sm:static inset-y-0 left-0 z-20
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full sm:translate-x-0'} 
           transition-transform duration-200 ease-in-out
-          flex flex-col w-[280px] sm:w-72 h-[calc(100vh-140px)]
-          bg-[#0F1923] sm:bg-transparent border-r border-purple-500/20 
-          pt-12 sm:pt-0 px-4 sm:px-1 sm:mr-4
+          flex flex-col w-[280px] sm:w-60 h-[calc(100vh-64px)]
+          bg-white dark:bg-[#0F1923] border-r border-gray-200 dark:border-gray-800 
+          pt-12 sm:pt-4 px-3
           overflow-y-auto
         `}>
-          {/* Chat Sessions */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-[#D6F4FF]">Chats</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0 text-[#7DAAB2] hover:text-purple-400 hover:bg-purple-500/20 rounded-full"
-                onClick={() => setIsCreatingChat(true)}
-              >
-                <PlusCircle className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            {isCreatingChat ? (
-              <div className="flex items-center mb-2">
-                <Input
-                  ref={newChatInputRef}
-                  value={newChatTitle}
-                  onChange={(e) => setNewChatTitle(e.target.value)}
-                  className="h-8 text-sm bg-slate-700/30 border-purple-500/30 focus-visible:ring-purple-500/30 mr-2"
-                  placeholder="New chat name"
-                  maxLength={30}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleCreateChat();
-                    } else if (e.key === 'Escape') {
-                      setIsCreatingChat(false);
-                      setNewChatTitle("");
-                    }
-                  }}
-                />
+          {/* Projects Section Header */}
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400">Projects</h3>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+              onClick={() => setIsCreatingChat(true)}
+            >
+              <PlusCircle className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+          
+          {/* New Project Input */}
+          {isCreatingChat ? (
+            <div className="flex items-center mb-2">
+              <Input
+                ref={newChatInputRef}
+                value={newChatTitle}
+                onChange={(e) => setNewChatTitle(e.target.value)}
+                className="h-8 text-sm bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus-visible:ring-gray-300 dark:focus-visible:ring-gray-600 mr-2"
+                placeholder="New project"
+                maxLength={30}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleCreateChat();
+                  } else if (e.key === 'Escape') {
+                    setIsCreatingChat(false);
+                    setNewChatTitle("");
+                  }
+                }}
+              />
+              <div className="flex space-x-1">
                 <Button
                   type="button"
                   size="sm"
                   variant="ghost"
                   onClick={handleCreateChat}
-                  className="h-7 w-7 p-0 text-purple-400 hover:bg-purple-500/20"
+                  className="h-6 w-6 p-0 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
                 >
-                  <Check className="h-4 w-4" />
+                  <Check className="h-3.5 w-3.5" />
                 </Button>
                 <Button
                   type="button"
@@ -297,14 +306,18 @@ export default function AIPage() {
                     setIsCreatingChat(false);
                     setNewChatTitle("");
                   }}
-                  className="h-7 w-7 p-0 text-[#7DAAB2] hover:bg-red-500/20 ml-1"
+                  className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5" />
                 </Button>
               </div>
-            ) : null}
-            
-            <div className="space-y-1 max-h-[200px] overflow-y-auto custom-scrollbar">
+            </div>
+          ) : null}
+          
+          {/* Today Section */}
+          <div className="mt-4 mb-2">
+            <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Today</h4>
+            <div className="space-y-1">
               {chatSessions.map((chat) => (
                 <div key={chat.id} className="relative group">
                   {isEditingChatTitle && editingChatId === chat.id ? (
@@ -313,8 +326,8 @@ export default function AIPage() {
                         ref={editChatInputRef}
                         value={chatTitleInput}
                         onChange={(e) => setChatTitleInput(e.target.value)}
-                        className="h-8 text-sm bg-slate-700/30 border-purple-500/30 focus-visible:ring-purple-500/30 mr-2"
-                        placeholder="Chat name"
+                        className="h-8 text-sm bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus-visible:ring-gray-300 dark:focus-visible:ring-gray-600 mr-2"
+                        placeholder="Project name"
                         maxLength={30}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
@@ -326,76 +339,55 @@ export default function AIPage() {
                           }
                         }}
                       />
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={handleUpdateChatTitle}
-                        className="h-7 w-7 p-0 text-purple-400 hover:bg-purple-500/20"
-                      >
-                        <Check className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setIsEditingChatTitle(false);
-                          setEditingChatId("");
-                          setChatTitleInput("");
-                        }}
-                        className="h-7 w-7 p-0 text-[#7DAAB2] hover:bg-red-500/20 ml-1"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                      <div className="flex space-x-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={handleUpdateChatTitle}
+                          className="h-6 w-6 p-0 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setIsEditingChatTitle(false);
+                            setEditingChatId("");
+                            setChatTitleInput("");
+                          }}
+                          className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                   ) : (
                     <div 
-                      className={`flex items-center justify-between px-2 py-2 rounded hover:bg-slate-800/50 cursor-pointer ${
-                        chat.id === activeChatSessionId ? 'bg-purple-500/10 border border-purple-500/20' : ''
+                      className={`flex items-center justify-between px-2 py-1.5 rounded-md cursor-pointer ${
+                        chat.id === activeChatSessionId 
+                          ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white' 
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/50'
                       }`}
                       onClick={() => handleChatSelect(chat.id)}
                     >
-                      <div className="flex items-center flex-grow overflow-hidden mr-2">
-                        <MessageSquare className="h-4 w-4 mr-2 text-purple-400 flex-shrink-0" />
-                        <span className="text-sm truncate pr-2">{chat.title}</span>
+                      <div className="flex items-center flex-grow overflow-hidden">
+                        <span className="text-xs truncate">{chat.title}</span>
                       </div>
                       
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-[#7DAAB2] hover:text-white hover:bg-slate-700/50 rounded-full"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <MoreVertical className="h-3 w-3" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-[#0F1923] border border-purple-500/20">
-                          <DropdownMenuItem 
-                            className="text-[#D6F4FF] hover:bg-purple-500/10 focus:bg-purple-500/10 cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleStartEditingChat(chat);
-                            }}
-                          >
-                            <Edit2 className="h-3.5 w-3.5 mr-2 text-purple-400" />
-                            Rename
-                          </DropdownMenuItem>
-                          
-                          <DropdownMenuItem 
-                            className="text-red-400 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-400 cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteChatSession(chat.id);
-                            }}
-                          >
-                            <Trash2 className="h-3.5 w-3.5 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded ml-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStartEditingChat(chat);
+                        }}
+                      >
+                        <Edit2 className="h-3 w-3" />
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -403,153 +395,115 @@ export default function AIPage() {
             </div>
           </div>
           
-          {/* Quick Prompts Section */}
-          <h3 className="text-sm font-semibold mb-3 text-[#D6F4FF]">Quick Prompts</h3>
-          
-          <div className="space-y-2">
-            <Button 
-              variant="ghost" 
-              className="w-full justify-start text-sm h-auto py-2 px-3 bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20"
-              onClick={() => {
-                setInputText("Analyze my day and suggest focus areas.");
-                if (activeChatSessionId) {
-                  sendMessageInSession(activeChatSessionId, "Analyze my day and suggest focus areas.");
-                }
-                if (isMobile) {
-                  setSidebarOpen(false);
-                }
-              }}
-            >
-              <Brain className="h-4 w-4 mr-2 text-purple-400" />
-              <span className="text-left">Analyze my day</span>
-            </Button>
-            
-            <Button 
-              variant="ghost" 
-              className="w-full justify-start text-sm h-auto py-2 px-3 bg-slate-700/30 hover:bg-slate-700/50"
-              onClick={() => {
-                setInputText("Generate 3 creative ideas for my current challenge.");
-                if (activeChatSessionId) {
-                  sendMessageInSession(activeChatSessionId, "Generate 3 creative ideas for my current challenge.");
-                }
-                if (isMobile) {
-                  setSidebarOpen(false);
-                }
-              }}
-            >
-              <Sparkles className="h-4 w-4 mr-2 text-purple-400" />
-              <span className="text-left">Generate creative ideas</span>
-            </Button>
-            
-            <Button 
-              variant="ghost" 
-              className="w-full justify-start text-sm h-auto py-2 px-3 bg-slate-700/30 hover:bg-slate-700/50"
-              onClick={() => {
-                setInputText("Optimize my schedule to maximize productivity.");
-                if (activeChatSessionId) {
-                  sendMessageInSession(activeChatSessionId, "Optimize my schedule to maximize productivity.");
-                }
-                if (isMobile) {
-                  setSidebarOpen(false);
-                }
-              }}
-            >
-              <Zap className="h-4 w-4 mr-2 text-purple-400" />
-              <span className="text-left">Optimize my schedule</span>
-            </Button>
+          {/* Yesterday Section - Placeholder with sample items */}
+          <div className="mb-4">
+            <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Yesterday</h4>
+            <div className="space-y-1">
+              <div className="px-2 py-1.5 rounded-md text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/50 cursor-pointer">
+                Alternative Daily Note Names
+              </div>
+              <div className="px-2 py-1.5 rounded-md text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/50 cursor-pointer">
+                Indoor Outdoor Experience Design
+              </div>
+              <div className="px-2 py-1.5 rounded-md text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/50 cursor-pointer">
+                Image request for t-shirt
+              </div>
+            </div>
           </div>
+          
+          {/* View plans button */}
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start text-xs h-auto py-1.5 px-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/50 mt-auto"
+            onClick={() => {
+              // Future functionality
+            }}
+          >
+            <span className="text-left flex items-center">
+              <CircleDot className="h-3 w-3 mr-2 text-gray-500 dark:text-gray-400" />
+              View plans
+            </span>
+          </Button>
         </div>
         
-        {/* Main Chat Window */}
-        <div className="flex-1 flex flex-col glassmorphic rounded-xl p-4 neon-border-purple h-full ml-0 sm:ml-4 md:ml-6 mt-12 sm:mt-0 relative min-w-0">
+        {/* Main Chat Window - OpenAI style */}
+        <div className="flex-1 flex flex-col bg-white dark:bg-[#1E2A35] h-full relative min-w-0">
           {/* Messages area */}
-          <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar">
+          <div className="flex-grow overflow-y-auto custom-scrollbar">
             {!activeChat || activeChat.messages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-6">
-                <div className="w-16 h-16 rounded-full bg-purple-500/20 flex items-center justify-center mb-4">
-                  <Bot className="h-8 w-8 text-purple-400" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2 text-white">Welcome to {aiCompanionName}</h3>
-                <p className="text-[#7DAAB2] max-w-md mb-8">Your AI companion is ready to assist with insights, ideas, and optimizations for your life.</p>
+                <h3 className="text-2xl font-medium mb-2 text-gray-900 dark:text-white">What's on your mind today?</h3>
+                <p className="text-gray-500 dark:text-gray-400 max-w-md mb-10">Ask anything...</p>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full max-w-3xl">
+                <div className="flex flex-col space-y-3 w-full max-w-md">
                   <Button 
                     variant="outline" 
-                    className="flex items-center justify-start border-purple-500/30 hover:bg-purple-500/10 text-white py-3"
+                    className="flex items-center justify-start border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-3 px-4 hover:bg-gray-50 dark:hover:bg-gray-800"
                     onClick={() => setInputText("Analyze my calendar and suggest optimizations.")}
                   >
-                    <span className="text-left">Analyze my calendar</span>
-                    <ChevronRight className="h-4 w-4 ml-auto text-purple-400" />
+                    <span className="text-left">Analyze my calendar and suggest optimizations</span>
                   </Button>
                   
                   <Button 
                     variant="outline" 
-                    className="flex items-center justify-start border-purple-500/30 hover:bg-purple-500/10 text-white py-3"
+                    className="flex items-center justify-start border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-3 px-4 hover:bg-gray-50 dark:hover:bg-gray-800"
                     onClick={() => setInputText("Give me 3 creative ideas for solving my current challenge.")}
                   >
-                    <span className="text-left">Generate creative ideas</span>
-                    <ChevronRight className="h-4 w-4 ml-auto text-purple-400" />
+                    <span className="text-left">Give me 3 creative ideas for solving my current challenge</span>
                   </Button>
                   
                   <Button 
                     variant="outline" 
-                    className="flex items-center justify-start border-purple-500/30 hover:bg-purple-500/10 text-white py-3"
+                    className="flex items-center justify-start border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 py-3 px-4 hover:bg-gray-50 dark:hover:bg-gray-800"
                     onClick={() => setInputText("Help me track my focus and energy levels today.")}
                   >
-                    <span className="text-left">Track focus & energy</span>
-                    <ChevronRight className="h-4 w-4 ml-auto text-purple-400" />
+                    <span className="text-left">Help me track my focus and energy levels today</span>
                   </Button>
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col space-y-6 pt-2">
+              <div className="flex flex-col py-4 px-4 md:px-8 lg:px-14">
                 {activeChat.messages.map((message) => (
-                  <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`flex max-w-[90%] lg:max-w-[70%]`}>
-                      {message.sender === 'ai' && (
-                        <div className="h-10 w-10 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0 mt-1">
-                          <Bot className="h-5 w-5 text-purple-400" />
+                  <div key={message.id} className="mb-6 last:mb-8">
+                    <div className="flex items-start max-w-4xl mx-auto">
+                      {message.sender === 'ai' ? (
+                        <div className="h-6 w-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 mt-1 mr-4">
+                          <Bot className="h-3.5 w-3.5 text-gray-700 dark:text-gray-300" />
                         </div>
-                      )}
-                      
-                      <div className={`${message.sender === 'ai' 
-                        ? 'ml-3 bg-slate-800/70 border border-purple-500/30 rounded-2xl rounded-tl-sm text-white' 
-                        : 'mr-0 bg-purple-500/20 border border-purple-500/30 rounded-2xl rounded-tr-sm text-white'} p-4 shadow-sm`}
-                      >
-                        {message.sender === 'ai' && (
-                          <div className="text-xs text-purple-400 mb-1 font-semibold">{aiCompanionName}</div>
-                        )}
-                        <p className="text-sm text-white">{message.content}</p>
-                        <p className="text-xs text-[#7DAAB2] mt-2 text-right">
-                          {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      </div>
-                      
-                      {message.sender === 'user' && (
-                        <div className="h-10 w-10 rounded-full bg-slate-800/60 ml-3 flex items-center justify-center flex-shrink-0 mt-1 overflow-hidden">
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-purple-400">
+                      ) : (
+                        <div className="h-6 w-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 mt-1 mr-4">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-gray-700 dark:text-gray-300">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                             <circle cx="12" cy="7" r="4"></circle>
                           </svg>
                         </div>
                       )}
+                      
+                      <div className="flex-1">
+                        {message.sender === 'ai' && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">{aiCompanionName}</div>
+                        )}
+                        <div className="text-gray-800 dark:text-gray-200 text-sm whitespace-pre-wrap">
+                          {message.content}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
                 
                 {isLoading && (
-                  <div className="flex justify-start">
-                    <div className="flex max-w-[70%]">
-                      <div className="h-10 w-10 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0 mt-1">
-                        <Bot className="h-5 w-5 text-purple-400" />
+                  <div className="mb-6">
+                    <div className="flex items-start max-w-4xl mx-auto">
+                      <div className="h-6 w-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 mt-1 mr-4">
+                        <Bot className="h-3.5 w-3.5 text-gray-700 dark:text-gray-300" />
                       </div>
                       
-                      <div className="ml-3 bg-slate-800/70 border border-purple-500/30 rounded-2xl rounded-tl-sm p-4 shadow-sm">
-                        <div className="text-xs text-purple-400 mb-1 font-semibold">{aiCompanionName}</div>
+                      <div className="flex-1">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">{aiCompanionName}</div>
                         <div className="flex space-x-2">
-                          <div className="h-2 w-2 rounded-full bg-purple-400 animate-bounce"></div>
-                          <div className="h-2 w-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: "150ms" }}></div>
-                          <div className="h-2 w-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: "300ms" }}></div>
+                          <div className="h-2 w-2 rounded-full bg-gray-300 dark:bg-gray-600 animate-pulse"></div>
+                          <div className="h-2 w-2 rounded-full bg-gray-300 dark:bg-gray-600 animate-pulse" style={{ animationDelay: "150ms" }}></div>
+                          <div className="h-2 w-2 rounded-full bg-gray-300 dark:bg-gray-600 animate-pulse" style={{ animationDelay: "300ms" }}></div>
                         </div>
                       </div>
                     </div>
@@ -561,36 +515,60 @@ export default function AIPage() {
             )}
           </div>
           
-          {/* Input area */}
-          <form onSubmit={handleSendMessage} className="mt-4 pt-4 border-t border-purple-500/20 relative">
-            <div className="relative rounded-2xl border border-purple-500/30 bg-slate-800/30 shadow-inner overflow-hidden">
-              <Input 
-                placeholder={`Message ${aiCompanionName}...`}
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                className="border-0 bg-transparent pr-12 py-6 min-h-[60px] focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none text-white"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    if (inputText.trim()) {
-                      handleSendMessage(e);
+          {/* Input area - OpenAI style */}
+          <div className="border-t border-gray-200 dark:border-gray-800 p-4">
+            <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto">
+              <div className="flex items-end bg-white dark:bg-[#1E2A35] rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                <Input 
+                  placeholder={`Ask anything...`}
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  className="border-0 flex-1 py-3 px-3 min-h-[48px] focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none text-gray-800 dark:text-gray-200 bg-transparent"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      if (inputText.trim()) {
+                        handleSendMessage(e);
+                      }
                     }
-                  }
-                }}
-              />
-              <Button 
-                type="submit"
-                size="sm"
-                disabled={!inputText.trim()}
-                className="absolute right-2 bottom-2 h-9 w-9 p-0 rounded-lg bg-purple-500/50 text-white hover:bg-purple-500/70 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
-            <p className="text-xs text-slate-400 mt-2 text-center">
-              {aiCompanionName} can make mistakes. Consider checking important information.
-            </p>
-          </form>
+                  }}
+                />
+                
+                <div className="flex">
+                  <Button 
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="mr-1 h-9 w-9 p-0 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    <Search className="h-4 w-4" />
+                  </Button>
+                  
+                  <Button 
+                    type="submit"
+                    disabled={!inputText.trim()}
+                    className="h-9 mr-1 mb-1 px-3 rounded-md bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-center mt-2">
+                <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                  <span className="mr-1">Deep research</span>
+                  <Button 
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0 rounded-full"
+                  >
+                    <MoreHorizontal className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>
