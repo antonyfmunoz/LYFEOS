@@ -548,7 +548,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Today's Thoughts */}
               <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
+                <label className="text-sm flex items-center text-muted-foreground">
                   <Brain className="h-4 w-4 text-primary" />
                   <span className="ml-2">Today's Thoughts</span>
                 </label>
@@ -565,7 +565,7 @@ export default function DashboardPage() {
               
               {/* Content Consumed */}
               <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
+                <label className="text-sm flex items-center text-muted-foreground">
                   <Book className="h-4 w-4 text-primary" />
                   <span className="ml-2">Content Consumed</span>
                 </label>
@@ -581,7 +581,7 @@ export default function DashboardPage() {
               
               {/* Today's Research */}
               <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
+                <label className="text-sm flex items-center text-muted-foreground">
                   <BookOpen className="h-4 w-4 text-primary" />
                   <span className="ml-2">Today's Research</span>
                 </label>
@@ -597,7 +597,7 @@ export default function DashboardPage() {
               
               {/* New To-Do-List Ideas */}
               <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
+                <label className="text-sm flex items-center text-muted-foreground">
                   <ListChecks className="h-4 w-4 text-primary" />
                   <span className="ml-2">New To-Do-List Ideas</span>
                 </label>
@@ -655,7 +655,7 @@ export default function DashboardPage() {
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
+                  <label className="text-sm flex items-center text-muted-foreground">
                     <MoonStar className="h-4 w-4 text-primary" />
                     <span className="ml-2">Sleep Time</span>
                   </label>
@@ -721,7 +721,7 @@ export default function DashboardPage() {
               <div className="space-y-4">
                 {/* Gratitude */}
                 <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
+                  <label className="text-sm flex items-center text-muted-foreground">
                     <Smile className="h-4 w-4 text-primary" />
                     <span className="ml-2">Gratitude</span>
                   </label>
@@ -738,7 +738,7 @@ export default function DashboardPage() {
                 
                 {/* Tomorrow's Goals */}
                 <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
+                  <label className="text-sm flex items-center text-muted-foreground">
                     <ListChecks className="h-4 w-4 text-primary" />
                     <span className="ml-2">Tomorrow's Goals</span>
                   </label>
@@ -755,7 +755,7 @@ export default function DashboardPage() {
                 
                 {/* Annual Goals */}
                 <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
+                  <label className="text-sm flex items-center text-muted-foreground">
                     <TargetIcon className="h-4 w-4 text-primary" />
                     <span className="ml-2">Annual Goals</span>
                   </label>
