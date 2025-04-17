@@ -41,14 +41,14 @@ export default function SettingsPage() {
   const { theme, toggleTheme, reloadWithTheme } = useTheme();
   const [themeMode, setThemeMode] = useState<'light' | 'dark'>(theme === 'dark' ? 'dark' : 'light');
   
-  // Simplified function to get current primary color - uses a simpler approach
-  const getCurrentPrimaryColor = (): string => {
-    // Instead of relying on CSS variables, we'll check theme.json values directly
+  // Improved function to detect current primary color from theme.json
+  const getCurrentPrimaryColor = async (): Promise<string> => {
+    // Default to cyan if detection fails
     let defaultColor = "cyan";
     
     try {
-      // Create a mapping of HSL values to simple color names
-      const colorMap: Record<string, string> = {
+      // Mapping HSL values to our color names
+      const hslToColorMap: Record<string, string> = {
         "hsl(188 100% 50%)": "cyan",
         "hsl(265 89% 78%)": "purple",
         "hsl(217 91% 60%)": "blue", 
@@ -56,23 +56,34 @@ export default function SettingsPage() {
         "hsl(24 94% 50%)": "orange"
       };
       
-      // Get the actual primary color value
-      const primaryBtn = document.querySelector('.bg-primary');
-      if (primaryBtn) {
-        const btnColor = window.getComputedStyle(primaryBtn).backgroundColor;
+      // Attempt to fetch theme.json directly to get the exact primary color
+      const response = await fetch('/theme.json');
+      if (response.ok) {
+        const themeData = await response.json();
+        const primaryHsl = themeData.primary;
         
-        // Map RGB color back to our theme colors
-        // This is a simplistic approach - we'll just use our default mapping
-        if (btnColor.includes('0, 224, 255') || btnColor.includes('0,224,255')) {
-          return "cyan";
-        } else if (btnColor.includes('197, 139, 255') || btnColor.includes('197,139,255')) {
-          return "purple";
-        } else if (btnColor.includes('59, 130, 246') || btnColor.includes('59,130,246')) {
-          return "blue";
-        } else if (btnColor.includes('34, 197, 94') || btnColor.includes('34,197,94')) {
-          return "green";
-        } else if (btnColor.includes('255, 120, 10') || btnColor.includes('255,120,10')) {
-          return "orange";
+        // Return the matching color name if found in our map
+        if (primaryHsl && hslToColorMap[primaryHsl]) {
+          return hslToColorMap[primaryHsl];
+        }
+        
+        // Fallback to visual detection if HSL not in our map
+        const primaryBtn = document.querySelector('.bg-primary');
+        if (primaryBtn) {
+          const btnColor = window.getComputedStyle(primaryBtn).backgroundColor;
+          
+          // Map RGB color back to our theme colors
+          if (btnColor.includes('0, 224, 255') || btnColor.includes('0,224,255')) {
+            return "cyan";
+          } else if (btnColor.includes('197, 139, 255') || btnColor.includes('197,139,255')) {
+            return "purple";
+          } else if (btnColor.includes('59, 130, 246') || btnColor.includes('59,130,246')) {
+            return "blue";
+          } else if (btnColor.includes('34, 197, 94') || btnColor.includes('34,197,94')) {
+            return "green";
+          } else if (btnColor.includes('255, 120, 10') || btnColor.includes('255,120,10')) {
+            return "orange";
+          }
         }
       }
     } catch (e) {
@@ -363,38 +374,63 @@ export default function SettingsPage() {
                   <h4 className="text-sm font-medium mb-2">Select a primary color:</h4>
                   <div className="flex flex-wrap gap-3">
                     <Button 
-                      variant={primaryColor === 'cyan' ? 'default' : 'outline'}
-                      className="w-24 bg-[#00e0ff] text-black hover:text-black hover:bg-[#00e0ff]/90"
+                      variant="outline"
+                      className={`w-24 relative font-medium border-2 ${primaryColor === 'cyan' ? 'border-[#00e0ff] shadow-[0_0_10px_rgba(0,224,255,0.5)]' : 'border-transparent'}`}
                       onClick={() => changePrimaryColor('cyan')}
+                      style={{
+                        backgroundColor: primaryColor === 'cyan' ? 'rgba(0, 224, 255, 0.2)' : 'transparent',
+                        color: 'hsl(188 100% 50%)'
+                      }}
                     >
+                      <div className="absolute top-1 left-1 w-3 h-3 rounded-full bg-[#00e0ff]"></div>
                       Cyan
                     </Button>
                     <Button 
-                      variant={primaryColor === 'purple' ? 'default' : 'outline'}
-                      className="w-24 bg-[#c58bff] text-black hover:text-black hover:bg-[#c58bff]/90"
+                      variant="outline"
+                      className={`w-24 relative font-medium border-2 ${primaryColor === 'purple' ? 'border-[#c58bff] shadow-[0_0_10px_rgba(197,139,255,0.5)]' : 'border-transparent'}`}
                       onClick={() => changePrimaryColor('purple')}
+                      style={{
+                        backgroundColor: primaryColor === 'purple' ? 'rgba(197, 139, 255, 0.2)' : 'transparent',
+                        color: 'hsl(265 89% 78%)'
+                      }}
                     >
+                      <div className="absolute top-1 left-1 w-3 h-3 rounded-full bg-[#c58bff]"></div>
                       Purple
                     </Button>
                     <Button 
-                      variant={primaryColor === 'blue' ? 'default' : 'outline'}
-                      className="w-24 bg-[#3b82f6] text-white hover:text-white hover:bg-[#3b82f6]/90"
+                      variant="outline"
+                      className={`w-24 relative font-medium border-2 ${primaryColor === 'blue' ? 'border-[#3b82f6] shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'border-transparent'}`}
                       onClick={() => changePrimaryColor('blue')}
+                      style={{
+                        backgroundColor: primaryColor === 'blue' ? 'rgba(59, 130, 246, 0.2)' : 'transparent',
+                        color: 'hsl(217 91% 60%)'
+                      }}
                     >
+                      <div className="absolute top-1 left-1 w-3 h-3 rounded-full bg-[#3b82f6]"></div>
                       Blue
                     </Button>
                     <Button 
-                      variant={primaryColor === 'green' ? 'default' : 'outline'}
-                      className="w-24 bg-[#22c55e] text-white hover:text-white hover:bg-[#22c55e]/90"
+                      variant="outline"
+                      className={`w-24 relative font-medium border-2 ${primaryColor === 'green' ? 'border-[#22c55e] shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'border-transparent'}`}
                       onClick={() => changePrimaryColor('green')}
+                      style={{
+                        backgroundColor: primaryColor === 'green' ? 'rgba(34, 197, 94, 0.2)' : 'transparent',
+                        color: 'hsl(142 71% 45%)'
+                      }}
                     >
+                      <div className="absolute top-1 left-1 w-3 h-3 rounded-full bg-[#22c55e]"></div>
                       Green
                     </Button>
                     <Button 
-                      variant={primaryColor === 'orange' ? 'default' : 'outline'}
-                      className="w-24 bg-[#ff780a] text-white hover:text-white hover:bg-[#ff780a]/90"
+                      variant="outline"
+                      className={`w-24 relative font-medium border-2 ${primaryColor === 'orange' ? 'border-[#ff780a] shadow-[0_0_10px_rgba(255,120,10,0.5)]' : 'border-transparent'}`}
                       onClick={() => changePrimaryColor('orange')}
+                      style={{
+                        backgroundColor: primaryColor === 'orange' ? 'rgba(255, 120, 10, 0.2)' : 'transparent',
+                        color: 'hsl(24 94% 50%)'
+                      }}
                     >
+                      <div className="absolute top-1 left-1 w-3 h-3 rounded-full bg-[#ff780a]"></div>
                       Orange
                     </Button>
                   </div>
