@@ -149,7 +149,7 @@ export default function SettingsPage() {
         </TabsList>
         
         <TabsContent value="account" className="space-y-6">
-          <div className="glassmorphic p-6 rounded-lg border border-slate-700/50">
+          <div className="glassmorphic p-6 rounded-lg border border-primary/20">
             <h2 className="text-xl font-orbitron mb-4">Account Settings</h2>
             
             <div className="space-y-4">
@@ -180,7 +180,7 @@ export default function SettingsPage() {
         </TabsContent>
         
         <TabsContent value="appearance" className="space-y-6">
-          <div className="glassmorphic p-6 rounded-lg border border-slate-700/50">
+          <div className="glassmorphic p-6 rounded-lg border border-primary/20">
             <h2 className="text-xl font-orbitron mb-4">Theme Settings</h2>
             
             <div className="space-y-6">
@@ -234,9 +234,9 @@ export default function SettingsPage() {
               
               <div className="pt-4">
                 <Label className="mb-2 block">Preview</Label>
-                <div className={`p-4 rounded-lg bg-[#001E26] border border-[#36F1CD]/50`}>
-                  <p className="text-[#36F1CD] font-medium mb-2">This is how your theme will look</p>
-                  <p className="text-sm text-slate-300">Text and UI elements will be styled according to your preferences.</p>
+                <div className="p-4 rounded-lg bg-background border border-primary/50">
+                  <p className="text-primary font-medium mb-2">This is how your theme will look</p>
+                  <p className="text-sm text-muted-foreground">Text and UI elements will be styled according to your preferences.</p>
                   <div className="flex gap-2 mt-3">
                     <Button size="sm">Primary Button</Button>
                     <Button size="sm" variant="outline">Secondary</Button>
@@ -248,7 +248,7 @@ export default function SettingsPage() {
         </TabsContent>
         
         <TabsContent value="assistant" className="space-y-6">
-          <div className="glassmorphic p-6 rounded-lg border border-slate-700/50">
+          <div className="glassmorphic p-6 rounded-lg border border-primary/20">
             <h2 className="text-xl font-orbitron mb-4">AI Assistant Settings</h2>
             
             <div className="space-y-6">
@@ -339,7 +339,7 @@ export default function SettingsPage() {
                 <div className="space-y-6 border border-slate-700/50 rounded-lg p-4">
                   {/* Dashboard Guides */}
                   <div>
-                    <h4 className="text-md font-medium text-[#36F1CD] mb-2">Dashboard Guides</h4>
+                    <h4 className="text-md font-medium text-primary mb-2">Dashboard Guides</h4>
                     <div className="space-y-3">
                       {['dashboard_welcome', 'stats_overview', 'mission_log', 'data_entry', 'recalibration_log'].map((id) => {
                         const guide = APP_GUIDES[id] || {
@@ -364,7 +364,7 @@ export default function SettingsPage() {
                   
                   {/* Codex Guides */}
                   <div>
-                    <h4 className="text-md font-medium text-[#36F1CD] mb-2">Codex Guides</h4>
+                    <h4 className="text-md font-medium text-primary mb-2">Codex Guides</h4>
                     <div className="space-y-3">
                       {['codex_welcome', 'mission_page_create', 'markdown_basics', 'wiki_links'].map((id) => {
                         const guide = APP_GUIDES[id] || {
@@ -389,7 +389,7 @@ export default function SettingsPage() {
                   
                   {/* AI Companion Guides */}
                   <div>
-                    <h4 className="text-md font-medium text-[#36F1CD] mb-2">AI Companion Guides</h4>
+                    <h4 className="text-md font-medium text-primary mb-2">AI Companion Guides</h4>
                     <div className="space-y-3">
                       {['ai_companion_intro', 'chat_session', 'companion_name'].map((id) => {
                         const guide = APP_GUIDES[id] || {
@@ -429,7 +429,7 @@ export default function SettingsPage() {
                           toast({
                             title: "Guides Enabled",
                             description: "All guides have been enabled.",
-                            className: "bg-[#001E26] border border-[#36F1CD] text-white",
+                            className: "bg-background border border-primary text-foreground",
                           });
                         }}
                       >
@@ -443,13 +443,13 @@ export default function SettingsPage() {
               <div className="pt-4">
                 <h3 className="text-lg font-medium mb-2">Additional Resources</h3>
                 <div className="space-y-2">
-                  <Button variant="link" className="text-[#36F1CD] hover:text-[#36F1CD]/80">
+                  <Button variant="link" className="text-primary hover:text-primary/80">
                     Documentation & User Guide
                   </Button>
-                  <Button variant="link" className="text-[#36F1CD] hover:text-[#36F1CD]/80">
+                  <Button variant="link" className="text-primary hover:text-primary/80">
                     Keyboard Shortcuts
                   </Button>
-                  <Button variant="link" className="text-[#36F1CD] hover:text-[#36F1CD]/80">
+                  <Button variant="link" className="text-primary hover:text-primary/80">
                     Frequently Asked Questions
                   </Button>
                 </div>
