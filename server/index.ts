@@ -2,20 +2,30 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import session from "express-session";
-import { db } from "./db";
+import connectPgSimple from "connect-pg-simple";
+import { db, pool } from "./db";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Session configuration
+// Initialize PostgreSQL session store
+const PgSession = connectPgSimple(session);
+
+// Session configuration with PostgreSQL store
 app.use(session({
+  store: new PgSession({
+    pool: pool,
+    tableName: 'session', // Default session table name
+    createTableIfMissing: true, // Auto-create the session table
+  }),
   secret: process.env.SESSION_SECRET || "lyfeos-secret-key",
   resave: false,
   saveUninitialized: false,
   cookie: { 
     secure: process.env.NODE_ENV === "production",
-    maxAge: 1000 * 60 * 60 * 24 * 7 // 1 week
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
+    sameSite: 'lax' // Help with CSRF protection
   }
 }));
 

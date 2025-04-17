@@ -23,21 +23,33 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, refreshAuth } = useAuth();
   const [, navigate] = useLocation();
   
   // Redirect to login if user is not authenticated and not loading
   useEffect(() => {
     if (!isAuthenticated && !isLoading) {
-      navigate("/login");
+      // Try to refresh auth one more time before redirecting
+      refreshAuth().then(() => {
+        if (!isAuthenticated) {
+          navigate("/login");
+        }
+      });
     }
-  }, [isAuthenticated, isLoading, navigate]);
+  }, [isAuthenticated, isLoading, navigate, refreshAuth]);
   
-  // Show empty div while checking authentication
+  // Show loading spinner while checking authentication
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-    </div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="relative">
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary/30 border-t-primary"></div>
+          <div className="absolute inset-0 flex items-center justify-center text-xs text-primary/70 font-mono">
+            LYFEOS
+          </div>
+        </div>
+      </div>
+    );
   }
   
   // If authenticated, render the children
