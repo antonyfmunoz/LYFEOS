@@ -139,6 +139,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return res.status(401).json({ error: "Not authenticated" });
   });
 
+  // USER PROFILE ROUTES
+  app.get("/api/users/:userId/profile", isOwner, async (req: Request, res: Response) => {
+    const userId = parseInt(req.params.userId);
+    try {
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Return user data without the password
+      const { password, ...userData } = user;
+      res.json(userData);
+    } catch (error) {
+      console.error("Error getting user profile:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.patch("/api/users/:userId/profile", isOwner, async (req: Request, res: Response) => {
+    const userId = parseInt(req.params.userId);
+    try {
+      // Ensure the password cannot be updated through this endpoint
+      const { displayName, bio, avatarColor, title } = req.body;
+      
+      const updatedUser = await storage.updateUser(userId, {
+        displayName,
+        bio,
+        avatarColor,
+        title
+      });
+      
+      // Return user data without the password
+      const { password, ...userData } = updatedUser;
+      res.json(userData);
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // USER STATS ROUTES
   app.get("/api/users/:userId/stats", isOwner, async (req: Request, res: Response) => {
     try {
