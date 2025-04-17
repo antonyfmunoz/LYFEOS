@@ -3,7 +3,8 @@ import {
   userStats, type UserStats, type InsertUserStats,
   quests, type Quest, type InsertQuest,
   aiMessages, type AIMessage, type InsertAIMessage,
-  calendarEvents, type CalendarEvent, type InsertCalendarEvent
+  calendarEvents, type CalendarEvent, type InsertCalendarEvent,
+  missionPages, type MissionPage, type InsertMissionPage
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -35,6 +36,14 @@ export interface IStorage {
   getEvent(id: number): Promise<CalendarEvent | undefined>;
   createEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
   updateEvent(id: number, event: Partial<InsertCalendarEvent>): Promise<CalendarEvent>;
+  
+  // Mission Page methods
+  getMissionPages(userId: number): Promise<MissionPage[]>;
+  getMissionPage(id: number): Promise<MissionPage | undefined>;
+  getMissionPageBySlug(slug: string): Promise<MissionPage | undefined>;
+  createMissionPage(page: InsertMissionPage): Promise<MissionPage>;
+  updateMissionPage(id: number, page: Partial<InsertMissionPage>): Promise<MissionPage>;
+  deleteMissionPage(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -200,6 +209,42 @@ export class DatabaseStorage implements IStorage {
       .where(eq(calendarEvents.id, id))
       .returning();
     return updatedEvent;
+  }
+  
+  // Mission Page methods
+  async getMissionPages(userId: number): Promise<MissionPage[]> {
+    return db.select().from(missionPages).where(eq(missionPages.userId, userId));
+  }
+  
+  async getMissionPage(id: number): Promise<MissionPage | undefined> {
+    const [page] = await db.select().from(missionPages).where(eq(missionPages.id, id));
+    return page;
+  }
+  
+  async getMissionPageBySlug(slug: string): Promise<MissionPage | undefined> {
+    const [page] = await db.select().from(missionPages).where(eq(missionPages.slug, slug));
+    return page;
+  }
+  
+  async createMissionPage(page: InsertMissionPage): Promise<MissionPage> {
+    const [newPage] = await db
+      .insert(missionPages)
+      .values(page)
+      .returning();
+    return newPage;
+  }
+  
+  async updateMissionPage(id: number, pageUpdate: Partial<InsertMissionPage>): Promise<MissionPage> {
+    const [updatedPage] = await db
+      .update(missionPages)
+      .set({ ...pageUpdate, updatedAt: new Date() })
+      .where(eq(missionPages.id, id))
+      .returning();
+    return updatedPage;
+  }
+  
+  async deleteMissionPage(id: number): Promise<void> {
+    await db.delete(missionPages).where(eq(missionPages.id, id));
   }
 }
 

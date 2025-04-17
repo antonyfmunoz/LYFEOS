@@ -60,6 +60,21 @@ export const calendarEvents = pgTable("calendar_events", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Mission Pages table
+export const missionPages = pgTable("mission_pages", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  slug: text("slug").notNull().unique(),
+  content: text("content").notNull(),
+  completed: boolean("completed").notNull().default(false),
+  xpValue: integer("xp_value").notNull().default(5),
+  tags: text("tags").array(),
+  eventId: integer("event_id").references(() => calendarEvents.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relationships
 export const usersRelations = relations(users, ({ one, many }) => ({
   stats: one(userStats, {
@@ -69,6 +84,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   quests: many(quests),
   messages: many(aiMessages),
   events: many(calendarEvents),
+  missionPages: many(missionPages),
 }));
 
 export const userStatsRelations = relations(userStats, ({ one }) => ({
@@ -92,10 +108,22 @@ export const aiMessagesRelations = relations(aiMessages, ({ one }) => ({
   }),
 }));
 
-export const calendarEventsRelations = relations(calendarEvents, ({ one }) => ({
+export const calendarEventsRelations = relations(calendarEvents, ({ one, many }) => ({
   user: one(users, {
     fields: [calendarEvents.userId],
     references: [users.id],
+  }),
+  missionPages: many(missionPages),
+}));
+
+export const missionPagesRelations = relations(missionPages, ({ one }) => ({
+  user: one(users, {
+    fields: [missionPages.userId],
+    references: [users.id],
+  }),
+  event: one(calendarEvents, {
+    fields: [missionPages.eventId],
+    references: [calendarEvents.id],
   }),
 }));
 
@@ -142,6 +170,17 @@ export const insertCalendarEventSchema = createInsertSchema(calendarEvents).pick
   category: true,
 });
 
+export const insertMissionPageSchema = createInsertSchema(missionPages).pick({
+  userId: true,
+  title: true,
+  slug: true,
+  content: true,
+  completed: true,
+  xpValue: true,
+  tags: true,
+  eventId: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -157,3 +196,6 @@ export type InsertAIMessage = z.infer<typeof insertAIMessageSchema>;
 
 export type CalendarEvent = typeof calendarEvents.$inferSelect;
 export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
+
+export type MissionPage = typeof missionPages.$inferSelect;
+export type InsertMissionPage = z.infer<typeof insertMissionPageSchema>;
