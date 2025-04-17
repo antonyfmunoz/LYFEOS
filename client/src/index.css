@@ -15,19 +15,19 @@
     --popover-foreground: 222 47% 11%;
     
     --primary: 188 100% 40%;
-    --primary-foreground: 0 0% 100%;
+    --primary-foreground: 222 47% 15%;
     
     --secondary: 262 50% 60%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary-foreground: 222 47% 15%;
     
     --accent: 338 70% 60%;
-    --accent-foreground: 0 0% 100%;
+    --accent-foreground: 222 47% 15%;
     
     --muted: 200 30% 85%;
     --muted-foreground: 220 20% 40%;
     
     --destructive: 350 90% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive-foreground: 222 47% 15%;
     
     --border: 188 100% 40% / 0.2;
     --input: 188 100% 40% / 0.2;
@@ -208,7 +208,7 @@
 /* Custom styling for time inputs */
 input[type="time"] {
   @apply bg-card border border-primary/30 text-foreground rounded-md py-2 px-3;
-  color-scheme: dark;
+  color-scheme: inherit;
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
@@ -216,12 +216,12 @@ input[type="time"] {
 
 /* Create a custom time selector */
 input[type="time"]::-webkit-datetime-edit {
-  @apply text-[#D6F4FF] font-mono;
+  @apply text-foreground font-mono;
   padding: 1px;
 }
 
 input[type="time"]::-webkit-datetime-edit-fields-wrapper {
-  @apply text-[#D6F4FF];
+  @apply text-foreground;
 }
 
 input[type="time"]::-webkit-datetime-edit-text {
@@ -231,24 +231,32 @@ input[type="time"]::-webkit-datetime-edit-text {
 input[type="time"]::-webkit-datetime-edit-hour-field,
 input[type="time"]::-webkit-datetime-edit-minute-field,
 input[type="time"]::-webkit-datetime-edit-ampm-field {
-  @apply bg-[#001C26] py-0.5 px-1 rounded border border-primary/10;
+  @apply bg-card py-0.5 px-1 rounded border border-primary/10;
 }
 
-input[type="time"]::-webkit-calendar-picker-indicator {
+/* Light mode time picker indicator */
+:root input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.3) sepia(100%) saturate(500%) hue-rotate(170deg);
+  opacity: 0.8;
+}
+
+/* Dark mode time picker indicator */
+.dark input[type="time"]::-webkit-calendar-picker-indicator {
   filter: invert(1) brightness(0.8) sepia(100%) saturate(500%) hue-rotate(170deg);
   opacity: 0.7;
 }
 
 input[type="time"]:focus {
-  @apply outline-none border-primary/50 shadow-[0_0_8px_rgba(0,224,255,0.3)];
+  @apply outline-none border-primary/50 shadow-[0_0_8px_var(--shadow-color)];
 }
 
 /* Custom time selector keyboard focus */
 input[type="time"]::-webkit-datetime-edit-hour-field:focus,
 input[type="time"]::-webkit-datetime-edit-minute-field:focus,
 input[type="time"]::-webkit-datetime-edit-ampm-field:focus {
-  @apply bg-primary/10 shadow-[0_0_5px_rgba(0,224,255,0.5)] border-primary/40;
-  color: #00E0FF;
+  @apply bg-primary/10 border-primary/40;
+  box-shadow: 0 0 5px var(--shadow-color);
+  @apply text-primary;
 }
 
 /* Style the time picker popup - as much as browsers allow */
@@ -257,8 +265,9 @@ input[type="time"]::-webkit-datetime-edit-ampm-field:focus {
 ::-webkit-calendar-picker,
 ::-webkit-datetime-picker,
 ::-webkit-time-picker-popup {
-  @apply bg-[#001824] border border-primary/30 shadow-[0_0_15px_rgba(0,224,255,0.2)];
-  color-scheme: dark;
+  @apply bg-card border border-primary/30;
+  box-shadow: 0 0 15px var(--shadow-color);
+  color-scheme: inherit;
 }
 
 /* Attempt to style specific browser time picker elements */
@@ -266,11 +275,16 @@ input[type="time"]::-webkit-datetime-edit-ampm-field:focus {
 ::-webkit-time-picker-minute-field,
 ::-webkit-time-picker-ampm-field,
 ::-webkit-time-picker-second-field {
-  @apply bg-[#002637] text-[#D6F4FF] border border-primary/20;
+  @apply bg-card text-foreground border border-primary/20;
 }
 
 /* Style for time picker (Chrome specific hacks) */
-input[type="time"]::-webkit-calendar-picker-indicator:hover {
+:root input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  filter: invert(0.3) brightness(1) sepia(100%) saturate(500%) hue-rotate(170deg);
+  opacity: 1;
+}
+
+.dark input[type="time"]::-webkit-calendar-picker-indicator:hover {
   filter: invert(1) brightness(1) sepia(100%) saturate(500%) hue-rotate(170deg);
   opacity: 1;
 }
@@ -282,11 +296,11 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   right: 0;
   height: 100%;
   width: 2.5rem;
-  background: linear-gradient(90deg, rgba(0,28,38,0) 0%, rgba(0,28,38,0.5) 100%);
+  @apply bg-gradient-to-r from-transparent to-card/50;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-left: 1px solid rgba(0,224,255,0.1);
+  border-left: 1px solid hsl(var(--primary) / 0.1);
 }
 
 /* For Firefox */
@@ -321,21 +335,21 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 
 /* Obsidian-like markdown styles */
 .obsidian-wikilink {
-  color: #00E0FF;
+  @apply text-primary;
   text-decoration: none;
-  border-bottom: 1px dashed #00E0FF;
+  border-bottom: 1px dashed hsl(var(--primary));
   padding: 0 2px;
   border-radius: 2px;
   transition: background-color 0.15s ease;
 }
 
 .obsidian-wikilink:hover {
-  background-color: rgba(0, 224, 255, 0.15);
+  background-color: hsl(var(--primary) / 0.15);
 }
 
 /* Highlight selection in markdown editor */
 .markdown-editor-highlight {
-  background-color: rgba(0, 224, 255, 0.1);
+  background-color: hsl(var(--primary) / 0.1);
   border-radius: 2px;
 }
 
@@ -351,15 +365,15 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   align-items: center;
   width: 1.2em;
   height: 1.2em;
-  border: 1px solid #00E0FF;
+  border: 1px solid hsl(var(--primary));
   border-radius: 0.2em;
   margin-right: 0.5em;
-  color: #00E0FF;
+  @apply text-primary;
   font-size: 0.8em;
 }
 
 .obsidian-checkbox.checked {
-  background-color: rgba(0, 224, 255, 0.2);
+  background-color: hsl(var(--primary) / 0.2);
 }
 
 /* In-editor Markdown styling */
@@ -370,7 +384,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .markdown-editor-content {
   min-height: inherit;
   padding: 0.75rem;
-  color: #D6F4FF;
+  @apply text-foreground;
   width: 100%;
   background: transparent;
   outline: none;
@@ -379,7 +393,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 
 .markdown-editor-content:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(0, 224, 255, 0.3);
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.3);
 }
 
 .markdown-editor-preview {
@@ -440,17 +454,17 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 }
 
 .prose code {
-  background-color: rgba(0, 224, 255, 0.1);
+  background-color: hsl(var(--primary) / 0.1);
   padding: 0.2em 0.4em;
   border-radius: 0.2em;
   font-family: 'JetBrains Mono', monospace;
 }
 
 .prose blockquote {
-  border-left: 3px solid #00E0FF;
+  border-left: 3px solid hsl(var(--primary));
   padding-left: 1em;
   margin-left: 0;
-  color: #7DAAB2;
+  @apply text-muted-foreground;
 }
 
 .prose table {
@@ -461,40 +475,40 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 
 .prose table th, 
 .prose table td {
-  border: 1px solid rgba(125, 170, 178, 0.3);
+  border: 1px solid hsl(var(--muted) / 0.5);
   padding: 0.5em;
 }
 
 .prose table th {
-  background-color: rgba(0, 224, 255, 0.1);
+  background-color: hsl(var(--primary) / 0.1);
 }
 
 /* Obsidian-style callouts */
 .prose .callout {
-  border-left: 4px solid #00E0FF;
-  background-color: rgba(0, 224, 255, 0.05);
+  border-left: 4px solid hsl(var(--primary));
+  background-color: hsl(var(--primary) / 0.05);
   padding: 1em;
   margin: 1em 0;
   border-radius: 0.3em;
 }
 
 .prose .callout-info {
-  border-color: #00E0FF;
+  border-color: hsl(var(--primary));
 }
 
 .prose .callout-warning {
-  border-color: #FFC107;
+  border-color: hsl(40 95% 50%); /* Amber */
 }
 
 .prose .callout-danger {
-  border-color: #F44336;
+  border-color: hsl(var(--destructive));
 }
 
 /* Code block syntax highlighting */
 .prose pre {
-  background-color: #001824;
+  background-color: hsl(var(--card));
   border-radius: 0.3em;
   padding: 1em;
-  border: 1px solid rgba(0, 224, 255, 0.2);
+  border: 1px solid hsl(var(--primary) / 0.2);
   overflow-x: auto;
 }
