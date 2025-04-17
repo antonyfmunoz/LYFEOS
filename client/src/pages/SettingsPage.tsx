@@ -40,7 +40,47 @@ export default function SettingsPage() {
   } = useOnboarding();
   const { theme, toggleTheme } = useTheme();
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>(theme === 'dark' ? 'dark' : 'light');
-  const [primaryColor, setPrimaryColor] = useState<string>('cyan');
+  
+  // Determine current primary color from CSS variables
+  const getCurrentPrimaryColor = (): string => {
+    // Map HSL values to color names
+    const hslToPrimaryColor: Record<string, string> = {
+      "188 100% 50%": "cyan",
+      "265 89% 78%": "purple",
+      "217 91% 60%": "blue",
+      "142 71% 45%": "green",
+      "24 94% 50%": "orange"
+    };
+    
+    // Get CSS variable value
+    const primaryHue = getComputedStyle(document.documentElement).getPropertyValue('--primary-hue').trim();
+    const primarySat = getComputedStyle(document.documentElement).getPropertyValue('--primary-saturation').trim();
+    const primaryLight = getComputedStyle(document.documentElement).getPropertyValue('--primary-lightness').trim();
+    
+    const primaryHsl = `${primaryHue} ${primarySat} ${primaryLight}`;
+    
+    // Try to find a matching color name
+    for (const [hsl, colorName] of Object.entries(hslToPrimaryColor)) {
+      if (primaryHsl.includes(hsl) || hsl.includes(primaryHsl)) {
+        return colorName;
+      }
+    }
+    
+    // Default to cyan if no match found
+    return "cyan";
+  };
+  
+  const [primaryColor, setPrimaryColor] = useState<string>(() => {
+    // We need to run this in useEffect since it accesses the DOM
+    if (typeof window !== 'undefined') {
+      try {
+        return getCurrentPrimaryColor();
+      } catch (e) {
+        return 'cyan';
+      }
+    }
+    return 'cyan';
+  });
   const [savedName, setSavedName] = useState<string>(username);
   const [savedAiName, setSavedAiName] = useState<string>(aiCompanionName);
   const [activeTab, setActiveTab] = useState<string>('account');
@@ -164,6 +204,21 @@ export default function SettingsPage() {
     setGuideEnabled(id, enabled);
   };
   
+  // Update primaryColor after component mounts
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const detectedColor = getCurrentPrimaryColor();
+        if (detectedColor !== primaryColor) {
+          setPrimaryColor(detectedColor);
+        }
+      } catch (e) {
+        console.error('Error detecting primary color:', e);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Removed welcome tooltip
 
   return (
