@@ -34,7 +34,7 @@ export function AIAgentFAB() {
       toast({
         title: "AI Companion Updated",
         description: `Your AI companion is now named ${nameInput}`,
-        className: "bg-[#001E26] border border-primary text-foreground",
+        className: "bg-background border border-primary text-foreground",
       });
     }
   };
@@ -60,7 +60,7 @@ export function AIAgentFAB() {
       toast({
         title: "AI Response",
         description: `${aiCompanionName} has replied to your message`,
-        className: "bg-[#001E26] border border-primary text-foreground",
+        className: "bg-background border border-primary text-foreground",
       });
     }, 2000);
   };
@@ -83,7 +83,7 @@ export function AIAgentFAB() {
               exit={{ opacity: 0, scale: 0.8, y: 20 }}
               className="absolute bottom-16 right-0 bg-background/90 backdrop-blur-lg border border-primary/40 rounded-lg shadow-xl w-[320px] overflow-hidden"
               style={{ 
-                boxShadow: "0 0 20px rgba(156, 106, 222, 0.2), 0 0 10px rgba(156, 106, 222, 0.1)" 
+                boxShadow: "0 0 20px rgba(34, 211, 238, 0.2), 0 0 10px rgba(34, 211, 238, 0.1)" 
               }}
             >
               <div className="p-4 bg-primary/10">
