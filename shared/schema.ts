@@ -8,6 +8,10 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  displayName: text("display_name"),
+  bio: text("bio"),
+  avatarColor: text("avatar_color").default("#00e0ff"), // Default primary cyan color
+  title: text("title").default("COMMANDER"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -132,6 +136,10 @@ export const missionPagesRelations = relations(missionPages, ({ one }) => ({
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
+  displayName: true,
+  bio: true,
+  avatarColor: true,
+  title: true,
 });
 
 export const insertUserStatsSchema = createInsertSchema(userStats).pick({
