@@ -14,6 +14,7 @@ import StatDetailPage from "./pages/StatDetailPage";
 import MissionDetailPage from "./pages/MissionDetailPage";
 import CalendarPage from "./pages/CalendarPage";
 import NotFound from "./pages/not-found";
+import EnhancedMissionPage from "./pages/EnhancedMissionPage";
 import MissionPage from "./components/markdown/MissionPage";
 import RootLayout from "./components/layout/RootLayout";
 import LoginPage from "./pages/LoginPage";
@@ -177,7 +178,7 @@ function Router() {
         <ProtectedRoute>
           <RootLayout>
             <div className="container max-w-4xl py-6">
-              <MissionPage />
+              <EnhancedMissionPage />
             </div>
           </RootLayout>
         </ProtectedRoute>
