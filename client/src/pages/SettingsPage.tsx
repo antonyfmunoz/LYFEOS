@@ -38,7 +38,7 @@ export default function SettingsPage() {
     dismissTooltip, 
     completeTooltip 
   } = useOnboarding();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, reloadWithTheme } = useTheme();
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>(theme === 'dark' ? 'dark' : 'light');
   
   // Simplified function to get current primary color - uses a simpler approach
@@ -176,8 +176,8 @@ export default function SettingsPage() {
           action: (
             <Button 
               onClick={() => {
-                // Add a random query param to force a hard reload bypassing the cache
-                window.location.href = `${window.location.pathname}?t=${Date.now()}`;
+                // Use our reloadWithTheme function from ThemeContext
+                reloadWithTheme();
               }}
               className="bg-primary text-primary-foreground"
             >
@@ -228,8 +228,8 @@ export default function SettingsPage() {
           action: (
             <Button 
               onClick={() => {
-                // Add a random query param to force a hard reload bypassing the cache
-                window.location.href = `${window.location.pathname}?t=${Date.now()}`;
+                // Use our reloadWithTheme function from ThemeContext
+                reloadWithTheme();
               }}
               className="bg-primary text-primary-foreground"
             >
