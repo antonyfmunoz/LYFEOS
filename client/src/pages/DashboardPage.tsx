@@ -123,7 +123,7 @@ function MissionTimeline({ events }: { events: CalendarEvent[] }) {
                       <div>
                         <div className="flex items-center">
                           <h3 className={`font-medium ${isCompleted ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{event.title}</h3>
-                          <div className="ml-2 px-2 py-0.5 bg-primary/10 rounded text-xs font-mono text-[#36F1CD]">
+                          <div className="ml-2 px-2 py-0.5 bg-primary/10 rounded text-xs font-mono text-primary">
                             +15 XP
                           </div>
                         </div>
@@ -430,11 +430,11 @@ export default function DashboardPage() {
   ) => (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
-        <label className="text-sm flex items-center text-[#7DAAB2]">
+        <label className="text-sm flex items-center text-muted-foreground">
           {icon}
           <span className="ml-2">{label}</span>
         </label>
-        <span className="text-[#D6F4FF] font-mono">{state}/10</span>
+        <span className="text-foreground font-mono">{state}/10</span>
       </div>
       <div className="flex gap-0.5">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
@@ -446,7 +446,7 @@ export default function DashboardPage() {
             className={`p-0 w-7 h-7 rounded-md ${
               num === state
                 ? "bg-primary/20 text-primary border border-primary/50"
-                : "text-[#7DAAB2] hover:bg-primary/10 hover:text-primary"
+                : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
             }`}
             onClick={() => onChange(num)}
           >
@@ -468,16 +468,16 @@ export default function DashboardPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
             <div className="flex items-center">
               <CalendarDays className="h-5 w-5 text-primary mr-2" />
-              <h1 className="text-xl sm:text-2xl font-orbitron text-[#D6F4FF]">{formattedDate}</h1>
+              <h1 className="text-xl sm:text-2xl font-orbitron text-foreground">{formattedDate}</h1>
             </div>
             <div className="flex items-center gap-2 mt-2 sm:mt-0">
-              <Clock className="h-4 w-4 text-[#7DAAB2] mr-2" />
-              <span className="text-[#7DAAB2] font-mono">{formattedTime}</span>
+              <Clock className="h-4 w-4 text-muted-foreground mr-2" />
+              <span className="text-muted-foreground font-mono">{formattedTime}</span>
               
               <select 
                 value={timezone}
                 onChange={(e) => setTimezone(e.target.value)}
-                className="ml-3 bg-[#00141A] border border-primary/30 rounded text-xs text-[#7DAAB2] p-1"
+                className="ml-3 bg-card/70 border border-primary/30 rounded text-xs text-muted-foreground p-1"
               >
                 {[
                   { label: 'EST', value: 'America/New_York' },
@@ -631,14 +631,14 @@ export default function DashboardPage() {
           <div className="space-y-4">
             {/* Sleep Tracker Section */}
             <div className="mb-3">
-              <h3 className="text-sm flex items-center text-[#7DAAB2] mb-3 font-bold">
+              <h3 className="text-sm flex items-center text-muted-foreground mb-3 font-bold">
                 <MoonStar className="h-4 w-4 text-primary mr-2" />
                 Sleep Tracker
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
+                  <label className="text-sm flex items-center text-muted-foreground">
                     <AlarmClock className="h-4 w-4 text-primary" />
                     <span className="ml-2">Wake Up Time</span>
                   </label>
@@ -676,13 +676,13 @@ export default function DashboardPage() {
             {/* State ratings - in a row for desktop, stacked for mobile */}
             <div className="border-t border-primary/10 pt-4 mb-2">
               <div className="flex items-center justify-between text-sm mb-3">
-                <label className="flex items-center text-[#7DAAB2] font-bold">
+                <label className="flex items-center text-muted-foreground font-bold">
                   <Brain className="h-4 w-4 text-primary" />
                   <span className="ml-2">Energy Recap</span>
                 </label>
                 <div className="flex items-center">
-                  <span className="text-[#7DAAB2] mr-2">Daily Total:</span>
-                  <span className="text-[#D6F4FF] font-mono">
+                  <span className="text-muted-foreground mr-2">Daily Total:</span>
+                  <span className="text-foreground font-mono">
                     {Math.round(((reflection.mentalState + reflection.physicalState + reflection.emotionalState) / 30) * 100)}%
                   </span>
                 </div>
@@ -713,7 +713,7 @@ export default function DashboardPage() {
             </div>
             
             <div className="border-t border-primary/10 pt-4">
-              <h3 className="text-sm flex items-center text-[#7DAAB2] mb-3 font-bold">
+              <h3 className="text-sm flex items-center text-muted-foreground mb-3 font-bold">
                 <TargetIcon className="h-4 w-4 text-primary mr-2" />
                 Intention Setter
               </h3>
