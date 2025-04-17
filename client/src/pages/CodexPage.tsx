@@ -56,7 +56,7 @@ export default function ChronilogPage() {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        {codexCategories.map((category) => (
+        {chronilogCategories.map((category) => (
           <div 
             key={category.id}
             className="glassmorphic rounded-xl p-6 neon-border hover:shadow-[0_0_10px_rgba(0,224,255,0.5)] transition-shadow duration-300 cursor-pointer"

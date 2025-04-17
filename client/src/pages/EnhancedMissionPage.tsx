@@ -110,7 +110,7 @@ export default function EnhancedMissionPage() {
   const handleDelete = () => {
     deleteMissionPage(missionPage.id);
     setDeleteDialogOpen(false);
-    navigate('/codex');
+    navigate('/chronilog');
   };
   
   // Handle tags
@@ -140,7 +140,7 @@ export default function EnhancedMissionPage() {
           variant="ghost" 
           size="sm" 
           className="rounded-full w-8 h-8 p-0" 
-          onClick={() => navigate('/codex')}
+          onClick={() => navigate('/chronilog')}
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
