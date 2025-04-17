@@ -3,6 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
 import bcrypt from "bcrypt";
+import fs from 'fs';
+import path from 'path';
 import { 
   insertUserSchema, 
   insertQuestSchema, 
@@ -522,12 +524,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Theme settings route
   app.post("/api/settings/theme", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const fs = require('fs');
-      const path = require('path');
-      
       // Read the current theme.json
       const themePath = path.join(process.cwd(), 'theme.json');
-      const themeData = JSON.parse(fs.readFileSync(themePath, 'utf8'));
+      const themeData = JSON.parse(await fs.promises.readFile(themePath, 'utf8'));
       
       // Update the primary color if provided
       if (req.body.primary) {
@@ -540,7 +539,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Write the updated theme back to the file
-      fs.writeFileSync(themePath, JSON.stringify(themeData, null, 2));
+      await fs.promises.writeFile(themePath, JSON.stringify(themeData, null, 2));
       
       return res.status(200).json({ 
         message: "Theme updated successfully",
