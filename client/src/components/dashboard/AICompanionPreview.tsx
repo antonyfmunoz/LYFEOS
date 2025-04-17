@@ -43,7 +43,7 @@ export default function AICompanionPreview() {
         <input 
           type="text" 
           placeholder="Ask your AI companion..." 
-          className="bg-transparent border-none outline-none flex-grow text-sm text-[#D6F4FF] placeholder:text-[#7DAAB2]"
+          className="bg-transparent border-none outline-none flex-grow text-sm text-foreground placeholder:text-muted-foreground"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
         />

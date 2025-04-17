@@ -95,7 +95,7 @@ function MissionTimeline({ events }: { events: CalendarEvent[] }) {
                 
                 {/* Time Label */}
                 <div className="absolute left-[-130px] top-1 w-24 text-right">
-                  <span className="text-xs font-mono text-[#7DAAB2]">{event.startTime}</span>
+                  <span className="text-xs font-mono text-muted-foreground">{event.startTime}</span>
                 </div>
                 
                 {/* Mission Card */}
@@ -122,7 +122,7 @@ function MissionTimeline({ events }: { events: CalendarEvent[] }) {
                       
                       <div>
                         <div className="flex items-center">
-                          <h3 className={`font-medium ${isCompleted ? 'line-through text-[#7DAAB2]' : 'text-[#D6F4FF]'}`}>{event.title}</h3>
+                          <h3 className={`font-medium ${isCompleted ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{event.title}</h3>
                           <div className="ml-2 px-2 py-0.5 bg-primary/10 rounded text-xs font-mono text-[#36F1CD]">
                             +15 XP
                           </div>

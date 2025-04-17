@@ -582,7 +582,7 @@ export default function AIPage() {
                 type="submit"
                 size="sm"
                 disabled={!inputText.trim()}
-                className="absolute right-2 bottom-2 h-9 w-9 p-0 rounded-lg bg-primary/50 text-white hover:bg-primary/70 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="absolute right-2 bottom-2 h-9 w-9 p-0 rounded-lg bg-primary/50 text-primary-foreground hover:bg-primary/70 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <Send className="h-4 w-4" />
               </Button>
