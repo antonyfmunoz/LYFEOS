@@ -1,6 +1,8 @@
-import { Route, Switch } from "wouter";
+import React, { useEffect } from "react";
+import { Route, Switch, useLocation } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
 import { LYFEOSProvider } from "./lib/context";
+import { AuthProvider, useAuth } from "./lib/authContext";
 import DashboardPage from "./pages/DashboardPage";
 import QuestsPage from "./pages/QuestsPage";
 import AIPage from "./pages/AIPage";
@@ -14,103 +16,180 @@ import CalendarPage from "./pages/CalendarPage";
 import NotFound from "./pages/not-found";
 import MissionPage from "./components/markdown/MissionPage";
 import RootLayout from "./components/layout/RootLayout";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+  const [, navigate] = useLocation();
+  
+  // Redirect to login if user is not authenticated and not loading
+  useEffect(() => {
+    if (!isAuthenticated && !isLoading) {
+      navigate("/login");
+    }
+  }, [isAuthenticated, isLoading, navigate]);
+  
+  // Show empty div while checking authentication
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+    </div>;
+  }
+  
+  // If authenticated, render the children
+  return isAuthenticated ? <>{children}</> : null;
+}
 
 function Router() {
+  const { isAuthenticated } = useAuth();
+  const [, navigate] = useLocation();
+  
+  // Redirect from root to dashboard if authenticated, or to login if not
+  useEffect(() => {
+    if (window.location.pathname === '/') {
+      if (isAuthenticated) {
+        navigate('/dashboard');
+      } else {
+        navigate('/login');
+      }
+    }
+  }, [isAuthenticated, navigate]);
+
   return (
     <Switch>
-      <Route path="/onboarding" component={OnboardingPage} />
+      {/* Public routes */}
+      <Route path="/login" component={LoginPage} />
+      <Route path="/register" component={RegisterPage} />
+      
+      {/* Protected routes with authentication */}
+      <Route path="/onboarding">
+        <ProtectedRoute>
+          <OnboardingPage />
+        </ProtectedRoute>
+      </Route>
       
       {/* Wrap main app routes in the layout component */}
       <Route path="/dashboard">
-        <RootLayout>
-          <DashboardPage />
-        </RootLayout>
+        <ProtectedRoute>
+          <RootLayout>
+            <DashboardPage />
+          </RootLayout>
+        </ProtectedRoute>
       </Route>
       
       <Route path="/quests">
-        <RootLayout>
-          <QuestsPage />
-        </RootLayout>
+        <ProtectedRoute>
+          <RootLayout>
+            <QuestsPage />
+          </RootLayout>
+        </ProtectedRoute>
       </Route>
       
       <Route path="/ai">
-        <RootLayout>
-          <AIPage />
-        </RootLayout>
+        <ProtectedRoute>
+          <RootLayout>
+            <AIPage />
+          </RootLayout>
+        </ProtectedRoute>
       </Route>
       
       <Route path="/codex">
-        <RootLayout>
-          <CodexPage />
-        </RootLayout>
+        <ProtectedRoute>
+          <RootLayout>
+            <CodexPage />
+          </RootLayout>
+        </ProtectedRoute>
       </Route>
       
       <Route path="/systems">
-        <RootLayout>
-          <SystemsPage />
-        </RootLayout>
+        <ProtectedRoute>
+          <RootLayout>
+            <SystemsPage />
+          </RootLayout>
+        </ProtectedRoute>
       </Route>
       
       <Route path="/calendar">
-        <RootLayout>
-          <CalendarPage />
-        </RootLayout>
+        <ProtectedRoute>
+          <RootLayout>
+            <CalendarPage />
+          </RootLayout>
+        </ProtectedRoute>
       </Route>
       
       <Route path="/attention">
-        <RootLayout>
-          <StatDetailPage stat="attention" />
-        </RootLayout>
+        <ProtectedRoute>
+          <RootLayout>
+            <StatDetailPage stat="attention" />
+          </RootLayout>
+        </ProtectedRoute>
       </Route>
       
       <Route path="/time">
-        <RootLayout>
-          <StatDetailPage stat="time" />
-        </RootLayout>
+        <ProtectedRoute>
+          <RootLayout>
+            <StatDetailPage stat="time" />
+          </RootLayout>
+        </ProtectedRoute>
       </Route>
       
       <Route path="/energy">
-        <RootLayout>
-          <StatDetailPage stat="energy" />
-        </RootLayout>
+        <ProtectedRoute>
+          <RootLayout>
+            <StatDetailPage stat="energy" />
+          </RootLayout>
+        </ProtectedRoute>
       </Route>
       
       <Route path="/health">
-        <RootLayout>
-          <StatDetailPage stat="health" />
-        </RootLayout>
+        <ProtectedRoute>
+          <RootLayout>
+            <StatDetailPage stat="health" />
+          </RootLayout>
+        </ProtectedRoute>
       </Route>
       
       <Route path="/experience">
-        <RootLayout>
-          <StatDetailPage stat="experience" />
-        </RootLayout>
+        <ProtectedRoute>
+          <RootLayout>
+            <StatDetailPage stat="experience" />
+          </RootLayout>
+        </ProtectedRoute>
       </Route>
       
       <Route path="/profile">
-        <ProfilePage />
+        <ProtectedRoute>
+          <ProfilePage />
+        </ProtectedRoute>
       </Route>
       
       <Route path="/mission/:missionId">
-        <RootLayout>
-          <MissionDetailPage />
-        </RootLayout>
+        <ProtectedRoute>
+          <RootLayout>
+            <MissionDetailPage />
+          </RootLayout>
+        </ProtectedRoute>
       </Route>
       
       {/* Mission Page route with slug */}
       <Route path="/mission-page/:slug">
-        <RootLayout>
-          <div className="container max-w-4xl py-6">
-            <MissionPage />
-          </div>
-        </RootLayout>
+        <ProtectedRoute>
+          <RootLayout>
+            <div className="container max-w-4xl py-6">
+              <MissionPage />
+            </div>
+          </RootLayout>
+        </ProtectedRoute>
       </Route>
       
-      {/* Redirect to dashboard from root */}
+      {/* Redirect to dashboard if authenticated, or login if not */}
       <Route path="/">
-        <RootLayout>
-          <DashboardPage />
-        </RootLayout>
+        {isAuthenticated ? (
+          <RootLayout>
+            <DashboardPage />
+          </RootLayout>
+        ) : <LoginPage />}
       </Route>
       
       {/* Fallback to 404 */}
@@ -121,10 +200,12 @@ function Router() {
 
 function App() {
   return (
-    <LYFEOSProvider>
-      <Router />
-      <Toaster />
-    </LYFEOSProvider>
+    <AuthProvider>
+      <LYFEOSProvider>
+        <Router />
+        <Toaster />
+      </LYFEOSProvider>
+    </AuthProvider>
   );
 }
 
