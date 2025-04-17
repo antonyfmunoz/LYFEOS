@@ -55,7 +55,7 @@ export default function SettingsPage() {
       toast({
         title: "Username Updated",
         description: "Your username has been updated successfully.",
-        className: "bg-[#001E26] border border-[#36F1CD] text-white",
+        className: "bg-background border border-primary text-foreground",
       });
     }
   };
@@ -71,7 +71,7 @@ export default function SettingsPage() {
       toast({
         title: "AI Companion Name Updated",
         description: `Your AI companion is now named ${savedAiName}.`,
-        className: "bg-[#001E26] border border-[#36F1CD] text-white",
+        className: "bg-background border border-primary text-foreground",
       });
     }
   };
@@ -87,7 +87,7 @@ export default function SettingsPage() {
     toast({
       title: "Theme Updated",
       description: `Theme changed to ${themeName}`,
-      className: "bg-[#001E26] border border-[#36F1CD] text-white",
+      className: "bg-background border border-primary text-foreground",
     });
   };
   
@@ -98,7 +98,7 @@ export default function SettingsPage() {
     toast({
       title: "Color Theme Updated",
       description: `Primary color changed to ${value}`,
-      className: "bg-[#001E26] border border-[#36F1CD] text-white",
+      className: "bg-background border border-primary text-foreground",
     });
   };
   
@@ -108,7 +108,7 @@ export default function SettingsPage() {
     toast({
       title: "Onboarding Reset",
       description: "Onboarding tutorial has been reset. Refresh to start the tutorial again.",
-      className: "bg-[#001E26] border border-[#36F1CD] text-white",
+      className: "bg-background border border-primary text-foreground",
     });
   };
   
