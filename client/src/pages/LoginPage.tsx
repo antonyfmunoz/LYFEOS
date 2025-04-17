@@ -18,36 +18,36 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
       <div className="text-center mb-8">
-        <h1 className="text-4xl text-primary font-bold mb-2">LYFE<span className="text-foreground">OS</span></h1>
-        <p className="text-muted-foreground">Your personal life operating system</p>
+        <h1 className="text-4xl text-primary font-orbitron mb-2">LYFE<span className="text-white">OS</span></h1>
+        <p className="text-[#7DAAB2]">Your personal life operating system</p>
       </div>
       
-      <div className="w-full max-w-md rounded-xl p-6 border border-primary/40 shadow-lg bg-card text-card-foreground"
-           style={{ boxShadow: "0 0 20px rgba(var(--primary), 0.1)" }}>
-        <h2 className="text-xl font-bold text-center mb-6 text-foreground">Login to LYFEOS</h2>
+      <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-primary/40 shadow-lg"
+           style={{ boxShadow: "0 0 20px rgba(34, 211, 238, 0.1)" }}>
+        <h2 className="text-xl font-orbitron text-center mb-6">Login to LYFEOS</h2>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label htmlFor="username" className="block text-sm font-medium text-muted-foreground">USERNAME</label>
+            <label htmlFor="username" className="block text-sm text-[#7DAAB2]">USERNAME</label>
             <Input 
               type="text" 
               id="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full bg-card/50 border-primary/30 rounded-md p-3 text-foreground focus-visible:ring-primary/50"
+              className="w-full bg-transparent border-primary/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-primary/30"
               placeholder="Enter your username"
               required
             />
           </div>
           
           <div className="space-y-2">
-            <label htmlFor="password" className="block text-sm font-medium text-muted-foreground">PASSWORD</label>
+            <label htmlFor="password" className="block text-sm text-[#7DAAB2]">PASSWORD</label>
             <Input 
               type="password" 
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-card/50 border-primary/30 rounded-md p-3 text-foreground focus-visible:ring-primary/50"
+              className="w-full bg-transparent border-primary/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-primary/30"
               placeholder="Enter your password"
               required
             />
@@ -55,7 +55,7 @@ export default function LoginPage() {
           
           <Button 
             type="submit"
-            className="w-full bg-primary hover:bg-primary/80 text-primary-foreground transition-colors mt-4 font-medium"
+            className="w-full bg-primary hover:bg-primary/80 text-primary-foreground transition mt-4"
             disabled={isLoading}
           >
             {isLoading ? (
@@ -70,9 +70,9 @@ export default function LoginPage() {
         </form>
         
         <div className="mt-6 text-center">
-          <p className="text-muted-foreground">
+          <p className="text-[#7DAAB2]">
             Don't have an account?{" "}
-            <Link href="/register" className="text-primary hover:text-primary/80 transition-colors font-medium">
+            <Link href="/register" className="text-primary hover:text-primary/80 transition">
               Register
             </Link>
           </p>
