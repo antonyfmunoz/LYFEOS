@@ -197,7 +197,7 @@ export default function AIPage() {
                     setNameInput(aiCompanionName);
                     setIsEditingName(false);
                   }}
-                  className="h-7 w-7 p-0 text-[#7DAAB2] hover:bg-red-500/20 ml-1"
+                  className="h-7 w-7 p-0 text-muted-foreground hover:bg-red-500/20 ml-1"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -268,7 +268,7 @@ export default function AIPage() {
                   ref={newChatInputRef}
                   value={newChatTitle}
                   onChange={(e) => setNewChatTitle(e.target.value)}
-                  className="h-8 text-sm bg-slate-700/30 border-primary/30 focus-visible:ring-primary/30 mr-2"
+                  className="h-8 text-sm bg-card/30 border-primary/30 focus-visible:ring-primary/30 mr-2"
                   placeholder="New chat name"
                   maxLength={30}
                   onKeyDown={(e) => {
@@ -297,7 +297,7 @@ export default function AIPage() {
                     setIsCreatingChat(false);
                     setNewChatTitle("");
                   }}
-                  className="h-7 w-7 p-0 text-[#7DAAB2] hover:bg-red-500/20 ml-1"
+                  className="h-7 w-7 p-0 text-muted-foreground hover:bg-red-500/20 ml-1"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -313,7 +313,7 @@ export default function AIPage() {
                         ref={editChatInputRef}
                         value={chatTitleInput}
                         onChange={(e) => setChatTitleInput(e.target.value)}
-                        className="h-8 text-sm bg-slate-700/30 border-primary/30 focus-visible:ring-primary/30 mr-2"
+                        className="h-8 text-sm bg-card/30 border-primary/30 focus-visible:ring-primary/30 mr-2"
                         placeholder="Chat name"
                         maxLength={30}
                         onKeyDown={(e) => {
@@ -344,7 +344,7 @@ export default function AIPage() {
                           setEditingChatId("");
                           setChatTitleInput("");
                         }}
-                        className="h-7 w-7 p-0 text-[#7DAAB2] hover:bg-red-500/20 ml-1"
+                        className="h-7 w-7 p-0 text-muted-foreground hover:bg-red-500/20 ml-1"
                       >
                         <X className="h-4 w-4" />
                       </Button>
