@@ -12,7 +12,10 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import {
-  // Removed tooltip imports
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
 } from '@/components/ui/tooltip';
 import {
   Calendar,
@@ -139,15 +142,24 @@ export default function EnhancedMissionPage() {
         </Button>
         
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className={`border-cyan-500/30 text-[#36F1CD] ${missionPage.completed ? 'bg-cyan-950/20' : ''}`}
-            onClick={toggleCompletion}
-          >
-            <Award className="h-4 w-4 mr-1" />
-            {missionPage.completed ? 'Completed' : 'Mark Complete'} ({xpValue} XP)
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className={`border-cyan-500/30 text-[#36F1CD] ${missionPage.completed ? 'bg-cyan-950/20' : ''}`}
+                  onClick={toggleCompletion}
+                >
+                  <Award className="h-4 w-4 mr-1" />
+                  {missionPage.completed ? 'Completed' : 'Mark Complete'}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Earns {xpValue} XP when completed</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           
           <Button
             variant="destructive"

@@ -3,7 +3,6 @@ import { Route, Switch, useLocation } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
 import { LYFEOSProvider } from "./lib/context";
 import { AuthProvider, useAuth } from "./lib/authContext";
-import { OnboardingProvider } from "./lib/onboardingContext";
 import DashboardPage from "./pages/DashboardPage";
 import QuestsPage from "./pages/QuestsPage";
 import AIPage from "./pages/AIPage";
@@ -14,7 +13,6 @@ import ProfilePage from "./pages/ProfilePage";
 import StatDetailPage from "./pages/StatDetailPage";
 import MissionDetailPage from "./pages/MissionDetailPage";
 import CalendarPage from "./pages/CalendarPage";
-import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/not-found";
 import EnhancedMissionPage from "./pages/EnhancedMissionPage";
 import MissionPage from "./components/markdown/MissionPage";
@@ -23,33 +21,21 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, refreshAuth } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const [, navigate] = useLocation();
   
   // Redirect to login if user is not authenticated and not loading
   useEffect(() => {
     if (!isAuthenticated && !isLoading) {
-      // Try to refresh auth one more time before redirecting
-      refreshAuth().then(() => {
-        if (!isAuthenticated) {
-          navigate("/login");
-        }
-      });
+      navigate("/login");
     }
-  }, [isAuthenticated, isLoading, navigate, refreshAuth]);
+  }, [isAuthenticated, isLoading, navigate]);
   
-  // Show loading spinner while checking authentication
+  // Show empty div while checking authentication
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="relative">
-          <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary/30 border-t-primary"></div>
-          <div className="absolute inset-0 flex items-center justify-center text-xs text-primary/70 font-mono">
-            LYFEOS
-          </div>
-        </div>
-      </div>
-    );
+    return <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+    </div>;
   }
   
   // If authenticated, render the children
@@ -179,14 +165,6 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
-      <Route path="/settings">
-        <ProtectedRoute>
-          <RootLayout>
-            <SettingsPage />
-          </RootLayout>
-        </ProtectedRoute>
-      </Route>
-      
       <Route path="/mission/:missionId">
         <ProtectedRoute>
           <RootLayout>
@@ -225,10 +203,8 @@ function App() {
   return (
     <AuthProvider>
       <LYFEOSProvider>
-        <OnboardingProvider>
-          <Router />
-          <Toaster />
-        </OnboardingProvider>
+        <Router />
+        <Toaster />
       </LYFEOSProvider>
     </AuthProvider>
   );

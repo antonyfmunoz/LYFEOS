@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLYFEOS } from "@/lib/context";
-import { useOnboarding, APP_GUIDES, OnboardingStep } from "@/lib/onboardingContext";
 import { AIAgentFAB } from "@/components/ui/ai-agent-fab";
-import { NovaGuideTooltip, SystemGuideTooltip } from "@/components/ui/guide-tooltip";
 import { cn } from "@/lib/utils";
 import {
   Brain,
@@ -200,7 +198,6 @@ const getEndTime = (startTime: string, duration: string): string => {
 
 export default function DashboardPage() {
   const { stats, username, events } = useLYFEOS();
-  const { dismissTooltip, completeTooltip, enabledGuides, showGuideToast } = useOnboarding();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentTime, setCurrentTime] = useState(new Date());
   const [totalXpEarned, setTotalXpEarned] = useState(0);
@@ -457,8 +454,6 @@ export default function DashboardPage() {
     </div>
   );
   
-  // Welcome tooltip removed
-
   return (
     <div className="dashboard-container">
       <AIAgentFAB />
@@ -521,13 +516,6 @@ export default function DashboardPage() {
       
       {/* Mission Log Panel */}
       <section className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-orbitron flex items-center">
-            <ListChecks className="h-5 w-5 text-primary mr-2" />
-            <span>Mission Log</span>
-          </h2>
-        </div>
-        
         <EnhancedMissionWidget 
           events={events} 
           maxHeight="96"

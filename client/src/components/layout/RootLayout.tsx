@@ -123,7 +123,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                       Profile
                     </Link>
                     <Link 
-                      href="/settings"
+                      href="/systems"
                       onClick={closeDropdown}
                       className="flex w-full items-center px-4 py-2 text-sm hover:bg-[#36F1CD]/10 rounded-md transition"
                       role="menuitem"

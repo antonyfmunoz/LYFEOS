@@ -195,7 +195,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<AIMessage[]>(initialMessages);
   const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
   const [missionPages, setMissionPages] = useState<MissionPage[]>(initialMissionPages);
-  const [username, setUsername] = useState<string>("YourUsername");
+  const [username, setUsername] = useState<string>("Alex Chen");
   const [aiCompanionName, setAICompanionName] = useState<string>("Nova");
   const [chatSessions, setChatSessions] = useState<ChatSession[]>(initialChatSessions);
   const [activeChatSessionId, setActiveChatSessionId] = useState<string>(initialChatSessions[0].id);
