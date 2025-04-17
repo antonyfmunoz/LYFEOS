@@ -3,14 +3,14 @@ import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { FileText, Clock, Tag, Calendar, Award } from "lucide-react";
 
-export default function CodexPage() {
+export default function ChronilogPage() {
   // Set the page title
-  usePageTitle('Codex');
+  usePageTitle('Chronilog');
   
   const { missionPages } = useLYFEOS();
   const [, navigate] = useLocation();
   
-  const codexCategories = [
+  const chronilogCategories = [
     { 
       id: "missions", 
       title: "Mission Logs", 
@@ -51,8 +51,8 @@ export default function CodexPage() {
   return (
     <>
       <div className="mb-6">
-        <h1 className="text-2xl font-orbitron mb-1">Codex</h1>
-        <p className="text-[#7DAAB2]">Your personal repository of knowledge, reflections, and growth.</p>
+        <h1 className="text-2xl font-orbitron mb-1">Chronilog</h1>
+        <p className="text-[#7DAAB2]">Your personal timeline of knowledge, reflections, and growth logs.</p>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">

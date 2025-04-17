@@ -6,7 +6,7 @@ import { AuthProvider, useAuth } from "./lib/authContext";
 import DashboardPage from "./pages/DashboardPage";
 import QuestsPage from "./pages/QuestsPage";
 import AIPage from "./pages/AIPage";
-import CodexPage from "./pages/CodexPage";
+import ChronilogPage from "./pages/CodexPage"; // Renamed component import but keeping the same file for now
 import SystemsPage from "./pages/SystemsPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -95,10 +95,19 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
+      <Route path="/chronilog">
+        <ProtectedRoute>
+          <RootLayout>
+            <ChronilogPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      {/* Keep old route for compatibility, redirects to new route */}
       <Route path="/codex">
         <ProtectedRoute>
           <RootLayout>
-            <CodexPage />
+            <ChronilogPage />
           </RootLayout>
         </ProtectedRoute>
       </Route>
