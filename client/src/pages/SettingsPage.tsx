@@ -271,7 +271,7 @@ export default function SettingsPage() {
                   <Switch id="voice" />
                   <Label htmlFor="voice" className="cursor-pointer">Enable Voice Interaction</Label>
                 </div>
-                <p className="text-xs text-slate-400 mt-1">Allow your AI companion to speak responses (coming soon)</p>
+                <p className="text-xs text-muted-foreground mt-1">Allow your AI companion to speak responses (coming soon)</p>
               </div>
               
               <div className="space-y-2 pt-4">
@@ -280,7 +280,7 @@ export default function SettingsPage() {
                   <Switch id="memory" defaultChecked />
                   <Label htmlFor="memory" className="cursor-pointer">Remember Chat History</Label>
                 </div>
-                <p className="text-xs text-slate-400 mt-1">Your AI companion will remember previous conversations</p>
+                <p className="text-xs text-muted-foreground mt-1">Your AI companion will remember previous conversations</p>
               </div>
               
               <div className="pt-6">
@@ -291,14 +291,14 @@ export default function SettingsPage() {
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Reset AI Memory
                 </Button>
-                <p className="text-xs text-slate-400 mt-1">This will clear all chat history and AI memory</p>
+                <p className="text-xs text-muted-foreground mt-1">This will clear all chat history and AI memory</p>
               </div>
             </div>
           </div>
         </TabsContent>
         
         <TabsContent value="help" className="space-y-6">
-          <div className="glassmorphic p-6 rounded-lg border border-slate-700/50">
+          <div className="glassmorphic p-6 rounded-lg border border-primary/20">
             <h2 className="text-xl font-orbitron mb-4">Help & Tutorials</h2>
             
             <div className="space-y-6">
@@ -336,7 +336,7 @@ export default function SettingsPage() {
               
               <div className="pt-4">
                 <h3 className="text-lg font-medium mb-2">Guide Settings</h3>
-                <div className="space-y-6 border border-slate-700/50 rounded-lg p-4">
+                <div className="space-y-6 border border-primary/20 rounded-lg p-4">
                   {/* Dashboard Guides */}
                   <div>
                     <h4 className="text-md font-medium text-primary mb-2">Dashboard Guides</h4>
@@ -413,7 +413,7 @@ export default function SettingsPage() {
                   </div>
                   
                   {/* Additional Settings */}
-                  <div className="pt-4 border-t border-slate-700/20">
+                  <div className="pt-4 border-t border-primary/10">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="guide-all" className="cursor-pointer font-medium">
                         Enable All Guides
