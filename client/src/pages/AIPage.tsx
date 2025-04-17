@@ -85,7 +85,7 @@ export default function AIPage() {
       toast({
         title: "AI Companion Updated",
         description: `Your AI companion is now named ${nameInput}`,
-        className: "bg-[#001E26] border border-purple-500 text-white",
+        className: "bg-[#001E26] border border-cyan-500 text-white",
       });
     }
   };
@@ -157,13 +157,13 @@ export default function AIPage() {
             variant="ghost"
             size="sm"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="sm:hidden mr-2 p-0 h-9 w-9 text-secondary hover:bg-secondary/10"
+            className="sm:hidden mr-2 p-0 h-9 w-9 text-primary hover:bg-primary/10"
           >
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
 
-          <div className="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center mr-3">
-            <Bot className="h-5 w-5 text-secondary" />
+          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mr-3">
+            <Bot className="h-5 w-5 text-primary" />
           </div>
           
           <div>
@@ -176,7 +176,7 @@ export default function AIPage() {
                   ref={nameInputRef}
                   value={nameInput}
                   onChange={(e) => setNameInput(e.target.value)}
-                  className="h-8 text-sm bg-slate-700/30 border-purple-500/30 focus-visible:ring-purple-500/30 mr-2 w-48"
+                  className="h-8 text-sm bg-slate-700/30 border-cyan-500/30 focus-visible:ring-cyan-500/30 mr-2 w-48"
                   placeholder="Enter AI name"
                   maxLength={20}
                 />
@@ -185,7 +185,7 @@ export default function AIPage() {
                   size="sm"
                   variant="ghost"
                   onClick={handleSaveName}
-                  className="h-7 w-7 p-0 text-purple-400 hover:bg-purple-500/20"
+                  className="h-7 w-7 p-0 text-cyan-400 hover:bg-cyan-500/20"
                 >
                   <Check className="h-4 w-4" />
                 </Button>
@@ -204,13 +204,13 @@ export default function AIPage() {
               </div>
             ) : (
               <div className="flex items-center">
-                <p className="text-sm text-secondary mr-2">{aiCompanionName}</p>
+                <p className="text-sm text-primary mr-2">{aiCompanionName}</p>
                 <Button
                   type="button"
                   size="sm"
                   variant="ghost"
                   onClick={() => setIsEditingName(true)}
-                  className="h-6 w-6 p-0 text-muted-foreground hover:text-secondary hover:bg-secondary/10"
+                  className="h-6 w-6 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
                 >
                   <Edit2 className="h-3 w-3" />
                 </Button>
@@ -255,7 +255,7 @@ export default function AIPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-7 p-0 text-muted-foreground hover:text-secondary hover:bg-secondary/10 rounded-full"
+                className="h-7 w-7 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full"
                 onClick={() => setIsCreatingChat(true)}
               >
                 <PlusCircle className="h-4 w-4" />
@@ -268,7 +268,7 @@ export default function AIPage() {
                   ref={newChatInputRef}
                   value={newChatTitle}
                   onChange={(e) => setNewChatTitle(e.target.value)}
-                  className="h-8 text-sm bg-slate-700/30 border-purple-500/30 focus-visible:ring-purple-500/30 mr-2"
+                  className="h-8 text-sm bg-slate-700/30 border-cyan-500/30 focus-visible:ring-cyan-500/30 mr-2"
                   placeholder="New chat name"
                   maxLength={30}
                   onKeyDown={(e) => {
@@ -285,7 +285,7 @@ export default function AIPage() {
                   size="sm"
                   variant="ghost"
                   onClick={handleCreateChat}
-                  className="h-7 w-7 p-0 text-purple-400 hover:bg-purple-500/20"
+                  className="h-7 w-7 p-0 text-cyan-400 hover:bg-cyan-500/20"
                 >
                   <Check className="h-4 w-4" />
                 </Button>
@@ -313,7 +313,7 @@ export default function AIPage() {
                         ref={editChatInputRef}
                         value={chatTitleInput}
                         onChange={(e) => setChatTitleInput(e.target.value)}
-                        className="h-8 text-sm bg-slate-700/30 border-purple-500/30 focus-visible:ring-purple-500/30 mr-2"
+                        className="h-8 text-sm bg-slate-700/30 border-cyan-500/30 focus-visible:ring-cyan-500/30 mr-2"
                         placeholder="Chat name"
                         maxLength={30}
                         onKeyDown={(e) => {
@@ -331,7 +331,7 @@ export default function AIPage() {
                         size="sm"
                         variant="ghost"
                         onClick={handleUpdateChatTitle}
-                        className="h-7 w-7 p-0 text-purple-400 hover:bg-purple-500/20"
+                        className="h-7 w-7 p-0 text-cyan-400 hover:bg-cyan-500/20"
                       >
                         <Check className="h-4 w-4" />
                       </Button>
@@ -352,12 +352,12 @@ export default function AIPage() {
                   ) : (
                     <div 
                       className={`flex items-center justify-between px-2 py-2 rounded hover:bg-slate-800/50 cursor-pointer ${
-                        chat.id === activeChatSessionId ? 'bg-purple-500/10 border border-purple-500/20' : ''
+                        chat.id === activeChatSessionId ? 'bg-cyan-500/10 border border-cyan-500/20' : ''
                       }`}
                       onClick={() => handleChatSelect(chat.id)}
                     >
                       <div className="flex items-center flex-grow overflow-hidden mr-2">
-                        <MessageSquare className="h-4 w-4 mr-2 text-purple-400 flex-shrink-0" />
+                        <MessageSquare className="h-4 w-4 mr-2 text-cyan-400 flex-shrink-0" />
                         <span className="text-sm truncate pr-2">{chat.title}</span>
                       </div>
                       
@@ -372,15 +372,15 @@ export default function AIPage() {
                             <MoreVertical className="h-3 w-3" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-[#0F1923] border border-purple-500/20">
+                        <DropdownMenuContent align="end" className="bg-[#0F1923] border border-cyan-500/20">
                           <DropdownMenuItem 
-                            className="text-[#D6F4FF] hover:bg-purple-500/10 focus:bg-purple-500/10 cursor-pointer"
+                            className="text-[#D6F4FF] hover:bg-cyan-500/10 focus:bg-cyan-500/10 cursor-pointer"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleStartEditingChat(chat);
                             }}
                           >
-                            <Edit2 className="h-3.5 w-3.5 mr-2 text-purple-400" />
+                            <Edit2 className="h-3.5 w-3.5 mr-2 text-cyan-400" />
                             Rename
                           </DropdownMenuItem>
                           
@@ -409,7 +409,7 @@ export default function AIPage() {
           <div className="space-y-2">
             <Button 
               variant="ghost" 
-              className="w-full justify-start text-sm h-auto py-2 px-3 bg-secondary/10 border border-secondary/20 hover:bg-secondary/20"
+              className="w-full justify-start text-sm h-auto py-2 px-3 bg-primary/10 border border-primary/20 hover:bg-primary/20"
               onClick={() => {
                 setInputText("Analyze my day and suggest focus areas.");
                 if (activeChatSessionId) {
@@ -420,7 +420,7 @@ export default function AIPage() {
                 }
               }}
             >
-              <Brain className="h-4 w-4 mr-2 text-secondary" />
+              <Brain className="h-4 w-4 mr-2 text-primary" />
               <span className="text-left">Analyze my day</span>
             </Button>
             
@@ -437,7 +437,7 @@ export default function AIPage() {
                 }
               }}
             >
-              <Sparkles className="h-4 w-4 mr-2 text-secondary" />
+              <Sparkles className="h-4 w-4 mr-2 text-primary" />
               <span className="text-left">Generate creative ideas</span>
             </Button>
             
@@ -454,20 +454,20 @@ export default function AIPage() {
                 }
               }}
             >
-              <Zap className="h-4 w-4 mr-2 text-secondary" />
+              <Zap className="h-4 w-4 mr-2 text-primary" />
               <span className="text-left">Optimize my schedule</span>
             </Button>
           </div>
         </div>
         
         {/* Main Chat Window */}
-        <div className="flex-1 flex flex-col glassmorphic rounded-xl p-4 neon-border-purple h-full ml-0 sm:ml-4 md:ml-6 mt-12 sm:mt-0 relative min-w-0">
+        <div className="flex-1 flex flex-col glassmorphic rounded-xl p-4 neon-border h-full ml-0 sm:ml-4 md:ml-6 mt-12 sm:mt-0 relative min-w-0">
           {/* Messages area */}
           <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar">
             {!activeChat || activeChat.messages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-6">
-                <div className="w-16 h-16 rounded-full bg-secondary/20 flex items-center justify-center mb-4">
-                  <Bot className="h-8 w-8 text-secondary" />
+                <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mb-4">
+                  <Bot className="h-8 w-8 text-primary" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2 text-foreground">Welcome to {aiCompanionName}</h3>
                 <p className="text-muted-foreground max-w-md mb-8">Your AI companion is ready to assist with insights, ideas, and optimizations for your life.</p>
@@ -475,29 +475,29 @@ export default function AIPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full max-w-3xl">
                   <Button 
                     variant="outline" 
-                    className="flex items-center justify-start border-secondary/30 hover:bg-secondary/10 text-foreground py-3"
+                    className="flex items-center justify-start border-primary/30 hover:bg-primary/10 text-foreground py-3"
                     onClick={() => setInputText("Analyze my calendar and suggest optimizations.")}
                   >
                     <span className="text-left">Analyze my calendar</span>
-                    <ChevronRight className="h-4 w-4 ml-auto text-secondary" />
+                    <ChevronRight className="h-4 w-4 ml-auto text-primary" />
                   </Button>
                   
                   <Button 
                     variant="outline" 
-                    className="flex items-center justify-start border-secondary/30 hover:bg-secondary/10 text-foreground py-3"
+                    className="flex items-center justify-start border-primary/30 hover:bg-primary/10 text-foreground py-3"
                     onClick={() => setInputText("Give me 3 creative ideas for solving my current challenge.")}
                   >
                     <span className="text-left">Generate creative ideas</span>
-                    <ChevronRight className="h-4 w-4 ml-auto text-secondary" />
+                    <ChevronRight className="h-4 w-4 ml-auto text-primary" />
                   </Button>
                   
                   <Button 
                     variant="outline" 
-                    className="flex items-center justify-start border-secondary/30 hover:bg-secondary/10 text-foreground py-3"
+                    className="flex items-center justify-start border-primary/30 hover:bg-primary/10 text-foreground py-3"
                     onClick={() => setInputText("Help me track my focus and energy levels today.")}
                   >
                     <span className="text-left">Track focus & energy</span>
-                    <ChevronRight className="h-4 w-4 ml-auto text-secondary" />
+                    <ChevronRight className="h-4 w-4 ml-auto text-primary" />
                   </Button>
                 </div>
               </div>
@@ -507,17 +507,17 @@ export default function AIPage() {
                   <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`flex max-w-[90%] lg:max-w-[70%]`}>
                       {message.sender === 'ai' && (
-                        <div className="h-10 w-10 rounded-full bg-secondary/20 flex items-center justify-center flex-shrink-0 mt-1">
-                          <Bot className="h-5 w-5 text-secondary" />
+                        <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-1">
+                          <Bot className="h-5 w-5 text-primary" />
                         </div>
                       )}
                       
                       <div className={`${message.sender === 'ai' 
-                        ? 'ml-3 bg-card/70 border border-secondary/30 rounded-2xl rounded-tl-sm text-foreground' 
-                        : 'mr-0 bg-secondary/10 border border-secondary/30 rounded-2xl rounded-tr-sm text-foreground'} p-4 shadow-sm`}
+                        ? 'ml-3 bg-card/70 border border-primary/30 rounded-2xl rounded-tl-sm text-foreground' 
+                        : 'mr-0 bg-primary/10 border border-primary/30 rounded-2xl rounded-tr-sm text-foreground'} p-4 shadow-sm`}
                       >
                         {message.sender === 'ai' && (
-                          <div className="text-xs text-secondary mb-1 font-semibold">{aiCompanionName}</div>
+                          <div className="text-xs text-primary mb-1 font-semibold">{aiCompanionName}</div>
                         )}
                         <p className="text-sm">{message.content}</p>
                         <p className="text-xs text-muted-foreground mt-2 text-right">
@@ -527,7 +527,7 @@ export default function AIPage() {
                       
                       {message.sender === 'user' && (
                         <div className="h-10 w-10 rounded-full bg-card/60 ml-3 flex items-center justify-center flex-shrink-0 mt-1 overflow-hidden">
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-secondary">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-primary">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                             <circle cx="12" cy="7" r="4"></circle>
                           </svg>
@@ -540,16 +540,16 @@ export default function AIPage() {
                 {isLoading && (
                   <div className="flex justify-start">
                     <div className="flex max-w-[70%]">
-                      <div className="h-10 w-10 rounded-full bg-secondary/20 flex items-center justify-center flex-shrink-0 mt-1">
-                        <Bot className="h-5 w-5 text-secondary" />
+                      <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-1">
+                        <Bot className="h-5 w-5 text-primary" />
                       </div>
                       
-                      <div className="ml-3 bg-card/70 border border-secondary/30 rounded-2xl rounded-tl-sm p-4 shadow-sm">
-                        <div className="text-xs text-secondary mb-1 font-semibold">{aiCompanionName}</div>
+                      <div className="ml-3 bg-card/70 border border-primary/30 rounded-2xl rounded-tl-sm p-4 shadow-sm">
+                        <div className="text-xs text-primary mb-1 font-semibold">{aiCompanionName}</div>
                         <div className="flex space-x-2">
-                          <div className="h-2 w-2 rounded-full bg-secondary animate-bounce"></div>
-                          <div className="h-2 w-2 rounded-full bg-secondary animate-bounce" style={{ animationDelay: "150ms" }}></div>
-                          <div className="h-2 w-2 rounded-full bg-secondary animate-bounce" style={{ animationDelay: "300ms" }}></div>
+                          <div className="h-2 w-2 rounded-full bg-primary animate-bounce"></div>
+                          <div className="h-2 w-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }}></div>
+                          <div className="h-2 w-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }}></div>
                         </div>
                       </div>
                     </div>
@@ -562,8 +562,8 @@ export default function AIPage() {
           </div>
           
           {/* Input area */}
-          <form onSubmit={handleSendMessage} className="mt-4 pt-4 border-t border-secondary/20 relative">
-            <div className="relative rounded-2xl border border-secondary/30 bg-card/30 shadow-inner overflow-hidden">
+          <form onSubmit={handleSendMessage} className="mt-4 pt-4 border-t border-primary/20 relative">
+            <div className="relative rounded-2xl border border-primary/30 bg-card/30 shadow-inner overflow-hidden">
               <Input 
                 placeholder={`Message ${aiCompanionName}...`}
                 value={inputText}
@@ -582,7 +582,7 @@ export default function AIPage() {
                 type="submit"
                 size="sm"
                 disabled={!inputText.trim()}
-                className="absolute right-2 bottom-2 h-9 w-9 p-0 rounded-lg bg-secondary/50 text-white hover:bg-secondary/70 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="absolute right-2 bottom-2 h-9 w-9 p-0 rounded-lg bg-primary/50 text-white hover:bg-primary/70 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <Send className="h-4 w-4" />
               </Button>
