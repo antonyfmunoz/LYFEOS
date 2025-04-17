@@ -168,17 +168,25 @@ export default function SettingsPage() {
       });
       
       if (response.ok) {
-        // Force a page reload to apply the new theme
-        window.location.reload();
+        toast({
+          title: "Color Theme Updated",
+          description: `Primary color changed to ${value}. Click OK to apply changes.`,
+          className: "bg-background border border-primary text-foreground",
+          action: (
+            <Button 
+              onClick={() => {
+                // Add a random query param to force a hard reload bypassing the cache
+                window.location.href = `${window.location.pathname}?t=${Date.now()}`;
+              }}
+              className="bg-primary text-primary-foreground"
+            >
+              OK
+            </Button>
+          ),
+        });
       } else {
         throw new Error('Failed to update theme');
       }
-      
-      toast({
-        title: "Color Theme Updated",
-        description: `Primary color changed to ${value}`,
-        className: "bg-background border border-primary text-foreground",
-      });
     } catch (error) {
       console.error('Error updating theme:', error);
       toast({
