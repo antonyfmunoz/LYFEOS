@@ -149,9 +149,19 @@ export default function AIPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-80px)]">
-      {/* AI Companion Header */}
+      {/* AI Companion Header with integrated hamburger menu */}
       <div className="flex items-center justify-between mb-4 pb-4 border-b border-purple-500/20">
         <div className="flex items-center">
+          {/* Hamburger Menu for mobile - static in header */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="sm:hidden mr-2 p-0 h-9 w-9 text-purple-400 hover:bg-purple-500/10"
+          >
+            {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
+
           <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center mr-3">
             <Bot className="h-5 w-5 text-purple-400" />
           </div>
@@ -220,16 +230,6 @@ export default function AIPage() {
       
       {/* Main Chat Area with Collapsible Sidebar */}
       <div className="flex-grow flex flex-col sm:flex-row relative">
-        {/* Mobile Menu Toggle Button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="fixed top-[100px] left-4 sm:hidden z-30 h-10 w-10 p-0 rounded-full bg-purple-500/30 text-white shadow-md border border-purple-500/50"
-        >
-          {sidebarOpen ? <CloseIcon className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </Button>
-        
         {/* Backdrop overlay for mobile - only visible when sidebar is open */}
         {sidebarOpen && (
           <div 
