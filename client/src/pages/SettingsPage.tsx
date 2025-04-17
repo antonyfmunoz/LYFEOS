@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   User, 
   Bot, 
@@ -30,7 +30,13 @@ import { NovaGuideTooltip } from '@/components/ui/guide-tooltip';
 
 export default function SettingsPage() {
   const { username, setUsername, aiCompanionName, setAICompanionName } = useLYFEOS();
-  const { restartOnboarding, enabledGuides, setGuideEnabled } = useOnboarding();
+  const { 
+    restartOnboarding, 
+    enabledGuides, 
+    setGuideEnabled, 
+    dismissTooltip, 
+    completeTooltip 
+  } = useOnboarding();
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>('dark');
   const [primaryColor, setPrimaryColor] = useState<string>('cyan');
   const [savedName, setSavedName] = useState<string>(username);
@@ -111,9 +117,31 @@ export default function SettingsPage() {
     setGuideEnabled(id, enabled);
   };
   
+  // Show welcome guidance when opening settings
+  useEffect(() => {
+    if (enabledGuides.settings_intro !== false) {
+      toast({
+        title: "Settings Control Center",
+        description: "Customize your LYFE OS experience here. You can personalize your AI companion, modify appearance settings, and manage your guided tutorials.",
+        variant: "default",
+        className: "bg-[#001E26] border border-[#36F1CD]/50 text-white",
+        duration: 5000,
+      });
+    }
+  }, []);
+
   return (
     <div>
-      <h1 className="text-2xl font-orbitron mb-6">Settings</h1>
+      <NovaGuideTooltip
+        guide={{
+          ...APP_GUIDES.settings_intro,
+          forceShow: enabledGuides.settings_intro !== false
+        }}
+        onDismiss={dismissTooltip}
+        onComplete={completeTooltip}
+      >
+        <h1 className="text-2xl font-orbitron mb-6">Settings</h1>
+      </NovaGuideTooltip>
       
       <Tabs 
         defaultValue="account" 
@@ -249,9 +277,10 @@ export default function SettingsPage() {
                 <NovaGuideTooltip 
                   guide={{ 
                     ...APP_GUIDES.companion_name,
-                    forceShow: true
+                    forceShow: enabledGuides.companion_name !== false
                   }}
-                  onComplete={(id) => {}}
+                  onDismiss={dismissTooltip}
+                  onComplete={completeTooltip}
                 >
                   <div className="flex gap-2">
                     <Input
@@ -336,19 +365,107 @@ export default function SettingsPage() {
               
               <div className="pt-4">
                 <h3 className="text-lg font-medium mb-2">Guide Settings</h3>
-                <div className="space-y-3 border border-slate-700/50 rounded-lg p-4">
-                  {Object.entries(APP_GUIDES).map(([id, guide]) => (
-                    <div key={id} className="flex items-center justify-between">
-                      <Label htmlFor={`guide-${id}`} className="cursor-pointer text-sm">
-                        {guide.title}
-                      </Label>
-                      <Switch 
-                        id={`guide-${id}`} 
-                        checked={enabledGuides[id] !== false}
-                        onCheckedChange={(checked) => toggleGuide(id, checked)}
-                      />
+                <div className="space-y-6 border border-slate-700/50 rounded-lg p-4">
+                  {/* Dashboard Guides */}
+                  <div>
+                    <h4 className="text-md font-medium text-[#36F1CD] mb-2">Dashboard Guides</h4>
+                    <div className="space-y-3">
+                      {['dashboard_welcome', 'stats_overview', 'mission_log', 'data_entry', 'recalibration_log'].map((id) => {
+                        const guide = APP_GUIDES[id] || {
+                          id,
+                          title: id.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+                        };
+                        return (
+                          <div key={id} className="flex items-center justify-between">
+                            <Label htmlFor={`guide-${id}`} className="cursor-pointer text-sm">
+                              {guide.title}
+                            </Label>
+                            <Switch 
+                              id={`guide-${id}`} 
+                              checked={enabledGuides[id] !== false}
+                              onCheckedChange={(checked) => toggleGuide(id, checked)}
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
+                  </div>
+                  
+                  {/* Codex Guides */}
+                  <div>
+                    <h4 className="text-md font-medium text-[#36F1CD] mb-2">Codex Guides</h4>
+                    <div className="space-y-3">
+                      {['codex_welcome', 'mission_page_create', 'markdown_basics', 'wiki_links'].map((id) => {
+                        const guide = APP_GUIDES[id] || {
+                          id,
+                          title: id.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+                        };
+                        return (
+                          <div key={id} className="flex items-center justify-between">
+                            <Label htmlFor={`guide-${id}`} className="cursor-pointer text-sm">
+                              {guide.title}
+                            </Label>
+                            <Switch 
+                              id={`guide-${id}`} 
+                              checked={enabledGuides[id] !== false}
+                              onCheckedChange={(checked) => toggleGuide(id, checked)}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  
+                  {/* AI Companion Guides */}
+                  <div>
+                    <h4 className="text-md font-medium text-[#36F1CD] mb-2">AI Companion Guides</h4>
+                    <div className="space-y-3">
+                      {['ai_companion_intro', 'chat_session', 'companion_name'].map((id) => {
+                        const guide = APP_GUIDES[id] || {
+                          id,
+                          title: id.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+                        };
+                        return (
+                          <div key={id} className="flex items-center justify-between">
+                            <Label htmlFor={`guide-${id}`} className="cursor-pointer text-sm">
+                              {guide.title}
+                            </Label>
+                            <Switch 
+                              id={`guide-${id}`} 
+                              checked={enabledGuides[id] !== false}
+                              onCheckedChange={(checked) => toggleGuide(id, checked)}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  
+                  {/* Additional Settings */}
+                  <div className="pt-4 border-t border-slate-700/20">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="guide-all" className="cursor-pointer font-medium">
+                        Enable All Guides
+                      </Label>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          // Enable all guides
+                          Object.keys(APP_GUIDES).forEach(id => {
+                            setGuideEnabled(id, true);
+                          });
+                          toast({
+                            title: "Guides Enabled",
+                            description: "All guides have been enabled.",
+                            className: "bg-[#001E26] border border-[#36F1CD] text-white",
+                          });
+                        }}
+                      >
+                        Enable All
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
               

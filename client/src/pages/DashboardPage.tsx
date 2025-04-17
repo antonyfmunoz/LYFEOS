@@ -462,12 +462,12 @@ export default function DashboardPage() {
     // Show welcome guide toast on first load
     if (enabledGuides.dashboard_welcome !== false) {
       showGuideToast(
-        "Welcome to your LYFE OS command center. This is your daily dashboard for tracking progress, logging thoughts, and managing your life operating system.",
-        "Welcome Commander",
+        "Your LYFE OS dashboard is active. Hover over section headers to learn more about each component. Visit Settings to customize your experience.",
+        "System Online",
         "Nova"
       );
     }
-  }, []);
+  }, [enabledGuides.dashboard_welcome, showGuideToast]);
 
   return (
     <div className="dashboard-container">
@@ -575,10 +575,24 @@ export default function DashboardPage() {
       {/* Data Entry Log Panel */}
       <section className="mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-orbitron flex items-center">
-            <BookOpen className="h-5 w-5 text-primary mr-2" />
-            <span>Data Entry Log</span>
-          </h2>
+          <NovaGuideTooltip
+            guide={{
+              id: 'data_entry',
+              title: 'Knowledge Collection',
+              content: 'This is your daily knowledge capture zone. Document your thoughts, content consumed, research findings, and action ideas. Everything is auto-saved and rendered in real-time Markdown.',
+              placement: 'right',
+              dismissible: true,
+              showOnce: true,
+              forceShow: enabledGuides.data_entry !== false
+            }}
+            onDismiss={dismissTooltip}
+            onComplete={completeTooltip}
+          >
+            <h2 className="text-xl font-orbitron flex items-center">
+              <BookOpen className="h-5 w-5 text-primary mr-2" />
+              <span>Data Entry Log</span>
+            </h2>
+          </NovaGuideTooltip>
         </div>
         
         <div className="glassmorphic rounded-xl p-4 neon-border">
@@ -659,10 +673,24 @@ export default function DashboardPage() {
       {/* Recalibration Log Panel */}
       <section className="mb-6" style={{ position: 'relative', zIndex: 1 }}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-orbitron flex items-center">
-            <Brain className="h-5 w-5 text-primary mr-2" />
-            <span>Recalibration Log</span>
-          </h2>
+          <SystemGuideTooltip
+            guide={{
+              id: 'recalibration_log',
+              title: 'System Optimization',
+              content: 'Track your daily energy levels, sleep patterns, and set intentions. Daily recalibration helps maintain optimal performance and alignment with your goals. Use the sliders to rate your mental, physical, and emotional states.',
+              placement: 'right',
+              dismissible: true,
+              showOnce: true,
+              forceShow: enabledGuides.recalibration_log !== false
+            }}
+            onDismiss={dismissTooltip}
+            onComplete={completeTooltip}
+          >
+            <h2 className="text-xl font-orbitron flex items-center">
+              <Brain className="h-5 w-5 text-primary mr-2" />
+              <span>Recalibration Log</span>
+            </h2>
+          </SystemGuideTooltip>
         </div>
         
         <div className="glassmorphic rounded-xl p-4 neon-border">

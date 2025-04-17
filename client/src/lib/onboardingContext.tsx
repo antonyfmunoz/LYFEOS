@@ -7,8 +7,8 @@ export const APP_GUIDES: Record<string, TooltipGuide> = {
   // Dashboard guides
   dashboard_welcome: {
     id: 'dashboard_welcome',
-    title: 'Welcome to LYFE OS',
-    content: 'This is your command center for managing your life operating system. Explore the different sections to get started.',
+    title: 'LYFE OS Command Center',
+    content: 'Welcome to your personal command center. This dashboard is designed to help you track your daily progress, manage tasks, and maintain your life operating system. Each section serves a specific purpose in optimizing your productivity and well-being.',
     placement: 'bottom',
     dismissible: true,
     showOnce: true,
@@ -16,16 +16,16 @@ export const APP_GUIDES: Record<string, TooltipGuide> = {
   },
   stats_overview: {
     id: 'stats_overview',
-    title: 'Your Life Stats',
-    content: 'These are your core metrics. Attention Tokens, Time Tokens, Energy Points, and Health Points track different aspects of your wellbeing and productivity.',
+    title: 'Core Life Metrics',
+    content: 'These are your vital signs - Attention Tokens for mental focus, Time Tokens for time management, Energy Points for physical capacity, and Health Points for overall wellbeing. Each stat influences your daily performance and can be improved through consistent habits.',
     placement: 'right',
     dismissible: true,
     showOnce: true,
   },
   mission_log: {
     id: 'mission_log',
-    title: 'Mission Log',
-    content: 'Track your daily tasks and missions here. Check them off as you complete them to earn XP and level up.',
+    title: 'Daily Mission Timeline',
+    content: 'Your missions appear here in chronological order. Completed missions reward XP and stat boosts. Color-coding helps categorize missions by type: blue for work tasks, green for health activities, and purple for personal development.',
     placement: 'right',
     dismissible: true,
     showOnce: true,
@@ -34,8 +34,8 @@ export const APP_GUIDES: Record<string, TooltipGuide> = {
   // Codex guides
   codex_welcome: {
     id: 'codex_welcome',
-    title: 'The Codex',
-    content: 'This is your knowledge repository. Create mission logs, journal entries, and more. Everything is searchable and interconnected.',
+    title: 'The LYFE OS Codex',
+    content: 'Your knowledge repository stores all mission logs, journal entries, and notes. Think of it as your second brain - everything is searchable and interconnected through wiki-links, making information retrieval effortless.',
     placement: 'bottom',
     dismissible: true,
     showOnce: true,
@@ -43,8 +43,8 @@ export const APP_GUIDES: Record<string, TooltipGuide> = {
   },
   mission_page_create: {
     id: 'mission_page_create',
-    title: 'Create New Missions',
-    content: 'Click here to create a new mission page. You can document tasks, set objectives, and track progress.',
+    title: 'Create Mission Pages',
+    content: 'Document objectives, track progress, and store resources related to your missions. Pages are automatically saved and can be linked to each other for a more powerful knowledge network.',
     placement: 'left',
     dismissible: true,
     showOnce: true,
@@ -53,16 +53,16 @@ export const APP_GUIDES: Record<string, TooltipGuide> = {
   // Markdown editor guides
   markdown_basics: {
     id: 'markdown_basics',
-    title: 'Markdown Basics',
-    content: 'You can use Markdown to format your text. Try **bold**, *italic*, and create lists with - or 1. Create tasks with - [ ] and - [x].',
+    title: 'Enhanced Markdown Editor',
+    content: 'Format your text like in Obsidian: **bold**, *italic*, and create lists with - or 1. Use - [ ] and - [x] for interactive task lists. All changes are auto-saved as you type.',
     placement: 'bottom',
     dismissible: true,
     showOnce: true,
   },
   wiki_links: {
     id: 'wiki_links',
-    title: 'Wiki-style Links',
-    content: 'Create links to other pages using [[Page Name]] syntax. This creates connections between your notes.',
+    title: 'Knowledge Connections',
+    content: 'Create instant links between pages using the [[Page Name]] syntax. This builds a network of connected thoughts and information, making your knowledge base more powerful and accessible.',
     placement: 'bottom',
     dismissible: true,
     showOnce: true,
@@ -71,8 +71,8 @@ export const APP_GUIDES: Record<string, TooltipGuide> = {
   // AI companion guides
   ai_companion_intro: {
     id: 'ai_companion_intro',
-    title: 'Meet Your AI Companion',
-    content: "I'm here to assist you with tasks, provide insights, and help you optimize your day. Just ask me anything!",
+    title: 'Your AI Companion',
+    content: "I'm your personal assistant in LYFE OS. I can help prioritize tasks, provide insights on your metrics, offer creative solutions, and support your productivity goals. Just click the AI button to interact with me.",
     placement: 'left',
     dismissible: true,
     showOnce: true,
@@ -80,8 +80,8 @@ export const APP_GUIDES: Record<string, TooltipGuide> = {
   },
   chat_session: {
     id: 'chat_session',
-    title: 'Chat Sessions',
-    content: 'You can create multiple chat sessions for different topics or projects. Switch between them or create new ones.',
+    title: 'Specialized Conversations',
+    content: 'Create different chat sessions for various aspects of your life - one for work projects, another for health goals, or a third for creative endeavors. This keeps your conversations organized and contextual.',
     placement: 'right',
     dismissible: true,
     showOnce: true,
@@ -90,8 +90,8 @@ export const APP_GUIDES: Record<string, TooltipGuide> = {
   // Settings guides
   settings_intro: {
     id: 'settings_intro',
-    title: 'Personalize Your Experience',
-    content: 'Customize your LYFE OS experience here. Change your AI companion name, adjust appearance settings, and more.',
+    title: 'LYFE OS Customization',
+    content: 'Make LYFE OS truly yours by customizing the interface, AI companion, and guidance system. Your preferences are automatically saved and applied across the system.',
     placement: 'bottom',
     dismissible: true,
     showOnce: true,
@@ -99,8 +99,8 @@ export const APP_GUIDES: Record<string, TooltipGuide> = {
   },
   companion_name: {
     id: 'companion_name',
-    title: 'Name Your Companion',
-    content: 'Give your AI companion a unique name to personalize your experience.',
+    title: 'Personalize Your AI',
+    content: 'Give your AI companion a name that resonates with you. This creates a more personal connection and tailored experience as you interact with your digital assistant.',
     placement: 'right',
     dismissible: true,
     showOnce: true,
