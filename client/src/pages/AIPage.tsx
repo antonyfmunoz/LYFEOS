@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useLYFEOS } from "../lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { 
-  Bot, Send, ChevronRight, Edit2, Check, X, Sparkles, Brain, Zap, Settings, 
+  Bot, Send, ChevronRight, Edit2, Check, X, Sparkles, Brain, Zap,
   PlusCircle, Trash2, MessageSquare, MoreVertical, Menu, X as CloseIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -252,14 +252,6 @@ export default function AIPage() {
             )}
           </div>
         </div>
-        
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-9 w-9 rounded-full p-0 text-muted-foreground hover:text-foreground hover:bg-card/70"
-        >
-          <Settings className="h-4 w-4" />
-        </Button>
       </div>
       
       {/* Main Chat Area with Collapsible Sidebar */}

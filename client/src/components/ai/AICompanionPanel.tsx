@@ -29,7 +29,6 @@ export default function AICompanionPanel() {
       <div className="p-4 border-b border-opacity-20 border-primary">
         <div className="flex items-center justify-between mb-2">
           <h2 className="font-orbitron text-lg">AI COMPANION</h2>
-          <button className="material-icons text-[#7DAAB2] text-sm hover:text-primary transition">settings</button>
         </div>
         
         {/* AI Companion Name Editor */}
