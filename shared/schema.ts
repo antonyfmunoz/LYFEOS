@@ -25,10 +25,12 @@ export const userStats = pgTable("user_stats", {
   energyPointsMax: integer("energy_points_max").notNull().default(10),
   healthPointsCurrent: integer("health_points_current").notNull().default(10),
   healthPointsMax: integer("health_points_max").notNull().default(10),
+  attentionTokensCurrent: integer("attention_tokens_current").notNull().default(5),
+  attentionTokensMax: integer("attention_tokens_max").notNull().default(5),
   experienceCurrent: integer("experience_current").notNull().default(0),
   experienceMax: integer("experience_max").notNull().default(100),
   level: integer("level").notNull().default(1),
-  aiAssistantName: text("ai_assistant_name").default("Lyfe").notNull(),
+  aiAssistantName: text("ai_assistant_name").default("NOVA").notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
@@ -150,6 +152,8 @@ export const insertUserStatsSchema = createInsertSchema(userStats).pick({
   energyPointsMax: true,
   healthPointsCurrent: true,
   healthPointsMax: true,
+  attentionTokensCurrent: true,
+  attentionTokensMax: true,
   experienceCurrent: true,
   experienceMax: true,
   level: true,

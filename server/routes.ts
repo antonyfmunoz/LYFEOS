@@ -90,27 +90,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Creating initial stats for user:", user.id);
       await storage.createUserStats({
         userId: user.id,
-        experience: {
-          level: 1,
-          current: 0,
-          max: 100
-        },
-        timeTokens: {
-          current: 10,
-          max: 10
-        },
-        energyPoints: {
-          current: 100,
-          max: 100
-        },
-        healthPoints: {
-          current: 100,
-          max: 100
-        },
-        attentionTokens: {
-          current: 5,
-          max: 5
-        },
+        experienceCurrent: 0,
+        experienceMax: 100,
+        level: 1,
+        timeTokensCurrent: 10,
+        timeTokensMax: 10,
+        energyPointsCurrent: 100,
+        energyPointsMax: 100,
+        healthPointsCurrent: 100,
+        healthPointsMax: 100,
+        attentionTokensCurrent: 5,
+        attentionTokensMax: 5,
         aiAssistantName: "NOVA"
       });
       
@@ -156,6 +146,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
             password: hashedPassword,
             displayName: 'Test User',
             title: 'COMMANDER',
+          });
+          
+          // Create initial user stats
+          console.log("Creating initial stats for test user:", newUser.id);
+          await storage.createUserStats({
+            userId: newUser.id,
+            experienceCurrent: 0,
+            experienceMax: 100,
+            level: 1,
+            timeTokensCurrent: 10,
+            timeTokensMax: 10,
+            energyPointsCurrent: 100,
+            energyPointsMax: 100,
+            healthPointsCurrent: 100,
+            healthPointsMax: 100,
+            attentionTokensCurrent: 5,
+            attentionTokensMax: 5,
+            aiAssistantName: "NOVA"
           });
           
           // Create session
