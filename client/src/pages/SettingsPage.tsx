@@ -105,15 +105,48 @@ export default function SettingsPage() {
     });
   };
   
-  const changePrimaryColor = (value: string) => {
+  const changePrimaryColor = async (value: string) => {
     setPrimaryColor(value);
     
-    // In a real implementation, this would actually change the theme color
-    toast({
-      title: "Color Theme Updated",
-      description: `Primary color changed to ${value}`,
-      className: "bg-background border border-primary text-foreground",
-    });
+    // Map color name to HSL value
+    const colorValues: Record<string, string> = {
+      "cyan": "hsl(188 100% 50%)",
+      "purple": "hsl(265 89% 78%)",
+      "blue": "hsl(217 91% 60%)",
+      "green": "hsl(142 71% 45%)",
+      "orange": "hsl(24 94% 50%)"
+    };
+    
+    try {
+      // Update theme color in theme.json
+      const response = await fetch('/api/settings/theme', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ primary: colorValues[value] })
+      });
+      
+      if (response.ok) {
+        // Force a page reload to apply the new theme
+        window.location.reload();
+      } else {
+        throw new Error('Failed to update theme');
+      }
+      
+      toast({
+        title: "Color Theme Updated",
+        description: `Primary color changed to ${value}`,
+        className: "bg-background border border-primary text-foreground",
+      });
+    } catch (error) {
+      console.error('Error updating theme:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update the theme color. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
   
   // Handle onboarding reset
