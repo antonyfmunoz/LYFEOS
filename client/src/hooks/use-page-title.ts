@@ -7,7 +7,7 @@ import { useEffect } from 'react';
 export function usePageTitle(pageTitle: string) {
   useEffect(() => {
     // Set the document title with the page specific title
-    document.title = pageTitle ? `LYFEOS - ${pageTitle}` : 'LYFEOS - Dashboard';
+    document.title = `LYFEOS - ${pageTitle}`;
     
     // Restore the original title when component unmounts
     return () => {
