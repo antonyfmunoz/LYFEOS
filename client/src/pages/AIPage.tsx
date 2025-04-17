@@ -475,29 +475,29 @@ export default function AIPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full max-w-3xl">
                   <Button 
                     variant="outline" 
-                    className="flex items-center justify-start border-purple-500/30 hover:bg-purple-500/10 text-white py-3"
+                    className="flex items-center justify-start border-secondary/30 hover:bg-secondary/10 text-foreground py-3"
                     onClick={() => setInputText("Analyze my calendar and suggest optimizations.")}
                   >
                     <span className="text-left">Analyze my calendar</span>
-                    <ChevronRight className="h-4 w-4 ml-auto text-purple-400" />
+                    <ChevronRight className="h-4 w-4 ml-auto text-secondary" />
                   </Button>
                   
                   <Button 
                     variant="outline" 
-                    className="flex items-center justify-start border-purple-500/30 hover:bg-purple-500/10 text-white py-3"
+                    className="flex items-center justify-start border-secondary/30 hover:bg-secondary/10 text-foreground py-3"
                     onClick={() => setInputText("Give me 3 creative ideas for solving my current challenge.")}
                   >
                     <span className="text-left">Generate creative ideas</span>
-                    <ChevronRight className="h-4 w-4 ml-auto text-purple-400" />
+                    <ChevronRight className="h-4 w-4 ml-auto text-secondary" />
                   </Button>
                   
                   <Button 
                     variant="outline" 
-                    className="flex items-center justify-start border-purple-500/30 hover:bg-purple-500/10 text-white py-3"
+                    className="flex items-center justify-start border-secondary/30 hover:bg-secondary/10 text-foreground py-3"
                     onClick={() => setInputText("Help me track my focus and energy levels today.")}
                   >
                     <span className="text-left">Track focus & energy</span>
-                    <ChevronRight className="h-4 w-4 ml-auto text-purple-400" />
+                    <ChevronRight className="h-4 w-4 ml-auto text-secondary" />
                   </Button>
                 </div>
               </div>
@@ -507,27 +507,27 @@ export default function AIPage() {
                   <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`flex max-w-[90%] lg:max-w-[70%]`}>
                       {message.sender === 'ai' && (
-                        <div className="h-10 w-10 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0 mt-1">
-                          <Bot className="h-5 w-5 text-purple-400" />
+                        <div className="h-10 w-10 rounded-full bg-secondary/20 flex items-center justify-center flex-shrink-0 mt-1">
+                          <Bot className="h-5 w-5 text-secondary" />
                         </div>
                       )}
                       
                       <div className={`${message.sender === 'ai' 
-                        ? 'ml-3 bg-slate-800/70 border border-purple-500/30 rounded-2xl rounded-tl-sm text-white' 
-                        : 'mr-0 bg-purple-500/20 border border-purple-500/30 rounded-2xl rounded-tr-sm text-white'} p-4 shadow-sm`}
+                        ? 'ml-3 bg-card/70 border border-secondary/30 rounded-2xl rounded-tl-sm text-foreground' 
+                        : 'mr-0 bg-secondary/10 border border-secondary/30 rounded-2xl rounded-tr-sm text-foreground'} p-4 shadow-sm`}
                       >
                         {message.sender === 'ai' && (
-                          <div className="text-xs text-purple-400 mb-1 font-semibold">{aiCompanionName}</div>
+                          <div className="text-xs text-secondary mb-1 font-semibold">{aiCompanionName}</div>
                         )}
-                        <p className="text-sm text-white">{message.content}</p>
-                        <p className="text-xs text-[#7DAAB2] mt-2 text-right">
+                        <p className="text-sm">{message.content}</p>
+                        <p className="text-xs text-muted-foreground mt-2 text-right">
                           {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>
                       
                       {message.sender === 'user' && (
-                        <div className="h-10 w-10 rounded-full bg-slate-800/60 ml-3 flex items-center justify-center flex-shrink-0 mt-1 overflow-hidden">
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-purple-400">
+                        <div className="h-10 w-10 rounded-full bg-card/60 ml-3 flex items-center justify-center flex-shrink-0 mt-1 overflow-hidden">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-secondary">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                             <circle cx="12" cy="7" r="4"></circle>
                           </svg>
@@ -540,16 +540,16 @@ export default function AIPage() {
                 {isLoading && (
                   <div className="flex justify-start">
                     <div className="flex max-w-[70%]">
-                      <div className="h-10 w-10 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0 mt-1">
-                        <Bot className="h-5 w-5 text-purple-400" />
+                      <div className="h-10 w-10 rounded-full bg-secondary/20 flex items-center justify-center flex-shrink-0 mt-1">
+                        <Bot className="h-5 w-5 text-secondary" />
                       </div>
                       
-                      <div className="ml-3 bg-slate-800/70 border border-purple-500/30 rounded-2xl rounded-tl-sm p-4 shadow-sm">
-                        <div className="text-xs text-purple-400 mb-1 font-semibold">{aiCompanionName}</div>
+                      <div className="ml-3 bg-card/70 border border-secondary/30 rounded-2xl rounded-tl-sm p-4 shadow-sm">
+                        <div className="text-xs text-secondary mb-1 font-semibold">{aiCompanionName}</div>
                         <div className="flex space-x-2">
-                          <div className="h-2 w-2 rounded-full bg-purple-400 animate-bounce"></div>
-                          <div className="h-2 w-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: "150ms" }}></div>
-                          <div className="h-2 w-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: "300ms" }}></div>
+                          <div className="h-2 w-2 rounded-full bg-secondary animate-bounce"></div>
+                          <div className="h-2 w-2 rounded-full bg-secondary animate-bounce" style={{ animationDelay: "150ms" }}></div>
+                          <div className="h-2 w-2 rounded-full bg-secondary animate-bounce" style={{ animationDelay: "300ms" }}></div>
                         </div>
                       </div>
                     </div>
@@ -562,13 +562,13 @@ export default function AIPage() {
           </div>
           
           {/* Input area */}
-          <form onSubmit={handleSendMessage} className="mt-4 pt-4 border-t border-purple-500/20 relative">
-            <div className="relative rounded-2xl border border-purple-500/30 bg-slate-800/30 shadow-inner overflow-hidden">
+          <form onSubmit={handleSendMessage} className="mt-4 pt-4 border-t border-secondary/20 relative">
+            <div className="relative rounded-2xl border border-secondary/30 bg-card/30 shadow-inner overflow-hidden">
               <Input 
                 placeholder={`Message ${aiCompanionName}...`}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                className="border-0 bg-transparent pr-12 py-6 min-h-[60px] focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none text-white"
+                className="border-0 bg-transparent pr-12 py-6 min-h-[60px] focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none text-foreground"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -582,12 +582,12 @@ export default function AIPage() {
                 type="submit"
                 size="sm"
                 disabled={!inputText.trim()}
-                className="absolute right-2 bottom-2 h-9 w-9 p-0 rounded-lg bg-purple-500/50 text-white hover:bg-purple-500/70 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="absolute right-2 bottom-2 h-9 w-9 p-0 rounded-lg bg-secondary/50 text-white hover:bg-secondary/70 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <Send className="h-4 w-4" />
               </Button>
             </div>
-            <p className="text-xs text-slate-400 mt-2 text-center">
+            <p className="text-xs text-muted-foreground mt-2 text-center">
               {aiCompanionName} can make mistakes. Consider checking important information.
             </p>
           </form>
