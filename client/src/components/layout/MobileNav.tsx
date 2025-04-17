@@ -9,7 +9,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
   const navItems = [
     { id: "dashboard", icon: "dashboard", label: "Dashboard" },
     { id: "quests", icon: "track_changes", label: "Missions" },
-    { id: "ai", icon: "smart_toy", label: "AI" },
+    { id: "ai", icon: "smart_toy", label: "AI Assistant" },
     { id: "codex", icon: "book", label: "Codex" },
     { id: "systems", icon: "settings", label: "Systems" },
   ];

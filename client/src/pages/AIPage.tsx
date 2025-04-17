@@ -19,7 +19,7 @@ import { useIsMobile } from "../hooks/use-mobile";
 
 export default function AIPage() {
   // Set the page title
-  usePageTitle('AI Companion');
+  usePageTitle('AI Assistant');
 
   const { 
     messages, 
@@ -87,8 +87,8 @@ export default function AIPage() {
       
       // Show toast on name change
       toast({
-        title: "AI Companion Updated",
-        description: `Your AI companion is now named ${nameInput}`,
+        title: "AI Assistant Updated",
+        description: `Your AI assistant is now named ${nameInput}`,
         className: "bg-background border border-primary text-foreground",
       });
     }
@@ -183,7 +183,7 @@ export default function AIPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-80px)]">
-      {/* AI Companion Header with integrated hamburger menu */}
+      {/* AI Assistant Header with integrated hamburger menu */}
       <div className="flex items-center justify-between mb-4 pb-4 border-b border-primary/20">
         <div className="flex items-center">
           {/* Hamburger Menu for mobile - static in header */}
@@ -201,7 +201,7 @@ export default function AIPage() {
           </div>
           
           <div>
-            <h1 className="text-xl font-sans text-foreground mb-1">AI Companion</h1>
+            <h1 className="text-xl font-sans text-foreground mb-1">AI Assistant</h1>
             
             {/* AI Name Editor */}
             {isEditingName ? (
