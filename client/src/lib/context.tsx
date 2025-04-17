@@ -434,6 +434,26 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     });
   };
   
+  // Delete a mission page
+  const deleteMissionPage = (id: string) => {
+    // Find the page to show in toast
+    const pageToDelete = missionPages.find(page => page.id === id);
+    
+    // Remove the page
+    setMissionPages((prev) => prev.filter(page => page.id !== id));
+    
+    // Show mission page deleted toast
+    if (pageToDelete) {
+      toast({
+        title: "Mission Page Deleted",
+        description: `${pageToDelete.title} has been removed`,
+        variant: "destructive",
+        className: "bg-[#181818] border border-red-500 text-white",
+        duration: 3000,
+      });
+    }
+  };
+  
   // Get mission page by slug
   const getMissionPageBySlug = (slug: string): MissionPage | undefined => {
     return missionPages.find(page => page.slug === slug);
@@ -649,6 +669,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         deleteEvent,
         createMissionPage,
         updateMissionPage,
+        deleteMissionPage,
         getMissionPageBySlug,
         getMissionPageById,
         createChatSession,

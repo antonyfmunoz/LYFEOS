@@ -30,7 +30,7 @@ import {
   X
 } from 'lucide-react';
 
-export default function MissionPage() {
+export default function EnhancedMissionPage() {
   const { slug } = useParams<{ slug: string }>();
   const { getMissionPageBySlug, updateMissionPage, deleteMissionPage } = useLYFEOS();
   const [, navigate] = useLocation();
