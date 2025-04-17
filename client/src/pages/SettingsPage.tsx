@@ -39,7 +39,7 @@ export default function SettingsPage() {
     completeTooltip 
   } = useOnboarding();
   const { theme, toggleTheme, reloadWithTheme } = useTheme();
-  const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>(theme === 'dark' ? 'dark' : 'light');
+  const [themeMode, setThemeMode] = useState<'light' | 'dark'>(theme === 'dark' ? 'dark' : 'light');
   
   // Simplified function to get current primary color - uses a simpler approach
   const getCurrentPrimaryColor = (): string => {
@@ -131,24 +131,18 @@ export default function SettingsPage() {
   };
   
   // Handle appearance changes
-  const changeTheme = async (value: 'light' | 'dark' | 'system') => {
+  const changeTheme = async (value: 'light' | 'dark') => {
     setThemeMode(value);
     
     try {
-      // Calculate the actual appearance value for theme.json
-      let appearance = value;
-      if (value === 'system') {
-        appearance = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      }
-      
-      // Update theme in theme.json
+      // Update theme in theme.json with the appropriate appearance value
       const response = await fetch('/api/settings/theme', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          appearance
+          appearance: value
         })
       });
       
@@ -158,16 +152,9 @@ export default function SettingsPage() {
           toggleTheme(); // Switch from dark to light
         } else if (value === 'dark' && theme === 'light') {
           toggleTheme(); // Switch from light to dark
-        } else if (value === 'system') {
-          // For system preference, we'd need to check the system preference
-          // and apply the appropriate theme
-          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          if ((prefersDark && theme === 'light') || (!prefersDark && theme === 'dark')) {
-            toggleTheme();
-          }
         }
         
-        const themeName = value === 'system' ? 'System Default' : value.charAt(0).toUpperCase() + value.slice(1);
+        const themeName = value.charAt(0).toUpperCase() + value.slice(1);
         
         toast({
           title: "Theme Updated",
@@ -366,15 +353,6 @@ export default function SettingsPage() {
                   >
                     <Moon className="h-4 w-4" />
                     Dark
-                  </Button>
-                  
-                  <Button 
-                    variant={themeMode === 'system' ? "default" : "outline"} 
-                    onClick={() => changeTheme('system')}
-                    className="flex items-center gap-2 text-foreground"
-                  >
-                    <Monitor className="h-4 w-4" />
-                    System
                   </Button>
                 </div>
               </div>
