@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useLYFEOS } from "../lib/context";
+import { usePageTitle } from "@/hooks/use-page-title";
 import { 
   Bot, Send, ChevronRight, Edit2, Check, X, Sparkles, Brain, Zap, Settings, 
   PlusCircle, Trash2, MessageSquare, MoreVertical, Menu, X as CloseIcon

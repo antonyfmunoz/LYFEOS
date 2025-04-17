@@ -17,7 +17,7 @@ fontsLink.rel = "stylesheet";
 document.head.appendChild(fontsLink);
 
 // Add title
-document.title = "LYFEOS - Your Life Operating System";
+document.title = "LYFEOS - Dashboard";
 
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>

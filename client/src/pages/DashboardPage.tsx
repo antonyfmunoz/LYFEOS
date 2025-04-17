@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLYFEOS } from "@/lib/context";
+import { usePageTitle } from "@/hooks/use-page-title";
 import { AIAgentFAB } from "@/components/ui/ai-agent-fab";
 import { cn } from "@/lib/utils";
 import {
@@ -197,6 +198,9 @@ const getEndTime = (startTime: string, duration: string): string => {
 };
 
 export default function DashboardPage() {
+  // Set the page title
+  usePageTitle('Dashboard');
+  
   const { stats, username, events } = useLYFEOS();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentTime, setCurrentTime] = useState(new Date());
