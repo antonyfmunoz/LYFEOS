@@ -18,6 +18,14 @@ declare module "express-session" {
   }
 }
 
+// Middleware to check if user is authenticated
+const isAuthenticated = (req: Request, res: Response, next: any) => {
+  if (req.session.userId) {
+    return next();
+  }
+  return res.status(401).json({ error: "Authentication required" });
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // USER ROUTES
   app.post("/api/auth/register", async (req: Request, res: Response) => {
@@ -113,7 +121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // USER STATS ROUTES
-  app.get("/api/users/:userId/stats", async (req: Request, res: Response) => {
+  app.get("/api/users/:userId/stats", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = parseInt(req.params.userId);
       if (isNaN(userId)) {
@@ -131,7 +139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/users/:userId/stats", async (req: Request, res: Response) => {
+  app.patch("/api/users/:userId/stats", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = parseInt(req.params.userId);
       if (isNaN(userId)) {
@@ -148,7 +156,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // QUEST ROUTES
-  app.get("/api/users/:userId/quests", async (req: Request, res: Response) => {
+  app.get("/api/users/:userId/quests", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = parseInt(req.params.userId);
       if (isNaN(userId)) {
@@ -162,7 +170,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/quests", async (req: Request, res: Response) => {
+  app.post("/api/quests", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const questData = insertQuestSchema.parse(req.body);
       const quest = await storage.createQuest(questData);
@@ -175,7 +183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/quests/:questId", async (req: Request, res: Response) => {
+  app.patch("/api/quests/:questId", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const questId = parseInt(req.params.questId);
       if (isNaN(questId)) {
@@ -191,7 +199,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/quests/:questId/toggle", async (req: Request, res: Response) => {
+  app.post("/api/quests/:questId/toggle", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const questId = parseInt(req.params.questId);
       if (isNaN(questId)) {
@@ -207,7 +215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI MESSAGE ROUTES
-  app.get("/api/users/:userId/messages", async (req: Request, res: Response) => {
+  app.get("/api/users/:userId/messages", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = parseInt(req.params.userId);
       if (isNaN(userId)) {
@@ -221,7 +229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/messages", async (req: Request, res: Response) => {
+  app.post("/api/messages", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const messageData = insertAIMessageSchema.parse(req.body);
       const message = await storage.createMessage(messageData);
