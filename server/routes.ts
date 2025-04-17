@@ -7,7 +7,8 @@ import {
   insertUserSchema, 
   insertQuestSchema, 
   insertAIMessageSchema, 
-  insertCalendarEventSchema 
+  insertCalendarEventSchema,
+  insertMissionPageSchema
 } from "@shared/schema";
 
 // Extend Request type to include session
@@ -365,6 +366,154 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedEvent = await storage.updateEvent(eventId, eventUpdate);
       
       return res.status(200).json({ event: updatedEvent });
+    } catch (error) {
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // MISSION PAGE ROUTES
+  app.get("/api/users/:userId/mission-pages", isOwner, async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+      
+      const missionPages = await storage.getMissionPages(userId);
+      return res.status(200).json({ missionPages });
+    } catch (error) {
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/mission-pages/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const pageId = parseInt(req.params.id);
+      if (isNaN(pageId)) {
+        return res.status(400).json({ error: "Invalid page ID" });
+      }
+      
+      const page = await storage.getMissionPage(pageId);
+      if (!page) {
+        return res.status(404).json({ error: "Mission page not found" });
+      }
+      
+      // Verify ownership
+      if (page.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to access this mission page" });
+      }
+      
+      return res.status(200).json({ page });
+    } catch (error) {
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.get("/api/mission-pages/slug/:slug", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const slug = req.params.slug;
+      
+      const page = await storage.getMissionPageBySlug(slug);
+      if (!page) {
+        return res.status(404).json({ error: "Mission page not found" });
+      }
+      
+      // Verify ownership
+      if (page.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to access this mission page" });
+      }
+      
+      return res.status(200).json({ page });
+    } catch (error) {
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/mission-pages", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const pageData = insertMissionPageSchema.parse(req.body);
+      
+      // Ensure user can only create pages for their own account
+      if (pageData.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to create mission pages for this user" });
+      }
+      
+      // Check if the slug is already taken
+      const existingPage = await storage.getMissionPageBySlug(pageData.slug);
+      if (existingPage) {
+        return res.status(400).json({ error: "A mission page with this slug already exists" });
+      }
+      
+      const page = await storage.createMissionPage(pageData);
+      return res.status(201).json({ page });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/mission-pages/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const pageId = parseInt(req.params.id);
+      if (isNaN(pageId)) {
+        return res.status(400).json({ error: "Invalid page ID" });
+      }
+      
+      // Get the page to check ownership
+      const page = await storage.getMissionPage(pageId);
+      if (!page) {
+        return res.status(404).json({ error: "Mission page not found" });
+      }
+      
+      // Verify ownership
+      if (page.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to update this mission page" });
+      }
+      
+      const pageUpdate = req.body;
+      
+      // If trying to update the slug, check if the new slug is taken
+      if (pageUpdate.slug && pageUpdate.slug !== page.slug) {
+        const existingPage = await storage.getMissionPageBySlug(pageUpdate.slug);
+        if (existingPage && existingPage.id !== pageId) {
+          return res.status(400).json({ error: "A mission page with this slug already exists" });
+        }
+      }
+      
+      const updatedPage = await storage.updateMissionPage(pageId, pageUpdate);
+      
+      return res.status(200).json({ page: updatedPage });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/mission-pages/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const pageId = parseInt(req.params.id);
+      if (isNaN(pageId)) {
+        return res.status(400).json({ error: "Invalid page ID" });
+      }
+      
+      // Get the page to check ownership
+      const page = await storage.getMissionPage(pageId);
+      if (!page) {
+        return res.status(404).json({ error: "Mission page not found" });
+      }
+      
+      // Verify ownership
+      if (page.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to delete this mission page" });
+      }
+      
+      await storage.deleteMissionPage(pageId);
+      
+      return res.status(200).json({ message: "Mission page deleted successfully" });
     } catch (error) {
       return res.status(500).json({ error: "Internal server error" });
     }

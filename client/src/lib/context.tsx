@@ -118,6 +118,33 @@ const initialEvents: CalendarEvent[] = [
   },
 ];
 
+// Initial mission pages
+const initialMissionPages: MissionPage[] = [
+  {
+    id: "mission1",
+    title: "Daily Reflection",
+    slug: "daily-reflection",
+    content: "# Daily Reflection\n\n## Mental State\nEnergy: 8/10\nFocus: 7/10\nMood: 9/10\n\n## Today's Wins\n- [x] Completed project milestone\n- [x] Had a productive team meeting\n- [ ] Finished weekly review\n\n## Tomorrow's Goals\n- Finalize presentation\n- Review quarterly metrics\n- Plan next sprint\n\n## Insights\nToday I noticed that I work best in 90-minute focused blocks with short breaks in between. I'll adjust my schedule tomorrow to match this pattern.",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    completed: false,
+    xpValue: 10,
+    tags: ["reflection", "daily"],
+  },
+  {
+    id: "mission2",
+    title: "Project Alpha Launch Plan",
+    slug: "project-alpha-launch",
+    content: "# Project Alpha Launch Strategy\n\n## Key Milestones\n- [x] Define MVP features\n- [x] Complete UI design\n- [ ] Finalize testing protocol\n- [ ] Prepare marketing materials\n\n## Timeline\n- Week 1: Development sprint\n- Week 2: QA and bug fixes\n- Week 3: Soft launch to beta users\n- Week 4: Public launch\n\n## Success Metrics\n- 1000+ signups in first week\n- 40% retention rate after 30 days\n- Average session time > 10 minutes",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    completed: false,
+    xpValue: 50,
+    tags: ["project", "planning"],
+    eventId: "event2"
+  },
+];
+
 // Create context types
 interface LYFEOSContextType {
   stats: UserStats;
@@ -159,8 +186,7 @@ const createSlug = (title: string): string => {
     .replace(/\s+/g, '-');
 };
 
-// Initial mission pages (empty array for now)
-const initialMissionPages: MissionPage[] = [];
+// We already defined initialMissionPages above
 
 export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const [stats, setStats] = useState<UserStats>(initialStats);
