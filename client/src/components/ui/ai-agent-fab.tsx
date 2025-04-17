@@ -32,8 +32,8 @@ export function AIAgentFAB() {
       
       // Show toast on name change
       toast({
-        title: "AI Companion Updated",
-        description: `Your AI companion is now named ${nameInput}`,
+        title: "AI Assistant Updated",
+        description: `Your AI assistant is now named ${nameInput}`,
         className: "bg-background border border-primary text-foreground",
       });
     }
@@ -92,7 +92,7 @@ export function AIAgentFAB() {
                     <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center mr-2">
                       <Bot className="h-4 w-4 text-primary" />
                     </div>
-                    <h3 className="font-orbitron text-primary">LYFE OS AI</h3>
+                    <h3 className="font-orbitron text-primary">LYFE OS AI ASSISTANT</h3>
                   </div>
                   <Button
                     variant="ghost"
@@ -104,7 +104,7 @@ export function AIAgentFAB() {
                   </Button>
                 </div>
                 
-                {/* AI Companion Name Editor */}
+                {/* AI Assistant Name Editor */}
                 <div className="flex items-center mt-2">
                   {isEditingName ? (
                     <div className="flex items-center w-full">
@@ -140,7 +140,7 @@ export function AIAgentFAB() {
                   ) : (
                     <div className="flex items-center justify-between w-full">
                       <div className="flex items-center">
-                        <span className="text-primary text-sm mr-1">AI Companion:</span>
+                        <span className="text-primary text-sm mr-1">AI Assistant:</span>
                         <span className="text-foreground font-semibold text-sm">{aiCompanionName}</span>
                       </div>
                       <Button

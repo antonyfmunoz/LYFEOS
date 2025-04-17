@@ -504,7 +504,7 @@ export default function AIPage() {
                   <Bot className="h-8 w-8 text-primary" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2 text-foreground">Welcome to {aiCompanionName}</h3>
-                <p className="text-muted-foreground max-w-md mb-8">Your AI companion is ready to assist with insights, ideas, and optimizations for your life.</p>
+                <p className="text-muted-foreground max-w-md mb-8">Your AI Assistant is ready to assist with insights, ideas, and optimizations for your life.</p>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full max-w-3xl">
                   <Button 
