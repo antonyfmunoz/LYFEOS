@@ -1,4 +1,8 @@
 import { Link } from "wouter";
+import { useAuth } from "@/lib/authContext";
+import { Button } from "@/components/ui/button";
+import { LogOut } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 interface SidebarProps {
   currentPage: string;
@@ -6,12 +10,14 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ currentPage, username }: SidebarProps) {
+  const { logout } = useAuth();
   const navItems = [
     { id: "dashboard", icon: "dashboard", label: "Dashboard" },
     { id: "quests", icon: "star", label: "Quests" },
     { id: "ai", icon: "smart_toy", label: "AI Companion" },
     { id: "codex", icon: "book", label: "Codex" },
     { id: "settings", icon: "settings", label: "Settings" },
+    { id: "profile", icon: "person", label: "Profile" },
   ];
 
   return (
@@ -65,6 +71,23 @@ export default function Sidebar({ currentPage, username }: SidebarProps) {
           </span>
         </div>
         <div className="text-xs text-[#7DAAB2] mt-1 font-mono">v0.9.0-alpha</div>
+        
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full mt-4 text-red-500 hover:text-red-400 hover:bg-red-500/10 border border-red-500/30"
+          onClick={() => {
+            logout();
+            toast({
+              title: "Logged Out",
+              description: "You have been successfully logged out.",
+              className: "bg-background border border-primary text-foreground",
+            });
+          }}
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          Logout
+        </Button>
       </div>
     </div>
   );
