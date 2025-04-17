@@ -1,17 +1,29 @@
 import { Link } from "wouter";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useAuth } from "@/lib/authContext";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { LogOut, User, Settings } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 interface MobileNavProps {
   currentPage: string;
 }
 
 export default function MobileNav({ currentPage }: MobileNavProps) {
+  const { user, logout } = useAuth();
   const navItems = [
     { id: "dashboard", icon: "dashboard", label: "Home" },
     { id: "quests", icon: "star", label: "Quests" },
     { id: "ai", icon: "smart_toy", label: "AI" },
     { id: "codex", icon: "book", label: "Codex" },
-    { id: "settings", icon: "settings", label: "Settings" },
+    { id: "profile", icon: "person", label: "Profile" },
   ];
   
   const indicatorRef = useRef<HTMLDivElement>(null);
@@ -33,18 +45,66 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
       ></div>
       
       <div className="flex justify-around">
-        {navItems.map((item) => (
-          <Link 
-            key={item.id} 
-            href={`/${item.id}`}
-            className={`flex flex-col items-center py-3 px-4 ${
-              currentPage === item.id ? "text-primary" : "text-[#7DAAB2]"
-            }`}
-          >
-            <span className="material-icons text-sm">{item.icon}</span>
-            <span className="text-xs mt-1 font-medium">{item.label}</span>
-          </Link>
-        ))}
+        {navItems.map((item) => {
+          if (item.id === "profile") {
+            return (
+              <DropdownMenu key={item.id}>
+                <DropdownMenuTrigger asChild>
+                  <button 
+                    className={`flex flex-col items-center py-3 px-4 ${
+                      currentPage === item.id ? "text-primary" : "text-[#7DAAB2]"
+                    }`}
+                  >
+                    <span className="material-icons text-sm">{item.icon}</span>
+                    <span className="text-xs mt-1 font-medium">Me</span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 bg-background border border-primary/20">
+                  <Link href="/profile">
+                    <DropdownMenuItem className="cursor-pointer">
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
+                    </DropdownMenuItem>
+                  </Link>
+                  <Link href="/settings">
+                    <DropdownMenuItem className="cursor-pointer">
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Settings</span>
+                    </DropdownMenuItem>
+                  </Link>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    className="cursor-pointer text-red-500"
+                    onClick={() => {
+                      logout();
+                      toast({
+                        title: "Logged Out",
+                        description: "You have been successfully logged out.",
+                        className: "bg-background border border-primary text-foreground",
+                      });
+                    }}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Logout</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            );
+          }
+          
+          return (
+            <Link 
+              key={item.id} 
+              href={`/${item.id}`}
+              className={`flex flex-col items-center py-3 px-4 ${
+                currentPage === item.id ? "text-primary" : "text-[#7DAAB2]"
+              }`}
+            >
+              <span className="material-icons text-sm">{item.icon}</span>
+              <span className="text-xs mt-1 font-medium">{item.label}</span>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
