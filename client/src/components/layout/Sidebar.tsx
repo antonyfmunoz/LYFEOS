@@ -3,7 +3,6 @@ import { useAuth } from "@/lib/authContext";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { ThemeToggle } from "../ui/theme-toggle";
 
 interface SidebarProps {
   currentPage: string;
@@ -73,7 +72,6 @@ export default function Sidebar({ currentPage, username }: SidebarProps) {
         </div>
         <div className="flex items-center justify-between mt-2">
           <div className="text-xs text-[#7DAAB2] font-mono">v0.9.0-alpha</div>
-          <ThemeToggle />
         </div>
         
         <Button

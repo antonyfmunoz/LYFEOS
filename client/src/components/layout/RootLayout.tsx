@@ -3,7 +3,6 @@ import Sidebar from "./Sidebar";
 import MobileNav from "./MobileNav";
 import AICompanionPanel from "../ai/AICompanionPanel";
 import { QuickActionMenu } from "../ui/quick-action-menu";
-import { ThemeToggle } from "../ui/theme-toggle";
 import { useLYFEOS } from "../../lib/context";
 import { useLocation } from "wouter";
 import { Link } from "wouter";
@@ -69,9 +68,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
             
             {/* Mobile header right side */}
             <div className="flex items-center gap-2">
-              {/* Theme toggle */}
-              <ThemeToggle />
-            
               {/* Profile Icon with dropdown */}
               <div className="relative">
                 <button 
