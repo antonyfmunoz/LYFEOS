@@ -6,7 +6,7 @@ import { AuthProvider, useAuth } from "./lib/authContext";
 import DashboardPage from "./pages/DashboardPage";
 import QuestsPage from "./pages/QuestsPage";
 import AIPage from "./pages/AIPage";
-import ChronilogPage from "./pages/CodexPage"; // Renamed component import but keeping the same file for now
+import ChronilogPage from "./pages/ChronilogPage";
 import SystemsPage from "./pages/SystemsPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ProfilePage from "./pages/ProfilePage";
