@@ -3,6 +3,7 @@ import { Route, Switch, useLocation } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
 import { LYFEOSProvider } from "./lib/context";
 import { AuthProvider, useAuth } from "./lib/authContext";
+import { OnboardingProvider } from "./lib/onboardingContext";
 import DashboardPage from "./pages/DashboardPage";
 import QuestsPage from "./pages/QuestsPage";
 import AIPage from "./pages/AIPage";
@@ -13,6 +14,7 @@ import ProfilePage from "./pages/ProfilePage";
 import StatDetailPage from "./pages/StatDetailPage";
 import MissionDetailPage from "./pages/MissionDetailPage";
 import CalendarPage from "./pages/CalendarPage";
+import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/not-found";
 import EnhancedMissionPage from "./pages/EnhancedMissionPage";
 import MissionPage from "./components/markdown/MissionPage";
@@ -165,6 +167,14 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
+      <Route path="/settings">
+        <ProtectedRoute>
+          <RootLayout>
+            <SettingsPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
       <Route path="/mission/:missionId">
         <ProtectedRoute>
           <RootLayout>
@@ -203,8 +213,10 @@ function App() {
   return (
     <AuthProvider>
       <LYFEOSProvider>
-        <Router />
-        <Toaster />
+        <OnboardingProvider>
+          <Router />
+          <Toaster />
+        </OnboardingProvider>
       </LYFEOSProvider>
     </AuthProvider>
   );
