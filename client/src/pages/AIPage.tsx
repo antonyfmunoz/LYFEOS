@@ -85,7 +85,7 @@ export default function AIPage() {
       toast({
         title: "AI Companion Updated",
         description: `Your AI companion is now named ${nameInput}`,
-        className: "bg-[#001E26] border border-cyan-500 text-white",
+        className: "bg-background border border-primary text-foreground",
       });
     }
   };
@@ -176,7 +176,7 @@ export default function AIPage() {
                   ref={nameInputRef}
                   value={nameInput}
                   onChange={(e) => setNameInput(e.target.value)}
-                  className="h-8 text-sm bg-slate-700/30 border-cyan-500/30 focus-visible:ring-cyan-500/30 mr-2 w-48"
+                  className="h-8 text-sm bg-card/30 border-primary/30 focus-visible:ring-primary/30 mr-2 w-48"
                   placeholder="Enter AI name"
                   maxLength={20}
                 />
@@ -185,7 +185,7 @@ export default function AIPage() {
                   size="sm"
                   variant="ghost"
                   onClick={handleSaveName}
-                  className="h-7 w-7 p-0 text-cyan-400 hover:bg-cyan-500/20"
+                  className="h-7 w-7 p-0 text-primary hover:bg-primary/20"
                 >
                   <Check className="h-4 w-4" />
                 </Button>
@@ -268,7 +268,7 @@ export default function AIPage() {
                   ref={newChatInputRef}
                   value={newChatTitle}
                   onChange={(e) => setNewChatTitle(e.target.value)}
-                  className="h-8 text-sm bg-slate-700/30 border-cyan-500/30 focus-visible:ring-cyan-500/30 mr-2"
+                  className="h-8 text-sm bg-slate-700/30 border-primary/30 focus-visible:ring-primary/30 mr-2"
                   placeholder="New chat name"
                   maxLength={30}
                   onKeyDown={(e) => {
@@ -285,7 +285,7 @@ export default function AIPage() {
                   size="sm"
                   variant="ghost"
                   onClick={handleCreateChat}
-                  className="h-7 w-7 p-0 text-cyan-400 hover:bg-cyan-500/20"
+                  className="h-7 w-7 p-0 text-primary hover:bg-primary/20"
                 >
                   <Check className="h-4 w-4" />
                 </Button>
@@ -313,7 +313,7 @@ export default function AIPage() {
                         ref={editChatInputRef}
                         value={chatTitleInput}
                         onChange={(e) => setChatTitleInput(e.target.value)}
-                        className="h-8 text-sm bg-slate-700/30 border-cyan-500/30 focus-visible:ring-cyan-500/30 mr-2"
+                        className="h-8 text-sm bg-slate-700/30 border-primary/30 focus-visible:ring-primary/30 mr-2"
                         placeholder="Chat name"
                         maxLength={30}
                         onKeyDown={(e) => {
@@ -331,7 +331,7 @@ export default function AIPage() {
                         size="sm"
                         variant="ghost"
                         onClick={handleUpdateChatTitle}
-                        className="h-7 w-7 p-0 text-cyan-400 hover:bg-cyan-500/20"
+                        className="h-7 w-7 p-0 text-primary hover:bg-primary/20"
                       >
                         <Check className="h-4 w-4" />
                       </Button>
@@ -351,13 +351,13 @@ export default function AIPage() {
                     </div>
                   ) : (
                     <div 
-                      className={`flex items-center justify-between px-2 py-2 rounded hover:bg-slate-800/50 cursor-pointer ${
-                        chat.id === activeChatSessionId ? 'bg-cyan-500/10 border border-cyan-500/20' : ''
+                      className={`flex items-center justify-between px-2 py-2 rounded hover:bg-card/50 cursor-pointer ${
+                        chat.id === activeChatSessionId ? 'bg-primary/10 border border-primary/20' : ''
                       }`}
                       onClick={() => handleChatSelect(chat.id)}
                     >
                       <div className="flex items-center flex-grow overflow-hidden mr-2">
-                        <MessageSquare className="h-4 w-4 mr-2 text-cyan-400 flex-shrink-0" />
+                        <MessageSquare className="h-4 w-4 mr-2 text-primary flex-shrink-0" />
                         <span className="text-sm truncate pr-2">{chat.title}</span>
                       </div>
                       
@@ -366,21 +366,21 @@ export default function AIPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-[#7DAAB2] hover:text-white hover:bg-slate-700/50 rounded-full"
+                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground hover:bg-card/50 rounded-full"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <MoreVertical className="h-3 w-3" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-[#0F1923] border border-cyan-500/20">
+                        <DropdownMenuContent align="end" className="bg-background border border-primary/20">
                           <DropdownMenuItem 
-                            className="text-[#D6F4FF] hover:bg-cyan-500/10 focus:bg-cyan-500/10 cursor-pointer"
+                            className="text-foreground hover:bg-primary/10 focus:bg-primary/10 cursor-pointer"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleStartEditingChat(chat);
                             }}
                           >
-                            <Edit2 className="h-3.5 w-3.5 mr-2 text-cyan-400" />
+                            <Edit2 className="h-3.5 w-3.5 mr-2 text-primary" />
                             Rename
                           </DropdownMenuItem>
                           
