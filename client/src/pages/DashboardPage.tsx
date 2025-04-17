@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useLYFEOS } from "@/lib/context";
+import { useOnboarding, APP_GUIDES, OnboardingStep } from "@/lib/onboardingContext";
 import { AIAgentFAB } from "@/components/ui/ai-agent-fab";
+import { NovaGuideTooltip, SystemGuideTooltip } from "@/components/ui/guide-tooltip";
 import { cn } from "@/lib/utils";
 import {
   Brain,
