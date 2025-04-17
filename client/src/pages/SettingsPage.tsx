@@ -201,8 +201,6 @@ export default function SettingsPage() {
   };
   
   const changePrimaryColor = async (value: string) => {
-    setPrimaryColor(value);
-    
     // Map color name to HSL value
     const colorValues: Record<string, string> = {
       "cyan": "hsl(188 100% 50%)",
@@ -213,7 +211,11 @@ export default function SettingsPage() {
     };
     
     try {
-      // Update theme color in theme.json
+      // First update UI immediately to provide instant feedback
+      setPrimaryColor(value);
+      setPrimaryColor(value as any); // Cast to any as we know these values match our PrimaryColor type
+      
+      // Then update theme.json on the server
       const response = await fetch('/api/settings/theme', {
         method: 'POST',
         headers: {
@@ -223,21 +225,11 @@ export default function SettingsPage() {
       });
       
       if (response.ok) {
+        // Show success message with less prominent toast that doesn't require action
         toast({
           title: "Color Theme Updated",
-          description: `Primary color changed to ${value}. Click OK to apply changes.`,
+          description: `Primary color changed to ${value}`,
           className: "bg-background border border-primary text-foreground",
-          action: (
-            <Button 
-              onClick={() => {
-                // Use our reloadWithTheme function from ThemeContext
-                reloadWithTheme();
-              }}
-              className="bg-primary text-primary-foreground"
-            >
-              OK
-            </Button>
-          ),
         });
       } else {
         throw new Error('Failed to update theme');
@@ -390,7 +382,9 @@ export default function SettingsPage() {
                         color: 'hsl(188 100% 50%)'
                       }}
                     >
-                      <div className="absolute top-1 left-1 w-3 h-3 rounded-full bg-[#00e0ff]"></div>
+                      {primaryColor === 'cyan' && (
+                        <div className="absolute top-1 left-1 w-3 h-3 rounded-full bg-[#00e0ff]"></div>
+                      )}
                       Cyan
                     </Button>
                     <Button 
@@ -402,7 +396,9 @@ export default function SettingsPage() {
                         color: 'hsl(265 89% 78%)'
                       }}
                     >
-                      <div className="absolute top-1 left-1 w-3 h-3 rounded-full bg-[#c58bff]"></div>
+                      {primaryColor === 'purple' && (
+                        <div className="absolute top-1 left-1 w-3 h-3 rounded-full bg-[#c58bff]"></div>
+                      )}
                       Purple
                     </Button>
                     <Button 
@@ -414,7 +410,9 @@ export default function SettingsPage() {
                         color: 'hsl(217 91% 60%)'
                       }}
                     >
-                      <div className="absolute top-1 left-1 w-3 h-3 rounded-full bg-[#3b82f6]"></div>
+                      {primaryColor === 'blue' && (
+                        <div className="absolute top-1 left-1 w-3 h-3 rounded-full bg-[#3b82f6]"></div>
+                      )}
                       Blue
                     </Button>
                     <Button 
@@ -426,7 +424,9 @@ export default function SettingsPage() {
                         color: 'hsl(142 71% 45%)'
                       }}
                     >
-                      <div className="absolute top-1 left-1 w-3 h-3 rounded-full bg-[#22c55e]"></div>
+                      {primaryColor === 'green' && (
+                        <div className="absolute top-1 left-1 w-3 h-3 rounded-full bg-[#22c55e]"></div>
+                      )}
                       Green
                     </Button>
                     <Button 
@@ -438,7 +438,9 @@ export default function SettingsPage() {
                         color: 'hsl(24 94% 50%)'
                       }}
                     >
-                      <div className="absolute top-1 left-1 w-3 h-3 rounded-full bg-[#ff780a]"></div>
+                      {primaryColor === 'orange' && (
+                        <div className="absolute top-1 left-1 w-3 h-3 rounded-full bg-[#ff780a]"></div>
+                      )}
                       Orange
                     </Button>
                   </div>
