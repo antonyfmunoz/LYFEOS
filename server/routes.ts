@@ -135,45 +135,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) {
         console.log("Login failed: User not found");
         
-        // Create test user if username is 'test'
-        if (username === 'test') {
-          console.log("Creating test user");
-          const saltRounds = 10;
-          const hashedPassword = await bcrypt.hash(password, saltRounds);
-          
-          const newUser = await storage.createUser({
-            username: 'test',
-            password: hashedPassword,
-            displayName: 'Test User',
-            title: 'COMMANDER',
-          });
-          
-          // Create initial user stats
-          console.log("Creating initial stats for test user:", newUser.id);
-          await storage.createUserStats({
-            userId: newUser.id,
-            experienceCurrent: 0,
-            experienceMax: 100,
-            level: 1,
-            timeTokensCurrent: 10,
-            timeTokensMax: 10,
-            energyPointsCurrent: 100,
-            energyPointsMax: 100,
-            healthPointsCurrent: 100,
-            healthPointsMax: 100,
-            attentionTokensCurrent: 5,
-            attentionTokensMax: 5,
-            aiAssistantName: "NOVA"
-          });
-          
-          // Create session
-          req.session.userId = newUser.id;
-          req.session.username = newUser.username;
-          
-          return res.status(200).json({ user: { id: newUser.id, username: newUser.username } });
-        }
+        // Auto-register any user for demo purposes
+        console.log("Auto-registering new user:", username);
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
         
-        return res.status(401).json({ error: "Invalid credentials" });
+        const newUser = await storage.createUser({
+          username: username,
+          password: hashedPassword,
+          displayName: username,
+          title: 'COMMANDER',
+        });
+        
+        // Create initial user stats
+        console.log("Creating initial stats for new user:", newUser.id);
+        await storage.createUserStats({
+          userId: newUser.id,
+          experienceCurrent: 0,
+          experienceMax: 100,
+          level: 1,
+          timeTokensCurrent: 10,
+          timeTokensMax: 10,
+          energyPointsCurrent: 100,
+          energyPointsMax: 100,
+          healthPointsCurrent: 100,
+          healthPointsMax: 100,
+          attentionTokensCurrent: 5,
+          attentionTokensMax: 5,
+          aiAssistantName: "NOVA"
+        });
+        
+        // Create session
+        req.session.userId = newUser.id;
+        req.session.username = newUser.username;
+        
+        console.log("New user created, session created for user:", newUser.username);
+        
+        return res.status(200).json({ user: { id: newUser.id, username: newUser.username } });
       }
       
       // Verify password
