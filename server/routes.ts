@@ -2,12 +2,21 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
+import bcrypt from "bcrypt";
 import { 
   insertUserSchema, 
   insertQuestSchema, 
   insertAIMessageSchema, 
   insertCalendarEventSchema 
 } from "@shared/schema";
+
+// Extend Request type to include session
+declare module "express-session" {
+  interface SessionData {
+    userId: number;
+    username: string;
+  }
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // USER ROUTES

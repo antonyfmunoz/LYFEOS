@@ -53,17 +53,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (username: string, password: string) => {
     try {
       setIsLoading(true);
-      const response = await apiRequest("/api/auth/login", {
+      const response = await fetch("/api/auth/login", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ username, password }),
-      }) as AuthResponse;
-
-      if (response && response.user) {
-        setUser(response.user);
-        localStorage.setItem("lyfeos_user", JSON.stringify(response.user));
+      });
+      
+      if (!response.ok) {
+        throw new Error("Login failed");
+      }
+      
+      const data = await response.json() as AuthResponse;
+      
+      if (data && data.user) {
+        setUser(data.user);
+        localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
         toast({
           title: "Login Successful",
-          description: `Welcome back, ${response.user.username}!`,
+          description: `Welcome back, ${data.user.username}!`,
           className: "bg-background border border-primary text-foreground",
         });
         navigate("/dashboard");
@@ -84,17 +93,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (username: string, password: string) => {
     try {
       setIsLoading(true);
-      const response = await apiRequest("/api/auth/register", {
+      const response = await fetch("/api/auth/register", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ username, password }),
-      }) as AuthResponse;
-
-      if (response && response.user) {
-        setUser(response.user);
-        localStorage.setItem("lyfeos_user", JSON.stringify(response.user));
+      });
+      
+      if (!response.ok) {
+        throw new Error("Registration failed");
+      }
+      
+      const data = await response.json() as AuthResponse;
+      
+      if (data && data.user) {
+        setUser(data.user);
+        localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
         toast({
           title: "Registration Successful",
-          description: `Welcome to LYFEOS, ${response.user.username}!`,
+          description: `Welcome to LYFEOS, ${data.user.username}!`,
           className: "bg-background border border-primary text-foreground",
         });
         navigate("/onboarding");
