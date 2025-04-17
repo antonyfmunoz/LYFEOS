@@ -8,8 +8,8 @@ import { LogOut, ChevronLeft, Clock, Zap, Heart, BrainCircuit, User } from "luci
 import { toast } from "@/hooks/use-toast";
 
 export default function ProfilePage() {
-  const { username, stats } = useLYFEOS();
-  const { logout } = useAuth();
+  const { stats } = useLYFEOS();
+  const { user, logout } = useAuth();
 
   return (
     <RootLayout>
@@ -42,7 +42,7 @@ export default function ProfilePage() {
             {/* Profile details */}
             <div className="flex-1">
               <h2 className="text-2xl font-orbitron text-foreground mb-2 tracking-wider flex items-center gap-2">
-                {username}
+                {user ? user.username : "Commander"}
                 <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded font-mono tracking-widest border border-primary/30">
                   COMMANDER
                 </span>
