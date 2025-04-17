@@ -8,7 +8,7 @@ interface MobileNavProps {
 export default function MobileNav({ currentPage }: MobileNavProps) {
   const navItems = [
     { id: "dashboard", icon: "dashboard", label: "Dashboard" },
-    { id: "quests", icon: "star", label: "Quests" },
+    { id: "quests", icon: "star", label: "Missions" },
     { id: "ai", icon: "smart_toy", label: "AI" },
     { id: "codex", icon: "book", label: "Codex" },
     { id: "systems", icon: "settings", label: "Systems" },
