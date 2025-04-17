@@ -240,22 +240,24 @@ export default function CalendarPage() {
             <div className="space-y-2">
               <Label htmlFor="duration">Duration</Label>
               <div className="flex space-x-2">
-                <Select value={eventDuration} onValueChange={setEventDuration} className="flex-1">
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select duration" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="15 mins">15 minutes</SelectItem>
-                    <SelectItem value="30 mins">30 minutes</SelectItem>
-                    <SelectItem value="45 mins">45 minutes</SelectItem>
-                    <SelectItem value="1 hour">1 hour</SelectItem>
-                    <SelectItem value="1.5 hours">1.5 hours</SelectItem>
-                    <SelectItem value="2 hours">2 hours</SelectItem>
-                    <SelectItem value="3 hours">3 hours</SelectItem>
-                    <SelectItem value="4 hours">4 hours</SelectItem>
-                    <SelectItem value="custom">Custom...</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex-1">
+                  <Select value={eventDuration} onValueChange={setEventDuration}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select duration" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="15 mins">15 minutes</SelectItem>
+                      <SelectItem value="30 mins">30 minutes</SelectItem>
+                      <SelectItem value="45 mins">45 minutes</SelectItem>
+                      <SelectItem value="1 hour">1 hour</SelectItem>
+                      <SelectItem value="1.5 hours">1.5 hours</SelectItem>
+                      <SelectItem value="2 hours">2 hours</SelectItem>
+                      <SelectItem value="3 hours">3 hours</SelectItem>
+                      <SelectItem value="4 hours">4 hours</SelectItem>
+                      <SelectItem value="custom">Custom...</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 {eventDuration === "custom" && (
                   <Input
                     placeholder="e.g. 2.5 hours"
@@ -343,22 +345,24 @@ export default function CalendarPage() {
             <div className="space-y-2">
               <Label htmlFor="edit-duration">Duration</Label>
               <div className="flex space-x-2">
-                <Select value={eventDuration} onValueChange={setEventDuration} className="flex-1">
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select duration" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="15 mins">15 minutes</SelectItem>
-                    <SelectItem value="30 mins">30 minutes</SelectItem>
-                    <SelectItem value="45 mins">45 minutes</SelectItem>
-                    <SelectItem value="1 hour">1 hour</SelectItem>
-                    <SelectItem value="1.5 hours">1.5 hours</SelectItem>
-                    <SelectItem value="2 hours">2 hours</SelectItem>
-                    <SelectItem value="3 hours">3 hours</SelectItem>
-                    <SelectItem value="4 hours">4 hours</SelectItem>
-                    <SelectItem value="custom">Custom...</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex-1">
+                  <Select value={eventDuration} onValueChange={setEventDuration}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select duration" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="15 mins">15 minutes</SelectItem>
+                      <SelectItem value="30 mins">30 minutes</SelectItem>
+                      <SelectItem value="45 mins">45 minutes</SelectItem>
+                      <SelectItem value="1 hour">1 hour</SelectItem>
+                      <SelectItem value="1.5 hours">1.5 hours</SelectItem>
+                      <SelectItem value="2 hours">2 hours</SelectItem>
+                      <SelectItem value="3 hours">3 hours</SelectItem>
+                      <SelectItem value="4 hours">4 hours</SelectItem>
+                      <SelectItem value="custom">Custom...</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 {eventDuration === "custom" && (
                   <Input
                     placeholder="e.g. 2.5 hours"
@@ -405,72 +409,77 @@ export default function CalendarPage() {
               onClick={handleUpdateEvent}
               className="bg-primary/20 hover:bg-primary/30 text-primary"
             >
-              <Edit className="h-4 w-4 mr-2" /> Update
+              <Edit className="mr-2 h-4 w-4" /> Update
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* View-only Event Info Dialog */}
+      
+      {/* Event Info Dialog */}
       <Dialog open={isInfoEventOpen} onOpenChange={setIsInfoEventOpen}>
         <DialogContent className="glassmorphic backdrop-blur-lg border-primary/30 max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-orbitron">{selectedEvent?.title}</DialogTitle>
-            <DialogDescription className="opacity-90">
-              {selectedEvent?.category === "work" ? (
-                <span className="text-primary">Work Event</span>
-              ) : selectedEvent?.category === "personal" ? (
-                <span className="text-[#7e57c2]">Personal Event</span>
-              ) : (
-                <span className="text-[#EC4899]">Health Event</span>
-              )}
+            <DialogTitle className="font-orbitron">
+              {selectedEvent?.title}
+            </DialogTitle>
+            <DialogDescription>
+              Event details
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-2">
-            <div className="flex items-center justify-between px-1">
-              <div className="flex items-center space-x-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-mono">{selectedEvent?.startTime}</span>
+          {selectedEvent && (
+            <div className="space-y-4 py-2">
+              <div className="flex items-center text-muted-foreground">
+                <Clock className="h-4 w-4 mr-2" />
+                <span>
+                  {selectedEvent.startTime} • {selectedEvent.duration}
+                </span>
               </div>
-              <span className="text-sm text-muted-foreground">Duration: {selectedEvent?.duration}</span>
+              
+              <div className="p-4 bg-card/10 rounded-md">
+                <p className="text-muted-foreground">
+                  {selectedEvent.description || "No description provided."}
+                </p>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className={cn(
+                  "px-3 py-1 rounded-full text-xs",
+                  selectedEvent.category === "work" ? "bg-primary/10 text-primary" : 
+                  selectedEvent.category === "personal" ? "bg-[#7e57c2]/10 text-[#7e57c2]" : 
+                  "bg-[#EC4899]/10 text-[#EC4899]"
+                )}>
+                  {selectedEvent.category.charAt(0).toUpperCase() + selectedEvent.category.slice(1)}
+                </span>
+                
+                <Link href={`/mission/${selectedEvent.id}`}>
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    className="text-primary border-primary/30"
+                  >
+                    View Mission <ExternalLink className="ml-2 h-3.5 w-3.5" />
+                  </Button>
+                </Link>
+              </div>
             </div>
-            
-            <div className="bg-primary/5 p-4 rounded-md">
-              <h4 className="text-sm font-semibold mb-2">Description</h4>
-              <p className="text-sm leading-relaxed">{selectedEvent?.description}</p>
-            </div>
-            
-            <div className="bg-primary/5 p-4 rounded-md">
-              <h4 className="text-sm font-semibold mb-2">Location</h4>
-              <p className="text-sm leading-relaxed">
-                {selectedEvent?.category === "work" ? "Conference Room 3" : 
-                 selectedEvent?.category === "personal" ? "Virtual" : "Gym"}
-              </p>
-            </div>
-          </div>
+          )}
           
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsInfoEventOpen(false)}
+            <DialogClose asChild>
+              <Button variant="outline">Close</Button>
+            </DialogClose>
+            <Button 
+              onClick={() => {
+                setIsInfoEventOpen(false);
+                if (selectedEvent) {
+                  handleEditEvent(selectedEvent);
+                }
+              }}
+              className="bg-primary/20 hover:bg-primary/30 text-primary"
             >
-              Close
+              <Edit className="mr-2 h-4 w-4" /> Edit
             </Button>
-            <Link href={selectedEvent ? `/mission/${selectedEvent.id}` : '#'} onClick={() => setIsInfoEventOpen(false)}>
-              <Button className={cn(
-                "inline-flex h-9 items-center justify-center rounded-md px-4 py-2 text-sm font-medium",
-                "ring-offset-background transition-colors",
-                "border border-white/10 hover:bg-white/5",
-                "focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2",
-                selectedEvent?.category === "work" ? "text-blue-400" : 
-                selectedEvent?.category === "health" ? "text-red-400" : 
-                selectedEvent?.category === "personal" ? "text-purple-400" : 
-                "text-primary"
-              )}>
-                <ExternalLink size={14} className="mr-2" /> More Details
-              </Button>
-            </Link>
           </DialogFooter>
         </DialogContent>
       </Dialog>
