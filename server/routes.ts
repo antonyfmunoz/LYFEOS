@@ -26,6 +26,24 @@ const isAuthenticated = (req: Request, res: Response, next: any) => {
   return res.status(401).json({ error: "Authentication required" });
 };
 
+// Middleware to check if user is accessing their own data
+const isOwner = (req: Request, res: Response, next: any) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+  
+  const requestedUserId = parseInt(req.params.userId);
+  if (isNaN(requestedUserId)) {
+    return res.status(400).json({ error: "Invalid user ID" });
+  }
+  
+  if (req.session.userId !== requestedUserId) {
+    return res.status(403).json({ error: "Not authorized to access this data" });
+  }
+  
+  return next();
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // USER ROUTES
   app.post("/api/auth/register", async (req: Request, res: Response) => {
@@ -121,7 +139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // USER STATS ROUTES
-  app.get("/api/users/:userId/stats", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/users/:userId/stats", isOwner, async (req: Request, res: Response) => {
     try {
       const userId = parseInt(req.params.userId);
       if (isNaN(userId)) {
@@ -139,7 +157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/users/:userId/stats", isAuthenticated, async (req: Request, res: Response) => {
+  app.patch("/api/users/:userId/stats", isOwner, async (req: Request, res: Response) => {
     try {
       const userId = parseInt(req.params.userId);
       if (isNaN(userId)) {
@@ -156,7 +174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // QUEST ROUTES
-  app.get("/api/users/:userId/quests", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/users/:userId/quests", isOwner, async (req: Request, res: Response) => {
     try {
       const userId = parseInt(req.params.userId);
       if (isNaN(userId)) {
@@ -215,7 +233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI MESSAGE ROUTES
-  app.get("/api/users/:userId/messages", isAuthenticated, async (req: Request, res: Response) => {
+  app.get("/api/users/:userId/messages", isOwner, async (req: Request, res: Response) => {
     try {
       const userId = parseInt(req.params.userId);
       if (isNaN(userId)) {
@@ -232,6 +250,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/messages", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const messageData = insertAIMessageSchema.parse(req.body);
+      
+      // Ensure user can only post messages from their own account
+      if (messageData.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to post messages for this user" });
+      }
+      
       const message = await storage.createMessage(messageData);
       
       // If this is a user message, create an AI response
@@ -258,7 +282,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // CALENDAR EVENT ROUTES
-  app.get("/api/users/:userId/events", async (req: Request, res: Response) => {
+  app.get("/api/users/:userId/events", isOwner, async (req: Request, res: Response) => {
     try {
       const userId = parseInt(req.params.userId);
       if (isNaN(userId)) {
@@ -272,7 +296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/events", async (req: Request, res: Response) => {
+  app.post("/api/events", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const eventData = insertCalendarEventSchema.parse(req.body);
       const event = await storage.createEvent(eventData);
@@ -285,7 +309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/events/:eventId", async (req: Request, res: Response) => {
+  app.patch("/api/events/:eventId", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const eventId = parseInt(req.params.eventId);
       if (isNaN(eventId)) {
