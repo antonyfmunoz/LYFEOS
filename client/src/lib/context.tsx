@@ -225,23 +225,35 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated, user]);
   
   // Function to update AI assistant name in the database
-  const setAICompanionName = async (name: string) => {
+  const setAICompanionName = (name: string) => {
     setAICompanionNameState(name);
+    
+    // Show toast notification
+    toast({
+      title: "AI Assistant Updated",
+      description: `AI Assistant name set to ${name}`,
+      variant: "default",
+      className: "bg-[#001E26] border border-[#36F1CD] text-white",
+      duration: 3000,
+    });
     
     if (isAuthenticated && user) {
       try {
-        const response = await fetch(`/api/users/${user.id}/ai-assistant-name`, {
+        fetch(`/api/users/${user.id}/ai-assistant-name`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ name }),
+        })
+        .then(response => {
+          if (!response.ok) {
+            console.error("Failed to update AI assistant name in database");
+          }
+        })
+        .catch(error => {
+          console.error("Error updating AI assistant name:", error);
         });
-        
-        if (!response.ok) {
-          // Revert to previous name if update fails
-          console.error("Failed to update AI assistant name in database");
-        }
       } catch (error) {
         console.error("Error updating AI assistant name:", error);
       }
