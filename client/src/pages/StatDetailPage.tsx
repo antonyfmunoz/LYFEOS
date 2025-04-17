@@ -1,6 +1,7 @@
 import { useLYFEOS } from "@/lib/context";
 import { StatType } from "@/lib/types";
 import { Link } from "wouter";
+import { usePageTitle } from "@/hooks/use-page-title";
 import { 
   ArrowLeft, Clock, Zap, Heart, ChevronRight, 
   Lightbulb, History, TrendingDown, TrendingUp, 
@@ -12,6 +13,21 @@ interface StatDetailPageProps {
 }
 
 export default function StatDetailPage({ stat }: StatDetailPageProps) {
+  // Get the appropriate stat title for the page title
+  const getStatTitle = () => {
+    switch(stat) {
+      case 'attention': return 'Attention Tokens';
+      case 'time': return 'Time Tokens';
+      case 'energy': return 'Energy Points';
+      case 'health': return 'Health Points';
+      case 'experience': return 'Experience';
+      default: return 'Stats';
+    }
+  };
+  
+  // Set dynamic page title based on the stat type
+  usePageTitle(getStatTitle());
+  
   const { stats } = useLYFEOS();
   
   // Configure based on stat type

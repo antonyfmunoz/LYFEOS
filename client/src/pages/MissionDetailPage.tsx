@@ -5,6 +5,7 @@ import { useLYFEOS } from "@/lib/context";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { usePageTitle } from "@/hooks/use-page-title";
 import MarkdownEditor from "@/components/markdown/MarkdownEditor";
 import { MissionPage as MissionPageType } from "@/lib/types";
 
@@ -22,6 +23,9 @@ export default function MissionDetailPage() {
   
   // Find the mission from events based on ID
   const mission = events.find(event => event.id === missionId);
+  
+  // Set dynamic page title based on mission title if found
+  usePageTitle(mission ? `Mission: ${mission.title}` : 'Mission Detail');
   
   // Find or create a mission page for this event
   const [missionPage, setMissionPage] = useState<MissionPageType | null>(null);

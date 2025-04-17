@@ -2,11 +2,15 @@ import React from "react";
 import RootLayout from "../components/layout/RootLayout";
 import { useLYFEOS } from "../lib/context";
 import { useAuth } from "@/lib/authContext";
+import { usePageTitle } from "@/hooks/use-page-title";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 
 export default function ProfilePage() {
+  // Set the page title
+  usePageTitle('Profile');
+  
   const { username, stats } = useLYFEOS();
   const { logout } = useAuth();
 
