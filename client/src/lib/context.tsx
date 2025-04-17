@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { UserStats, Quest, AIMessage, CalendarEvent, MissionPage, ChatSession } from "./types";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "./authContext";
+import { apiRequest } from "./queryClient";
 
 // Initial stats data
 const initialStats: UserStats = {
@@ -190,15 +192,61 @@ const createSlug = (title: string): string => {
 // We already defined initialMissionPages above
 
 export function LYFEOSProvider({ children }: { children: ReactNode }) {
+  const { user, isAuthenticated } = useAuth();
   const [stats, setStats] = useState<UserStats>(initialStats);
   const [quests, setQuests] = useState<Quest[]>(initialQuests);
   const [messages, setMessages] = useState<AIMessage[]>(initialMessages);
   const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
   const [missionPages, setMissionPages] = useState<MissionPage[]>(initialMissionPages);
   const [username, setUsername] = useState<string>("Alex Chen");
-  const [aiCompanionName, setAICompanionName] = useState<string>("Nova");
+  const [aiCompanionName, setAICompanionNameState] = useState<string>("Lyfe");
   const [chatSessions, setChatSessions] = useState<ChatSession[]>(initialChatSessions);
   const [activeChatSessionId, setActiveChatSessionId] = useState<string>(initialChatSessions[0].id);
+
+  // Load user stats (including AI assistant name) when user logs in
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const fetchStats = async () => {
+        try {
+          const response = await fetch(`/api/users/${user.id}/stats`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.stats && data.stats.aiAssistantName) {
+              setAICompanionNameState(data.stats.aiAssistantName);
+            }
+          }
+        } catch (error) {
+          console.error("Failed to fetch user stats:", error);
+        }
+      };
+      
+      fetchStats();
+    }
+  }, [isAuthenticated, user]);
+  
+  // Function to update AI assistant name in the database
+  const setAICompanionName = async (name: string) => {
+    setAICompanionNameState(name);
+    
+    if (isAuthenticated && user) {
+      try {
+        const response = await fetch(`/api/users/${user.id}/ai-assistant-name`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ name }),
+        });
+        
+        if (!response.ok) {
+          // Revert to previous name if update fails
+          console.error("Failed to update AI assistant name in database");
+        }
+      } catch (error) {
+        console.error("Error updating AI assistant name:", error);
+      }
+    }
+  };
 
   // Toggle quest completion
   const toggleQuestCompletion = (id: string) => {
