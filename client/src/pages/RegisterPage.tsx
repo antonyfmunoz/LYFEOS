@@ -1,11 +1,15 @@
 import React, { useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/lib/authContext";
+import { usePageTitle } from "@/hooks/use-page-title";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 
 export default function RegisterPage() {
+  // Set the page title
+  usePageTitle('Register');
+  
   const { register, isLoading } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");

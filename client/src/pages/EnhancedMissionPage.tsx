@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { useLYFEOS } from '@/lib/context';
+import { usePageTitle } from '@/hooks/use-page-title';
 import MarkdownEditor from '@/components/markdown/MarkdownEditor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +38,9 @@ export default function EnhancedMissionPage() {
   
   // Get the mission page data
   const missionPage = getMissionPageBySlug(slug);
+  
+  // Set dynamic page title based on mission page title
+  usePageTitle(missionPage ? `Mission: ${missionPage.title}` : 'Mission Page');
   
   // State for editing
   const [isEditingTitle, setIsEditingTitle] = useState(false);
