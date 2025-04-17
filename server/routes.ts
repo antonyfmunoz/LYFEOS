@@ -191,6 +191,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/quests", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const questData = insertQuestSchema.parse(req.body);
+      
+      // Ensure user can only create quests for their own account
+      if (questData.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to create quests for this user" });
+      }
+      
       const quest = await storage.createQuest(questData);
       return res.status(201).json({ quest });
     } catch (error) {
@@ -208,6 +214,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid quest ID" });
       }
       
+      // Get the quest to check ownership
+      const quest = await storage.getQuest(questId);
+      if (!quest) {
+        return res.status(404).json({ error: "Quest not found" });
+      }
+      
+      // Verify ownership
+      if (quest.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to update this quest" });
+      }
+      
       const questUpdate = req.body;
       const updatedQuest = await storage.updateQuest(questId, questUpdate);
       
@@ -222,6 +239,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const questId = parseInt(req.params.questId);
       if (isNaN(questId)) {
         return res.status(400).json({ error: "Invalid quest ID" });
+      }
+      
+      // Get the quest to check ownership
+      const quest = await storage.getQuest(questId);
+      if (!quest) {
+        return res.status(404).json({ error: "Quest not found" });
+      }
+      
+      // Verify ownership
+      if (quest.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to toggle this quest" });
       }
       
       const updatedQuest = await storage.toggleQuestCompletion(questId);
@@ -299,6 +327,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/events", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const eventData = insertCalendarEventSchema.parse(req.body);
+      
+      // Ensure user can only create events for their own account
+      if (eventData.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to create events for this user" });
+      }
+      
       const event = await storage.createEvent(eventData);
       return res.status(201).json({ event });
     } catch (error) {
@@ -314,6 +348,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const eventId = parseInt(req.params.eventId);
       if (isNaN(eventId)) {
         return res.status(400).json({ error: "Invalid event ID" });
+      }
+      
+      // Get the event to check ownership
+      const event = await storage.getEvent(eventId);
+      if (!event) {
+        return res.status(404).json({ error: "Event not found" });
+      }
+      
+      // Verify ownership
+      if (event.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to update this event" });
       }
       
       const eventUpdate = req.body;

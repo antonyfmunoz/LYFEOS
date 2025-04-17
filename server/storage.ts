@@ -32,6 +32,7 @@ export interface IStorage {
   
   // Calendar Event methods
   getEvents(userId: number): Promise<CalendarEvent[]>;
+  getEvent(id: number): Promise<CalendarEvent | undefined>;
   createEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
   updateEvent(id: number, event: Partial<InsertCalendarEvent>): Promise<CalendarEvent>;
 }
@@ -177,6 +178,11 @@ export class DatabaseStorage implements IStorage {
   // Calendar Event methods
   async getEvents(userId: number): Promise<CalendarEvent[]> {
     return db.select().from(calendarEvents).where(eq(calendarEvents.userId, userId));
+  }
+  
+  async getEvent(id: number): Promise<CalendarEvent | undefined> {
+    const [event] = await db.select().from(calendarEvents).where(eq(calendarEvents.id, id));
+    return event;
   }
   
   async createEvent(event: InsertCalendarEvent): Promise<CalendarEvent> {
