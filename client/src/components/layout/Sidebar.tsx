@@ -8,7 +8,7 @@ interface SidebarProps {
 export default function Sidebar({ currentPage, username }: SidebarProps) {
   const navItems = [
     { id: "dashboard", icon: "dashboard", label: "Dashboard" },
-    { id: "quests", icon: "star", label: "Missions" },
+    { id: "quests", icon: "track_changes", label: "Missions" },
     { id: "ai", icon: "smart_toy", label: "AI Companion" },
     { id: "codex", icon: "book", label: "Codex" },
     { id: "systems", icon: "settings", label: "Systems" },
