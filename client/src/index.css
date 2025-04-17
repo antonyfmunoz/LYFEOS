@@ -19,6 +19,21 @@
     
     --secondary: 262 50% 60%;
     --secondary-foreground: 0 0% 100%;
+    
+    --accent: 338 70% 60%;
+    --accent-foreground: 0 0% 100%;
+    
+    --muted: 200 30% 85%;
+    --muted-foreground: 220 20% 40%;
+    
+    --destructive: 350 90% 60%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 188 100% 40% / 0.2;
+    --input: 188 100% 40% / 0.2;
+    --ring: 188 100% 40% / 0.5;
+
+    --radius: 0.5rem;
   }
 
   .dark {
