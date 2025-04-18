@@ -95,12 +95,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         level: 1,
         timeTokensCurrent: 10,
         timeTokensMax: 10,
-        energyPointsCurrent: 100,
-        energyPointsMax: 100,
-        healthPointsCurrent: 100,
-        healthPointsMax: 100,
+        energyPointsCurrent: 10,
+        energyPointsMax: 10,
+        healthPointsCurrent: 10,
+        healthPointsMax: 10,
         attentionTokensCurrent: 5,
         attentionTokensMax: 5,
+        streakDays: 0,
+        efficiencyScore: 0,
         aiAssistantName: "NOVA"
       });
       
@@ -156,14 +158,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           level: 1,
           timeTokensCurrent: 10,
           timeTokensMax: 10,
-          energyPointsCurrent: 100,
-          energyPointsMax: 100,
-          healthPointsCurrent: 100,
-          healthPointsMax: 100,
+          energyPointsCurrent: 10,
+          energyPointsMax: 10,
+          healthPointsCurrent: 10,
+          healthPointsMax: 10,
           attentionTokensCurrent: 5,
           attentionTokensMax: 5,
-          streakDays: 1,
-          efficiencyScore: 65,
+          streakDays: 0,
+          efficiencyScore: 0,
           aiAssistantName: "NOVA"
         });
         

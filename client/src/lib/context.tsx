@@ -7,28 +7,28 @@ import { apiRequest } from "./queryClient";
 // Initial stats data
 const initialStats: UserStats = {
   attentionTokens: {
-    current: 80,
-    max: 100,
+    current: 5,
+    max: 5,
   },
   timeTokens: {
-    current: 12,
-    max: 24,
+    current: 10,
+    max: 10,
   },
   energyPoints: {
-    current: 65,
-    max: 100,
+    current: 10,
+    max: 10,
   },
   healthPoints: {
-    current: 80,
-    max: 100,
+    current: 10,
+    max: 10,
   },
   experience: {
-    current: 9420,
-    max: 10000,
-    level: 15,
+    current: 0,
+    max: 100,
+    level: 1,
   },
-  streakDays: 14,
-  efficiencyScore: 78,
+  streakDays: 0,
+  efficiencyScore: 0,
 };
 
 // Initial quests data
@@ -241,8 +241,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
                   max: dbStats.experienceMax,
                   level: dbStats.level,
                 },
-                streakDays: dbStats.streakDays || 14, // Default to 14 if not present
-                efficiencyScore: dbStats.efficiencyScore || 78, // Default to 78 if not present
+                streakDays: dbStats.streakDays || 0, // Default to 0 if not present
+                efficiencyScore: dbStats.efficiencyScore || 0, // Default to 0 if not present
               });
               
               // Set AI assistant name if available
