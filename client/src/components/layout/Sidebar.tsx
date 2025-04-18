@@ -1,5 +1,8 @@
 import { Link } from "wouter";
 import { useLYFEOS } from "../../lib/context";
+import { useAuth } from "../../lib/authContext";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "../../lib/queryClient";
 
 interface SidebarProps {
   currentPage: string;
@@ -8,6 +11,17 @@ interface SidebarProps {
 
 export default function Sidebar({ currentPage, username }: SidebarProps) {
   const { stats } = useLYFEOS();
+  const { user } = useAuth();
+  
+  // Fetch user profile data
+  const { data: profileData } = useQuery({
+    queryKey: ["/api/users", user?.id, "profile"],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      return apiRequest(`/api/users/${user.id}/profile`);
+    },
+    enabled: !!user?.id,
+  });
   const navItems = [
     { id: "dashboard", icon: "dashboard", label: "Dashboard" },
     { id: "quests", icon: "track_changes", label: "Missions" },
@@ -33,7 +47,7 @@ export default function Sidebar({ currentPage, username }: SidebarProps) {
         </div>
         <div className="ml-3">
           <p className="font-orbitron text-sm text-text-primary">LEVEL {stats.experience.level}</p>
-          <p className="text-[#7DAAB2] text-xs">{username}</p>
+          <p className="text-[#7DAAB2] text-xs">{profileData?.displayName || username}</p>
         </div>
       </div>
 
