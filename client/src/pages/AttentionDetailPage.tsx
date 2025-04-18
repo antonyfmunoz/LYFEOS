@@ -48,15 +48,15 @@ export default function AttentionDetailPage() {
           <div>
             <p className="text-[#7DAAB2] mb-1">Focus and cognitive allocation</p>
             <div className="flex items-baseline">
-              <span className="text-white text-5xl font-mono">{stats.attentionTokens.current}</span>
-              <span className="text-[#7DAAB2] ml-3 text-lg">/ {stats.attentionTokens.max}</span>
+              <span className="text-white text-5xl font-mono">{stats.attentionTokensCurrent}</span>
+              <span className="text-[#7DAAB2] ml-3 text-lg">/ {stats.attentionTokensMax}</span>
             </div>
           </div>
           <div className="bg-[#001E26] border border-[#6366F1]/20 rounded-md p-4">
             <p className="text-[#7DAAB2] text-sm mb-1">Focus state</p>
             <div className="flex items-center">
               <Focus className="h-5 w-5 mr-2 text-[#6366F1]" /> {/* Indigo (Third Eye) */}
-              <span className="text-white">{Math.round((stats.attentionTokens.current / stats.attentionTokens.max) * 100)}%</span>
+              <span className="text-white">{Math.round((stats.attentionTokensCurrent / stats.attentionTokensMax) * 100)}%</span>
             </div>
             <p className="text-[#6366F1] text-xs mt-1">Mental clarity</p> {/* Indigo (Third Eye) */}
           </div>
@@ -64,12 +64,12 @@ export default function AttentionDetailPage() {
         <div className="mt-4 w-full bg-[#060F13] h-2 rounded-full overflow-hidden">
           <div 
             className="bg-gradient-to-r from-[#6366F1]/50 to-[#6366F1] h-full rounded-full"
-            style={{ width: `${(stats.attentionTokens.current / stats.attentionTokens.max) * 100}%` }}
+            style={{ width: `${(stats.attentionTokensCurrent / stats.attentionTokensMax) * 100}%` }}
           ></div>
         </div>
         <div className="flex justify-between mt-1">
-          <span className="text-xs text-[#7DAAB2]">Current: {stats.attentionTokens.current}</span>
-          <span className="text-xs text-[#7DAAB2]">Maximum: {stats.attentionTokens.max}</span>
+          <span className="text-xs text-[#7DAAB2]">Current: {stats.attentionTokensCurrent}</span>
+          <span className="text-xs text-[#7DAAB2]">Maximum: {stats.attentionTokensMax}</span>
         </div>
       </div>
       

@@ -59,12 +59,12 @@ export default function TimeDetailPage() {
         <div className="mt-4 w-full bg-[#060F13] h-2 rounded-full overflow-hidden">
           <div 
             className="bg-gradient-to-r from-[#22D3EE]/50 to-[#22D3EE] h-full rounded-full"
-            style={{ width: `${(stats.timeTokens.current / stats.timeTokens.max) * 100}%` }}
+            style={{ width: `${(stats.timeTokensCurrent / stats.timeTokensMax) * 100}%` }}
           ></div>
         </div>
         <div className="flex justify-between mt-1">
-          <span className="text-xs text-[#7DAAB2]">Current: {stats.timeTokens.current} hours</span>
-          <span className="text-xs text-[#7DAAB2]">Total: {stats.timeTokens.max} hours</span>
+          <span className="text-xs text-[#7DAAB2]">Current: {stats.timeTokensCurrent} hours</span>
+          <span className="text-xs text-[#7DAAB2]">Total: {stats.timeTokensMax} hours</span>
         </div>
       </div>
       
@@ -90,7 +90,7 @@ export default function TimeDetailPage() {
                 <div className="w-full bg-[#060F13] h-2 rounded-full overflow-hidden">
                   <div 
                     className="bg-[#22D3EE] h-full rounded-full" 
-                    style={{ width: `${(item.hours / stats.timeTokens.max) * 100}%` }}
+                    style={{ width: `${(item.hours / stats.timeTokensMax) * 100}%` }}
                   ></div>
                 </div>
               </div>
@@ -115,7 +115,7 @@ export default function TimeDetailPage() {
                 <div className="w-full bg-[#060F13] h-2 rounded-full overflow-hidden">
                   <div 
                     className="bg-[#22D3EE] h-full rounded-full" 
-                    style={{ width: `${(unallocatedHours / stats.timeTokens.max) * 100}%` }}
+                    style={{ width: `${(unallocatedHours / stats.timeTokensMax) * 100}%` }}
                   ></div>
                 </div>
               </div>
