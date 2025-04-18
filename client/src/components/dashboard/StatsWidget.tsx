@@ -28,14 +28,14 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
           <StatInfoDialog
             trigger={
               <button 
-                className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#36F1CD]"
+                className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#8B5CF6]"
                 onClick={(e) => e.stopPropagation()} // Prevent navigation when clicking info button
               >
                 <Info className="h-4 w-4" />
               </button>
             }
             title="Experience Points (XP)"
-            titleColor="text-[#36F1CD]"
+            titleColor="text-[#8B5CF6]"
             description="XP tracks your overall progress and achievements in LYFEOS. Complete quests, log activities, and maintain streaks to increase your level."
             additionalInfo="Higher levels unlock premium features and special abilities within the LYFEOS system."
             statType="experience"
@@ -43,18 +43,22 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
           
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
-              <Award className="h-4 w-4 text-[#36F1CD] mr-2" />
+              <Award className="h-4 w-4 text-[#8B5CF6] mr-2" />
               <h3 className="font-orbitron text-[#D6F4FF] text-sm">LEVEL PROGRESS</h3>
             </div>
             <div className="flex items-center mr-6">
-              <span className="bg-[#36F1CD] bg-opacity-20 text-[#36F1CD] px-2 py-1 rounded-md text-xs font-orbitron mr-2">
+              <span className="bg-[#8B5CF6] bg-opacity-20 text-[#8B5CF6] px-2 py-1 rounded-md text-xs font-orbitron mr-2">
                 LEVEL {stats.experience.level}
               </span>
               <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           </div>
-          <div className="progress-bar progress-xp mb-2">
-            <div className="progress-fill" style={{ width: `${xpPercentage}%` }}></div>
+          <div className="progress-bar mb-2" style={{ backgroundColor: "#060F13" }}>
+            <div className="progress-fill" style={{ 
+              width: `${xpPercentage}%`, 
+              backgroundColor: "#8B5CF6",
+              boxShadow: '0 0 8px rgba(139, 92, 246, 0.5)'
+            }}></div>
           </div>
           <div className="flex justify-between text-xs">
             <span className="text-[#7DAAB2]">{stats.experience.current.toLocaleString()} XP</span>
@@ -93,10 +97,14 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
                 <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             </div>
-            <div className="progress-bar progress-streak mb-2">
+            <div className="progress-bar mb-2" style={{ backgroundColor: "#060F13" }}>
               <div 
                 className="progress-fill" 
-                style={{ width: `${streakPercentage}%`, backgroundColor: "#60A5FA" }}
+                style={{ 
+                  width: `${streakPercentage}%`, 
+                  backgroundColor: "#60A5FA", 
+                  boxShadow: '0 0 8px rgba(96, 165, 250, 0.5)' 
+                }}
               ></div>
             </div>
             <div className="flex justify-between">
@@ -136,10 +144,14 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
                 <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             </div>
-            <div className="progress-bar progress-efficiency mb-2">
+            <div className="progress-bar mb-2" style={{ backgroundColor: "#060F13" }}>
               <div 
                 className="progress-fill" 
-                style={{ width: `${efficiencyPercentage}%`, backgroundColor: "#10B981" }}
+                style={{ 
+                  width: `${efficiencyPercentage}%`, 
+                  backgroundColor: "#10B981",
+                  boxShadow: '0 0 8px rgba(16, 185, 129, 0.5)'
+                }}
               ></div>
             </div>
             <div className="flex justify-between">
@@ -185,8 +197,12 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
                 <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             </div>
-            <div className="progress-bar progress-at mb-2">
-              <div className="progress-fill" style={{ width: `${atPercentage}%` }}></div>
+            <div className="progress-bar mb-2" style={{ backgroundColor: "#060F13" }}>
+              <div className="progress-fill" style={{ 
+                width: `${atPercentage}%`, 
+                backgroundColor: "#9C6ADE",
+                boxShadow: '0 0 8px rgba(156, 106, 222, 0.5)'
+              }}></div>
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-base">
