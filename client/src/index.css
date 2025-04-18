@@ -99,19 +99,38 @@
 
   .progress-fill::after {
     content: '';
-    @apply absolute inset-0 rounded-full shadow-[0_0_10px_rgba(0,224,255,0.7)] z-10;
+    @apply absolute inset-0 rounded-full z-10;
+  }
+  
+  .progress-tt .progress-fill::after {
+    @apply shadow-[0_0_10px_rgba(54,241,205,0.7)];
+  }
+  
+  .progress-ep .progress-fill::after {
+    @apply shadow-[0_0_10px_rgba(252,211,77,0.7)];
+  }
+  
+  .progress-hp .progress-fill::after {
+    @apply shadow-[0_0_10px_rgba(236,72,153,0.7)];
+  }
+  
+  .progress-xp .progress-fill::after {
+    @apply shadow-[0_0_10px_rgba(54,241,205,0.7)];
   }
 
   .progress-tt .progress-fill {
     @apply bg-gradient-to-r from-primary/70 to-primary;
+    background-color: #36F1CD;
   }
 
   .progress-ep .progress-fill {
-    @apply bg-gradient-to-r from-secondary/70 to-secondary;
+    @apply bg-gradient-to-r from-yellow-400/70 to-yellow-400;
+    background-color: #FCD34D;
   }
 
   .progress-at .progress-fill {
     @apply bg-gradient-to-r from-purple-500/70 to-purple-500;
+    background-color: #9C6ADE;
   }
   
   .progress-at .progress-fill::after {
@@ -119,11 +138,13 @@
   }
 
   .progress-hp .progress-fill {
-    @apply bg-gradient-to-r from-accent/70 to-accent;
+    @apply bg-gradient-to-r from-pink-500/70 to-pink-500;
+    background-color: #EC4899;
   }
 
   .progress-xp .progress-fill {
     @apply bg-gradient-to-r from-emerald-400/70 to-emerald-400;
+    background-color: #36F1CD;
   }
 
   /* Custom checkbox */
