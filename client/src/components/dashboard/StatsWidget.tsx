@@ -65,7 +65,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
       </Link>
       
       {/* System Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
         {/* Streak */}
         <Link href="/streak">
           <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-3 transition-all cursor-pointer border border-primary/20 relative">
@@ -159,7 +159,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
       <div className="border-t border-primary/10 mb-4"></div>
       
       {/* Resource Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {/* Attention Tokens */}
         <Link href="/attention">
           <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-3 transition-all cursor-pointer border border-primary/20 relative">
