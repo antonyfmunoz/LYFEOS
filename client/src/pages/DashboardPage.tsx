@@ -33,7 +33,7 @@ import { CustomTimePicker } from "@/components/ui/custom-time-picker";
 import { ObsidianMarkdown } from "@/components/ui/obsidian-markdown";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { Checkbox } from "@/components/ui/checkbox";
-import StatsWidget from "@/components/dashboard/StatsWidget";
+import CompactStatsWidget from "@/components/dashboard/CompactStatsWidget";
 import { StatType, CalendarEvent } from "@/lib/types";
 
 // Define types
@@ -523,7 +523,7 @@ export default function DashboardPage() {
           icon={<BarChart className="h-5 w-5 text-primary" />}
           className="mb-4"
         >
-          <StatsWidget stats={stats} />
+          <CompactStatsWidget stats={stats} />
         </CollapsibleWidget>
       </section>
       
