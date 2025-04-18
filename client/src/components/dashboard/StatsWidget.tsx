@@ -65,7 +65,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
       </Link>
       
       {/* System Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         {/* Streak */}
         <Link href="/streak">
           <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-3 transition-all cursor-pointer border border-primary/20 relative">
@@ -103,9 +103,9 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-base">
-                {stats.streakDays}<span className="text-[#7DAAB2] text-xs">/{30}</span>
+                {stats.streakDays}<span className="text-[#7DAAB2] text-xs"> days</span>
               </span>
-              <span className="text-xs text-[#7DAAB2] self-end">days</span>
+              <span className="text-xs text-[#7DAAB2] self-end">consecutive</span>
             </div>
           </div>
         </Link>
@@ -147,16 +147,12 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-base">
-                {efficiencyPercentage}<span className="text-[#7DAAB2] text-xs">/100</span>
+                {efficiencyPercentage}<span className="text-[#7DAAB2] text-xs">%</span>
               </span>
-              <span className="text-xs text-[#7DAAB2] self-end">points</span>
+              <span className="text-xs text-[#7DAAB2] self-end">optimization</span>
             </div>
           </div>
         </Link>
-        
-        {/* Empty placeholder cells to maintain grid alignment */}
-        <div className="hidden sm:block"></div>
-        <div className="hidden sm:block"></div>
       </div>
       
       {/* Divider */}
@@ -198,7 +194,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-base">
-                {stats.attentionTokens.current}<span className="text-[#7DAAB2] text-xs">/{stats.attentionTokens.max}</span>
+                {Math.round(atPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
               </span>
               <span className="text-xs text-[#7DAAB2] self-end">focus</span>
             </div>
@@ -280,7 +276,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-base">
-                {stats.energyPoints.current}<span className="text-[#7DAAB2] text-xs">/{stats.energyPoints.max}</span>
+                {Math.round(epPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
               </span>
               <span className="text-xs text-[#7DAAB2] self-end">capacity</span>
             </div>
@@ -321,7 +317,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-base">
-                {stats.healthPoints.current}<span className="text-[#7DAAB2] text-xs">/{stats.healthPoints.max}</span>
+                {Math.round(hpPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
               </span>
               <span className="text-xs text-[#7DAAB2] self-end">wellness</span>
             </div>
