@@ -11,12 +11,14 @@ interface EnhancedMissionWidgetProps {
   events: CalendarEvent[];
   className?: string;
   maxHeight?: string;
+  hideHeader?: boolean;
 }
 
 export default function EnhancedMissionWidget({ 
   events, 
   className = "", 
   maxHeight = "96",
+  hideHeader = false,
 }: EnhancedMissionWidgetProps) {
   // Load completed missions from localStorage
   const loadCompletedMissions = (): Record<string, boolean> => {
@@ -145,20 +147,22 @@ export default function EnhancedMissionWidget({
   
   return (
     <div className={`quest-log-box glassmorphic rounded-xl p-6 neon-border ${className}`}>
-      <div className="relative mb-6">
-        <h2 className="text-xl font-orbitron text-[#dff9ff] flex items-center">
-          <Calendar className="h-5 w-5 text-primary mr-2" />
-          <span>Mission Log</span>
-        </h2>
-        <Button
-          variant="outline"
-          size="sm"
-          className="absolute top-0 right-0 text-[#00f2fe] text-xs py-1 px-2 h-auto border-[#00f2fe]/30 hover:bg-[#00f2fe]/5 hover:text-[#00f2fe]"
-          onClick={() => window.location.href = '/calendar'}
-        >
-          <Calendar className="h-3 w-3 mr-1" /> Calendar
-        </Button>
-      </div>
+      {!hideHeader && (
+        <div className="relative mb-6">
+          <h2 className="text-xl font-orbitron text-[#dff9ff] flex items-center">
+            <Calendar className="h-5 w-5 text-primary mr-2" />
+            <span>Mission Log</span>
+          </h2>
+          <Button
+            variant="outline"
+            size="sm"
+            className="absolute top-0 right-0 text-[#00f2fe] text-xs py-1 px-2 h-auto border-[#00f2fe]/30 hover:bg-[#00f2fe]/5 hover:text-[#00f2fe]"
+            onClick={() => window.location.href = '/calendar'}
+          >
+            <Calendar className="h-3 w-3 mr-1" /> Calendar
+          </Button>
+        </div>
+      )}
       
       <div className={`py-2 max-h-${maxHeight} overflow-y-auto`}>
         {events.length === 0 ? (

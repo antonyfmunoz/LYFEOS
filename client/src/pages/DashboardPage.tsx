@@ -527,9 +527,17 @@ export default function DashboardPage() {
       
       {/* Mission Log Panel */}
       <section className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-orbitron flex items-center">
+            <Calendar className="h-5 w-5 text-primary mr-2" />
+            <span>Mission Log</span>
+          </h2>
+        </div>
+        
         <EnhancedMissionWidget 
           events={events} 
           maxHeight="96"
+          hideHeader={true}
         />
       </section>
       
