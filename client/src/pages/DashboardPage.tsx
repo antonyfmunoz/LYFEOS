@@ -523,7 +523,7 @@ export default function DashboardPage() {
           icon={<BarChart className="h-5 w-5 text-primary" />}
           className="mb-4"
         >
-          <CompactStatsWidget stats={stats} />
+          <CompactStatsWidget />
         </CollapsibleWidget>
       </section>
       

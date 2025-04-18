@@ -20,8 +20,8 @@ export default function ExperienceDetailPage() {
   ];
   
   // Level up requirements calculations
-  const currentXP = stats.experienceCurrent;
-  const maxXP = stats.experienceMax;
+  const currentXP = stats.experience.current;
+  const maxXP = stats.experience.max;
   const currentLevel = stats.experience.level;
   const xpProgress = (currentXP / maxXP) * 100;
   const xpToNextLevel = maxXP - currentXP;
