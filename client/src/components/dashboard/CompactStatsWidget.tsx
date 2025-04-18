@@ -67,14 +67,15 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#60A5FA]"
+                  className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#10B981]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Info className="h-3 w-3" />
                 </button>
               }
               title="Usage Streak"
-              titleColor="text-[#60A5FA]"
+              // Green (Heart)
+              titleColor="text-[#10B981]"
               description="Days you've used LYFEOS consecutively."
               additionalInfo="Longer streaks unlock special rewards."
               statType="streak"
@@ -82,13 +83,13 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center">
-                <Calendar className="h-3 w-3 text-[#60A5FA] mr-1" />
+                <Calendar className="h-3 w-3 text-[#10B981] mr-1" /> {/* Green (Heart) */}
                 <h3 className="text-xs font-orbitron text-[#D6F4FF]">STREAK</h3>
               </div>
               <ArrowRight className="h-3 w-3 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
             <div className="progress-bar progress-streak h-1.5 mb-1">
-              <div className="progress-fill" style={{ width: `${streakPercentage}%`, backgroundColor: "#60A5FA" }}></div>
+              <div className="progress-fill" style={{ width: `${streakPercentage}%`, backgroundColor: "#10B981" }}></div>
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-sm">
