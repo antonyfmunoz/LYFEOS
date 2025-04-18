@@ -35,7 +35,7 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
     attention: {
       title: "Attention Tokens",
       icon: <BrainCircuit className="w-8 h-8" />,
-      color: "purple",
+      color: "#6366F1", // Indigo (Third Eye)
       current: stats.attentionTokens.current,
       max: stats.attentionTokens.max,
       description: "Focus and attention allocation capacity",
@@ -50,7 +50,7 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
     time: {
       title: "Time Tokens",
       icon: <Clock className="w-8 h-8" />,
-      color: "primary",
+      color: "#22D3EE", // Cyan (Throat)
       current: stats.timeTokens.current,
       max: stats.timeTokens.max,
       description: "Unallocated time remaining today",
@@ -66,7 +66,7 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
     energy: {
       title: "Energy Points",
       icon: <Zap className="w-8 h-8" />,
-      color: "secondary",
+      color: "#F97316", // Orange (Sacral)
       current: stats.energyPoints.current,
       max: stats.energyPoints.max,
       description: "Current cognitive and physical capacity",
@@ -81,7 +81,7 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
     health: {
       title: "Health Points",
       icon: <Heart className="w-8 h-8" />,
-      color: "accent",
+      color: "#EF4444", // Red (Root)
       current: stats.healthPoints.current,
       max: stats.healthPoints.max,
       description: "Overall physical and mental wellness",
@@ -96,21 +96,21 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
     experience: {
       title: "Experience Points",
       icon: <Award className="w-8 h-8" />,
-      color: "experience",
+      color: "#8B5CF6", // Violet (Crown)
       current: stats.experience.current,
       max: stats.experience.max,
       description: `Level ${stats.experience.level} progress`,
       progressClass: "progress-xp",
       dataPoints: [
-        { label: "Quests", value: 65 },
+        { label: "Missions", value: 65 },
         { label: "Daily Log", value: 20 },
         { label: "Systems", value: 10 },
-        { label: "Codex", value: 5 },
+        { label: "Chronilog", value: 5 },
       ],
     },
   };
   
-  const config = statConfig[stat];
+  const config = statConfig[stat as keyof typeof statConfig];
   
   // Calculate percentage for progress bar
   const percentage = (config.current / config.max) * 100;
@@ -177,7 +177,7 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
           <h3 className="font-orbitron mb-4">BREAKDOWN</h3>
           
           <div className="space-y-4">
-            {config.dataPoints.map((point, index) => (
+            {config.dataPoints.map((point: { label: string, value: number }, index: number) => (
               <div key={index} className="flex items-center justify-between">
                 <span className="text-sm">{point.label}</span>
                 <div className="flex items-center">
@@ -214,6 +214,7 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
           {stat === 'time' ? 'Time Management Tips' : 
            stat === 'energy' ? 'Energy Recovery Tips' : 
            stat === 'health' ? 'Health Optimization Tips' :
+           stat === 'attention' ? 'Focus Enhancement Tips' :
            'Experience Growth Tips'}
         </h2>
         
@@ -221,28 +222,38 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
           <div className="glassmorphic rounded-xl p-4 neon-border">
             <div className="flex items-start">
               <div className={`w-8 h-8 rounded-full ${
-                stat === 'time' ? 'bg-primary/20' : 
-                stat === 'energy' ? 'bg-[#FCD34D]/20' : 
-                'bg-[#EC4899]/20'
+                stat === 'attention' ? 'bg-[#6366F1]/20' : // Indigo (Third Eye)
+                stat === 'time' ? 'bg-[#22D3EE]/20' : // Cyan (Throat)
+                stat === 'energy' ? 'bg-[#F97316]/20' : // Orange (Sacral)
+                stat === 'health' ? 'bg-[#EF4444]/20' : // Red (Root)
+                'bg-[#8B5CF6]/20' // Violet (Crown)
               } flex items-center justify-center mr-3 flex-shrink-0 mt-0.5`}>
                 <Lightbulb className={`w-4 h-4 ${
-                  stat === 'time' ? 'text-primary' : 
-                  stat === 'energy' ? 'text-[#FCD34D]' : 
-                  'text-[#EC4899]'
+                  stat === 'attention' ? 'text-[#6366F1]' : // Indigo (Third Eye)
+                  stat === 'time' ? 'text-[#22D3EE]' : // Cyan (Throat)
+                  stat === 'energy' ? 'text-[#F97316]' : // Orange (Sacral)
+                  stat === 'health' ? 'text-[#EF4444]' : // Red (Root)
+                  'text-[#8B5CF6]' // Violet (Crown)
                 }`} />
               </div>
               <div>
                 <h3 className="font-medium mb-1">
                   {stat === 'time' ? 'Time Blocking' : 
                    stat === 'energy' ? 'Energy Cycling' : 
-                   'Sleep Optimization'}
+                   stat === 'health' ? 'Sleep Optimization' :
+                   stat === 'attention' ? 'Single-tasking' :
+                   'Mission Completion'}
                 </h3>
                 <p className="text-sm text-[#7DAAB2]">
                   {stat === 'time' 
                     ? 'Allocate specific time blocks for deep work, meetings, and breaks.' 
                     : stat === 'energy' 
                     ? 'Work with your natural energy rhythms throughout the day.'
-                    : 'Aim for 7-8 hours of quality sleep each night for optimal health.'}
+                    : stat === 'health'
+                    ? 'Aim for 7-8 hours of quality sleep each night for optimal health.'
+                    : stat === 'attention'
+                    ? 'Focus fully on one task to completion before switching to another.'
+                    : 'Complete daily missions consistently to gain experience faster.'}
                 </p>
               </div>
             </div>
@@ -251,28 +262,38 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
           <div className="glassmorphic rounded-xl p-4 neon-border">
             <div className="flex items-start">
               <div className={`w-8 h-8 rounded-full ${
-                stat === 'time' ? 'bg-primary/20' : 
-                stat === 'energy' ? 'bg-[#FCD34D]/20' : 
-                'bg-[#EC4899]/20'
+                stat === 'attention' ? 'bg-[#6366F1]/20' : // Indigo (Third Eye)
+                stat === 'time' ? 'bg-[#22D3EE]/20' : // Cyan (Throat)
+                stat === 'energy' ? 'bg-[#F97316]/20' : // Orange (Sacral)
+                stat === 'health' ? 'bg-[#EF4444]/20' : // Red (Root)
+                'bg-[#8B5CF6]/20' // Violet (Crown)
               } flex items-center justify-center mr-3 flex-shrink-0 mt-0.5`}>
                 <Lightbulb className={`w-4 h-4 ${
-                  stat === 'time' ? 'text-primary' : 
-                  stat === 'energy' ? 'text-[#FCD34D]' : 
-                  'text-[#EC4899]'
+                  stat === 'attention' ? 'text-[#6366F1]' : // Indigo (Third Eye)
+                  stat === 'time' ? 'text-[#22D3EE]' : // Cyan (Throat)
+                  stat === 'energy' ? 'text-[#F97316]' : // Orange (Sacral)
+                  stat === 'health' ? 'text-[#EF4444]' : // Red (Root)
+                  'text-[#8B5CF6]' // Violet (Crown)
                 }`} />
               </div>
               <div>
                 <h3 className="font-medium mb-1">
                   {stat === 'time' ? 'Pomodoro Technique' : 
                    stat === 'energy' ? 'Strategic Breaks' : 
-                   'Nutrition Balance'}
+                   stat === 'health' ? 'Nutrition Balance' :
+                   stat === 'attention' ? 'Digital Minimalism' :
+                   'Daily Reflection'}
                 </h3>
                 <p className="text-sm text-[#7DAAB2]">
                   {stat === 'time' 
                     ? 'Work in focused 25-minute intervals with 5-minute breaks.' 
                     : stat === 'energy' 
                     ? 'Take short breaks between tasks to maintain energy levels.'
-                    : 'Maintain a balanced diet with proper hydration for sustained energy.'}
+                    : stat === 'health'
+                    ? 'Maintain a balanced diet with proper hydration for sustained energy.'
+                    : stat === 'attention'
+                    ? 'Eliminate unnecessary digital distractions during focus time.'
+                    : 'Document your daily progress to gain additional experience points.'}
                 </p>
               </div>
             </div>
@@ -298,7 +319,9 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
                 <span>
                   {stat === 'time' ? 'Deep Work Session' : 
                    stat === 'energy' ? 'Energy Depleted' : 
-                   'Health Check'}
+                   stat === 'health' ? 'Health Check' :
+                   stat === 'attention' ? 'Focus Session' :
+                   'XP Gained'}
                 </span>
               </div>
               <div className="text-xs text-[#7DAAB2] font-mono">TODAY, 10:45 AM</div>
@@ -314,7 +337,9 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
                 <span>
                   {stat === 'time' ? 'Time Token Added' : 
                    stat === 'energy' ? 'Energy Recovered' : 
-                   'Health Improved'}
+                   stat === 'health' ? 'Health Improved' :
+                   stat === 'attention' ? 'Attention Reset' :
+                   'Level Up Progress'}
                 </span>
               </div>
               <div className="text-xs text-[#7DAAB2] font-mono">YESTERDAY, 8:30 PM</div>
@@ -326,7 +351,9 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
                 <span>
                   {stat === 'time' ? 'Daily Reset' : 
                    stat === 'energy' ? 'Weekly Analysis' : 
-                   'Monthly Health Report'}
+                   stat === 'health' ? 'Monthly Health Report' :
+                   stat === 'attention' ? 'Focus Analysis' :
+                   'Experience Summary'}
                 </span>
               </div>
               <div className="text-xs text-[#7DAAB2] font-mono">3 DAYS AGO, 12:00 AM</div>

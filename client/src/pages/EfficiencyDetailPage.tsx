@@ -65,13 +65,13 @@ export default function EfficiencyDetailPage() {
       </div>
       
       <div className="mb-8 flex items-center">
-        <BarChart className="h-8 w-8 mr-3 text-[#10B981]" />
+        <BarChart className="h-8 w-8 mr-3 text-[#FBBF24]" /> {/* Yellow (Solar Plexus) */}
         <h1 className="text-3xl font-orbitron">System Efficiency</h1>
       </div>
       
       {/* Current Efficiency */}
       <div className="glassmorphic rounded-xl p-6 mb-6 border border-[#10B981]/30">
-        <h2 className="font-orbitron text-xl mb-4 text-[#10B981]">Overall Efficiency</h2>
+        <h2 className="font-orbitron text-xl mb-4 text-[#FBBF24]">Overall Efficiency</h2> {/* Yellow (Solar Plexus) */}
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[#7DAAB2] mb-1">System optimization score</p>
@@ -104,7 +104,7 @@ export default function EfficiencyDetailPage() {
       {/* Efficiency Components */}
       <div className="glassmorphic rounded-xl p-6 mb-6 border border-[#10B981]/30">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="font-orbitron text-xl text-[#10B981]">Efficiency Components</h2>
+          <h2 className="font-orbitron text-xl text-[#FBBF24]">Efficiency Components</h2> {/* Yellow (Solar Plexus) */}
         </div>
         
         <div className="space-y-6">
@@ -143,7 +143,7 @@ export default function EfficiencyDetailPage() {
       
       {/* Improvement Tips */}
       <div className="glassmorphic rounded-xl p-6 border border-[#10B981]/30">
-        <h2 className="font-orbitron text-xl mb-4 text-[#10B981]">Efficiency Tips</h2>
+        <h2 className="font-orbitron text-xl mb-4 text-[#FBBF24]">Efficiency Tips</h2> {/* Yellow (Solar Plexus) */}
         <ul className="space-y-3">
           {efficiencyMetrics.map((metric) => (
             <li key={`tip-${metric.name}`} className="flex">
