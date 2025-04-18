@@ -122,15 +122,15 @@ export default function StreakDetailPage() {
             <span className="text-[#7DAAB2]">Log in at least once every 24 hours to maintain your streak.</span>
           </li>
           <li className="flex">
-            <ArrowUpRight className="h-5 w-5 mr-2 text-[#60A5FA] flex-shrink-0" />
+            <ArrowUpRight className="h-5 w-5 mr-2 text-[#10B981] flex-shrink-0" />
             <span className="text-[#7DAAB2]">Complete at least one mission per day to maximize streak benefits.</span>
           </li>
           <li className="flex">
-            <ArrowUpRight className="h-5 w-5 mr-2 text-[#60A5FA] flex-shrink-0" />
+            <ArrowUpRight className="h-5 w-5 mr-2 text-[#10B981] flex-shrink-0" />
             <span className="text-[#7DAAB2]">Longer streaks contribute to your overall efficiency score.</span>
           </li>
           <li className="flex">
-            <ArrowUpRight className="h-5 w-5 mr-2 text-[#60A5FA] flex-shrink-0" />
+            <ArrowUpRight className="h-5 w-5 mr-2 text-[#10B981] flex-shrink-0" />
             <span className="text-[#7DAAB2]">Set a daily reminder to check in with LYFEOS and maintain your streak.</span>
           </li>
         </ul>
