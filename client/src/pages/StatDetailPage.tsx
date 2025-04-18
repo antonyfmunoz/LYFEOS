@@ -128,18 +128,18 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
       <div className="glassmorphic rounded-xl p-6 neon-border mb-8">
         <div className="flex flex-col md:flex-row md:items-center mb-4">
           <div className={`w-16 h-16 rounded-full ${
-            stat === 'attention' ? 'bg-[#9C6ADE]/20' :
-            stat === 'time' ? 'bg-primary/20' : 
-            stat === 'energy' ? 'bg-[#FCD34D]/20' : 
-            stat === 'health' ? 'bg-[#EC4899]/20' :
-            'bg-[#36F1CD]/20'
+            stat === 'attention' ? 'bg-[#6366F1]/20' : // Indigo (Third Eye)
+            stat === 'time' ? 'bg-[#22D3EE]/20' : // Cyan (Throat)
+            stat === 'energy' ? 'bg-[#F97316]/20' : // Orange (Sacral)
+            stat === 'health' ? 'bg-[#EF4444]/20' : // Red (Root)
+            'bg-[#8B5CF6]/20' // Violet (Crown)
           } flex items-center justify-center mr-4 mb-4 md:mb-0`}>
             <div className={
-              stat === 'attention' ? 'text-[#9C6ADE]' :
-              stat === 'time' ? 'text-primary' : 
-              stat === 'energy' ? 'text-[#FCD34D]' : 
-              stat === 'health' ? 'text-[#EC4899]' :
-              'text-[#36F1CD]'
+              stat === 'attention' ? 'text-[#6366F1]' : // Indigo (Third Eye)
+              stat === 'time' ? 'text-[#22D3EE]' : // Cyan (Throat)
+              stat === 'energy' ? 'text-[#F97316]' : // Orange (Sacral)
+              stat === 'health' ? 'text-[#EF4444]' : // Red (Root)
+              'text-[#8B5CF6]' // Violet (Crown)
             }>
               {config.icon}
             </div>
@@ -184,10 +184,11 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
                   <div className="w-32 h-2 bg-card/50 rounded-full mr-3 overflow-hidden">
                     <div 
                       className={`h-full ${
-                        stat === 'time' ? 'bg-primary' : 
-                        stat === 'energy' ? 'bg-[#FCD34D]' : 
-                        stat === 'health' ? 'bg-[#EC4899]' :
-                        'bg-[#36F1CD]'
+                        stat === 'attention' ? 'bg-[#6366F1]' : // Indigo (Third Eye)
+                        stat === 'time' ? 'bg-[#22D3EE]' : // Cyan (Throat)
+                        stat === 'energy' ? 'bg-[#F97316]' : // Orange (Sacral)
+                        stat === 'health' ? 'bg-[#EF4444]' : // Red (Root)
+                        'bg-[#8B5CF6]' // Violet (Crown)
                       }`}
                       style={{ 
                         width: `${stat === 'time' 
