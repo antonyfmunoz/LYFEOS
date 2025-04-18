@@ -33,7 +33,7 @@ import { CustomTimePicker } from "@/components/ui/custom-time-picker";
 import { ObsidianMarkdown } from "@/components/ui/obsidian-markdown";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { Checkbox } from "@/components/ui/checkbox";
-import CompactStatsWidget from "@/components/dashboard/CompactStatsWidget";
+import StatsWidget from "@/components/dashboard/StatsWidget";
 import { StatType, CalendarEvent } from "@/lib/types";
 
 // Define types
