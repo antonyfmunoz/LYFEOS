@@ -108,79 +108,82 @@
   }
   
   /* Using chakra colors for glows */
-  /* Throat Chakra (Vishuddha): Blue - Time Tokens */
+  /* Throat Chakra (Vishuddha): Blue/Cyan - Time Tokens */
   .progress-tt .progress-fill::after {
     @apply shadow-[0_0_10px_rgba(34,211,238,0.7)]; /* Cyan glow */
   }
   
-  /* Solar Plexus Chakra (Manipura): Yellow - Energy Points */
+  /* Sacral Chakra (Svadhisthana): Orange - Energy Points */
   .progress-ep .progress-fill::after {
-    @apply shadow-[0_0_10px_rgba(251,191,36,0.7)]; /* Yellow glow */
+    @apply shadow-[0_0_10px_rgba(249,115,22,0.7)]; /* Orange glow */
   }
   
-  /* Heart Chakra (Anahata): Green - Health Points */
+  /* Root Chakra (Muladhara): Red - Health Points */
   .progress-hp .progress-fill::after {
-    @apply shadow-[0_0_10px_rgba(16,185,129,0.7)]; /* Green glow */
+    @apply shadow-[0_0_10px_rgba(239,68,68,0.7)]; /* Red glow */
   }
   
   /* Crown Chakra (Sahasrara): Violet - Experience Points */
   .progress-xp .progress-fill::after {
     @apply shadow-[0_0_10px_rgba(139,92,246,0.7)]; /* Violet glow */
   }
-
-  /* Using chakra colors */
-  /* Throat Chakra (Vishuddha): Blue - Time Tokens */
-  .progress-tt .progress-fill {
-    @apply bg-gradient-to-r from-cyan-400/70 to-cyan-400;
-    background-color: #22D3EE; /* Adjusted blue/cyan for app aesthetics */
-  }
-
-  /* Solar Plexus Chakra (Manipura): Yellow - Energy Points */
-  .progress-ep .progress-fill {
-    @apply bg-gradient-to-r from-yellow-400/70 to-yellow-400;
-    background-color: #FBBF24; /* Adjusted yellow for app aesthetics */
-  }
-
+  
   /* Third Eye Chakra (Ajna): Indigo - Attention Tokens */
-  .progress-at .progress-fill {
-    @apply bg-gradient-to-r from-indigo-500/70 to-indigo-500;
-    background-color: #6366F1; /* Adjusted indigo for app aesthetics */
+  .progress-at .progress-fill::after {
+    @apply shadow-[0_0_10px_rgba(99,102,241,0.7)]; /* Indigo glow */
   }
   
-  .progress-at .progress-fill::after {
-    @apply shadow-[0_0_10px_rgba(99,102,241,0.7)];
+  /* Heart Chakra (Anahata): Green - Streak */
+  .progress-streak .progress-fill::after {
+    @apply shadow-[0_0_10px_rgba(16,185,129,0.7)]; /* Green glow */
+  }
+  
+  /* Solar Plexus Chakra (Manipura): Yellow - Efficiency */
+  .progress-efficiency .progress-fill::after {
+    @apply shadow-[0_0_10px_rgba(251,191,36,0.7)]; /* Yellow glow */
   }
 
-  /* Heart Chakra (Anahata): Green - Health Points */
+  /* Using chakra colors */
+  /* Throat Chakra (Vishuddha): Blue/Cyan - Time Tokens */
+  .progress-tt .progress-fill {
+    @apply bg-gradient-to-r from-cyan-400/70 to-cyan-400;
+    background-color: #22D3EE;
+  }
+
+  /* Sacral Chakra (Svadhisthana): Orange - Energy Points */
+  .progress-ep .progress-fill {
+    @apply bg-gradient-to-r from-orange-500/70 to-orange-500;
+    background-color: #F97316;
+  }
+
+  /* Root Chakra (Muladhara): Red - Health Points */
   .progress-hp .progress-fill {
-    @apply bg-gradient-to-r from-emerald-500/70 to-emerald-500;
-    background-color: #10B981; /* Adjusted green for app aesthetics */
+    @apply bg-gradient-to-r from-red-500/70 to-red-500;
+    background-color: #EF4444;
   }
 
   /* Crown Chakra (Sahasrara): Violet - Experience Level */
   .progress-xp .progress-fill {
     @apply bg-gradient-to-r from-violet-500/70 to-violet-500;
-    background-color: #8B5CF6; /* Adjusted violet for app aesthetics */
+    background-color: #8B5CF6;
   }
   
-  /* Streak - Royal Blue */
+  /* Third Eye Chakra (Ajna): Indigo - Attention Tokens */
+  .progress-at .progress-fill {
+    @apply bg-gradient-to-r from-indigo-500/70 to-indigo-500;
+    background-color: #6366F1;
+  }
+  
+  /* Heart Chakra (Anahata): Green - Streak */
   .progress-streak .progress-fill {
-    @apply bg-gradient-to-r from-blue-500/70 to-blue-500;
-    background-color: #60A5FA; /* Adjusted blue for app aesthetics */
-  }
-  
-  .progress-streak .progress-fill::after {
-    @apply shadow-[0_0_10px_rgba(96,165,250,0.7)]; /* Blue glow */
-  }
-  
-  /* Efficiency - Green */
-  .progress-efficiency .progress-fill {
     @apply bg-gradient-to-r from-emerald-500/70 to-emerald-500;
-    background-color: #10B981; /* Adjusted green for app aesthetics */
+    background-color: #10B981;
   }
   
-  .progress-efficiency .progress-fill::after {
-    @apply shadow-[0_0_10px_rgba(16,185,129,0.7)]; /* Green glow */
+  /* Solar Plexus Chakra (Manipura): Yellow - Efficiency */
+  .progress-efficiency .progress-fill {
+    @apply bg-gradient-to-r from-yellow-400/70 to-yellow-400;
+    background-color: #FBBF24;
   }
 
   /* Custom checkbox */

@@ -197,7 +197,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-2 transition-all cursor-pointer border border-primary/20 relative">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center">
-                <Zap className="h-3 w-3 text-[#FCD34D] mr-1" />
+                <Zap className="h-3 w-3 text-[#F97316] mr-1" />
                 <h3 className="text-xs font-orbitron text-[#D6F4FF]">ENERGY</h3>
               </div>
               <div className="flex items-center">
@@ -205,7 +205,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
                   {stats.energyPoints.current}/{stats.energyPoints.max}
                 </span>
                 <Info 
-                  className="h-3 w-3 text-[#FCD34D] cursor-pointer opacity-70 hover:opacity-100"
+                  className="h-3 w-3 text-[#F97316] cursor-pointer opacity-70 hover:opacity-100"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -214,7 +214,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
               </div>
             </div>
             <div className="progress-bar progress-ep h-1.5">
-              <div className="progress-fill" style={{ width: `${epPercentage}%`, backgroundColor: "#FCD34D" }}></div>
+              <div className="progress-fill" style={{ width: `${epPercentage}%`, backgroundColor: "#F97316" }}></div>
             </div>
           </div>
         </Link>
@@ -224,7 +224,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-2 transition-all cursor-pointer border border-primary/20 relative">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center">
-                <Heart className="h-3 w-3 text-[#EC4899] mr-1" />
+                <Heart className="h-3 w-3 text-[#EF4444] mr-1" />
                 <h3 className="text-xs font-orbitron text-[#D6F4FF]">HEALTH</h3>
               </div>
               <div className="flex items-center">
@@ -232,7 +232,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
                   {stats.healthPoints.current}/{stats.healthPoints.max}
                 </span>
                 <Info 
-                  className="h-3 w-3 text-[#EC4899] cursor-pointer opacity-70 hover:opacity-100"
+                  className="h-3 w-3 text-[#EF4444] cursor-pointer opacity-70 hover:opacity-100"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -241,7 +241,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
               </div>
             </div>
             <div className="progress-bar progress-hp h-1.5">
-              <div className="progress-fill" style={{ width: `${hpPercentage}%`, backgroundColor: "#EC4899" }}></div>
+              <div className="progress-fill" style={{ width: `${hpPercentage}%`, backgroundColor: "#EF4444" }}></div>
             </div>
           </div>
         </Link>
