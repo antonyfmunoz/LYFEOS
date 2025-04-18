@@ -241,8 +241,12 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
                 <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             </div>
-            <div className="progress-bar progress-tt mb-2">
-              <div className="progress-fill" style={{ width: `${ttPercentage}%` }}></div>
+            <div className="progress-bar mb-2" style={{ backgroundColor: "#060F13" }}>
+              <div className="progress-fill" style={{ 
+                width: `${ttPercentage}%`, 
+                backgroundColor: "#06B6D4",
+                boxShadow: '0 0 8px rgba(6, 182, 212, 0.5)'
+              }}></div>
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-base">
@@ -281,8 +285,12 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
                 <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             </div>
-            <div className="progress-bar progress-ep mb-2">
-              <div className="progress-fill" style={{ width: `${epPercentage}%` }}></div>
+            <div className="progress-bar mb-2" style={{ backgroundColor: "#060F13" }}>
+              <div className="progress-fill" style={{ 
+                width: `${epPercentage}%`, 
+                backgroundColor: "#F97316",
+                boxShadow: '0 0 8px rgba(249, 115, 22, 0.5)'
+              }}></div>
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-base">
@@ -321,8 +329,12 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
                 <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             </div>
-            <div className="progress-bar progress-hp mb-2">
-              <div className="progress-fill" style={{ width: `${hpPercentage}%` }}></div>
+            <div className="progress-bar mb-2" style={{ backgroundColor: "#060F13" }}>
+              <div className="progress-fill" style={{ 
+                width: `${hpPercentage}%`, 
+                backgroundColor: "#EC4899",
+                boxShadow: '0 0 8px rgba(236, 72, 153, 0.5)'
+              }}></div>
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-base">
