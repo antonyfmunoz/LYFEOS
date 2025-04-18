@@ -34,13 +34,13 @@ export default function StreakDetailPage() {
       </div>
       
       <div className="mb-8 flex items-center">
-        <Calendar className="h-8 w-8 mr-3 text-[#60A5FA]" />
+        <Calendar className="h-8 w-8 mr-3 text-[#10B981]" /> {/* Green (Heart) */}
         <h1 className="text-3xl font-orbitron">Streak Tracking</h1>
       </div>
       
       {/* Current Streak */}
-      <div className="glassmorphic rounded-xl p-6 mb-6 border border-[#60A5FA]/30">
-        <h2 className="font-orbitron text-xl mb-4 text-[#60A5FA]">Current Streak</h2>
+      <div className="glassmorphic rounded-xl p-6 mb-6 border border-[#10B981]/30"> {/* Green (Heart) */}
+        <h2 className="font-orbitron text-xl mb-4 text-[#10B981]">Current Streak</h2> {/* Green (Heart) */}
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[#7DAAB2] mb-1">Consecutive days using LYFEOS</p>

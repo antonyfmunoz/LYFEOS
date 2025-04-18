@@ -80,13 +80,13 @@ export default function EfficiencyDetailPage() {
               <span className="text-[#7DAAB2] ml-2 text-2xl">%</span>
             </div>
           </div>
-          <div className="bg-[#001E26] border border-[#10B981]/20 rounded-md p-4">
+          <div className="bg-[#001E26] border border-[#FBBF24]/20 rounded-md p-4">
             <p className="text-[#7DAAB2] text-sm mb-1">Target</p>
             <div className="flex items-center">
               <BarChart className="h-5 w-5 mr-2 text-[#FBBF24]" /> {/* Yellow (Solar Plexus) */}
               <span className="text-white">95%</span>
             </div>
-            <p className="text-[#10B981] text-xs mt-1">Optimal performance</p>
+            <p className="text-[#FBBF24] text-xs mt-1">Optimal performance</p>
           </div>
         </div>
         <div className="mt-4 w-full bg-[#060F13] h-2 rounded-full overflow-hidden">
@@ -117,9 +117,9 @@ export default function EfficiencyDetailPage() {
                 </div>
                 <div>
                   <span className={`px-3 py-1 rounded-md text-sm ${
-                    metric.score >= 90 ? "bg-[#10B981]/20 text-[#10B981]" :
-                    metric.score >= 75 ? "bg-[#60A5FA]/20 text-[#60A5FA]" :
-                    "bg-[#FCD34D]/20 text-[#FCD34D]"
+                    metric.score >= 90 ? "bg-[#FBBF24]/20 text-[#FBBF24]" :
+                    metric.score >= 75 ? "bg-[#FBBF24]/20 text-[#FBBF24]" :
+                    "bg-[#FBBF24]/20 text-[#FBBF24]"
                   }`}>
                     {metric.score}%
                   </span>
@@ -129,9 +129,9 @@ export default function EfficiencyDetailPage() {
               <div className="w-full bg-[#060F13] h-1.5 rounded-full overflow-hidden">
                 <div 
                   className={`h-full rounded-full ${
-                    metric.score >= 90 ? "bg-[#10B981]" :
-                    metric.score >= 75 ? "bg-[#60A5FA]" :
-                    "bg-[#FCD34D]"
+                    metric.score >= 90 ? "bg-[#FBBF24]" :
+                    metric.score >= 75 ? "bg-[#FBBF24]/80" :
+                    "bg-[#FBBF24]/60"
                   }`}
                   style={{ width: `${metric.score}%` }}
                 ></div>
@@ -147,7 +147,7 @@ export default function EfficiencyDetailPage() {
         <ul className="space-y-3">
           {efficiencyMetrics.map((metric) => (
             <li key={`tip-${metric.name}`} className="flex">
-              <ArrowUpRight className="h-5 w-5 mr-2 text-[#10B981] flex-shrink-0" />
+              <ArrowUpRight className="h-5 w-5 mr-2 text-[#FBBF24] flex-shrink-0" />
               <span className="text-[#7DAAB2]">{metric.tips}</span>
             </li>
           ))}
