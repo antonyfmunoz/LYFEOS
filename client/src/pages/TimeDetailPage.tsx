@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Clock, ArrowUpRight, Timer, HotelService, Calendar, Briefcase } from "lucide-react";
+import { ArrowLeft, Clock, ArrowUpRight, Timer, Coffee, Calendar, Briefcase } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 
@@ -15,12 +15,12 @@ export default function TimeDetailPage() {
   const timeAllocation = [
     { category: "Deep Work", hours: 5, icon: Timer, description: "Focused work with no distractions" },
     { category: "Meetings", hours: 3, icon: Calendar, description: "Collaborative sessions and discussions" },
-    { category: "Personal", hours: 2, icon: HotelService, description: "Self-care and personal activities" },
+    { category: "Personal", hours: 2, icon: Coffee, description: "Self-care and personal activities" },
     { category: "Administrative", hours: 1, icon: Briefcase, description: "Email, planning, and organizing" },
   ];
   
   // For the unallocated time
-  const unallocatedHours = stats.timeTokensCurrent;
+  const unallocatedHours = stats.timeTokens.current;
   
   return (
     <div className="mx-auto max-w-4xl py-8">
@@ -43,15 +43,15 @@ export default function TimeDetailPage() {
           <div>
             <p className="text-[#7DAAB2] mb-1">Available time tokens for today</p>
             <div className="flex items-baseline">
-              <span className="text-white text-5xl font-mono">{stats.timeTokensCurrent}</span>
-              <span className="text-[#7DAAB2] ml-3 text-lg">/ {stats.timeTokensMax}</span>
+              <span className="text-white text-5xl font-mono">{stats.timeTokens.current}</span>
+              <span className="text-[#7DAAB2] ml-3 text-lg">/ {stats.timeTokens.max}</span>
             </div>
           </div>
           <div className="bg-[#001E26] border border-[#22D3EE]/20 rounded-md p-4">
             <p className="text-[#7DAAB2] text-sm mb-1">Allocation status</p>
             <div className="flex items-center">
               <Timer className="h-5 w-5 mr-2 text-[#22D3EE]" /> {/* Cyan (Throat) */}
-              <span className="text-white">{Math.round((stats.timeTokensCurrent / stats.timeTokensMax) * 100)}%</span>
+              <span className="text-white">{Math.round((stats.timeTokens.current / stats.timeTokens.max) * 100)}%</span>
             </div>
             <p className="text-[#22D3EE] text-xs mt-1">Remaining</p> {/* Cyan (Throat) */}
           </div>

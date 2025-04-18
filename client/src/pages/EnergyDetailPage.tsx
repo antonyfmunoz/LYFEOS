@@ -16,7 +16,7 @@ export default function EnergyDetailPage() {
     { time: "6 AM", level: 75, label: "Morning" },
     { time: "12 PM", level: 65, label: "Midday" },
     { time: "6 PM", level: 45, label: "Evening" },
-    { time: "Now", level: stats.energyPointsCurrent, label: "Current" },
+    { time: "Now", level: stats.energyPoints.current, label: "Current" },
   ];
   
   // Sample energy sources
@@ -48,8 +48,8 @@ export default function EnergyDetailPage() {
           <div>
             <p className="text-[#7DAAB2] mb-1">Cognitive and physical capacity</p>
             <div className="flex items-baseline">
-              <span className="text-white text-5xl font-mono">{stats.energyPointsCurrent}</span>
-              <span className="text-[#7DAAB2] ml-3 text-lg">/ {stats.energyPointsMax}</span>
+              <span className="text-white text-5xl font-mono">{stats.energyPoints.current}</span>
+              <span className="text-[#7DAAB2] ml-3 text-lg">/ {stats.energyPoints.max}</span>
             </div>
           </div>
           <div className="bg-[#001E26] border border-[#F97316]/20 rounded-md p-4">
@@ -64,12 +64,12 @@ export default function EnergyDetailPage() {
         <div className="mt-4 w-full bg-[#060F13] h-2 rounded-full overflow-hidden">
           <div 
             className="bg-gradient-to-r from-[#F97316]/50 to-[#F97316] h-full rounded-full"
-            style={{ width: `${(stats.energyPointsCurrent / stats.energyPointsMax) * 100}%` }}
+            style={{ width: `${(stats.energyPoints.current / stats.energyPoints.max) * 100}%` }}
           ></div>
         </div>
         <div className="flex justify-between mt-1">
-          <span className="text-xs text-[#7DAAB2]">Current: {stats.energyPointsCurrent}</span>
-          <span className="text-xs text-[#7DAAB2]">Target: {stats.energyPointsMax}</span>
+          <span className="text-xs text-[#7DAAB2]">Current: {stats.energyPoints.current}</span>
+          <span className="text-xs text-[#7DAAB2]">Target: {stats.energyPoints.max}</span>
         </div>
       </div>
       

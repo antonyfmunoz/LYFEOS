@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Heart, ArrowUpRight, MonitorHeart, Utensils, Dumbbell, Brain } from "lucide-react";
+import { ArrowLeft, Heart, ArrowUpRight, Activity, Utensils, Dumbbell, Brain } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 
@@ -17,7 +17,7 @@ export default function HealthDetailPage() {
       name: "Sleep", 
       score: 78, 
       description: "Sleep quality and duration", 
-      icon: MonitorHeart,
+      icon: Activity,
       tips: "Create a consistent sleep schedule and avoid screens 1 hour before bedtime."
     },
     { 
@@ -64,14 +64,14 @@ export default function HealthDetailPage() {
           <div>
             <p className="text-[#7DAAB2] mb-1">Physical and mental wellness</p>
             <div className="flex items-baseline">
-              <span className="text-white text-5xl font-mono">{stats.healthPointsCurrent}</span>
-              <span className="text-[#7DAAB2] ml-3 text-lg">/ {stats.healthPointsMax}</span>
+              <span className="text-white text-5xl font-mono">{stats.healthPoints.current}</span>
+              <span className="text-[#7DAAB2] ml-3 text-lg">/ {stats.healthPoints.max}</span>
             </div>
           </div>
           <div className="bg-[#001E26] border border-[#EF4444]/20 rounded-md p-4">
             <p className="text-[#7DAAB2] text-sm mb-1">Wellness target</p>
             <div className="flex items-center">
-              <MonitorHeart className="h-5 w-5 mr-2 text-[#EF4444]" /> {/* Red (Root) */}
+              <Activity className="h-5 w-5 mr-2 text-[#EF4444]" /> {/* Red (Root) */}
               <span className="text-white">90+</span>
             </div>
             <p className="text-[#EF4444] text-xs mt-1">Optimal health</p> {/* Red (Root) */}
@@ -80,12 +80,12 @@ export default function HealthDetailPage() {
         <div className="mt-4 w-full bg-[#060F13] h-2 rounded-full overflow-hidden">
           <div 
             className="bg-gradient-to-r from-[#EF4444]/50 to-[#EF4444] h-full rounded-full"
-            style={{ width: `${(stats.healthPointsCurrent / stats.healthPointsMax) * 100}%` }}
+            style={{ width: `${(stats.healthPoints.current / stats.healthPoints.max) * 100}%` }}
           ></div>
         </div>
         <div className="flex justify-between mt-1">
-          <span className="text-xs text-[#7DAAB2]">Current: {stats.healthPointsCurrent}</span>
-          <span className="text-xs text-[#7DAAB2]">Target: {stats.healthPointsMax}</span>
+          <span className="text-xs text-[#7DAAB2]">Current: {stats.healthPoints.current}</span>
+          <span className="text-xs text-[#7DAAB2]">Target: {stats.healthPoints.max}</span>
         </div>
       </div>
       

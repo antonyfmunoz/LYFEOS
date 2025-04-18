@@ -138,7 +138,7 @@ function Router() {
       <Route path="/attention">
         <ProtectedRoute>
           <RootLayout>
-            <StatDetailPage stat="attention" />
+            <AttentionDetailPage />
           </RootLayout>
         </ProtectedRoute>
       </Route>
@@ -146,7 +146,7 @@ function Router() {
       <Route path="/time">
         <ProtectedRoute>
           <RootLayout>
-            <StatDetailPage stat="time" />
+            <TimeDetailPage />
           </RootLayout>
         </ProtectedRoute>
       </Route>
@@ -154,7 +154,7 @@ function Router() {
       <Route path="/energy">
         <ProtectedRoute>
           <RootLayout>
-            <StatDetailPage stat="energy" />
+            <EnergyDetailPage />
           </RootLayout>
         </ProtectedRoute>
       </Route>
@@ -162,7 +162,7 @@ function Router() {
       <Route path="/health">
         <ProtectedRoute>
           <RootLayout>
-            <StatDetailPage stat="health" />
+            <HealthDetailPage />
           </RootLayout>
         </ProtectedRoute>
       </Route>
@@ -170,7 +170,7 @@ function Router() {
       <Route path="/experience">
         <ProtectedRoute>
           <RootLayout>
-            <StatDetailPage stat="experience" />
+            <ExperienceDetailPage />
           </RootLayout>
         </ProtectedRoute>
       </Route>
