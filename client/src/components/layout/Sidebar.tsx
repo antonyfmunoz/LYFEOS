@@ -18,7 +18,9 @@ export default function Sidebar({ currentPage, username }: SidebarProps) {
     queryKey: ["/api/users", user?.id, "profile"],
     queryFn: async () => {
       if (!user?.id) return null;
-      return apiRequest(`/api/users/${user.id}/profile`);
+      const data = await apiRequest(`/api/users/${user.id}/profile`);
+      console.log("Profile data fetched:", data);
+      return data;
     },
     enabled: !!user?.id,
   });

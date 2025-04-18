@@ -4,8 +4,11 @@ import MobileNav from "./MobileNav";
 import AICompanionPanel from "../ai/AICompanionPanel";
 import { QuickActionMenu } from "../ui/quick-action-menu";
 import { useLYFEOS } from "../../lib/context";
+import { useAuth } from "../../lib/authContext";
 import { useLocation } from "wouter";
 import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "../../lib/queryClient";
 
 interface RootLayoutProps {
   children: ReactNode;
@@ -13,7 +16,20 @@ interface RootLayoutProps {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   const { username, stats } = useLYFEOS();
+  const { user } = useAuth();
   const [location] = useLocation();
+  
+  // Fetch user profile data
+  const { data: profileData } = useQuery({
+    queryKey: ["/api/users", user?.id, "profile"],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const data = await apiRequest(`/api/users/${user.id}/profile`);
+      console.log("Profile data in RootLayout:", data);
+      return data;
+    },
+    enabled: !!user?.id,
+  });
   
   // Profile dropdown state and refs
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
@@ -91,7 +107,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 >
                   <div className="px-4 py-3 border-b border-primary/20">
                     <div>
-                      <p className="text-sm font-orbitron">{username}</p>
+                      <p className="text-sm font-orbitron">{profileData?.displayName || username}</p>
                       <div className="flex items-center gap-1 mt-0.5">
                         <span className="material-icons text-[#22D3EE] text-xs">auto_graph</span>
                         <p className="text-xs text-[#7DAAB2]">Level {stats.experience.level}</p>
