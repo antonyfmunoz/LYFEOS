@@ -88,21 +88,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data && data.user) {
         setUser(data.user);
         localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
-        toast({
-          title: "Login Successful",
-          description: `Welcome back, ${data.user.username}!`,
-          className: "bg-background border border-primary text-foreground",
-        });
         navigate("/dashboard");
       }
     } catch (error) {
       console.error("Login error:", error);
-      toast({
-        title: "Login Failed",
-        description: "Invalid username or password",
-        variant: "destructive",
-        className: "bg-background border border-destructive text-foreground",
-      });
     } finally {
       setIsLoading(false);
     }
@@ -141,21 +130,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data && data.user) {
         setUser(data.user);
         localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
-        toast({
-          title: "Registration Successful",
-          description: `Welcome to LYFEOS, ${data.user.username}!`,
-          className: "bg-background border border-primary text-foreground",
-        });
         navigate("/dashboard");
       }
     } catch (error) {
       console.error("Registration error:", error);
-      toast({
-        title: "Registration Failed",
-        description: "Username may already be taken",
-        variant: "destructive",
-        className: "bg-background border border-destructive text-foreground",
-      });
     } finally {
       setIsLoading(false);
     }
@@ -178,13 +156,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Clear user state regardless of response
       setUser(null);
       localStorage.removeItem("lyfeos_user");
-      
-      toast({
-        title: "Logged Out",
-        description: "You have been logged out successfully",
-        className: "bg-background border border-primary text-foreground",
-      });
-      
       navigate("/login");
     } catch (error) {
       console.error("Logout error:", error);
