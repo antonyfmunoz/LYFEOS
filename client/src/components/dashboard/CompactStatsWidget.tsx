@@ -160,7 +160,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
               </div>
             </div>
             <div className="progress-bar progress-at h-1.5">
-              <div className="progress-fill" style={{ width: `${atPercentage}%` }}></div>
+              <div className="progress-fill" style={{ width: `${atPercentage}%`, backgroundColor: "#9C6ADE" }}></div>
             </div>
           </div>
         </Link>
@@ -187,7 +187,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
               </div>
             </div>
             <div className="progress-bar progress-tt h-1.5">
-              <div className="progress-fill" style={{ width: `${ttPercentage}%` }}></div>
+              <div className="progress-fill" style={{ width: `${ttPercentage}%`, backgroundColor: "#36F1CD" }}></div>
             </div>
           </div>
         </Link>
@@ -214,7 +214,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
               </div>
             </div>
             <div className="progress-bar progress-ep h-1.5">
-              <div className="progress-fill" style={{ width: `${epPercentage}%` }}></div>
+              <div className="progress-fill" style={{ width: `${epPercentage}%`, backgroundColor: "#FCD34D" }}></div>
             </div>
           </div>
         </Link>
@@ -241,7 +241,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
               </div>
             </div>
             <div className="progress-bar progress-hp h-1.5">
-              <div className="progress-fill" style={{ width: `${hpPercentage}%` }}></div>
+              <div className="progress-fill" style={{ width: `${hpPercentage}%`, backgroundColor: "#EC4899" }}></div>
             </div>
           </div>
         </Link>
