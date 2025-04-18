@@ -27,6 +27,8 @@ const initialStats: UserStats = {
     max: 10000,
     level: 15,
   },
+  streakDays: 14,
+  efficiencyScore: 78,
 };
 
 // Initial quests data
@@ -211,8 +213,40 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
           const response = await fetch(`/api/users/${user.id}/stats`);
           if (response.ok) {
             const data = await response.json();
-            if (data.stats && data.stats.aiAssistantName) {
-              setAICompanionNameState(data.stats.aiAssistantName);
+            const dbStats = data.stats;
+            
+            if (dbStats) {
+              // Map database stats to client model
+              setStats({
+                attentionTokens: {
+                  current: dbStats.attentionTokensCurrent,
+                  max: dbStats.attentionTokensMax,
+                },
+                timeTokens: {
+                  current: dbStats.timeTokensCurrent,
+                  max: dbStats.timeTokensMax,
+                },
+                energyPoints: {
+                  current: dbStats.energyPointsCurrent,
+                  max: dbStats.energyPointsMax,
+                },
+                healthPoints: {
+                  current: dbStats.healthPointsCurrent,
+                  max: dbStats.healthPointsMax,
+                },
+                experience: {
+                  current: dbStats.experienceCurrent,
+                  max: dbStats.experienceMax,
+                  level: dbStats.level,
+                },
+                streakDays: dbStats.streakDays,
+                efficiencyScore: dbStats.efficiencyScore,
+              });
+              
+              // Set AI assistant name if available
+              if (dbStats.aiAssistantName) {
+                setAICompanionNameState(dbStats.aiAssistantName);
+              }
             }
           }
         } catch (error) {
