@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import CompactStatsWidget from "../components/dashboard/CompactStatsWidget";
 import { 
   LogOut, 
   Edit, 
@@ -363,101 +364,8 @@ export default function ProfilePage() {
                 <>
                   <h3 className="text-lg font-orbitron text-foreground mb-3">Stats</h3>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Attention Tokens */}
-                    <div className="p-5 bg-card border border-indigo-500/20 rounded-lg glassmorphic" style={{ boxShadow: "0 0 15px rgba(99, 102, 241, 0.15)" }}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="material-icons text-indigo-500">visibility</span>
-                        <span className="font-medium">Attention</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Tokens</span>
-                        <span className="text-foreground">{stats.attentionTokens.current}/{stats.attentionTokens.max}</span>
-                      </div>
-                      <div className="mt-2 h-1.5 bg-indigo-500/20 rounded-full">
-                        <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${(stats.attentionTokens.current / stats.attentionTokens.max) * 100}%` }}></div>
-                      </div>
-                    </div>
-                    
-                    {/* Time Tokens */}
-                    <div className="p-5 bg-card border border-cyan-500/20 rounded-lg glassmorphic" style={{ boxShadow: "0 0 15px rgba(34, 211, 238, 0.15)" }}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="material-icons text-cyan-500">schedule</span>
-                        <span className="font-medium">Time</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Tokens</span>
-                        <span className="text-foreground">{stats.timeTokens.current}/{stats.timeTokens.max}</span>
-                      </div>
-                      <div className="mt-2 h-1.5 bg-cyan-500/20 rounded-full">
-                        <div className="h-full bg-cyan-500 rounded-full" style={{ width: `${(stats.timeTokens.current / stats.timeTokens.max) * 100}%` }}></div>
-                      </div>
-                    </div>
-                    
-                    {/* Energy Points */}
-                    <div className="p-5 bg-card border border-orange-500/20 rounded-lg glassmorphic" style={{ boxShadow: "0 0 15px rgba(249, 115, 22, 0.15)" }}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="material-icons text-orange-500">bolt</span>
-                        <span className="font-medium">Energy</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Points</span>
-                        <span className="text-foreground">{stats.energyPoints.current}/{stats.energyPoints.max}</span>
-                      </div>
-                      <div className="mt-2 h-1.5 bg-orange-500/20 rounded-full">
-                        <div className="h-full bg-orange-500 rounded-full" style={{ width: `${(stats.energyPoints.current / stats.energyPoints.max) * 100}%` }}></div>
-                      </div>
-                    </div>
-                    
-                    {/* Health Points */}
-                    <div className="p-5 bg-card border border-rose-500/20 rounded-lg glassmorphic" style={{ boxShadow: "0 0 15px rgba(244, 63, 94, 0.15)" }}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="material-icons text-rose-500">favorite</span>
-                        <span className="font-medium">Health</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Points</span>
-                        <span className="text-foreground">{stats.healthPoints.current}/{stats.healthPoints.max}</span>
-                      </div>
-                      <div className="mt-2 h-1.5 bg-rose-500/20 rounded-full">
-                        <div className="h-full bg-rose-500 rounded-full" style={{ width: `${(stats.healthPoints.current / stats.healthPoints.max) * 100}%` }}></div>
-                      </div>
-                    </div>
-                    
-                    {/* Streak Days */}
-                    <div className="p-5 bg-card border border-green-500/20 rounded-lg glassmorphic" style={{ boxShadow: "0 0 15px rgba(34, 197, 94, 0.15)" }}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="material-icons text-green-500">calendar_today</span>
-                        <span className="font-medium">Streak</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Days</span>
-                        <span className="text-foreground">{stats.streakDays}</span>
-                      </div>
-                      <div className="mt-2 flex items-center justify-start gap-1">
-                        {[...Array(7)].map((_, i) => (
-                          <div 
-                            key={i} 
-                            className={`h-2 w-2 rounded-full ${i < Math.min(stats.streakDays, 7) ? 'bg-green-500' : 'bg-green-500/20'}`}
-                          ></div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {/* Efficiency Score */}
-                    <div className="p-5 bg-card border border-yellow-500/20 rounded-lg glassmorphic" style={{ boxShadow: "0 0 15px rgba(234, 179, 8, 0.15)" }}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="material-icons text-yellow-500">speed</span>
-                        <span className="font-medium">Efficiency</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Score</span>
-                        <span className="text-foreground">{stats.efficiencyScore}/100</span>
-                      </div>
-                      <div className="mt-2 h-1.5 bg-yellow-500/20 rounded-full">
-                        <div className="h-full bg-yellow-500 rounded-full" style={{ width: `${stats.efficiencyScore}%` }}></div>
-                      </div>
-                    </div>
+                  <div className="bg-card border border-primary/20 rounded-lg p-4">
+                    <CompactStatsWidget stats={stats} />
                   </div>
                 </>
               )}
