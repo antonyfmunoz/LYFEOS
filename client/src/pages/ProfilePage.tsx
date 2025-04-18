@@ -363,9 +363,9 @@ export default function ProfilePage() {
                 <>
                   <h3 className="text-lg font-orbitron text-foreground mb-3">Stats</h3>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Attention Tokens */}
-                    <div className="p-4 bg-card border border-indigo-500/20 rounded-lg" style={{ boxShadow: "0 0 10px rgba(99, 102, 241, 0.1)" }}>
+                    <div className="p-5 bg-card border border-indigo-500/20 rounded-lg glassmorphic" style={{ boxShadow: "0 0 15px rgba(99, 102, 241, 0.15)" }}>
                       <div className="flex items-center gap-2 mb-2">
                         <span className="material-icons text-indigo-500">visibility</span>
                         <span className="font-medium">Attention</span>
@@ -380,7 +380,7 @@ export default function ProfilePage() {
                     </div>
                     
                     {/* Time Tokens */}
-                    <div className="p-4 bg-card border border-cyan-500/20 rounded-lg" style={{ boxShadow: "0 0 10px rgba(34, 211, 238, 0.1)" }}>
+                    <div className="p-5 bg-card border border-cyan-500/20 rounded-lg glassmorphic" style={{ boxShadow: "0 0 15px rgba(34, 211, 238, 0.15)" }}>
                       <div className="flex items-center gap-2 mb-2">
                         <span className="material-icons text-cyan-500">schedule</span>
                         <span className="font-medium">Time</span>
@@ -395,7 +395,7 @@ export default function ProfilePage() {
                     </div>
                     
                     {/* Energy Points */}
-                    <div className="p-4 bg-card border border-orange-500/20 rounded-lg" style={{ boxShadow: "0 0 10px rgba(249, 115, 22, 0.1)" }}>
+                    <div className="p-5 bg-card border border-orange-500/20 rounded-lg glassmorphic" style={{ boxShadow: "0 0 15px rgba(249, 115, 22, 0.15)" }}>
                       <div className="flex items-center gap-2 mb-2">
                         <span className="material-icons text-orange-500">bolt</span>
                         <span className="font-medium">Energy</span>
@@ -410,7 +410,7 @@ export default function ProfilePage() {
                     </div>
                     
                     {/* Health Points */}
-                    <div className="p-4 bg-card border border-rose-500/20 rounded-lg" style={{ boxShadow: "0 0 10px rgba(244, 63, 94, 0.1)" }}>
+                    <div className="p-5 bg-card border border-rose-500/20 rounded-lg glassmorphic" style={{ boxShadow: "0 0 15px rgba(244, 63, 94, 0.15)" }}>
                       <div className="flex items-center gap-2 mb-2">
                         <span className="material-icons text-rose-500">favorite</span>
                         <span className="font-medium">Health</span>
@@ -425,7 +425,7 @@ export default function ProfilePage() {
                     </div>
                     
                     {/* Streak Days */}
-                    <div className="p-4 bg-card border border-green-500/20 rounded-lg" style={{ boxShadow: "0 0 10px rgba(34, 197, 94, 0.1)" }}>
+                    <div className="p-5 bg-card border border-green-500/20 rounded-lg glassmorphic" style={{ boxShadow: "0 0 15px rgba(34, 197, 94, 0.15)" }}>
                       <div className="flex items-center gap-2 mb-2">
                         <span className="material-icons text-green-500">calendar_today</span>
                         <span className="font-medium">Streak</span>
