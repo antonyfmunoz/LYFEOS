@@ -49,18 +49,18 @@ export default function StreakDetailPage() {
               <span className="text-[#7DAAB2] ml-3 text-lg">days</span>
             </div>
           </div>
-          <div className="bg-[#001E26] border border-[#60A5FA]/20 rounded-md p-4">
+          <div className="bg-[#001E26] border border-[#10B981]/20 rounded-md p-4">
             <p className="text-[#7DAAB2] text-sm mb-1">Next milestone</p>
             <div className="flex items-center">
-              <Trophy className="h-5 w-5 mr-2 text-[#60A5FA]" />
+              <Trophy className="h-5 w-5 mr-2 text-[#10B981]" /> {/* Green (Heart) */}
               <span className="text-white">{nextMilestone.days} days</span>
             </div>
-            <p className="text-[#60A5FA] text-xs mt-1">{nextMilestone.title}</p>
+            <p className="text-[#10B981] text-xs mt-1">{nextMilestone.title}</p> {/* Green (Heart) */}
           </div>
         </div>
         <div className="mt-4 w-full bg-[#060F13] h-2 rounded-full overflow-hidden">
           <div 
-            className="bg-gradient-to-r from-[#60A5FA]/50 to-[#60A5FA] h-full rounded-full"
+            className="bg-gradient-to-r from-[#10B981]/50 to-[#10B981] h-full rounded-full"
             style={{ width: `${Math.min(100, (stats.streakDays / nextMilestone.days) * 100)}%` }}
           ></div>
         </div>
@@ -71,9 +71,9 @@ export default function StreakDetailPage() {
       </div>
       
       {/* Streak Milestones */}
-      <div className="glassmorphic rounded-xl p-6 mb-6 border border-[#60A5FA]/30">
+      <div className="glassmorphic rounded-xl p-6 mb-6 border border-[#10B981]/30"> {/* Green (Heart) */}
         <div className="flex justify-between items-center mb-4">
-          <h2 className="font-orbitron text-xl text-[#60A5FA]">Streak Milestones</h2>
+          <h2 className="font-orbitron text-xl text-[#10B981]">Streak Milestones</h2> {/* Green (Heart) */}
         </div>
         
         <div className="space-y-4">
@@ -82,7 +82,7 @@ export default function StreakDetailPage() {
               key={milestone.days}
               className={`flex items-center justify-between p-3 rounded-lg border ${
                 milestone.completed 
-                  ? "border-[#60A5FA]/30 bg-[#60A5FA]/5" 
+                  ? "border-[#10B981]/30 bg-[#10B981]/5" 
                   : "border-[#1F3642]/80 bg-[#0D1D25]/30"
               }`}
             >
