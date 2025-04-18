@@ -99,8 +99,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         energyPointsMax: 10,
         healthPointsCurrent: 10,
         healthPointsMax: 10,
-        attentionTokensCurrent: 5,
-        attentionTokensMax: 5,
+        attentionTokensCurrent: 10,
+        attentionTokensMax: 10,
         streakDays: 0,
         efficiencyScore: 0,
         aiAssistantName: "NOVA"
@@ -162,8 +162,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           energyPointsMax: 10,
           healthPointsCurrent: 10,
           healthPointsMax: 10,
-          attentionTokensCurrent: 5,
-          attentionTokensMax: 5,
+          attentionTokensCurrent: 10,
+          attentionTokensMax: 10,
           streakDays: 0,
           efficiencyScore: 0,
           aiAssistantName: "NOVA"

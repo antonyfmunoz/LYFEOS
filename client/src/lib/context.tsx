@@ -7,8 +7,8 @@ import { apiRequest } from "./queryClient";
 // Initial stats data
 const initialStats: UserStats = {
   attentionTokens: {
-    current: 5,
-    max: 5,
+    current: 10,
+    max: 10,
   },
   timeTokens: {
     current: 10,
