@@ -146,7 +146,7 @@ export default function EnhancedMissionWidget({
   const upcomingEvents = getUpcomingEvents(3);
   
   return (
-    <div className={`quest-log-box glassmorphic rounded-xl p-6 neon-border ${className}`}>
+    <div className={`quest-log-box ${className}`}>
       {!hideHeader && (
         <div className="relative mb-6">
           <h2 className="text-xl font-orbitron text-[#dff9ff] flex items-center">

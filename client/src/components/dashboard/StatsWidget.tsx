@@ -21,7 +21,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
   const streakPercentage = Math.min(100, (stats.streakDays / 30) * 100); // Assume 30 days is max
   
   return (
-    <div className="glassmorphic rounded-xl p-4 neon-border">
+    <div className="p-0">
       {/* Experience Bar */}
       <Link href="/experience">
         <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-3 transition-all cursor-pointer border border-primary/20 mb-5 relative">
