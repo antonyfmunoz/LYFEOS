@@ -116,7 +116,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#10B981]"
+                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#FBBF24]"
                   onClick={(e) => e.stopPropagation()} // Prevent navigation when clicking info button
                 >
                   <Info className="h-4 w-4" />
@@ -166,14 +166,15 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#9C6ADE]"
+                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#6366F1]"
                   onClick={(e) => e.stopPropagation()} // Prevent navigation when clicking info button
                 >
                   <Info className="h-4 w-4" />
                 </button>
               }
               title="Attention Tokens"
-              titleColor="text-[#9C6ADE]"
+              // Indigo (Third Eye)
+              titleColor="text-[#6366F1]"
               description="Measures your focus capacity and attention allocation. High-quality focus time and mental clarity increase your Attention Tokens."
               additionalInfo="Managing your Attention Tokens helps maintain deep focus on important tasks and prevent mental fatigue."
               statType="attention"
@@ -181,7 +182,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
-                <BrainCircuit className="h-4 w-4 text-[#9C6ADE] mr-2" />
+                <BrainCircuit className="h-4 w-4 text-[#6366F1] mr-2" /> {/* Indigo (Third Eye) */}
                 <h3 className="text-sm font-orbitron text-[#D6F4FF]">ATTENTION TOKENS</h3>
               </div>
               <div className="mr-6">
