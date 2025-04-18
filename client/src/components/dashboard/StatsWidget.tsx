@@ -54,7 +54,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             </div>
           </div>
           <div className="progress-bar progress-xp mb-2">
-            <div className="progress-fill" style={{ width: `${xpPercentage}%` }}></div>
+            <div className="progress-fill" style={{ width: `${xpPercentage}%`, background: 'linear-gradient(to right, rgba(139,92,246,0.7), #8B5CF6)' }}></div>
           </div>
           <div className="flex justify-between text-xs">
             <span className="text-[#7DAAB2]">{stats.experience.current.toLocaleString()} XP</span>
@@ -96,7 +96,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <div className="progress-bar progress-streak mb-2">
               <div 
                 className="progress-fill" 
-                style={{ width: `${streakPercentage}%`, backgroundColor: "#60A5FA" }}
+                style={{ width: `${streakPercentage}%`, background: 'linear-gradient(to right, rgba(16,185,129,0.7), #10B981)' }}
               ></div>
             </div>
             <div className="flex justify-between">
@@ -139,7 +139,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <div className="progress-bar progress-efficiency mb-2">
               <div 
                 className="progress-fill" 
-                style={{ width: `${efficiencyPercentage}%`, backgroundColor: "#10B981" }}
+                style={{ width: `${efficiencyPercentage}%`, background: 'linear-gradient(to right, rgba(251,191,36,0.7), #FBBF24)' }}
               ></div>
             </div>
             <div className="flex justify-between">
@@ -186,7 +186,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               </div>
             </div>
             <div className="progress-bar progress-at mb-2">
-              <div className="progress-fill" style={{ width: `${atPercentage}%` }}></div>
+              <div className="progress-fill" style={{ width: `${atPercentage}%`, background: 'linear-gradient(to right, rgba(99,102,241,0.7), #6366F1)' }}></div>
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-base">
@@ -226,7 +226,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               </div>
             </div>
             <div className="progress-bar progress-tt mb-2">
-              <div className="progress-fill" style={{ width: `${ttPercentage}%` }}></div>
+              <div className="progress-fill" style={{ width: `${ttPercentage}%`, background: 'linear-gradient(to right, rgba(34,211,238,0.7), #22D3EE)' }}></div>
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-base">
@@ -266,7 +266,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               </div>
             </div>
             <div className="progress-bar progress-ep mb-2">
-              <div className="progress-fill" style={{ width: `${epPercentage}%` }}></div>
+              <div className="progress-fill" style={{ width: `${epPercentage}%`, background: 'linear-gradient(to right, rgba(249,115,22,0.7), #F97316)' }}></div>
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-base">
@@ -306,7 +306,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               </div>
             </div>
             <div className="progress-bar progress-hp mb-2">
-              <div className="progress-fill" style={{ width: `${hpPercentage}%` }}></div>
+              <div className="progress-fill" style={{ width: `${hpPercentage}%`, background: 'linear-gradient(to right, rgba(239,68,68,0.7), #EF4444)' }}></div>
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-base">
