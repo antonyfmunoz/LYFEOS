@@ -30,7 +30,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-2 right-2 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#8B5CF6]"
+                  className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#8B5CF6]"
                   onClick={(e) => e.stopPropagation()} 
                 >
                   <Info className="h-3 w-3" />
@@ -67,7 +67,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-2 right-2 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#60A5FA]"
+                  className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#60A5FA]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Info className="h-3 w-3" />
@@ -104,7 +104,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-2 right-2 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#FBBF24]"
+                  className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#FBBF24]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Info className="h-3 w-3" />
@@ -144,7 +144,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-2 right-2 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#6366F1]"
+                  className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#6366F1]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Info className="h-3 w-3" />
@@ -181,7 +181,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-2 right-2 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#22D3EE]"
+                  className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#22D3EE]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Info className="h-3 w-3" />
@@ -218,7 +218,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-2 right-2 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#F97316]"
+                  className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#F97316]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Info className="h-3 w-3" />
@@ -255,7 +255,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-2 right-2 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#EF4444]"
+                  className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#EF4444]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Info className="h-3 w-3" />
