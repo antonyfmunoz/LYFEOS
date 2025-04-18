@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { Award, Clock, Zap, Heart, ArrowRight, Info, BrainCircuit } from "lucide-react";
+import { Award, Clock, Zap, Heart, ArrowRight, Info, BrainCircuit, Calendar, BarChart } from "lucide-react";
 import { UserStats } from "@/lib/types";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 
@@ -57,7 +57,80 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
       {/* Divider */}
       <div className="border-t border-primary/10 mb-4"></div>
       
-      {/* Other Stats */}
+      {/* System Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+        {/* Streak */}
+        <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-3 transition-all cursor-pointer border border-primary/20 relative">
+          <StatInfoDialog
+            trigger={
+              <button className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#60A5FA]">
+                <Info className="h-4 w-4" />
+              </button>
+            }
+            title="Usage Streak"
+            titleColor="text-[#60A5FA]"
+            description="Tracks the number of consecutive days you've used LYFEOS. Login daily to maintain and increase your streak."
+            additionalInfo="Longer streaks contribute to your overall consistency score and unlock special rewards."
+            statType="streak"
+          />
+          
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center">
+              <Calendar className="h-4 w-4 text-[#60A5FA] mr-2" />
+              <h3 className="text-sm font-orbitron text-[#D6F4FF]">STREAK</h3>
+            </div>
+            <div className="mr-6">
+              <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-[#D6F4FF] font-mono text-3xl">
+              {stats.streakDays}
+            </span>
+            <span className="text-sm text-[#7DAAB2] self-end">DAYS</span>
+          </div>
+          <div className="mt-1">
+            <span className="text-xs text-[#60A5FA]">Consecutive days using LYFEOS</span>
+          </div>
+        </div>
+        
+        {/* Efficiency */}
+        <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-3 transition-all cursor-pointer border border-primary/20 relative">
+          <StatInfoDialog
+            trigger={
+              <button className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#10B981]">
+                <Info className="h-4 w-4" />
+              </button>
+            }
+            title="System Efficiency"
+            titleColor="text-[#10B981]"
+            description="Measures how optimally you're using LYFEOS features. Balanced task completion, regular reflections, and consistent data entry improve your score."
+            additionalInfo="Higher efficiency scores indicate better life operating system utilization and typically correlate with improved productivity and wellbeing."
+            statType="efficiency"
+          />
+          
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center">
+              <BarChart className="h-4 w-4 text-[#10B981] mr-2" />
+              <h3 className="text-sm font-orbitron text-[#D6F4FF]">EFFICIENCY</h3>
+            </div>
+            <div className="mr-6">
+              <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-[#D6F4FF] font-mono text-3xl">
+              {stats.efficiencyScore}<span className="text-[#7DAAB2] text-base">%</span>
+            </span>
+            <span className="text-sm text-[#7DAAB2] self-end"></span>
+          </div>
+          <div className="mt-1">
+            <span className="text-xs text-[#10B981]">Overall system optimization score</span>
+          </div>
+        </div>
+      </div>
+      
+      {/* Resource Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         {/* Attention Tokens */}
         <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-3 transition-all cursor-pointer border border-primary/20 relative">

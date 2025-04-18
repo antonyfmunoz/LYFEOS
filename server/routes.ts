@@ -162,6 +162,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           healthPointsMax: 100,
           attentionTokensCurrent: 5,
           attentionTokensMax: 5,
+          streakDays: 1,
+          efficiencyScore: 65,
           aiAssistantName: "NOVA"
         });
         

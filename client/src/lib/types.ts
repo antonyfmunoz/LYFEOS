@@ -70,4 +70,4 @@ export interface MissionPage {
   eventId?: string; // Reference to the original calendar event if applicable
 }
 
-export type StatType = "attention" | "time" | "energy" | "health" | "experience";
+export type StatType = "attention" | "time" | "energy" | "health" | "experience" | "streak" | "efficiency";

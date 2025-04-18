@@ -11,7 +11,7 @@ interface StatInfoDialogProps {
   titleColor?: string;
   description: string;
   additionalInfo?: string;
-  statType?: "attention" | "time" | "energy" | "health" | "experience";
+  statType?: "attention" | "time" | "energy" | "health" | "experience" | "streak" | "efficiency";
 }
 
 export function StatInfoDialog({
@@ -38,6 +38,10 @@ export function StatInfoDialog({
         return "/health";
       case "experience":
         return "/experience";
+      case "streak":
+        return "/streak";
+      case "efficiency":
+        return "/efficiency";
       default:
         return "/dashboard";
     }
@@ -56,6 +60,10 @@ export function StatInfoDialog({
         return "border-[#EC4899]";
       case "experience":
         return "border-[#36F1CD]";
+      case "streak":
+        return "border-[#60A5FA]";
+      case "efficiency":
+        return "border-[#10B981]";
       default:
         return "border-primary";
     }
@@ -125,6 +133,8 @@ export function StatInfoDialog({
               statType === "time" ? "text-primary" : 
               statType === "energy" ? "text-[#FCD34D]" : 
               statType === "health" ? "text-[#EC4899]" : 
+              statType === "streak" ? "text-[#60A5FA]" :
+              statType === "efficiency" ? "text-[#10B981]" :
               "text-[#36F1CD]"
             )}>
               <ExternalLink size={14} className="mr-2" /> More Details
