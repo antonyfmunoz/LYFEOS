@@ -3,6 +3,7 @@ import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { AIAgentFAB } from "@/components/ui/ai-agent-fab";
 import { cn } from "@/lib/utils";
+import { CollapsibleWidget } from "@/components/ui/collapsible-widget";
 import {
   Brain,
   BookOpen,
@@ -20,7 +21,8 @@ import {
   ListChecks,
   Calendar,
   CheckCircle2,
-  Zap
+  Zap,
+  BarChart
 } from "lucide-react";
 import MissionLogWidget from "@/components/dashboard/MissionLogWidget";
 import EnhancedMissionWidget from "@/components/dashboard/EnhancedMissionWidget";
@@ -522,7 +524,13 @@ export default function DashboardPage() {
           </h2>
         </div>
         
-        <StatsWidget stats={stats} />
+        <CollapsibleWidget 
+          title="Stats & Resources" 
+          icon={<BarChart className="h-5 w-5 text-primary" />}
+          className="mb-4"
+        >
+          <StatsWidget stats={stats} />
+        </CollapsibleWidget>
       </section>
       
       {/* Mission Log Panel */}
@@ -534,11 +542,17 @@ export default function DashboardPage() {
           </h2>
         </div>
         
-        <EnhancedMissionWidget 
-          events={events} 
-          maxHeight="96"
-          hideHeader={true}
-        />
+        <CollapsibleWidget 
+          title="Mission Log" 
+          icon={<Calendar className="h-5 w-5 text-primary" />}
+          className="mb-4"
+        >
+          <EnhancedMissionWidget 
+            events={events} 
+            maxHeight="96"
+            hideHeader={true}
+          />
+        </CollapsibleWidget>
       </section>
       
       {/* Data Entry Log Panel */}
@@ -550,7 +564,11 @@ export default function DashboardPage() {
           </h2>
         </div>
         
-        <div className="glassmorphic rounded-xl p-4 neon-border">
+        <CollapsibleWidget 
+          title="Data Entry Log" 
+          icon={<BookOpen className="h-5 w-5 text-primary" />}
+          className="mb-4"
+        >
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Today's Thoughts */}
@@ -622,7 +640,7 @@ export default function DashboardPage() {
             
             {/* Auto-saved, no button needed */}
           </div>
-        </div>
+        </CollapsibleWidget>
       </section>
       
       {/* Recalibration Log Panel */}
@@ -634,7 +652,11 @@ export default function DashboardPage() {
           </h2>
         </div>
         
-        <div className="glassmorphic rounded-xl p-4 neon-border">
+        <CollapsibleWidget 
+          title="Recalibration Log" 
+          icon={<Brain className="h-5 w-5 text-primary" />}
+          className="mb-4"
+        >
           <div className="space-y-4">
             {/* Sleep Tracker Section */}
             <div className="mb-3">
@@ -781,7 +803,7 @@ export default function DashboardPage() {
             
             {/* Auto-saved, no button needed */}
           </div>
-        </div>
+        </CollapsibleWidget>
       </section>
       
     </div>
