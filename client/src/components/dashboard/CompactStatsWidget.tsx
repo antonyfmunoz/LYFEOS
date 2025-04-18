@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { Award, Clock, Zap, Heart, ArrowRight, Info, BrainCircuit, Calendar, BarChart } from "lucide-react";
+import { Award, Clock, Zap, Heart, Info, BrainCircuit, Calendar, BarChart } from "lucide-react";
 import { UserStats } from "@/lib/types";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 
@@ -48,7 +48,6 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
                 <Award className="h-3 w-3 text-[#8B5CF6] mr-1" />
                 <h3 className="font-orbitron text-[#D6F4FF] text-xs">LEVEL</h3>
               </div>
-              <ArrowRight className="h-3 w-3 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
             <div className="progress-bar progress-xp h-1.5 mb-1">
               <div className="progress-fill" style={{ width: `${xpPercentage}%`, backgroundColor: "#8B5CF6" }}></div>
@@ -89,7 +88,6 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
                 <Calendar className="h-3 w-3 text-[#10B981] mr-1" /> {/* Green (Heart) */}
                 <h3 className="text-xs font-orbitron text-[#D6F4FF]">STREAK</h3>
               </div>
-              <ArrowRight className="h-3 w-3 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
             <div className="progress-bar progress-streak h-1.5 mb-1">
               <div className="progress-fill" style={{ width: `${streakPercentage}%`, backgroundColor: "#10B981" }}></div>
@@ -126,7 +124,6 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
                 <BarChart className="h-3 w-3 text-[#FBBF24] mr-1" />
                 <h3 className="text-xs font-orbitron text-[#D6F4FF]">EFFICIENCY</h3>
               </div>
-              <ArrowRight className="h-3 w-3 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
             <div className="progress-bar progress-efficiency h-1.5 mb-1">
               <div className="progress-fill" style={{ width: `${efficiencyPercentage}%`, backgroundColor: "#FBBF24" }}></div>
@@ -163,7 +160,6 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
                 <BrainCircuit className="h-3 w-3 text-[#6366F1] mr-1" />
                 <h3 className="text-xs font-orbitron text-[#D6F4FF]">ATTENTION</h3>
               </div>
-              <ArrowRight className="h-3 w-3 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
             <div className="progress-bar progress-at h-1.5 mb-1">
               <div className="progress-fill" style={{ width: `${atPercentage}%`, backgroundColor: "#6366F1" }}></div>
@@ -200,7 +196,6 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
                 <Clock className="h-3 w-3 text-[#22D3EE] mr-1" />
                 <h3 className="text-xs font-orbitron text-[#D6F4FF]">TIME</h3>
               </div>
-              <ArrowRight className="h-3 w-3 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
             <div className="progress-bar progress-tt h-1.5 mb-1">
               <div className="progress-fill" style={{ width: `${ttPercentage}%`, backgroundColor: "#22D3EE" }}></div>
@@ -237,7 +232,6 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
                 <Zap className="h-3 w-3 text-[#F97316] mr-1" />
                 <h3 className="text-xs font-orbitron text-[#D6F4FF]">ENERGY</h3>
               </div>
-              <ArrowRight className="h-3 w-3 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
             <div className="progress-bar progress-ep h-1.5 mb-1">
               <div className="progress-fill" style={{ width: `${epPercentage}%`, backgroundColor: "#F97316" }}></div>
@@ -274,7 +268,6 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
                 <Heart className="h-3 w-3 text-[#EF4444] mr-1" />
                 <h3 className="text-xs font-orbitron text-[#D6F4FF]">HEALTH</h3>
               </div>
-              <ArrowRight className="h-3 w-3 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
             <div className="progress-bar progress-hp h-1.5 mb-1">
               <div className="progress-fill" style={{ width: `${hpPercentage}%`, backgroundColor: "#EF4444" }}></div>
