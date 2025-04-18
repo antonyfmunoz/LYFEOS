@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { useLYFEOS } from "../../lib/context";
 
 interface SidebarProps {
   currentPage: string;
@@ -6,6 +7,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ currentPage, username }: SidebarProps) {
+  const { stats } = useLYFEOS();
   const navItems = [
     { id: "dashboard", icon: "dashboard", label: "Dashboard" },
     { id: "quests", icon: "track_changes", label: "Missions" },
@@ -30,7 +32,7 @@ export default function Sidebar({ currentPage, username }: SidebarProps) {
           </div>
         </div>
         <div className="ml-3">
-          <p className="font-orbitron text-sm text-text-primary">COMMANDER</p>
+          <p className="font-orbitron text-sm text-text-primary">LEVEL {stats.experience.level}</p>
           <p className="text-[#7DAAB2] text-xs">{username}</p>
         </div>
       </div>
