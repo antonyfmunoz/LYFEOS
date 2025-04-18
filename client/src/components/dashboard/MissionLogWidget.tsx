@@ -271,8 +271,9 @@ export default function MissionLogWidget({
         <div className={`mission-log-box bg-[#0d131f] border border-[#00f2fe] rounded-xl p-6 ${className}`}>
           {!compact && (
             <div className="relative mb-6">
-              <h2 className="text-xl font-orbitron text-[#dff9ff]">
-                Mission Log
+              <h2 className="text-xl font-orbitron text-[#dff9ff] flex items-center">
+                <Calendar className="h-5 w-5 text-primary mr-2" />
+                <span>Mission Log</span>
               </h2>
               <Button
                 variant="outline"
