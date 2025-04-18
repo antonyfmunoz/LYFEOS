@@ -22,8 +22,8 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
   
   return (
     <div className="p-0">
-      {/* First row: Level & System Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
+      {/* Level Row */}
+      <div className="grid grid-cols-1 gap-2 mb-2">
         {/* Experience Level */}
         <Link href="/experience">
           <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-2 transition-all cursor-pointer border border-primary/20 relative">
@@ -60,7 +60,10 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             </div>
           </div>
         </Link>
-        
+      </div>
+      
+      {/* All Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
         {/* Streak */}
         <Link href="/streak">
           <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-2 transition-all cursor-pointer border border-primary/20 relative">
@@ -92,8 +95,8 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
               <div className="progress-fill" style={{ width: `${streakPercentage}%`, backgroundColor: "#10B981" }}></div>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#D6F4FF] font-mono text-sm">
-                {stats.streakDays}<span className="text-[#7DAAB2] text-xs"> days</span>
+              <span className="text-[#D6F4FF] font-mono text-xs">
+                {stats.streakDays} <span className="text-[#7DAAB2] text-xs">days</span>
               </span>
             </div>
           </div>
@@ -129,16 +132,13 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
               <div className="progress-fill" style={{ width: `${efficiencyPercentage}%`, backgroundColor: "#FBBF24" }}></div>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#D6F4FF] font-mono text-sm">
+              <span className="text-[#D6F4FF] font-mono text-xs">
                 {efficiencyPercentage}<span className="text-[#7DAAB2] text-xs">%</span>
               </span>
             </div>
           </div>
         </Link>
-      </div>
-      
-      {/* Resource Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        
         {/* Attention Tokens */}
         <Link href="/attention">
           <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-2 transition-all cursor-pointer border border-primary/20 relative">
