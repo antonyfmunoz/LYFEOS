@@ -70,7 +70,7 @@ export default function EfficiencyDetailPage() {
       </div>
       
       {/* Current Efficiency */}
-      <div className="glassmorphic rounded-xl p-6 mb-6 border border-[#10B981]/30">
+      <div className="glassmorphic rounded-xl p-6 mb-6 border border-[#FBBF24]/30"> {/* Yellow (Solar Plexus) */}
         <h2 className="font-orbitron text-xl mb-4 text-[#FBBF24]">Overall Efficiency</h2> {/* Yellow (Solar Plexus) */}
         <div className="flex items-center justify-between">
           <div>
@@ -83,7 +83,7 @@ export default function EfficiencyDetailPage() {
           <div className="bg-[#001E26] border border-[#10B981]/20 rounded-md p-4">
             <p className="text-[#7DAAB2] text-sm mb-1">Target</p>
             <div className="flex items-center">
-              <BarChart className="h-5 w-5 mr-2 text-[#10B981]" />
+              <BarChart className="h-5 w-5 mr-2 text-[#FBBF24]" /> {/* Yellow (Solar Plexus) */}
               <span className="text-white">95%</span>
             </div>
             <p className="text-[#10B981] text-xs mt-1">Optimal performance</p>
@@ -91,7 +91,7 @@ export default function EfficiencyDetailPage() {
         </div>
         <div className="mt-4 w-full bg-[#060F13] h-2 rounded-full overflow-hidden">
           <div 
-            className="bg-gradient-to-r from-[#10B981]/50 to-[#10B981] h-full rounded-full"
+            className="bg-gradient-to-r from-[#FBBF24]/50 to-[#FBBF24] h-full rounded-full"
             style={{ width: `${stats.efficiencyScore}%` }}
           ></div>
         </div>
@@ -102,7 +102,7 @@ export default function EfficiencyDetailPage() {
       </div>
       
       {/* Efficiency Components */}
-      <div className="glassmorphic rounded-xl p-6 mb-6 border border-[#10B981]/30">
+      <div className="glassmorphic rounded-xl p-6 mb-6 border border-[#FBBF24]/30"> {/* Yellow (Solar Plexus) */}
         <div className="flex justify-between items-center mb-4">
           <h2 className="font-orbitron text-xl text-[#FBBF24]">Efficiency Components</h2> {/* Yellow (Solar Plexus) */}
         </div>
@@ -112,7 +112,7 @@ export default function EfficiencyDetailPage() {
             <div key={metric.name} className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <metric.icon className="h-5 w-5 mr-2 text-[#10B981]" />
+                  <metric.icon className="h-5 w-5 mr-2 text-[#FBBF24]" />
                   <h3 className="text-white">{metric.name}</h3>
                 </div>
                 <div>
@@ -142,7 +142,7 @@ export default function EfficiencyDetailPage() {
       </div>
       
       {/* Improvement Tips */}
-      <div className="glassmorphic rounded-xl p-6 border border-[#10B981]/30">
+      <div className="glassmorphic rounded-xl p-6 border border-[#FBBF24]/30"> {/* Yellow (Solar Plexus) */}
         <h2 className="font-orbitron text-xl mb-4 text-[#FBBF24]">Efficiency Tips</h2> {/* Yellow (Solar Plexus) */}
         <ul className="space-y-3">
           {efficiencyMetrics.map((metric) => (
