@@ -276,12 +276,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid user ID" });
       }
       
-      const stats = await storage.getUserStats(userId);
-      if (!stats) {
+      const dbStats = await storage.getUserStats(userId);
+      if (!dbStats) {
         return res.status(404).json({ error: "User stats not found" });
       }
       
-      return res.status(200).json({ stats });
+      // Transform database stats into the nested object structure expected by the frontend
+      const transformedStats = {
+        attentionTokens: {
+          current: dbStats.attentionTokensCurrent,
+          max: dbStats.attentionTokensMax,
+        },
+        timeTokens: {
+          current: dbStats.timeTokensCurrent,
+          max: dbStats.timeTokensMax,
+        },
+        energyPoints: {
+          current: dbStats.energyPointsCurrent,
+          max: dbStats.energyPointsMax,
+        },
+        healthPoints: {
+          current: dbStats.healthPointsCurrent,
+          max: dbStats.healthPointsMax,
+        },
+        experience: {
+          current: dbStats.experienceCurrent,
+          max: dbStats.experienceMax,
+          level: dbStats.level,
+        },
+        streakDays: dbStats.streakDays || 0,
+        efficiencyScore: dbStats.efficiencyScore || 0,
+        aiAssistantName: dbStats.aiAssistantName,
+      };
+      
+      return res.status(200).json({ stats: transformedStats });
     } catch (error) {
       return res.status(500).json({ error: "Internal server error" });
     }
@@ -294,11 +322,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid user ID" });
       }
       
-      const statsUpdate = req.body;
-      const updatedStats = await storage.updateUserStats(userId, statsUpdate);
+      // Transform nested frontend stat model to flat database model
+      const frontendStats = req.body;
+      const dbStatsUpdate: any = {};
       
-      return res.status(200).json({ stats: updatedStats });
+      if (frontendStats.attentionTokens) {
+        if (frontendStats.attentionTokens.current !== undefined) {
+          dbStatsUpdate.attentionTokensCurrent = frontendStats.attentionTokens.current;
+        }
+        if (frontendStats.attentionTokens.max !== undefined) {
+          dbStatsUpdate.attentionTokensMax = frontendStats.attentionTokens.max;
+        }
+      }
+      
+      if (frontendStats.timeTokens) {
+        if (frontendStats.timeTokens.current !== undefined) {
+          dbStatsUpdate.timeTokensCurrent = frontendStats.timeTokens.current;
+        }
+        if (frontendStats.timeTokens.max !== undefined) {
+          dbStatsUpdate.timeTokensMax = frontendStats.timeTokens.max;
+        }
+      }
+      
+      if (frontendStats.energyPoints) {
+        if (frontendStats.energyPoints.current !== undefined) {
+          dbStatsUpdate.energyPointsCurrent = frontendStats.energyPoints.current;
+        }
+        if (frontendStats.energyPoints.max !== undefined) {
+          dbStatsUpdate.energyPointsMax = frontendStats.energyPoints.max;
+        }
+      }
+      
+      if (frontendStats.healthPoints) {
+        if (frontendStats.healthPoints.current !== undefined) {
+          dbStatsUpdate.healthPointsCurrent = frontendStats.healthPoints.current;
+        }
+        if (frontendStats.healthPoints.max !== undefined) {
+          dbStatsUpdate.healthPointsMax = frontendStats.healthPoints.max;
+        }
+      }
+      
+      if (frontendStats.experience) {
+        if (frontendStats.experience.current !== undefined) {
+          dbStatsUpdate.experienceCurrent = frontendStats.experience.current;
+        }
+        if (frontendStats.experience.max !== undefined) {
+          dbStatsUpdate.experienceMax = frontendStats.experience.max;
+        }
+        if (frontendStats.experience.level !== undefined) {
+          dbStatsUpdate.level = frontendStats.experience.level;
+        }
+      }
+      
+      if (frontendStats.streakDays !== undefined) {
+        dbStatsUpdate.streakDays = frontendStats.streakDays;
+      }
+      
+      if (frontendStats.efficiencyScore !== undefined) {
+        dbStatsUpdate.efficiencyScore = frontendStats.efficiencyScore;
+      }
+      
+      const dbUpdatedStats = await storage.updateUserStats(userId, dbStatsUpdate);
+      
+      // Transform the response back to the frontend model
+      const transformedStats = {
+        attentionTokens: {
+          current: dbUpdatedStats.attentionTokensCurrent,
+          max: dbUpdatedStats.attentionTokensMax,
+        },
+        timeTokens: {
+          current: dbUpdatedStats.timeTokensCurrent,
+          max: dbUpdatedStats.timeTokensMax,
+        },
+        energyPoints: {
+          current: dbUpdatedStats.energyPointsCurrent,
+          max: dbUpdatedStats.energyPointsMax,
+        },
+        healthPoints: {
+          current: dbUpdatedStats.healthPointsCurrent,
+          max: dbUpdatedStats.healthPointsMax,
+        },
+        experience: {
+          current: dbUpdatedStats.experienceCurrent,
+          max: dbUpdatedStats.experienceMax,
+          level: dbUpdatedStats.level,
+        },
+        streakDays: dbUpdatedStats.streakDays || 0,
+        efficiencyScore: dbUpdatedStats.efficiencyScore || 0,
+        aiAssistantName: dbUpdatedStats.aiAssistantName,
+      };
+      
+      return res.status(200).json({ stats: transformedStats });
     } catch (error) {
+      console.error("Error updating stats:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });
