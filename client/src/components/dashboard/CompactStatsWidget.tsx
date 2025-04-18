@@ -126,11 +126,11 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
               <ArrowRight className="h-3 w-3 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
             <div className="progress-bar progress-efficiency h-1.5 mb-1">
-              <div className="progress-fill" style={{ width: `${efficiencyPercentage}%`, background: 'linear-gradient(to right, rgba(251,191,36,0.7), #FBBF24)' }}></div>
+              <div className="progress-fill" style={{ width: `${efficiencyPercentage}%`, backgroundColor: "#FBBF24" }}></div>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#D6F4FF] font-mono text-xs">
-                {Math.round(efficiencyPercentage)}/100
+              <span className="text-[#D6F4FF] font-mono text-sm">
+                {efficiencyPercentage}<span className="text-[#7DAAB2] text-xs">%</span>
               </span>
             </div>
           </div>
