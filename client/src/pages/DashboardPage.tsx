@@ -517,12 +517,6 @@ export default function DashboardPage() {
       
       {/* Stats and Progress Section */}
       <section className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-orbitron flex items-center">
-            <Zap className="h-5 w-5 text-primary mr-2" />
-            <span>Stats Log</span>
-          </h2>
-        </div>
         
         <CollapsibleWidget 
           title="Stats Log" 
@@ -535,12 +529,6 @@ export default function DashboardPage() {
       
       {/* Mission Log Panel */}
       <section className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-orbitron flex items-center">
-            <Calendar className="h-5 w-5 text-primary mr-2" />
-            <span>Mission Log</span>
-          </h2>
-        </div>
         
         <CollapsibleWidget 
           title="Mission Log" 
@@ -557,12 +545,6 @@ export default function DashboardPage() {
       
       {/* Data Entry Log Panel */}
       <section className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-orbitron flex items-center">
-            <BookOpen className="h-5 w-5 text-primary mr-2" />
-            <span>Data Entry Log</span>
-          </h2>
-        </div>
         
         <CollapsibleWidget 
           title="Data Entry Log" 
@@ -645,12 +627,6 @@ export default function DashboardPage() {
       
       {/* Recalibration Log Panel */}
       <section className="mb-6" style={{ position: 'relative', zIndex: 1 }}>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-orbitron flex items-center">
-            <Brain className="h-5 w-5 text-primary mr-2" />
-            <span>Recalibration Log</span>
-          </h2>
-        </div>
         
         <CollapsibleWidget 
           title="Recalibration Log" 
