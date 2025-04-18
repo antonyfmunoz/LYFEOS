@@ -140,14 +140,11 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               </div>
             </div>
             <div className="progress-bar progress-efficiency mb-2">
-              <div 
-                className="progress-fill" 
-                style={{ width: `${efficiencyPercentage}%`, background: 'linear-gradient(to right, rgba(251,191,36,0.7), #FBBF24)' }}
-              ></div>
+              <div className="progress-fill" style={{ width: `${efficiencyPercentage}%`, background: 'linear-gradient(to right, rgba(251,191,36,0.7), #FBBF24)' }}></div>
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-base">
-                {efficiencyPercentage}<span className="text-[#7DAAB2] text-xs">%</span>
+                {Math.round(efficiencyPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
               </span>
               <span className="text-xs text-[#7DAAB2] self-end">optimization</span>
             </div>
