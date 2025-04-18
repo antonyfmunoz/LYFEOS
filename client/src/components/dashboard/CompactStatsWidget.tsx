@@ -104,14 +104,14 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-2 right-2 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#10B981]"
+                  className="absolute top-2 right-2 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#FBBF24]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Info className="h-3 w-3" />
                 </button>
               }
               title="System Efficiency"
-              titleColor="text-[#10B981]"
+              titleColor="text-[#FBBF24]"
               description="How effectively you're using LYFEOS."
               additionalInfo="Higher efficiency scores correlate with improved productivity."
               statType="efficiency"
@@ -119,13 +119,13 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center">
-                <BarChart className="h-3 w-3 text-[#10B981] mr-1" />
+                <BarChart className="h-3 w-3 text-[#FBBF24] mr-1" />
                 <h3 className="text-xs font-orbitron text-[#D6F4FF]">EFFICIENCY</h3>
               </div>
               <ArrowRight className="h-3 w-3 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
             <div className="progress-bar progress-efficiency h-1.5 mb-1">
-              <div className="progress-fill" style={{ width: `${efficiencyPercentage}%`, backgroundColor: "#10B981" }}></div>
+              <div className="progress-fill" style={{ width: `${efficiencyPercentage}%`, backgroundColor: "#FBBF24" }}></div>
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-sm">
@@ -141,26 +141,36 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
         {/* Attention Tokens */}
         <Link href="/attention">
           <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-2 transition-all cursor-pointer border border-primary/20 relative">
+            <StatInfoDialog
+              trigger={
+                <button 
+                  className="absolute top-2 right-2 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#6366F1]"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Info className="h-3 w-3" />
+                </button>
+              }
+              title="Attention Tokens (AT)"
+              titleColor="text-[#6366F1]"
+              description="AT represent your focus, concentration and mental clarity."
+              additionalInfo="Higher attention tokens enable deeper focus on complex tasks."
+              statType="attention"
+            />
+            
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center">
                 <BrainCircuit className="h-3 w-3 text-[#6366F1] mr-1" />
                 <h3 className="text-xs font-orbitron text-[#D6F4FF]">ATTENTION</h3>
               </div>
-              <div className="flex items-center">
-                <span className="text-[#D6F4FF] font-mono text-xs mr-1">
-                  {stats.attentionTokens.current}/{stats.attentionTokens.max}
-                </span>
-                <Info 
-                  className="h-3 w-3 text-[#6366F1] cursor-pointer opacity-70 hover:opacity-100"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                />
-              </div>
+              <ArrowRight className="h-3 w-3 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-            <div className="progress-bar progress-at h-1.5">
+            <div className="progress-bar progress-at h-1.5 mb-1">
               <div className="progress-fill" style={{ width: `${atPercentage}%`, backgroundColor: "#6366F1" }}></div>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[#D6F4FF] font-mono text-xs">
+                {stats.attentionTokens.current}/{stats.attentionTokens.max}
+              </span>
             </div>
           </div>
         </Link>
@@ -168,26 +178,36 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
         {/* Time Tokens */}
         <Link href="/time">
           <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-2 transition-all cursor-pointer border border-primary/20 relative">
+            <StatInfoDialog
+              trigger={
+                <button 
+                  className="absolute top-2 right-2 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#22D3EE]"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Info className="h-3 w-3" />
+                </button>
+              }
+              title="Time Tokens (TT)"
+              titleColor="text-[#22D3EE]"
+              description="TT represent your time allocation and management resources."
+              additionalInfo="Spend tokens wisely to manage your schedule effectively."
+              statType="time"
+            />
+            
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center">
                 <Clock className="h-3 w-3 text-[#22D3EE] mr-1" />
                 <h3 className="text-xs font-orbitron text-[#D6F4FF]">TIME</h3>
               </div>
-              <div className="flex items-center">
-                <span className="text-[#D6F4FF] font-mono text-xs mr-1">
-                  {stats.timeTokens.current}/{stats.timeTokens.max}
-                </span>
-                <Info 
-                  className="h-3 w-3 text-[#22D3EE] cursor-pointer opacity-70 hover:opacity-100"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                />
-              </div>
+              <ArrowRight className="h-3 w-3 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-            <div className="progress-bar progress-tt h-1.5">
+            <div className="progress-bar progress-tt h-1.5 mb-1">
               <div className="progress-fill" style={{ width: `${ttPercentage}%`, backgroundColor: "#22D3EE" }}></div>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[#D6F4FF] font-mono text-xs">
+                {stats.timeTokens.current}/{stats.timeTokens.max}
+              </span>
             </div>
           </div>
         </Link>
@@ -195,26 +215,36 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
         {/* Energy Points */}
         <Link href="/energy">
           <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-2 transition-all cursor-pointer border border-primary/20 relative">
+            <StatInfoDialog
+              trigger={
+                <button 
+                  className="absolute top-2 right-2 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#F97316]"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Info className="h-3 w-3" />
+                </button>
+              }
+              title="Energy Points (EP)"
+              titleColor="text-[#F97316]"
+              description="EP represents your creative energy and vitality resources."
+              additionalInfo="Use EP to power creative tasks and maintain high productivity."
+              statType="energy"
+            />
+            
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center">
                 <Zap className="h-3 w-3 text-[#F97316] mr-1" />
                 <h3 className="text-xs font-orbitron text-[#D6F4FF]">ENERGY</h3>
               </div>
-              <div className="flex items-center">
-                <span className="text-[#D6F4FF] font-mono text-xs mr-1">
-                  {stats.energyPoints.current}/{stats.energyPoints.max}
-                </span>
-                <Info 
-                  className="h-3 w-3 text-[#F97316] cursor-pointer opacity-70 hover:opacity-100"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                />
-              </div>
+              <ArrowRight className="h-3 w-3 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-            <div className="progress-bar progress-ep h-1.5">
+            <div className="progress-bar progress-ep h-1.5 mb-1">
               <div className="progress-fill" style={{ width: `${epPercentage}%`, backgroundColor: "#F97316" }}></div>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[#D6F4FF] font-mono text-xs">
+                {stats.energyPoints.current}/{stats.energyPoints.max}
+              </span>
             </div>
           </div>
         </Link>
@@ -222,26 +252,36 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
         {/* Health Points */}
         <Link href="/health">
           <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-2 transition-all cursor-pointer border border-primary/20 relative">
+            <StatInfoDialog
+              trigger={
+                <button 
+                  className="absolute top-2 right-2 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#EF4444]"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Info className="h-3 w-3" />
+                </button>
+              }
+              title="Health Points (HP)"
+              titleColor="text-[#EF4444]"
+              description="HP represents your physical well-being and resilience."
+              additionalInfo="Maintain high HP to perform at your best and recover quickly."
+              statType="health"
+            />
+            
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center">
                 <Heart className="h-3 w-3 text-[#EF4444] mr-1" />
                 <h3 className="text-xs font-orbitron text-[#D6F4FF]">HEALTH</h3>
               </div>
-              <div className="flex items-center">
-                <span className="text-[#D6F4FF] font-mono text-xs mr-1">
-                  {stats.healthPoints.current}/{stats.healthPoints.max}
-                </span>
-                <Info 
-                  className="h-3 w-3 text-[#EF4444] cursor-pointer opacity-70 hover:opacity-100"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                />
-              </div>
+              <ArrowRight className="h-3 w-3 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-            <div className="progress-bar progress-hp h-1.5">
+            <div className="progress-bar progress-hp h-1.5 mb-1">
               <div className="progress-fill" style={{ width: `${hpPercentage}%`, backgroundColor: "#EF4444" }}></div>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[#D6F4FF] font-mono text-xs">
+                {stats.healthPoints.current}/{stats.healthPoints.max}
+              </span>
             </div>
           </div>
         </Link>
