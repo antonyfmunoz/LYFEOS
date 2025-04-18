@@ -88,7 +88,7 @@ export default function StreakDetailPage() {
             >
               <div className="flex items-center">
                 {milestone.completed ? (
-                  <CheckCircle2 className="h-5 w-5 mr-3 text-[#60A5FA]" />
+                  <CheckCircle2 className="h-5 w-5 mr-3 text-[#10B981]" />
                 ) : (
                   <div className="h-5 w-5 mr-3 rounded-full border border-[#7DAAB2]/30"></div>
                 )}
@@ -96,14 +96,14 @@ export default function StreakDetailPage() {
                   <h3 className={milestone.completed ? "text-white" : "text-[#7DAAB2]"}>
                     {milestone.days} Day Streak
                   </h3>
-                  <p className={`text-sm ${milestone.completed ? "text-[#60A5FA]" : "text-[#7DAAB2]/70"}`}>
+                  <p className={`text-sm ${milestone.completed ? "text-[#10B981]" : "text-[#7DAAB2]/70"}`}>
                     {milestone.title}
                   </p>
                 </div>
               </div>
               <div className="text-right">
                 <span className={`bg-[#001E26] px-3 py-1 rounded ${
-                  milestone.completed ? "text-[#60A5FA]" : "text-[#7DAAB2]"
+                  milestone.completed ? "text-[#10B981]" : "text-[#7DAAB2]"
                 }`}>
                   {milestone.reward}
                 </span>
@@ -114,11 +114,11 @@ export default function StreakDetailPage() {
       </div>
       
       {/* Usage Tips */}
-      <div className="glassmorphic rounded-xl p-6 border border-[#60A5FA]/30">
-        <h2 className="font-orbitron text-xl mb-4 text-[#60A5FA]">Streak Tips</h2>
+      <div className="glassmorphic rounded-xl p-6 border border-[#10B981]/30"> {/* Green (Heart) */}
+        <h2 className="font-orbitron text-xl mb-4 text-[#10B981]">Streak Tips</h2> {/* Green (Heart) */}
         <ul className="space-y-3">
           <li className="flex">
-            <ArrowUpRight className="h-5 w-5 mr-2 text-[#60A5FA] flex-shrink-0" />
+            <ArrowUpRight className="h-5 w-5 mr-2 text-[#10B981] flex-shrink-0" />
             <span className="text-[#7DAAB2]">Log in at least once every 24 hours to maintain your streak.</span>
           </li>
           <li className="flex">
