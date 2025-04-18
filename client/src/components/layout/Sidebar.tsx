@@ -23,10 +23,10 @@ export default function Sidebar({ currentPage, username }: SidebarProps) {
 
       {/* User profile section */}
       <div className="flex items-center mb-8">
-        <div className="relative w-12 h-12 rounded-full overflow-hidden border border-primary shadow-[0_0_5px_rgba(0,224,255,0.3)]">
+        <div className="relative w-12 h-12 rounded-full overflow-hidden border border-[#22D3EE] shadow-[0_0_5px_rgba(34,211,238,0.3)]">
           {/* User avatar */}
-          <div className="bg-primary/20 w-full h-full flex items-center justify-center">
-            <span className="material-icons text-primary">person</span>
+          <div className="bg-[#22D3EE]/20 w-full h-full flex items-center justify-center">
+            <span className="material-icons text-[#22D3EE]">person</span>
           </div>
         </div>
         <div className="ml-3">
@@ -59,8 +59,8 @@ export default function Sidebar({ currentPage, username }: SidebarProps) {
       <div className="pt-4 border-t border-primary border-opacity-20">
         <div className="flex items-center justify-between">
           <span className="text-[#7DAAB2] text-xs">SYSTEM</span>
-          <span className="text-xs font-mono text-[#36F1CD] flex items-center">
-            <span className="w-2 h-2 rounded-full bg-[#36F1CD] mr-1"></span>
+          <span className="text-xs font-mono text-[#22D3EE] flex items-center">
+            <span className="w-2 h-2 rounded-full bg-[#22D3EE] mr-1"></span>
             ONLINE
           </span>
         </div>
