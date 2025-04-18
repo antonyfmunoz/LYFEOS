@@ -35,7 +35,8 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               </button>
             }
             title="Experience Points (XP)"
-            titleColor="text-[#8B5CF6]" {/* Violet (Crown) */}
+            // Violet (Crown)
+            titleColor="text-[#8B5CF6]"
             description="XP tracks your overall progress and achievements in LYFEOS. Complete quests, log activities, and maintain streaks to increase your level."
             additionalInfo="Higher levels unlock premium features and special abilities within the LYFEOS system."
             statType="experience"
@@ -47,7 +48,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               <h3 className="font-orbitron text-[#D6F4FF] text-sm">LEVEL PROGRESS</h3>
             </div>
             <div className="flex items-center mr-6">
-              <span className="bg-[#36F1CD] bg-opacity-20 text-[#36F1CD] px-2 py-1 rounded-md text-xs font-orbitron mr-2">
+              <span className="bg-[#8B5CF6] bg-opacity-20 text-[#8B5CF6] px-2 py-1 rounded-md text-xs font-orbitron mr-2">
                 LEVEL {stats.experience.level}
               </span>
               <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -71,14 +72,15 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#60A5FA]"
+                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#10B981]"
                   onClick={(e) => e.stopPropagation()} // Prevent navigation when clicking info button
                 >
                   <Info className="h-4 w-4" />
                 </button>
               }
               title="Usage Streak"
-              titleColor="text-[#60A5FA]"
+              // Green (Heart)
+              titleColor="text-[#10B981]"
               description="Tracks the number of consecutive days you've used LYFEOS. Login daily to maintain and increase your streak."
               additionalInfo="Longer streaks contribute to your overall consistency score and unlock special rewards."
               statType="streak"
@@ -86,7 +88,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
-                <Calendar className="h-4 w-4 text-[#60A5FA] mr-2" />
+                <Calendar className="h-4 w-4 text-[#10B981] mr-2" /> {/* Green (Heart) */}
                 <h3 className="text-sm font-orbitron text-[#D6F4FF]">STREAK</h3>
               </div>
               <div className="mr-6">
@@ -203,14 +205,15 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
+                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#22D3EE]"
                   onClick={(e) => e.stopPropagation()} // Prevent navigation when clicking info button
                 >
                   <Info className="h-4 w-4" />
                 </button>
               }
               title="Time Tokens"
-              titleColor="text-primary"
+              // Cyan (Throat)
+              titleColor="text-[#22D3EE]"
               description="Represents your available productive time for the day. Completing tasks consumes tokens, which replenish daily."
               additionalInfo="Managing your Time Tokens helps balance productivity and prevents burnout by encouraging appropriate work limits."
               statType="time"
@@ -218,7 +221,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
-                <Clock className="h-4 w-4 text-primary mr-2" />
+                <Clock className="h-4 w-4 text-[#22D3EE] mr-2" /> {/* Cyan (Throat) */}
                 <h3 className="text-sm font-orbitron text-[#D6F4FF]">TIME TOKENS</h3>
               </div>
               <div className="mr-6">
@@ -243,7 +246,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#FCD34D]"
+                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#F97316]"
                   onClick={(e) => e.stopPropagation()} // Prevent navigation when clicking info button
                 >
                   <Info className="h-4 w-4" />
