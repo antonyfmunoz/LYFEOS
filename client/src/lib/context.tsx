@@ -144,32 +144,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             
             if (dbStats) {
               console.log("Stats loaded successfully:", dbStats);
-              // Map database stats to client model
-              setStats({
-                attentionTokens: {
-                  current: dbStats.attentionTokensCurrent,
-                  max: dbStats.attentionTokensMax,
-                },
-                timeTokens: {
-                  current: dbStats.timeTokensCurrent,
-                  max: dbStats.timeTokensMax,
-                },
-                energyPoints: {
-                  current: dbStats.energyPointsCurrent,
-                  max: dbStats.energyPointsMax,
-                },
-                healthPoints: {
-                  current: dbStats.healthPointsCurrent,
-                  max: dbStats.healthPointsMax,
-                },
-                experience: {
-                  current: dbStats.experienceCurrent,
-                  max: dbStats.experienceMax,
-                  level: dbStats.level,
-                },
-                streakDays: dbStats.streakDays || 0, // Default to 0 if not present
-                efficiencyScore: dbStats.efficiencyScore || 0, // Default to 0 if not present
-              });
+              // Server now returns data in the format expected by our frontend components
+              setStats(dbStats);
               
               // Set AI assistant name if available
               if (dbStats.aiAssistantName) {
