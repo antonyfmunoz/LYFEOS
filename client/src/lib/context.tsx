@@ -32,32 +32,7 @@ const initialStats: UserStats = {
 };
 
 // Initial quests data
-const initialQuests: Quest[] = [
-  {
-    id: "quest1",
-    title: "Deep Work Block",
-    description: "Complete 2 hours of focused work without distractions",
-    completed: false,
-    energyCost: 20,
-    experienceReward: 50,
-  },
-  {
-    id: "quest2",
-    title: "Morning Ritual",
-    description: "Complete meditation, journaling, and exercise routine",
-    completed: false,
-    energyCost: 15,
-    experienceReward: 35,
-  },
-  {
-    id: "quest3",
-    title: "Launch Plan",
-    description: "Finalize and submit project launch strategy",
-    completed: true,
-    energyCost: 25,
-    experienceReward: 75,
-  },
-];
+const initialQuests: Quest[] = [];
 
 // Initial Chat Sessions
 const initialChatSessions: ChatSession[] = [
