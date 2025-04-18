@@ -95,59 +95,10 @@ const initialChatSessions: ChatSession[] = [
 const initialMessages: AIMessage[] = initialChatSessions[0].messages;
 
 // Initial calendar events
-const initialEvents: CalendarEvent[] = [
-  {
-    id: "event1",
-    title: "Strategy Meeting",
-    description: "Conference Room 3 | 45 mins",
-    startTime: "09:00",
-    duration: "45 mins",
-    category: "work",
-  },
-  {
-    id: "event2",
-    title: "Project Review",
-    description: "Virtual | 1 hour",
-    startTime: "11:30",
-    duration: "1 hour",
-    category: "work",
-  },
-  {
-    id: "event3",
-    title: "Workout Session",
-    description: "Gym | 1 hour",
-    startTime: "15:00",
-    duration: "1 hour",
-    category: "health",
-  },
-];
+const initialEvents: CalendarEvent[] = [];
 
 // Initial mission pages
-const initialMissionPages: MissionPage[] = [
-  {
-    id: "mission1",
-    title: "Daily Reflection",
-    slug: "daily-reflection",
-    content: "# Daily Reflection\n\n## Mental State\nEnergy: 8/10\nFocus: 7/10\nMood: 9/10\n\n## Today's Wins\n- [x] Completed project milestone\n- [x] Had a productive team meeting\n- [ ] Finished weekly review\n\n## Tomorrow's Goals\n- Finalize presentation\n- Review quarterly metrics\n- Plan next sprint\n\n## Insights\nToday I noticed that I work best in 90-minute focused blocks with short breaks in between. I'll adjust my schedule tomorrow to match this pattern.",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    completed: false,
-    xpValue: 10,
-    tags: ["reflection", "daily"],
-  },
-  {
-    id: "mission2",
-    title: "Project Alpha Launch Plan",
-    slug: "project-alpha-launch",
-    content: "# Project Alpha Launch Strategy\n\n## Key Milestones\n- [x] Define MVP features\n- [x] Complete UI design\n- [ ] Finalize testing protocol\n- [ ] Prepare marketing materials\n\n## Timeline\n- Week 1: Development sprint\n- Week 2: QA and bug fixes\n- Week 3: Soft launch to beta users\n- Week 4: Public launch\n\n## Success Metrics\n- 1000+ signups in first week\n- 40% retention rate after 30 days\n- Average session time > 10 minutes",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    completed: false,
-    xpValue: 50,
-    tags: ["project", "planning"],
-    eventId: "event2"
-  },
-];
+const initialMissionPages: MissionPage[] = [];
 
 // Create context types
 interface LYFEOSContextType {
