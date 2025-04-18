@@ -45,13 +45,13 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center">
-                <Award className="h-3 w-3 text-[#36F1CD] mr-1" />
+                <Award className="h-3 w-3 text-[#8B5CF6] mr-1" />
                 <h3 className="font-orbitron text-[#D6F4FF] text-xs">LEVEL</h3>
               </div>
               <ArrowRight className="h-3 w-3 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
             <div className="progress-bar progress-xp h-1.5 mb-1">
-              <div className="progress-fill" style={{ width: `${xpPercentage}%` }}></div>
+              <div className="progress-fill" style={{ width: `${xpPercentage}%`, backgroundColor: "#8B5CF6" }}></div>
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-sm">
@@ -160,7 +160,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
               </div>
             </div>
             <div className="progress-bar progress-at h-1.5">
-              <div className="progress-fill" style={{ width: `${atPercentage}%`, backgroundColor: "#9C6ADE" }}></div>
+              <div className="progress-fill" style={{ width: `${atPercentage}%`, backgroundColor: "#6366F1" }}></div>
             </div>
           </div>
         </Link>
@@ -170,7 +170,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-2 transition-all cursor-pointer border border-primary/20 relative">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center">
-                <Clock className="h-3 w-3 text-primary mr-1" />
+                <Clock className="h-3 w-3 text-[#22D3EE] mr-1" />
                 <h3 className="text-xs font-orbitron text-[#D6F4FF]">TIME</h3>
               </div>
               <div className="flex items-center">
@@ -178,7 +178,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
                   {stats.timeTokens.current}/{stats.timeTokens.max}
                 </span>
                 <Info 
-                  className="h-3 w-3 text-primary cursor-pointer opacity-70 hover:opacity-100"
+                  className="h-3 w-3 text-[#22D3EE] cursor-pointer opacity-70 hover:opacity-100"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -187,7 +187,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
               </div>
             </div>
             <div className="progress-bar progress-tt h-1.5">
-              <div className="progress-fill" style={{ width: `${ttPercentage}%`, backgroundColor: "#36F1CD" }}></div>
+              <div className="progress-fill" style={{ width: `${ttPercentage}%`, backgroundColor: "#22D3EE" }}></div>
             </div>
           </div>
         </Link>
