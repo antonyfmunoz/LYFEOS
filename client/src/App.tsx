@@ -13,6 +13,8 @@ import ProfilePage from "./pages/ProfilePage";
 import StatDetailPage from "./pages/StatDetailPage";
 import MissionDetailPage from "./pages/MissionDetailPage";
 import CalendarPage from "./pages/CalendarPage";
+import StreakDetailPage from "./pages/StreakDetailPage";
+import EfficiencyDetailPage from "./pages/EfficiencyDetailPage";
 import NotFound from "./pages/not-found";
 import EnhancedMissionPage from "./pages/EnhancedMissionPage";
 import MissionPage from "./components/markdown/MissionPage";
@@ -164,6 +166,22 @@ function Router() {
         <ProtectedRoute>
           <RootLayout>
             <StatDetailPage stat="experience" />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/streak">
+        <ProtectedRoute>
+          <RootLayout>
+            <StreakDetailPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/efficiency">
+        <ProtectedRoute>
+          <RootLayout>
+            <EfficiencyDetailPage />
           </RootLayout>
         </ProtectedRoute>
       </Route>

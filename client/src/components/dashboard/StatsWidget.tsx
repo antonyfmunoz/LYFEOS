@@ -16,6 +16,10 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
   const epPercentage = (stats.energyPoints.current / stats.energyPoints.max) * 100;
   const hpPercentage = (stats.healthPoints.current / stats.healthPoints.max) * 100;
   
+  // Calculate percentages for efficiency and streak
+  const efficiencyPercentage = stats.efficiencyScore;
+  const streakPercentage = Math.min(100, (stats.streakDays / 30) * 100); // Assume 30 days is max
+  
   return (
     <div className="glassmorphic rounded-xl p-4 neon-border">
       {/* Experience Bar */}
@@ -54,45 +58,50 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
         </div>
       </div>
       
-      {/* Divider */}
-      <div className="border-t border-primary/10 mb-4"></div>
-      
       {/* System Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         {/* Streak */}
-        <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-3 transition-all cursor-pointer border border-primary/20 relative">
-          <StatInfoDialog
-            trigger={
-              <button className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#60A5FA]">
-                <Info className="h-4 w-4" />
-              </button>
-            }
-            title="Usage Streak"
-            titleColor="text-[#60A5FA]"
-            description="Tracks the number of consecutive days you've used LYFEOS. Login daily to maintain and increase your streak."
-            additionalInfo="Longer streaks contribute to your overall consistency score and unlock special rewards."
-            statType="streak"
-          />
-          
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center">
-              <Calendar className="h-4 w-4 text-[#60A5FA] mr-2" />
-              <h3 className="text-sm font-orbitron text-[#D6F4FF]">STREAK</h3>
+        <Link href="/streak">
+          <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-3 transition-all cursor-pointer border border-primary/20 relative">
+            <StatInfoDialog
+              trigger={
+                <button 
+                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#60A5FA]"
+                  onClick={(e) => e.stopPropagation()} // Prevent navigation when clicking info button
+                >
+                  <Info className="h-4 w-4" />
+                </button>
+              }
+              title="Usage Streak"
+              titleColor="text-[#60A5FA]"
+              description="Tracks the number of consecutive days you've used LYFEOS. Login daily to maintain and increase your streak."
+              additionalInfo="Longer streaks contribute to your overall consistency score and unlock special rewards."
+              statType="streak"
+            />
+            
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center">
+                <Calendar className="h-4 w-4 text-[#60A5FA] mr-2" />
+                <h3 className="text-sm font-orbitron text-[#D6F4FF]">STREAK</h3>
+              </div>
+              <div className="mr-6">
+                <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
             </div>
-            <div className="mr-6">
-              <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="progress-bar progress-streak mb-2">
+              <div 
+                className="progress-fill" 
+                style={{ width: `${streakPercentage}%`, backgroundColor: "#60A5FA" }}
+              ></div>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[#D6F4FF] font-mono text-base">
+                {stats.streakDays}<span className="text-[#7DAAB2] text-xs"> days</span>
+              </span>
+              <span className="text-xs text-[#7DAAB2] self-end">consecutive</span>
             </div>
           </div>
-          <div className="flex justify-between">
-            <span className="text-[#D6F4FF] font-mono text-3xl">
-              {stats.streakDays}
-            </span>
-            <span className="text-sm text-[#7DAAB2] self-end">DAYS</span>
-          </div>
-          <div className="mt-1">
-            <span className="text-xs text-[#60A5FA]">Consecutive days using LYFEOS</span>
-          </div>
-        </div>
+        </Link>
         
         {/* Efficiency */}
         <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-3 transition-all cursor-pointer border border-primary/20 relative">
@@ -109,7 +118,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             statType="efficiency"
           />
           
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
               <BarChart className="h-4 w-4 text-[#10B981] mr-2" />
               <h3 className="text-sm font-orbitron text-[#D6F4FF]">EFFICIENCY</h3>
@@ -118,17 +127,23 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           </div>
-          <div className="flex justify-between">
-            <span className="text-[#D6F4FF] font-mono text-3xl">
-              {stats.efficiencyScore}<span className="text-[#7DAAB2] text-base">%</span>
-            </span>
-            <span className="text-sm text-[#7DAAB2] self-end"></span>
+          <div className="progress-bar progress-efficiency mb-2">
+            <div 
+              className="progress-fill" 
+              style={{ width: `${efficiencyPercentage}%`, backgroundColor: "#10B981" }}
+            ></div>
           </div>
-          <div className="mt-1">
-            <span className="text-xs text-[#10B981]">Overall system optimization score</span>
+          <div className="flex justify-between">
+            <span className="text-[#D6F4FF] font-mono text-base">
+              {efficiencyPercentage}<span className="text-[#7DAAB2] text-xs">%</span>
+            </span>
+            <span className="text-xs text-[#7DAAB2] self-end">optimization</span>
           </div>
         </div>
       </div>
+      
+      {/* Divider */}
+      <div className="border-t border-primary/10 mb-4"></div>
       
       {/* Resource Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
