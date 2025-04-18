@@ -123,7 +123,8 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
                 </button>
               }
               title="System Efficiency"
-              titleColor="text-[#10B981]"
+              // Yellow (Solar Plexus)
+              titleColor="text-[#FBBF24]"
               description="Measures how optimally you're using LYFEOS features. Balanced task completion, regular reflections, and consistent data entry improve your score."
               additionalInfo="Higher efficiency scores indicate better life operating system utilization and typically correlate with improved productivity and wellbeing."
               statType="efficiency"
@@ -131,7 +132,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
-                <BarChart className="h-4 w-4 text-[#10B981] mr-2" />
+                <BarChart className="h-4 w-4 text-[#FBBF24] mr-2" /> {/* Yellow (Solar Plexus) */}
                 <h3 className="text-sm font-orbitron text-[#D6F4FF]">EFFICIENCY</h3>
               </div>
               <div className="mr-6">
@@ -253,7 +254,8 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
                 </button>
               }
               title="Energy Points"
-              titleColor="text-[#FCD34D]"
+              // Orange (Sacral)
+              titleColor="text-[#F97316]"
               description="Measures your mental and physical energy levels. Rest, nutrition, and wellness activities increase your Energy Points."
               additionalInfo="Higher energy enables you to tackle more challenging tasks effectively and sustain focus throughout the day."
               statType="energy"
@@ -261,7 +263,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
-                <Zap className="h-4 w-4 text-[#FCD34D] mr-2" />
+                <Zap className="h-4 w-4 text-[#F97316] mr-2" /> {/* Orange (Sacral) */}
                 <h3 className="text-sm font-orbitron text-[#D6F4FF]">ENERGY POINTS</h3>
               </div>
               <div className="mr-6">
@@ -286,14 +288,15 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#EC4899]"
+                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#EF4444]"
                   onClick={(e) => e.stopPropagation()} // Prevent navigation when clicking info button
                 >
                   <Info className="h-4 w-4" />
                 </button>
               }
               title="Health Points"
-              titleColor="text-[#EC4899]"
+              // Red (Root)
+              titleColor="text-[#EF4444]"
               description="Indicates your overall physical wellbeing. Exercise, sleep, and self-care activities contribute to higher Health Points."
               additionalInfo="Maintaining high Health Points improves resilience, prevents illness, and enhances long-term performance."
               statType="health"
@@ -301,7 +304,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
-                <Heart className="h-4 w-4 text-[#EC4899] mr-2" />
+                <Heart className="h-4 w-4 text-[#EF4444] mr-2" /> {/* Red (Root) */}
                 <h3 className="text-sm font-orbitron text-[#D6F4FF]">HEALTH POINTS</h3>
               </div>
               <div className="mr-6">
