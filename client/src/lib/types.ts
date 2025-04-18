@@ -20,6 +20,8 @@ export interface UserStats {
     max: number;
     level: number;
   };
+  streakDays: number;
+  efficiencyScore: number;
 }
 
 export interface Quest {

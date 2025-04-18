@@ -30,6 +30,8 @@ export const userStats = pgTable("user_stats", {
   experienceCurrent: integer("experience_current").notNull().default(0),
   experienceMax: integer("experience_max").notNull().default(100),
   level: integer("level").notNull().default(1),
+  streakDays: integer("streak_days").notNull().default(14),
+  efficiencyScore: integer("efficiency_score").notNull().default(78),
   aiAssistantName: text("ai_assistant_name").default("NOVA").notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -157,6 +159,8 @@ export const insertUserStatsSchema = createInsertSchema(userStats).pick({
   experienceCurrent: true,
   experienceMax: true,
   level: true,
+  streakDays: true,
+  efficiencyScore: true,
   aiAssistantName: true,
 });
 
