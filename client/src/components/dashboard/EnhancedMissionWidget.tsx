@@ -98,8 +98,17 @@ export default function EnhancedMissionWidget({
       <Calendar className="h-10 w-10 text-primary/50 mx-auto mb-3" />
       <p className="text-[#7DAAB2]">No missions scheduled for today</p>
       <p className="text-xs text-[#7DAAB2] mt-2">
-        Visit the Calendar page to add missions to your daily schedule
+        Create a new mission or visit the Calendar page
       </p>
+      <Button
+        variant="outline"
+        size="sm"
+        className="mt-4 text-[#22D3EE] border-[#22D3EE]/30 hover:bg-[#22D3EE]/10"
+        onClick={() => window.location.href = '/calendar'}
+      >
+        <Calendar className="h-4 w-4 mr-2" />
+        Create Mission
+      </Button>
     </div>
   );
   
@@ -109,8 +118,17 @@ export default function EnhancedMissionWidget({
       <Calendar className="h-10 w-10 text-primary/50 mx-auto mb-3" />
       <p className="text-[#7DAAB2]">All missions completed for now</p>
       <p className="text-xs text-[#7DAAB2] mt-2">
-        Great job! Check back later for new missions
+        Great job! Create new missions or check back later
       </p>
+      <Button
+        variant="outline"
+        size="sm"
+        className="mt-4 text-[#22D3EE] border-[#22D3EE]/30 hover:bg-[#22D3EE]/10"
+        onClick={() => window.location.href = '/calendar'}
+      >
+        <Calendar className="h-4 w-4 mr-2" />
+        Create Mission
+      </Button>
     </div>
   );
   
