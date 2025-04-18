@@ -210,12 +210,14 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     if (isAuthenticated && user) {
       const fetchStats = async () => {
         try {
+          console.log("Fetching stats for user:", user.id);
           const response = await fetch(`/api/users/${user.id}/stats`);
           if (response.ok) {
             const data = await response.json();
             const dbStats = data.stats;
             
             if (dbStats) {
+              console.log("Stats loaded successfully:", dbStats);
               // Map database stats to client model
               setStats({
                 attentionTokens: {
@@ -239,15 +241,19 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
                   max: dbStats.experienceMax,
                   level: dbStats.level,
                 },
-                streakDays: dbStats.streakDays,
-                efficiencyScore: dbStats.efficiencyScore,
+                streakDays: dbStats.streakDays || 14, // Default to 14 if not present
+                efficiencyScore: dbStats.efficiencyScore || 78, // Default to 78 if not present
               });
               
               // Set AI assistant name if available
               if (dbStats.aiAssistantName) {
                 setAICompanionNameState(dbStats.aiAssistantName);
               }
+            } else {
+              console.log("No stats found for user, using defaults");
             }
+          } else {
+            console.error("Failed to fetch user stats, status:", response.status);
           }
         } catch (error) {
           console.error("Failed to fetch user stats:", error);
