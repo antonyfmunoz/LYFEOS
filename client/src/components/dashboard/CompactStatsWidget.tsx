@@ -30,14 +30,14 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-2 right-2 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#36F1CD]"
+                  className="absolute top-2 right-2 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#8B5CF6]"
                   onClick={(e) => e.stopPropagation()} 
                 >
                   <Info className="h-3 w-3" />
                 </button>
               }
               title="Experience Points (XP)"
-              titleColor="text-[#36F1CD]"
+              titleColor="text-[#8B5CF6]"
               description="XP tracks your overall progress and achievements in LYFEOS."
               additionalInfo="Higher levels unlock premium features and special abilities."
               statType="experience"
@@ -143,7 +143,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-2 transition-all cursor-pointer border border-primary/20 relative">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center">
-                <BrainCircuit className="h-3 w-3 text-[#9C6ADE] mr-1" />
+                <BrainCircuit className="h-3 w-3 text-[#6366F1] mr-1" />
                 <h3 className="text-xs font-orbitron text-[#D6F4FF]">ATTENTION</h3>
               </div>
               <div className="flex items-center">
@@ -151,7 +151,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
                   {stats.attentionTokens.current}/{stats.attentionTokens.max}
                 </span>
                 <Info 
-                  className="h-3 w-3 text-[#9C6ADE] cursor-pointer opacity-70 hover:opacity-100"
+                  className="h-3 w-3 text-[#6366F1] cursor-pointer opacity-70 hover:opacity-100"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
