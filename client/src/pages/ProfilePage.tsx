@@ -445,7 +445,7 @@ export default function ProfilePage() {
                     </div>
                     
                     {/* Efficiency Score */}
-                    <div className="p-4 bg-card border border-yellow-500/20 rounded-lg" style={{ boxShadow: "0 0 10px rgba(234, 179, 8, 0.1)" }}>
+                    <div className="p-5 bg-card border border-yellow-500/20 rounded-lg glassmorphic" style={{ boxShadow: "0 0 15px rgba(234, 179, 8, 0.15)" }}>
                       <div className="flex items-center gap-2 mb-2">
                         <span className="material-icons text-yellow-500">speed</span>
                         <span className="font-medium">Efficiency</span>
