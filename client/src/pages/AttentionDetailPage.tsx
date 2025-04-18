@@ -68,8 +68,8 @@ export default function AttentionDetailPage() {
           ></div>
         </div>
         <div className="flex justify-between mt-1">
-          <span className="text-xs text-[#7DAAB2]">Current: {stats.attentionTokensCurrent}</span>
-          <span className="text-xs text-[#7DAAB2]">Maximum: {stats.attentionTokensMax}</span>
+          <span className="text-xs text-[#7DAAB2]">Current: {stats.attentionTokens.current}</span>
+          <span className="text-xs text-[#7DAAB2]">Maximum: {stats.attentionTokens.max}</span>
         </div>
       </div>
       
