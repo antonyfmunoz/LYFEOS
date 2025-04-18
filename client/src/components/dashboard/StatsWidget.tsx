@@ -23,10 +23,9 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
   return (
     <div className="p-0">
       {/* Experience Bar */}
-      <div className="mb-5">
-        <Link href="/experience">
-          <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-3 transition-all cursor-pointer border border-primary/20 relative">
-            <StatInfoDialog
+      <Link href="/experience">
+        <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-3 transition-all cursor-pointer border border-primary/20 mb-5 relative">
+          <StatInfoDialog
             trigger={
               <button 
                 className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#8B5CF6]"
@@ -63,11 +62,10 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <span className="text-[#7DAAB2]">{stats.experience.max.toLocaleString()} XP</span>
           </div>
         </div>
-        </Link>
-      </div>
+      </Link>
       
       {/* System Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         {/* Streak */}
         <Link href="/streak">
           <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-3 transition-all cursor-pointer border border-primary/20 relative">
@@ -161,7 +159,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
       <div className="border-t border-primary/10 mb-4"></div>
       
       {/* Resource Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         {/* Attention Tokens */}
         <Link href="/attention">
           <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-3 transition-all cursor-pointer border border-primary/20 relative">
