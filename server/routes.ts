@@ -436,12 +436,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const message = await storage.createMessage(messageData);
       
-      // If this is a user message, create an AI response
+      // If this is a user message, create an AI response using OpenAI
       if (messageData.sender === "user") {
+        // Import the OpenAI client
+        const { generateAIResponse } = await import('./openai');
+        
+        // Generate AI response
+        const aiContent = await generateAIResponse(messageData.content);
+        
         const aiResponse = await storage.createMessage({
           userId: messageData.userId,
           sender: "ai",
-          content: `I received your message: "${messageData.content}". This is a placeholder AI response.`
+          content: aiContent
         });
         
         return res.status(201).json({ 
@@ -455,6 +461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
       }
+      console.error("Error processing message:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });

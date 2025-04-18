@@ -383,17 +383,47 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     
     setMessages((prev) => [...prev, userMessage]);
     
-    // Simulate AI response
-    setTimeout(() => {
-      const aiMessage: AIMessage = {
-        id: `msg-ai-${Date.now()}`,
-        sender: "ai",
-        content: "I understand. Based on your current priorities and energy levels, I'd recommend focusing on completing your Deep Work Block first.",
+    // Make API call to get AI response
+    fetch('/api/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        userId: 1, // This will be replaced with the actual user ID from session
+        sender: 'user',
+        content,
         timestamp: new Date(),
-      };
-      
-      setMessages((prev) => [...prev, aiMessage]);
-    }, 1000);
+      })
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.aiResponse) {
+          const aiMessage: AIMessage = {
+            id: data.aiResponse.id || `msg-ai-${Date.now()}`,
+            sender: 'ai',
+            content: data.aiResponse.content,
+            timestamp: new Date(data.aiResponse.timestamp) || new Date(),
+          };
+          setMessages((prev) => [...prev, aiMessage]);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        // Add fallback message on error
+        const aiMessage: AIMessage = {
+          id: `msg-ai-error-${Date.now()}`,
+          sender: 'ai',
+          content: "I apologize, but I'm having trouble connecting right now. Please try again later.",
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, aiMessage]);
+      });
   };
   
   // Add a new calendar event
@@ -556,35 +586,85 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       setMessages((prev) => [...prev, userMessage]);
     }
     
-    // Simulate AI response
-    setTimeout(() => {
-      const aiMessage: AIMessage = {
-        id: `msg-ai-${Date.now()}`,
-        sender: "ai",
-        content: "I understand. Based on your current priorities and energy levels, I'd recommend focusing on completing your Deep Work Block first.",
+    // Make API call to get AI response
+    fetch('/api/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        userId: 1, // This will be replaced with the actual user ID from session
+        sender: 'user',
+        content,
         timestamp: new Date(),
-      };
-      
-      // Update chat session with AI response
-      setChatSessions((prev) => 
-        prev.map((session) => {
-          if (session.id === sessionId) {
-            const updatedMessages = [...session.messages, aiMessage];
-            return {
-              ...session, 
-              messages: updatedMessages,
-              updatedAt: new Date()
-            };
+      })
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.aiResponse) {
+          const aiMessage: AIMessage = {
+            id: data.aiResponse.id || `msg-ai-${Date.now()}`,
+            sender: 'ai',
+            content: data.aiResponse.content,
+            timestamp: new Date(data.aiResponse.timestamp) || new Date(),
+          };
+          
+          // Update chat session with AI response
+          setChatSessions((prev) => 
+            prev.map((session) => {
+              if (session.id === sessionId) {
+                const updatedMessages = [...session.messages, aiMessage];
+                return {
+                  ...session, 
+                  messages: updatedMessages,
+                  updatedAt: new Date()
+                };
+              }
+              return session;
+            })
+          );
+          
+          // Update legacy messages if this is the active session
+          if (sessionId === activeChatSessionId) {
+            setMessages((prev) => [...prev, aiMessage]);
           }
-          return session;
-        })
-      );
-      
-      // Update legacy messages if this is the active session
-      if (sessionId === activeChatSessionId) {
-        setMessages((prev) => [...prev, aiMessage]);
-      }
-    }, 1000);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        // Add fallback message on error
+        const aiMessage: AIMessage = {
+          id: `msg-ai-error-${Date.now()}`,
+          sender: 'ai',
+          content: "I apologize, but I'm having trouble connecting right now. Please try again later.",
+          timestamp: new Date(),
+        };
+        
+        // Update chat session with error message
+        setChatSessions((prev) => 
+          prev.map((session) => {
+            if (session.id === sessionId) {
+              const updatedMessages = [...session.messages, aiMessage];
+              return {
+                ...session, 
+                messages: updatedMessages,
+                updatedAt: new Date()
+              };
+            }
+            return session;
+          })
+        );
+        
+        // Update legacy messages if this is the active session
+        if (sessionId === activeChatSessionId) {
+          setMessages((prev) => [...prev, aiMessage]);
+        }
+      });
   };
   
   // Create a new chat session
