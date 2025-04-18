@@ -2,12 +2,15 @@ import { useState } from "react";
 import { Award, Clock, Zap, Heart, Info, BrainCircuit, Calendar, BarChart } from "lucide-react";
 import { UserStats } from "@/lib/types";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
+import { useLocation } from "wouter";
 
 interface CompactStatsWidgetProps {
   stats: UserStats;
 }
 
 export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
+  const [_, setLocation] = useLocation();
+  
   // Calculate percentage for progress bars
   const xpPercentage = (stats.experience.current / stats.experience.max) * 100;
   const atPercentage = (stats.attentionTokens.current / stats.attentionTokens.max) * 100;
@@ -29,7 +32,10 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             trigger={
               <button 
                 className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#8B5CF6]"
-                onClick={(e) => e.stopPropagation()} 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLocation("/experience");
+                }}
               >
                 <Info className="h-3 w-3" />
               </button>
@@ -66,7 +72,10 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             trigger={
               <button 
                 className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#10B981]"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLocation("/streak");
+                }}
               >
                 <Info className="h-3 w-3" />
               </button>
@@ -100,7 +109,10 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             trigger={
               <button 
                 className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#FBBF24]"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLocation("/efficiency");
+                }}
               >
                 <Info className="h-3 w-3" />
               </button>
@@ -134,7 +146,10 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             trigger={
               <button 
                 className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#6366F1]"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLocation("/attention");
+                }}
               >
                 <Info className="h-3 w-3" />
               </button>
@@ -168,7 +183,10 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             trigger={
               <button 
                 className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#22D3EE]"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLocation("/time");
+                }}
               >
                 <Info className="h-3 w-3" />
               </button>
@@ -202,7 +220,10 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             trigger={
               <button 
                 className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#F97316]"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLocation("/energy");
+                }}
               >
                 <Info className="h-3 w-3" />
               </button>
@@ -236,7 +257,10 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             trigger={
               <button 
                 className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#EF4444]"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLocation("/health");
+                }}
               >
                 <Info className="h-3 w-3" />
               </button>
