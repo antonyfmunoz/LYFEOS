@@ -29,7 +29,7 @@ export default function CompactStatsWidget({ stats: statsFromProps }: CompactSta
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {/* Health Points - Red (Root) Chakra */}
         <div 
-          onClick={() => handleStatClick('/health-detail')}
+          onClick={() => handleStatClick('/health')}
           className="bg-[#001E26] rounded-lg p-3 border border-[#EF4444]/30 hover:border-[#EF4444]/60 transition-colors cursor-pointer"
         >
           <div className="flex items-center mb-2">
@@ -53,7 +53,7 @@ export default function CompactStatsWidget({ stats: statsFromProps }: CompactSta
         
         {/* Energy Points - Orange (Sacral) Chakra */}
         <div 
-          onClick={() => handleStatClick('/energy-detail')}
+          onClick={() => handleStatClick('/energy')}
           className="bg-[#001E26] rounded-lg p-3 border border-[#F97316]/30 hover:border-[#F97316]/60 transition-colors cursor-pointer"
         >
           <div className="flex items-center mb-2">
@@ -77,7 +77,7 @@ export default function CompactStatsWidget({ stats: statsFromProps }: CompactSta
         
         {/* Efficiency - Yellow (Solar Plexus) Chakra */}
         <div 
-          onClick={() => handleStatClick('/efficiency-detail')}
+          onClick={() => handleStatClick('/efficiency')}
           className="bg-[#001E26] rounded-lg p-3 border border-[#FACC15]/30 hover:border-[#FACC15]/60 transition-colors cursor-pointer"
         >
           <div className="flex items-center mb-2">
@@ -101,7 +101,7 @@ export default function CompactStatsWidget({ stats: statsFromProps }: CompactSta
         
         {/* Streak - Green (Heart) Chakra */}
         <div 
-          onClick={() => handleStatClick('/streak-detail')}
+          onClick={() => handleStatClick('/streak')}
           className="bg-[#001E26] rounded-lg p-3 border border-[#10B981]/30 hover:border-[#10B981]/60 transition-colors cursor-pointer"
         >
           <div className="flex items-center mb-2">
@@ -125,7 +125,7 @@ export default function CompactStatsWidget({ stats: statsFromProps }: CompactSta
         
         {/* Time Tokens - Cyan (Throat) Chakra */}
         <div 
-          onClick={() => handleStatClick('/time-detail')}
+          onClick={() => handleStatClick('/time')}
           className="bg-[#001E26] rounded-lg p-3 border border-[#22D3EE]/30 hover:border-[#22D3EE]/60 transition-colors cursor-pointer"
         >
           <div className="flex items-center mb-2">
@@ -149,7 +149,7 @@ export default function CompactStatsWidget({ stats: statsFromProps }: CompactSta
         
         {/* Attention Tokens - Indigo (Third Eye) Chakra */}
         <div 
-          onClick={() => handleStatClick('/attention-detail')}
+          onClick={() => handleStatClick('/attention')}
           className="bg-[#001E26] rounded-lg p-3 border border-[#6366F1]/30 hover:border-[#6366F1]/60 transition-colors cursor-pointer"
         >
           <div className="flex items-center mb-2">
@@ -173,7 +173,7 @@ export default function CompactStatsWidget({ stats: statsFromProps }: CompactSta
         
         {/* Experience - Violet (Crown) Chakra */}
         <div 
-          onClick={() => handleStatClick('/experience-detail')}
+          onClick={() => handleStatClick('/experience')}
           className="md:col-span-3 bg-[#001E26] rounded-lg p-3 border border-[#8B5CF6]/30 hover:border-[#8B5CF6]/60 transition-colors cursor-pointer"
         >
           <div className="flex items-center mb-2">
