@@ -107,7 +107,7 @@ export default function EnhancedMissionWidget({
         onClick={() => window.location.href = '/calendar'}
       >
         <Calendar className="h-4 w-4 mr-2" />
-        Create Mission
+        New Mission
       </Button>
     </div>
   );
@@ -127,7 +127,7 @@ export default function EnhancedMissionWidget({
         onClick={() => window.location.href = '/calendar'}
       >
         <Calendar className="h-4 w-4 mr-2" />
-        Create Mission
+        New Mission
       </Button>
     </div>
   );
