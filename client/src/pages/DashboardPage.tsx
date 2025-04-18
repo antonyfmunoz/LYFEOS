@@ -520,12 +520,12 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-orbitron flex items-center">
             <Zap className="h-5 w-5 text-primary mr-2" />
-            <span>Stat Log</span>
+            <span>Stats Log</span>
           </h2>
         </div>
         
         <CollapsibleWidget 
-          title="Stats & Resources" 
+          title="Stats Log" 
           icon={<BarChart className="h-5 w-5 text-primary" />}
           className="mb-4"
         >
