@@ -53,6 +53,30 @@ function hexToHSL(hex: string): string {
   return `${h} ${s}% ${l}%`;
 }
 
+// Function to convert hex to RGB
+interface RGB {
+  r: number;
+  g: number;
+  b: number;
+}
+
+function hexToRGB(hex: string): RGB | null {
+  // Remove the # if present
+  hex = hex.replace(/^#/, '');
+  
+  // Check if it's a valid hex color
+  if (!/^[0-9A-Fa-f]{6}$/.test(hex)) {
+    return null;
+  }
+  
+  // Parse the hex values
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  
+  return { r, g, b };
+}
+
 interface ThemeContextType {
   isDarkMode: boolean;
   toggleDarkMode: () => void;
@@ -109,12 +133,28 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     
     // Apply primary color
     if (primaryColor) {
+      // Set the primary hsl value
       const hsl = hexToHSL(primaryColor);
       document.documentElement.style.setProperty('--primary', hsl);
       
-      // Also update shadows and glows with the new color
+      // Store hex value without hash
       const hexNoHash = primaryColor.replace('#', '');
       document.documentElement.style.setProperty('--primary-hex', primaryColor);
+      
+      // Create rgba values with different opacities for various UI elements
+      const rgbValues = hexToRGB(primaryColor);
+      if (rgbValues) {
+        const { r, g, b } = rgbValues;
+        
+        // Set CSS variables for different opacity levels
+        document.documentElement.style.setProperty('--primary-color', primaryColor);
+        document.documentElement.style.setProperty('--primary-glow-light', `rgba(${r}, ${g}, ${b}, 0.3)`);
+        document.documentElement.style.setProperty('--primary-glow-medium', `rgba(${r}, ${g}, ${b}, 0.5)`);
+        document.documentElement.style.setProperty('--primary-glow-strong', `rgba(${r}, ${g}, ${b}, 0.7)`);
+        document.documentElement.style.setProperty('--primary-bg-subtle', `rgba(${r}, ${g}, ${b}, 0.1)`);
+        document.documentElement.style.setProperty('--primary-bg-light', `rgba(${r}, ${g}, ${b}, 0.2)`);
+        document.documentElement.style.setProperty('--primary-border-subtle', `rgba(${r}, ${g}, ${b}, 0.2)`);
+      }
     }
     
     // Save preferences to localStorage

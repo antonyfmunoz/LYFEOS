@@ -501,35 +501,35 @@
 
 /* Obsidian-like markdown styles - Dark Theme */
 .dark-theme .obsidian-wikilink {
-  color: #00E0FF;
+  color: var(--primary-color, #00E0FF);
   text-decoration: none;
-  border-bottom: 1px dashed #00E0FF;
+  border-bottom: 1px dashed var(--primary-color, #00E0FF);
   padding: 0 2px;
   border-radius: 2px;
   transition: background-color 0.15s ease;
 }
 
 .dark-theme .obsidian-wikilink:hover {
-  background-color: rgba(0, 224, 255, 0.15);
+  background-color: var(--primary-bg-subtle, rgba(0, 224, 255, 0.15));
 }
 
 /* Light Theme markdown styles */
 .light-theme .obsidian-wikilink {
-  color: #0099DA;
+  color: var(--primary-color, #0099DA);
   text-decoration: none;
-  border-bottom: 1px dashed #0099DA;
+  border-bottom: 1px dashed var(--primary-color, #0099DA);
   padding: 0 2px;
   border-radius: 2px;
   transition: background-color 0.15s ease;
 }
 
 .light-theme .obsidian-wikilink:hover {
-  background-color: rgba(0, 153, 218, 0.15);
+  background-color: var(--primary-bg-subtle, rgba(0, 153, 218, 0.15));
 }
 
 /* Highlight selection in markdown editor */
 .markdown-editor-highlight {
-  background-color: rgba(0, 224, 255, 0.1);
+  background-color: var(--primary-bg-subtle, rgba(0, 224, 255, 0.1));
   border-radius: 2px;
 }
 
@@ -545,15 +545,15 @@
   align-items: center;
   width: 1.2em;
   height: 1.2em;
-  border: 1px solid #00E0FF;
+  border: 1px solid var(--primary-color, #00E0FF);
   border-radius: 0.2em;
   margin-right: 0.5em;
-  color: #00E0FF;
+  color: var(--primary-color, #00E0FF);
   font-size: 0.8em;
 }
 
 .obsidian-checkbox.checked {
-  background-color: rgba(0, 224, 255, 0.2);
+  background-color: var(--primary-bg-subtle, rgba(0, 224, 255, 0.2));
 }
 
 /* In-editor Markdown styling */
@@ -573,7 +573,7 @@
 
 .markdown-editor-content:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(0, 224, 255, 0.3);
+  box-shadow: 0 0 0 2px var(--primary-glow-light, rgba(0, 224, 255, 0.3));
 }
 
 .markdown-editor-preview {
@@ -634,14 +634,14 @@
 }
 
 .prose code {
-  background-color: rgba(0, 224, 255, 0.1);
+  background-color: var(--primary-bg-subtle, rgba(0, 224, 255, 0.1));
   padding: 0.2em 0.4em;
   border-radius: 0.2em;
   font-family: 'JetBrains Mono', monospace;
 }
 
 .prose blockquote {
-  border-left: 3px solid #00E0FF;
+  border-left: 3px solid var(--primary-color, #00E0FF);
   padding-left: 1em;
   margin-left: 0;
   color: #7DAAB2;
@@ -660,20 +660,20 @@
 }
 
 .prose table th {
-  background-color: rgba(0, 224, 255, 0.1);
+  background-color: var(--primary-bg-subtle, rgba(0, 224, 255, 0.1));
 }
 
 /* Obsidian-style callouts */
 .prose .callout {
-  border-left: 4px solid #00E0FF;
-  background-color: rgba(0, 224, 255, 0.05);
+  border-left: 4px solid var(--primary-color, #00E0FF);
+  background-color: var(--primary-bg-subtle, rgba(0, 224, 255, 0.05));
   padding: 1em;
   margin: 1em 0;
   border-radius: 0.3em;
 }
 
 .prose .callout-info {
-  border-color: #00E0FF;
+  border-color: var(--primary-color, #00E0FF);
 }
 
 .prose .callout-warning {
@@ -689,6 +689,6 @@
   background-color: #001824;
   border-radius: 0.3em;
   padding: 1em;
-  border: 1px solid rgba(0, 224, 255, 0.2);
+  border: 1px solid var(--primary-border-subtle, rgba(0, 224, 255, 0.2));
   overflow-x: auto;
 }
