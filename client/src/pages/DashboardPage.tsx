@@ -485,7 +485,7 @@ export default function DashboardPage() {
               <select 
                 value={timezone}
                 onChange={(e) => setTimezone(e.target.value)}
-                className="ml-3 dark:bg-[#00141A] light:bg-white border border-primary/30 rounded text-xs text-[#7DAAB2] p-1"
+                className="ml-3 bg-card border border-primary/30 rounded text-xs p-1"
               >
                 {[
                   { label: 'EST', value: 'America/New_York' },

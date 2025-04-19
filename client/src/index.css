@@ -115,14 +115,24 @@
     @apply bg-card/70 backdrop-blur-md border border-primary/20;
   }
   
-  /* Text color adjustments for theme */
-  .light-theme [class*="text-[#7DAAB2]"] {
-    color: rgb(71, 85, 105) !important; /* slate-600 */
-  }
-  
-  .light-theme [class*="text-[#D6F4FF]"] {
-    color: rgb(51, 65, 85) !important; /* slate-700 */
-  }
+/* Light theme text color overrides */
+.light-theme select {
+  color: rgb(51, 65, 85);
+}
+
+.light-theme select option {
+  background-color: white;
+  color: rgb(51, 65, 85);
+}
+
+/* Override specific color classes in light theme */
+.light-theme .text-\[\#7DAAB2\] {
+  color: rgb(71, 85, 105) !important; /* slate-600 */
+}
+
+.light-theme .text-\[\#D6F4FF\] {
+  color: rgb(51, 65, 85) !important; /* slate-700 */
+}
 
   /* Neon border */
   .neon-border {
