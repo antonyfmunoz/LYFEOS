@@ -19,7 +19,8 @@ import {
   FileText,
   Palette,
   Upload,
-  Camera
+  Camera,
+  Paintbrush
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -44,6 +45,18 @@ const AVATAR_COLORS = [
   "#14b8a6", // teal
 ];
 
+// Chakra colors for stats (used for theme colors)
+const STAT_COLORS = [
+  "#00e0ff", // cyan - Time Tokens (Throat Chakra)
+  "#f56565", // red - Health Points (Root Chakra)
+  "#ed8936", // orange - Energy Points (Sacral Chakra)
+  "#ecc94b", // yellow - Efficiency (Solar Plexus Chakra)
+  "#48bb78", // green - Streak (Heart Chakra)
+  "#4299e1", // blue - General/Primary
+  "#667eea", // indigo - Attention Tokens (Third Eye Chakra)
+  "#9f7aea", // purple - Experience (Crown Chakra)
+];
+
 interface UserProfile {
   id: number;
   username: string;
@@ -58,7 +71,7 @@ export default function ProfilePage() {
   // Set the page title
   usePageTitle('Profile');
   
-  const { username, stats } = useLYFEOS();
+  const { username, stats, setPrimaryColor } = useLYFEOS();
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -134,6 +147,18 @@ export default function ProfilePage() {
       ...prev,
       avatarColor: color
     }));
+  };
+  
+  // Function to handle theme color changes
+  const handlePrimaryColorChange = (color: string) => {
+    // Use the context function to update the primary color
+    setPrimaryColor(color);
+    
+    toast({
+      title: "Theme Color Updated",
+      description: "Your UI theme color has been changed",
+      className: "bg-[#001E26] border border-[#36F1CD] text-white",
+    });
   };
 
   // File upload handler
