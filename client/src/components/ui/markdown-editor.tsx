@@ -320,7 +320,7 @@ export function MarkdownEditor({
     <div 
       ref={wrapperRef}
       className={cn(
-        "relative rounded-md border border-primary/30 bg-[#00141A] min-h-[100px] group",
+        "relative rounded-md border border-primary/30 dark:bg-[#00141A] light:bg-white min-h-[100px] group",
         className
       )}
       style={{ minHeight }}
@@ -449,7 +449,7 @@ export function MarkdownEditor({
               }
             }}
             placeholder={placeholder}
-            className="p-3 w-full h-full focus:outline-none focus:ring-0 bg-[#00141A] text-[#D6F4FF] resize-y placeholder-[#7DAAB2]/50 border-0 rounded-md"
+            className="p-3 w-full h-full focus:outline-none focus:ring-0 dark:bg-[#00141A] light:bg-white dark:text-[#D6F4FF] light:text-slate-700 resize-y placeholder-[#7DAAB2]/50 border-0 rounded-md"
             style={{ minHeight }}
           />
           <div className="absolute top-2 right-2 flex space-x-1">
@@ -465,11 +465,11 @@ export function MarkdownEditor({
       ) : (
         <div className="p-3 cursor-default" onDoubleClick={handleDoubleClick}>
           {value ? (
-            <ObsidianMarkdown className="text-[#D6F4FF]">
+            <ObsidianMarkdown className="dark:text-[#D6F4FF] light:text-slate-700">
               {value}
             </ObsidianMarkdown>
           ) : (
-            <div className="text-[#7DAAB2]/50">{placeholder}</div>
+            <div className="dark:text-[#7DAAB2]/50 light:text-slate-400/80">{placeholder}</div>
           )}
           <button 
             onClick={handleEditClick}
@@ -483,7 +483,7 @@ export function MarkdownEditor({
       
       {/* Small hint in bottom-right corner when editing */}
       {isEditing && (
-        <div className="absolute bottom-2 right-2 text-xs text-[#7DAAB2]/50">
+        <div className="absolute bottom-2 right-2 text-xs dark:text-[#7DAAB2]/50 light:text-slate-400/80">
           Ctrl+Enter or Esc to save
         </div>
       )}
