@@ -22,6 +22,13 @@ export interface UserStats {
   };
   streakDays: number;
   efficiencyScore: number;
+  aiAssistantName?: string;
+  
+  // System settings
+  notificationsEnabled?: boolean;
+  darkThemeEnabled?: boolean;
+  autoSyncEnabled?: boolean;
+  aiAssistantEnabled?: boolean;
 }
 
 export interface Quest {

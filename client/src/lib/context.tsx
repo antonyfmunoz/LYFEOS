@@ -29,6 +29,13 @@ const initialStats: UserStats = {
   },
   streakDays: 0,
   efficiencyScore: 0,
+  aiAssistantName: "NOVA",
+  
+  // System settings
+  notificationsEnabled: false,
+  darkThemeEnabled: true,
+  autoSyncEnabled: true,
+  aiAssistantEnabled: true,
 };
 
 // Initial quests data
