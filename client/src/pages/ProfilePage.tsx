@@ -371,7 +371,7 @@ export default function ProfilePage() {
                   <Label className="text-sm text-foreground">UI Theme Color</Label>
                 </div>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Select from the same colors used in stat widgets.
+                  Select your preferred interface color.
                 </p>
                 <div className="grid grid-cols-4 gap-2">
                   {STAT_COLORS.map((color) => (
@@ -396,9 +396,9 @@ export default function ProfilePage() {
                   ))}
                 </div>
                 <div className="flex items-center mt-3 gap-2">
-                  <span className="block w-3 h-3 rounded-full bg-primary animate-pulse"></span>
+                  <span className="block w-3 h-3 rounded-full animate-pulse" style={{ backgroundColor: stats.primaryColor || "#00e0ff" }}></span>
                   <p className="text-xs text-muted-foreground">
-                    Current: {stats.primaryColor || "#00e0ff"}
+                    Current color: {stats.primaryColor || "#00e0ff"}
                   </p>
                 </div>
               </div>

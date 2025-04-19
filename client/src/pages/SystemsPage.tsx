@@ -331,20 +331,20 @@ export default function SystemsPage() {
             </div>
             
             <div className="text-xs text-muted-foreground bg-card/30 p-3 rounded-lg">
-              <p className="mb-2 flex items-center">
-                <span className="material-icons text-xs mr-2">info</span>
-                Theme colors are synced across devices and correspond to the chakra colors used for stats.
+              <p className="flex items-center gap-2 mb-3">
+                <span className="material-icons text-xs">info</span>
+                Theme colors are synced across all devices.
               </p>
-              <ul className="list-disc list-inside space-y-1 ml-2">
-                <li><span className="text-[#00e0ff]">Cyan</span> - Time Tokens (Throat Chakra)</li>
-                <li><span className="text-[#f56565]">Red</span> - Health Points (Root Chakra)</li>
-                <li><span className="text-[#ed8936]">Orange</span> - Energy Points (Sacral Chakra)</li>
-                <li><span className="text-[#ecc94b]">Yellow</span> - Efficiency (Solar Plexus)</li>
-                <li><span className="text-[#48bb78]">Green</span> - Streak (Heart Chakra)</li>
-                <li><span className="text-[#4299e1]">Blue</span> - General/Primary</li>
-                <li><span className="text-[#667eea]">Indigo</span> - Attention Tokens (Third Eye)</li>
-                <li><span className="text-[#9f7aea]">Purple</span> - Experience (Crown Chakra)</li>
-              </ul>
+              <div className="flex flex-wrap gap-2">
+                <span className="px-2 py-1 rounded-md bg-[#00e0ff]/10 border border-[#00e0ff]/30 text-[#00e0ff]">Cyan</span>
+                <span className="px-2 py-1 rounded-md bg-[#f56565]/10 border border-[#f56565]/30 text-[#f56565]">Red</span>
+                <span className="px-2 py-1 rounded-md bg-[#ed8936]/10 border border-[#ed8936]/30 text-[#ed8936]">Orange</span>
+                <span className="px-2 py-1 rounded-md bg-[#ecc94b]/10 border border-[#ecc94b]/30 text-[#ecc94b]">Yellow</span>
+                <span className="px-2 py-1 rounded-md bg-[#48bb78]/10 border border-[#48bb78]/30 text-[#48bb78]">Green</span>
+                <span className="px-2 py-1 rounded-md bg-[#4299e1]/10 border border-[#4299e1]/30 text-[#4299e1]">Blue</span>
+                <span className="px-2 py-1 rounded-md bg-[#667eea]/10 border border-[#667eea]/30 text-[#667eea]">Indigo</span>
+                <span className="px-2 py-1 rounded-md bg-[#9f7aea]/10 border border-[#9f7aea]/30 text-[#9f7aea]">Purple</span>
+              </div>
             </div>
           </div>
         </CollapsibleWidget>
