@@ -71,24 +71,3 @@ export interface MissionPage {
 }
 
 export type StatType = "attention" | "time" | "energy" | "health" | "experience" | "streak" | "efficiency";
-
-export interface DashboardWidget {
-  id: string;
-  type: 'stats' | 'missions' | 'calendar' | 'markdown' | 'time' | 'weather' | 'custom';
-  title: string;
-  content?: any;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  isResizable?: boolean;
-  isDraggable?: boolean;
-  static?: boolean;
-}
-
-export interface DashboardLayout {
-  id: string;
-  name: string;
-  widgets: DashboardWidget[];
-  isDefault?: boolean;
-}
