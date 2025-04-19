@@ -37,12 +37,11 @@ export default function SystemsPage() {
           icon={<Calendar className="h-5 w-5 text-primary" />}
           defaultOpen={true}
         >
-          <div className="flex justify-between items-center mb-3">
+          <div className="flex justify-start items-center mb-3">
             <Link href="/calendar" className="px-4 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium rounded-md transition-colors duration-200 flex items-center">
               <Calendar className="h-3.5 w-3.5 mr-1.5" />
               Go to Calendar
             </Link>
-            <Link href="/calendar" className="text-xs text-primary font-medium hover:text-opacity-80 transition">VIEW ALL</Link>
           </div>
           
           <div className="space-y-3">
