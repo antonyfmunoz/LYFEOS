@@ -1,11 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLYFEOS } from "../lib/context";
 import { CollapsibleWidget } from "@/components/ui/collapsible-widget";
-import { Calendar, Settings, Bell } from "lucide-react";
+import { Calendar, Settings, Bell, AlertCircle } from "lucide-react";
 import { Link } from "wouter";
+import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/lib/authContext";
+import { useToast } from "@/hooks/use-toast";
 
 export default function SystemsPage() {
-  const { stats } = useLYFEOS();
+  const { stats, updateUserStats } = useLYFEOS();
+  const { user } = useAuth();
+  const { toast } = useToast();
   
   // System settings state
   const [settings, setSettings] = useState({
@@ -14,13 +19,86 @@ export default function SystemsPage() {
     autoSync: true,
     aiAssistant: true
   });
+
+  // Initialize settings from stats when component mounts
+  useEffect(() => {
+    if (stats) {
+      setSettings({
+        notifications: stats.notificationsEnabled || false,
+        darkTheme: stats.darkThemeEnabled || true,
+        autoSync: stats.autoSyncEnabled || true,
+        aiAssistant: stats.aiAssistantEnabled || true
+      });
+    }
+  }, [stats]);
   
-  // Toggle setting by name
-  const toggleSetting = (setting: keyof typeof settings) => {
+  // Toggle setting by name and update in the database
+  const toggleSetting = async (setting: keyof typeof settings) => {
+    if (!user) return;
+    
+    const newValue = !settings[setting];
+    
+    // Update local state immediately for responsive UI
     setSettings(prev => ({
       ...prev,
-      [setting]: !prev[setting]
+      [setting]: newValue
     }));
+    
+    try {
+      // Map UI setting name to database field name
+      const fieldMapping: Record<string, string> = {
+        notifications: "notificationsEnabled",
+        darkTheme: "darkThemeEnabled",
+        autoSync: "autoSyncEnabled",
+        aiAssistant: "aiAssistantEnabled"
+      };
+      
+      // Prepare data for API call
+      const updateData = {
+        [fieldMapping[setting]]: newValue
+      };
+      
+      // Make API call to update setting
+      const response = await apiRequest(
+        "PATCH", 
+        `/api/users/${user.id}/stats`, 
+        updateData
+      );
+      
+      if (!response.ok) {
+        throw new Error("Failed to update setting");
+      }
+      
+      const updatedStats = await response.json();
+      
+      // Update global state
+      if (updateUserStats) {
+        updateUserStats(updatedStats.stats);
+      }
+      
+      // Show success toast
+      toast({
+        title: "Setting Updated",
+        description: `${setting.charAt(0).toUpperCase() + setting.slice(1)} has been ${newValue ? 'enabled' : 'disabled'}.`,
+        duration: 2000,
+      });
+      
+    } catch (error) {
+      // If error, revert local state
+      setSettings(prev => ({
+        ...prev,
+        [setting]: !newValue
+      }));
+      
+      // Show error toast
+      toast({
+        title: "Error",
+        description: "Failed to update setting. Please try again.",
+        variant: "destructive",
+      });
+      
+      console.error("Error updating setting:", error);
+    }
   };
 
   return (

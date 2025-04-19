@@ -34,6 +34,11 @@ export const userStats = pgTable("user_stats", {
   streakDays: integer("streak_days").notNull().default(0),
   efficiencyScore: integer("efficiency_score").notNull().default(0),
   aiAssistantName: text("ai_assistant_name").default("NOVA").notNull(),
+  // System settings
+  notificationsEnabled: boolean("notifications_enabled").default(false).notNull(),
+  darkThemeEnabled: boolean("dark_theme_enabled").default(true).notNull(),
+  autoSyncEnabled: boolean("auto_sync_enabled").default(true).notNull(),
+  aiAssistantEnabled: boolean("ai_assistant_enabled").default(true).notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
@@ -164,6 +169,10 @@ export const insertUserStatsSchema = createInsertSchema(userStats).pick({
   streakDays: true,
   efficiencyScore: true,
   aiAssistantName: true,
+  notificationsEnabled: true,
+  darkThemeEnabled: true,
+  autoSyncEnabled: true,
+  aiAssistantEnabled: true,
 });
 
 export const insertQuestSchema = createInsertSchema(quests).pick({
