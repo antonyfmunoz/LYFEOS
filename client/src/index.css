@@ -116,12 +116,12 @@
   }
   
   /* Text color adjustments for theme */
-  .light-theme .text-[#7DAAB2] {
-    @apply text-slate-600;
+  .light-theme [class*="text-[#7DAAB2]"] {
+    color: rgb(71, 85, 105) !important; /* slate-600 */
   }
   
-  .light-theme .text-[#D6F4FF] {
-    @apply text-slate-700;
+  .light-theme [class*="text-[#D6F4FF]"] {
+    color: rgb(51, 65, 85) !important; /* slate-700 */
   }
 
   /* Neon border */
