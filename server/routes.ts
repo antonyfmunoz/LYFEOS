@@ -405,6 +405,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dbStatsUpdate.aiAssistantEnabled = frontendStats.aiAssistantEnabled;
       }
       
+      // Handle primary color
+      if (frontendStats.primaryColor !== undefined) {
+        dbStatsUpdate.primaryColor = frontendStats.primaryColor;
+        console.log("Updating primary color to:", frontendStats.primaryColor);
+      }
+      
       const dbUpdatedStats = await storage.updateUserStats(userId, dbStatsUpdate);
       
       // Transform the response back to the frontend model

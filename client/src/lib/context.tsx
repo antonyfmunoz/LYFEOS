@@ -146,6 +146,41 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     setStats(newStats);
     console.log("User stats updated:", newStats);
   };
+  
+  // Function to set primary color
+  const setPrimaryColor = (color: string) => {
+    // Update stats with new primary color
+    setStats(prevStats => ({
+      ...prevStats,
+      primaryColor: color
+    }));
+    
+    // Apply color to CSS variables
+    document.documentElement.style.setProperty('--primary', color);
+    
+    // Show toast notification
+    toast({
+      title: "Theme Color Updated",
+      description: `UI theme color has been updated`,
+      variant: "default",
+      className: "bg-[#001E26] border border-[#36F1CD] text-white",
+      duration: 3000,
+    });
+    
+    // Update in database if user is authenticated
+    if (isAuthenticated && user) {
+      try {
+        apiRequest(`/api/users/${user.id}/stats`, {
+          method: 'PATCH',
+          body: JSON.stringify({ primaryColor: color })
+        }).catch(error => {
+          console.error("Error updating primary color:", error);
+        });
+      } catch (error) {
+        console.error("Error updating primary color:", error);
+      }
+    }
+  };
 
   // Load user stats (including AI assistant name) when user logs in
   useEffect(() => {
@@ -775,6 +810,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         setActiveChatSession,
         updateChatSessionTitle,
         updateUserStats,
+        setPrimaryColor,
       }}
     >
       {children}
