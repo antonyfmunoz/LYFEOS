@@ -22,14 +22,12 @@ export default function SystemsPage() {
   // Initialize settings from stats when component mounts
   useEffect(() => {
     if (stats) {
-      // Access system settings using type assertion with any
-      const statsObj = stats as any;
-      
+      // Access system settings from stats
       setSettings({
-        notifications: statsObj.notificationsEnabled !== undefined ? statsObj.notificationsEnabled : false,
-        darkTheme: statsObj.darkThemeEnabled !== undefined ? statsObj.darkThemeEnabled : true,
-        autoSync: statsObj.autoSyncEnabled !== undefined ? statsObj.autoSyncEnabled : true,
-        aiAssistant: statsObj.aiAssistantEnabled !== undefined ? statsObj.aiAssistantEnabled : true
+        notifications: stats.notificationsEnabled !== undefined ? stats.notificationsEnabled : false,
+        darkTheme: stats.darkThemeEnabled !== undefined ? stats.darkThemeEnabled : true,
+        autoSync: stats.autoSyncEnabled !== undefined ? stats.autoSyncEnabled : true,
+        aiAssistant: stats.aiAssistantEnabled !== undefined ? stats.aiAssistantEnabled : true
       });
     }
   }, [stats]);
@@ -183,13 +181,15 @@ export default function SystemsPage() {
               </div>
               <button 
                 onClick={() => toggleSetting('notifications')} 
-                className="w-10 h-5 rounded-full bg-[#36F1CD]/20 relative cursor-pointer"
+                className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
+                  settings.notifications ? 'bg-[#36F1CD]/30' : 'bg-card'
+                }`}
                 aria-pressed={settings.notifications}
                 role="switch"
               >
                 <div 
-                  className={`absolute top-0.5 w-4 h-4 rounded-full bg-[#36F1CD] transition-all duration-200 ${
-                    settings.notifications ? 'left-5' : 'left-0.5'
+                  className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
+                    settings.notifications ? 'left-5 bg-[#36F1CD] shadow-glow-cyan' : 'left-0.5 bg-muted-foreground'
                   }`}
                 ></div>
               </button>
@@ -202,13 +202,15 @@ export default function SystemsPage() {
               </div>
               <button 
                 onClick={() => toggleSetting('darkTheme')} 
-                className="w-10 h-5 rounded-full bg-[#36F1CD]/20 relative cursor-pointer"
+                className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
+                  settings.darkTheme ? 'bg-[#36F1CD]/30' : 'bg-card'
+                }`}
                 aria-pressed={settings.darkTheme}
                 role="switch"
               >
                 <div 
-                  className={`absolute top-0.5 w-4 h-4 rounded-full bg-[#36F1CD] transition-all duration-200 ${
-                    settings.darkTheme ? 'left-5' : 'left-0.5'
+                  className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
+                    settings.darkTheme ? 'left-5 bg-[#36F1CD] shadow-glow-cyan' : 'left-0.5 bg-muted-foreground'
                   }`}
                 ></div>
               </button>
@@ -221,13 +223,15 @@ export default function SystemsPage() {
               </div>
               <button 
                 onClick={() => toggleSetting('autoSync')} 
-                className="w-10 h-5 rounded-full bg-[#36F1CD]/20 relative cursor-pointer"
+                className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
+                  settings.autoSync ? 'bg-[#36F1CD]/30' : 'bg-card'
+                }`}
                 aria-pressed={settings.autoSync}
                 role="switch"
               >
                 <div 
-                  className={`absolute top-0.5 w-4 h-4 rounded-full bg-[#36F1CD] transition-all duration-200 ${
-                    settings.autoSync ? 'left-5' : 'left-0.5'
+                  className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
+                    settings.autoSync ? 'left-5 bg-[#36F1CD] shadow-glow-cyan' : 'left-0.5 bg-muted-foreground'
                   }`}
                 ></div>
               </button>
@@ -240,13 +244,15 @@ export default function SystemsPage() {
               </div>
               <button 
                 onClick={() => toggleSetting('aiAssistant')} 
-                className="w-10 h-5 rounded-full bg-[#36F1CD]/20 relative cursor-pointer"
+                className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
+                  settings.aiAssistant ? 'bg-[#36F1CD]/30' : 'bg-card'
+                }`}
                 aria-pressed={settings.aiAssistant}
                 role="switch"
               >
                 <div 
-                  className={`absolute top-0.5 w-4 h-4 rounded-full bg-[#36F1CD] transition-all duration-200 ${
-                    settings.aiAssistant ? 'left-5' : 'left-0.5'
+                  className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
+                    settings.aiAssistant ? 'left-5 bg-[#36F1CD] shadow-glow-cyan' : 'left-0.5 bg-muted-foreground'
                   }`}
                 ></div>
               </button>

@@ -308,6 +308,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         streakDays: dbStats.streakDays || 0,
         efficiencyScore: dbStats.efficiencyScore || 0,
         aiAssistantName: dbStats.aiAssistantName,
+        // Include system settings in the transformed stats
+        notificationsEnabled: dbStats.notificationsEnabled,
+        darkThemeEnabled: dbStats.darkThemeEnabled, 
+        autoSyncEnabled: dbStats.autoSyncEnabled,
+        aiAssistantEnabled: dbStats.aiAssistantEnabled,
       };
       
       return res.status(200).json({ stats: transformedStats });
@@ -428,6 +433,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         streakDays: dbUpdatedStats.streakDays || 0,
         efficiencyScore: dbUpdatedStats.efficiencyScore || 0,
         aiAssistantName: dbUpdatedStats.aiAssistantName,
+        // Include system settings in the transformed stats
+        notificationsEnabled: dbUpdatedStats.notificationsEnabled,
+        darkThemeEnabled: dbUpdatedStats.darkThemeEnabled, 
+        autoSyncEnabled: dbUpdatedStats.autoSyncEnabled,
+        aiAssistantEnabled: dbUpdatedStats.aiAssistantEnabled,
       };
       
       return res.status(200).json({ stats: transformedStats });
