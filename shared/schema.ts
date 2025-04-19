@@ -12,6 +12,7 @@ export const users = pgTable("users", {
   bio: text("bio"),
   avatarColor: text("avatar_color").default("#00e0ff"), // Default primary cyan color
   title: text("title").default("COMMANDER"),
+  profilePicture: text("profile_picture"), // Base64 encoded image or URL
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -144,6 +145,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
   bio: true,
   avatarColor: true,
   title: true,
+  profilePicture: true,
 });
 
 export const insertUserStatsSchema = createInsertSchema(userStats).pick({

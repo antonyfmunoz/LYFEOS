@@ -17,7 +17,9 @@ import {
   User,
   Terminal,
   FileText,
-  Palette
+  Palette,
+  Upload,
+  Camera
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -49,6 +51,7 @@ interface UserProfile {
   bio?: string;
   avatarColor?: string;
   title?: string;
+  profilePicture?: string;
 }
 
 export default function ProfilePage() {
@@ -68,6 +71,7 @@ export default function ProfilePage() {
     bio: "",
     avatarColor: "#22d3ee",
     title: "",
+    profilePicture: "",
   });
   
   // Fetch user profile data
@@ -132,12 +136,39 @@ export default function ProfilePage() {
     }));
   };
 
+  // File upload handler
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Check file size (limit to 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "Image size must be less than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setProfileData(prev => ({
+        ...prev,
+        profilePicture: base64String
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSave = () => {
     updateProfileMutation.mutate({
       displayName: profileData.displayName,
       bio: profileData.bio,
       avatarColor: profileData.avatarColor,
       title: profileData.title,
+      profilePicture: profileData.profilePicture,
     });
   };
 
