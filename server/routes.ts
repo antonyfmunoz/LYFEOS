@@ -250,13 +250,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const userId = parseInt(req.params.userId);
     try {
       // Ensure the password cannot be updated through this endpoint
-      const { displayName, bio, avatarColor, title } = req.body;
+      const { displayName, bio, avatarColor, title, profilePicture } = req.body;
       
       const updatedUser = await storage.updateUser(userId, {
         displayName,
         bio,
         avatarColor,
-        title
+        title,
+        profilePicture
       });
       
       // Return user data without the password

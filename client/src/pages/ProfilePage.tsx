@@ -274,14 +274,45 @@ export default function ProfilePage() {
             {/* Profile image */}
             <div>
               <div 
-                className="w-24 h-24 rounded-full border-2 border-primary/50 flex items-center justify-center bg-card"
+                className="w-24 h-24 rounded-full border-2 border-primary/50 relative overflow-hidden"
                 style={{ 
                   boxShadow: "0 0 15px rgba(34, 211, 238, 0.2)",
-                  backgroundColor: profileData.avatarColor || "#22d3ee",
                   borderColor: `${profileData.avatarColor || "#22d3ee"}50`,
                 }}
               >
-                <span className="material-icons text-background text-4xl">person</span>
+                {profileData.profilePicture ? (
+                  <img 
+                    src={profileData.profilePicture} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div 
+                    className="w-full h-full flex items-center justify-center"
+                    style={{ backgroundColor: profileData.avatarColor || "#22d3ee" }}
+                  >
+                    <span className="material-icons text-background text-4xl">person</span>
+                  </div>
+                )}
+                
+                {isEditing && (
+                  <label 
+                    htmlFor="profile-picture-upload" 
+                    className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer"
+                  >
+                    <div className="flex flex-col items-center text-white">
+                      <Camera className="h-6 w-6 mb-1" />
+                      <span className="text-xs">Change</span>
+                    </div>
+                    <input
+                      type="file"
+                      id="profile-picture-upload"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                  </label>
+                )}
               </div>
               
               {isEditing && (
