@@ -383,6 +383,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dbStatsUpdate.efficiencyScore = frontendStats.efficiencyScore;
       }
       
+      // Handle system settings
+      if (frontendStats.notificationsEnabled !== undefined) {
+        dbStatsUpdate.notificationsEnabled = frontendStats.notificationsEnabled;
+      }
+      
+      if (frontendStats.darkThemeEnabled !== undefined) {
+        dbStatsUpdate.darkThemeEnabled = frontendStats.darkThemeEnabled;
+      }
+      
+      if (frontendStats.autoSyncEnabled !== undefined) {
+        dbStatsUpdate.autoSyncEnabled = frontendStats.autoSyncEnabled;
+      }
+      
+      if (frontendStats.aiAssistantEnabled !== undefined) {
+        dbStatsUpdate.aiAssistantEnabled = frontendStats.aiAssistantEnabled;
+      }
+      
       const dbUpdatedStats = await storage.updateUserStats(userId, dbStatsUpdate);
       
       // Transform the response back to the frontend model

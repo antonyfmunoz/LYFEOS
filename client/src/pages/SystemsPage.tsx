@@ -3,7 +3,6 @@ import { useLYFEOS } from "../lib/context";
 import { CollapsibleWidget } from "@/components/ui/collapsible-widget";
 import { Calendar, Settings, Bell, AlertCircle } from "lucide-react";
 import { Link } from "wouter";
-import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/hooks/use-toast";
 
@@ -23,11 +22,14 @@ export default function SystemsPage() {
   // Initialize settings from stats when component mounts
   useEffect(() => {
     if (stats) {
+      // Access system settings using type assertion with any
+      const statsObj = stats as any;
+      
       setSettings({
-        notifications: stats.notificationsEnabled !== undefined ? stats.notificationsEnabled : false,
-        darkTheme: stats.darkThemeEnabled !== undefined ? stats.darkThemeEnabled : true,
-        autoSync: stats.autoSyncEnabled !== undefined ? stats.autoSyncEnabled : true,
-        aiAssistant: stats.aiAssistantEnabled !== undefined ? stats.aiAssistantEnabled : true
+        notifications: statsObj.notificationsEnabled !== undefined ? statsObj.notificationsEnabled : false,
+        darkTheme: statsObj.darkThemeEnabled !== undefined ? statsObj.darkThemeEnabled : true,
+        autoSync: statsObj.autoSyncEnabled !== undefined ? statsObj.autoSyncEnabled : true,
+        aiAssistant: statsObj.aiAssistantEnabled !== undefined ? statsObj.aiAssistantEnabled : true
       });
     }
   }, [stats]);
@@ -59,11 +61,14 @@ export default function SystemsPage() {
       };
       
       // Make API call to update setting
-      const response = await apiRequest(
-        "PATCH", 
-        `/api/users/${user.id}/stats`, 
-        updateData
-      );
+      const response = await fetch(`/api/users/${user.id}/stats`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(updateData),
+        credentials: "include"
+      });
       
       if (!response.ok) {
         throw new Error("Failed to update setting");
