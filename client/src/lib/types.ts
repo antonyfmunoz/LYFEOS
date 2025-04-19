@@ -29,6 +29,7 @@ export interface UserStats {
   darkThemeEnabled?: boolean;
   autoSyncEnabled?: boolean;
   aiAssistantEnabled?: boolean;
+  primaryColor?: string;
 }
 
 export interface Quest {

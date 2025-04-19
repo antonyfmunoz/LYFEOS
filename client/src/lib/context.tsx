@@ -36,6 +36,7 @@ const initialStats: UserStats = {
   darkThemeEnabled: true,
   autoSyncEnabled: true,
   aiAssistantEnabled: true,
+  primaryColor: "#00e0ff",
 };
 
 // Initial quests data
@@ -111,6 +112,7 @@ interface LYFEOSContextType {
   setActiveChatSession: (id: string) => void;
   updateChatSessionTitle: (id: string, title: string) => void;
   updateUserStats: (stats: UserStats) => void;
+  setPrimaryColor: (color: string) => void;
 }
 
 // Create the context
