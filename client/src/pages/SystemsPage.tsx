@@ -23,32 +23,15 @@ export default function SystemsPage() {
   const { stats, updateUserStats } = useLYFEOS();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { toggleDarkMode } = useTheme();
+  const { toggleDarkMode, setPrimaryColor } = useTheme();
   
   // Handle color scheme selection
-  const handlePrimaryColorChange = async (colorValue: string) => {
+  const handlePrimaryColorChange = (colorValue: string) => {
     if (!user) return;
     
     try {
-      const response = await fetch(`/api/users/${user.id}/stats`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ primaryColor: colorValue }),
-        credentials: "include"
-      });
-      
-      if (!response.ok) {
-        throw new Error("Failed to update primary color");
-      }
-      
-      const data = await response.json();
-      
-      // Update global state
-      if (updateUserStats) {
-        updateUserStats(data.stats);
-      }
+      // Use the theme context to update primary color
+      setPrimaryColor(colorValue);
       
       // Show success toast
       toast({

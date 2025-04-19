@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import RootLayout from "../components/layout/RootLayout";
 import { useLYFEOS } from "../lib/context";
 import { useAuth } from "@/lib/authContext";
+import { useTheme } from "@/lib/themeContext";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";

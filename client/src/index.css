@@ -143,7 +143,7 @@
 
   /* Neon border */
   .neon-border {
-    @apply shadow-[0_0_5px_rgba(0,224,255,0.3)] border border-primary/30;
+    @apply shadow-[0_0_5px_var(--primary-shadow,rgba(0,224,255,0.3))] border border-primary/30;
   }
   
   /* Purple neon border */
@@ -172,11 +172,11 @@
   /* Neon glow for profile icon */
   .neon-glow {
     @apply transition-all duration-300;
-    box-shadow: 0 0 5px rgba(0, 224, 255, 0.5), 0 0 10px rgba(0, 224, 255, 0.3);
+    box-shadow: 0 0 5px var(--primary-glow-medium, rgba(0, 224, 255, 0.5)), 0 0 10px var(--primary-glow-light, rgba(0, 224, 255, 0.3));
   }
   
   .neon-glow:hover, .neon-glow:focus {
-    box-shadow: 0 0 10px rgba(0, 224, 255, 0.7), 0 0 20px rgba(0, 224, 255, 0.5);
+    box-shadow: 0 0 10px var(--primary-glow-strong, rgba(0, 224, 255, 0.7)), 0 0 20px var(--primary-glow-medium, rgba(0, 224, 255, 0.5));
   }
 
   /* Progress bar styling for stats */
@@ -283,7 +283,7 @@
   }
 
   .custom-checkbox:checked {
-    @apply bg-primary/20 border-primary/70 shadow-[0_0_8px_rgba(0,224,255,0.5)];
+    @apply bg-primary/20 border-primary/70 shadow-[0_0_8px_var(--primary-glow-medium,rgba(0,224,255,0.5))];
   }
 
   .custom-checkbox:checked::after {
@@ -343,7 +343,7 @@
 }
 
 .dark-theme input[type="time"]:focus {
-  @apply outline-none border-primary/50 shadow-[0_0_8px_rgba(0,224,255,0.3)];
+  @apply outline-none border-primary/50 shadow-[0_0_8px_var(--primary-glow-light,rgba(0,224,255,0.3))];
 }
 
 .dark-theme input[type="time"]::-webkit-datetime-edit-hour-field:focus,
