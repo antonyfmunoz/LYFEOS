@@ -113,7 +113,7 @@ export default function SystemsPage() {
           defaultOpen={true}
         >
           <div className="flex justify-start items-center mb-3">
-            <Link href="/calendar" className="px-4 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium rounded-md transition-colors duration-200 flex items-center">
+            <Link to="/calendar" className="px-4 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium rounded-md transition-colors duration-200 flex items-center">
               <Calendar className="h-3.5 w-3.5 mr-1.5" />
               Go to Calendar
             </Link>
@@ -167,53 +167,44 @@ export default function SystemsPage() {
           icon={<Settings className="h-5 w-5 text-primary" />}
           defaultOpen={true}
         >
-          <div className="flex flex-col gap-4 bg-[#00151D] py-4 px-2 rounded-md">
-            <div className="flex items-center justify-between p-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
               <div className="flex items-center">
-                <span className="text-[#36F1CD] mr-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-                    <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-                  </svg>
-                </span>
-                <span className="text-white">Notifications</span>
+                <span className="material-icons text-[#36F1CD] text-sm mr-2">notifications</span>
+                <span className="text-sm">Notifications</span>
               </div>
               <button 
                 onClick={() => toggleSetting('notifications')} 
-                className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors duration-200 ${
-                  settings.notifications ? 'bg-[#36F1CD]' : 'bg-gray-600'
+                className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
+                  settings.notifications ? 'bg-[#36F1CD]/30' : 'bg-card'
                 }`}
                 aria-pressed={settings.notifications}
                 role="switch"
               >
                 <div 
-                  className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 ${
-                    settings.notifications ? 'left-7' : 'left-1'
+                  className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
+                    settings.notifications ? 'left-5 bg-[#36F1CD] shadow-glow-cyan' : 'left-0.5 bg-muted-foreground'
                   }`}
                 ></div>
               </button>
             </div>
             
-            <div className="flex items-center justify-between p-3">
+            <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
               <div className="flex items-center">
-                <span className="text-[#36F1CD] mr-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-                  </svg>
-                </span>
-                <span className="text-white">Dark Theme</span>
+                <span className="material-icons text-[#36F1CD] text-sm mr-2">dark_mode</span>
+                <span className="text-sm">Dark Theme</span>
               </div>
               <button 
                 onClick={() => toggleSetting('darkTheme')} 
-                className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors duration-200 ${
-                  settings.darkTheme ? 'bg-[#36F1CD]' : 'bg-gray-600'
+                className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
+                  settings.darkTheme ? 'bg-[#36F1CD]/30' : 'bg-card'
                 }`}
                 aria-pressed={settings.darkTheme}
                 role="switch"
               >
                 <div 
-                  className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 ${
-                    settings.darkTheme ? 'left-7' : 'left-1'
+                  className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
+                    settings.darkTheme ? 'left-5 bg-[#36F1CD] shadow-glow-cyan' : 'left-0.5 bg-muted-foreground'
                   }`}
                 ></div>
               </button>

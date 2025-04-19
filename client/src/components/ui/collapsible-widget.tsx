@@ -20,16 +20,16 @@ export function CollapsibleWidget({
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className={cn("rounded-md overflow-hidden", className)}>
+    <div className={cn("glassmorphic rounded-xl neon-border overflow-hidden", className)}>
       <div 
-        className="p-3 flex items-center justify-between cursor-pointer bg-[#001a25] text-white border-b border-[#36F1CD]/20 transition-colors"
+        className="p-3 flex items-center justify-between cursor-pointer border-b border-primary/20 hover:bg-primary/5 transition-colors"
         onClick={() => setIsOpen(!isOpen)}
       >
         <div className="flex items-center">
-          {icon && <div className="mr-2 text-[#36F1CD]">{icon}</div>}
-          <h2 className="text-lg font-orbitron text-white">{title}</h2>
+          {icon && <div className="mr-2">{icon}</div>}
+          <h2 className="text-lg font-orbitron text-[#dff9ff]">{title}</h2>
         </div>
-        <button className="text-[#36F1CD] transition-colors p-1 rounded-full">
+        <button className="text-primary/70 hover:text-primary transition-colors p-1 rounded-full hover:bg-primary/10">
           {isOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
         </button>
       </div>
