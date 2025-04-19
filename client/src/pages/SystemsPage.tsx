@@ -5,11 +5,13 @@ import { Calendar, Settings, Bell, AlertCircle } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "@/lib/themeContext";
 
 export default function SystemsPage() {
   const { stats, updateUserStats } = useLYFEOS();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { toggleDarkMode } = useTheme();
   
   // System settings state
   const [settings, setSettings] = useState({
@@ -39,6 +41,11 @@ export default function SystemsPage() {
       ...prev,
       [setting]: newValue
     }));
+    
+    // For dark theme toggle, also update theme context
+    if (setting === 'darkTheme') {
+      toggleDarkMode(); // Toggle the actual theme
+    }
     
     try {
       // Map UI setting name to database field name

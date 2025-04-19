@@ -3,6 +3,7 @@ import { Route, Switch, useLocation } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
 import { LYFEOSProvider } from "./lib/context";
 import { AuthProvider, useAuth } from "./lib/authContext";
+import { ThemeProvider } from "./lib/themeContext";
 import DashboardPage from "./pages/DashboardPage";
 import QuestsPage from "./pages/QuestsPage";
 import AIPage from "./pages/AIPage";
@@ -235,8 +236,10 @@ function App() {
   return (
     <AuthProvider>
       <LYFEOSProvider>
-        <Router />
-        <Toaster />
+        <ThemeProvider>
+          <Router />
+          <Toaster />
+        </ThemeProvider>
       </LYFEOSProvider>
     </AuthProvider>
   );
