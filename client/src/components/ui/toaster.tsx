@@ -11,12 +11,23 @@ import {
 
 export function Toaster() {
   const { toasts } = useToast()
+  const [showBackdrop, setShowBackdrop] = useState(false)
+
+  // Update backdrop visibility whenever toasts change
+  useEffect(() => {
+    if (toasts.length > 0) {
+      setShowBackdrop(true);
+    } else {
+      // Immediately remove backdrop when no toasts
+      setShowBackdrop(false);
+    }
+  }, [toasts.length]);
 
   return (
     <ToastProvider>
-      {toasts.length > 0 && (
+      {showBackdrop && (
         <div 
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[99]" 
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[99] transition-opacity duration-300" 
         />
       )}
       {toasts.map(function ({ id, title, description, action, ...props }) {
