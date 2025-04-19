@@ -425,6 +425,58 @@ export default function ProfilePage() {
                 <>
                   <h3 className="text-lg font-orbitron text-foreground mb-3">Stats</h3>
                   
+                  {/* Stats Overview Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="glassmorphic rounded-xl p-4 neon-border">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center">
+                          <span className="material-icons text-primary mr-2">calendar_month</span>
+                          <h3 className="font-orbitron text-[#D6F4FF]">STREAK</h3>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[#D6F4FF] font-mono text-xl">{stats.streakDays}<span className="text-[#7DAAB2] text-xs"> DAYS</span></p>
+                        </div>
+                      </div>
+                      <div className="h-1 bg-primary/30 rounded-full mb-2">
+                        <div className="h-full bg-primary rounded-full" style={{ width: `${Math.min(100, stats.streakDays)}%` }}></div>
+                      </div>
+                      <p className="text-xs text-[#7DAAB2]">Consecutive days using LYFEOS</p>
+                    </div>
+                    
+                    <div className="glassmorphic rounded-xl p-4 neon-border">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center">
+                          <span className="material-icons text-[#36F1CD] mr-2">auto_graph</span>
+                          <h3 className="font-orbitron text-[#D6F4FF]">LEVEL</h3>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[#D6F4FF] font-mono text-xl">{stats.experience.level}</p>
+                        </div>
+                      </div>
+                      <div className="h-1 bg-[#36F1CD]/30 rounded-full mb-2">
+                        <div className="h-full bg-[#36F1CD] rounded-full" style={{ width: `${(stats.experience.current / stats.experience.max) * 100}%` }}></div>
+                      </div>
+                      <p className="text-xs text-[#7DAAB2]">Current progress and achievements</p>
+                    </div>
+                    
+                    <div className="glassmorphic rounded-xl p-4 neon-border">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center">
+                          <span className="material-icons text-secondary mr-2">insights</span>
+                          <h3 className="font-orbitron text-[#D6F4FF]">EFFICIENCY</h3>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[#D6F4FF] font-mono text-xl">{stats.efficiencyScore}<span className="text-[#7DAAB2] text-xs">%</span></p>
+                        </div>
+                      </div>
+                      <div className="h-1 bg-secondary/30 rounded-full mb-2">
+                        <div className="h-full bg-secondary rounded-full" style={{ width: `${stats.efficiencyScore}%` }}></div>
+                      </div>
+                      <p className="text-xs text-[#7DAAB2]">Overall system optimization score</p>
+                    </div>
+                  </div>
+                  
+                  {/* Detailed Stats Section */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* Attention Tokens */}
                     <div className="p-4 bg-card border border-indigo-500/20 rounded-lg" style={{ boxShadow: "0 0 10px rgba(99, 102, 241, 0.1)" }}>

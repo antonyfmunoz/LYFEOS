@@ -78,104 +78,47 @@ export default function SystemsPage() {
         </div>
       </div>
       
-      {/* Systems Modules */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        {/* Calendar Module */}
-        <div className="glassmorphic rounded-xl p-4 neon-border">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-orbitron">Calendar</h2>
-            <button className="text-xs text-primary font-medium hover:text-opacity-80 transition">VIEW ALL</button>
-          </div>
-          
-          <div className="space-y-3">
-            <div className="grid grid-cols-7 gap-1 mb-2">
-              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
-                <div key={i} className="text-xs text-center text-[#7DAAB2] font-medium">
-                  {day}
-                </div>
-              ))}
-              
-              {Array.from({ length: 31 }, (_, i) => {
-                const isToday = i + 1 === new Date().getDate();
-                const hasEvent = [3, 8, 12, 15, 23, 27].includes(i + 1);
-                
-                return (
-                  <div 
-                    key={i} 
-                    className={`text-xs rounded-full aspect-square flex items-center justify-center 
-                      ${isToday ? 'bg-primary text-background' : hasEvent ? 'text-primary' : 'text-[#7DAAB2]'}`}
-                  >
-                    {i + 1}
-                  </div>
-                );
-              })}
-            </div>
-            
-            <div className="border-t border-primary/20 pt-3">
-              <p className="text-xs text-[#7DAAB2] mb-2">UPCOMING</p>
-              <div className="space-y-2">
-                <div className="flex items-center">
-                  <div className="w-1 h-6 bg-primary rounded-full mr-2"></div>
-                  <p className="text-sm">Strategy Meeting <span className="text-xs text-[#7DAAB2]">• Today, 9:00 AM</span></p>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-1 h-6 bg-secondary rounded-full mr-2"></div>
-                  <p className="text-sm">Project Review <span className="text-xs text-[#7DAAB2]">• Today, 11:30 AM</span></p>
-                </div>
-              </div>
-            </div>
-          </div>
+      {/* Calendar Module */}
+      <div className="glassmorphic rounded-xl p-4 neon-border mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-orbitron">Calendar</h2>
+          <button className="text-xs text-primary font-medium hover:text-opacity-80 transition">VIEW ALL</button>
         </div>
         
-        {/* Stats Module */}
-        <div className="glassmorphic rounded-xl p-4 neon-border">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-orbitron">Stats</h2>
-            <button className="text-xs text-primary font-medium hover:text-opacity-80 transition">DETAILS</button>
+        <div className="space-y-3">
+          <div className="grid grid-cols-7 gap-1 mb-2">
+            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
+              <div key={i} className="text-xs text-center text-[#7DAAB2] font-medium">
+                {day}
+              </div>
+            ))}
+            
+            {Array.from({ length: 31 }, (_, i) => {
+              const isToday = i + 1 === new Date().getDate();
+              const hasEvent = [3, 8, 12, 15, 23, 27].includes(i + 1);
+              
+              return (
+                <div 
+                  key={i} 
+                  className={`text-xs rounded-full aspect-square flex items-center justify-center 
+                    ${isToday ? 'bg-primary text-background' : hasEvent ? 'text-primary' : 'text-[#7DAAB2]'}`}
+                >
+                  {i + 1}
+                </div>
+              );
+            })}
           </div>
           
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
+          <div className="border-t border-primary/20 pt-3">
+            <p className="text-xs text-[#7DAAB2] mb-2">UPCOMING</p>
+            <div className="space-y-2">
               <div className="flex items-center">
-                <span className="material-icons text-primary text-sm mr-2">schedule</span>
-                <span className="text-sm">Time Tokens</span>
+                <div className="w-1 h-6 bg-primary rounded-full mr-2"></div>
+                <p className="text-sm">Strategy Meeting <span className="text-xs text-[#7DAAB2]">• Today, 9:00 AM</span></p>
               </div>
               <div className="flex items-center">
-                <span className="text-[#D6F4FF] font-mono">{stats.timeTokens.current}/{stats.timeTokens.max}</span>
-                <span className="material-icons text-[#7DAAB2] text-sm ml-2">chevron_right</span>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <span className="material-icons text-secondary text-sm mr-2">bolt</span>
-                <span className="text-sm">Energy Points</span>
-              </div>
-              <div className="flex items-center">
-                <span className="text-[#D6F4FF] font-mono">{stats.energyPoints.current}/{stats.energyPoints.max}</span>
-                <span className="material-icons text-[#7DAAB2] text-sm ml-2">chevron_right</span>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <span className="material-icons text-accent text-sm mr-2">favorite</span>
-                <span className="text-sm">Health Points</span>
-              </div>
-              <div className="flex items-center">
-                <span className="text-[#D6F4FF] font-mono">{stats.healthPoints.current}/{stats.healthPoints.max}</span>
-                <span className="material-icons text-[#7DAAB2] text-sm ml-2">chevron_right</span>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <span className="material-icons text-[#36F1CD] text-sm mr-2">auto_graph</span>
-                <span className="text-sm">Experience</span>
-              </div>
-              <div className="flex items-center">
-                <span className="text-[#D6F4FF] font-mono">{stats.experience.current}/{stats.experience.max}</span>
-                <span className="material-icons text-[#7DAAB2] text-sm ml-2">chevron_right</span>
+                <div className="w-1 h-6 bg-secondary rounded-full mr-2"></div>
+                <p className="text-sm">Project Review <span className="text-xs text-[#7DAAB2]">• Today, 11:30 AM</span></p>
               </div>
             </div>
           </div>
