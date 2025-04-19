@@ -37,6 +37,7 @@ import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { Checkbox } from "@/components/ui/checkbox";
 import CompactStatsWidget from "@/components/dashboard/CompactStatsWidget";
 import { CustomizableDashboard } from "@/components/dashboard/CustomizableDashboard";
+import { useToast } from "@/hooks/use-toast";
 import { StatType, CalendarEvent } from "@/lib/types";
 
 // Define types
@@ -207,11 +208,21 @@ export default function DashboardPage() {
   usePageTitle('Dashboard');
   
   const { stats, username, events } = useLYFEOS();
+  const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentTime, setCurrentTime] = useState(new Date());
   const [totalXpEarned, setTotalXpEarned] = useState(0);
   const [timeFormat, setTimeFormat] = useState<'12h' | '24h'>('12h');
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const [showCustomizableView, setShowCustomizableView] = useState(false);
+  
+  const toggleDashboardView = () => {
+    setShowCustomizableView(!showCustomizableView);
+    toast({
+      title: `${showCustomizableView ? 'Standard' : 'Customizable'} Dashboard Activated`,
+      description: `Switched to ${showCustomizableView ? 'standard' : 'drag-and-drop customizable'} dashboard view.`,
+    });
+  };
   
   // Time blocks state
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
@@ -468,110 +479,137 @@ export default function DashboardPage() {
       <AIAgentFAB />
       
       {/* Daily Dashboard Header */}
-      <div className="mb-4 flex items-center">
-        <h1 className="text-3xl font-orbitron text-primary mr-2">Daily Dashboard</h1>
-        <div className="flex-grow h-0.5 bg-gradient-to-r from-primary/80 to-transparent"></div>
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center">
+          <h1 className="text-3xl font-orbitron text-primary mr-2">Daily Dashboard</h1>
+          <div className="w-48 h-0.5 bg-gradient-to-r from-primary/80 to-transparent"></div>
+        </div>
+        <div className="flex items-center">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleDashboardView}
+            className="flex items-center gap-1"
+          >
+            {showCustomizableView ? (
+              <>
+                <Columns className="h-4 w-4" />
+                Standard View
+              </>
+            ) : (
+              <>
+                <LayoutGrid className="h-4 w-4" />
+                Customize View
+              </>
+            )}
+          </Button>
+        </div>
       </div>
       
-      {/* Date Header - Cinematic HUD Style */}
-      <section className="mb-6">
-        <div className="glassmorphic rounded-xl p-3 neon-border">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-            <div className="flex items-center">
-              <CalendarDays className="h-5 w-5 text-primary mr-2" />
-              <h1 className="text-xl sm:text-2xl font-orbitron text-[#D6F4FF]">{formattedDate}</h1>
-            </div>
-            <div className="flex items-center gap-2 mt-2 sm:mt-0">
-              <Clock className="h-4 w-4 text-[#7DAAB2] mr-2" />
-              <span className="text-[#7DAAB2] font-mono">{formattedTime}</span>
-              
-              <select 
-                value={timezone}
-                onChange={(e) => setTimezone(e.target.value)}
-                className="ml-3 bg-[#00141A] border border-primary/30 rounded text-xs text-[#7DAAB2] p-1"
-              >
-                {[
-                  { label: 'EST', value: 'America/New_York' },
-                  { label: 'CST', value: 'America/Chicago' },
-                  { label: 'MST', value: 'America/Denver' },
-                  { label: 'PST', value: 'America/Los_Angeles' },
-                  { label: 'GMT', value: 'Europe/London' },
-                  { label: 'CET', value: 'Europe/Paris' },
-                  { label: 'JST', value: 'Asia/Tokyo' },
-                  { label: 'AEST', value: 'Australia/Sydney' },
-                  { label: 'NZST', value: 'Pacific/Auckland' }
-                ].map(tz => (
-                  <option key={tz.value} value={tz.value}>
-                    {tz.label}
-                  </option>
-                ))}
-              </select>
-              
-              <button 
-                onClick={() => setTimeFormat(prev => prev === '12h' ? '24h' : '12h')}
-                className="bg-primary/10 hover:bg-primary/20 text-primary rounded px-2 py-1 text-xs"
-              >
-                {timeFormat === '12h' ? '24h' : '12h'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-      
-      {/* Stats and Progress Section */}
-      <section className="mb-6">
-        
-        <CollapsibleWidget 
-          title="Stats Log" 
-          icon={<BarChart className="h-5 w-5 text-primary" />}
-          className="mb-4"
-        >
-          <CompactStatsWidget stats={stats} />
-        </CollapsibleWidget>
-      </section>
-      
-      {/* Mission Log Panel */}
-      <section className="mb-6">
-        
-        <CollapsibleWidget 
-          title="Mission Log" 
-          icon={<Calendar className="h-5 w-5 text-primary" />}
-          className="mb-4"
-        >
-          <EnhancedMissionWidget 
-            events={events} 
-            maxHeight="96"
-            hideHeader={true}
-          />
-        </CollapsibleWidget>
-      </section>
-      
-      {/* Data Entry Log Panel */}
-      <section className="mb-6">
-        
-        <CollapsibleWidget 
-          title="Data Entry Log" 
-          icon={<BookOpen className="h-5 w-5 text-primary" />}
-          className="mb-4"
-        >
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Today's Thoughts */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <Brain className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Today's Thoughts</span>
-                </label>
-                <div className="flex flex-col space-y-2">
-                  <MarkdownEditor
-                    placeholder="Ideas worth saving..."
-                    value={reflection.thoughts}
-                    onChange={(value) => updateReflection("thoughts", value)}
-                    minHeight="100px"
-                    autoBullets={true}
-                  />
+      {showCustomizableView ? (
+        // Customizable Dashboard View
+        <CustomizableDashboard className="mt-4" />
+      ) : (
+        // Standard Dashboard View
+        <>
+          <section className="mb-6">
+            <div className="glassmorphic rounded-xl p-3 neon-border">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                <div className="flex items-center">
+                  <CalendarDays className="h-5 w-5 text-primary mr-2" />
+                  <h1 className="text-xl sm:text-2xl font-orbitron text-[#D6F4FF]">{formattedDate}</h1>
+                </div>
+                <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                  <Clock className="h-4 w-4 text-[#7DAAB2] mr-2" />
+                  <span className="text-[#7DAAB2] font-mono">{formattedTime}</span>
+                  
+                  <select 
+                    value={timezone}
+                    onChange={(e) => setTimezone(e.target.value)}
+                    className="ml-3 bg-[#00141A] border border-primary/30 rounded text-xs text-[#7DAAB2] p-1"
+                  >
+                    {[
+                      { label: 'EST', value: 'America/New_York' },
+                      { label: 'CST', value: 'America/Chicago' },
+                      { label: 'MST', value: 'America/Denver' },
+                      { label: 'PST', value: 'America/Los_Angeles' },
+                      { label: 'GMT', value: 'Europe/London' },
+                      { label: 'CET', value: 'Europe/Paris' },
+                      { label: 'JST', value: 'Asia/Tokyo' },
+                      { label: 'AEST', value: 'Australia/Sydney' },
+                      { label: 'NZST', value: 'Pacific/Auckland' }
+                    ].map(tz => (
+                      <option key={tz.value} value={tz.value}>
+                        {tz.label}
+                      </option>
+                    ))}
+                  </select>
+                  
+                  <button 
+                    onClick={() => setTimeFormat(prev => prev === '12h' ? '24h' : '12h')}
+                    className="bg-primary/10 hover:bg-primary/20 text-primary rounded px-2 py-1 text-xs"
+                  >
+                    {timeFormat === '12h' ? '24h' : '12h'}
+                  </button>
                 </div>
               </div>
+            </div>
+          </section>
+          
+          {/* Stats and Progress Section */}
+          <section className="mb-6">
+            
+            <CollapsibleWidget 
+              title="Stats Log" 
+              icon={<BarChart className="h-5 w-5 text-primary" />}
+              className="mb-4"
+            >
+              <CompactStatsWidget stats={stats} />
+            </CollapsibleWidget>
+          </section>
+          
+          {/* Mission Log Panel */}
+          <section className="mb-6">
+            
+            <CollapsibleWidget 
+              title="Mission Log" 
+              icon={<Calendar className="h-5 w-5 text-primary" />}
+              className="mb-4"
+            >
+              <EnhancedMissionWidget 
+                events={events} 
+                maxHeight="96"
+                hideHeader={true}
+              />
+            </CollapsibleWidget>
+          </section>
+          
+          {/* Data Entry Log Panel */}
+          <section className="mb-6">
+            
+            <CollapsibleWidget 
+              title="Data Entry Log" 
+              icon={<BookOpen className="h-5 w-5 text-primary" />}
+              className="mb-4"
+            >
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Today's Thoughts */}
+                  <div className="space-y-2">
+                    <label className="text-sm flex items-center text-[#7DAAB2]">
+                      <Brain className="h-4 w-4 text-primary" />
+                      <span className="ml-2">Today's Thoughts</span>
+                    </label>
+                    <div className="flex flex-col space-y-2">
+                      <MarkdownEditor
+                        placeholder="Ideas worth saving..."
+                        value={reflection.thoughts}
+                        onChange={(value) => updateReflection("thoughts", value)}
+                        minHeight="100px"
+                        autoBullets={true}
+                      />
+                    </div>
+                  </div>
               
               {/* Content Consumed */}
               <div className="space-y-2">
@@ -784,7 +822,8 @@ export default function DashboardPage() {
           </div>
         </CollapsibleWidget>
       </section>
-      
+        </>
+      )}
     </div>
   );
 }

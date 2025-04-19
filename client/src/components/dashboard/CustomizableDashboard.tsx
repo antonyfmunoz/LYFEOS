@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Responsive, WidthProvider } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
-import { DashboardWidget, DashboardLayout } from '@/lib/types';
+import { DashboardWidget, DashboardLayout, UserStats, CalendarEvent } from '@/lib/types';
 import CompactStatsWidget from './CompactStatsWidget';
 import MissionLogWidget from './MissionLogWidget';
 import { Plus, Trash2, Save, Settings, Copy, PanelLeft } from 'lucide-react';
@@ -10,6 +10,33 @@ import { Button } from '@/components/ui/button';
 import { useLYFEOS } from '@/lib/context';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
+
+// Default stats if no stats are available yet
+const defaultStats: UserStats = {
+  attentionTokens: {
+    current: 10,
+    max: 10,
+  },
+  timeTokens: {
+    current: 10,
+    max: 10,
+  },
+  energyPoints: {
+    current: 10,
+    max: 10,
+  },
+  healthPoints: {
+    current: 10,
+    max: 10,
+  },
+  experience: {
+    current: 0,
+    max: 100,
+    level: 1,
+  },
+  streakDays: 0,
+  efficiencyScore: 0,
+};
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -351,9 +378,9 @@ export function CustomizableDashboard({ className }: CustomizableDashboardProps)
   const renderWidget = (widget: DashboardWidget) => {
     switch (widget.type) {
       case 'stats':
-        return <CompactStatsWidget />;
+        return <CompactStatsWidget stats={stats || defaultStats} />;
       case 'missions':
-        return <MissionLogWidget />;
+        return <MissionLogWidget events={[]} maxHeight="72" compact={true} />;
       case 'time':
         return (
           <div className="glassmorphic h-full w-full flex flex-col items-center justify-center">
