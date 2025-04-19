@@ -6,28 +6,28 @@ interface ThemeContextType {
   toggleDarkMode: () => void;
 }
 
+// Create the context
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+// Provider component
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const { stats } = useLYFEOS();
+  const { stats, updateUserStats } = useLYFEOS();
   const [isDarkMode, setIsDarkMode] = useState(true); // Default to dark mode
 
-  // Initialize theme from localStorage or stats when component mounts
+  // Initialize theme from stats or localStorage when component mounts
   useEffect(() => {
-    const savedTheme = localStorage.getItem('lyfeos-theme');
-    
-    // First check if theme is saved in localStorage
-    if (savedTheme) {
-      setIsDarkMode(savedTheme === 'dark');
-    } 
-    // Otherwise use the theme from stats if available
-    else if (stats && stats.darkThemeEnabled !== undefined) {
+    if (stats && stats.darkThemeEnabled !== undefined) {
       setIsDarkMode(stats.darkThemeEnabled);
-      localStorage.setItem('lyfeos-theme', stats.darkThemeEnabled ? 'dark' : 'light');
+    } else {
+      // Fall back to localStorage if stats are not available
+      const savedTheme = localStorage.getItem('lyfeos-theme');
+      if (savedTheme) {
+        setIsDarkMode(savedTheme === 'dark');
+      }
     }
   }, [stats]);
 
-  // Apply theme class to document
+  // Apply theme class to document whenever isDarkMode changes
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark-theme');
@@ -41,8 +41,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('lyfeos-theme', isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
 
+  // Toggle function
   const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode);
+    const newDarkModeValue = !isDarkMode;
+    setIsDarkMode(newDarkModeValue);
+    
+    // If user is logged in, update the database
+    if (stats && updateUserStats) {
+      updateUserStats({
+        ...stats,
+        darkThemeEnabled: newDarkModeValue
+      });
+    }
   };
 
   return (
@@ -52,6 +62,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// Hook for accessing the theme context
 export function useTheme() {
   const context = useContext(ThemeContext);
   if (context === undefined) {

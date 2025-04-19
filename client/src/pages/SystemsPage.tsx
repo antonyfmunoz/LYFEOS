@@ -42,16 +42,26 @@ export default function SystemsPage() {
       [setting]: newValue
     }));
     
-    // For dark theme toggle, also update theme context
-    if (setting === 'darkTheme') {
-      toggleDarkMode(); // Toggle the actual theme
-    }
-    
     try {
+      // Handle dark theme toggle specially - use the theme context
+      if (setting === 'darkTheme') {
+        // Theme context now handles both UI change and DB update
+        toggleDarkMode();
+        
+        // Show the toast message
+        toast({
+          title: "Setting Updated",
+          description: `Dark Theme has been ${newValue ? 'enabled' : 'disabled'}.`,
+          duration: 2000,
+        });
+        
+        return; // Exit early since theme context handles the update
+      }
+      
+      // For other settings (not dark theme), proceed with normal API call
       // Map UI setting name to database field name
       const fieldMapping: Record<string, string> = {
-        notifications: "notificationsEnabled",
-        darkTheme: "darkThemeEnabled"
+        notifications: "notificationsEnabled"
       };
       
       // Prepare data for API call
