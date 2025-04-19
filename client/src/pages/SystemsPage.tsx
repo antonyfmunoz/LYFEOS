@@ -14,9 +14,7 @@ export default function SystemsPage() {
   // System settings state
   const [settings, setSettings] = useState({
     notifications: false,
-    darkTheme: true,
-    autoSync: true,
-    aiAssistant: true
+    darkTheme: true
   });
 
   // Initialize settings from stats when component mounts
@@ -25,9 +23,7 @@ export default function SystemsPage() {
       // Access system settings from stats
       setSettings({
         notifications: stats.notificationsEnabled !== undefined ? stats.notificationsEnabled : false,
-        darkTheme: stats.darkThemeEnabled !== undefined ? stats.darkThemeEnabled : true,
-        autoSync: stats.autoSyncEnabled !== undefined ? stats.autoSyncEnabled : true,
-        aiAssistant: stats.aiAssistantEnabled !== undefined ? stats.aiAssistantEnabled : true
+        darkTheme: stats.darkThemeEnabled !== undefined ? stats.darkThemeEnabled : true
       });
     }
   }, [stats]);
@@ -48,9 +44,7 @@ export default function SystemsPage() {
       // Map UI setting name to database field name
       const fieldMapping: Record<string, string> = {
         notifications: "notificationsEnabled",
-        darkTheme: "darkThemeEnabled",
-        autoSync: "autoSyncEnabled",
-        aiAssistant: "aiAssistantEnabled"
+        darkTheme: "darkThemeEnabled"
       };
       
       // Prepare data for API call
@@ -211,48 +205,6 @@ export default function SystemsPage() {
                 <div 
                   className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
                     settings.darkTheme ? 'left-5 bg-[#36F1CD] shadow-glow-cyan' : 'left-0.5 bg-muted-foreground'
-                  }`}
-                ></div>
-              </button>
-            </div>
-            
-            <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
-              <div className="flex items-center">
-                <span className="material-icons text-[#36F1CD] text-sm mr-2">sync</span>
-                <span className="text-sm">Auto Sync</span>
-              </div>
-              <button 
-                onClick={() => toggleSetting('autoSync')} 
-                className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
-                  settings.autoSync ? 'bg-[#36F1CD]/30' : 'bg-card'
-                }`}
-                aria-pressed={settings.autoSync}
-                role="switch"
-              >
-                <div 
-                  className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
-                    settings.autoSync ? 'left-5 bg-[#36F1CD] shadow-glow-cyan' : 'left-0.5 bg-muted-foreground'
-                  }`}
-                ></div>
-              </button>
-            </div>
-            
-            <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
-              <div className="flex items-center">
-                <span className="material-icons text-[#36F1CD] text-sm mr-2">smart_toy</span>
-                <span className="text-sm">AI Assistant</span>
-              </div>
-              <button 
-                onClick={() => toggleSetting('aiAssistant')} 
-                className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
-                  settings.aiAssistant ? 'bg-[#36F1CD]/30' : 'bg-card'
-                }`}
-                aria-pressed={settings.aiAssistant}
-                role="switch"
-              >
-                <div 
-                  className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
-                    settings.aiAssistant ? 'left-5 bg-[#36F1CD] shadow-glow-cyan' : 'left-0.5 bg-muted-foreground'
                   }`}
                 ></div>
               </button>
