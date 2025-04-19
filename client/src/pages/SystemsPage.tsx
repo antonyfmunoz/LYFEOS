@@ -24,10 +24,10 @@ export default function SystemsPage() {
   useEffect(() => {
     if (stats) {
       setSettings({
-        notifications: stats.notificationsEnabled || false,
-        darkTheme: stats.darkThemeEnabled || true,
-        autoSync: stats.autoSyncEnabled || true,
-        aiAssistant: stats.aiAssistantEnabled || true
+        notifications: stats.notificationsEnabled !== undefined ? stats.notificationsEnabled : false,
+        darkTheme: stats.darkThemeEnabled !== undefined ? stats.darkThemeEnabled : true,
+        autoSync: stats.autoSyncEnabled !== undefined ? stats.autoSyncEnabled : true,
+        aiAssistant: stats.aiAssistantEnabled !== undefined ? stats.aiAssistantEnabled : true
       });
     }
   }, [stats]);

@@ -103,6 +103,7 @@ interface LYFEOSContextType {
   deleteChatSession: (id: string) => void;
   setActiveChatSession: (id: string) => void;
   updateChatSessionTitle: (id: string, title: string) => void;
+  updateUserStats: (stats: UserStats) => void;
 }
 
 // Create the context
@@ -130,6 +131,12 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const [aiCompanionName, setAICompanionNameState] = useState<string>("Lyfe");
   const [chatSessions, setChatSessions] = useState<ChatSession[]>(initialChatSessions);
   const [activeChatSessionId, setActiveChatSessionId] = useState<string>(initialChatSessions[0].id);
+  
+  // Function to update user stats
+  const updateUserStats = (newStats: UserStats) => {
+    setStats(newStats);
+    console.log("User stats updated:", newStats);
+  };
 
   // Load user stats (including AI assistant name) when user logs in
   useEffect(() => {
@@ -758,6 +765,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         deleteChatSession,
         setActiveChatSession,
         updateChatSessionTitle,
+        updateUserStats,
       }}
     >
       {children}
