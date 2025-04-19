@@ -43,9 +43,20 @@ export default function Sidebar({ currentPage, username }: SidebarProps) {
       <div className="flex items-center mb-8">
         <div className="relative w-12 h-12 rounded-full overflow-hidden border border-[#22D3EE] shadow-[0_0_5px_rgba(34,211,238,0.3)]">
           {/* User avatar */}
-          <div className="bg-[#22D3EE]/20 w-full h-full flex items-center justify-center">
-            <span className="material-icons text-[#22D3EE]">person</span>
-          </div>
+          {profileData?.profilePicture ? (
+            <img 
+              src={profileData.profilePicture} 
+              alt="Profile" 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div 
+              className="w-full h-full flex items-center justify-center"
+              style={{ backgroundColor: profileData?.avatarColor || "#22D3EE" }}
+            >
+              <span className="material-icons text-background text-lg">person</span>
+            </div>
+          )}
         </div>
         <div className="ml-3">
           <p className="font-orbitron text-sm text-text-primary">LEVEL {stats.experience.level}</p>

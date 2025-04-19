@@ -87,13 +87,26 @@ export default function RootLayout({ children }: RootLayoutProps) {
               <button 
                 ref={buttonRef}
                 onClick={toggleProfileDropdown}
-                className={`flex items-center justify-center h-10 w-10 rounded-full border border-[#22D3EE]/50 bg-[#001E26]/30 text-primary hover:bg-[#22D3EE]/10 transition backdrop-blur-sm ${showProfileDropdown ? 'ring-1 ring-[#22D3EE]' : ''}`}
+                className={`flex items-center justify-center h-10 w-10 rounded-full border border-[#22D3EE]/50 bg-[#001E26]/30 text-primary hover:bg-[#22D3EE]/10 transition backdrop-blur-sm overflow-hidden ${showProfileDropdown ? 'ring-1 ring-[#22D3EE]' : ''}`}
                 aria-label="Open profile menu"
                 aria-expanded={showProfileDropdown}
                 aria-haspopup="true"
                 style={{ boxShadow: '0 0 8px rgba(34, 211, 238, 0.3)' }}
               >
-                <span className="material-icons text-[#22D3EE] text-lg">person</span>
+                {profileData?.profilePicture ? (
+                  <img 
+                    src={profileData.profilePicture} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div 
+                    className="w-full h-full flex items-center justify-center"
+                    style={{ backgroundColor: profileData?.avatarColor || "#22D3EE" }}
+                  >
+                    <span className="material-icons text-background text-lg">person</span>
+                  </div>
+                )}
               </button>
               
               {showProfileDropdown && (
@@ -106,11 +119,29 @@ export default function RootLayout({ children }: RootLayoutProps) {
                   aria-labelledby="profile-menu-button"
                 >
                   <div className="px-4 py-3 border-b border-primary/20">
-                    <div>
-                      <p className="text-sm font-orbitron">{profileData?.displayName || username}</p>
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <span className="material-icons text-[#22D3EE] text-xs">auto_graph</span>
-                        <p className="text-xs text-[#7DAAB2]">Level {stats.experience.level}</p>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full overflow-hidden border border-[#22D3EE]/50">
+                        {profileData?.profilePicture ? (
+                          <img 
+                            src={profileData.profilePicture} 
+                            alt="Profile" 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div 
+                            className="w-full h-full flex items-center justify-center"
+                            style={{ backgroundColor: profileData?.avatarColor || "#22D3EE" }}
+                          >
+                            <span className="material-icons text-background text-sm">person</span>
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm font-orbitron">{profileData?.displayName || username}</p>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="material-icons text-[#22D3EE] text-xs">auto_graph</span>
+                          <p className="text-xs text-[#7DAAB2]">Level {stats.experience.level}</p>
+                        </div>
                       </div>
                     </div>
                     
