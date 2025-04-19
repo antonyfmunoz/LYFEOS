@@ -96,8 +96,6 @@
   
   body {
     @apply font-sans antialiased bg-background text-foreground;
-    background-color: #030B17;
-    color: #D6F4FF;
   }
   
   /* Glassmorphic effect */
