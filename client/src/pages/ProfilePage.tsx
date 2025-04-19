@@ -296,10 +296,11 @@ export default function ProfilePage() {
         <div className="bg-background border border-primary/20 backdrop-blur-md rounded-lg p-6 shadow-lg"
              style={{ boxShadow: "0 0 20px rgba(34, 211, 238, 0.1)" }}>
           <div className="flex flex-col md:flex-row gap-6 items-start">
-            {/* Profile image */}
-            <div>
+            {/* Left Column: Profile image & Theme Customization */}
+            <div className="md:w-64">
+              {/* Profile Image */}
               <div 
-                className="w-24 h-24 rounded-full border-2 border-primary/50 relative overflow-hidden"
+                className="w-24 h-24 rounded-full border-2 border-primary/50 relative overflow-hidden mb-6"
                 style={{ 
                   boxShadow: "0 0 15px rgba(34, 211, 238, 0.2)",
                   borderColor: `${profileData.avatarColor || "#22d3ee"}50`,
@@ -340,8 +341,9 @@ export default function ProfilePage() {
                 )}
               </div>
               
+              {/* Avatar Color Picker (only in edit mode) */}
               {isEditing && (
-                <div className="mt-4">
+                <div className="mb-6 p-4 border border-primary/10 rounded-lg bg-background/40">
                   <Label className="text-sm text-foreground mb-2 block">Avatar Color</Label>
                   <div className="grid grid-cols-4 gap-2">
                     {AVATAR_COLORS.map((color) => (
@@ -361,9 +363,48 @@ export default function ProfilePage() {
                   </div>
                 </div>
               )}
+              
+              {/* Primary Theme Color Selector */}
+              <div className="p-4 border border-primary/10 rounded-lg bg-background/40">
+                <div className="flex items-center gap-2 mb-2">
+                  <Paintbrush className="h-4 w-4 text-primary" />
+                  <Label className="text-sm text-foreground">UI Theme Color</Label>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Select from the same colors used in stat widgets.
+                </p>
+                <div className="grid grid-cols-4 gap-2">
+                  {STAT_COLORS.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      className={`w-8 h-8 rounded-md transition-all ${
+                        stats.primaryColor === color 
+                          ? 'ring-2 ring-offset-2 ring-offset-background ring-primary scale-110' 
+                          : 'ring-1 ring-primary/20 hover:scale-105'
+                      }`}
+                      style={{ backgroundColor: color }}
+                      onClick={() => handlePrimaryColorChange(color)}
+                      aria-label={`Select theme color ${color}`}
+                    >
+                      {stats.primaryColor === color && (
+                        <span className="flex items-center justify-center text-background text-xs">
+                          <span className="material-icons" style={{ fontSize: '16px' }}>check</span>
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center mt-3 gap-2">
+                  <span className="block w-3 h-3 rounded-full bg-primary animate-pulse"></span>
+                  <p className="text-xs text-muted-foreground">
+                    Current: {stats.primaryColor || "#00e0ff"}
+                  </p>
+                </div>
+              </div>
             </div>
             
-            {/* Profile details */}
+            {/* Right Column: Profile details */}
             <div className="flex-1">
               {isEditing ? (
                 <div className="space-y-4">

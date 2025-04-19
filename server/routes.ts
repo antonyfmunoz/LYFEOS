@@ -313,6 +313,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         darkThemeEnabled: dbStats.darkThemeEnabled, 
         autoSyncEnabled: dbStats.autoSyncEnabled,
         aiAssistantEnabled: dbStats.aiAssistantEnabled,
+        // Include primary color
+        primaryColor: dbStats.primaryColor,
       };
       
       return res.status(200).json({ stats: transformedStats });
@@ -444,6 +446,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         darkThemeEnabled: dbUpdatedStats.darkThemeEnabled, 
         autoSyncEnabled: dbUpdatedStats.autoSyncEnabled,
         aiAssistantEnabled: dbUpdatedStats.aiAssistantEnabled,
+        // Include primary color
+        primaryColor: dbUpdatedStats.primaryColor,
       };
       
       return res.status(200).json({ stats: transformedStats });
