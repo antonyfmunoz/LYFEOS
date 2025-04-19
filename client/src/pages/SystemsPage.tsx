@@ -1,17 +1,72 @@
 import { useState, useEffect } from "react";
 import { useLYFEOS } from "../lib/context";
 import { CollapsibleWidget } from "@/components/ui/collapsible-widget";
-import { Calendar, Settings, Bell, AlertCircle } from "lucide-react";
+import { Calendar, Settings, Bell, AlertCircle, Paintbrush } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/lib/themeContext";
+
+// Chakra colors for stats (used for theme colors)
+const STAT_COLORS = [
+  "#00e0ff", // cyan - Time Tokens (Throat Chakra)
+  "#f56565", // red - Health Points (Root Chakra)
+  "#ed8936", // orange - Energy Points (Sacral Chakra)
+  "#ecc94b", // yellow - Efficiency (Solar Plexus Chakra)
+  "#48bb78", // green - Streak (Heart Chakra)
+  "#4299e1", // blue - General/Primary
+  "#667eea", // indigo - Attention Tokens (Third Eye Chakra)
+  "#9f7aea", // purple - Experience (Crown Chakra)
+];
 
 export default function SystemsPage() {
   const { stats, updateUserStats } = useLYFEOS();
   const { user } = useAuth();
   const { toast } = useToast();
   const { toggleDarkMode } = useTheme();
+  
+  // Handle color scheme selection
+  const handlePrimaryColorChange = async (colorValue: string) => {
+    if (!user) return;
+    
+    try {
+      const response = await fetch(`/api/users/${user.id}/stats`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ primaryColor: colorValue }),
+        credentials: "include"
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to update primary color");
+      }
+      
+      const data = await response.json();
+      
+      // Update global state
+      if (updateUserStats) {
+        updateUserStats(data.stats);
+      }
+      
+      // Show success toast
+      toast({
+        title: "Theme Updated",
+        description: "The primary color theme has been updated.",
+        duration: 2000,
+      });
+      
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update theme color. Please try again.",
+        variant: "destructive",
+      });
+      
+      console.error("Error updating primary color:", error);
+    }
+  };
   
   // System settings state
   const [settings, setSettings] = useState({
@@ -225,6 +280,71 @@ export default function SystemsPage() {
                   }`}
                 ></div>
               </button>
+            </div>
+          </div>
+        </CollapsibleWidget>
+      </section>
+      
+      {/* Theme Customization */}
+      <section className="mb-6">
+        <CollapsibleWidget
+          title="UI Theme Colors" 
+          icon={<Paintbrush className="h-5 w-5 text-primary" />}
+          defaultOpen={true}
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Select a primary color for the user interface. This will affect buttons, highlights, and various UI elements.
+            </p>
+            
+            <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
+              {STAT_COLORS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  className={`relative w-10 h-10 rounded-md transition-all ${
+                    stats?.primaryColor === color 
+                      ? 'ring-2 ring-offset-2 ring-offset-background ring-primary scale-110' 
+                      : 'ring-1 ring-primary/20 hover:scale-105'
+                  }`}
+                  style={{ backgroundColor: color }}
+                  onClick={() => handlePrimaryColorChange(color)}
+                  aria-label={`Select theme color ${color}`}
+                >
+                  {stats?.primaryColor === color && (
+                    <span className="flex items-center justify-center text-background text-xs">
+                      <span className="material-icons" style={{ fontSize: '16px' }}>check</span>
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+            
+            <div className="flex items-center mt-3 gap-2 p-3 bg-card/50 rounded-lg">
+              <span className="block w-4 h-4 rounded-full animate-pulse" style={{ backgroundColor: stats?.primaryColor || "#00e0ff" }}></span>
+              <div>
+                <p className="text-sm font-medium">Current Theme Color</p>
+                <p className="text-xs text-muted-foreground">
+                  {stats?.primaryColor || "#00e0ff"}
+                </p>
+              </div>
+            </div>
+            
+            <div className="text-xs text-muted-foreground bg-card/30 p-3 rounded-lg">
+              <p className="mb-2 flex items-center">
+                <span className="material-icons text-xs mr-2">info</span>
+                Theme colors are synced across devices and correspond to the chakra colors used for stats.
+              </p>
+              <ul className="list-disc list-inside space-y-1 ml-2">
+                <li><span className="text-[#00e0ff]">Cyan</span> - Time Tokens (Throat Chakra)</li>
+                <li><span className="text-[#f56565]">Red</span> - Health Points (Root Chakra)</li>
+                <li><span className="text-[#ed8936]">Orange</span> - Energy Points (Sacral Chakra)</li>
+                <li><span className="text-[#ecc94b]">Yellow</span> - Efficiency (Solar Plexus)</li>
+                <li><span className="text-[#48bb78]">Green</span> - Streak (Heart Chakra)</li>
+                <li><span className="text-[#4299e1]">Blue</span> - General/Primary</li>
+                <li><span className="text-[#667eea]">Indigo</span> - Attention Tokens (Third Eye)</li>
+                <li><span className="text-[#9f7aea]">Purple</span> - Experience (Crown Chakra)</li>
+              </ul>
             </div>
           </div>
         </CollapsibleWidget>
