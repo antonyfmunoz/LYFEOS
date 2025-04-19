@@ -22,7 +22,9 @@ import {
   Calendar,
   CheckCircle2,
   Zap,
-  BarChart
+  BarChart,
+  LayoutGrid,
+  Columns
 } from "lucide-react";
 import MissionLogWidget from "@/components/dashboard/MissionLogWidget";
 import EnhancedMissionWidget from "@/components/dashboard/EnhancedMissionWidget";
@@ -34,6 +36,7 @@ import { ObsidianMarkdown } from "@/components/ui/obsidian-markdown";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { Checkbox } from "@/components/ui/checkbox";
 import CompactStatsWidget from "@/components/dashboard/CompactStatsWidget";
+import { CustomizableDashboard } from "@/components/dashboard/CustomizableDashboard";
 import { StatType, CalendarEvent } from "@/lib/types";
 
 // Define types
