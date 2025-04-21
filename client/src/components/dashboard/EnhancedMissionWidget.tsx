@@ -82,7 +82,7 @@ export default function EnhancedMissionWidget({
                 <Zap className="h-4 w-4 mr-1" />
                 <span>-5 Energy Points</span>
               </div>
-              <div className="flex items-center text-[#36F1CD]">
+              <div className="flex items-center text-primary">
                 <Award className="h-4 w-4 mr-1" />
                 <span>+15 Experience</span>
               </div>
@@ -101,15 +101,15 @@ export default function EnhancedMissionWidget({
       <p className="text-xs text-[#7DAAB2] mt-2">
         Create a new mission or visit the Calendar page
       </p>
-      <Button
+      <DynamicColorButton
         variant="outline"
         size="sm"
-        className="mt-4 text-[#22D3EE] border-[#22D3EE]/30 hover:bg-[#22D3EE]/10"
+        className="mt-4"
         onClick={() => window.location.href = '/calendar'}
       >
         <Calendar className="h-4 w-4 mr-2" />
         New Mission
-      </Button>
+      </DynamicColorButton>
     </div>
   );
   
@@ -121,15 +121,15 @@ export default function EnhancedMissionWidget({
       <p className="text-xs text-[#7DAAB2] mt-2">
         Great job! Create new missions or check back later
       </p>
-      <Button
+      <DynamicColorButton
         variant="outline"
         size="sm"
-        className="mt-4 text-[#22D3EE] border-[#22D3EE]/30 hover:bg-[#22D3EE]/10"
+        className="mt-4"
         onClick={() => window.location.href = '/calendar'}
       >
         <Calendar className="h-4 w-4 mr-2" />
         New Mission
-      </Button>
+      </DynamicColorButton>
     </div>
   );
   
@@ -172,14 +172,14 @@ export default function EnhancedMissionWidget({
             <Calendar className="h-5 w-5 text-primary mr-2" />
             <span>Mission Log</span>
           </h2>
-          <Button
+          <DynamicColorButton
             variant="outline"
             size="sm"
-            className="absolute top-0 right-0 text-[#00f2fe] text-xs py-1 px-2 h-auto border-[#00f2fe]/30 hover:bg-[#00f2fe]/5 hover:text-[#00f2fe]"
+            className="absolute top-0 right-0 text-xs py-1 px-2 h-auto"
             onClick={() => window.location.href = '/calendar'}
           >
             <Calendar className="h-3 w-3 mr-1" /> Calendar
-          </Button>
+          </DynamicColorButton>
         </div>
       )}
       
