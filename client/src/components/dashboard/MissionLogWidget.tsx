@@ -7,6 +7,19 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import InfoIconButton from './InfoIconButton';
 
+// Helper function to convert hex to rgba
+const hexToRgba = (hex: string, alpha: number = 1) => {
+  // Remove the # if present
+  hex = hex.replace(/^#/, '');
+  
+  // Parse the hex values
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
 interface MissionLogWidgetProps {
   events: CalendarEvent[];
   className?: string;
@@ -139,7 +152,12 @@ export default function MissionLogWidget({
       <Button
         variant="outline"
         size="sm"
-        className="mt-4 text-primary border-primary/30 hover:bg-primary/10"
+        className="mt-4"
+        style={{ 
+          color: `var(--primary-color)`,
+          borderColor: `var(--primary-border-subtle)`,
+          backgroundColor: 'transparent'
+        }}
         onClick={() => window.location.href = '/calendar'}
       >
         <Calendar className="h-4 w-4 mr-2" />
@@ -159,7 +177,12 @@ export default function MissionLogWidget({
       <Button
         variant="outline"
         size="sm"
-        className="mt-4 text-primary border-primary/30 hover:bg-primary/10"
+        className="mt-4"
+        style={{ 
+          color: `var(--primary-color)`,
+          borderColor: `var(--primary-border-subtle)`,
+          backgroundColor: 'transparent'
+        }}
         onClick={() => window.location.href = '/calendar'}
       >
         <Calendar className="h-4 w-4 mr-2" />
