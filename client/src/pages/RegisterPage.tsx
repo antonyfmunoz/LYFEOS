@@ -2,9 +2,9 @@ import React, { useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/lib/authContext";
 import { usePageTitle } from "@/hooks/use-page-title";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
+import { DynamicColorButton } from "@/components/ui/dynamic-color-button";
 
 export default function RegisterPage() {
   // Set the page title
@@ -31,17 +31,17 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
       <div className="text-center mb-8">
-        <h1 className="text-4xl text-primary font-orbitron mb-2">LYFE<span className="text-white">OS</span></h1>
-        <p className="text-[#7DAAB2]">Your personal life operating system</p>
+        <h1 className="text-4xl text-primary font-orbitron mb-2">LYFE<span className="text-foreground">OS</span></h1>
+        <p className="text-muted-foreground">Your personal life operating system</p>
       </div>
       
-      <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-primary/40 shadow-lg"
-           style={{ boxShadow: "0 0 20px rgba(34, 211, 238, 0.1)" }}>
-        <h2 className="text-xl font-orbitron text-center mb-6">Create Your LYFEOS Account</h2>
+      <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-primary/40"
+           style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
+        <h2 className="text-xl font-orbitron text-center mb-6 text-foreground">Create Your LYFEOS Account</h2>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label htmlFor="username" className="block text-sm text-[#7DAAB2]">USERNAME</label>
+            <label htmlFor="username" className="block text-sm text-muted-foreground">USERNAME</label>
             <Input 
               type="text" 
               id="username"
@@ -54,7 +54,7 @@ export default function RegisterPage() {
           </div>
           
           <div className="space-y-2">
-            <label htmlFor="password" className="block text-sm text-[#7DAAB2]">PASSWORD</label>
+            <label htmlFor="password" className="block text-sm text-muted-foreground">PASSWORD</label>
             <Input 
               type="password" 
               id="password"
@@ -67,7 +67,7 @@ export default function RegisterPage() {
           </div>
           
           <div className="space-y-2">
-            <label htmlFor="confirmPassword" className="block text-sm text-[#7DAAB2]">CONFIRM PASSWORD</label>
+            <label htmlFor="confirmPassword" className="block text-sm text-muted-foreground">CONFIRM PASSWORD</label>
             <Input 
               type="password" 
               id="confirmPassword"
@@ -85,9 +85,14 @@ export default function RegisterPage() {
             </div>
           )}
           
-          <Button 
+          <DynamicColorButton 
             type="submit"
-            className="w-full bg-primary hover:bg-primary/80 text-primary-foreground transition mt-4"
+            className="w-full mt-4"
+            style={{
+              backgroundColor: "var(--primary-color)",
+              border: "none",
+              color: "#222"
+            }}
             disabled={isLoading}
           >
             {isLoading ? (
@@ -98,11 +103,11 @@ export default function RegisterPage() {
             ) : (
               "Create Account"
             )}
-          </Button>
+          </DynamicColorButton>
         </form>
         
         <div className="mt-6 text-center">
-          <p className="text-[#7DAAB2]">
+          <p className="text-muted-foreground">
             Already have an account?{" "}
             <Link href="/login" className="text-primary hover:text-primary/80 transition">
               Login
