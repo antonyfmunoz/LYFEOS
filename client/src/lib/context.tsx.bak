@@ -309,7 +309,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       title: "AI Assistant Updated",
       description: `AI Assistant name set to ${name}`,
       variant: "default",
-      className: "bg-background/80 border border-primary text-foreground",
+      className: "bg-[#001E26] border border-[#36F1CD] text-white",
       duration: 3000,
     });
     
@@ -366,7 +366,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
                 title: "Level Up!",
                 description: `You've reached level ${newLevel}! Keep up the good work!`,
                 variant: "default",
-                className: "bg-background/80 border border-primary text-foreground",
+                className: "bg-[#001E26] border border-[#36F1CD] text-white",
                 duration: 5000,
               });
             }
@@ -390,7 +390,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             title: "Quest Completed",
             description: `${quest.title} — +${quest.experienceReward} XP`,
             variant: "default",
-            className: "bg-background/80 border border-primary text-foreground",
+            className: "bg-[#001E26] border border-[#36F1CD] text-white",
             duration: 3000,
           });
         } else {
@@ -434,7 +434,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             title: "Quest Unmarked",
             description: `${quest.title} has been marked as incomplete`,
             variant: "destructive",
-            className: "bg-background/80 border border-destructive text-foreground",
+            className: "bg-[#181818] border border-red-500 text-white",
             duration: 3000,
           });
         }
@@ -516,7 +516,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       title: "Event Added",
       description: `${newEvent.title} - ${newEvent.startTime}`,
       variant: "default",
-      className: "bg-background/80 border border-primary text-foreground",
+      className: "bg-[#001E26] border border-[#36F1CD] text-white",
       duration: 3000,
     });
   };
@@ -534,7 +534,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       title: "Event Updated",
       description: "Calendar event has been updated",
       variant: "default",
-      className: "bg-background/80 border border-primary text-foreground",
+      className: "bg-[#001E26] border border-[#36F1CD] text-white",
       duration: 3000,
     });
   };
@@ -553,7 +553,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         title: "Event Deleted",
         description: `${eventToDelete.title} has been removed`,
         variant: "destructive",
-        className: "bg-background/80 border border-destructive text-foreground",
+        className: "bg-[#181818] border border-red-500 text-white",
         duration: 3000,
       });
     }
@@ -575,7 +575,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       title: "Mission Page Created",
       description: `${newMissionPage.title} page has been created`,
       variant: "default",
-      className: "bg-background/80 border border-primary text-foreground",
+      className: "bg-[#001E26] border border-[#36F1CD] text-white",
       duration: 3000,
     });
     
@@ -595,7 +595,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       title: "Mission Page Updated",
       description: "Your mission page has been updated",
       variant: "default",
-      className: "bg-background/80 border border-primary text-foreground",
+      className: "bg-[#001E26] border border-[#36F1CD] text-white",
       duration: 3000,
     });
   };
@@ -614,7 +614,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         title: "Mission Page Deleted",
         description: `${pageToDelete.title} has been removed`,
         variant: "destructive",
-        className: "bg-background/80 border border-destructive text-foreground",
+        className: "bg-[#181818] border border-red-500 text-white",
         duration: 3000,
       });
     }
@@ -760,7 +760,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       title: "New Chat Created",
       description: `${title}`,
       variant: "default",
-      className: "bg-background/80 border border-primary text-foreground",
+      className: "bg-[#001E26] border border-purple-500 text-white",
       duration: 3000,
     });
     
@@ -778,7 +778,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         title: "Cannot Delete",
         description: "You need to have at least one chat session",
         variant: "destructive",
-        className: "bg-background/80 border border-destructive text-foreground",
+        className: "bg-[#181818] border border-red-500 text-white",
         duration: 3000,
       });
       return;
@@ -803,7 +803,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         title: "Chat Deleted",
         description: `${chatToDelete.title} has been removed`,
         variant: "destructive",
-        className: "bg-background/80 border border-destructive text-foreground",
+        className: "bg-[#181818] border border-red-500 text-white",
         duration: 3000,
       });
     }
@@ -835,7 +835,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       title: "Chat Updated",
       description: "Chat title has been updated",
       variant: "default",
-      className: "bg-background/80 border border-primary text-foreground",
+      className: "bg-[#001E26] border border-purple-500 text-white",
       duration: 3000,
     });
   };
