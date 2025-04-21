@@ -73,7 +73,7 @@ export default function ProfilePage() {
   usePageTitle('Profile');
   
   const { username, stats } = useLYFEOS();
-  const { setPrimaryColor } = useTheme();
+  const { setPrimaryColor, toggleDarkMode } = useTheme();
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
