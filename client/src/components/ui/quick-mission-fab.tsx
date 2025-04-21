@@ -259,7 +259,7 @@ export function QuickMissionFAB() {
             boxShadow: isOpen 
               ? "0 0 20px var(--primary-glow-medium), 0 0 10px var(--primary-glow-low)" 
               : "0 0 15px var(--primary-glow-low)",
-            backgroundColor: "var(--primary)",
+            backgroundColor: "var(--primary-color)",
             borderColor: "transparent"
           }}
         >
