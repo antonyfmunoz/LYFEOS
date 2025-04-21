@@ -271,7 +271,7 @@ export default function ProfilePage() {
         )}
 
         <div className="bg-background border border-primary/20 backdrop-blur-md rounded-lg p-6 shadow-lg"
-             style={{ boxShadow: "0 0 20px rgba(34, 211, 238, 0.1)" }}>
+             style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
           <div className="flex flex-col md:flex-row gap-6 items-start">
             {/* Left Column: Profile image & Theme Customization */}
             <div className="md:w-64">
