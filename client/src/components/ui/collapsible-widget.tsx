@@ -27,7 +27,7 @@ export function CollapsibleWidget({
       >
         <div className="flex items-center">
           {icon && <div className="mr-2">{icon}</div>}
-          <h2 className="text-lg font-orbitron text-[#D6F4FF]">{title}</h2>
+          <h2 className="text-lg font-orbitron text-foreground">{title}</h2>
         </div>
         <button className="text-primary/70 hover:text-primary transition-colors p-1 rounded-full hover:bg-primary/10">
           {isOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}

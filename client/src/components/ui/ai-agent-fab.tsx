@@ -210,9 +210,9 @@ export function AIAgentFAB() {
                     size="icon"
                     className="border"
                     style={{
-                      backgroundColor: "var(--primary-color-10)",
+                      backgroundColor: "var(--primary-bg-subtle)",
                       borderColor: "var(--primary-border-subtle)",
-                      color: "var(--primary-color)"
+                      color: "var(--primary)"
                     }}
                   >
                     <Send className="h-4 w-4" />
@@ -231,7 +231,7 @@ export function AIAgentFAB() {
             boxShadow: isOpen 
               ? "0 0 20px var(--primary-glow-strong), 0 0 10px var(--primary-glow-medium)" 
               : "0 0 15px var(--primary-glow-medium)",
-            backgroundColor: "var(--primary-color)",
+            backgroundColor: "var(--primary)",
             borderColor: "transparent"
           }}
         >
