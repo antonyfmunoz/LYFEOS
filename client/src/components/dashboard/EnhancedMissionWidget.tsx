@@ -6,6 +6,7 @@ import { Calendar, Clock, Award, Zap, Info } from "lucide-react";
 import { CalendarEvent } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
+import { DynamicColorButton } from "@/components/ui/dynamic-color-button";
 
 interface EnhancedMissionWidgetProps {
   events: CalendarEvent[];
