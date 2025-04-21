@@ -121,8 +121,7 @@ export function QuickMissionFAB() {
                   <DynamicColorButton
                     variant="ghost"
                     size="sm"
-                    className="h-8 w-8 p-0"
-                    style={{ color: "#7DAAB2" }}
+                    className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
                     onClick={togglePanel}
                   >
                     <X className="h-4 w-4" />
@@ -133,7 +132,7 @@ export function QuickMissionFAB() {
               <form onSubmit={handleSubmit} className="p-4 space-y-4">
                 {/* Title */}
                 <div>
-                  <label className="text-xs text-[#7DAAB2] block mb-1">Mission Name</label>
+                  <label className="text-xs text-muted-foreground block mb-1">Mission Name</label>
                   <Input
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
@@ -144,7 +143,7 @@ export function QuickMissionFAB() {
                 
                 {/* Description */}
                 <div>
-                  <label className="text-xs text-[#7DAAB2] block mb-1">Description</label>
+                  <label className="text-xs text-muted-foreground block mb-1">Description</label>
                   <Textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
@@ -155,7 +154,7 @@ export function QuickMissionFAB() {
                 
                 {/* Time */}
                 <div>
-                  <label className="text-xs text-[#7DAAB2] block mb-1">Start Time</label>
+                  <label className="text-xs text-muted-foreground block mb-1">Start Time</label>
                   <Input
                     type="time"
                     value={startTime}
@@ -166,7 +165,7 @@ export function QuickMissionFAB() {
                 
                 {/* Duration */}
                 <div>
-                  <label className="text-xs text-[#7DAAB2] block mb-1">
+                  <label className="text-xs text-muted-foreground block mb-1">
                     <Clock className="h-3 w-3 inline mr-1" />
                     Duration
                   </label>
@@ -203,7 +202,7 @@ export function QuickMissionFAB() {
                 
                 {/* Category */}
                 <div>
-                  <label className="text-xs text-[#7DAAB2] block mb-1">
+                  <label className="text-xs text-muted-foreground block mb-1">
                     <Tag className="h-3 w-3 inline mr-1" />
                     Category
                   </label>
@@ -240,7 +239,7 @@ export function QuickMissionFAB() {
                   type="submit"
                   className="w-full"
                   style={{
-                    backgroundColor: "var(--primary-color-10)",
+                    backgroundColor: "var(--primary-bg-subtle)",
                     borderColor: "var(--primary-border-subtle)"
                   }}
                 >
