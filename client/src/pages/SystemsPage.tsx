@@ -1,23 +1,11 @@
 import { useState, useEffect } from "react";
 import { useLYFEOS } from "../lib/context";
 import { CollapsibleWidget } from "@/components/ui/collapsible-widget";
-import { Calendar, Settings, Bell, AlertCircle, Paintbrush } from "lucide-react";
+import { Calendar, Settings, Bell, AlertCircle } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/lib/themeContext";
-
-// Chakra colors for stats (used for theme colors)
-const STAT_COLORS = [
-  "#00e0ff", // cyan - Time Tokens (Throat Chakra)
-  "#f56565", // red - Health Points (Root Chakra)
-  "#ed8936", // orange - Energy Points (Sacral Chakra)
-  "#ecc94b", // yellow - Efficiency (Solar Plexus Chakra)
-  "#48bb78", // green - Streak (Heart Chakra)
-  "#4299e1", // blue - General/Primary
-  "#667eea", // indigo - Attention Tokens (Third Eye Chakra)
-  "#9f7aea", // purple - Experience (Crown Chakra)
-];
 
 export default function SystemsPage() {
   const { stats, updateUserStats } = useLYFEOS();
@@ -268,55 +256,7 @@ export default function SystemsPage() {
         </CollapsibleWidget>
       </section>
       
-      {/* Theme Customization */}
-      <section className="mb-6">
-        <CollapsibleWidget
-          title="UI Theme Colors" 
-          icon={<Paintbrush className="h-5 w-5 text-primary" />}
-          defaultOpen={true}
-        >
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Select a primary color for the user interface. This will affect buttons, highlights, and various UI elements.
-            </p>
-            
-            <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
-              {STAT_COLORS.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  className={`relative w-10 h-10 rounded-md transition-all ${
-                    stats?.primaryColor === color 
-                      ? 'ring-2 ring-offset-2 ring-offset-background ring-primary scale-110' 
-                      : 'ring-1 ring-primary/20 hover:scale-105'
-                  }`}
-                  style={{ backgroundColor: color }}
-                  onClick={() => handlePrimaryColorChange(color)}
-                  aria-label={`Select theme color ${color}`}
-                >
-                  {stats?.primaryColor === color && (
-                    <span className="flex items-center justify-center text-background text-xs">
-                      <span className="material-icons" style={{ fontSize: '16px' }}>check</span>
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-            
-            <div className="flex items-center mt-3 gap-2 p-3 bg-card/50 rounded-lg">
-              <span className="block w-4 h-4 rounded-full animate-pulse" style={{ backgroundColor: stats?.primaryColor || "#00e0ff" }}></span>
-              <div>
-                <p className="text-sm font-medium">Current Theme Color</p>
-                <p className="text-xs text-muted-foreground">
-                  {stats?.primaryColor || "#00e0ff"}
-                </p>
-              </div>
-            </div>
-            
 
-          </div>
-        </CollapsibleWidget>
-      </section>
     </>
   );
 }
