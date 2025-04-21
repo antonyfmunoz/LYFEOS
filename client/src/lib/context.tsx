@@ -155,15 +155,98 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       primaryColor: color
     }));
     
-    // Apply color to CSS variables
-    document.documentElement.style.setProperty('--primary', color);
+    // Function to convert hex to RGB
+    const hexToRGB = (hex: string) => {
+      // Remove the # if present
+      hex = hex.replace(/^#/, '');
+      
+      // Parse the hex values
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      
+      return { r, g, b };
+    };
+    
+    // Function to convert hex to HSL
+    const hexToHSL = (hex: string) => {
+      // Remove the # if present
+      hex = hex.replace(/^#/, '');
+      
+      // Parse the hex values
+      let r = parseInt(hex.substring(0, 2), 16) / 255;
+      let g = parseInt(hex.substring(2, 4), 16) / 255;
+      let b = parseInt(hex.substring(4, 6), 16) / 255;
+      
+      // Find min and max values for RGB
+      let max = Math.max(r, g, b);
+      let min = Math.min(r, g, b);
+      
+      // Calculate lightness
+      let l = (max + min) / 2;
+      
+      let h: number, s: number;
+      
+      if (max === min) {
+        // Achromatic
+        h = 0;
+        s = 0;
+      } else {
+        // Calculate saturation
+        s = l > 0.5 ? (max - min) / (2 - max - min) : (max - min) / (max + min);
+        
+        // Calculate hue
+        switch (max) {
+          case r:
+            h = (g - b) / (max - min) + (g < b ? 6 : 0);
+            break;
+          case g:
+            h = (b - r) / (max - min) + 2;
+            break;
+          case b:
+            h = (r - g) / (max - min) + 4;
+            break;
+          default:
+            h = 0;
+        }
+        h /= 6;
+      }
+      
+      // Convert to degrees and percentages
+      h = Math.round(h * 360);
+      s = Math.round(s * 100);
+      l = Math.round(l * 100);
+      
+      return `${h} ${s}% ${l}%`;
+    };
+    
+    // Set HSL value for primary color
+    const hsl = hexToHSL(color);
+    document.documentElement.style.setProperty('--primary', hsl);
+    document.documentElement.style.setProperty('--primary-hsl', hsl);
+    
+    // Set hex color for direct use
+    document.documentElement.style.setProperty('--primary-color', color);
+    
+    // Set RGB values for glow effects
+    const rgbValues = hexToRGB(color);
+    if (rgbValues) {
+      const { r, g, b } = rgbValues;
+      document.documentElement.style.setProperty('--primary-glow-light', `rgba(${r}, ${g}, ${b}, 0.3)`);
+      document.documentElement.style.setProperty('--primary-glow-medium', `rgba(${r}, ${g}, ${b}, 0.5)`);
+      document.documentElement.style.setProperty('--primary-glow-strong', `rgba(${r}, ${g}, ${b}, 0.7)`);
+      document.documentElement.style.setProperty('--primary-bg-subtle', `rgba(${r}, ${g}, ${b}, 0.1)`);
+      document.documentElement.style.setProperty('--primary-bg-light', `rgba(${r}, ${g}, ${b}, 0.2)`);
+      document.documentElement.style.setProperty('--primary-border-subtle', `rgba(${r}, ${g}, ${b}, 0.2)`);
+      document.documentElement.style.setProperty('--primary-shadow', `rgba(${r}, ${g}, ${b}, 0.3)`);
+    }
     
     // Show toast notification
     toast({
       title: "Theme Color Updated",
       description: `UI theme color has been updated`,
       variant: "default",
-      className: "bg-[#001E26] border border-[#36F1CD] text-white",
+      className: "bg-background border border-primary text-foreground",
       duration: 3000,
     });
     
