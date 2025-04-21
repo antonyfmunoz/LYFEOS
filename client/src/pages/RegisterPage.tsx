@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/authContext";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
-import { DynamicColorButton } from "@/components/ui/dynamic-color-button";
+import { Button } from "@/components/ui/button";
 
 export default function RegisterPage() {
   // Set the page title
@@ -85,14 +85,9 @@ export default function RegisterPage() {
             </div>
           )}
           
-          <DynamicColorButton 
+          <Button 
             type="submit"
             className="w-full mt-4"
-            style={{
-              backgroundColor: "var(--primary-color)",
-              border: "none",
-              color: "#222"
-            }}
             disabled={isLoading}
           >
             {isLoading ? (
@@ -103,7 +98,7 @@ export default function RegisterPage() {
             ) : (
               "Create Account"
             )}
-          </DynamicColorButton>
+          </Button>
         </form>
         
         <div className="mt-6 text-center">
