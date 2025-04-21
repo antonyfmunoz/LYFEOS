@@ -102,9 +102,13 @@ export default function EnhancedMissionWidget({
         Create a new mission or visit the Calendar page
       </p>
       <DynamicColorButton
-        variant="outline"
         size="sm"
         className="mt-4"
+        style={{
+          backgroundColor: "var(--primary-color)",
+          border: "none",
+          color: "white"
+        }}
         onClick={() => window.location.href = '/calendar'}
       >
         <Calendar className="h-4 w-4 mr-2" />
@@ -122,9 +126,13 @@ export default function EnhancedMissionWidget({
         Great job! Create new missions or check back later
       </p>
       <DynamicColorButton
-        variant="outline"
         size="sm"
         className="mt-4"
+        style={{
+          backgroundColor: "var(--primary-color)",
+          border: "none",
+          color: "white"
+        }}
         onClick={() => window.location.href = '/calendar'}
       >
         <Calendar className="h-4 w-4 mr-2" />
@@ -173,9 +181,13 @@ export default function EnhancedMissionWidget({
             <span>Mission Log</span>
           </h2>
           <DynamicColorButton
-            variant="outline"
             size="sm"
             className="absolute top-0 right-0 text-xs py-1 px-2 h-auto"
+            style={{
+              backgroundColor: "var(--primary-color)",
+              border: "none",
+              color: "white"
+            }}
             onClick={() => window.location.href = '/calendar'}
           >
             <Calendar className="h-3 w-3 mr-1" /> Calendar
