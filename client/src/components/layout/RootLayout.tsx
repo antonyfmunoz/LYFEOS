@@ -102,7 +102,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 ) : (
                   <div 
                     className="w-full h-full flex items-center justify-center"
-                    style={{ backgroundColor: profileData?.avatarColor || "#22D3EE" }}
+                    style={{ backgroundColor: profileData?.avatarColor || "var(--primary)" }}
                   >
                     <span className="material-icons text-background text-lg">person</span>
                   </div>

@@ -41,7 +41,7 @@ export default function Sidebar({ currentPage, username }: SidebarProps) {
 
       {/* User profile section */}
       <div className="flex items-center mb-8">
-        <div className="relative w-12 h-12 rounded-full overflow-hidden border border-[#22D3EE] shadow-[0_0_5px_rgba(34,211,238,0.3)]">
+        <div className="relative w-12 h-12 rounded-full overflow-hidden border border-primary shadow-[0_0_5px_var(--primary-shadow)]">
           {/* User avatar */}
           {profileData?.profilePicture ? (
             <img 
@@ -52,15 +52,15 @@ export default function Sidebar({ currentPage, username }: SidebarProps) {
           ) : (
             <div 
               className="w-full h-full flex items-center justify-center"
-              style={{ backgroundColor: profileData?.avatarColor || "#22D3EE" }}
+              style={{ backgroundColor: profileData?.avatarColor || "var(--primary)" }}
             >
               <span className="material-icons text-background text-lg">person</span>
             </div>
           )}
         </div>
         <div className="ml-3">
-          <p className="font-orbitron text-sm text-text-primary">LEVEL {stats.experience.level}</p>
-          <p className="text-[#7DAAB2] text-xs">{profileData?.displayName || username}</p>
+          <p className="font-orbitron text-sm text-primary">LEVEL {stats.experience.level}</p>
+          <p className="text-muted-foreground text-xs">{profileData?.displayName || username}</p>
         </div>
       </div>
 
@@ -72,8 +72,8 @@ export default function Sidebar({ currentPage, username }: SidebarProps) {
               <Link href={`/${item.id}`}
                 className={`flex items-center py-2 px-3 rounded-lg
                   ${currentPage === item.id
-                    ? "bg-card bg-opacity-50 border border-primary border-opacity-30 shadow-[0_0_5px_rgba(0,224,255,0.3)] text-primary"
-                    : "hover:bg-card hover:bg-opacity-30 text-[#7DAAB2] transition duration-200"
+                    ? "bg-card bg-opacity-50 border border-primary border-opacity-30 shadow-[0_0_5px_var(--primary-shadow)] text-primary"
+                    : "hover:bg-card hover:bg-opacity-30 text-muted-foreground transition duration-200"
                   }`}
               >
                 <span className="material-icons text-sm mr-3">{item.icon}</span>
@@ -87,13 +87,13 @@ export default function Sidebar({ currentPage, username }: SidebarProps) {
       {/* System status */}
       <div className="pt-4 border-t border-primary border-opacity-20">
         <div className="flex items-center justify-between">
-          <span className="text-[#7DAAB2] text-xs">SYSTEM</span>
-          <span className="text-xs font-mono text-[#22D3EE] flex items-center">
-            <span className="w-2 h-2 rounded-full bg-[#22D3EE] mr-1"></span>
+          <span className="text-muted-foreground text-xs">SYSTEM</span>
+          <span className="text-xs font-mono text-primary flex items-center">
+            <span className="w-2 h-2 rounded-full bg-primary mr-1"></span>
             ONLINE
           </span>
         </div>
-        <div className="text-xs text-[#7DAAB2] mt-1 font-mono">v0.9.0-alpha</div>
+        <div className="text-xs text-muted-foreground mt-1 font-mono">v0.9.0-alpha</div>
       </div>
     </div>
   );
