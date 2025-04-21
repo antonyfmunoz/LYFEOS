@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { useToast } from "@/hooks/use-toast";
 import { AIAgentFAB } from "@/components/ui/ai-agent-fab";
 import { cn } from "@/lib/utils";
 import { CollapsibleWidget } from "@/components/ui/collapsible-widget";
@@ -204,6 +205,16 @@ export default function DashboardPage() {
   usePageTitle('Dashboard');
   
   const { stats, username, events } = useLYFEOS();
+  const { toast } = useToast();
+  
+  // Test function for toast notifications
+  const testToast = () => {
+    toast({
+      title: "Theme Toast Test",
+      description: "This toast should use the primary color theme",
+      duration: 3000,
+    });
+  };
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentTime, setCurrentTime] = useState(new Date());
   const [totalXpEarned, setTotalXpEarned] = useState(0);
@@ -509,6 +520,13 @@ export default function DashboardPage() {
                 className="bg-primary/10 hover:bg-primary/20 text-primary rounded px-2 py-1 text-xs"
               >
                 {timeFormat === '12h' ? '24h' : '12h'}
+              </button>
+              
+              <button 
+                onClick={testToast}
+                className="bg-primary/10 hover:bg-primary/20 text-primary rounded px-2 py-1 text-xs ml-2"
+              >
+                Test Toast
               </button>
             </div>
           </div>

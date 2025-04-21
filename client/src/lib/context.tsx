@@ -246,7 +246,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       title: "Theme Color Updated",
       description: `UI theme color has been updated`,
       variant: "default",
-      className: "bg-background border border-primary text-foreground",
+      className: "bg-background/80 border border-primary text-foreground",
       duration: 3000,
     });
     
