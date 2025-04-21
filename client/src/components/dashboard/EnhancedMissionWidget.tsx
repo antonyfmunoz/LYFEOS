@@ -107,7 +107,7 @@ export default function EnhancedMissionWidget({
         style={{
           backgroundColor: "var(--primary-color)",
           border: "none",
-          color: "var(--background)"
+          color: "#222"
         }}
         onClick={() => window.location.href = '/calendar'}
       >
@@ -131,7 +131,7 @@ export default function EnhancedMissionWidget({
         style={{
           backgroundColor: "var(--primary-color)",
           border: "none",
-          color: "var(--background)"
+          color: "#222"
         }}
         onClick={() => window.location.href = '/calendar'}
       >
@@ -186,7 +186,7 @@ export default function EnhancedMissionWidget({
             style={{
               backgroundColor: "var(--primary-color)",
               border: "none",
-              color: "var(--background)"
+              color: "#222"
             }}
             onClick={() => window.location.href = '/calendar'}
           >

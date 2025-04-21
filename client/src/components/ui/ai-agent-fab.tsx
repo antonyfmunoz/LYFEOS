@@ -212,7 +212,7 @@ export function AIAgentFAB() {
                     style={{
                       backgroundColor: "var(--primary-color)",
                       border: "none",
-                      color: "var(--background)"
+                      color: "#222"
                     }}
                   >
                     <Send className="h-4 w-4" />
@@ -235,7 +235,7 @@ export function AIAgentFAB() {
             border: "none"
           }}
         >
-          {isOpen ? <X className="h-6 w-6 text-background" /> : <Bot className="h-6 w-6 text-background" />}
+          {isOpen ? <X className="h-6 w-6 text-[#222]" /> : <Bot className="h-6 w-6 text-[#222]" />}
         </DynamicColorButton>
       </div>
     </>
