@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useLYFEOS } from "@/lib/context";
 import { motion, AnimatePresence } from "framer-motion";
+import { DynamicColorButton } from "@/components/ui/dynamic-color-button";
 
 export function QuickMissionFAB() {
   const [isOpen, setIsOpen] = useState(false);
@@ -117,14 +118,15 @@ export function QuickMissionFAB() {
                     </div>
                     <h3 className="font-orbitron text-primary">New Mission</h3>
                   </div>
-                  <Button
+                  <DynamicColorButton
                     variant="ghost"
                     size="sm"
-                    className="h-8 w-8 p-0 text-[#7DAAB2] hover:text-white hover:bg-primary/20"
+                    className="h-8 w-8 p-0"
+                    style={{ color: "#7DAAB2" }}
                     onClick={togglePanel}
                   >
                     <X className="h-4 w-4" />
-                  </Button>
+                  </DynamicColorButton>
                 </div>
               </div>
               
@@ -234,33 +236,36 @@ export function QuickMissionFAB() {
                 </div>
                 
                 {/* Submit button */}
-                <Button 
+                <DynamicColorButton 
                   type="submit"
-                  className="w-full bg-primary/20 text-primary hover:bg-primary/30 border border-primary/30"
+                  className="w-full"
+                  style={{
+                    backgroundColor: "var(--primary-color-10)",
+                    borderColor: "var(--primary-border-subtle)"
+                  }}
                 >
                   <Check className="h-4 w-4 mr-2" />
                   Create Mission
-                </Button>
+                </DynamicColorButton>
               </form>
             </motion.div>
           )}
         </AnimatePresence>
 
-        <Button
+        <DynamicColorButton
           onClick={togglePanel}
           size="lg"
-          className={`
-            rounded-full w-14 h-14 shadow-lg transition-all duration-300
-            bg-primary hover:bg-primary/90
-          `}
+          className="rounded-full w-14 h-14 shadow-lg transition-all duration-300"
           style={{
             boxShadow: isOpen 
               ? "0 0 20px var(--primary-glow-medium), 0 0 10px var(--primary-glow-low)" 
-              : "0 0 15px var(--primary-glow-low)"
+              : "0 0 15px var(--primary-glow-low)",
+            backgroundColor: "var(--primary-color)",
+            borderColor: "transparent"
           }}
         >
-          {isOpen ? <X className="h-6 w-6" /> : <Plus className="h-6 w-6" />}
-        </Button>
+          {isOpen ? <X className="h-6 w-6 text-white" /> : <Plus className="h-6 w-6 text-white" />}
+        </DynamicColorButton>
       </div>
     </>
   );
