@@ -84,7 +84,7 @@ export function AIAgentFAB() {
               exit={{ opacity: 0, scale: 0.8, y: 20 }}
               className="absolute bottom-16 right-0 bg-background/90 backdrop-blur-lg border border-primary/40 rounded-lg shadow-xl w-[320px] overflow-hidden"
               style={{ 
-                boxShadow: "0 0 20px var(--primary-glow-medium), 0 0 10px var(--primary-glow-low)" 
+                boxShadow: "0 0 20px var(--primary-glow-medium), 0 0 10px var(--primary-glow-light)" 
               }}
             >
               <div className="p-4 bg-primary/10">
@@ -210,9 +210,9 @@ export function AIAgentFAB() {
                     size="icon"
                     className="border"
                     style={{
-                      backgroundColor: "var(--primary-bg-subtle)",
-                      borderColor: "var(--primary-border-subtle)",
-                      color: "var(--primary)"
+                      backgroundColor: "var(--primary-color)",
+                      border: "none",
+                      color: "white"
                     }}
                   >
                     <Send className="h-4 w-4" />
@@ -231,8 +231,8 @@ export function AIAgentFAB() {
             boxShadow: isOpen 
               ? "0 0 20px var(--primary-glow-strong), 0 0 10px var(--primary-glow-medium)" 
               : "0 0 15px var(--primary-glow-medium)",
-            backgroundColor: "var(--primary)",
-            borderColor: "transparent"
+            backgroundColor: "var(--primary-color)",
+            border: "none"
           }}
         >
           {isOpen ? <X className="h-6 w-6 text-background" /> : <Bot className="h-6 w-6 text-background" />}
