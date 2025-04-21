@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLYFEOS } from "../lib/context";
 import { CollapsibleWidget } from "@/components/ui/collapsible-widget";
-import { Calendar, Settings, Bell, AlertCircle } from "lucide-react";
+import { Calendar, Settings, Bell } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/lib/authContext";
 import { useToast } from "@/hooks/use-toast";
@@ -11,33 +11,9 @@ export default function SystemsPage() {
   const { stats, updateUserStats } = useLYFEOS();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { toggleDarkMode, setPrimaryColor } = useTheme();
+  const { toggleDarkMode } = useTheme();
   
-  // Handle color scheme selection
-  const handlePrimaryColorChange = (colorValue: string) => {
-    if (!user) return;
-    
-    try {
-      // Use the theme context to update primary color
-      setPrimaryColor(colorValue);
-      
-      // Show success toast
-      toast({
-        title: "Theme Updated",
-        description: "The primary color theme has been updated.",
-        duration: 2000,
-      });
-      
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update theme color. Please try again.",
-        variant: "destructive",
-      });
-      
-      console.error("Error updating primary color:", error);
-    }
-  };
+
   
   // System settings state
   const [settings, setSettings] = useState({
