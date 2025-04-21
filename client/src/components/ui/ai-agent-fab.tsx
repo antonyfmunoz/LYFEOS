@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useLYFEOS } from "@/lib/context";
 import { motion, AnimatePresence } from "framer-motion";
+import { DynamicColorButton } from "@/components/ui/dynamic-color-button";
 
 export function AIAgentFAB() {
   const [isOpen, setIsOpen] = useState(false);
@@ -83,7 +84,7 @@ export function AIAgentFAB() {
               exit={{ opacity: 0, scale: 0.8, y: 20 }}
               className="absolute bottom-16 right-0 bg-background/90 backdrop-blur-lg border border-primary/40 rounded-lg shadow-xl w-[320px] overflow-hidden"
               style={{ 
-                boxShadow: "0 0 20px rgba(34, 211, 238, 0.2), 0 0 10px rgba(34, 211, 238, 0.1)" 
+                boxShadow: "0 0 20px var(--primary-glow-medium), 0 0 10px var(--primary-glow-low)" 
               }}
             >
               <div className="p-4 bg-primary/10">
@@ -204,34 +205,38 @@ export function AIAgentFAB() {
                     onChange={(e) => setMessage(e.target.value)}
                     className="bg-card/30 border-primary/30 focus-visible:ring-primary/30"
                   />
-                  <Button 
+                  <DynamicColorButton 
                     type="submit"
                     size="icon"
-                    className="bg-primary/20 text-primary hover:bg-primary/30 border border-primary/30"
+                    className="border"
+                    style={{
+                      backgroundColor: "var(--primary-color-10)",
+                      borderColor: "var(--primary-border-subtle)",
+                      color: "var(--primary-color)"
+                    }}
                   >
                     <Send className="h-4 w-4" />
-                  </Button>
+                  </DynamicColorButton>
                 </div>
               </form>
             </motion.div>
           )}
         </AnimatePresence>
 
-        <Button
+        <DynamicColorButton
           onClick={toggleChat}
           size="lg"
-          className={`
-            rounded-full w-14 h-14 shadow-lg transition-all duration-300
-            bg-primary hover:bg-primary/80
-          `}
+          className="rounded-full w-14 h-14 shadow-lg transition-all duration-300"
           style={{
             boxShadow: isOpen 
-              ? "0 0 20px rgba(34, 211, 238, 0.3), 0 0 10px rgba(34, 211, 238, 0.2)" 
-              : "0 0 15px rgba(34, 211, 238, 0.2)"
+              ? "0 0 20px var(--primary-glow-strong), 0 0 10px var(--primary-glow-medium)" 
+              : "0 0 15px var(--primary-glow-medium)",
+            backgroundColor: "var(--primary-color)",
+            borderColor: "transparent"
           }}
         >
-          {isOpen ? <X className="h-6 w-6" /> : <Bot className="h-6 w-6" />}
-        </Button>
+          {isOpen ? <X className="h-6 w-6 text-white" /> : <Bot className="h-6 w-6 text-white" />}
+        </DynamicColorButton>
       </div>
     </>
   );
