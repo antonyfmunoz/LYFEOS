@@ -14,7 +14,7 @@
     --popover: 218 48% 12% !important;
     --popover-foreground: 192 100% 92% !important;
     
-    --primary: 188 100% 50% !important;
+    --primary: var(--primary-hsl, 188 100% 50%) !important;
     --primary-foreground: 222 47% 5% !important;
     
     --secondary: 262 100% 68% !important;
@@ -29,9 +29,9 @@
     --destructive: 350 100% 60% !important;
     --destructive-foreground: 192 100% 92% !important;
     
-    --border: 188 100% 50% / 0.2 !important;
-    --input: 188 100% 50% / 0.2 !important;
-    --ring: 188 100% 50% / 0.5 !important;
+    --border: var(--primary-hsl, 188 100% 50%) / 0.2 !important;
+    --input: var(--primary-hsl, 188 100% 50%) / 0.2 !important;
+    --ring: var(--primary-hsl, 188 100% 50%) / 0.5 !important;
   }
   
   /* Light Theme */
@@ -45,7 +45,7 @@
     --popover: 0 0% 100% !important;
     --popover-foreground: 222 47% 11% !important;
     
-    --primary: 188 95% 40% !important;
+    --primary: var(--primary-hsl, 188 95% 40%) !important;
     --primary-foreground: 210 40% 98% !important;
     
     --secondary: 262 83% 58% !important;
@@ -62,11 +62,11 @@
     
     --border: 214 32% 91% !important;
     --input: 214 32% 91% !important;
-    --ring: 188 95% 40% !important;
+    --ring: var(--primary-hsl, 188 95% 40%) !important;
     
     /* Custom color variables for light theme */
     --text-subtle: 210 15% 35% !important;
-    --cyan-glow: 188 100% 35% !important;
+    --cyan-glow: var(--primary-hsl, 188 100% 35%) !important;
   }
   
   /* Default to dark theme */
@@ -349,8 +349,9 @@
 .dark-theme input[type="time"]::-webkit-datetime-edit-hour-field:focus,
 .dark-theme input[type="time"]::-webkit-datetime-edit-minute-field:focus,
 .dark-theme input[type="time"]::-webkit-datetime-edit-ampm-field:focus {
-  @apply bg-primary/10 shadow-[0_0_5px_rgba(0,224,255,0.5)] border-primary/40;
-  color: #00E0FF;
+  @apply bg-primary/10 border-primary/40;
+  box-shadow: 0 0 5px var(--primary-glow-medium, rgba(0, 224, 255, 0.5));
+  color: var(--primary-color, #00E0FF);
 }
 
 .dark-theme ::-webkit-time-picker,
@@ -384,7 +385,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-left: 1px solid rgba(0,224,255,0.1);
+  border-left: 1px solid var(--primary-border-subtle, rgba(0,224,255,0.1));
 }
 
 /* Light Theme time inputs */
@@ -427,8 +428,9 @@
 .light-theme input[type="time"]::-webkit-datetime-edit-hour-field:focus,
 .light-theme input[type="time"]::-webkit-datetime-edit-minute-field:focus,
 .light-theme input[type="time"]::-webkit-datetime-edit-ampm-field:focus {
-  @apply bg-blue-50 shadow-[0_0_5px_rgba(0,153,218,0.3)] border-blue-200;
-  color: #0099DA;
+  @apply bg-blue-50 border-blue-200;
+  box-shadow: 0 0 5px var(--primary-glow-light, rgba(0, 153, 218, 0.3));
+  color: var(--primary-color, #0099DA);
 }
 
 .light-theme ::-webkit-time-picker,

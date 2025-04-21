@@ -136,6 +136,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       // Set the primary hsl value
       const hsl = hexToHSL(primaryColor);
       document.documentElement.style.setProperty('--primary', hsl);
+      document.documentElement.style.setProperty('--primary-hsl', hsl);
       
       // Store hex value without hash
       const hexNoHash = primaryColor.replace('#', '');
@@ -154,6 +155,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         document.documentElement.style.setProperty('--primary-bg-subtle', `rgba(${r}, ${g}, ${b}, 0.1)`);
         document.documentElement.style.setProperty('--primary-bg-light', `rgba(${r}, ${g}, ${b}, 0.2)`);
         document.documentElement.style.setProperty('--primary-border-subtle', `rgba(${r}, ${g}, ${b}, 0.2)`);
+        document.documentElement.style.setProperty('--primary-shadow', `rgba(${r}, ${g}, ${b}, 0.3)`);
       }
     }
     
