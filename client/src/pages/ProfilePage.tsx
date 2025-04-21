@@ -54,7 +54,7 @@ export default function ProfilePage() {
   // Set the page title
   usePageTitle('Profile');
   
-  const { username, stats } = useLYFEOS();
+  const { username, stats, updateUserStats } = useLYFEOS();
   const { setPrimaryColor, toggleDarkMode } = useTheme();
   const { user, logout } = useAuth();
   const { toast } = useToast();
