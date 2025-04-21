@@ -235,7 +235,7 @@ export function AIAgentFAB() {
             borderColor: "transparent"
           }}
         >
-          {isOpen ? <X className="h-6 w-6 text-white" /> : <Bot className="h-6 w-6 text-white" />}
+          {isOpen ? <X className="h-6 w-6 text-background" /> : <Bot className="h-6 w-6 text-background" />}
         </DynamicColorButton>
       </div>
     </>

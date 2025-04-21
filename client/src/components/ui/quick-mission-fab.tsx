@@ -264,7 +264,7 @@ export function QuickMissionFAB() {
             borderColor: "transparent"
           }}
         >
-          {isOpen ? <X className="h-6 w-6 text-white" /> : <Plus className="h-6 w-6 text-white" />}
+          {isOpen ? <X className="h-6 w-6 text-background" /> : <Plus className="h-6 w-6 text-background" />}
         </DynamicColorButton>
       </div>
     </>
