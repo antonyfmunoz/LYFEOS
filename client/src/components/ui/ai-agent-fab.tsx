@@ -212,7 +212,7 @@ export function AIAgentFAB() {
                     style={{
                       backgroundColor: "var(--primary-color)",
                       border: "none",
-                      color: "white"
+                      color: "var(--background)"
                     }}
                   >
                     <Send className="h-4 w-4" />
