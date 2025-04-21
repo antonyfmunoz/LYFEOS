@@ -522,12 +522,7 @@ export default function DashboardPage() {
                 {timeFormat === '12h' ? '24h' : '12h'}
               </button>
               
-              <button 
-                onClick={testToast}
-                className="bg-primary/10 hover:bg-primary/20 text-primary rounded px-2 py-1 text-xs ml-2"
-              >
-                Test Toast
-              </button>
+
             </div>
           </div>
         </div>

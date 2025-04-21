@@ -313,36 +313,7 @@ export default function SystemsPage() {
               </div>
             </div>
             
-            <div className="text-xs text-muted-foreground bg-card/30 p-3 rounded-lg">
-              <p className="flex items-center gap-2 mb-3">
-                <span className="material-icons text-xs">info</span>
-                Theme colors are synced across all devices.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { color: "#00e0ff", name: "Cyan" },
-                  { color: "#f56565", name: "Red" },
-                  { color: "#ed8936", name: "Orange" },
-                  { color: "#ecc94b", name: "Yellow" },
-                  { color: "#48bb78", name: "Green" },
-                  { color: "#4299e1", name: "Blue" },
-                  { color: "#667eea", name: "Indigo" },
-                  { color: "#9f7aea", name: "Purple" }
-                ].map(({ color, name }) => (
-                  <span 
-                    key={color}
-                    className="px-2 py-1 rounded-md border"
-                    style={{ 
-                      backgroundColor: `${color}1a`, // 10% opacity
-                      borderColor: `${color}4d`, // 30% opacity
-                      color: color
-                    }}
-                  >
-                    {name}
-                  </span>
-                ))}
-              </div>
-            </div>
+
           </div>
         </CollapsibleWidget>
       </section>
