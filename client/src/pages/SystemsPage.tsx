@@ -177,7 +177,7 @@ export default function SystemsPage() {
           <div className="space-y-3">
             <div className="grid grid-cols-7 gap-1 mb-2">
               {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
-                <div key={i} className="text-xs text-center text-[#7DAAB2] font-medium">
+                <div key={i} className="text-xs text-center text-muted-foreground font-medium">
                   {day}
                 </div>
               ))}
@@ -190,7 +190,7 @@ export default function SystemsPage() {
                   <div 
                     key={i} 
                     className={`text-xs rounded-full aspect-square flex items-center justify-center 
-                      ${isToday ? 'bg-primary text-background' : hasEvent ? 'text-primary' : 'text-[#7DAAB2]'}`}
+                      ${isToday ? 'bg-primary text-background' : hasEvent ? 'text-primary' : 'text-muted-foreground'}`}
                   >
                     {i + 1}
                   </div>
@@ -199,15 +199,15 @@ export default function SystemsPage() {
             </div>
             
             <div className="border-t border-primary/20 pt-3">
-              <p className="text-xs text-[#7DAAB2] mb-2">UPCOMING</p>
+              <p className="text-xs text-muted-foreground mb-2">UPCOMING</p>
               <div className="space-y-2">
                 <div className="flex items-center">
                   <div className="w-1 h-6 bg-primary rounded-full mr-2"></div>
-                  <p className="text-sm">Strategy Meeting <span className="text-xs text-[#7DAAB2]">• Today, 9:00 AM</span></p>
+                  <p className="text-sm">Strategy Meeting <span className="text-xs text-muted-foreground">• Today, 9:00 AM</span></p>
                 </div>
                 <div className="flex items-center">
                   <div className="w-1 h-6 bg-secondary rounded-full mr-2"></div>
-                  <p className="text-sm">Project Review <span className="text-xs text-[#7DAAB2]">• Today, 11:30 AM</span></p>
+                  <p className="text-sm">Project Review <span className="text-xs text-muted-foreground">• Today, 11:30 AM</span></p>
                 </div>
               </div>
             </div>
