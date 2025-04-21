@@ -77,7 +77,7 @@ export function QuickMissionFAB() {
     toast({
       title: "Mission Created",
       description: "Your new mission has been added to your log",
-      className: "bg-[#001E26] border border-cyan-500 text-white",
+      className: "bg-background border border-primary text-foreground",
     });
     
     // Reset and close
@@ -104,23 +104,23 @@ export function QuickMissionFAB() {
               initial={{ opacity: 0, scale: 0.8, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.8, y: 20 }}
-              className="absolute bottom-16 right-0 bg-[#001E26]/90 backdrop-blur-lg border border-cyan-500/40 rounded-lg shadow-xl w-[320px] overflow-hidden"
-              style={{ 
-                boxShadow: "0 0 20px rgba(0, 210, 255, 0.2), 0 0 10px rgba(0, 210, 255, 0.1)" 
+              className="absolute bottom-16 right-0 bg-black/80 backdrop-blur-lg border border-primary/40 rounded-lg shadow-xl w-[320px] overflow-hidden"
+              style={{
+                boxShadow: "0 0 20px var(--primary-glow-low), 0 0 10px var(--primary-glow-low)"
               }}
             >
-              <div className="p-4 bg-cyan-500/10">
+              <div className="p-4 bg-primary/10">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <div className="h-8 w-8 rounded-full bg-cyan-500/20 flex items-center justify-center mr-2">
-                      <Calendar className="h-4 w-4 text-cyan-400" />
+                    <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center mr-2">
+                      <Calendar className="h-4 w-4 text-primary" />
                     </div>
-                    <h3 className="font-orbitron text-cyan-400">New Mission</h3>
+                    <h3 className="font-orbitron text-primary">New Mission</h3>
                   </div>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 w-8 p-0 text-[#7DAAB2] hover:text-white hover:bg-cyan-500/20"
+                    className="h-8 w-8 p-0 text-[#7DAAB2] hover:text-white hover:bg-primary/20"
                     onClick={togglePanel}
                   >
                     <X className="h-4 w-4" />
@@ -136,7 +136,7 @@ export function QuickMissionFAB() {
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Enter mission title"
-                    className="bg-slate-700/30 border-cyan-500/30 focus-visible:ring-cyan-500/30"
+                    className="bg-slate-700/30 border-primary/30 focus-visible:ring-primary/30"
                   />
                 </div>
                 
@@ -147,7 +147,7 @@ export function QuickMissionFAB() {
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Describe your mission..."
-                    className="bg-slate-700/30 border-cyan-500/30 focus-visible:ring-cyan-500/30 resize-none h-[80px]"
+                    className="bg-slate-700/30 border-primary/30 focus-visible:ring-primary/30 resize-none h-[80px]"
                   />
                 </div>
                 
@@ -158,7 +158,7 @@ export function QuickMissionFAB() {
                     type="time"
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
-                    className="bg-slate-700/30 border-cyan-500/30 focus-visible:ring-cyan-500/30 font-mono"
+                    className="bg-slate-700/30 border-primary/30 focus-visible:ring-primary/30 font-mono"
                   />
                 </div>
                 
@@ -193,7 +193,7 @@ export function QuickMissionFAB() {
                         value={customDuration}
                         onChange={(e) => setCustomDuration(e.target.value)}
                         placeholder="e.g. 25 mins"
-                        className="bg-slate-700/30 border-cyan-500/30 focus-visible:ring-cyan-500/30 w-28"
+                        className="bg-slate-700/30 border-primary/30 focus-visible:ring-primary/30 w-28"
                       />
                     )}
                   </div>
@@ -236,7 +236,7 @@ export function QuickMissionFAB() {
                 {/* Submit button */}
                 <Button 
                   type="submit"
-                  className="w-full bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 border border-cyan-500/30"
+                  className="w-full bg-primary/20 text-primary hover:bg-primary/30 border border-primary/30"
                 >
                   <Check className="h-4 w-4 mr-2" />
                   Create Mission
@@ -251,15 +251,12 @@ export function QuickMissionFAB() {
           size="lg"
           className={`
             rounded-full w-14 h-14 shadow-lg transition-all duration-300
-            ${isOpen
-              ? "bg-cyan-500 hover:bg-cyan-600"
-              : "bg-cyan-500 hover:bg-cyan-600"
-            }
+            bg-primary hover:bg-primary/90
           `}
           style={{
             boxShadow: isOpen 
-              ? "0 0 20px rgba(0, 210, 255, 0.3), 0 0 10px rgba(0, 210, 255, 0.2)" 
-              : "0 0 15px rgba(0, 210, 255, 0.2)"
+              ? "0 0 20px var(--primary-glow-medium), 0 0 10px var(--primary-glow-low)" 
+              : "0 0 15px var(--primary-glow-low)"
           }}
         >
           {isOpen ? <X className="h-6 w-6" /> : <Plus className="h-6 w-6" />}
