@@ -28,9 +28,9 @@ export function DynamicColorButton({
       className={cn(className)}
       onClick={onClick}
       style={{
-        color: `var(--primary-color)`,
-        borderColor: variant === 'outline' ? `var(--primary-border-subtle)` : undefined,
-        backgroundColor: 'transparent',
+        color: 'var(--primary)',
+        borderColor: variant === 'outline' ? 'var(--primary-border)' : undefined,
+        backgroundColor: variant === 'default' ? 'var(--primary)' : 'transparent',
         ...style
       }}
       {...props}

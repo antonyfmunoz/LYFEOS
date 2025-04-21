@@ -137,9 +137,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const hsl = hexToHSL(primaryColor);
       document.documentElement.style.setProperty('--primary', hsl);
       document.documentElement.style.setProperty('--primary-hsl', hsl);
+      document.documentElement.style.setProperty('--primary-foreground', '210 40% 98%');
       
-      // Store hex value without hash
-      const hexNoHash = primaryColor.replace('#', '');
+      // Store hex value
       document.documentElement.style.setProperty('--primary-hex', primaryColor);
       
       // Create rgba values with different opacities for various UI elements
@@ -149,13 +149,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         
         // Set CSS variables for different opacity levels
         document.documentElement.style.setProperty('--primary-color', primaryColor);
+        document.documentElement.style.setProperty('--primary-rgb', `${r}, ${g}, ${b}`);
         document.documentElement.style.setProperty('--primary-glow-light', `rgba(${r}, ${g}, ${b}, 0.3)`);
         document.documentElement.style.setProperty('--primary-glow-medium', `rgba(${r}, ${g}, ${b}, 0.5)`);
         document.documentElement.style.setProperty('--primary-glow-strong', `rgba(${r}, ${g}, ${b}, 0.7)`);
         document.documentElement.style.setProperty('--primary-bg-subtle', `rgba(${r}, ${g}, ${b}, 0.1)`);
         document.documentElement.style.setProperty('--primary-bg-light', `rgba(${r}, ${g}, ${b}, 0.2)`);
+        document.documentElement.style.setProperty('--primary-border', `rgba(${r}, ${g}, ${b}, 0.4)`);
         document.documentElement.style.setProperty('--primary-border-subtle', `rgba(${r}, ${g}, ${b}, 0.2)`);
-        document.documentElement.style.setProperty('--primary-shadow', `rgba(${r}, ${g}, ${b}, 0.3)`);
+        document.documentElement.style.setProperty('--primary-shadow', `rgba(${r}, ${g}, ${b}, 0.7)`);
+        
+        // Update shadcn components variables
+        document.documentElement.style.setProperty('--ring', hsl);
+        document.documentElement.style.setProperty('--accent', `${hsl.split('%')[0]}% 5%`);
+        document.documentElement.style.setProperty('--accent-foreground', hsl);
       }
     }
     

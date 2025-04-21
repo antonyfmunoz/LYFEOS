@@ -38,7 +38,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
             key={item.id} 
             href={`/${item.id}`}
             className={`flex flex-col items-center py-3 px-4 ${
-              currentPage === item.id ? "text-primary" : "text-[#7DAAB2]"
+              currentPage === item.id ? "text-primary" : "text-muted-foreground"
             }`}
           >
             <span className="material-icons text-sm">{item.icon}</span>
