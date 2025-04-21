@@ -84,7 +84,7 @@ export function AIAgentFAB() {
               exit={{ opacity: 0, scale: 0.8, y: 20 }}
               className="absolute bottom-16 right-0 bg-background/90 backdrop-blur-lg border border-primary/40 rounded-lg shadow-xl w-[320px] overflow-hidden"
               style={{ 
-                boxShadow: "0 0 20px rgba(0, 224, 255, 0.3), 0 0 10px rgba(0, 224, 255, 0.2)" 
+                boxShadow: "0 0 20px var(--primary-glow-medium), 0 0 10px var(--primary-glow-low)" 
               }}
             >
               <div className="p-4 bg-primary/10">
@@ -210,9 +210,9 @@ export function AIAgentFAB() {
                     size="icon"
                     className="border"
                     style={{
-                      backgroundColor: "rgba(0, 224, 255, 0.1)",
-                      borderColor: "rgba(0, 224, 255, 0.2)",
-                      color: "#00e0ff"
+                      backgroundColor: "var(--primary-bg-subtle)",
+                      borderColor: "var(--primary-border-subtle)",
+                      color: "var(--primary)"
                     }}
                   >
                     <Send className="h-4 w-4" />
@@ -229,9 +229,9 @@ export function AIAgentFAB() {
           className="rounded-full w-14 h-14 shadow-lg transition-all duration-300"
           style={{
             boxShadow: isOpen 
-              ? "0 0 20px rgba(0, 224, 255, 0.5), 0 0 10px rgba(0, 224, 255, 0.3)" 
-              : "0 0 15px rgba(0, 224, 255, 0.3)",
-            backgroundColor: "#00e0ff",
+              ? "0 0 20px var(--primary-glow-strong), 0 0 10px var(--primary-glow-medium)" 
+              : "0 0 15px var(--primary-glow-medium)",
+            backgroundColor: "var(--primary)",
             borderColor: "transparent"
           }}
         >
