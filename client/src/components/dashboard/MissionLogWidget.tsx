@@ -85,7 +85,7 @@ export default function MissionLogWidget({
                 <Zap className="h-4 w-4 mr-1" />
                 <span>-5 Energy Points</span>
               </div>
-              <div className="flex items-center text-[#36F1CD]">
+              <div className="flex items-center text-primary">
                 <Award className="h-4 w-4 mr-1" />
                 <span>+15 Experience</span>
               </div>
@@ -139,7 +139,7 @@ export default function MissionLogWidget({
       <Button
         variant="outline"
         size="sm"
-        className="mt-4 text-[#22D3EE] border-[#22D3EE]/30 hover:bg-[#22D3EE]/10"
+        className="mt-4 text-primary border-primary/30 hover:bg-primary/10"
         onClick={() => window.location.href = '/calendar'}
       >
         <Calendar className="h-4 w-4 mr-2" />
@@ -159,7 +159,7 @@ export default function MissionLogWidget({
       <Button
         variant="outline"
         size="sm"
-        className="mt-4 text-[#22D3EE] border-[#22D3EE]/30 hover:bg-[#22D3EE]/10"
+        className="mt-4 text-primary border-primary/30 hover:bg-primary/10"
         onClick={() => window.location.href = '/calendar'}
       >
         <Calendar className="h-4 w-4 mr-2" />
@@ -207,7 +207,7 @@ export default function MissionLogWidget({
               <Button
                 variant="outline"
                 size="sm"
-                className="absolute top-0 right-0 text-[#00f2fe] text-xs py-1 px-2 h-auto border-[#00f2fe]/30 hover:bg-[#00f2fe]/5 hover:text-[#00f2fe]"
+                className="absolute top-0 right-0 text-primary text-xs py-1 px-2 h-auto border-primary/30 hover:bg-primary/5 hover:text-primary"
                 onClick={() => window.location.href = '/calendar'}
               >
                 <Calendar className="h-3 w-3 mr-1" /> Calendar
@@ -286,7 +286,7 @@ export default function MissionLogWidget({
     } else {
       // Timeline-style rendering (original)
       return (
-        <div className={`mission-log-box bg-[#0d131f] border border-[#00f2fe] rounded-xl p-6 ${className}`}>
+        <div className={`mission-log-box bg-[#0d131f] border border-primary rounded-xl p-6 ${className}`}>
           {!compact && (
             <div className="relative mb-6">
               <h2 className="text-xl font-orbitron text-[#dff9ff] flex items-center">
@@ -296,7 +296,7 @@ export default function MissionLogWidget({
               <Button
                 variant="outline"
                 size="sm"
-                className="absolute top-0 right-0 text-[#00f2fe] text-xs py-1 px-2 h-auto border-[#00f2fe]/30 hover:bg-[#00f2fe]/5 hover:text-[#00f2fe]"
+                className="absolute top-0 right-0 text-primary text-xs py-1 px-2 h-auto border-primary/30 hover:bg-primary/5 hover:text-primary"
                 onClick={() => window.location.href = '/calendar'}
               >
                 <Calendar className="h-3 w-3 mr-1" /> Calendar
@@ -317,7 +317,7 @@ export default function MissionLogWidget({
                   return (
                     <li 
                       key={event.id}
-                      className={`mission-block mb-7 transition-all duration-300 p-3 rounded-lg border border-[#00f2fe]/30 ${isCompleted ? 'opacity-50' : ''}`}
+                      className={`mission-block mb-7 transition-all duration-300 p-3 rounded-lg border border-primary/30 ${isCompleted ? 'opacity-50' : ''}`}
                     >
                       <div className="flex items-start">
                         <Checkbox
@@ -378,69 +378,86 @@ export default function MissionLogWidget({
       {renderMissionContent()}
       
       <Dialog open={infoDialogOpen} onOpenChange={setInfoDialogOpen}>
-        <DialogContent className="glassmorphic backdrop-blur-lg border-primary/30 max-w-md">
+        <DialogContent className="glassmorphic backdrop-blur-lg border-primary/50">
           <DialogHeader>
-            <DialogTitle className="font-orbitron">{selectedMission?.title}</DialogTitle>
-            <DialogDescription className="opacity-90">
-              {selectedMission?.category === "work" ? (
-                <span className="text-primary">Work Mission</span>
-              ) : selectedMission?.category === "personal" ? (
-                <span className="text-[#7e57c2]">Personal Mission</span>
-              ) : (
-                <span className="text-[#EC4899]">Health Mission</span>
-              )}
+            <DialogTitle className="font-orbitron text-xl">Mission Details</DialogTitle>
+            <DialogDescription className="text-[#7DAAB2] text-sm">
+              View detailed information about this mission
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="space-y-4 py-2">
-            <div className="flex items-center justify-between px-1">
-              <div className="flex items-center space-x-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-mono">{selectedMission?.startTime}</span>
+
+          {selectedMission && (
+            <div className="py-4">
+              <div className="flex flex-col space-y-4">
+                <div>
+                  <h3 className="font-orbitron text-lg">{selectedMission.title}</h3>
+                  <p className="text-[#7DAAB2] text-sm mt-1">
+                    {selectedMission.category === 'work' ? 'Work Mission' : 
+                     selectedMission.category === 'health' ? 'Health Mission' : 'Personal Mission'}
+                  </p>
+                </div>
+                
+                <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                  <p className="text-sm text-[#D6F4FF] leading-relaxed">
+                    {selectedMission.description || 'No additional description provided for this mission.'}
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 rounded-lg bg-card/50">
+                    <p className="text-xs text-[#7DAAB2] mb-1">SCHEDULED TIME</p>
+                    <div className="flex items-center">
+                      <Clock className="h-4 w-4 text-primary mr-2" />
+                      <p className="font-mono">{selectedMission.startTime}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 rounded-lg bg-card/50">
+                    <p className="text-xs text-[#7DAAB2] mb-1">DURATION</p>
+                    <div className="flex items-center">
+                      <span className="material-icons text-primary mr-2 text-sm">schedule</span>
+                      <p className="font-mono">{selectedMission.duration}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="p-3 rounded-lg bg-card/50">
+                  <p className="text-xs text-[#7DAAB2] mb-1">REWARDS & COSTS</p>
+                  <div className="flex space-x-4 mt-2">
+                    <div className="flex items-center text-red-400">
+                      <Zap className="h-4 w-4 mr-1" />
+                      <span>-5 Energy Points</span>
+                    </div>
+                    <div className="flex items-center text-primary">
+                      <Award className="h-4 w-4 mr-1" />
+                      <span>+15 Experience</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <span className="text-sm text-muted-foreground">Duration: {selectedMission?.duration}</span>
             </div>
-            
-            <div className="bg-primary/5 p-4 rounded-md">
-              <h4 className="text-sm font-semibold mb-2">Description</h4>
-              <p className="text-sm leading-relaxed">{selectedMission?.description || "Complete this mission to earn XP and progress through your daily goals."}</p>
-            </div>
-            
-            <div className="bg-primary/5 p-4 rounded-md">
-              <h4 className="text-sm font-semibold mb-2">Location</h4>
-              <p className="text-sm leading-relaxed">
-                {selectedMission?.category === "work" ? "Conference Room 3" : 
-                 selectedMission?.category === "personal" ? "Virtual" : "Gym"}
-              </p>
-            </div>
-            
-            <div className="flex justify-between bg-primary/5 p-4 rounded-md">
-              <div>
-                <h4 className="text-sm font-semibold mb-2">Energy Cost</h4>
-                <p className="text-sm leading-relaxed text-red-400 font-mono">-5 EP</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-semibold mb-2">XP Reward</h4>
-                <p className="text-sm leading-relaxed text-primary font-mono">+15 XP</p>
-              </div>
-            </div>
-          </div>
-          
-          <DialogFooter>
+          )}
+
+          <DialogFooter className="flex justify-between items-center">
             <Button
               variant="outline"
+              className="border-primary/30 text-primary hover:bg-primary/10 transition"
               onClick={() => setInfoDialogOpen(false)}
             >
               Close
             </Button>
-            <Button
-              className="bg-primary/20 hover:bg-primary/30 text-primary"
+            
+            <Button 
+              className="bg-primary/80 hover:bg-primary text-primary-foreground"
               onClick={() => {
-                setInfoDialogOpen(false);
-                // In the future, this would link to a full mission report page
+                if (selectedMission) {
+                  toggleMission(selectedMission.id);
+                  setInfoDialogOpen(false);
+                }
               }}
             >
-              View Full Report
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              {completedMissions[selectedMission?.id || ''] ? 'Mark Incomplete' : 'Complete Mission'}
             </Button>
           </DialogFooter>
         </DialogContent>
