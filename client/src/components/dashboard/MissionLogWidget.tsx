@@ -6,6 +6,7 @@ import { CalendarEvent } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import InfoIconButton from './InfoIconButton';
+import { DynamicColorButton } from '@/components/ui/dynamic-color-button';
 
 // Helper function to convert hex to rgba
 const hexToRgba = (hex: string, alpha: number = 1) => {
@@ -149,20 +150,15 @@ export default function MissionLogWidget({
       <p className="text-xs text-[#7DAAB2] mt-2">
         Create a new mission or visit the Calendar page
       </p>
-      <Button
+      <DynamicColorButton
         variant="outline"
         size="sm"
         className="mt-4"
-        style={{ 
-          color: `var(--primary-color)`,
-          borderColor: `var(--primary-border-subtle)`,
-          backgroundColor: 'transparent'
-        }}
         onClick={() => window.location.href = '/calendar'}
       >
         <Calendar className="h-4 w-4 mr-2" />
         Create Mission
-      </Button>
+      </DynamicColorButton>
     </div>
   );
   
@@ -174,20 +170,15 @@ export default function MissionLogWidget({
       <p className="text-xs text-[#7DAAB2] mt-2">
         Great job! Create new missions or check back later
       </p>
-      <Button
+      <DynamicColorButton
         variant="outline"
         size="sm"
         className="mt-4"
-        style={{ 
-          color: `var(--primary-color)`,
-          borderColor: `var(--primary-border-subtle)`,
-          backgroundColor: 'transparent'
-        }}
         onClick={() => window.location.href = '/calendar'}
       >
         <Calendar className="h-4 w-4 mr-2" />
         Create Mission
-      </Button>
+      </DynamicColorButton>
     </div>
   );
   
@@ -199,17 +190,17 @@ export default function MissionLogWidget({
   
   // Info Button Component
   const InfoButton = ({ event }: { event: CalendarEvent }) => (
-    <Button
+    <DynamicColorButton
       variant="outline"
       size="icon"
-      className="h-6 w-6 p-0 bg-primary/10 text-primary hover:bg-primary/20 transition rounded-full border border-primary"
+      className="h-6 w-6 p-0 rounded-full"
       onClick={(e) => {
         e.stopPropagation();
         openMissionInfo(event);
       }}
     >
       <Info className="h-3.5 w-3.5" />
-    </Button>
+    </DynamicColorButton>
   );
 
   // Render the appropriate mission log UI based on style
@@ -227,14 +218,14 @@ export default function MissionLogWidget({
                 <Calendar className="h-5 w-5 text-primary mr-2" />
                 <span>Mission Log</span>
               </h2>
-              <Button
+              <DynamicColorButton
                 variant="outline"
                 size="sm"
-                className="absolute top-0 right-0 text-primary text-xs py-1 px-2 h-auto border-primary/30 hover:bg-primary/5 hover:text-primary"
+                className="absolute top-0 right-0 text-xs py-1 px-2 h-auto"
                 onClick={() => window.location.href = '/calendar'}
               >
                 <Calendar className="h-3 w-3 mr-1" /> Calendar
-              </Button>
+              </DynamicColorButton>
             </div>
           )}
           
@@ -273,17 +264,17 @@ export default function MissionLogWidget({
                             <div className="flex items-center">
                               <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
                               <span className="text-primary text-xs font-mono mr-2">+15 XP</span>
-                              <Button
+                              <DynamicColorButton
                                 variant="ghost"
                                 size="icon"
-                                className="h-5 w-5 p-0 text-primary/50 hover:text-primary transition"
+                                className="h-5 w-5 p-0"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   openMissionInfo(event);
                                 }}
                               >
                                 <Info className="h-4 w-4" />
-                              </Button>
+                              </DynamicColorButton>
                             </div>
                           </div>
                           <p className={`text-xs text-[#7DAAB2] mt-0.5 ${isCompleted ? 'line-through' : ''}`}>
@@ -316,14 +307,14 @@ export default function MissionLogWidget({
                 <Calendar className="h-5 w-5 text-primary mr-2" />
                 <span>Mission Log</span>
               </h2>
-              <Button
+              <DynamicColorButton
                 variant="outline"
                 size="sm"
-                className="absolute top-0 right-0 text-primary text-xs py-1 px-2 h-auto border-primary/30 hover:bg-primary/5 hover:text-primary"
+                className="absolute top-0 right-0 text-xs py-1 px-2 h-auto"
                 onClick={() => window.location.href = '/calendar'}
               >
                 <Calendar className="h-3 w-3 mr-1" /> Calendar
-              </Button>
+              </DynamicColorButton>
             </div>
           )}
           
@@ -359,17 +350,17 @@ export default function MissionLogWidget({
                             <div className="flex items-center">
                               <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
                               <span className="text-primary text-xs font-mono mr-2">+15 XP</span>
-                              <Button
+                              <DynamicColorButton
                                 variant="ghost"
                                 size="icon"
-                                className="h-5 w-5 p-0 text-primary/50 hover:text-primary transition"
+                                className="h-5 w-5 p-0"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   openMissionInfo(event);
                                 }}
                               >
                                 <Info className="h-4 w-4" />
-                              </Button>
+                              </DynamicColorButton>
                             </div>
                           </div>
                           <div className={`text-sm ${isCompleted ? 'line-through' : ''} text-[#8aaac2]`}>
@@ -426,52 +417,46 @@ export default function MissionLogWidget({
                   </p>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 rounded-lg bg-card/50">
-                    <p className="text-xs text-[#7DAAB2] mb-1">SCHEDULED TIME</p>
-                    <div className="flex items-center">
-                      <Clock className="h-4 w-4 text-primary mr-2" />
-                      <p className="font-mono">{selectedMission.startTime}</p>
-                    </div>
+                <div className="flex flex-col space-y-2">
+                  <div className="flex items-center text-[#7DAAB2]">
+                    <Clock className="h-4 w-4 mr-2" />
+                    <span className="text-sm">
+                      {selectedMission.startTime} - {getEndTime(selectedMission.startTime, selectedMission.duration)} | {selectedMission.duration}
+                    </span>
                   </div>
                   
-                  <div className="p-3 rounded-lg bg-card/50">
-                    <p className="text-xs text-[#7DAAB2] mb-1">DURATION</p>
-                    <div className="flex items-center">
-                      <span className="material-icons text-primary mr-2 text-sm">schedule</span>
-                      <p className="font-mono">{selectedMission.duration}</p>
-                    </div>
+                  <div className="flex items-center text-[#7DAAB2]">
+                    <Calendar className="h-4 w-4 mr-2" />
+                    <span className="text-sm">Today</span>
                   </div>
                 </div>
                 
-                <div className="p-3 rounded-lg bg-card/50">
-                  <p className="text-xs text-[#7DAAB2] mb-1">REWARDS & COSTS</p>
-                  <div className="flex space-x-4 mt-2">
-                    <div className="flex items-center text-red-400">
-                      <Zap className="h-4 w-4 mr-1" />
-                      <span>-5 Energy Points</span>
-                    </div>
-                    <div className="flex items-center text-primary">
-                      <Award className="h-4 w-4 mr-1" />
-                      <span>+15 Experience</span>
-                    </div>
+                <div className="flex space-x-4 pt-2">
+                  <div className="flex items-center text-red-400">
+                    <Zap className="h-4 w-4 mr-1" />
+                    <span className="text-sm">-5 Energy Points</span>
+                  </div>
+                  <div className="flex items-center text-primary">
+                    <Award className="h-4 w-4 mr-1" />
+                    <span className="text-sm">+15 Experience</span>
                   </div>
                 </div>
               </div>
             </div>
           )}
-
-          <DialogFooter className="flex justify-between items-center">
-            <Button
+          
+          <DialogFooter>
+            <DynamicColorButton
               variant="outline"
-              className="border-primary/30 text-primary hover:bg-primary/10 transition"
+              size="sm"
               onClick={() => setInfoDialogOpen(false)}
             >
               Close
-            </Button>
+            </DynamicColorButton>
             
-            <Button 
-              className="bg-primary/80 hover:bg-primary text-primary-foreground"
+            <DynamicColorButton
+              size="sm"
+              className="ml-2"
               onClick={() => {
                 if (selectedMission) {
                   toggleMission(selectedMission.id);
@@ -480,8 +465,8 @@ export default function MissionLogWidget({
               }}
             >
               <CheckCircle2 className="h-4 w-4 mr-2" />
-              {completedMissions[selectedMission?.id || ''] ? 'Mark Incomplete' : 'Complete Mission'}
-            </Button>
+              {completedMissions[selectedMission?.id || ""] ? "Mark Incomplete" : "Mark Complete"}
+            </DynamicColorButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
