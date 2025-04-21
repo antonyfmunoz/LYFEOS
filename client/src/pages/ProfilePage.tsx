@@ -356,6 +356,69 @@ export default function ProfilePage() {
                 </div>
               </div>
               
+              {/* Notifications toggle */}
+              <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="material-icons text-primary text-sm">notifications</span>
+                  <Label className="text-sm text-foreground">Notifications</Label>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Enable or disable system notifications.
+                </p>
+                <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
+                  <div className="flex items-center">
+                    <span className="material-icons text-primary text-sm mr-2">notifications</span>
+                    <span className="text-sm">Notifications</span>
+                  </div>
+                  <button 
+                    onClick={async () => {
+                      if (!user?.id) return;
+                      
+                      const newValue = !stats.notificationsEnabled;
+                      
+                      try {
+                        // Make API call to update setting
+                        const response = await fetch(`/api/users/${user.id}/stats`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ notificationsEnabled: newValue }),
+                          credentials: "include"
+                        });
+                        
+                        if (!response.ok) throw new Error("Failed to update setting");
+                        
+                        const updatedStats = await response.json();
+                        updateUserStats(updatedStats.stats);
+                        
+                        toast({
+                          title: "Setting Updated",
+                          description: `Notifications have been ${newValue ? 'enabled' : 'disabled'}.`,
+                          duration: 2000,
+                        });
+                      } catch (error) {
+                        toast({
+                          title: "Error",
+                          description: "Failed to update notification settings.",
+                          variant: "destructive",
+                        });
+                        console.error("Error updating notification settings:", error);
+                      }
+                    }}
+                    className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
+                      stats.notificationsEnabled ? 'bg-primary/30' : 'bg-card'
+                    }`}
+                    aria-pressed={stats.notificationsEnabled}
+                    role="switch"
+                  >
+                    <div 
+                      className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
+                        stats.notificationsEnabled ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
+                      }`}
+                    ></div>
+                  </button>
+                </div>
+              </div>
+              
               {/* Primary Theme Color Selector */}
               <div className="p-4 border border-primary/10 rounded-lg bg-background/40">
                 <div className="flex items-center gap-2 mb-2">

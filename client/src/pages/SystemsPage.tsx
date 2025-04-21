@@ -186,47 +186,15 @@ export default function SystemsPage() {
           icon={<Settings className="h-5 w-5 text-primary" />}
           defaultOpen={true}
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
-              <div className="flex items-center">
-                <span className="material-icons text-primary text-sm mr-2">notifications</span>
-                <span className="text-sm">Notifications</span>
-              </div>
-              <button 
-                onClick={() => toggleSetting('notifications')} 
-                className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
-                  settings.notifications ? 'bg-primary/30' : 'bg-card'
-                }`}
-                aria-pressed={settings.notifications}
-                role="switch"
-              >
-                <div 
-                  className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
-                    settings.notifications ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
-                  }`}
-                ></div>
-              </button>
-            </div>
-            
-            <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
-              <div className="flex items-center">
-                <span className="material-icons text-primary text-sm mr-2">dark_mode</span>
-                <span className="text-sm">Dark Theme</span>
-              </div>
-              <button 
-                onClick={() => toggleSetting('darkTheme')} 
-                className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
-                  settings.darkTheme ? 'bg-primary/30' : 'bg-card'
-                }`}
-                aria-pressed={settings.darkTheme}
-                role="switch"
-              >
-                <div 
-                  className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
-                    settings.darkTheme ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
-                  }`}
-                ></div>
-              </button>
+          <div className="grid grid-cols-1 gap-4">
+            <p className="text-sm text-muted-foreground">
+              System settings like UI theme and notifications can be managed in your profile.
+            </p>
+            <div className="flex justify-start items-center">
+              <Link to="/profile" className="px-4 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium rounded-md transition-colors duration-200 flex items-center">
+                <Settings className="h-3.5 w-3.5 mr-1.5" />
+                Go to Profile Settings
+              </Link>
             </div>
           </div>
         </CollapsibleWidget>
