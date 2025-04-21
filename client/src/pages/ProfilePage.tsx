@@ -46,7 +46,6 @@ interface UserProfile {
   username: string;
   displayName?: string;
   bio?: string;
-  avatarColor?: string;
   title?: string;
   profilePicture?: string;
 }
