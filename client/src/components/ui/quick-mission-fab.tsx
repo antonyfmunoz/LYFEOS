@@ -235,18 +235,17 @@ export function QuickMissionFAB() {
                 </div>
                 
                 {/* Submit button */}
-                <Button
+                <DynamicColorButton 
                   type="submit"
-                  variant="outline"
-                  className="w-full bg-background hover:bg-background/90"
+                  className="w-full"
                   style={{
-                    borderColor: "var(--primary-border)",
-                    color: "var(--primary)"
+                    backgroundColor: "var(--primary-bg-subtle)",
+                    borderColor: "var(--primary-border-subtle)"
                   }}
                 >
                   <Check className="h-4 w-4 mr-2" />
                   Create Mission
-                </Button>
+                </DynamicColorButton>
               </form>
             </motion.div>
           )}
