@@ -99,7 +99,7 @@ export default function ChronilogPage() {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-orbitron">Mission Logs</h2>
           <button 
-            className="text-xs font-medium px-3 py-1 rounded-md bg-[#36F1CD]/10 text-[#36F1CD] hover:bg-opacity-20 transition"
+            className="text-xs font-medium px-3 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition"
             onClick={() => {
               // Create a new blank mission page
               const title = `New Mission Log ${new Date().toLocaleDateString()}`;
@@ -130,12 +130,12 @@ export default function ChronilogPage() {
             missionPages.map((page) => (
               <div 
                 key={page.id} 
-                className="glassmorphic rounded-xl p-4 border border-slate-700/50 hover:border-cyan-500/50 cursor-pointer transition-all"
+                className="glassmorphic rounded-xl p-4 border border-slate-700/50 hover:border-primary/50 cursor-pointer transition-all"
                 onClick={() => navigate(`/mission-page/${page.slug}`)}
               >
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center">
-                    <FileText className="h-4 w-4 mr-2 text-[#36F1CD]" />
+                    <FileText className="h-4 w-4 mr-2 text-primary" />
                     <h3 className="font-medium">{page.title}</h3>
                   </div>
                   <div className="flex items-center">
@@ -164,10 +164,10 @@ export default function ChronilogPage() {
               </div>
             ))
           ) : (
-            <div className="text-center py-8 bg-card/30 rounded-lg border border-[#36F1CD]/20">
+            <div className="text-center py-8 bg-card/30 rounded-lg border border-primary/20">
               <p className="text-[#7DAAB2] mb-3">No mission logs found.</p>
               <button 
-                className="text-xs font-medium px-3 py-1 rounded-md bg-[#36F1CD]/10 text-[#36F1CD] hover:bg-opacity-20 transition"
+                className="text-xs font-medium px-3 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition"
                 onClick={() => {
                   // Create a new blank mission page
                   const title = `New Mission Log ${new Date().toLocaleDateString()}`;
