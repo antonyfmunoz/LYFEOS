@@ -105,7 +105,7 @@ export function QuickMissionFAB() {
               initial={{ opacity: 0, scale: 0.8, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.8, y: 20 }}
-              className="absolute bottom-16 right-0 bg-black/80 backdrop-blur-lg border border-primary/40 rounded-lg shadow-xl w-[320px] overflow-hidden"
+              className="absolute bottom-16 right-0 bg-background/80 backdrop-blur-lg border border-primary/40 rounded-lg shadow-xl w-[320px] overflow-hidden"
               style={{
                 boxShadow: "0 0 20px var(--primary-glow-low), 0 0 10px var(--primary-glow-low)"
               }}
@@ -137,7 +137,7 @@ export function QuickMissionFAB() {
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Enter mission title"
-                    className="bg-slate-700/30 border-primary/30 focus-visible:ring-primary/30"
+                    className="bg-card/30 border-primary/30 focus-visible:ring-primary/30"
                   />
                 </div>
                 
@@ -148,7 +148,7 @@ export function QuickMissionFAB() {
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Describe your mission..."
-                    className="bg-slate-700/30 border-primary/30 focus-visible:ring-primary/30 resize-none h-[80px]"
+                    className="bg-card/30 border-primary/30 focus-visible:ring-primary/30 resize-none h-[80px]"
                   />
                 </div>
                 
@@ -159,7 +159,7 @@ export function QuickMissionFAB() {
                     type="time"
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
-                    className="bg-slate-700/30 border-primary/30 focus-visible:ring-primary/30 font-mono"
+                    className="bg-card/30 border-primary/30 focus-visible:ring-primary/30 font-mono"
                   />
                 </div>
                 
@@ -194,7 +194,7 @@ export function QuickMissionFAB() {
                         value={customDuration}
                         onChange={(e) => setCustomDuration(e.target.value)}
                         placeholder="e.g. 25 mins"
-                        className="bg-slate-700/30 border-primary/30 focus-visible:ring-primary/30 w-28"
+                        className="bg-card/30 border-primary/30 focus-visible:ring-primary/30 w-28"
                       />
                     )}
                   </div>
@@ -210,7 +210,7 @@ export function QuickMissionFAB() {
                     <Button
                       type="button"
                       size="sm"
-                      className={`flex-1 border ${category === "work" ? getCategoryColor("work") : "bg-slate-700/30"}`}
+                      className={`flex-1 border ${category === "work" ? getCategoryColor("work") : "bg-card/30"}`}
                       onClick={() => setCategory("work")}
                     >
                       Work
@@ -218,7 +218,7 @@ export function QuickMissionFAB() {
                     <Button
                       type="button"
                       size="sm"
-                      className={`flex-1 border ${category === "personal" ? getCategoryColor("personal") : "bg-slate-700/30"}`}
+                      className={`flex-1 border ${category === "personal" ? getCategoryColor("personal") : "bg-card/30"}`}
                       onClick={() => setCategory("personal")}
                     >
                       Personal
@@ -226,7 +226,7 @@ export function QuickMissionFAB() {
                     <Button
                       type="button"
                       size="sm"
-                      className={`flex-1 border ${category === "health" ? getCategoryColor("health") : "bg-slate-700/30"}`}
+                      className={`flex-1 border ${category === "health" ? getCategoryColor("health") : "bg-card/30"}`}
                       onClick={() => setCategory("health")}
                     >
                       Health
