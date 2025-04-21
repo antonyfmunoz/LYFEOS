@@ -150,7 +150,7 @@ export default function MissionLogWidget({
       <p className="text-xs text-[#7DAAB2] mt-2">
         Create a new mission or visit the Calendar page
       </p>
-      <DynamicColorButton
+      <Button
         variant="outline"
         size="sm"
         className="mt-4"
