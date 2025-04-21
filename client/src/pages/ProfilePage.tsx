@@ -27,24 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-const AVATAR_COLORS = [
-  "#22d3ee", // cyan (default)
-  "#06b6d4", // darker cyan
-  "#0ea5e9", // sky blue
-  "#3b82f6", // blue
-  "#6366f1", // indigo
-  "#8b5cf6", // violet
-  "#a855f7", // purple
-  "#ec4899", // pink
-  "#f43f5e", // rose
-  "#ef4444", // red
-  "#f97316", // orange
-  "#f59e0b", // amber
-  "#84cc16", // lime
-  "#22c55e", // green
-  "#10b981", // emerald
-  "#14b8a6", // teal
-];
+
 
 // Chakra colors for stats (used for theme colors)
 const STAT_COLORS = [
@@ -84,7 +67,6 @@ export default function ProfilePage() {
     username: username,
     displayName: "",
     bio: "",
-    avatarColor: "#22d3ee",
     title: "",
     profilePicture: "",
   });
@@ -144,12 +126,7 @@ export default function ProfilePage() {
     }));
   };
 
-  const handleColorChange = (color: string) => {
-    setProfileData(prev => ({
-      ...prev,
-      avatarColor: color
-    }));
-  };
+
   
   // Function to handle theme color changes
   const handlePrimaryColorChange = (color: string) => {
@@ -193,7 +170,6 @@ export default function ProfilePage() {
     updateProfileMutation.mutate({
       displayName: profileData.displayName,
       bio: profileData.bio,
-      avatarColor: profileData.avatarColor,
       title: profileData.title,
       profilePicture: profileData.profilePicture,
     });
@@ -304,8 +280,7 @@ export default function ProfilePage() {
               <div 
                 className="w-24 h-24 rounded-full border-2 border-primary/50 relative overflow-hidden mb-6"
                 style={{ 
-                  boxShadow: "0 0 15px rgba(34, 211, 238, 0.2)",
-                  borderColor: `${profileData.avatarColor || "#22d3ee"}50`,
+                  boxShadow: "0 0 15px var(--primary-glow-light)"
                 }}
               >
                 {profileData.profilePicture ? (
@@ -316,8 +291,7 @@ export default function ProfilePage() {
                   />
                 ) : (
                   <div 
-                    className="w-full h-full flex items-center justify-center"
-                    style={{ backgroundColor: profileData.avatarColor || "#22d3ee" }}
+                    className="w-full h-full flex items-center justify-center bg-primary"
                   >
                     <span className="material-icons text-background text-4xl">person</span>
                   </div>
@@ -343,28 +317,7 @@ export default function ProfilePage() {
                 )}
               </div>
               
-              {/* Avatar Color Picker (only in edit mode) */}
-              {isEditing && (
-                <div className="mb-6 p-4 border border-primary/10 rounded-lg bg-background/40">
-                  <Label className="text-sm text-foreground mb-2 block">Avatar Color</Label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {AVATAR_COLORS.map((color) => (
-                      <button
-                        key={color}
-                        type="button"
-                        className={`w-7 h-7 rounded-full transition-all ${
-                          profileData.avatarColor === color 
-                            ? 'ring-2 ring-offset-2 ring-offset-background ring-primary' 
-                            : 'ring-1 ring-primary/20'
-                        }`}
-                        style={{ backgroundColor: color }}
-                        onClick={() => handleColorChange(color)}
-                        aria-label={`Select color ${color}`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
+
               
               {/* Dark Theme toggle */}
               <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
