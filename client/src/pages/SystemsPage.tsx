@@ -225,20 +225,20 @@ export default function SystemsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
               <div className="flex items-center">
-                <span className="material-icons text-[#36F1CD] text-sm mr-2">notifications</span>
+                <span className="material-icons text-primary text-sm mr-2">notifications</span>
                 <span className="text-sm">Notifications</span>
               </div>
               <button 
                 onClick={() => toggleSetting('notifications')} 
                 className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
-                  settings.notifications ? 'bg-[#36F1CD]/30' : 'bg-card'
+                  settings.notifications ? 'bg-primary/30' : 'bg-card'
                 }`}
                 aria-pressed={settings.notifications}
                 role="switch"
               >
                 <div 
                   className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
-                    settings.notifications ? 'left-5 bg-[#36F1CD] shadow-glow-cyan' : 'left-0.5 bg-muted-foreground'
+                    settings.notifications ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
                   }`}
                 ></div>
               </button>
@@ -246,20 +246,20 @@ export default function SystemsPage() {
             
             <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
               <div className="flex items-center">
-                <span className="material-icons text-[#36F1CD] text-sm mr-2">dark_mode</span>
+                <span className="material-icons text-primary text-sm mr-2">dark_mode</span>
                 <span className="text-sm">Dark Theme</span>
               </div>
               <button 
                 onClick={() => toggleSetting('darkTheme')} 
                 className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
-                  settings.darkTheme ? 'bg-[#36F1CD]/30' : 'bg-card'
+                  settings.darkTheme ? 'bg-primary/30' : 'bg-card'
                 }`}
                 aria-pressed={settings.darkTheme}
                 role="switch"
               >
                 <div 
                   className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
-                    settings.darkTheme ? 'left-5 bg-[#36F1CD] shadow-glow-cyan' : 'left-0.5 bg-muted-foreground'
+                    settings.darkTheme ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
                   }`}
                 ></div>
               </button>
@@ -319,14 +319,28 @@ export default function SystemsPage() {
                 Theme colors are synced across all devices.
               </p>
               <div className="flex flex-wrap gap-2">
-                <span className="px-2 py-1 rounded-md bg-[#00e0ff]/10 border border-[#00e0ff]/30 text-[#00e0ff]">Cyan</span>
-                <span className="px-2 py-1 rounded-md bg-[#f56565]/10 border border-[#f56565]/30 text-[#f56565]">Red</span>
-                <span className="px-2 py-1 rounded-md bg-[#ed8936]/10 border border-[#ed8936]/30 text-[#ed8936]">Orange</span>
-                <span className="px-2 py-1 rounded-md bg-[#ecc94b]/10 border border-[#ecc94b]/30 text-[#ecc94b]">Yellow</span>
-                <span className="px-2 py-1 rounded-md bg-[#48bb78]/10 border border-[#48bb78]/30 text-[#48bb78]">Green</span>
-                <span className="px-2 py-1 rounded-md bg-[#4299e1]/10 border border-[#4299e1]/30 text-[#4299e1]">Blue</span>
-                <span className="px-2 py-1 rounded-md bg-[#667eea]/10 border border-[#667eea]/30 text-[#667eea]">Indigo</span>
-                <span className="px-2 py-1 rounded-md bg-[#9f7aea]/10 border border-[#9f7aea]/30 text-[#9f7aea]">Purple</span>
+                {[
+                  { color: "#00e0ff", name: "Cyan" },
+                  { color: "#f56565", name: "Red" },
+                  { color: "#ed8936", name: "Orange" },
+                  { color: "#ecc94b", name: "Yellow" },
+                  { color: "#48bb78", name: "Green" },
+                  { color: "#4299e1", name: "Blue" },
+                  { color: "#667eea", name: "Indigo" },
+                  { color: "#9f7aea", name: "Purple" }
+                ].map(({ color, name }) => (
+                  <span 
+                    key={color}
+                    className="px-2 py-1 rounded-md border"
+                    style={{ 
+                      backgroundColor: `${color}1a`, // 10% opacity
+                      borderColor: `${color}4d`, // 30% opacity
+                      color: color
+                    }}
+                  >
+                    {name}
+                  </span>
+                ))}
               </div>
             </div>
           </div>
