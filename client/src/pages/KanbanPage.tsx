@@ -443,7 +443,7 @@ export default function KanbanPage() {
   return (
     <>
       <div className="mb-6">
-        <h1 className="text-2xl font-orbitron mb-1">Kanban Board</h1>
+        <h1 className="text-2xl font-orbitron mb-1">Boards</h1>
         <p className="text-[#7DAAB2]">Visualize and manage your workflow</p>
       </div>
       

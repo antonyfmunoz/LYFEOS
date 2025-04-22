@@ -64,7 +64,7 @@ export function KanbanWidget() {
         <div className="flex justify-between items-center">
           <CardTitle className="text-sm font-medium flex items-center">
             <Clipboard className="h-4 w-4 mr-2 text-primary" />
-            Kanban Board
+            Boards
           </CardTitle>
           <Button 
             variant="ghost" 
@@ -72,7 +72,7 @@ export function KanbanWidget() {
             className="h-7 text-xs bg-primary/10 hover:bg-primary/20 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
             onClick={() => setLocation("/kanban")}
           >
-            View Board
+            View Boards
           </Button>
         </div>
       </CardHeader>
