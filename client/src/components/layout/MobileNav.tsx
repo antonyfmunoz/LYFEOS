@@ -11,7 +11,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
     { id: "quests", icon: "track_changes", label: "Missions" },
     { id: "ai", icon: "smart_toy", label: "AI Assistant" },
     { id: "chronilog", icon: "book", label: "Chronilog" },
-    { id: "profile", icon: "person", label: "Profile" },
+    { id: "systems", icon: "settings", label: "Systems" },
   ];
   
   const indicatorRef = useRef<HTMLDivElement>(null);
