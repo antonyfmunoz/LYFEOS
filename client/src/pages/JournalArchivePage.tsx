@@ -122,6 +122,13 @@ export default function JournalArchivePage() {
         </Button>
       </div>
       
+      <div className="mb-6">
+        <Link href="/chronilog" className="text-primary flex items-center hover:underline">
+          <ChevronRight className="h-4 w-4 mr-1" />
+          Back to Chronilog
+        </Link>
+      </div>
+      
       {journalFolders.length > 0 ? (
         <div className="space-y-4">
           {journalFolders.map((folder) => (
@@ -208,12 +215,7 @@ export default function JournalArchivePage() {
         </div>
       )}
       
-      <div className="mt-8">
-        <Link href="/chronilog" className="text-primary flex items-center hover:underline">
-          <ChevronRight className="h-4 w-4 mr-1" />
-          Back to Chronilog
-        </Link>
-      </div>
+
     </>
   );
 }
