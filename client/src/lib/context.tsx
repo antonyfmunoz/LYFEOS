@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { UserStats, Quest, AIMessage, CalendarEvent, MissionPage, ChatSession } from "./types";
+import { UserStats, Quest, AIMessage, CalendarEvent, MissionPage, ChatSession, KanbanTask } from "./types";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "./authContext";
 import { apiRequest } from "./queryClient";
@@ -83,6 +83,40 @@ const initialEvents: CalendarEvent[] = [];
 // Initial mission pages
 const initialMissionPages: MissionPage[] = [];
 
+// Initial kanban tasks
+const initialKanbanTasks: KanbanTask[] = [
+  {
+    id: "task1",
+    title: "Research competitors",
+    description: "Analyze top 3 competitors in the market",
+    status: "backlog",
+    priority: "high",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tags: ["research", "strategy"]
+  },
+  {
+    id: "task2",
+    title: "Draft content outline",
+    description: "Create content structure for the project",
+    status: "inProgress",
+    priority: "medium",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tags: ["content", "planning"]
+  },
+  {
+    id: "task3",
+    title: "UI Component refinement",
+    description: "Improve existing UI components",
+    status: "review",
+    priority: "medium",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tags: ["design", "frontend"]
+  }
+];
+
 // Create context types
 interface LYFEOSContextType {
   stats: UserStats;
@@ -91,6 +125,7 @@ interface LYFEOSContextType {
   events: CalendarEvent[];
   missionPages: MissionPage[];
   chatSessions: ChatSession[];
+  kanbanTasks: KanbanTask[];
   activeChatSessionId: string;
   toggleQuestCompletion: (id: string) => void;
   sendMessage: (content: string) => void;
@@ -113,6 +148,10 @@ interface LYFEOSContextType {
   updateChatSessionTitle: (id: string, title: string) => void;
   updateUserStats: (stats: UserStats) => void;
   setPrimaryColor: (color: string) => void;
+  createKanbanTask: (task: Omit<KanbanTask, "id" | "createdAt" | "updatedAt">) => KanbanTask;
+  updateKanbanTask: (id: string, taskData: Partial<KanbanTask>) => void;
+  deleteKanbanTask: (id: string) => void;
+  moveKanbanTask: (id: string, newStatus: KanbanStatus) => void;
 }
 
 // Create the context
@@ -136,6 +175,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<AIMessage[]>(initialMessages);
   const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
   const [missionPages, setMissionPages] = useState<MissionPage[]>(initialMissionPages);
+  const [kanbanTasks, setKanbanTasks] = useState<KanbanTask[]>(initialKanbanTasks);
   const [username, setUsername] = useState<string>("Alex Chen");
   const [aiCompanionName, setAICompanionNameState] = useState<string>("Lyfe");
   const [chatSessions, setChatSessions] = useState<ChatSession[]>(initialChatSessions);

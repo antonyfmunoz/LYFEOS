@@ -79,3 +79,16 @@ export interface MissionPage {
 }
 
 export type StatType = "attention" | "time" | "energy" | "health" | "experience" | "streak" | "efficiency";
+
+export type KanbanStatus = "backlog" | "inProgress" | "review" | "done";
+
+export interface KanbanTask {
+  id: string;
+  title: string;
+  description: string;
+  status: KanbanStatus;
+  priority: "low" | "medium" | "high";
+  createdAt: string;
+  updatedAt: string;
+  tags: string[];
+}
