@@ -4,7 +4,8 @@ import {
   quests, type Quest, type InsertQuest,
   aiMessages, type AIMessage, type InsertAIMessage,
   calendarEvents, type CalendarEvent, type InsertCalendarEvent,
-  missionPages, type MissionPage, type InsertMissionPage
+  missionPages, type MissionPage, type InsertMissionPage,
+  contacts, type Contact, type InsertContact
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";

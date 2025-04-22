@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -91,6 +91,25 @@ export const missionPages = pgTable("mission_pages", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Contacts table
+export const contacts = pgTable("contacts", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  email: text("email"),
+  phone: text("phone"),
+  company: text("company"),
+  jobTitle: text("job_title"),
+  category: text("category").notNull().default("personal"),
+  notes: text("notes"),
+  favorite: boolean("favorite").notNull().default(false),
+  lastContacted: timestamp("last_contacted", { mode: "date" }),
+  birthday: date("birthday"),
+  address: text("address"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relationships
 export const usersRelations = relations(users, ({ one, many }) => ({
   stats: one(userStats, {
@@ -101,6 +120,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   messages: many(aiMessages),
   events: many(calendarEvents),
   missionPages: many(missionPages),
+  contacts: many(contacts),
 }));
 
 export const userStatsRelations = relations(userStats, ({ one }) => ({
@@ -140,6 +160,13 @@ export const missionPagesRelations = relations(missionPages, ({ one }) => ({
   event: one(calendarEvents, {
     fields: [missionPages.eventId],
     references: [calendarEvents.id],
+  }),
+}));
+
+export const contactsRelations = relations(contacts, ({ one }) => ({
+  user: one(users, {
+    fields: [contacts.userId],
+    references: [users.id],
   }),
 }));
 
@@ -212,6 +239,21 @@ export const insertMissionPageSchema = createInsertSchema(missionPages).pick({
   eventId: true,
 });
 
+export const insertContactSchema = createInsertSchema(contacts).pick({
+  userId: true,
+  name: true,
+  email: true,
+  phone: true,
+  company: true,
+  jobTitle: true,
+  category: true,
+  notes: true,
+  favorite: true,
+  lastContacted: true,
+  birthday: true,
+  address: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -230,3 +272,6 @@ export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
 
 export type MissionPage = typeof missionPages.$inferSelect;
 export type InsertMissionPage = z.infer<typeof insertMissionPageSchema>;
+
+export type Contact = typeof contacts.$inferSelect;
+export type InsertContact = z.infer<typeof insertContactSchema>;
