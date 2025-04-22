@@ -332,6 +332,7 @@ export function MarkdownEditor({
             value={value}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
+            className="w-full h-full min-h-[inherit] p-3 bg-background text-foreground resize-none outline-none border-none rounded-md placeholder:text-muted-foreground focus:ring-1 focus:ring-primary/50"
             onClick={(e) => {
               if (autoBullets) {
                 // Ensure clicks don't place cursor before bullet points
@@ -448,8 +449,6 @@ export function MarkdownEditor({
                 }
               }
             }}
-            placeholder={placeholder}
-            className="p-3 w-full h-full focus:outline-none focus:ring-0 dark:bg-[#00141A] light:bg-white dark:text-[#D6F4FF] light:text-slate-700 resize-y placeholder-[#7DAAB2]/50 border-0 rounded-md"
             style={{ minHeight }}
           />
           <div className="absolute top-2 right-2 flex space-x-1">

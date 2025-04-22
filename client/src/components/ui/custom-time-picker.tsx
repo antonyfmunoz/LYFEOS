@@ -186,7 +186,7 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
           onChange={handleInputChange}
           onBlur={handleBlur}
           onClick={() => setIsOpen(true)}
-          className="pr-10 font-mono"
+          className="pr-10 font-mono bg-background text-foreground border-primary/30 focus:border-primary/50 placeholder:text-muted-foreground"
           placeholder="HH:MM AM"
         />
         <Button
@@ -201,7 +201,7 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
       </div>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-background shadow-md">
+        <div className="absolute z-50 mt-1 w-full rounded-md border border-primary/30 bg-background shadow-md glassmorphic">
           <div className="p-3">
             <div className="flex justify-between items-center mb-2">
               <div className="text-xs font-medium">Hours</div>
@@ -215,7 +215,7 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
                   variant="ghost"
                   size="icon"
                   onClick={incrementHours}
-                  className="h-8 w-8"
+                  className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
                 >
                   <ChevronUp className="h-4 w-4" />
                 </Button>
@@ -227,7 +227,7 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
                   variant="ghost"
                   size="icon"
                   onClick={decrementHours}
-                  className="h-8 w-8"
+                  className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
                 >
                   <ChevronDown className="h-4 w-4" />
                 </Button>
@@ -240,7 +240,7 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
                   variant="ghost"
                   size="icon"
                   onClick={incrementMinutes}
-                  className="h-8 w-8"
+                  className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
                 >
                   <ChevronUp className="h-4 w-4" />
                 </Button>
@@ -249,7 +249,7 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
                   variant="ghost"
                   size="icon"
                   onClick={decrementMinutes}
-                  className="h-8 w-8"
+                  className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
                 >
                   <ChevronDown className="h-4 w-4" />
                 </Button>
@@ -260,7 +260,7 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
                   variant="ghost"
                   size="icon"
                   onClick={toggleAmPm}
-                  className="h-8 w-8"
+                  className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
                 >
                   <ChevronUp className="h-4 w-4" />
                 </Button>
