@@ -169,15 +169,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                       <span className="material-icons text-primary text-sm mr-2">person</span>
                       Profile
                     </Link>
-                    <Link 
-                      href="/systems"
-                      onClick={closeDropdown}
-                      className="flex w-full items-center px-4 py-2 text-sm hover:bg-primary/10 rounded-md transition"
-                      role="menuitem"
-                    >
-                      <span className="material-icons text-primary text-sm mr-2">settings</span>
-                      Settings
-                    </Link>
+
                     <Link
                       href="/dashboard"
                       onClick={closeDropdown} 
