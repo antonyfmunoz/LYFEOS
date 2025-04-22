@@ -66,10 +66,10 @@ export default function SystemsPage() {
         </CollapsibleWidget>
       </section>
       
-      {/* Kanban Board Module */}
+      {/* Boards Module */}
       <section className="mb-6">
         <CollapsibleWidget 
-          title="Kanban Board" 
+          title="Boards" 
           icon={<Clipboard className="h-5 w-5 text-primary" />}
           defaultOpen={true}
         >
