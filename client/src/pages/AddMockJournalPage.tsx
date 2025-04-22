@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { usePageTitle } from "@/hooks/use-page-title";
 
 export default function AddMockJournalPage() {
-  usePageTitle("Add Mock Journal");
+  usePageTitle("Screenshot Journal");
   const { createMissionPage } = useLYFEOS();
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -24,56 +24,16 @@ export default function AddMockJournalPage() {
     // Create unique slug
     const slug = `journal-mock-${Date.now()}`;
     
-    // Create content for the journal entry
-    let content = `# Daily Reflection - ${formattedDate}\n\n`;
-    
-    // Add state metrics
-    content += `## Daily State\n`;
-    content += `- Mental State: 8/10\n`;
-    content += `- Physical State: 7/10\n`;
-    content += `- Emotional State: 8/10\n`;
-    content += `- Wake Time: 06:30\n`;
-    content += `- Sleep Time: 22:30\n\n`;
-    
-    // Add gratitude section
-    content += `## Gratitude\n`;
-    content += `Today I'm grateful for:\n\n`;
-    content += `1. The beautiful weather that allowed me to take a walk in the park\n`;
-    content += `2. The good conversation I had with an old friend\n`;
-    content += `3. Making progress on my personal projects\n\n`;
-    
-    // Add tomorrow's goals
-    content += `## Tomorrow's Goals\n`;
-    content += `1. Complete the presentation for the meeting\n`;
-    content += `2. Go for a morning run\n`;
-    content += `3. Read at least 30 pages of my current book\n\n`;
-    
-    // Add annual goals
-    content += `## Annual Goals\n`;
-    content += `1. Improve my programming skills, especially with React\n`;
-    content += `2. Travel to at least two new places\n`;
-    content += `3. Establish a consistent exercise routine\n\n`;
-    
-    // Add thoughts
-    content += `## Thoughts & Reflections\n`;
-    content += `Today was productive overall. I made good progress on the LYFEOS project and learned some new techniques for React development. I noticed I was most focused during the morning hours, so I should try to schedule more important tasks during that time.\n\n`;
-    
-    // Add content consumed
-    content += `## Content Consumed\n`;
-    content += `- Finished Chapter 5 of "Atomic Habits"\n`;
-    content += `- Watched a tutorial on advanced React hooks\n`;
-    content += `- Listened to a podcast about productivity systems\n\n`;
-    
-    // Add research
-    content += `## Research & Discoveries\n`;
-    content += `I discovered a useful new npm library for handling forms in React. It seems to have good documentation and active maintenance. I should try implementing it in my next project.\n\n`;
-    
-    // Add to-do ideas
-    content += `## To-Do Ideas\n`;
-    content += `- Look into the new form library\n`;
-    content += `- Update my personal website\n`;
-    content += `- Schedule a dentist appointment\n`;
-    content += `- Compare pricing for the new equipment\n\n`;
+    // Create content as a simple screenshot-like journal entry
+    let content = `# Journal - ${formattedDate}\n\n`;
+    content += `![Screenshot 2025-04-21 191426](attached_assets/Screenshot%202025-04-21%20191426.png)\n\n`;
+    content += `## Notes\n\n`;
+    content += `Today I captured this screenshot of my daily progress. Key points of the day:\n\n`;
+    content += `- Completed all main tasks for the LYFEOS project\n`;
+    content += `- Added three new features to the dashboard\n`;
+    content += `- Resolved the bullet point formatting issues in the markdown editor\n`;
+    content += `- Started planning for the next phase of development\n\n`;
+    content += `Overall mood: Productive and focused (8/10)\n\n`;
     
     try {
       // Create the mission page with the journal entry
@@ -86,12 +46,12 @@ export default function AddMockJournalPage() {
         updatedAt: new Date().toISOString(),
         completed: false,
         xpValue: 20,
-        tags: ['Journal', 'Daily Reflection']
+        tags: ['Journal', 'Screenshot', 'Daily Reflection']
       });
       
       toast({
-        title: "Mock Journal Entry Created",
-        description: `A mock journal entry for ${formattedDate} has been created.`,
+        title: "Screenshot Journal Entry Created",
+        description: `A screenshot journal entry for ${formattedDate} has been created.`,
         variant: "default",
         className: "bg-background/80 border border-primary text-foreground",
         duration: 5000,
@@ -103,7 +63,7 @@ export default function AddMockJournalPage() {
       console.error("Failed to create mock journal entry:", error);
       toast({
         title: "Error",
-        description: "Failed to create mock journal entry.",
+        description: "Failed to create screenshot journal entry.",
         variant: "destructive",
         duration: 5000,
       });
@@ -113,12 +73,12 @@ export default function AddMockJournalPage() {
   return (
     <div className="container mx-auto py-8 flex flex-col items-center">
       <div className="max-w-2xl w-full">
-        <h1 className="text-3xl font-bold mb-6 text-center">Add Mock Journal Entry</h1>
+        <h1 className="text-3xl font-bold mb-6 text-center">Screenshot Journal Creator</h1>
         
         <div className="bg-card/30 rounded-lg border border-primary/20 p-6 mb-8">
           <p className="mb-4 text-[#7DAAB2]">
-            This page allows you to add a mock journal entry to test the journal archiving functionality.
-            Click the button below to create a sample journal entry with pre-filled content.
+            This page creates journal entries that automatically include a screenshot of your dashboard progress.
+            Each entry will be saved with today's date and include the latest dashboard screenshot.
           </p>
           
           <div className="flex justify-center">
@@ -126,7 +86,7 @@ export default function AddMockJournalPage() {
               onClick={addMockJournalEntry}
               className="bg-primary/10 hover:bg-primary/20 text-primary border border-primary/50"
             >
-              Create Mock Journal Entry
+              Create Screenshot Journal
             </Button>
           </div>
         </div>
@@ -134,16 +94,21 @@ export default function AddMockJournalPage() {
         <div className="bg-card/30 rounded-lg border border-primary/20 p-6">
           <h2 className="text-xl font-semibold mb-3">What's included in the mock entry?</h2>
           <ul className="space-y-2 text-[#7DAAB2]">
-            <li>• Daily state metrics (mental, physical, emotional)</li>
-            <li>• Sleep tracking (wake time and sleep time)</li>
-            <li>• Gratitude list</li>
-            <li>• Tomorrow's goals</li>
-            <li>• Annual goals</li>
-            <li>• Thoughts and reflections</li>
-            <li>• Content consumed</li>
-            <li>• Research notes</li>
-            <li>• To-do ideas</li>
+            <li>• Screenshot of your dashboard</li>
+            <li>• Brief notes about the day</li>
+            <li>• Key accomplishments</li>
+            <li>• Overall mood rating</li>
+            <li>• Automatically dated timestamp</li>
           </ul>
+          
+          <div className="mt-6 pt-3 border-t border-slate-700/30">
+            <h3 className="text-sm font-medium mb-2">Preview:</h3>
+            <div className="p-3 rounded-md border border-slate-700/30 bg-card/20">
+              <p className="text-sm text-[#7DAAB2] mb-1">Screenshot embedded at top of entry</p>
+              <p className="text-sm text-[#7DAAB2] mb-1">Brief bullet points summarizing the day</p>
+              <p className="text-sm text-[#7DAAB2]">Overall mood rating included</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
