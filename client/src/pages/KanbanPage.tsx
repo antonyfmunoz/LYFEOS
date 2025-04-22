@@ -208,8 +208,8 @@ function KanbanColumn({
           variant="ghost"
           className="w-full h-10 border border-dashed border-slate-700/30 text-muted-foreground text-sm hover:border-primary/50 hover:text-primary"
           onClick={() => {
-            // Open add task dialog with this column preselected
-            // We'll implement this feature later
+            setNewTaskStatus(status);
+            setIsNewTaskDialogOpen(true);
           }}
         >
           <Plus className="h-3.5 w-3.5 mr-2" />
@@ -438,12 +438,6 @@ export default function KanbanPage() {
         </div>
         
         <Dialog open={isNewTaskDialogOpen} onOpenChange={setIsNewTaskDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary/10 hover:bg-primary/20 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
-              <Plus className="h-4 w-4 mr-1" />
-              Add Task
-            </Button>
-          </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Create New Task</DialogTitle>
