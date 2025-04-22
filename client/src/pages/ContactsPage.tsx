@@ -230,14 +230,14 @@ export function ContactsPage() {
           </Badge>
           <Badge 
             variant={selectedCategory === "work" ? "default" : "outline"} 
-            className="cursor-pointer border-blue-500/50 hover:border-blue-500"
+            className="cursor-pointer"
             onClick={() => setSelectedCategory("work")}
           >
             Work ({getCategoryCount("work")})
           </Badge>
           <Badge 
             variant={selectedCategory === "personal" ? "default" : "outline"} 
-            className="cursor-pointer border-purple-500/50 hover:border-purple-500"
+            className="cursor-pointer"
             onClick={() => setSelectedCategory("personal")}
           >
             Personal ({getCategoryCount("personal")})
