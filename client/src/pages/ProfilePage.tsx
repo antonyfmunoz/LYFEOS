@@ -135,7 +135,9 @@ export default function ProfilePage() {
     toast({
       title: "Theme Color Updated",
       description: "Your UI theme color has been changed",
-      className: "bg-[#001E26] border border-[#36F1CD] text-white",
+      variant: "default",
+      className: "bg-background/80 border border-primary text-foreground",
+      duration: 3000,
     });
   };
 
