@@ -1,7 +1,8 @@
 import { CollapsibleWidget } from "@/components/ui/collapsible-widget";
-import { Calendar, Clipboard } from "lucide-react";
+import { Calendar, Clipboard, Contact2 } from "lucide-react";
 import { Link } from "wouter";
 import { KanbanWidget } from "@/components/ui/kanban-widget";
+import { RolodexWidget } from "@/components/ui/rolodex-widget";
 
 export default function SystemsPage() {
   return (
@@ -74,6 +75,17 @@ export default function SystemsPage() {
           defaultOpen={true}
         >
           <KanbanWidget />
+        </CollapsibleWidget>
+      </section>
+      
+      {/* Rolodex Module */}
+      <section className="mb-6">
+        <CollapsibleWidget 
+          title="Rolodex" 
+          icon={<Contact2 className="h-5 w-5 text-primary" />}
+          defaultOpen={true}
+        >
+          <RolodexWidget />
         </CollapsibleWidget>
       </section>
     </>
