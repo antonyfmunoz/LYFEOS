@@ -6,7 +6,7 @@ import { Calendar, Clock, Award, Zap, Info } from "lucide-react";
 import { CalendarEvent } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
-import { DynamicColorButton } from "@/components/ui/dynamic-color-button";
+
 
 interface EnhancedMissionWidgetProps {
   events: CalendarEvent[];
@@ -101,19 +101,15 @@ export default function EnhancedMissionWidget({
       <p className="text-xs text-[#7DAAB2] mt-2">
         Create a new mission or visit the Calendar page
       </p>
-      <DynamicColorButton
+      <Button
+        variant="outline" 
         size="sm"
         className="mt-4"
-        style={{
-          backgroundColor: "var(--primary-color)",
-          border: "none",
-          color: "#222"
-        }}
         onClick={() => window.location.href = '/calendar'}
       >
         <Calendar className="h-4 w-4 mr-2" />
         New Mission
-      </DynamicColorButton>
+      </Button>
     </div>
   );
   
@@ -125,19 +121,15 @@ export default function EnhancedMissionWidget({
       <p className="text-xs text-[#7DAAB2] mt-2">
         Great job! Create new missions or check back later
       </p>
-      <DynamicColorButton
+      <Button
+        variant="outline" 
         size="sm"
         className="mt-4"
-        style={{
-          backgroundColor: "var(--primary-color)",
-          border: "none",
-          color: "#222"
-        }}
         onClick={() => window.location.href = '/calendar'}
       >
         <Calendar className="h-4 w-4 mr-2" />
         New Mission
-      </DynamicColorButton>
+      </Button>
     </div>
   );
   
@@ -180,18 +172,14 @@ export default function EnhancedMissionWidget({
             <Calendar className="h-5 w-5 text-primary mr-2" />
             <span>Mission Log</span>
           </h2>
-          <DynamicColorButton
+          <Button
+            variant="outline"
             size="sm"
             className="absolute top-0 right-0 text-xs py-1 px-2 h-auto"
-            style={{
-              backgroundColor: "var(--primary-color)",
-              border: "none",
-              color: "#222"
-            }}
             onClick={() => window.location.href = '/calendar'}
           >
             <Calendar className="h-3 w-3 mr-1" /> Calendar
-          </DynamicColorButton>
+          </Button>
         </div>
       )}
       
