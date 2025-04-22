@@ -19,7 +19,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
   const hpPercentage = (stats.healthPoints.current / stats.healthPoints.max) * 100;
   
   // Calculate percentages for efficiency and streak
-  const efficiencyPercentage = stats.efficiencyScore;
+  const efficiencyPercentage = stats.efficiencyScore; // Already stored as a percentage (0-100)
   const streakPercentage = Math.min(100, (stats.streakDays / 30) * 100); // Assume 30 days is max
   
   return (
