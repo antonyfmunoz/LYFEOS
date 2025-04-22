@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Clipboard, Plus, Trash2, PenLine, MoveRight, Search } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { KanbanTask, KanbanStatus } from "@/lib/types";
+import { toast } from "@/hooks/use-toast";
 
 const priorityColors = {
   low: "bg-gray-500",
@@ -98,13 +99,55 @@ interface KanbanColumnProps {
   onEditTask: (task: KanbanTask) => void;
   onDeleteTask: (id: string) => void;
   onMoveTask: (id: string, currentStatus: KanbanStatus) => void;
+  onEditTitle: (status: KanbanStatus, newTitle: string) => void;
 }
 
-function KanbanColumn({ title, status, tasks, onEditTask, onDeleteTask, onMoveTask }: KanbanColumnProps) {
+function KanbanColumn({ title, status, tasks, onEditTask, onDeleteTask, onMoveTask, onEditTitle }: KanbanColumnProps) {
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [columnTitle, setColumnTitle] = useState(title);
+  
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setColumnTitle(e.target.value);
+  };
+  
+  const handleTitleBlur = () => {
+    if (columnTitle.trim() !== "") {
+      onEditTitle(status, columnTitle);
+    } else {
+      setColumnTitle(title);
+    }
+    setIsEditingTitle(false);
+  };
+  
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleTitleBlur();
+    } else if (e.key === "Escape") {
+      setColumnTitle(title);
+      setIsEditingTitle(false);
+    }
+  };
+  
   return (
     <div className="min-w-[280px] max-w-[320px]">
       <div className="flex justify-between items-center mb-2">
-        <h2 className="text-lg font-medium">{title} <span className="text-sm text-muted-foreground">({tasks.length})</span></h2>
+        {isEditingTitle ? (
+          <input
+            className="text-lg font-medium bg-background border-b border-primary/50 outline-none focus:border-primary w-full px-1"
+            value={columnTitle}
+            onChange={handleTitleChange}
+            onBlur={handleTitleBlur}
+            onKeyDown={handleKeyDown}
+            autoFocus
+          />
+        ) : (
+          <h2 
+            className="text-lg font-medium cursor-pointer hover:text-primary transition-colors"
+            onClick={() => setIsEditingTitle(true)}
+          >
+            {title} <span className="text-sm text-muted-foreground">({tasks.length})</span>
+          </h2>
+        )}
       </div>
       
       <div className="min-h-[70vh] p-3 rounded-lg bg-card/30">
@@ -133,6 +176,14 @@ export default function KanbanPage() {
   const [editingTask, setEditingTask] = useState<KanbanTask | null>(null);
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
   const [isEditTaskDialogOpen, setIsEditTaskDialogOpen] = useState(false);
+  
+  // Board column titles state
+  const [columnTitles, setColumnTitles] = useState({
+    backlog: "Backlog",
+    inProgress: "In Progress",
+    review: "Review",
+    done: "Done"
+  });
   
   // New task form state
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -201,6 +252,22 @@ export default function KanbanPage() {
       ...task
     });
     setIsEditTaskDialogOpen(true);
+  };
+
+  const handleEditColumnTitle = (status: KanbanStatus, newTitle: string) => {
+    setColumnTitles(prev => ({
+      ...prev,
+      [status]: newTitle
+    }));
+    
+    // Show toast notification
+    toast({
+      title: "Column Updated",
+      description: `Column title has been updated to "${newTitle}"`,
+      variant: "default",
+      className: "bg-background/80 border border-primary text-foreground",
+      duration: 3000,
+    });
   };
 
   return (
@@ -391,36 +458,40 @@ export default function KanbanPage() {
       <div className="overflow-x-auto pb-4">
         <div className="flex gap-4 min-w-max">
           <KanbanColumn
-            title="Backlog"
+            title={columnTitles.backlog}
             status="backlog"
             tasks={getTasksByStatus("backlog")}
             onEditTask={openEditDialog}
             onDeleteTask={deleteKanbanTask}
             onMoveTask={handleMoveTask}
+            onEditTitle={handleEditColumnTitle}
           />
           <KanbanColumn
-            title="In Progress"
+            title={columnTitles.inProgress}
             status="inProgress"
             tasks={getTasksByStatus("inProgress")}
             onEditTask={openEditDialog}
             onDeleteTask={deleteKanbanTask}
             onMoveTask={handleMoveTask}
+            onEditTitle={handleEditColumnTitle}
           />
           <KanbanColumn
-            title="Review"
+            title={columnTitles.review}
             status="review"
             tasks={getTasksByStatus("review")}
             onEditTask={openEditDialog}
             onDeleteTask={deleteKanbanTask}
             onMoveTask={handleMoveTask}
+            onEditTitle={handleEditColumnTitle}
           />
           <KanbanColumn
-            title="Done"
+            title={columnTitles.done}
             status="done"
             tasks={getTasksByStatus("done")}
             onEditTask={openEditDialog}
             onDeleteTask={deleteKanbanTask}
             onMoveTask={handleMoveTask}
+            onEditTitle={handleEditColumnTitle}
           />
         </div>
       </div>
