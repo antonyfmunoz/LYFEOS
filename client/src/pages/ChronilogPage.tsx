@@ -59,7 +59,7 @@ export default function ChronilogPage() {
         {chronilogCategories.map((category) => (
           <div 
             key={category.id}
-            className="glassmorphic rounded-xl p-6 neon-border hover:shadow-[0_0_10px_rgba(0,224,255,0.5)] transition-shadow duration-300 cursor-pointer"
+            className="glassmorphic rounded-xl p-6 neon-border hover:shadow-[0_0_10px_var(--primary-glow-medium)] hover:border-primary/60 transition-all duration-300 cursor-pointer"
             onClick={() => {
               // Handle category click based on category.id
               if (category.id === "journal") {

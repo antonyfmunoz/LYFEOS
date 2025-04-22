@@ -127,7 +127,7 @@ export default function MissionArchivePage() {
         </div>
         <Button 
           onClick={createNewMissionLog}
-          className="flex items-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/50"
+          className="flex items-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
         >
           <FilePlus2 className="w-4 h-4" />
           <span>New Mission</span>
@@ -170,7 +170,7 @@ export default function MissionArchivePage() {
                       .map((entry) => (
                         <div 
                           key={entry.id}
-                          className="p-3 rounded-lg bg-card/30 hover:bg-card/50 transition-colors border border-slate-700/30 cursor-pointer"
+                          className="p-3 rounded-lg bg-card/30 hover:bg-card/50 transition-all border border-slate-700/30 hover:border-primary/30 hover:shadow-[0_0_5px_var(--primary-glow-light)] cursor-pointer"
                           onClick={() => navigate(`/mission-page/${entry.slug}`)}
                         >
                           <div className="flex justify-between items-center mb-2">
@@ -222,7 +222,7 @@ export default function MissionArchivePage() {
           </p>
           <Button 
             onClick={createNewMissionLog}
-            className="bg-primary/10 hover:bg-primary/20 text-primary border border-primary/50"
+            className="bg-primary/10 hover:bg-primary/20 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
           >
             Create Your First Mission
           </Button>
