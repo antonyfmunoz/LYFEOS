@@ -272,52 +272,53 @@ export default function ProfilePage() {
 
         <div className="bg-background border border-primary/20 backdrop-blur-md rounded-lg p-6 shadow-lg"
              style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
-          <div className="flex flex-col md:flex-row gap-6 items-start">
-            {/* Left Column: Profile image & Theme Customization */}
-            <div className="md:w-64">
-              {/* Profile Image */}
-              <div 
-                className="w-24 h-24 rounded-full border-2 border-primary/50 relative overflow-hidden mb-6"
-                style={{ 
-                  boxShadow: "0 0 15px var(--primary-glow-light)"
-                }}
-              >
-                {profileData.profilePicture ? (
-                  <img 
-                    src={profileData.profilePicture} 
-                    alt="Profile" 
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div 
-                    className="w-full h-full flex items-center justify-center bg-primary"
-                  >
-                    <span className="material-icons text-background text-4xl">person</span>
+          
+          {/* Profile Image - Centered at the top */}
+          <div className="flex justify-center mb-6">
+            <div 
+              className="w-24 h-24 rounded-full border-2 border-primary/50 relative overflow-hidden"
+              style={{ 
+                boxShadow: "0 0 15px var(--primary-glow-light)"
+              }}
+            >
+              {profileData.profilePicture ? (
+                <img 
+                  src={profileData.profilePicture} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div 
+                  className="w-full h-full flex items-center justify-center bg-primary"
+                >
+                  <span className="material-icons text-background text-4xl">person</span>
+                </div>
+              )}
+              
+              {isEditing && (
+                <label 
+                  htmlFor="profile-picture-upload" 
+                  className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer"
+                >
+                  <div className="flex flex-col items-center text-white">
+                    <Camera className="h-6 w-6 mb-1" />
+                    <span className="text-xs">Change</span>
                   </div>
-                )}
-                
-                {isEditing && (
-                  <label 
-                    htmlFor="profile-picture-upload" 
-                    className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer"
-                  >
-                    <div className="flex flex-col items-center text-white">
-                      <Camera className="h-6 w-6 mb-1" />
-                      <span className="text-xs">Change</span>
-                    </div>
-                    <input
-                      type="file"
-                      id="profile-picture-upload"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                  </label>
-                )}
-              </div>
-              
-
-              
+                  <input
+                    type="file"
+                    id="profile-picture-upload"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </label>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex flex-col md:flex-row gap-6">
+            {/* Left Column: Theme Settings */}
+            <div className="md:w-64">
               {/* Dark Theme toggle */}
               <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
                 <div className="flex items-center gap-2 mb-2">
