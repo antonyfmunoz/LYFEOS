@@ -194,7 +194,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-base">
-                100<span className="text-[#7DAAB2] text-xs">%</span>
+                {Math.round(atPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
               </span>
               <span className="text-xs text-[#7DAAB2] self-end">focus</span>
             </div>
@@ -276,7 +276,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-base">
-                100<span className="text-[#7DAAB2] text-xs">%</span>
+                {Math.round(epPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
               </span>
               <span className="text-xs text-[#7DAAB2] self-end">capacity</span>
             </div>
@@ -317,7 +317,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-base">
-                100<span className="text-[#7DAAB2] text-xs">%</span>
+                {Math.round(hpPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
               </span>
               <span className="text-xs text-[#7DAAB2] self-end">wellness</span>
             </div>

@@ -172,7 +172,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           </div>
           <div className="flex justify-between">
             <span className="text-[#D6F4FF] font-mono text-xs">
-              100<span className="text-[#7DAAB2] text-xs">%</span>
+              {Math.round(atPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
             </span>
           </div>
         </div>
@@ -246,7 +246,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           </div>
           <div className="flex justify-between">
             <span className="text-[#D6F4FF] font-mono text-xs">
-              100<span className="text-[#7DAAB2] text-xs">%</span>
+              {Math.round(epPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
             </span>
           </div>
         </div>
@@ -283,7 +283,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           </div>
           <div className="flex justify-between">
             <span className="text-[#D6F4FF] font-mono text-xs">
-              100<span className="text-[#7DAAB2] text-xs">%</span>
+              {Math.round(hpPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
             </span>
           </div>
         </div>
