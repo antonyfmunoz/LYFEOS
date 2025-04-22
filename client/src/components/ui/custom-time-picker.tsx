@@ -276,7 +276,7 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
               </div>
             </div>
             
-            <div className="flex justify-between mt-4">
+            <div className="flex justify-center mt-4">
               <Button
                 variant="outline"
                 size="sm"
@@ -285,45 +285,6 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
               >
                 Close
               </Button>
-              
-              <div className="space-x-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setHours(9);
-                    setMinutes(0);
-                    setAmPm('AM');
-                  }}
-                  className="text-xs"
-                >
-                  9:00 AM
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setHours(12);
-                    setMinutes(0);
-                    setAmPm('PM');
-                  }}
-                  className="text-xs"
-                >
-                  12:00 PM
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setHours(3);
-                    setMinutes(0);
-                    setAmPm('PM');
-                  }}
-                  className="text-xs"
-                >
-                  3:00 PM
-                </Button>
-              </div>
             </div>
           </div>
         </div>
