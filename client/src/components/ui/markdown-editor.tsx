@@ -193,9 +193,9 @@ export function MarkdownEditor({
             value={value}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
-            className="w-full h-full min-h-[inherit] p-3 bg-transparent text-foreground resize-none outline-none border-none rounded-md placeholder:text-muted-foreground font-mono"
+            className="w-full h-full min-h-[200px] p-3 bg-transparent text-foreground resize-none outline-none border-none rounded-md placeholder:text-muted-foreground font-mono"
             placeholder={placeholder}
-            style={{ minHeight }}
+            style={{ minHeight: "200px" }}
           />
           <div className="absolute top-2 right-2 flex space-x-1">
             <button
@@ -208,8 +208,8 @@ export function MarkdownEditor({
           </div>
         </div>
       ) : (
-        <div className="relative rounded-md border border-primary/30 bg-background">
-          <div className="p-3 cursor-default" onDoubleClick={handleDoubleClick}>
+        <div className="relative rounded-md border border-primary/30 bg-background" style={{ minHeight: "200px" }}>
+          <div className="p-3 cursor-default min-h-[200px]" onDoubleClick={handleDoubleClick}>
             {value ? (
               <ObsidianMarkdown className="dark:text-[#D6F4FF] light:text-slate-700">
                 {value}

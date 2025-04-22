@@ -375,13 +375,13 @@ export default function MarkdownEditor({
               onChange={handleContentChange}
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
-              className="w-full h-[500px] p-4 bg-transparent resize-vertical text-sm border-none outline-none font-mono"
+              className="w-full h-[600px] p-4 bg-transparent resize-vertical text-sm border-none outline-none font-mono"
               disabled={readOnly}
             />
           ) : (
             <div 
               className="markdown-preview p-4 prose prose-invert prose-sm max-w-none overflow-auto"
-              style={{ maxHeight: '500px' }}
+              style={{ height: '600px' }}
               onClick={handleMarkdownClick}
             >
               <ReactMarkdown
