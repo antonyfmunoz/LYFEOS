@@ -193,7 +193,7 @@ export function MarkdownEditor({
             value={value}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
-            className="w-full h-full min-h-[100px] p-3 bg-transparent text-foreground resize-none outline-none border-none rounded-md placeholder:text-muted-foreground font-mono"
+            className="w-full h-full min-h-[100px] p-3 bg-transparent resize-none outline-none border-none rounded-md placeholder:text-muted-foreground dark:text-[#D6F4FF] light:text-slate-700 text-base"
             placeholder={placeholder}
             style={{ minHeight }}
           />
