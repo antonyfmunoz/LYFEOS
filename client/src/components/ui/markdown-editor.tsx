@@ -181,19 +181,19 @@ export function MarkdownEditor({
     <div 
       ref={wrapperRef}
       className={cn(
-        "relative rounded-md border border-primary/30 min-h-[100px] group",
+        "relative min-h-[100px] group",
         className
       )}
       style={{ minHeight }}
     >
       {isEditing ? (
-        <>
+        <div className="relative rounded-md border border-primary/30 bg-background">
           <textarea
             ref={textareaRef}
             value={value}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
-            className="w-full h-full min-h-[inherit] p-3 bg-background text-foreground resize-none outline-none border-none rounded-md placeholder:text-muted-foreground font-mono"
+            className="w-full h-full min-h-[inherit] p-3 bg-transparent text-foreground resize-none outline-none border-none rounded-md placeholder:text-muted-foreground font-mono"
             placeholder={placeholder}
             style={{ minHeight }}
           />
@@ -206,23 +206,25 @@ export function MarkdownEditor({
               <Save size={14} />
             </button>
           </div>
-        </>
+        </div>
       ) : (
-        <div className="p-3 cursor-default" onDoubleClick={handleDoubleClick}>
-          {value ? (
-            <ObsidianMarkdown className="dark:text-[#D6F4FF] light:text-slate-700">
-              {value}
-            </ObsidianMarkdown>
-          ) : (
-            <div className="dark:text-[#7DAAB2]/50 light:text-slate-400/80">{placeholder}</div>
-          )}
-          <button 
-            onClick={handleEditClick}
-            className="absolute top-2 right-2 p-1 bg-primary/10 rounded hover:bg-primary/20 text-primary opacity-0 group-hover:opacity-100 transition-opacity"
-            title="Edit (Double-click text)"
-          >
-            <Edit2 size={14} />
-          </button>
+        <div className="relative rounded-md border border-primary/30 bg-background">
+          <div className="p-3 cursor-default" onDoubleClick={handleDoubleClick}>
+            {value ? (
+              <ObsidianMarkdown className="dark:text-[#D6F4FF] light:text-slate-700">
+                {value}
+              </ObsidianMarkdown>
+            ) : (
+              <div className="dark:text-[#7DAAB2]/50 light:text-slate-400/80">{placeholder}</div>
+            )}
+            <button 
+              onClick={handleEditClick}
+              className="absolute top-2 right-2 p-1 bg-primary/10 rounded hover:bg-primary/20 text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+              title="Edit (Double-click text)"
+            >
+              <Edit2 size={14} />
+            </button>
+          </div>
         </div>
       )}
       
