@@ -396,21 +396,19 @@ export function ContactDetailPage() {
                     name="category"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Category</FormLabel>
+                        <FormLabel>Contact Type</FormLabel>
                         <Select 
                           onValueChange={field.onChange} 
-                          defaultValue={field.value}
+                          defaultValue={field.value || "personal"}
                         >
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a category" />
+                            <SelectTrigger className="border-2">
+                              <SelectValue placeholder="Personal or Work?" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="personal">Personal</SelectItem>
                             <SelectItem value="work">Work</SelectItem>
-                            <SelectItem value="family">Family</SelectItem>
-                            <SelectItem value="friend">Friend</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
