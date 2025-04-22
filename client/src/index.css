@@ -32,6 +32,13 @@
     --border: var(--primary-hsl, 188 100% 50%) / 0.2 !important;
     --input: var(--primary-hsl, 188 100% 50%) / 0.2 !important;
     --ring: var(--primary-hsl, 188 100% 50%) / 0.5 !important;
+    
+    /* Glow variables that derive from primary color */
+    --primary-glow-light: hsla(var(--primary-hsl, 188 100% 50%), 0.3) !important;
+    --primary-glow-medium: hsla(var(--primary-hsl, 188 100% 50%), 0.5) !important;
+    --primary-glow-strong: hsla(var(--primary-hsl, 188 100% 50%), 0.7) !important;
+    --primary-shadow: hsla(var(--primary-hsl, 188 100% 50%), 0.3) !important;
+    --primary-border-subtle: hsla(var(--primary-hsl, 188 100% 50%), 0.1) !important;
   }
   
   /* Light Theme */
@@ -67,6 +74,13 @@
     /* Custom color variables for light theme */
     --text-subtle: 210 15% 35% !important;
     --cyan-glow: var(--primary-hsl, 188 100% 35%) !important;
+    
+    /* Glow variables that derive from primary color */
+    --primary-glow-light: hsla(var(--primary-hsl, 188 95% 40%), 0.3) !important;
+    --primary-glow-medium: hsla(var(--primary-hsl, 188 95% 40%), 0.5) !important;
+    --primary-glow-strong: hsla(var(--primary-hsl, 188 95% 40%), 0.7) !important;
+    --primary-shadow: hsla(var(--primary-hsl, 188 95% 40%), 0.3) !important;
+    --primary-border-subtle: hsla(var(--primary-hsl, 188 95% 40%), 0.1) !important;
   }
   
   /* Default to dark theme */
@@ -177,6 +191,16 @@
   
   .neon-glow:hover, .neon-glow:focus {
     box-shadow: 0 0 10px var(--primary-glow-strong, rgba(0, 224, 255, 0.7)), 0 0 20px var(--primary-glow-medium, rgba(0, 224, 255, 0.5));
+  }
+  
+  /* Dashboard widget hover effects */
+  .dashboard-widget-hover {
+    @apply transition-all duration-300 border border-primary/30;
+  }
+
+  .dashboard-widget-hover:hover {
+    @apply border-primary/60;
+    box-shadow: 0 0 8px var(--primary-glow-light, rgba(0, 224, 255, 0.3));
   }
 
   /* Progress bar styling for stats */
