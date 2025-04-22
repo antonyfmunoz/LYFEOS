@@ -11,6 +11,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
     { id: "quests", icon: "track_changes", label: "Missions" },
     { id: "ai", icon: "smart_toy", label: "AI Assistant" },
     { id: "chronilog", icon: "book", label: "Chronilog" },
+    { id: "systems", icon: "settings", label: "Systems" },
   ];
   
   const indicatorRef = useRef<HTMLDivElement>(null);
@@ -28,7 +29,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
     <div className="lg:hidden border-t border-primary border-opacity-20 glassmorphic relative">
       <div 
         ref={indicatorRef}
-        className="absolute bottom-0 left-0 h-0.5 w-1/4 bg-primary shadow-[0_0_10px_var(--primary-shadow)] transition-transform duration-300"
+        className="absolute bottom-0 left-0 h-0.5 w-1/5 bg-primary shadow-[0_0_10px_var(--primary-shadow)] transition-transform duration-300"
       ></div>
       
       <div className="flex justify-around">

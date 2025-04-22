@@ -29,6 +29,7 @@ export default function Sidebar({ currentPage, username }: SidebarProps) {
     { id: "quests", icon: "track_changes", label: "Missions" },
     { id: "ai", icon: "smart_toy", label: "AI Assistant" },
     { id: "chronilog", icon: "book", label: "Chronilog" },
+    { id: "systems", icon: "settings", label: "Systems" },
   ];
 
   return (
