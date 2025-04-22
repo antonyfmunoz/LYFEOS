@@ -66,29 +66,17 @@ export default function ChronilogPage() {
                 // Navigate to journal archive
                 navigate('/journal-archive');
               } else if (category.id === "missions") {
-                // Scroll to the mission logs section
-                document.getElementById('mission-logs-section')?.scrollIntoView({
-                  behavior: 'smooth'
-                });
-              } else {
-                // Create a new entry for other categories
-                const title = `${category.title} Entry - ${new Date().toLocaleDateString()}`;
-                const slug = title.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-');
-                
-                // Create the page
-                const newPage = useLYFEOS().createMissionPage({
-                  title,
-                  slug,
-                  content: `# ${title}\n\nStart documenting your ${category.title.toLowerCase()} here...`,
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                  completed: false,
-                  xpValue: 10,
-                  tags: [category.title]
-                });
-                
-                // Navigate to the new page
-                navigate(`/mission-page/${slug}`);
+                // Navigate to mission archive
+                navigate('/mission-archive');
+              } else if (category.id === "rituals") {
+                // Navigate to rituals archive
+                navigate('/rituals-archive');
+              } else if (category.id === "knowledge") {
+                // Navigate to knowledge archive
+                navigate('/knowledge-archive');
+              } else if (category.id === "goals") {
+                // Navigate to goals archive
+                navigate('/goals-archive');
               }
             }}
           >
@@ -126,25 +114,13 @@ export default function ChronilogPage() {
                   if (category.id === "journal") {
                     navigate('/journal-archive');
                   } else if (category.id === "missions") {
-                    document.getElementById('mission-logs-section')?.scrollIntoView({
-                      behavior: 'smooth'
-                    });
-                  } else {
-                    const title = `${category.title} Entry - ${new Date().toLocaleDateString()}`;
-                    const slug = title.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-');
-                    
-                    const newPage = useLYFEOS().createMissionPage({
-                      title,
-                      slug,
-                      content: `# ${title}\n\nStart documenting your ${category.title.toLowerCase()} here...`,
-                      createdAt: new Date().toISOString(),
-                      updatedAt: new Date().toISOString(),
-                      completed: false,
-                      xpValue: 10,
-                      tags: [category.title]
-                    });
-                    
-                    navigate(`/mission-page/${slug}`);
+                    navigate('/mission-archive');
+                  } else if (category.id === "rituals") {
+                    navigate('/rituals-archive');
+                  } else if (category.id === "knowledge") {
+                    navigate('/knowledge-archive');
+                  } else if (category.id === "goals") {
+                    navigate('/goals-archive');
                   }
                 }}
               >

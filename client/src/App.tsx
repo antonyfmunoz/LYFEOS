@@ -28,6 +28,10 @@ import RootLayout from "./components/layout/RootLayout";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import JournalArchivePage from "./pages/JournalArchivePage";
+import MissionArchivePage from "./pages/MissionArchivePage";
+import RitualsArchivePage from "./pages/RitualsArchivePage";
+import KnowledgeArchivePage from "./pages/KnowledgeArchivePage";
+import GoalsArchivePage from "./pages/GoalsArchivePage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -218,11 +222,43 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
-      {/* Journal Archive Page */}
+      {/* Archive Pages */}
       <Route path="/journal-archive">
         <ProtectedRoute>
           <RootLayout>
             <JournalArchivePage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/mission-archive">
+        <ProtectedRoute>
+          <RootLayout>
+            <MissionArchivePage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/rituals-archive">
+        <ProtectedRoute>
+          <RootLayout>
+            <RitualsArchivePage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/knowledge-archive">
+        <ProtectedRoute>
+          <RootLayout>
+            <KnowledgeArchivePage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/goals-archive">
+        <ProtectedRoute>
+          <RootLayout>
+            <GoalsArchivePage />
           </RootLayout>
         </ProtectedRoute>
       </Route>
