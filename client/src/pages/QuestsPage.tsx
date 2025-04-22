@@ -22,7 +22,7 @@ export default function QuestsPage() {
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-orbitron">Active Missions</h2>
-          <div className="text-xs bg-primary bg-opacity-20 text-primary px-2 py-1 rounded-md">
+          <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
             {activeQuests.length} ACTIVE
           </div>
         </div>
@@ -48,7 +48,7 @@ export default function QuestsPage() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-orbitron">Completed</h2>
-            <div className="text-xs bg-[#36F1CD] bg-opacity-20 text-[#36F1CD] px-2 py-1 rounded-md">
+            <div className="text-xs bg-transparent border border-[#36F1CD]/30 text-[#36F1CD] px-2 py-1 rounded-md">
               {completedQuests.length} COMPLETED
             </div>
           </div>
