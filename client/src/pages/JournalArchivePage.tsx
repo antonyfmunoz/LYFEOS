@@ -108,6 +108,13 @@ export default function JournalArchivePage() {
 
   return (
     <>
+      <div className="mb-4">
+        <Link href="/chronilog" className="text-primary flex items-center hover:underline">
+          <ChevronRight className="h-4 w-4 mr-1" />
+          Back to Chronilog
+        </Link>
+      </div>
+      
       <div className="mb-6 flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-orbitron mb-1">Journal Archive</h1>
@@ -120,13 +127,6 @@ export default function JournalArchivePage() {
           <FilePlus2 className="w-4 h-4" />
           <span>New Entry</span>
         </Button>
-      </div>
-      
-      <div className="mb-6">
-        <Link href="/chronilog" className="text-primary flex items-center hover:underline">
-          <ChevronRight className="h-4 w-4 mr-1" />
-          Back to Chronilog
-        </Link>
       </div>
       
       {journalFolders.length > 0 ? (
