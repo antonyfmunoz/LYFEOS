@@ -102,6 +102,7 @@ interface KanbanColumnProps {
   onMoveTask: (id: string, currentStatus: KanbanStatus) => void;
   onEditTitle: (columnId: string, newTitle: string) => void;
   onDeleteColumn: (columnId: string) => void;
+  onAddTask: (status: KanbanStatus) => void;
 }
 
 function KanbanColumn({ 
@@ -113,7 +114,8 @@ function KanbanColumn({
   onDeleteTask, 
   onMoveTask, 
   onEditTitle,
-  onDeleteColumn
+  onDeleteColumn,
+  onAddTask
 }: KanbanColumnProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [columnTitle, setColumnTitle] = useState(title);
@@ -207,10 +209,7 @@ function KanbanColumn({
         <Button
           variant="ghost"
           className="w-full h-10 border border-dashed border-slate-700/30 text-muted-foreground text-sm hover:border-primary/50 hover:text-primary"
-          onClick={() => {
-            setNewTaskStatus(status);
-            setIsNewTaskDialogOpen(true);
-          }}
+          onClick={() => onAddTask(status)}
         >
           <Plus className="h-3.5 w-3.5 mr-2" />
           Add Task
@@ -418,6 +417,12 @@ export default function KanbanPage() {
       duration: 3000,
     });
   };
+  
+  // Handle adding a task for a specific column
+  const handleAddTask = (status: KanbanStatus) => {
+    setNewTaskStatus(status);
+    setIsNewTaskDialogOpen(true);
+  };
 
   return (
     <>
@@ -427,14 +432,48 @@ export default function KanbanPage() {
       </div>
       
       <div className="flex justify-between items-center mb-4">
-        <div className="relative max-w-xs">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search tasks..."
-            className="pl-9 w-[250px] border border-slate-700/30"
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-          />
+        <div className="flex items-center gap-4">
+          <div className="relative max-w-xs">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search tasks..."
+              className="pl-9 w-[250px] border border-slate-700/30"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
+          
+          <Dialog open={isNewColumnDialogOpen} onOpenChange={setIsNewColumnDialogOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                className="bg-primary/10 hover:bg-primary/20 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add Column
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Column</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="column-title">Column Title</Label>
+                  <Input
+                    id="column-title"
+                    value={newColumnTitle}
+                    onChange={e => setNewColumnTitle(e.target.value)}
+                    placeholder="Enter column title"
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsNewColumnDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleCreateColumn}>Create Column</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
         
         <Dialog open={isNewTaskDialogOpen} onOpenChange={setIsNewTaskDialogOpen}>
@@ -600,41 +639,7 @@ export default function KanbanPage() {
         )}
       </div>
       
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-2">
-          <Dialog open={isNewColumnDialogOpen} onOpenChange={setIsNewColumnDialogOpen}>
-            <DialogTrigger asChild>
-              <Button 
-                className="bg-primary/10 hover:bg-primary/20 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Add Column
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New Column</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="column-title">Column Title</Label>
-                  <Input
-                    id="column-title"
-                    value={newColumnTitle}
-                    onChange={e => setNewColumnTitle(e.target.value)}
-                    placeholder="Enter column title"
-                    autoFocus
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsNewColumnDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleCreateColumn}>Create Column</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
+
       
       <div className="overflow-x-auto pb-4">
         <div className="flex gap-4 min-w-max">
@@ -681,6 +686,7 @@ export default function KanbanPage() {
                 onMoveTask={handleMoveTask}
                 onEditTitle={handleEditColumnTitle}
                 onDeleteColumn={handleDeleteColumn}
+                onAddTask={handleAddTask}
               />
             </div>
           ))}
