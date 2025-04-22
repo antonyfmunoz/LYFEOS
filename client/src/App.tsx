@@ -33,6 +33,8 @@ import MissionArchivePage from "./pages/MissionArchivePage";
 import RitualsArchivePage from "./pages/RitualsArchivePage";
 import KnowledgeArchivePage from "./pages/KnowledgeArchivePage";
 import GoalsArchivePage from "./pages/GoalsArchivePage";
+import { ContactsPage } from "./pages/ContactsPage";
+import { ContactDetailPage } from "./pages/ContactDetailPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -268,6 +270,23 @@ function Router() {
         <ProtectedRoute>
           <RootLayout>
             <GoalsArchivePage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      {/* Contacts routes */}
+      <Route path="/contacts">
+        <ProtectedRoute>
+          <RootLayout>
+            <ContactsPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/contacts/:id">
+        <ProtectedRoute>
+          <RootLayout>
+            <ContactDetailPage />
           </RootLayout>
         </ProtectedRoute>
       </Route>
