@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { UserStats, Quest, AIMessage, CalendarEvent, MissionPage, ChatSession, KanbanTask } from "./types";
+import { UserStats, Quest, AIMessage, CalendarEvent, MissionPage, ChatSession, KanbanTask, KanbanStatus } from "./types";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "./authContext";
 import { apiRequest } from "./queryClient";
@@ -903,6 +903,90 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, []);
 
+  // Kanban Task Methods
+  const createKanbanTask = (task: Omit<KanbanTask, "id" | "createdAt" | "updatedAt">): KanbanTask => {
+    const timestamp = new Date().toISOString();
+    const newTask: KanbanTask = {
+      id: `task-${Date.now()}`,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      ...task
+    };
+    
+    setKanbanTasks(prev => [...prev, newTask]);
+    
+    // Show toast notification
+    toast({
+      title: "Task Created",
+      description: `New task "${task.title}" added`,
+      variant: "default",
+      className: "bg-background/80 border border-primary text-foreground",
+      duration: 3000,
+    });
+    
+    return newTask;
+  };
+  
+  const updateKanbanTask = (id: string, taskData: Partial<KanbanTask>) => {
+    setKanbanTasks(prev => prev.map(task => 
+      task.id === id 
+        ? { ...task, ...taskData, updatedAt: new Date().toISOString() } 
+        : task
+    ));
+    
+    // Show toast notification
+    toast({
+      title: "Task Updated",
+      description: `Task has been updated`,
+      variant: "default",
+      className: "bg-background/80 border border-primary text-foreground",
+      duration: 3000,
+    });
+  };
+  
+  const deleteKanbanTask = (id: string) => {
+    const taskToDelete = kanbanTasks.find(task => task.id === id);
+    if (!taskToDelete) return;
+    
+    setKanbanTasks(prev => prev.filter(task => task.id !== id));
+    
+    // Show toast notification
+    toast({
+      title: "Task Deleted",
+      description: `"${taskToDelete.title}" has been removed`,
+      variant: "destructive",
+      className: "bg-background/80 border border-destructive text-foreground",
+      duration: 3000,
+    });
+  };
+  
+  const moveKanbanTask = (id: string, newStatus: KanbanStatus) => {
+    const taskToMove = kanbanTasks.find(task => task.id === id);
+    if (!taskToMove) return;
+    
+    setKanbanTasks(prev => prev.map(task => 
+      task.id === id 
+        ? { ...task, status: newStatus, updatedAt: new Date().toISOString() } 
+        : task
+    ));
+    
+    // Show toast notification
+    const statusLabels: Record<KanbanStatus, string> = {
+      backlog: "Backlog",
+      inProgress: "In Progress",
+      review: "Review",
+      done: "Done"
+    };
+    
+    toast({
+      title: "Task Moved",
+      description: `"${taskToMove.title}" moved to ${statusLabels[newStatus]}`,
+      variant: "default",
+      className: "bg-background/80 border border-primary text-foreground",
+      duration: 3000,
+    });
+  };
+
   return (
     <LYFEOSContext.Provider
       value={{
@@ -912,6 +996,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         events,
         missionPages,
         chatSessions,
+        kanbanTasks,
         activeChatSessionId,
         toggleQuestCompletion,
         sendMessage,
@@ -934,6 +1019,10 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         updateChatSessionTitle,
         updateUserStats,
         setPrimaryColor,
+        createKanbanTask,
+        updateKanbanTask,
+        deleteKanbanTask,
+        moveKanbanTask
       }}
     >
       {children}

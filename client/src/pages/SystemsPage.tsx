@@ -1,6 +1,7 @@
 import { CollapsibleWidget } from "@/components/ui/collapsible-widget";
-import { Calendar } from "lucide-react";
+import { Calendar, Clipboard } from "lucide-react";
 import { Link } from "wouter";
+import { KanbanWidget } from "@/components/ui/kanban-widget";
 
 export default function SystemsPage() {
   return (
@@ -18,7 +19,7 @@ export default function SystemsPage() {
           defaultOpen={true}
         >
           <div className="flex justify-start items-center mb-3">
-            <Link to="/calendar" className="px-4 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium rounded-md transition-colors duration-200 flex items-center">
+            <Link to="/calendar" className="px-4 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium rounded-md transition-colors duration-200 flex items-center hover:shadow-[0_0_5px_var(--primary-glow-light)] border border-primary/50">
               <Calendar className="h-3.5 w-3.5 mr-1.5" />
               Go to Calendar
             </Link>
@@ -62,6 +63,17 @@ export default function SystemsPage() {
               </div>
             </div>
           </div>
+        </CollapsibleWidget>
+      </section>
+      
+      {/* Kanban Board Module */}
+      <section className="mb-6">
+        <CollapsibleWidget 
+          title="Kanban Board" 
+          icon={<Clipboard className="h-5 w-5 text-primary" />}
+          defaultOpen={true}
+        >
+          <KanbanWidget />
         </CollapsibleWidget>
       </section>
     </>
