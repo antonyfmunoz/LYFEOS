@@ -366,7 +366,7 @@ export default function MarkdownEditor({
       </div>
       
       {/* Editor / Viewer */}
-      <div className="relative">
+      <div className="rounded-md border border-primary/30 overflow-hidden">
         {isEditing ? (
           <textarea
             ref={textareaRef}
@@ -374,14 +374,13 @@ export default function MarkdownEditor({
             onChange={handleContentChange}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            className="w-full h-[500px] px-3 py-2 bg-background text-foreground resize-vertical font-mono text-sm 
-                      rounded-md border border-primary/30 focus:border-primary/50 placeholder:text-muted-foreground outline-none"
+            className="w-full h-[500px] p-4 bg-transparent resize-vertical font-mono text-sm border-none outline-none"
             disabled={readOnly}
           />
         ) : (
           <div 
-            className="markdown-preview px-3 py-2 prose prose-invert prose-sm max-w-none overflow-auto 
-                      bg-background rounded-md border border-primary/30 cursor-pointer h-[500px]"
+            className="markdown-preview p-4 prose prose-invert prose-sm max-w-none overflow-auto"
+            style={{ maxHeight: '500px' }}
             onClick={handleMarkdownClick}
           >
             <ReactMarkdown

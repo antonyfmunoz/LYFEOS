@@ -181,65 +181,59 @@ export function MarkdownEditor({
     <div 
       ref={wrapperRef}
       className={cn(
-        "relative inline-block w-full",
+        "relative rounded-md border border-primary/30 dark:bg-[#00141A] light:bg-white min-h-[100px] group",
         className
       )}
       style={{ minHeight }}
     >
-      <div className="relative">
-        {isEditing ? (
-          <>
-            <textarea
-              ref={textareaRef}
-              value={value}
-              onChange={handleInput}
-              onKeyDown={handleKeyDown}
-              className="w-full min-h-[inherit] px-3 py-2 bg-background text-foreground resize-none outline-none rounded-md 
-                        border border-primary/30 focus:border-primary/50 placeholder:text-muted-foreground font-mono"
-              onClick={(e) => {
-                // Bullet handling disabled
-              }}
-              onMouseDown={(e) => {
-                // Bullet handling disabled
-              }}
-              onMouseMove={(e) => {
-                // Bullet handling disabled
-              }}
-              style={{ minHeight }}
-            />
+      {isEditing ? (
+        <>
+          <textarea
+            ref={textareaRef}
+            value={value}
+            onChange={handleInput}
+            onKeyDown={handleKeyDown}
+            className="w-full h-full min-h-[inherit] p-3 bg-background text-foreground resize-none outline-none border-none rounded-md 
+                     placeholder:text-muted-foreground focus:border-primary/50 font-mono"
+            onClick={(e) => {
+              // Bullet handling disabled
+            }}
+            onMouseDown={(e) => {
+              // Bullet handling disabled
+            }}
+            onMouseMove={(e) => {
+              // Bullet handling disabled
+            }}
+            style={{ minHeight }}
+          />
+          <div className="absolute top-2 right-2 flex space-x-1">
             <button
               onClick={handleSaveClick}
-              className="absolute right-0 top-0 h-full px-3 text-primary/70 hover:text-primary hover:bg-primary/10"
+              className="p-1 bg-primary/10 rounded hover:bg-primary/20 text-primary"
               title="Save (Esc)"
             >
-              <Save className="h-4 w-4" />
+              <Save size={14} />
             </button>
-          </>
-        ) : (
-          <>
-            <div 
-              className="w-full min-h-[inherit] px-3 py-2 bg-background rounded-md border border-primary/30 cursor-pointer"
-              onDoubleClick={handleDoubleClick}
-              style={{ minHeight }}
-            >
-              {value ? (
-                <ObsidianMarkdown className="dark:text-[#D6F4FF] light:text-slate-700">
-                  {value}
-                </ObsidianMarkdown>
-              ) : (
-                <div className="dark:text-[#7DAAB2]/50 light:text-slate-400/80">{placeholder}</div>
-              )}
-            </div>
-            <button 
-              onClick={handleEditClick}
-              className="absolute right-0 top-0 h-full px-3 text-primary/70 hover:text-primary hover:bg-primary/10"
-              title="Edit (Double-click text)"
-            >
-              <Edit2 className="h-4 w-4" />
-            </button>
-          </>
-        )}
-      </div>
+          </div>
+        </>
+      ) : (
+        <div className="p-3 cursor-default" onDoubleClick={handleDoubleClick}>
+          {value ? (
+            <ObsidianMarkdown className="dark:text-[#D6F4FF] light:text-slate-700">
+              {value}
+            </ObsidianMarkdown>
+          ) : (
+            <div className="dark:text-[#7DAAB2]/50 light:text-slate-400/80">{placeholder}</div>
+          )}
+          <button 
+            onClick={handleEditClick}
+            className="absolute top-2 right-2 p-1 bg-primary/10 rounded hover:bg-primary/20 text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+            title="Edit (Double-click text)"
+          >
+            <Edit2 size={14} />
+          </button>
+        </div>
+      )}
       
       {/* Small hint in bottom-right corner when editing */}
       {isEditing && (
