@@ -329,9 +329,9 @@ export default function MarkdownEditor({
   }, [isEditing]);
   
   return (
-    <div className={`relative rounded-lg border border-slate-700/50 ${className}`}>
+    <div className={`relative rounded-lg border border-slate-700/50 bg-[#00141A] ${className}`}>
       {/* Toolbar */}
-      <div className="flex justify-between items-center p-2 border-b border-slate-700/50 bg-slate-800/30">
+      <div className="flex justify-between items-center p-2 border-b border-slate-700/50 bg-[#00141A]">
         <div className="flex items-center text-xs text-slate-400">
           {isDirty && <span className="mr-2 text-amber-400">●</span>}
           {isEditing ? 'Edit Mode' : 'View Mode'}
@@ -373,12 +373,12 @@ export default function MarkdownEditor({
           onChange={handleContentChange}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="w-full h-[500px] p-4 bg-transparent focus:outline-none resize-vertical font-mono text-sm"
+          className="w-full h-[500px] p-4 bg-[#00141A] focus:outline-none resize-vertical font-mono text-sm"
           disabled={readOnly}
         />
       ) : (
         <div 
-          className="markdown-preview p-4 prose prose-invert prose-sm max-w-none overflow-auto"
+          className="markdown-preview p-4 prose prose-invert prose-sm max-w-none overflow-auto bg-[#00141A]"
           style={{ maxHeight: '500px' }}
           onClick={handleMarkdownClick}
         >

@@ -98,8 +98,8 @@ export function MarkdownEditor({
       // Check if current line starts with a bullet
       const bulletMatch = currentLine.match(/^(\s*)([-*+•]|(\d+)\.)(\s+)/);
       
-      if (bulletMatch) {
-        const [fullMatch] = bulletMatch;
+      if (bulletMatch && bulletMatch.length > 0) {
+        const fullMatch = bulletMatch[0];
         const bulletLength = fullMatch.length;
         
         // Prevent any cursor movement that would place it before the bullet end
@@ -233,7 +233,7 @@ export function MarkdownEditor({
     <div 
       ref={wrapperRef}
       className={cn(
-        "relative rounded-md border border-primary/30 dark:bg-[#00141A] light:bg-white min-h-[100px] group",
+        "relative rounded-md border border-primary/30 bg-[#00141A] dark:bg-[#00141A] light:bg-[#00141A] min-h-[100px] group",
         className
       )}
       style={{ minHeight }}
@@ -245,7 +245,7 @@ export function MarkdownEditor({
             value={value}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
-            className="w-full h-full min-h-[inherit] p-3 bg-background text-foreground resize-none outline-none border-none rounded-md placeholder:text-muted-foreground focus:ring-1 focus:ring-primary/50"
+            className="w-full h-full min-h-[inherit] p-3 bg-[#00141A] dark:bg-[#00141A] light:bg-[#00141A] text-foreground resize-none outline-none border-none rounded-md placeholder:text-muted-foreground focus:ring-1 focus:ring-primary/50"
             onClick={(e) => {
               // Bullet handling disabled
             }}
