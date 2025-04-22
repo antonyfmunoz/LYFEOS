@@ -233,7 +233,7 @@ export function MarkdownEditor({
     <div 
       ref={wrapperRef}
       className={cn(
-        "relative rounded-md bg-[#05101A] dark:bg-[#05101A] light:bg-[#05101A] min-h-[100px] group",
+        "relative rounded-md border border-slate-700/50 bg-[#05101A] dark:bg-[#05101A] light:bg-[#05101A] min-h-[100px] group",
         className
       )}
       style={{ minHeight }}
