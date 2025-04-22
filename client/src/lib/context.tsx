@@ -910,6 +910,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       id: `task-${Date.now()}`,
       createdAt: timestamp,
       updatedAt: timestamp,
+      startDate: task.startDate || undefined,
+      dueDate: task.dueDate || undefined,
       ...task
     };
     
@@ -930,7 +932,14 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const updateKanbanTask = (id: string, taskData: Partial<KanbanTask>) => {
     setKanbanTasks(prev => prev.map(task => 
       task.id === id 
-        ? { ...task, ...taskData, updatedAt: new Date().toISOString() } 
+        ? { 
+            ...task, 
+            ...taskData, 
+            updatedAt: new Date().toISOString(),
+            // Explicitly handle date fields to ensure they're properly updated
+            startDate: taskData.startDate !== undefined ? taskData.startDate : task.startDate,
+            dueDate: taskData.dueDate !== undefined ? taskData.dueDate : task.dueDate
+          } 
         : task
     ));
     

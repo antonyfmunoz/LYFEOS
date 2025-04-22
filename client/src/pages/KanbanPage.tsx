@@ -240,6 +240,8 @@ export default function KanbanPage() {
   const [newTaskDescription, setNewTaskDescription] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState<"low" | "medium" | "high">("medium");
   const [newTaskStatus, setNewTaskStatus] = useState<KanbanStatus>("backlog");
+  const [newTaskStartDate, setNewTaskStartDate] = useState<string>("");
+  const [newTaskDueDate, setNewTaskDueDate] = useState<string>("");
   const [newTaskTags, setNewTaskTags] = useState("");
 
   const filteredTasks = kanbanTasks.filter(task => 
@@ -260,6 +262,8 @@ export default function KanbanPage() {
       description: newTaskDescription,
       priority: newTaskPriority,
       status: newTaskStatus,
+      startDate: newTaskStartDate || undefined,
+      dueDate: newTaskDueDate || undefined,
       tags: newTaskTags.split(",").map(tag => tag.trim()).filter(tag => tag !== "")
     });
     
@@ -268,6 +272,8 @@ export default function KanbanPage() {
     setNewTaskDescription("");
     setNewTaskPriority("medium");
     setNewTaskStatus("backlog");
+    setNewTaskStartDate("");
+    setNewTaskDueDate("");
     setNewTaskTags("");
     setIsNewTaskDialogOpen(false);
   };

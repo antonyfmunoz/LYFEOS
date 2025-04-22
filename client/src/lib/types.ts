@@ -90,5 +90,7 @@ export interface KanbanTask {
   priority: "low" | "medium" | "high";
   createdAt: string;
   updatedAt: string;
+  startDate?: string; // Optional start date
+  dueDate?: string;   // Optional due date
   tags: string[];
 }
