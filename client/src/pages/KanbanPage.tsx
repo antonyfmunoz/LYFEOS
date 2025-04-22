@@ -119,7 +119,6 @@ function KanbanColumn({
 }: KanbanColumnProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [columnTitle, setColumnTitle] = useState(title);
-  const [showControls, setShowControls] = useState(false);
   
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setColumnTitle(e.target.value);
@@ -150,11 +149,7 @@ function KanbanColumn({
   
   return (
     <div className="w-full h-full">
-      <div 
-        className="flex justify-between items-center mb-3 group"
-        onMouseEnter={() => setShowControls(true)}
-        onMouseLeave={() => setShowControls(false)}
-      >
+      <div className="flex justify-between items-center mb-3 group">
         {isEditingTitle ? (
           <input
             className="text-lg font-medium bg-background border-b border-primary/50 outline-none focus:border-primary w-full px-1"
@@ -173,18 +168,16 @@ function KanbanColumn({
               {title} <span className="text-sm text-muted-foreground">({tasks.length})</span>
             </h2>
             
-            {showControls && (
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-7 w-7 rounded-full hover:bg-destructive/20 hover:text-destructive"
-                  onClick={() => onDeleteColumn(columnId)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            )}
+            <div className="flex gap-1">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-7 w-7 rounded-full hover:bg-destructive/20 hover:text-destructive"
+                onClick={() => onDeleteColumn(columnId)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
         )}
       </div>
