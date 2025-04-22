@@ -35,7 +35,8 @@ import {
   Heart,
   MoreHorizontal,
   ChevronsUpDown,
-  Trash2
+  Trash2,
+  ArrowLeft
 } from "lucide-react";
 
 // Define contact type to match the database schema
