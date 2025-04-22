@@ -63,10 +63,8 @@ export default function ChronilogPage() {
             onClick={() => {
               // Handle category click based on category.id
               if (category.id === "journal") {
-                // Scroll to the journal entries section
-                document.getElementById('journal-entries-section')?.scrollIntoView({
-                  behavior: 'smooth'
-                });
+                // Navigate to journal archive
+                navigate('/journal-archive');
               } else if (category.id === "missions") {
                 // Scroll to the mission logs section
                 document.getElementById('mission-logs-section')?.scrollIntoView({
@@ -126,9 +124,7 @@ export default function ChronilogPage() {
                   
                   // Handle button click (same logic as div onClick)
                   if (category.id === "journal") {
-                    document.getElementById('journal-entries-section')?.scrollIntoView({
-                      behavior: 'smooth'
-                    });
+                    navigate('/journal-archive');
                   } else if (category.id === "missions") {
                     document.getElementById('mission-logs-section')?.scrollIntoView({
                       behavior: 'smooth'
@@ -264,32 +260,47 @@ export default function ChronilogPage() {
       {/* Journal Entries Section */}
       <div id="journal-entries-section" className="mb-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-orbitron">Journal Entries</h2>
-          <button 
-            className="text-xs font-medium px-3 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition"
-            onClick={() => {
-              // Create a new blank journal entry
-              const title = `Journal Entry ${new Date().toLocaleDateString()}`;
-              const slug = title.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-');
-              
-              // Create the page in our context
-              const newPage = useLYFEOS().createMissionPage({
-                title,
-                slug,
-                content: `# ${title}\n\n## Thoughts\n\nStart writing your journal entry here...\n\n## Highlights\n\n- \n- \n- \n\n## Gratitude\n\n- \n- \n- `,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                completed: false,
-                xpValue: 10,
-                tags: ['Journal']
-              });
-              
-              // Navigate to the new page
-              navigate(`/mission-page/${slug}`);
-            }}
-          >
-            NEW ENTRY
-          </button>
+          <div className="flex items-center">
+            <h2 className="text-xl font-orbitron">Journal Entries</h2>
+            <Link to="/journal-archive" className="ml-3 flex items-center text-xs text-primary hover:underline">
+              <span className="material-icons text-xs mr-1">folder_open</span>
+              View Archive
+            </Link>
+          </div>
+          <div className="flex gap-2">
+            <Link 
+              to="/journal-archive"
+              className="text-xs font-medium px-3 py-1 rounded-md bg-secondary/10 text-secondary hover:bg-secondary/20 transition flex items-center"
+            >
+              <span className="material-icons text-xs mr-1">folder</span>
+              ARCHIVE
+            </Link>
+            <button 
+              className="text-xs font-medium px-3 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition"
+              onClick={() => {
+                // Create a new blank journal entry
+                const title = `Journal Entry ${new Date().toLocaleDateString()}`;
+                const slug = title.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-');
+                
+                // Create the page in our context
+                const newPage = useLYFEOS().createMissionPage({
+                  title,
+                  slug,
+                  content: `# ${title}\n\n## Thoughts\n\nStart writing your journal entry here...\n\n## Highlights\n\n- \n- \n- \n\n## Gratitude\n\n- \n- \n- `,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                  completed: false,
+                  xpValue: 10,
+                  tags: ['Journal']
+                });
+                
+                // Navigate to the new page
+                navigate(`/mission-page/${slug}`);
+              }}
+            >
+              NEW ENTRY
+            </button>
+          </div>
         </div>
         
         <div className="space-y-3">

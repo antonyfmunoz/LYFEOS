@@ -27,6 +27,7 @@ import MissionPage from "./components/markdown/MissionPage";
 import RootLayout from "./components/layout/RootLayout";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import JournalArchivePage from "./pages/JournalArchivePage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -213,6 +214,15 @@ function Router() {
             <div className="container max-w-4xl py-6">
               <EnhancedMissionPage />
             </div>
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      {/* Journal Archive Page */}
+      <Route path="/journal-archive">
+        <ProtectedRoute>
+          <RootLayout>
+            <JournalArchivePage />
           </RootLayout>
         </ProtectedRoute>
       </Route>
