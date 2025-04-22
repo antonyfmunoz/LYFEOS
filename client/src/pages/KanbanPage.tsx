@@ -59,6 +59,21 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
         
         <p className="text-xs text-muted-foreground mt-2 mb-3 line-clamp-2">{task.description}</p>
         
+        {(task.startDate || task.dueDate) && (
+          <div className="flex justify-between mb-2 text-xs text-muted-foreground">
+            {task.startDate && (
+              <div>
+                <span className="opacity-70">Start:</span> {task.startDate}
+              </div>
+            )}
+            {task.dueDate && (
+              <div>
+                <span className="opacity-70">Due:</span> {task.dueDate}
+              </div>
+            )}
+          </div>
+        )}
+        
         <div className="flex justify-between items-center mt-1">
           <div className="flex items-center gap-2">
             <div className={`h-2 w-2 rounded-full ${priorityColors[task.priority]}`} />
@@ -286,6 +301,8 @@ export default function KanbanPage() {
       description: editingTask.description,
       priority: editingTask.priority,
       status: editingTask.status,
+      startDate: editingTask.startDate,
+      dueDate: editingTask.dueDate,
       tags: Array.isArray(editingTask.tags) 
         ? editingTask.tags 
         : (editingTask.tags as string).split(",").map(tag => tag.trim()).filter(tag => tag !== "")
@@ -536,6 +553,26 @@ export default function KanbanPage() {
                   </Select>
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="task-start-date">Start Date</Label>
+                  <Input
+                    id="task-start-date"
+                    type="date"
+                    value={newTaskStartDate}
+                    onChange={e => setNewTaskStartDate(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="task-due-date">Due Date</Label>
+                  <Input
+                    id="task-due-date"
+                    type="date"
+                    value={newTaskDueDate}
+                    onChange={e => setNewTaskDueDate(e.target.value)}
+                  />
+                </div>
+              </div>
               <div className="grid gap-2">
                 <Label htmlFor="task-tags">Tags (comma-separated)</Label>
                 <Input
@@ -614,6 +651,32 @@ export default function KanbanPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-task-start-date">Start Date</Label>
+                    <Input
+                      id="edit-task-start-date"
+                      type="date"
+                      value={editingTask.startDate || ""}
+                      onChange={e => setEditingTask({
+                        ...editingTask, 
+                        startDate: e.target.value || undefined
+                      })}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-task-due-date">Due Date</Label>
+                    <Input
+                      id="edit-task-due-date"
+                      type="date"
+                      value={editingTask.dueDate || ""}
+                      onChange={e => setEditingTask({
+                        ...editingTask, 
+                        dueDate: e.target.value || undefined
+                      })}
+                    />
                   </div>
                 </div>
                 <div className="grid gap-2">
