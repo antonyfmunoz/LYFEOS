@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Clipboard, Plus, Trash2, PenLine, MoveRight, Search } from "lucide-react";
+import { Clipboard, Plus, Trash2, PenLine, MoveRight, Search, GripVertical } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { KanbanTask, KanbanStatus } from "@/lib/types";
 import { toast } from "@/hooks/use-toast";
@@ -93,18 +93,31 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
 }
 
 interface KanbanColumnProps {
+  columnId: string;
   title: string;
   status: KanbanStatus;
   tasks: KanbanTask[];
   onEditTask: (task: KanbanTask) => void;
   onDeleteTask: (id: string) => void;
   onMoveTask: (id: string, currentStatus: KanbanStatus) => void;
-  onEditTitle: (status: KanbanStatus, newTitle: string) => void;
+  onEditTitle: (columnId: string, newTitle: string) => void;
+  onDeleteColumn: (columnId: string) => void;
 }
 
-function KanbanColumn({ title, status, tasks, onEditTask, onDeleteTask, onMoveTask, onEditTitle }: KanbanColumnProps) {
+function KanbanColumn({ 
+  columnId,
+  title, 
+  status,
+  tasks, 
+  onEditTask, 
+  onDeleteTask, 
+  onMoveTask, 
+  onEditTitle,
+  onDeleteColumn
+}: KanbanColumnProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [columnTitle, setColumnTitle] = useState(title);
+  const [showControls, setShowControls] = useState(false);
   
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setColumnTitle(e.target.value);
@@ -112,7 +125,7 @@ function KanbanColumn({ title, status, tasks, onEditTask, onDeleteTask, onMoveTa
   
   const handleTitleBlur = () => {
     if (columnTitle.trim() !== "") {
-      onEditTitle(status, columnTitle);
+      onEditTitle(columnId, columnTitle);
     } else {
       setColumnTitle(title);
     }
@@ -127,10 +140,19 @@ function KanbanColumn({ title, status, tasks, onEditTask, onDeleteTask, onMoveTa
       setIsEditingTitle(false);
     }
   };
+
+  // Update the column title if it changes from props
+  useEffect(() => {
+    setColumnTitle(title);
+  }, [title]);
   
   return (
-    <div className="min-w-[280px] max-w-[320px]">
-      <div className="flex justify-between items-center mb-2">
+    <div className="w-full h-full">
+      <div 
+        className="flex justify-between items-center mb-3 group"
+        onMouseEnter={() => setShowControls(true)}
+        onMouseLeave={() => setShowControls(false)}
+      >
         {isEditingTitle ? (
           <input
             className="text-lg font-medium bg-background border-b border-primary/50 outline-none focus:border-primary w-full px-1"
@@ -141,16 +163,31 @@ function KanbanColumn({ title, status, tasks, onEditTask, onDeleteTask, onMoveTa
             autoFocus
           />
         ) : (
-          <h2 
-            className="text-lg font-medium cursor-pointer hover:text-primary transition-colors"
-            onClick={() => setIsEditingTitle(true)}
-          >
-            {title} <span className="text-sm text-muted-foreground">({tasks.length})</span>
-          </h2>
+          <div className="flex items-center justify-between w-full">
+            <h2 
+              className="text-lg font-medium cursor-pointer hover:text-primary transition-colors"
+              onClick={() => setIsEditingTitle(true)}
+            >
+              {title} <span className="text-sm text-muted-foreground">({tasks.length})</span>
+            </h2>
+            
+            {showControls && (
+              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-7 w-7 rounded-full hover:bg-destructive/20 hover:text-destructive"
+                  onClick={() => onDeleteColumn(columnId)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
+          </div>
         )}
       </div>
       
-      <div className="min-h-[70vh] p-3 rounded-lg bg-card/30">
+      <div className="space-y-3">
         {tasks.map(task => (
           <TaskCard 
             key={task.id} 
@@ -160,11 +197,24 @@ function KanbanColumn({ title, status, tasks, onEditTask, onDeleteTask, onMoveTa
             onMoveRight={onMoveTask}
           />
         ))}
+        
         {tasks.length === 0 && (
           <div className="h-24 border border-dashed border-slate-700/30 rounded-lg flex items-center justify-center">
             <p className="text-sm text-muted-foreground">No tasks</p>
           </div>
         )}
+        
+        <Button
+          variant="ghost"
+          className="w-full h-10 border border-dashed border-slate-700/30 text-muted-foreground text-sm hover:border-primary/50 hover:text-primary"
+          onClick={() => {
+            // Open add task dialog with this column preselected
+            // We'll implement this feature later
+          }}
+        >
+          <Plus className="h-3.5 w-3.5 mr-2" />
+          Add Task
+        </Button>
       </div>
     </div>
   );
@@ -177,13 +227,21 @@ export default function KanbanPage() {
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
   const [isEditTaskDialogOpen, setIsEditTaskDialogOpen] = useState(false);
   
-  // Board column titles state
-  const [columnTitles, setColumnTitles] = useState({
-    backlog: "Backlog",
-    inProgress: "In Progress",
-    review: "Review",
-    done: "Done"
-  });
+  // Define a column type to store more information
+  interface KanbanColumn {
+    id: string;
+    title: string;
+    status: KanbanStatus;
+    order: number;
+  }
+  
+  // Board columns state
+  const [columns, setColumns] = useState<KanbanColumn[]>([
+    { id: "col-backlog", title: "Backlog", status: "backlog", order: 0 },
+    { id: "col-inProgress", title: "In Progress", status: "inProgress", order: 1 },
+    { id: "col-review", title: "Review", status: "review", order: 2 },
+    { id: "col-done", title: "Done", status: "done", order: 3 }
+  ]);
   
   // New task form state
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -240,10 +298,12 @@ export default function KanbanPage() {
   };
 
   const handleMoveTask = (id: string, currentStatus: KanbanStatus) => {
-    const statusOrder: KanbanStatus[] = ["backlog", "inProgress", "review", "done"];
-    const currentIndex = statusOrder.indexOf(currentStatus);
-    if (currentIndex < statusOrder.length - 1) {
-      moveKanbanTask(id, statusOrder[currentIndex + 1]);
+    // Get ordered column statuses
+    const columnStatuses = columns.sort((a, b) => a.order - b.order).map(col => col.status);
+    const currentIndex = columnStatuses.indexOf(currentStatus);
+    
+    if (currentIndex < columnStatuses.length - 1) {
+      moveKanbanTask(id, columnStatuses[currentIndex + 1]);
     }
   };
 
@@ -254,11 +314,100 @@ export default function KanbanPage() {
     setIsEditTaskDialogOpen(true);
   };
 
-  const handleEditColumnTitle = (status: KanbanStatus, newTitle: string) => {
-    setColumnTitles(prev => ({
-      ...prev,
-      [status]: newTitle
-    }));
+  // Create a new column
+  const [isNewColumnDialogOpen, setIsNewColumnDialogOpen] = useState(false);
+  const [newColumnTitle, setNewColumnTitle] = useState("");
+  
+  const handleCreateColumn = () => {
+    if (!newColumnTitle.trim()) return;
+    
+    // Generate a new unique status ID (will be cast to KanbanStatus via type assertion)
+    const newStatus = `custom_${Date.now()}` as KanbanStatus;
+    
+    // Create the new column
+    const newColumn: KanbanColumn = {
+      id: `col-${newStatus}`,
+      title: newColumnTitle,
+      status: newStatus,
+      order: columns.length, // Place at the end
+    };
+    
+    setColumns(prev => [...prev, newColumn]);
+    setNewColumnTitle("");
+    setIsNewColumnDialogOpen(false);
+    
+    toast({
+      title: "Column Created",
+      description: `New column "${newColumnTitle}" has been added`,
+      variant: "default",
+      className: "bg-background/80 border border-primary text-foreground",
+      duration: 3000,
+    });
+  };
+  
+  // Delete a column
+  const handleDeleteColumn = (columnId: string) => {
+    const columnToDelete = columns.find(col => col.id === columnId);
+    if (!columnToDelete) return;
+    
+    // Move tasks from this column to the first column (or you could have a "delete tasks too" option)
+    const firstAvailableColumn = columns.find(col => col.id !== columnId);
+    if (firstAvailableColumn) {
+      kanbanTasks
+        .filter(task => task.status === columnToDelete.status)
+        .forEach(task => {
+          updateKanbanTask(task.id, { status: firstAvailableColumn.status });
+        });
+    }
+    
+    // Remove the column
+    setColumns(prev => prev.filter(col => col.id !== columnId));
+    
+    toast({
+      title: "Column Deleted",
+      description: `Column "${columnToDelete.title}" has been removed`,
+      variant: "destructive",
+      className: "bg-background/80 border border-destructive text-foreground",
+      duration: 3000,
+    });
+  };
+  
+  // Handle column reordering with drag and drop
+  const handleColumnReorder = (draggedId: string, targetId: string) => {
+    if (draggedId === targetId) return;
+    
+    setColumns(prev => {
+      const newColumns = [...prev];
+      const draggedIndex = newColumns.findIndex(col => col.id === draggedId);
+      const targetIndex = newColumns.findIndex(col => col.id === targetId);
+      
+      // Move the dragged column to the target position
+      const [draggedColumn] = newColumns.splice(draggedIndex, 1);
+      newColumns.splice(targetIndex, 0, draggedColumn);
+      
+      // Update order values
+      return newColumns.map((col, index) => ({
+        ...col,
+        order: index
+      }));
+    });
+    
+    toast({
+      title: "Columns Reordered",
+      description: "The board columns have been rearranged",
+      variant: "default",
+      className: "bg-background/80 border border-primary text-foreground",
+      duration: 3000,
+    });
+  };
+  
+  // Edit column title
+  const handleEditColumnTitle = (columnId: string, newTitle: string) => {
+    setColumns(prev => prev.map(col => 
+      col.id === columnId 
+        ? { ...col, title: newTitle } 
+        : col
+    ));
     
     // Show toast notification
     toast({
@@ -346,10 +495,11 @@ export default function KanbanPage() {
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="backlog">Backlog</SelectItem>
-                      <SelectItem value="inProgress">In Progress</SelectItem>
-                      <SelectItem value="review">Review</SelectItem>
-                      <SelectItem value="done">Done</SelectItem>
+                      {columns.sort((a, b) => a.order - b.order).map(column => (
+                        <SelectItem key={column.id} value={column.status}>
+                          {column.title}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -425,10 +575,11 @@ export default function KanbanPage() {
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="backlog">Backlog</SelectItem>
-                        <SelectItem value="inProgress">In Progress</SelectItem>
-                        <SelectItem value="review">Review</SelectItem>
-                        <SelectItem value="done">Done</SelectItem>
+                        {columns.sort((a, b) => a.order - b.order).map(column => (
+                          <SelectItem key={column.id} value={column.status}>
+                            {column.title}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -455,44 +606,90 @@ export default function KanbanPage() {
         )}
       </div>
       
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-2">
+          <Dialog open={isNewColumnDialogOpen} onOpenChange={setIsNewColumnDialogOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                className="bg-primary/10 hover:bg-primary/20 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add Column
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Column</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="column-title">Column Title</Label>
+                  <Input
+                    id="column-title"
+                    value={newColumnTitle}
+                    onChange={e => setNewColumnTitle(e.target.value)}
+                    placeholder="Enter column title"
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsNewColumnDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleCreateColumn}>Create Column</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+      
       <div className="overflow-x-auto pb-4">
         <div className="flex gap-4 min-w-max">
-          <KanbanColumn
-            title={columnTitles.backlog}
-            status="backlog"
-            tasks={getTasksByStatus("backlog")}
-            onEditTask={openEditDialog}
-            onDeleteTask={deleteKanbanTask}
-            onMoveTask={handleMoveTask}
-            onEditTitle={handleEditColumnTitle}
-          />
-          <KanbanColumn
-            title={columnTitles.inProgress}
-            status="inProgress"
-            tasks={getTasksByStatus("inProgress")}
-            onEditTask={openEditDialog}
-            onDeleteTask={deleteKanbanTask}
-            onMoveTask={handleMoveTask}
-            onEditTitle={handleEditColumnTitle}
-          />
-          <KanbanColumn
-            title={columnTitles.review}
-            status="review"
-            tasks={getTasksByStatus("review")}
-            onEditTask={openEditDialog}
-            onDeleteTask={deleteKanbanTask}
-            onMoveTask={handleMoveTask}
-            onEditTitle={handleEditColumnTitle}
-          />
-          <KanbanColumn
-            title={columnTitles.done}
-            status="done"
-            tasks={getTasksByStatus("done")}
-            onEditTask={openEditDialog}
-            onDeleteTask={deleteKanbanTask}
-            onMoveTask={handleMoveTask}
-            onEditTitle={handleEditColumnTitle}
-          />
+          {columns.sort((a, b) => a.order - b.order).map(column => (
+            <div 
+              key={column.id}
+              className="min-w-[280px] max-w-[320px] border border-slate-700/30 rounded-lg bg-card/30 p-3 group"
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData('columnId', column.id);
+                e.currentTarget.classList.add('opacity-50');
+              }}
+              onDragEnd={(e) => {
+                e.currentTarget.classList.remove('opacity-50');
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.currentTarget.classList.add('border-primary');
+              }}
+              onDragLeave={(e) => {
+                e.currentTarget.classList.remove('border-primary');
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.currentTarget.classList.remove('border-primary');
+                const draggedId = e.dataTransfer.getData('columnId');
+                if (draggedId && draggedId !== column.id) {
+                  handleColumnReorder(draggedId, column.id);
+                }
+              }}
+            >
+              <div className="flex items-center gap-1 mb-2 cursor-move opacity-0 group-hover:opacity-100 transition-opacity">
+                <GripVertical className="h-4 w-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Drag to reorder</span>
+              </div>
+              
+              <KanbanColumn
+                columnId={column.id}
+                title={column.title}
+                status={column.status}
+                tasks={getTasksByStatus(column.status)}
+                onEditTask={openEditDialog}
+                onDeleteTask={deleteKanbanTask}
+                onMoveTask={handleMoveTask}
+                onEditTitle={handleEditColumnTitle}
+                onDeleteColumn={handleDeleteColumn}
+              />
+            </div>
+          ))}
         </div>
       </div>
     </>
