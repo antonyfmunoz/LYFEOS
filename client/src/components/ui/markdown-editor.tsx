@@ -233,7 +233,7 @@ export function MarkdownEditor({
     <div 
       ref={wrapperRef}
       className={cn(
-        "relative rounded-md border border-primary/30 bg-[#05101A] dark:bg-[#05101A] light:bg-[#05101A] min-h-[100px] group",
+        "relative rounded-md border-0 shadow-sm bg-[#05101A] dark:bg-[#05101A] light:bg-[#05101A] min-h-[100px] group",
         className
       )}
       style={{ minHeight }}
@@ -286,12 +286,7 @@ export function MarkdownEditor({
         </div>
       )}
       
-      {/* Small hint in bottom-right corner when editing */}
-      {isEditing && (
-        <div className="absolute bottom-2 right-2 text-xs dark:text-[#7DAAB2]/50 light:text-slate-400/80">
-          Ctrl+Enter or Esc to save
-        </div>
-      )}
+      {/* Removed bottom hint as it creates a double bottom element */}
     </div>
   );
 }

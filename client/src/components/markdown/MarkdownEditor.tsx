@@ -329,9 +329,9 @@ export default function MarkdownEditor({
   }, [isEditing]);
   
   return (
-    <div className={`relative rounded-lg border border-slate-700/50 bg-[#05101A] ${className}`}>
+    <div className={`relative rounded-lg shadow-sm border-0 bg-[#05101A] ${className}`}>
       {/* Toolbar */}
-      <div className="flex justify-between items-center p-2 border-b border-slate-700/50 bg-[#05101A]">
+      <div className="flex justify-between items-center p-2 border-b border-slate-900/30 bg-[#05101A]">
         <div className="flex items-center text-xs text-slate-400">
           {isDirty && <span className="mr-2 text-amber-400">●</span>}
           {isEditing ? 'Edit Mode' : 'View Mode'}
