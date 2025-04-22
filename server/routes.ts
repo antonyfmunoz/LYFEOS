@@ -8,7 +8,8 @@ import {
   insertQuestSchema, 
   insertAIMessageSchema, 
   insertCalendarEventSchema,
-  insertMissionPageSchema
+  insertMissionPageSchema,
+  insertContactSchema
 } from "@shared/schema";
 
 // Extend Request type to include session
@@ -829,6 +830,165 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       return res.status(200).json({ message: "Mission page deleted successfully" });
     } catch (error) {
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // CONTACT ROUTES
+  app.get("/api/users/:userId/contacts", isOwner, async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+      
+      const category = req.query.category as string | undefined;
+      let contacts;
+      
+      if (category) {
+        contacts = await storage.getContactsByCategory(userId, category);
+      } else {
+        contacts = await storage.getContacts(userId);
+      }
+      
+      return res.status(200).json({ contacts });
+    } catch (error) {
+      console.error("Error getting contacts:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.get("/api/contacts/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const contactId = parseInt(req.params.id);
+      if (isNaN(contactId)) {
+        return res.status(400).json({ error: "Invalid contact ID" });
+      }
+      
+      const contact = await storage.getContact(contactId);
+      if (!contact) {
+        return res.status(404).json({ error: "Contact not found" });
+      }
+      
+      // Verify ownership
+      if (contact.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to access this contact" });
+      }
+      
+      return res.status(200).json({ contact });
+    } catch (error) {
+      console.error("Error getting contact:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/contacts", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      // Add the user ID to the contact data
+      const contactData = {
+        ...req.body,
+        userId: req.session.userId,
+      };
+      
+      // Validate contact data
+      const validatedData = insertContactSchema.parse(contactData);
+      
+      // Create contact
+      const contact = await storage.createContact(validatedData);
+      
+      return res.status(201).json({ contact });
+    } catch (error) {
+      console.error("Error creating contact:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.patch("/api/contacts/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const contactId = parseInt(req.params.id);
+      if (isNaN(contactId)) {
+        return res.status(400).json({ error: "Invalid contact ID" });
+      }
+      
+      // Get the contact to check ownership
+      const contact = await storage.getContact(contactId);
+      if (!contact) {
+        return res.status(404).json({ error: "Contact not found" });
+      }
+      
+      // Verify ownership
+      if (contact.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to update this contact" });
+      }
+      
+      // Update contact
+      const updatedContact = await storage.updateContact(contactId, req.body);
+      
+      return res.status(200).json({ contact: updatedContact });
+    } catch (error) {
+      console.error("Error updating contact:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.delete("/api/contacts/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const contactId = parseInt(req.params.id);
+      if (isNaN(contactId)) {
+        return res.status(400).json({ error: "Invalid contact ID" });
+      }
+      
+      // Get the contact to check ownership
+      const contact = await storage.getContact(contactId);
+      if (!contact) {
+        return res.status(404).json({ error: "Contact not found" });
+      }
+      
+      // Verify ownership
+      if (contact.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to delete this contact" });
+      }
+      
+      // Delete contact
+      await storage.deleteContact(contactId);
+      
+      return res.status(200).json({ message: "Contact deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting contact:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/contacts/:id/toggle-favorite", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const contactId = parseInt(req.params.id);
+      if (isNaN(contactId)) {
+        return res.status(400).json({ error: "Invalid contact ID" });
+      }
+      
+      // Get the contact to check ownership
+      const contact = await storage.getContact(contactId);
+      if (!contact) {
+        return res.status(404).json({ error: "Contact not found" });
+      }
+      
+      // Verify ownership
+      if (contact.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to update this contact" });
+      }
+      
+      // Toggle favorite status
+      const updatedContact = await storage.toggleFavoriteContact(contactId);
+      
+      return res.status(200).json({ contact: updatedContact });
+    } catch (error) {
+      console.error("Error toggling contact favorite status:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });

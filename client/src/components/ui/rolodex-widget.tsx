@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Card, 
   CardContent 
@@ -13,63 +13,83 @@ import {
   Star,
   Mail
 } from "lucide-react";
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/lib/authContext';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
 
-// Define contact type
+// Define contact type to match the database schema
 interface Contact {
-  id: string;
+  id: number;
+  userId: number;
   name: string;
-  email: string;
-  phone: string;
+  email: string | null;
+  phone: string | null;
+  company: string | null;
+  jobTitle: string | null;
   category: string;
+  notes: string | null;
   favorite: boolean;
+  lastContacted: string | null;
+  birthday: string | null;
+  address: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export function RolodexWidget() {
-  // Sample contacts data
-  const [contacts, setContacts] = useState<Contact[]>([
-    { 
-      id: '1', 
-      name: 'Alex Johnson', 
-      email: 'alex@example.com', 
-      phone: '555-1234', 
-      category: 'work',
-      favorite: true 
-    },
-    { 
-      id: '2', 
-      name: 'Sara Williams', 
-      email: 'sara@example.com', 
-      phone: '555-5678', 
-      category: 'personal',
-      favorite: false 
-    },
-    { 
-      id: '3', 
-      name: 'Michael Chen', 
-      email: 'mike@example.com', 
-      phone: '555-9012', 
-      category: 'work',
-      favorite: true 
-    },
-    { 
-      id: '4', 
-      name: 'Emma Rodriguez', 
-      email: 'emma@example.com', 
-      phone: '555-3456', 
-      category: 'personal',
-      favorite: false 
-    }
-  ]);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   
+  // Fetch contacts from the database
+  const { data: contactsData, isLoading, isError } = useQuery({
+    queryKey: ['/api/users', user?.id, 'contacts'],
+    queryFn: async () => {
+      if (!user) return { contacts: [] };
+      const response = await fetch(`/api/users/${user.id}/contacts`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch contacts');
+      }
+      return response.json();
+    },
+    enabled: !!user,
+  });
+  
+  const contacts = contactsData?.contacts || [];
+  
+  // Toggle favorite mutation
+  const toggleFavoriteMutation = useMutation({
+    mutationFn: async (contactId: number) => {
+      const response = await apiRequest({
+        url: `/api/contacts/${contactId}/toggle-favorite`,
+        method: 'POST',
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'contacts'] });
+    },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'Failed to update favorite status',
+        variant: 'destructive',
+      });
+    },
+  });
+  
   // Filter contacts based on search term and category
-  const filteredContacts = contacts.filter(contact => {
-    const matchesSearch = contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          contact.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          contact.phone.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredContacts = contacts.filter((contact: Contact) => {
+    const matchesSearch = 
+      (contact.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (contact.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (contact.phone || '').toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesCategory = selectedCategory ? contact.category === selectedCategory : true;
     
@@ -80,15 +100,13 @@ export function RolodexWidget() {
   const displayedContacts = filteredContacts.slice(0, 3);
   
   // Toggle favorite status
-  const toggleFavorite = (id: string) => {
-    setContacts(contacts.map(contact => 
-      contact.id === id ? { ...contact, favorite: !contact.favorite } : contact
-    ));
+  const toggleFavorite = (id: number) => {
+    toggleFavoriteMutation.mutate(id);
   };
 
   // Get category count
   const getCategoryCount = (category: string) => {
-    return contacts.filter(contact => contact.category === category).length;
+    return contacts.filter((contact: Contact) => contact.category === category).length;
   };
   
   return (

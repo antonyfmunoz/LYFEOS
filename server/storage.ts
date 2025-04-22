@@ -46,6 +46,15 @@ export interface IStorage {
   createMissionPage(page: InsertMissionPage): Promise<MissionPage>;
   updateMissionPage(id: number, page: Partial<InsertMissionPage>): Promise<MissionPage>;
   deleteMissionPage(id: number): Promise<void>;
+  
+  // Contact methods
+  getContacts(userId: number): Promise<Contact[]>;
+  getContactsByCategory(userId: number, category: string): Promise<Contact[]>;
+  getContact(id: number): Promise<Contact | undefined>;
+  createContact(contact: InsertContact): Promise<Contact>;
+  updateContact(id: number, contact: Partial<InsertContact>): Promise<Contact>;
+  deleteContact(id: number): Promise<void>;
+  toggleFavoriteContact(id: number): Promise<Contact>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -256,6 +265,62 @@ export class DatabaseStorage implements IStorage {
   
   async deleteMissionPage(id: number): Promise<void> {
     await db.delete(missionPages).where(eq(missionPages.id, id));
+  }
+  
+  // Contact methods
+  async getContacts(userId: number): Promise<Contact[]> {
+    return db.select().from(contacts).where(eq(contacts.userId, userId));
+  }
+  
+  async getContactsByCategory(userId: number, category: string): Promise<Contact[]> {
+    return db.select()
+      .from(contacts)
+      .where(and(
+        eq(contacts.userId, userId),
+        eq(contacts.category, category)
+      ));
+  }
+  
+  async getContact(id: number): Promise<Contact | undefined> {
+    const [contact] = await db.select().from(contacts).where(eq(contacts.id, id));
+    return contact;
+  }
+  
+  async createContact(contact: InsertContact): Promise<Contact> {
+    const [newContact] = await db
+      .insert(contacts)
+      .values(contact)
+      .returning();
+    return newContact;
+  }
+  
+  async updateContact(id: number, contactUpdate: Partial<InsertContact>): Promise<Contact> {
+    const [updatedContact] = await db
+      .update(contacts)
+      .set({ ...contactUpdate, updatedAt: new Date() })
+      .where(eq(contacts.id, id))
+      .returning();
+    return updatedContact;
+  }
+  
+  async deleteContact(id: number): Promise<void> {
+    await db.delete(contacts).where(eq(contacts.id, id));
+  }
+  
+  async toggleFavoriteContact(id: number): Promise<Contact> {
+    const contact = await this.getContact(id);
+    if (!contact) throw new Error("Contact not found");
+    
+    const [updatedContact] = await db
+      .update(contacts)
+      .set({ 
+        favorite: !contact.favorite,
+        updatedAt: new Date()
+      })
+      .where(eq(contacts.id, id))
+      .returning();
+    
+    return updatedContact;
   }
 }
 
