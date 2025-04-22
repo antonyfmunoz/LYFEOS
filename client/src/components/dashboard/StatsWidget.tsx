@@ -11,8 +11,6 @@ interface StatsWidgetProps {
 export default function StatsWidget({ stats }: StatsWidgetProps) {
   // Calculate percentage for progress bars
   const xpPercentage = (stats.experience.current / stats.experience.max) * 100;
-  
-  // Now all tokens are out of 100 except for time (which is out of 1440 minutes in a day)
   const atPercentage = (stats.attentionTokens.current / stats.attentionTokens.max) * 100;
   const ttPercentage = (stats.timeTokens.current / stats.timeTokens.max) * 100;
   const epPercentage = (stats.energyPoints.current / stats.energyPoints.max) * 100;
@@ -237,7 +235,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-base">
-                {stats.timeTokens.current}<span className="text-[#7DAAB2] text-xs">/1440 min</span>
+                {stats.timeTokens.current}<span className="text-[#7DAAB2] text-xs">/{stats.timeTokens.max}</span>
               </span>
               <span className="text-xs text-[#7DAAB2] self-end">remaining today</span>
             </div>
