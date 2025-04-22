@@ -194,7 +194,7 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
           variant="ghost"
           size="icon"
           onClick={() => setIsOpen(!isOpen)}
-          className="absolute right-0 top-0 h-full px-3 text-muted-foreground hover:text-foreground"
+          className="absolute right-0 top-0 h-full px-3 text-primary/70 hover:text-primary hover:bg-primary/10"
         >
           <Clock className="h-4 w-4" />
         </Button>
@@ -269,7 +269,7 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
                   variant="ghost"
                   size="icon"
                   onClick={toggleAmPm}
-                  className="h-8 w-8"
+                  className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
                 >
                   <ChevronDown className="h-4 w-4" />
                 </Button>
@@ -281,7 +281,7 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
                 variant="outline"
                 size="sm"
                 onClick={() => setIsOpen(false)}
-                className="text-xs"
+                className="text-xs bg-primary/10 hover:bg-primary/20 text-primary border border-primary/50"
               >
                 Close
               </Button>
