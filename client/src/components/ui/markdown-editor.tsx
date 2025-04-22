@@ -30,20 +30,10 @@ export function MarkdownEditor({
     if (isEditing && textareaRef.current) {
       textareaRef.current.focus();
       
-      // If this is a bullet-enabled field and it's empty, add an initial bullet
-      if (autoBullets && (!value || value.trim() === '')) {
-        onChange('- ');
-        // Set cursor after the initial bullet
-        setTimeout(() => {
-          if (textareaRef.current) {
-            textareaRef.current.setSelectionRange(2, 2);
-          }
-        }, 0);
-      } else {
-        textareaRef.current.setSelectionRange(cursorPosition, cursorPosition);
-      }
+      // Initial bullet functionality completely disabled
+      textareaRef.current.setSelectionRange(cursorPosition, cursorPosition);
     }
-  }, [isEditing, cursorPosition, autoBullets, value, onChange]);
+  }, [isEditing, cursorPosition, value, onChange]);
 
   // Save cursor position when input changes
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -120,11 +110,11 @@ export function MarkdownEditor({
       setIsEditing(false);
     } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       setIsEditing(false);
-    } else if (e.key === 'Enter' && autoBullets) {
-      // Auto-generate bullet points on Enter for this field
+    } else if (false) {
+      // Auto-generate bullet points disabled
       e.preventDefault();
       insertAutoBullet();
-    } else if (autoBullets && (e.key === 'ArrowLeft' || e.key === 'Home' || e.key === 'Backspace')) {
+    } else if (false) {
       // Prevent navigating before the bullet with arrow keys and handle Backspace
       const textarea = e.currentTarget;
       const cursorPos = textarea.selectionStart || 0;
@@ -334,32 +324,7 @@ export function MarkdownEditor({
             onKeyDown={handleKeyDown}
             className="w-full h-full min-h-[inherit] p-3 bg-background text-foreground resize-none outline-none border-none rounded-md placeholder:text-muted-foreground focus:ring-1 focus:ring-primary/50"
             onClick={(e) => {
-              if (autoBullets) {
-                // Ensure clicks don't place cursor before bullet points
-                const textarea = e.currentTarget;
-                const cursorPos = textarea.selectionStart || 0;
-                const textBeforeCursor = value.substring(0, cursorPos);
-                const lastNewlineBeforeCursor = textBeforeCursor.lastIndexOf('\n');
-                const currentLineStart = lastNewlineBeforeCursor === -1 ? 0 : lastNewlineBeforeCursor + 1;
-                const currentLine = textBeforeCursor.substring(currentLineStart);
-                
-                // Check if current line starts with a bullet
-                const bulletMatch = currentLine.match(/^(\s*)([-*+•]|(\d+)\.)(\s+)/);
-                
-                if (bulletMatch) {
-                  const [fullMatch] = bulletMatch;
-                  const bulletLength = fullMatch.length;
-                  
-                  // If cursor is placed before bullet, move it after bullet
-                  if (cursorPos < currentLineStart + bulletLength) {
-                    const newCursorPos = currentLineStart + bulletLength;
-                    setTimeout(() => {
-                      textarea.setSelectionRange(newCursorPos, newCursorPos);
-                      setCursorPosition(newCursorPos);
-                    }, 0);
-                  }
-                }
-              }
+              // Bullet handling disabled
             }}
             onMouseDown={(e) => {
               if (autoBullets) {

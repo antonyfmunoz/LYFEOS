@@ -165,9 +165,8 @@ export default function MarkdownEditor({
         textarea.setSelectionRange(newCursorPos, newCursorPos);
       }, 0);
     } else {
-      // If no bullet detected, just add a new bullet if autoBullets is true
-      // otherwise add a normal newline
-      if (autoBullets) {
+      // Never add bullets automatically
+      if (false) {
         const newValue = textBeforeCursor + '\n- ' + textAfterCursor;
         setEditableContent(newValue);
         onChange(newValue);
@@ -221,8 +220,8 @@ export default function MarkdownEditor({
       }, 0);
     }
     
-    // Auto-generate bullet points on Enter if enabled
-    if (e.key === 'Enter' && autoBullets) {
+    // Auto-generate bullet points disabled
+    if (false) {
       e.preventDefault();
       insertAutoBullet(e.currentTarget);
     }
