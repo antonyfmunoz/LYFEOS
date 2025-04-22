@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { usePageTitle } from "@/hooks/use-page-title";
 
 export default function AddMockJournalPage() {
-  usePageTitle("Dashboard Journal");
+  usePageTitle("Dashboard Snapshot");
   const { createMissionPage } = useLYFEOS();
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -14,68 +14,114 @@ export default function AddMockJournalPage() {
   const addMockJournalEntry = () => {
     // Create a date for the mock journal entry
     const date = new Date();
-    const formattedDate = date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    const currentTime = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')} ${date.getHours() >= 12 ? 'PM' : 'AM'}`;
+    
+    const weekday = date.toLocaleDateString('en-US', { weekday: 'long' });
+    const monthDay = date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    const year = date.getFullYear();
     
     // Create unique slug
     const slug = `journal-dashboard-${Date.now()}`;
     
-    // Create content that mimics the exact dashboard UI layout
-    let content = `# Daily Dashboard - ${formattedDate}\n\n`;
+    // Create content that exactly replicates the dashboard UI
+    let content = `# Daily Dashboard\n`;
+    content += `${weekday}, ${monthDay}, ${year}\n`;
+    content += `${currentTime}\n\n`;
     
-    // Metrics Bar - Exactly as shown in the dashboard
-    content += `## Daily Metrics\n`;
-    content += `| Mental State | Physical State | Emotional State | Energy | Focus | Time |\n`;
-    content += `|:------------:|:--------------:|:---------------:|:------:|:-----:|:----:|\n`;
-    content += `| 8/10 | 7/10 | 8/10 | 85/100 | 90/100 | 75/100 |\n\n`;
+    // Time zone and format
+    content += `PST\n`;
+    content += `24h\n\n`;
     
-    // Daily Reflection - Dashboard Format
-    content += `## Daily Reflection\n\n`;
+    // Stats Log
+    content += `## Stats Log\n\n`;
     
-    // Morning Routine Section
-    content += `### Morning Routine\n`;
-    content += `- Wake time: 06:30\n`;
-    content += `- Morning meditation completed\n`;
-    content += `- Daily planning session completed\n`;
-    content += `- Breakfast: Protein smoothie and oatmeal\n\n`;
+    content += `LEVEL\n`;
+    content += `1\n\n`;
     
-    // Today's Focus Section
-    content += `### Today's Focus\n`;
-    content += `- Complete LYFEOS markdown editor feature\n`;
-    content += `- Debug journal archive functionality\n`;
-    content += `- Implement UI improvements for mobile devices\n`;
-    content += `- Plan next sprint features\n\n`;
+    content += `STREAK\n`;
+    content += `0 days\n\n`;
     
-    // Gratitude Section
+    content += `EFFICIENCY\n`;
+    content += `0%\n\n`;
+    
+    content += `ATTENTION\n`;
+    content += `100%\n\n`;
+    
+    content += `TIME\n`;
+    content += `100%\n\n`;
+    
+    content += `ENERGY\n`;
+    content += `100%\n\n`;
+    
+    content += `HEALTH\n`;
+    content += `100%\n\n`;
+    
+    // Mission Log
+    content += `## Mission Log\n\n`;
+    content += `No missions scheduled for today\n\n`;
+    content += `Create a new mission or visit the Calendar page\n\n`;
+    content += `New Mission\n`;
+    content += `↴ Click the checkbox to mark missions as completed\n\n`;
+    
+    // Data Entry Log
+    content += `## Data Entry Log\n\n`;
+    
+    content += `### Today's Thoughts\n`;
+    content += `Ideas worth saving...\n\n`;
+    
+    content += `### Content Consumed\n`;
+    content += `Books, podcasts, videos...\n\n`;
+    
+    content += `### Today's Research\n`;
+    content += `Summarize learnings or add links...\n\n`;
+    
+    content += `### New To-Do-List Ideas\n`;
+    content += `Add anything...\n\n`;
+    
+    // Recalibration Log
+    content += `## Recalibration Log\n\n`;
+    
+    // Sleep Tracker
+    content += `### Sleep Tracker\n`;
+    content += `Wake Up Time\n`;
+    content += `6:00 AM\n\n`;
+    
+    content += `Sleep Time\n`;
+    content += `10:00 PM\n\n`;
+    
+    // Energy Recap
+    content += `### Energy Recap\n`;
+    content += `Daily Total:\n`;
+    content += `50%\n\n`;
+    
+    // State Metrics
+    content += `### Mental State\n`;
+    content += `5/10\n`;
+    content += `1 2 3 4 5 6 7 8 9 10\n\n`;
+    
+    content += `### Physical State\n`;
+    content += `5/10\n`;
+    content += `1 2 3 4 5 6 7 8 9 10\n\n`;
+    
+    content += `### Emotional State\n`;
+    content += `5/10\n`;
+    content += `1 2 3 4 5 6 7 8 9 10\n\n`;
+    
+    // Intention Setter
+    content += `## Intention Setter\n\n`;
+    
     content += `### Gratitude\n`;
-    content += `Today I'm grateful for the progress made on the project, the supportive feedback, and the opportunity to build something meaningful. I'm also grateful for the good weather today that allowed me to take a short walk between coding sessions.\n\n`;
+    content += `What three things are you most grateful for today?\n\n`;
     
-    // Timeline Section
-    content += `### Day Timeline\n`;
-    content += `- 06:30 - 07:30: Morning routine and planning\n`;
-    content += `- 08:00 - 10:30: Focused work on markdown editor\n`;
-    content += `- 10:30 - 10:45: Short break\n`;
-    content += `- 10:45 - 12:30: Continued with editor fixes\n`;
-    content += `- 12:30 - 13:30: Lunch and short walk\n`;
-    content += `- 13:30 - 16:00: Journal archive development\n`;
-    content += `- 16:00 - 17:30: Testing and debugging\n`;
-    content += `- 17:30 - 18:30: Planning session for next features\n\n`;
+    content += `### Tomorrow's Goals\n`;
+    content += `What three things do you want to accomplish tomorrow?\n\n`;
     
-    // Notes and Insights Section
-    content += `### Notes & Insights\n`;
-    content += `Today I discovered a better approach to handling text formatting in the markdown editor. By focusing on targeted event handlers rather than automatic formatting, we can provide users with more control over their content. This could be applied to other text input components as well.\n\n`;
-    
-    // End of Day Summary
-    content += `### End of Day Summary\n`;
-    content += `Overall a very productive day. All planned tasks were completed, with the markdown editor improvements being the highlight. Energy levels remained high throughout the day, likely due to the short breaks and walking session. Tomorrow I plan to focus on finalizing the journal archive system and starting work on the calendar integration.\n\n`;
+    content += `### Annual Goals\n`;
+    content += `What are your three big targets for the year?`;
     
     try {
       // Create the mission page with the journal entry
-      const title = `Dashboard - ${formattedDate}`;
+      const title = `Dashboard - ${weekday}, ${monthDay}, ${year}`;
       createMissionPage({
         title,
         slug,
@@ -88,8 +134,8 @@ export default function AddMockJournalPage() {
       });
       
       toast({
-        title: "Dashboard Journal Created",
-        description: `A dashboard journal for ${formattedDate} has been saved.`,
+        title: "Dashboard Snapshot Created",
+        description: `A snapshot of today's dashboard has been saved to your journal.`,
         variant: "default",
         className: "bg-background/80 border border-primary text-foreground",
         duration: 5000,
@@ -98,10 +144,10 @@ export default function AddMockJournalPage() {
       // Navigate to journal archive
       navigate("/journal-archive");
     } catch (error) {
-      console.error("Failed to create dashboard journal:", error);
+      console.error("Failed to create dashboard snapshot:", error);
       toast({
         title: "Error",
-        description: "Failed to create dashboard journal entry.",
+        description: "Failed to create dashboard snapshot.",
         variant: "destructive",
         duration: 5000,
       });
@@ -111,12 +157,12 @@ export default function AddMockJournalPage() {
   return (
     <div className="container mx-auto py-8 flex flex-col items-center">
       <div className="max-w-2xl w-full">
-        <h1 className="text-3xl font-bold mb-6 text-center">Dashboard Journal Creator</h1>
+        <h1 className="text-3xl font-bold mb-6 text-center">Dashboard Snapshot Creator</h1>
         
         <div className="bg-card/30 rounded-lg border border-primary/20 p-6 mb-8">
           <p className="mb-4 text-[#7DAAB2]">
-            This page creates journal entries that exactly mirror the dashboard UI format.
-            Each entry captures the complete dashboard structure with accurate metrics and formatted sections.
+            This page creates an exact replica of the dashboard UI as it appears right now.
+            Each snapshot preserves the complete layout with all sections and placeholders exactly as they appear on screen.
           </p>
           
           <div className="flex justify-center">
@@ -124,32 +170,46 @@ export default function AddMockJournalPage() {
               onClick={addMockJournalEntry}
               className="bg-primary/10 hover:bg-primary/20 text-primary border border-primary/50"
             >
-              Create Dashboard Journal
+              Create Dashboard Snapshot
             </Button>
           </div>
         </div>
         
         <div className="bg-card/30 rounded-lg border border-primary/20 p-6">
-          <h2 className="text-xl font-semibold mb-3">What's included in the journal?</h2>
+          <h2 className="text-xl font-semibold mb-3">What's included in the snapshot?</h2>
           <ul className="space-y-2 text-[#7DAAB2]">
-            <li>• Complete daily metrics table (mental, physical, emotional states)</li>
-            <li>• Morning routine details</li>
-            <li>• Today's focus points</li>
-            <li>• Gratitude reflection</li>
-            <li>• Detailed day timeline</li>
-            <li>• Notes and insights</li>
-            <li>• End of day summary</li>
+            <li>• Dashboard header with date and time</li>
+            <li>• Stats Log section (Level, Streak, Efficiency, etc.)</li>
+            <li>• Mission Log section</li>
+            <li>• Data Entry Log section</li>
+            <li>• Recalibration Log section</li>
+            <li>• All tracking metrics</li>
+            <li>• All section placeholders</li>
           </ul>
           
           <div className="mt-6 pt-3 border-t border-slate-700/30">
             <h3 className="text-sm font-medium mb-2">Preview:</h3>
-            <div className="p-3 rounded-md border border-slate-700/30 bg-card/20">
-              <p className="text-xs text-[#7DAAB2] mb-1 font-mono">## Daily Metrics</p>
-              <p className="text-xs text-[#7DAAB2] mb-1 font-mono">| Mental State | Physical State | Emotional State | Energy | Focus | Time |</p>
-              <p className="text-xs text-[#7DAAB2] mb-2 font-mono">| 8/10 | 7/10 | 8/10 | 85/100 | 90/100 | 75/100 |</p>
-              <p className="text-xs text-[#7DAAB2] mb-1 font-mono">### Morning Routine</p>
-              <p className="text-xs text-[#7DAAB2] font-mono">- Wake time: 06:30</p>
-              <p className="text-xs text-[#7DAAB2] font-mono">- Morning meditation completed</p>
+            <div className="p-3 rounded-md border border-slate-700/30 bg-card/20 text-xs text-[#7DAAB2] font-mono space-y-2">
+              <div>
+                <p># Daily Dashboard</p>
+                <p>Monday, April 22, 2025</p>
+                <p>09:15 AM</p>
+              </div>
+              <div>
+                <p>PST</p>
+                <p>24h</p>
+              </div>
+              <div>
+                <p>## Stats Log</p>
+                <p>LEVEL</p>
+                <p>1</p>
+                <p>STREAK</p>
+                <p>0 days</p>
+                <p>...</p>
+              </div>
+              <p>## Mission Log</p>
+              <p>No missions scheduled for today</p>
+              <p>...</p>
             </div>
           </div>
         </div>
