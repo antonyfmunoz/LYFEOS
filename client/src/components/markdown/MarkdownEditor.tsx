@@ -329,7 +329,7 @@ export default function MarkdownEditor({
   }, [isEditing]);
   
   return (
-    <div className={`relative rounded-lg shadow-sm border-0 bg-[#05101A] ${className}`}>
+    <div className={`relative rounded-lg bg-[#05101A] ${className}`}>
       {/* Toolbar */}
       <div className="flex justify-between items-center p-2 border-b border-slate-900/30 bg-[#05101A]">
         <div className="flex items-center text-xs text-slate-400">
@@ -373,7 +373,7 @@ export default function MarkdownEditor({
           onChange={handleContentChange}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="w-full h-[500px] p-4 bg-[#05101A] focus:outline-none resize-vertical font-mono text-sm"
+          className="w-full h-[500px] p-4 bg-[#05101A] focus:outline-none resize-vertical font-mono text-sm border border-slate-700/50"
           disabled={readOnly}
         />
       ) : (
