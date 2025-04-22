@@ -274,7 +274,7 @@ export default function ProfilePage() {
              style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
           
           {/* Profile Image - Centered at the top */}
-          <div className="flex justify-center mb-6">
+          <div className="flex justify-center mb-4">
             <div 
               className="w-24 h-24 rounded-full border-2 border-primary/50 relative overflow-hidden"
               style={{ 
@@ -313,6 +313,33 @@ export default function ProfilePage() {
                   />
                 </label>
               )}
+            </div>
+          </div>
+          
+          {/* User Info - Centered below profile picture */}
+          <div className="flex flex-col items-center text-center mb-6">
+            <h2 className="text-xl font-orbitron text-foreground mb-1">
+              {profileData.displayName || username}
+            </h2>
+            
+            {profileData.title && (
+              <p className="text-primary text-sm mb-3 font-medium">{profileData.title}</p>
+            )}
+            
+            <div className="mb-2 flex items-center gap-2">
+              <span className="px-3 py-1 rounded-full text-xs bg-primary/10 text-primary border border-primary/30">
+                Level {stats.experience.level}
+              </span>
+              <span className="text-muted-foreground text-sm">
+                {stats.experience.current}/{stats.experience.max} XP
+              </span>
+            </div>
+            
+            <div className="h-2 w-full max-w-xs mb-2 bg-primary/20 rounded-full">
+              <div 
+                className="h-full bg-primary rounded-full transition-all duration-500" 
+                style={{ width: `${(stats.experience.current / stats.experience.max) * 100}%` }}
+              ></div>
             </div>
           </div>
           
@@ -511,35 +538,12 @@ export default function ProfilePage() {
                 </div>
               ) : (
                 <>
-                  <h2 className="text-xl font-orbitron text-foreground mb-1">
-                    {profileData.displayName || username}
-                  </h2>
-                  
-                  {profileData.title && (
-                    <p className="text-primary text-sm mb-2 font-medium">{profileData.title}</p>
-                  )}
-                  
                   {profileData.bio && (
-                    <div className="p-4 bg-background/30 border border-primary/10 rounded-md my-4 text-muted-foreground">
+                    <div className="p-4 bg-background/30 border border-primary/10 rounded-md mb-4 text-muted-foreground">
+                      <h3 className="text-md font-orbitron text-foreground mb-2">Bio</h3>
                       {profileData.bio}
                     </div>
                   )}
-                  
-                  <div className="mb-4 flex items-center gap-2">
-                    <span className="px-3 py-1 rounded-full text-xs bg-primary/10 text-primary border border-primary/30">
-                      Level {stats.experience.level}
-                    </span>
-                    <span className="text-muted-foreground text-sm">
-                      {stats.experience.current}/{stats.experience.max} XP
-                    </span>
-                  </div>
-                  
-                  <div className="h-2 mb-6 bg-primary/20 rounded-full">
-                    <div 
-                      className="h-full bg-primary rounded-full transition-all duration-500" 
-                      style={{ width: `${(stats.experience.current / stats.experience.max) * 100}%` }}
-                    ></div>
-                  </div>
                 </>
               )}
               
