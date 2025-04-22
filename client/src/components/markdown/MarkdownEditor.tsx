@@ -373,7 +373,7 @@ export default function MarkdownEditor({
           onChange={handleContentChange}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="w-full h-[500px] p-4 bg-transparent focus:outline-none resize-vertical font-mono text-sm"
+          className="w-full h-[500px] p-4 bg-transparent resize-vertical font-mono text-sm border-none"
           disabled={readOnly}
         />
       ) : (

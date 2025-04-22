@@ -245,7 +245,7 @@ export function MarkdownEditor({
             value={value}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
-            className="w-full h-full min-h-[inherit] p-3 bg-background text-foreground resize-none outline-none border-none rounded-md placeholder:text-muted-foreground focus:ring-1 focus:ring-primary/50"
+            className="w-full h-full min-h-[inherit] p-3 bg-background text-foreground resize-none outline-none border-none rounded-md placeholder:text-muted-foreground"
             onClick={(e) => {
               // Bullet handling disabled
             }}
