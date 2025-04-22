@@ -721,6 +721,7 @@ export default function DashboardPage() {
                     value={reflection.contentConsumed}
                     onChange={(value) => updateReflection("contentConsumed", value)}
                     minHeight="100px"
+                    autoBullets={true}
                   />
                 </div>
               </div>
@@ -737,6 +738,7 @@ export default function DashboardPage() {
                     value={reflection.research}
                     onChange={(value) => updateReflection("research", value)}
                     minHeight="100px"
+                    autoBullets={true}
                   />
                 </div>
               </div>
