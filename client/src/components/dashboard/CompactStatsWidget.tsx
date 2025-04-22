@@ -283,7 +283,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           </div>
           <div className="flex justify-between">
             <span className="text-[#D6F4FF] font-mono text-xs">
-              {stats.healthPoints.current}<span className="text-[#7DAAB2] text-xs">/{stats.healthPoints.max}</span>
+              {Math.round(hpPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
             </span>
           </div>
         </div>
