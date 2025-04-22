@@ -14,6 +14,7 @@ import ProfilePage from "./pages/ProfilePage";
 import StatDetailPage from "./pages/StatDetailPage";
 import MissionDetailPage from "./pages/MissionDetailPage";
 import CalendarPage from "./pages/CalendarPage";
+import KanbanPage from "./pages/KanbanPage";
 import StreakDetailPage from "./pages/StreakDetailPage";
 import EfficiencyDetailPage from "./pages/EfficiencyDetailPage";
 import EnergyDetailPage from "./pages/EnergyDetailPage";
@@ -137,6 +138,14 @@ function Router() {
         <ProtectedRoute>
           <RootLayout>
             <CalendarPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/kanban">
+        <ProtectedRoute>
+          <RootLayout>
+            <KanbanPage />
           </RootLayout>
         </ProtectedRoute>
       </Route>
