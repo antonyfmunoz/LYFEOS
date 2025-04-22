@@ -66,10 +66,15 @@ export function RolodexWidget() {
   // Toggle favorite mutation
   const toggleFavoriteMutation = useMutation({
     mutationFn: async (contactId: number) => {
-      const response = await apiRequest({
-        url: `/api/contacts/${contactId}/toggle-favorite`,
+      const response = await fetch(`/api/contacts/${contactId}/toggle-favorite`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
+      if (!response.ok) {
+        throw new Error('Failed to toggle favorite status');
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -87,9 +92,9 @@ export function RolodexWidget() {
   // Filter contacts based on search term and category
   const filteredContacts = contacts.filter((contact: Contact) => {
     const matchesSearch = 
-      (contact.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (contact.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (contact.phone || '').toLowerCase().includes(searchTerm.toLowerCase());
+      contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (contact.email ? contact.email.toLowerCase().includes(searchTerm.toLowerCase()) : false) ||
+      (contact.phone ? contact.phone.toLowerCase().includes(searchTerm.toLowerCase()) : false);
     
     const matchesCategory = selectedCategory ? contact.category === selectedCategory : true;
     
@@ -156,11 +161,11 @@ export function RolodexWidget() {
         
         <div className="space-y-2">
           {displayedContacts.length > 0 ? (
-            displayedContacts.map(contact => (
+            displayedContacts.map((contact: Contact) => (
               <div 
                 key={contact.id} 
                 className="flex items-center justify-between p-2 rounded-md border border-slate-700/30 hover:border-primary/50 transition-colors cursor-pointer hover:bg-primary/5"
-                onClick={() => alert(`Contact details for ${contact.name}`)}>
+                onClick={() => navigate(`/contacts/${contact.id}`)}>
                 <div className="flex items-center gap-2">
                   <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
                     contact.category === "work" ? "bg-blue-500/20" : "bg-purple-500/20"
@@ -175,7 +180,7 @@ export function RolodexWidget() {
                       {contact.favorite && <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />}
                     </div>
                     <div className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Mail className="h-3 w-3" /> {contact.email}
+                      <Mail className="h-3 w-3" /> {contact.email || 'No email'}
                     </div>
                   </div>
                 </div>
@@ -205,7 +210,7 @@ export function RolodexWidget() {
             variant="outline" 
             size="sm" 
             className="w-full border-dashed border-slate-700/30 text-xs hover:text-primary hover:border-primary/50"
-            onClick={() => alert("Add New Contact dialog would open here")}
+            onClick={() => navigate("/contacts/new")}
           >
             <Plus className="h-3.5 w-3.5 mr-1" />
             Add New Contact
