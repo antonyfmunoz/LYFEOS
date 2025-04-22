@@ -181,7 +181,7 @@ export function MarkdownEditor({
     <div 
       ref={wrapperRef}
       className={cn(
-        "relative rounded-md border border-primary/30 dark:bg-[#00141A] light:bg-white min-h-[100px] group",
+        "relative rounded-md border border-primary/30 min-h-[100px] group",
         className
       )}
       style={{ minHeight }}
@@ -193,7 +193,7 @@ export function MarkdownEditor({
             value={value}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
-            className="w-full h-full min-h-[inherit] p-3 bg-background text-foreground resize-none outline-none border-none rounded-md placeholder:text-muted-foreground"
+            className="w-full h-full min-h-[inherit] p-3 bg-background text-foreground resize-none outline-none border-none rounded-md placeholder:text-muted-foreground font-mono"
             placeholder={placeholder}
             style={{ minHeight }}
           />
