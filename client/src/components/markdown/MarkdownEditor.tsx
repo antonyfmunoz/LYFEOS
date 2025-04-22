@@ -16,6 +16,7 @@ interface MarkdownEditorProps {
   placeholder?: string;
   className?: string;
   autoSaveInterval?: number; // in milliseconds
+  autoBullets?: boolean; // Enable automatic bullet points
 }
 
 // Create a custom renderer for task lists to match Obsidian style
@@ -36,6 +37,7 @@ export default function MarkdownEditor({
   placeholder = 'Start typing...',
   className = '',
   autoSaveInterval = 5000, // Default to 5 seconds
+  autoBullets = false, // Default auto bullets to off
 }: MarkdownEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editableContent, setEditableContent] = useState(content);
@@ -100,8 +102,101 @@ export default function MarkdownEditor({
     );
   };
 
-  // Handle tab key in the textarea for indentation
-  const handleTabKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  // Insert auto bullet on Enter
+  const insertAutoBullet = (textarea: HTMLTextAreaElement) => {
+    if (!textarea) return;
+    
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    
+    // Get the current line
+    const textBeforeCursor = editableContent.substring(0, start);
+    const textAfterCursor = editableContent.substring(end);
+    
+    // Find the start of the current line
+    const lastNewlineBeforeCursor = textBeforeCursor.lastIndexOf('\n');
+    const currentLineStart = lastNewlineBeforeCursor === -1 ? 0 : lastNewlineBeforeCursor + 1;
+    const currentLine = textBeforeCursor.substring(currentLineStart);
+    
+    // Check if current line starts with a bullet
+    const bulletMatch = currentLine.match(/^(\s*)([-*+•]|(\d+)\.)(\s+)(.*)/);
+    
+    if (bulletMatch) {
+      // Extract the components of the bullet point
+      const [, leadingSpace, bulletType, numberPart, bulletSpace, content] = bulletMatch;
+      
+      // If the content is empty and it's not the first bullet, remove the bullet
+      if (content.trim() === '') {
+        const newValue = textBeforeCursor.substring(0, currentLineStart) + textAfterCursor;
+        setEditableContent(newValue);
+        onChange(newValue);
+        setIsDirty(true);
+        
+        // Set cursor position after removal
+        const newCursorPos = currentLineStart;
+        setTimeout(() => {
+          textarea.setSelectionRange(newCursorPos, newCursorPos);
+        }, 0);
+        return;
+      }
+      
+      // Generate the next bullet
+      let nextBullet: string;
+      if (bulletType === '-' || bulletType === '*' || bulletType === '+' || bulletType === '•') {
+        // For standard bullets, just repeat the same type
+        nextBullet = `${leadingSpace}${bulletType}${bulletSpace}`;
+      } else if (numberPart) {
+        // For numbered lists, increment the number
+        const nextNumber = parseInt(numberPart) + 1;
+        nextBullet = `${leadingSpace}${nextNumber}.${bulletSpace}`;
+      } else {
+        // Fallback to a standard bullet
+        nextBullet = `${leadingSpace}- `;
+      }
+      
+      const newValue = textBeforeCursor + '\n' + nextBullet + textAfterCursor;
+      setEditableContent(newValue);
+      onChange(newValue);
+      setIsDirty(true);
+      
+      // Position cursor after the new bullet
+      const newCursorPos = start + 1 + nextBullet.length;
+      setTimeout(() => {
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+      }, 0);
+    } else {
+      // If no bullet detected, just add a new bullet if autoBullets is true
+      // otherwise add a normal newline
+      if (autoBullets) {
+        const newValue = textBeforeCursor + '\n- ' + textAfterCursor;
+        setEditableContent(newValue);
+        onChange(newValue);
+        setIsDirty(true);
+        
+        // Position cursor after the new bullet
+        const newCursorPos = start + 3;
+        setTimeout(() => {
+          textarea.setSelectionRange(newCursorPos, newCursorPos);
+        }, 0);
+      } else {
+        // Just add a normal newline
+        const newValue = textBeforeCursor + '\n' + textAfterCursor;
+        setEditableContent(newValue);
+        onChange(newValue);
+        setIsDirty(true);
+        
+        // Position cursor after the newline
+        const newCursorPos = start + 1;
+        setTimeout(() => {
+          textarea.setSelectionRange(newCursorPos, newCursorPos);
+        }, 0);
+      }
+    }
+  };
+
+  // Handle keyboard shortcuts and navigation in the textarea
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Handle tab key for indentation
     if (e.key === 'Tab') {
       e.preventDefault();
       
@@ -123,6 +218,34 @@ export default function MarkdownEditor({
       setTimeout(() => {
         textarea.selectionStart = start + 2;
         textarea.selectionEnd = start + 2;
+      }, 0);
+    }
+    
+    // Auto-generate bullet points on Enter if enabled
+    if (e.key === 'Enter' && autoBullets) {
+      e.preventDefault();
+      insertAutoBullet(e.currentTarget);
+    }
+    
+    // Handle Markdown shortcuts
+    if (e.key === 'b' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      const textarea = e.currentTarget;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const selectedText = editableContent.substring(start, end);
+      
+      const newContent = 
+        editableContent.substring(0, start) + 
+        `**${selectedText}**` + 
+        editableContent.substring(end);
+      
+      setEditableContent(newContent);
+      onChange(newContent);
+      setIsDirty(true);
+      
+      setTimeout(() => {
+        textarea.setSelectionRange(start + 2, end + 2);
       }, 0);
     }
   };
@@ -249,7 +372,7 @@ export default function MarkdownEditor({
           ref={textareaRef}
           value={editableContent}
           onChange={handleContentChange}
-          onKeyDown={handleTabKey}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder}
           className="w-full h-[500px] p-4 bg-transparent focus:outline-none resize-vertical font-mono text-sm"
           disabled={readOnly}

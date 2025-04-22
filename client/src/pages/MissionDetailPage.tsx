@@ -260,6 +260,7 @@ export default function MissionDetailPage() {
                 onChange={handleContentChange}
                 onSave={handleSave}
                 className="mb-4"
+                autoBullets={true}
               />
             ) : (
               <div className="text-center p-8 bg-card/30 rounded-lg border border-primary/20">
