@@ -277,7 +277,12 @@ export default function AIPage() {
           {/* Chat Sessions */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-foreground">Chats</h3>
+              <div className="flex items-center">
+                <h3 className="text-sm font-semibold text-foreground">Chats</h3>
+                <span className="ml-2 text-xs px-2 py-0.5 bg-primary/10 border border-primary/20 rounded-full text-foreground">
+                  {chatSessions.length} Active
+                </span>
+              </div>
               <Button
                 variant="ghost"
                 size="sm"
