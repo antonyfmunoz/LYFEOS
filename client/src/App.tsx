@@ -27,7 +27,6 @@ import MissionPage from "./components/markdown/MissionPage";
 import RootLayout from "./components/layout/RootLayout";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
-import AddMockJournalPage from "./pages/AddMockJournalPage";
 import JournalArchivePage from "./pages/JournalArchivePage";
 import MissionArchivePage from "./pages/MissionArchivePage";
 import RitualsArchivePage from "./pages/RitualsArchivePage";
@@ -219,15 +218,6 @@ function Router() {
             <div className="container max-w-4xl py-6">
               <EnhancedMissionPage />
             </div>
-          </RootLayout>
-        </ProtectedRoute>
-      </Route>
-      
-      {/* Utility Pages */}
-      <Route path="/add-mock-journal">
-        <ProtectedRoute>
-          <RootLayout>
-            <AddMockJournalPage />
           </RootLayout>
         </ProtectedRoute>
       </Route>
