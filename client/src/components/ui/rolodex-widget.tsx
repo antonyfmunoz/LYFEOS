@@ -139,7 +139,10 @@ export function RolodexWidget() {
         <div className="space-y-2">
           {displayedContacts.length > 0 ? (
             displayedContacts.map(contact => (
-              <div key={contact.id} className="flex items-center justify-between p-2 rounded-md border border-slate-700/30 hover:border-primary/50 transition-colors">
+              <div 
+                key={contact.id} 
+                className="flex items-center justify-between p-2 rounded-md border border-slate-700/30 hover:border-primary/50 transition-colors cursor-pointer hover:bg-primary/5"
+                onClick={() => alert(`Contact details for ${contact.name}`)}>
                 <div className="flex items-center gap-2">
                   <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
                     contact.category === "work" ? "bg-blue-500/20" : "bg-purple-500/20"
@@ -163,7 +166,10 @@ export function RolodexWidget() {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
-                    onClick={() => toggleFavorite(contact.id)}
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent triggering the parent's onClick
+                      toggleFavorite(contact.id);
+                    }}
                   >
                     <Star className={`h-3.5 w-3.5 ${contact.favorite ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground"}`} />
                   </Button>
@@ -181,6 +187,7 @@ export function RolodexWidget() {
             variant="outline" 
             size="sm" 
             className="w-full border-dashed border-slate-700/30 text-xs hover:text-primary hover:border-primary/50"
+            onClick={() => alert("Add New Contact dialog would open here")}
           >
             <Plus className="h-3.5 w-3.5 mr-1" />
             Add New Contact
