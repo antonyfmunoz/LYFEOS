@@ -287,18 +287,144 @@ export default function DashboardPage() {
     }
   }, []);
 
-  // Load reflection data from localStorage
+  // Function to convert reflection to a journal entry
+  const saveReflectionAsJournalEntry = (reflectionData: DailyReflection) => {
+    const date = new Date(reflectionData.date);
+    const formattedDate = date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    });
+    
+    // Create content for the journal entry
+    let content = `# Daily Reflection - ${formattedDate}\n\n`;
+    
+    // Add state metrics
+    content += `## Daily State\n`;
+    content += `- Mental State: ${reflectionData.mentalState}/10\n`;
+    content += `- Physical State: ${reflectionData.physicalState}/10\n`;
+    content += `- Emotional State: ${reflectionData.emotionalState}/10\n`;
+    content += `- Wake Time: ${reflectionData.wakeTime}\n`;
+    content += `- Sleep Time: ${reflectionData.sleepTime}\n\n`;
+    
+    // Add gratitude section if not empty
+    if (reflectionData.gratitude && reflectionData.gratitude.trim()) {
+      content += `## Gratitude\n${reflectionData.gratitude}\n\n`;
+    }
+    
+    // Add tomorrow's goals if not empty
+    if (reflectionData.tomorrowGoals && reflectionData.tomorrowGoals.trim()) {
+      content += `## Tomorrow's Goals\n${reflectionData.tomorrowGoals}\n\n`;
+    }
+    
+    // Add annual goals if not empty
+    if (reflectionData.annualGoals && reflectionData.annualGoals.trim()) {
+      content += `## Annual Goals\n${reflectionData.annualGoals}\n\n`;
+    }
+    
+    // Add thoughts if not empty
+    if (reflectionData.thoughts && reflectionData.thoughts.trim()) {
+      content += `## Thoughts & Reflections\n${reflectionData.thoughts}\n\n`;
+    }
+    
+    // Add content consumed if not empty
+    if (reflectionData.contentConsumed && reflectionData.contentConsumed.trim()) {
+      content += `## Content Consumed\n${reflectionData.contentConsumed}\n\n`;
+    }
+    
+    // Add research if not empty
+    if (reflectionData.research && reflectionData.research.trim()) {
+      content += `## Research & Discoveries\n${reflectionData.research}\n\n`;
+    }
+    
+    // Add to-do ideas if not empty
+    if (reflectionData.todoIdeas && reflectionData.todoIdeas.trim()) {
+      content += `## To-Do Ideas\n${reflectionData.todoIdeas}\n\n`;
+    }
+    
+    // Create a mission page for this journal entry
+    const title = `Journal - ${formattedDate}`;
+    const slug = `journal-${reflectionData.date}`;
+    
+    try {
+      useLYFEOS().createMissionPage({
+        title,
+        slug,
+        content,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        completed: false,
+        xpValue: 20,
+        tags: ['Journal', 'Daily Reflection']
+      });
+      
+      toast({
+        title: "Journal Entry Created",
+        description: `Your daily reflection from ${formattedDate} has been saved to your journal.`,
+        variant: "default",
+        className: "bg-background/80 border border-primary text-foreground",
+        duration: 5000,
+      });
+    } catch (error) {
+      console.error("Failed to create journal entry:", error);
+    }
+  };
+
+  // Load reflection data from localStorage and check for date change
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
+    const lastCheckedDate = localStorage.getItem('lastCheckedDate');
     const savedReflection = localStorage.getItem(`dailyLog-${today}`);
     
-    if (savedReflection) {
+    // If today is different from the last checked date, 
+    // save yesterday's reflection as a journal entry
+    if (lastCheckedDate && lastCheckedDate !== today) {
+      const yesterdayReflection = localStorage.getItem(`dailyLog-${lastCheckedDate}`);
+      if (yesterdayReflection) {
+        try {
+          const parsedReflection = JSON.parse(yesterdayReflection);
+          // Only save if there's any content in the reflection
+          const hasContent = Object.entries(parsedReflection).some(([key, value]) => {
+            return typeof value === 'string' && value.trim() !== '' && 
+              !['date', 'wakeTime', 'sleepTime'].includes(key);
+          });
+          
+          if (hasContent) {
+            saveReflectionAsJournalEntry(parsedReflection);
+          }
+        } catch (e) {
+          console.error("Failed to parse yesterday's reflection:", e);
+        }
+      }
+      
+      // Reset the reflection to default values but keep the date as today
+      setReflection({
+        mentalState: 5,
+        physicalState: 5,
+        emotionalState: 5,
+        wakeTime: "06:00",
+        sleepTime: "22:00",
+        gratitude: "",
+        tomorrowGoals: "",
+        annualGoals: "",
+        thoughts: "",
+        contentConsumed: "",
+        research: "",
+        todoIdeas: "",
+        date: today
+      });
+    } else if (savedReflection) {
+      // If today's reflection exists, load it
       try {
         setReflection(JSON.parse(savedReflection));
       } catch (e) {
         console.error("Failed to parse saved reflection:", e);
       }
     }
+    
+    // Update last checked date
+    localStorage.setItem('lastCheckedDate', today);
   }, []);
   
   // Calculate total XP earned whenever timeBlocks change

@@ -60,6 +60,39 @@ export default function ChronilogPage() {
           <div 
             key={category.id}
             className="glassmorphic rounded-xl p-6 neon-border hover:shadow-[0_0_10px_rgba(0,224,255,0.5)] transition-shadow duration-300 cursor-pointer"
+            onClick={() => {
+              // Handle category click based on category.id
+              if (category.id === "journal") {
+                // Scroll to the journal entries section
+                document.getElementById('journal-entries-section')?.scrollIntoView({
+                  behavior: 'smooth'
+                });
+              } else if (category.id === "missions") {
+                // Scroll to the mission logs section
+                document.getElementById('mission-logs-section')?.scrollIntoView({
+                  behavior: 'smooth'
+                });
+              } else {
+                // Create a new entry for other categories
+                const title = `${category.title} Entry - ${new Date().toLocaleDateString()}`;
+                const slug = title.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-');
+                
+                // Create the page
+                const newPage = useLYFEOS().createMissionPage({
+                  title,
+                  slug,
+                  content: `# ${title}\n\nStart documenting your ${category.title.toLowerCase()} here...`,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                  completed: false,
+                  xpValue: 10,
+                  tags: [category.title]
+                });
+                
+                // Navigate to the new page
+                navigate(`/mission-page/${slug}`);
+              }
+            }}
           >
             <div className="flex items-center mb-3">
               <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${
@@ -81,12 +114,44 @@ export default function ChronilogPage() {
               </div>
             </div>
             <div className="flex justify-end">
-              <button className={`text-xs font-medium px-3 py-1 rounded-md ${
-                category.color === 'primary' ? 'bg-primary/10 text-primary' : 
-                category.color === 'secondary' ? 'bg-secondary/10 text-secondary' : 
-                category.color === 'accent' ? 'bg-accent/10 text-accent' : 
-                'bg-emerald-400/10 text-emerald-400'
-              } hover:bg-opacity-20 transition`}>
+              <button 
+                className={`text-xs font-medium px-3 py-1 rounded-md ${
+                  category.color === 'primary' ? 'bg-primary/10 text-primary' : 
+                  category.color === 'secondary' ? 'bg-secondary/10 text-secondary' : 
+                  category.color === 'accent' ? 'bg-accent/10 text-accent' : 
+                  'bg-emerald-400/10 text-emerald-400'
+                } hover:bg-opacity-20 transition`}
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent the parent div's onClick from firing
+                  
+                  // Handle button click (same logic as div onClick)
+                  if (category.id === "journal") {
+                    document.getElementById('journal-entries-section')?.scrollIntoView({
+                      behavior: 'smooth'
+                    });
+                  } else if (category.id === "missions") {
+                    document.getElementById('mission-logs-section')?.scrollIntoView({
+                      behavior: 'smooth'
+                    });
+                  } else {
+                    const title = `${category.title} Entry - ${new Date().toLocaleDateString()}`;
+                    const slug = title.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-');
+                    
+                    const newPage = useLYFEOS().createMissionPage({
+                      title,
+                      slug,
+                      content: `# ${title}\n\nStart documenting your ${category.title.toLowerCase()} here...`,
+                      createdAt: new Date().toISOString(),
+                      updatedAt: new Date().toISOString(),
+                      completed: false,
+                      xpValue: 10,
+                      tags: [category.title]
+                    });
+                    
+                    navigate(`/mission-page/${slug}`);
+                  }
+                }}
+              >
                 OPEN
               </button>
             </div>
@@ -95,7 +160,7 @@ export default function ChronilogPage() {
       </div>
       
       {/* Mission Pages Section */}
-      <div className="mb-8">
+      <div id="mission-logs-section" className="mb-8">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-orbitron">Mission Logs</h2>
           <button 
@@ -196,30 +261,108 @@ export default function ChronilogPage() {
         </div>
       </div>
       
-      {/* Other Entries Section */}
-      <div className="mb-6">
-        <h2 className="text-xl font-orbitron mb-4">Recent Journal Entries</h2>
+      {/* Journal Entries Section */}
+      <div id="journal-entries-section" className="mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-orbitron">Journal Entries</h2>
+          <button 
+            className="text-xs font-medium px-3 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition"
+            onClick={() => {
+              // Create a new blank journal entry
+              const title = `Journal Entry ${new Date().toLocaleDateString()}`;
+              const slug = title.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-');
+              
+              // Create the page in our context
+              const newPage = useLYFEOS().createMissionPage({
+                title,
+                slug,
+                content: `# ${title}\n\n## Thoughts\n\nStart writing your journal entry here...\n\n## Highlights\n\n- \n- \n- \n\n## Gratitude\n\n- \n- \n- `,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                completed: false,
+                xpValue: 10,
+                tags: ['Journal']
+              });
+              
+              // Navigate to the new page
+              navigate(`/mission-page/${slug}`);
+            }}
+          >
+            NEW ENTRY
+          </button>
+        </div>
         
         <div className="space-y-3">
-          <div className="glassmorphic rounded-xl p-4 border border-slate-700/50">
-            <div className="flex justify-between items-start mb-2">
-              <h3 className="font-medium">Morning Reflection</h3>
-              <span className="text-xs text-[#7DAAB2] font-mono">TODAY</span>
+          {missionPages.filter(page => page.tags.includes('Journal') || page.tags.includes('Daily Reflection')).length > 0 ? (
+            missionPages
+              .filter(page => page.tags.includes('Journal') || page.tags.includes('Daily Reflection'))
+              .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+              .map((page) => (
+                <div 
+                  key={page.id} 
+                  className="glassmorphic rounded-xl p-4 border border-slate-700/50 hover:border-primary/50 cursor-pointer transition-all"
+                  onClick={() => navigate(`/mission-page/${page.slug}`)}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center">
+                      <span className="material-icons text-primary mr-2 text-sm">auto_stories</span>
+                      <h3 className="font-medium">{page.title}</h3>
+                    </div>
+                    <div className="flex items-center">
+                      <Clock className="h-3 w-3 mr-1 text-[#7DAAB2]" />
+                      <span className="text-xs text-[#7DAAB2] font-mono">
+                        {new Date(page.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Tags */}
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {page.tags.map((tag, idx) => (
+                      <div key={idx} className="text-xs px-2 py-0.5 rounded-full bg-slate-700/50 text-slate-300 flex items-center">
+                        <Tag className="h-3 w-3 mr-1" />
+                        {tag}
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <p className="text-sm text-[#7DAAB2] line-clamp-2">
+                    {page.content.length > 150 
+                      ? page.content.substring(0, 150) + '...' 
+                      : page.content}
+                  </p>
+                </div>
+              ))
+          ) : (
+            <div className="text-center py-8 bg-card/30 rounded-lg border border-primary/20">
+              <p className="text-[#7DAAB2] mb-3">No journal entries found.</p>
+              <button 
+                className="text-xs font-medium px-3 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition"
+                onClick={() => {
+                  // Create a new blank journal entry
+                  const title = `Journal Entry ${new Date().toLocaleDateString()}`;
+                  const slug = title.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-');
+                  
+                  // Create the page in our context
+                  const newPage = useLYFEOS().createMissionPage({
+                    title,
+                    slug,
+                    content: `# ${title}\n\n## Thoughts\n\nStart writing your journal entry here...\n\n## Highlights\n\n- \n- \n- \n\n## Gratitude\n\n- \n- \n- `,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    completed: false,
+                    xpValue: 10,
+                    tags: ['Journal']
+                  });
+                  
+                  // Navigate to the new page
+                  navigate(`/mission-page/${slug}`);
+                }}
+              >
+                CREATE YOUR FIRST ENTRY
+              </button>
             </div>
-            <p className="text-sm text-[#7DAAB2] line-clamp-2">
-              Today I'm focusing on the product launch strategy. Need to balance deep work with team coordination...
-            </p>
-          </div>
-          
-          <div className="glassmorphic rounded-xl p-4 border border-slate-700/50">
-            <div className="flex justify-between items-start mb-2">
-              <h3 className="font-medium">Weekly Review</h3>
-              <span className="text-xs text-[#7DAAB2] font-mono">3 DAYS AGO</span>
-            </div>
-            <p className="text-sm text-[#7DAAB2] line-clamp-2">
-              Completed 4/5 major objectives this week. Energy levels were consistent but sleep quality needs improvement...
-            </p>
-          </div>
+          )}
         </div>
       </div>
     </>
