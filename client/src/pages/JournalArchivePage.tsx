@@ -215,7 +215,17 @@ export default function JournalArchivePage() {
         </div>
       )}
       
-
+      {/* Admin Tools Section */}
+      <div className="mt-10 pt-6 border-t border-slate-700/30">
+        <h3 className="text-sm uppercase tracking-wider text-[#7DAAB2]/70 mb-2">Admin Tools</h3>
+        <div className="flex items-center gap-3">
+          <Link href="/add-mock-journal">
+            <Button variant="outline" size="sm" className="text-xs border-slate-700/50 hover:bg-card/50">
+              Add Mock Journal Entry
+            </Button>
+          </Link>
+        </div>
+      </div>
     </>
   );
 }
