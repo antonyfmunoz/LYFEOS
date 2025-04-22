@@ -172,7 +172,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           </div>
           <div className="flex justify-between">
             <span className="text-[#D6F4FF] font-mono text-xs">
-              {Math.round(atPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
+              {stats.attentionTokens.current}<span className="text-[#7DAAB2] text-xs">/{stats.attentionTokens.max}</span>
             </span>
           </div>
         </div>
@@ -209,7 +209,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           </div>
           <div className="flex justify-between">
             <span className="text-[#D6F4FF] font-mono text-xs">
-              {Math.round(ttPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
+              {stats.timeTokens.current}<span className="text-[#7DAAB2] text-xs">/{stats.timeTokens.max}</span>
             </span>
           </div>
         </div>
@@ -246,7 +246,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           </div>
           <div className="flex justify-between">
             <span className="text-[#D6F4FF] font-mono text-xs">
-              {Math.round(epPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
+              {stats.energyPoints.current}<span className="text-[#7DAAB2] text-xs">/{stats.energyPoints.max}</span>
             </span>
           </div>
         </div>
@@ -283,7 +283,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           </div>
           <div className="flex justify-between">
             <span className="text-[#D6F4FF] font-mono text-xs">
-              {Math.round(hpPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
+              {stats.healthPoints.current}<span className="text-[#7DAAB2] text-xs">/{stats.healthPoints.max}</span>
             </span>
           </div>
         </div>
