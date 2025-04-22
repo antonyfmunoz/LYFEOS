@@ -445,7 +445,18 @@ export default function KanbanPage() {
   return (
     <>
       <div className="mb-6">
-        <h1 className="text-2xl font-orbitron mb-1">Boards</h1>
+        <div className="flex items-center gap-2 mb-1">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 mr-1" 
+            onClick={() => navigate('/systems')}
+            aria-label="Back to systems"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-2xl font-orbitron">Boards</h1>
+        </div>
         <p className="text-[#7DAAB2]">Visualize and manage your workflow</p>
       </div>
       
