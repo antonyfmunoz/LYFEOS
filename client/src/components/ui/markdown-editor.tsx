@@ -40,35 +40,7 @@ export function MarkdownEditor({
     const newValue = e.target.value;
     onChange(newValue);
     
-    if (autoBullets) {
-      // Ensure cursor is always after the bullet point on the current line
-      const cursorPos = e.target.selectionStart || 0;
-      const textBeforeCursor = newValue.substring(0, cursorPos);
-      const lastNewlineBeforeCursor = textBeforeCursor.lastIndexOf('\n');
-      const currentLineStart = lastNewlineBeforeCursor === -1 ? 0 : lastNewlineBeforeCursor + 1;
-      const currentLine = textBeforeCursor.substring(currentLineStart);
-      
-      // Check if current line starts with a bullet
-      const bulletMatch = currentLine.match(/^(\s*)([-*+•]|(\d+)\.)(\s+)/);
-      
-      if (bulletMatch) {
-        const [fullMatch] = bulletMatch;
-        const bulletLength = fullMatch.length;
-        
-        // If cursor is placed before bullet, move it after bullet
-        if (cursorPos < currentLineStart + bulletLength) {
-          const newCursorPos = currentLineStart + bulletLength;
-          setTimeout(() => {
-            if (textareaRef.current) {
-              textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
-              setCursorPosition(newCursorPos);
-            }
-          }, 0);
-          return;
-        }
-      }
-    }
-    
+    // Bullet handling completely disabled
     setCursorPosition(e.target.selectionStart || 0);
   };
 
@@ -166,7 +138,7 @@ export function MarkdownEditor({
     }
   };
 
-  // Insert auto bullet on Enter
+  // Insert auto bullet on Enter - Now modified to just add a normal newline
   const insertAutoBullet = () => {
     if (!textareaRef.current) return;
     
@@ -174,68 +146,19 @@ export function MarkdownEditor({
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     
-    // Get the current line
+    // Get the text before and after cursor
     const textBeforeCursor = value.substring(0, start);
     const textAfterCursor = value.substring(end);
     
-    // Find the start of the current line
-    const lastNewlineBeforeCursor = textBeforeCursor.lastIndexOf('\n');
-    const currentLineStart = lastNewlineBeforeCursor === -1 ? 0 : lastNewlineBeforeCursor + 1;
-    const currentLine = textBeforeCursor.substring(currentLineStart);
+    // Just add a simple newline without any bullets
+    const newValue = textBeforeCursor + '\n' + textAfterCursor;
+    onChange(newValue);
     
-    // Check if current line starts with a bullet
-    const bulletMatch = currentLine.match(/^(\s*)([-*+•]|(\d+)\.)(\s+)(.*)/);
-    
-    if (bulletMatch) {
-      // Extract the components of the bullet point
-      const [, leadingSpace, bulletType, numberPart, bulletSpace, content] = bulletMatch;
-      
-      // If the content is empty and it's not the first bullet, remove the bullet
-      if (content.trim() === '') {
-        const newValue = textBeforeCursor.substring(0, currentLineStart) + textAfterCursor;
-        onChange(newValue);
-        
-        // Set cursor position after removal
-        const newCursorPos = currentLineStart;
-        setTimeout(() => {
-          textarea.setSelectionRange(newCursorPos, newCursorPos);
-        }, 0);
-        return;
-      }
-      
-      // Generate the next bullet
-      let nextBullet: string;
-      if (bulletType === '-' || bulletType === '*' || bulletType === '+' || bulletType === '•') {
-        // For standard bullets, just repeat the same type
-        nextBullet = `${leadingSpace}${bulletType}${bulletSpace}`;
-      } else if (numberPart) {
-        // For numbered lists, increment the number
-        const nextNumber = parseInt(numberPart) + 1;
-        nextBullet = `${leadingSpace}${nextNumber}.${bulletSpace}`;
-      } else {
-        // Fallback to a standard bullet
-        nextBullet = `${leadingSpace}- `;
-      }
-      
-      const newValue = textBeforeCursor + '\n' + nextBullet + textAfterCursor;
-      onChange(newValue);
-      
-      // Position cursor after the new bullet
-      const newCursorPos = start + 1 + nextBullet.length;
-      setTimeout(() => {
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
-      }, 0);
-    } else {
-      // If no bullet detected, just add a new bullet
-      const newValue = textBeforeCursor + '\n- ' + textAfterCursor;
-      onChange(newValue);
-      
-      // Position cursor after the new bullet
-      const newCursorPos = start + 3;
-      setTimeout(() => {
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
-      }, 0);
-    }
+    // Position cursor after the newline
+    const newCursorPos = start + 1;
+    setTimeout(() => {
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
   };
 
   // Insert task checkbox at cursor position
@@ -327,92 +250,10 @@ export function MarkdownEditor({
               // Bullet handling disabled
             }}
             onMouseDown={(e) => {
-              if (autoBullets) {
-                // Prevent clicks from placing cursor before bullet points
-                // This catches the cursor before placement
-                const textarea = e.currentTarget;
-                
-                // Get the approximate cursor position from click coordinates
-                const clickX = e.clientX;
-                const clickY = e.clientY;
-                const containerRect = textarea.getBoundingClientRect();
-                
-                // If we can't accurately detect, let the onClick handler manage it
-                if (clickX < containerRect.left || clickX > containerRect.right ||
-                    clickY < containerRect.top || clickY > containerRect.bottom) {
-                  return;
-                }
-                
-                // Analyze text to estimate if click was near beginning of line
-                const lines = value.split('\n');
-                const clickOffsetY = clickY - containerRect.top;
-                const lineHeight = parseInt(getComputedStyle(textarea).lineHeight || '20');
-                const approxLineIndex = Math.floor(clickOffsetY / lineHeight);
-                
-                // Safety check for out of bounds
-                if (approxLineIndex >= 0 && approxLineIndex < lines.length) {
-                  const line = lines[approxLineIndex];
-                  const bulletMatch = line.match(/^(\s*)([-*+•]|(\d+)\.)(\s+)/);
-                  
-                  // If line has a bullet and click was in the beginning area
-                  if (bulletMatch) {
-                    const bulletEndPosition = bulletMatch[0].length;
-                    const charWidth = 8; // Approximate character width
-                    const bulletWidthInPx = bulletEndPosition * charWidth;
-                    
-                    // If click appears to be within the bullet area
-                    if ((clickX - containerRect.left) <= bulletWidthInPx + 5) { // Add small margin
-                      e.preventDefault(); // Prevent the default cursor placement
-                      
-                      // Wait for next cycle to get the correct textarea state
-                      setTimeout(() => {
-                        // Find the correct index for this line in the text
-                        let lineStartIndex = 0;
-                        for (let i = 0; i < approxLineIndex; i++) {
-                          lineStartIndex += lines[i].length + 1; // +1 for the newline character
-                        }
-                        // Place cursor after bullet
-                        const cursorPosition = lineStartIndex + bulletEndPosition;
-                        textarea.setSelectionRange(cursorPosition, cursorPosition);
-                        setCursorPosition(cursorPosition);
-                      }, 0);
-                    }
-                  }
-                }
-              }
+              // Bullet handling disabled
             }}
             onMouseMove={(e) => {
-              if (autoBullets) {
-                // Also monitor mouse movement to prevent text selection before bullet
-                const textarea = e.currentTarget;
-                if (textarea.selectionStart !== textarea.selectionEnd) {
-                  // Only handle when there's no selection (just cursor movement)
-                  return;
-                }
-                
-                const cursorPos = textarea.selectionStart || 0;
-                const textBeforeCursor = value.substring(0, cursorPos);
-                const lastNewlineBeforeCursor = textBeforeCursor.lastIndexOf('\n');
-                const currentLineStart = lastNewlineBeforeCursor === -1 ? 0 : lastNewlineBeforeCursor + 1;
-                const currentLine = textBeforeCursor.substring(currentLineStart);
-                
-                // Check if current line starts with a bullet
-                const bulletMatch = currentLine.match(/^(\s*)([-*+•]|(\d+)\.)(\s+)/);
-                
-                if (bulletMatch) {
-                  const [fullMatch] = bulletMatch;
-                  const bulletLength = fullMatch.length;
-                  
-                  // If cursor is placed before bullet, move it after bullet
-                  if (cursorPos < currentLineStart + bulletLength) {
-                    const newCursorPos = currentLineStart + bulletLength;
-                    setTimeout(() => {
-                      textarea.setSelectionRange(newCursorPos, newCursorPos);
-                      setCursorPosition(newCursorPos);
-                    }, 0);
-                  }
-                }
-              }
+              // Bullet handling disabled
             }}
             style={{ minHeight }}
           />
