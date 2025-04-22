@@ -366,38 +366,41 @@ export default function MarkdownEditor({
       </div>
       
       {/* Editor / Viewer */}
-      {isEditing ? (
-        <textarea
-          ref={textareaRef}
-          value={editableContent}
-          onChange={handleContentChange}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          className="w-full h-[500px] p-4 bg-transparent resize-vertical font-mono text-sm border-none"
-          disabled={readOnly}
-        />
-      ) : (
-        <div 
-          className="markdown-preview p-4 prose prose-invert prose-sm max-w-none overflow-auto"
-          style={{ maxHeight: '500px' }}
-          onClick={handleMarkdownClick}
-        >
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm, remarkMath]}
-            rehypePlugins={[rehypeKatex]}
-            components={{
-              li: ({ node, className, children, ...props }: any) => {
-                if (props.checked !== undefined) {
-                  return <TaskListRenderer checked={props.checked}>{children}</TaskListRenderer>;
-                }
-                return <li className={className} {...props}>{children}</li>;
-              }
-            }}
+      <div className="relative">
+        {isEditing ? (
+          <textarea
+            ref={textareaRef}
+            value={editableContent}
+            onChange={handleContentChange}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+            className="w-full h-[500px] px-3 py-2 bg-background text-foreground resize-vertical font-mono text-sm 
+                      rounded-md border border-primary/30 focus:border-primary/50 placeholder:text-muted-foreground outline-none"
+            disabled={readOnly}
+          />
+        ) : (
+          <div 
+            className="markdown-preview px-3 py-2 prose prose-invert prose-sm max-w-none overflow-auto 
+                      bg-background rounded-md border border-primary/30 cursor-pointer h-[500px]"
+            onClick={handleMarkdownClick}
           >
-            {processedContent || placeholder}
-          </ReactMarkdown>
-        </div>
-      )}
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm, remarkMath]}
+              rehypePlugins={[rehypeKatex]}
+              components={{
+                li: ({ node, className, children, ...props }: any) => {
+                  if (props.checked !== undefined) {
+                    return <TaskListRenderer checked={props.checked}>{children}</TaskListRenderer>;
+                  }
+                  return <li className={className} {...props}>{children}</li>;
+                }
+              }}
+            >
+              {processedContent || placeholder}
+            </ReactMarkdown>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -82,60 +82,8 @@ export function MarkdownEditor({
       setIsEditing(false);
     } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       setIsEditing(false);
-    } else if (false) {
-      // Auto-generate bullet points disabled
-      e.preventDefault();
-      insertAutoBullet();
-    } else if (false) {
-      // Prevent navigating before the bullet with arrow keys and handle Backspace
-      const textarea = e.currentTarget;
-      const cursorPos = textarea.selectionStart || 0;
-      const textBeforeCursor = value.substring(0, cursorPos);
-      const lastNewlineBeforeCursor = textBeforeCursor.lastIndexOf('\n');
-      const currentLineStart = lastNewlineBeforeCursor === -1 ? 0 : lastNewlineBeforeCursor + 1;
-      const currentLine = textBeforeCursor.substring(currentLineStart);
-      
-      // Check if current line starts with a bullet
-      const bulletMatch = currentLine.match(/^(\s*)([-*+•]|(\d+)\.)(\s+)/);
-      
-      if (bulletMatch) {
-        const [fullMatch] = bulletMatch;
-        const bulletLength = fullMatch.length;
-        
-        // Prevent any cursor movement that would place it before the bullet end
-        if (e.key === 'ArrowLeft' && cursorPos <= currentLineStart + bulletLength) {
-          // Don't allow cursor to go before the bullet
-          e.preventDefault();
-          
-          // If cursor tries to go before bullet, force it after the bullet
-          if (cursorPos <= currentLineStart + bulletLength) {
-            const newCursorPos = currentLineStart + bulletLength;
-            setTimeout(() => {
-              textarea.setSelectionRange(newCursorPos, newCursorPos);
-              setCursorPosition(newCursorPos);
-            }, 0);
-          }
-          return;
-        }
-        
-        // Prevent backspace from deleting bullet
-        if (e.key === 'Backspace' && cursorPos <= currentLineStart + bulletLength) {
-          e.preventDefault();
-          return;
-        }
-        
-        // If Home key is pressed, go to position after bullet, not start of line
-        if (e.key === 'Home') {
-          e.preventDefault();
-          const newCursorPos = currentLineStart + bulletLength;
-          setTimeout(() => {
-            textarea.setSelectionRange(newCursorPos, newCursorPos);
-            setCursorPosition(newCursorPos);
-          }, 0);
-          return;
-        }
-      }
     }
+    // All bullet-related functionality has been removed
   };
 
   // Insert auto bullet on Enter - Now modified to just add a normal newline
@@ -233,58 +181,65 @@ export function MarkdownEditor({
     <div 
       ref={wrapperRef}
       className={cn(
-        "relative rounded-md border border-primary/30 dark:bg-[#00141A] light:bg-white min-h-[100px] group",
+        "relative inline-block w-full",
         className
       )}
       style={{ minHeight }}
     >
-      {isEditing ? (
-        <>
-          <textarea
-            ref={textareaRef}
-            value={value}
-            onChange={handleInput}
-            onKeyDown={handleKeyDown}
-            className="w-full h-full min-h-[inherit] p-3 bg-background text-foreground resize-none outline-none border-none rounded-md placeholder:text-muted-foreground"
-            onClick={(e) => {
-              // Bullet handling disabled
-            }}
-            onMouseDown={(e) => {
-              // Bullet handling disabled
-            }}
-            onMouseMove={(e) => {
-              // Bullet handling disabled
-            }}
-            style={{ minHeight }}
-          />
-          <div className="absolute top-2 right-2 flex space-x-1">
+      <div className="relative">
+        {isEditing ? (
+          <>
+            <textarea
+              ref={textareaRef}
+              value={value}
+              onChange={handleInput}
+              onKeyDown={handleKeyDown}
+              className="w-full min-h-[inherit] px-3 py-2 bg-background text-foreground resize-none outline-none rounded-md 
+                        border border-primary/30 focus:border-primary/50 placeholder:text-muted-foreground font-mono"
+              onClick={(e) => {
+                // Bullet handling disabled
+              }}
+              onMouseDown={(e) => {
+                // Bullet handling disabled
+              }}
+              onMouseMove={(e) => {
+                // Bullet handling disabled
+              }}
+              style={{ minHeight }}
+            />
             <button
               onClick={handleSaveClick}
-              className="p-1 bg-primary/10 rounded hover:bg-primary/20 text-primary"
+              className="absolute right-0 top-0 h-full px-3 text-primary/70 hover:text-primary hover:bg-primary/10"
               title="Save (Esc)"
             >
-              <Save size={14} />
+              <Save className="h-4 w-4" />
             </button>
-          </div>
-        </>
-      ) : (
-        <div className="p-3 cursor-default" onDoubleClick={handleDoubleClick}>
-          {value ? (
-            <ObsidianMarkdown className="dark:text-[#D6F4FF] light:text-slate-700">
-              {value}
-            </ObsidianMarkdown>
-          ) : (
-            <div className="dark:text-[#7DAAB2]/50 light:text-slate-400/80">{placeholder}</div>
-          )}
-          <button 
-            onClick={handleEditClick}
-            className="absolute top-2 right-2 p-1 bg-primary/10 rounded hover:bg-primary/20 text-primary opacity-0 group-hover:opacity-100 transition-opacity"
-            title="Edit (Double-click text)"
-          >
-            <Edit2 size={14} />
-          </button>
-        </div>
-      )}
+          </>
+        ) : (
+          <>
+            <div 
+              className="w-full min-h-[inherit] px-3 py-2 bg-background rounded-md border border-primary/30 cursor-pointer"
+              onDoubleClick={handleDoubleClick}
+              style={{ minHeight }}
+            >
+              {value ? (
+                <ObsidianMarkdown className="dark:text-[#D6F4FF] light:text-slate-700">
+                  {value}
+                </ObsidianMarkdown>
+              ) : (
+                <div className="dark:text-[#7DAAB2]/50 light:text-slate-400/80">{placeholder}</div>
+              )}
+            </div>
+            <button 
+              onClick={handleEditClick}
+              className="absolute right-0 top-0 h-full px-3 text-primary/70 hover:text-primary hover:bg-primary/10"
+              title="Edit (Double-click text)"
+            >
+              <Edit2 className="h-4 w-4" />
+            </button>
+          </>
+        )}
+      </div>
       
       {/* Small hint in bottom-right corner when editing */}
       {isEditing && (
