@@ -62,7 +62,7 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
 
   // Increment/decrement minutes
   const incrementMinutes = () => {
-    const newMinutes = minutes + 15;
+    const newMinutes = minutes + 1;
     if (newMinutes >= 60) {
       setMinutes(0);
       incrementHours();
@@ -72,21 +72,16 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
   };
 
   const decrementMinutes = () => {
-    const newMinutes = minutes - 15;
+    const newMinutes = minutes - 1;
     if (newMinutes < 0) {
-      setMinutes(45);
+      setMinutes(59);
       decrementHours();
     } else {
       setMinutes(newMinutes);
     }
   };
 
-  // Normalize minutes to quarters (0, 15, 30, 45)
-  const normalizeMinutes = (mins: number) => {
-    const remainder = mins % 15;
-    if (remainder === 0) return mins;
-    return mins - remainder;
-  };
+  // Removed normalizeMinutes function as it's no longer needed
 
   // Handle manual input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -95,8 +90,8 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
     if (/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeValue)) {
       const [newHours, newMinutes] = timeValue.split(":").map(Number);
       setHours(newHours);
-      setMinutes(normalizeMinutes(newMinutes));
-      onChange(formatTime(newHours, normalizeMinutes(newMinutes)));
+      setMinutes(newMinutes);
+      onChange(formatTime(newHours, newMinutes));
     } else {
       // Just set the raw value and let validation happen on blur
       e.target.value = timeValue;
@@ -110,7 +105,7 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
     if (/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeValue)) {
       const [newHours, newMinutes] = timeValue.split(":").map(Number);
       setHours(newHours);
-      setMinutes(normalizeMinutes(newMinutes));
+      setMinutes(newMinutes);
     }
     
     // Reset to valid value
