@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Clipboard, Plus, Trash2, PenLine, MoveRight, Search, GripVertical } from "lucide-react";
+import { Clipboard, Plus, Trash2, PenLine, MoveRight, Search, GripVertical, ArrowLeft } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { KanbanTask, KanbanStatus } from "@/lib/types";
 import { toast } from "@/hooks/use-toast";
@@ -229,6 +230,7 @@ function KanbanColumn({
 
 export default function KanbanPage() {
   const { kanbanTasks, createKanbanTask, updateKanbanTask, deleteKanbanTask, moveKanbanTask } = useLYFEOS();
+  const [, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [editingTask, setEditingTask] = useState<KanbanTask | null>(null);
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
