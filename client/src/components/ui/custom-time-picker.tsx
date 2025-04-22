@@ -18,21 +18,48 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
   const [minutes, setMinutes] = useState<number>(
     value ? parseInt(value.split(":")[1]) : 0
   );
+  const [ampm, setAmPm] = useState<'AM' | 'PM'>(
+    value && parseInt(value.split(":")[0]) >= 12 ? 'PM' : 'AM'
+  );
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Format the time value
+  // Format the time value in 24-hour format for internal use
   const formatTime = (h: number, m: number) => {
     return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+  };
+  
+  // Format the time value in 12-hour format for display
+  const formatDisplayTime = (h: number, m: number, a: 'AM' | 'PM') => {
+    let displayHour = h;
+    if (a === 'PM' && h < 12) {
+      displayHour = h + 12;
+    } else if (a === 'AM' && h === 12) {
+      displayHour = 0;
+    }
+    
+    // Convert to 12-hour format
+    let hour12 = displayHour % 12;
+    if (hour12 === 0) hour12 = 12;
+    
+    return `${hour12}:${m.toString().padStart(2, "0")} ${a}`;
   };
 
   // Update the parent component when time changes, but avoid infinite loops
   useEffect(() => {
+    // Convert 12-hour time to 24-hour format for internal storage
+    let hours24 = hours;
+    if (ampm === 'PM' && hours < 12) {
+      hours24 = hours + 12;
+    } else if (ampm === 'AM' && hours === 12) {
+      hours24 = 0;
+    }
+    
     // Only update if the formatted value is different from current value
-    const formattedTime = formatTime(hours, minutes);
+    const formattedTime = formatTime(hours24, minutes);
     if (formattedTime !== value) {
       onChange(formattedTime);
     }
-  }, [hours, minutes, onChange, value]);
+  }, [hours, minutes, ampm, onChange, value]);
 
   // Handle click outside to close the dropdown
   useEffect(() => {
@@ -51,13 +78,34 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
     };
   }, []);
 
-  // Increment/decrement hours
+  // Increment/decrement hours in 12-hour format
   const incrementHours = () => {
-    setHours((prev) => (prev === 23 ? 0 : prev + 1));
+    setHours((prev) => {
+      const newHour = prev + 1;
+      if (newHour === 12) {
+        setAmPm(ampm === 'AM' ? 'PM' : 'AM');
+      } else if (newHour > 12) {
+        return 1; // Reset to 1 after 12
+      }
+      return newHour;
+    });
   };
 
   const decrementHours = () => {
-    setHours((prev) => (prev === 0 ? 23 : prev - 1));
+    setHours((prev) => {
+      if (prev === 1) {
+        return 12;  // Wrap around to 12
+      } else if (prev === 12) {
+        setAmPm(ampm === 'AM' ? 'PM' : 'AM');
+        return 11;
+      }
+      return prev - 1;
+    });
+  };
+  
+  // Toggle between AM and PM
+  const toggleAmPm = () => {
+    setAmPm(ampm === 'AM' ? 'PM' : 'AM');
   };
 
   // Increment/decrement minutes
@@ -83,33 +131,44 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
 
   // Removed normalizeMinutes function as it's no longer needed
 
-  // Handle manual input changes
+  // Handle manual input changes with 12-hour format support
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const timeValue = e.target.value;
     
-    if (/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeValue)) {
-      const [newHours, newMinutes] = timeValue.split(":").map(Number);
-      setHours(newHours);
-      setMinutes(newMinutes);
-      onChange(formatTime(newHours, newMinutes));
+    // Match 12-hour format with AM/PM
+    // e.g., "3:45 PM", "10:30 AM", etc.
+    const twelveHourRegex = /^(1[0-2]|0?[1-9]):([0-5][0-9])(?:\s*)([AaPp][Mm])$/;
+    if (twelveHourRegex.test(timeValue)) {
+      const match = timeValue.match(twelveHourRegex);
+      if (match) {
+        let newHours = parseInt(match[1]);
+        const newMinutes = parseInt(match[2]);
+        const period = match[3].toUpperCase();
+        
+        // Adjust hours based on AM/PM
+        if (period === 'PM' && newHours < 12) {
+          newHours += 12;
+        } else if (period === 'AM' && newHours === 12) {
+          newHours = 0;
+        }
+        
+        setHours(newHours);
+        setMinutes(newMinutes);
+        setAmPm(period === 'AM' ? 'AM' : 'PM');
+        
+        // Store in 24-hour format internally
+        onChange(formatTime(newHours, newMinutes));
+      }
     } else {
       // Just set the raw value and let validation happen on blur
       e.target.value = timeValue;
     }
   };
 
-  // Handle blur to validate and normalize time
+  // Handle blur to validate and format time properly
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const timeValue = e.target.value;
-    
-    if (/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeValue)) {
-      const [newHours, newMinutes] = timeValue.split(":").map(Number);
-      setHours(newHours);
-      setMinutes(newMinutes);
-    }
-    
-    // Reset to valid value
-    e.target.value = formatTime(hours, minutes);
+    // Simply reset to the current valid time in 12-hour format
+    e.target.value = formatDisplayTime(hours, minutes, ampm);
   };
 
   return (
@@ -123,12 +182,12 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
       <div className="relative">
         <Input
           type="text"
-          value={formatTime(hours, minutes)}
+          value={formatDisplayTime(hours, minutes, ampm)}
           onChange={handleInputChange}
           onBlur={handleBlur}
           onClick={() => setIsOpen(true)}
           className="pr-10 font-mono"
-          placeholder="HH:MM"
+          placeholder="HH:MM AM"
         />
         <Button
           type="button"
@@ -147,6 +206,7 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
             <div className="flex justify-between items-center mb-2">
               <div className="text-xs font-medium">Hours</div>
               <div className="text-xs font-medium">Minutes</div>
+              <div className="text-xs font-medium">AM/PM</div>
             </div>
             
             <div className="flex justify-between">
@@ -159,7 +219,10 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
                 >
                   <ChevronUp className="h-4 w-4" />
                 </Button>
-                <div className="font-mono text-lg py-1">{hours.toString().padStart(2, "0")}</div>
+                <div className="font-mono text-lg py-1">
+                  {/* Convert to 12-hour format for display */}
+                  {hours === 0 ? '12' : (hours > 12 ? (hours - 12).toString() : hours.toString()).padStart(2, "0")}
+                </div>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -191,6 +254,26 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </div>
+              
+              <div className="flex flex-col items-center ml-3">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleAmPm}
+                  className="h-8 w-8"
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+                <div className="font-mono text-lg py-1">{ampm}</div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleAmPm}
+                  className="h-8 w-8"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
             
             <div className="flex justify-between mt-4">
@@ -210,10 +293,11 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
                   onClick={() => {
                     setHours(9);
                     setMinutes(0);
+                    setAmPm('AM');
                   }}
                   className="text-xs"
                 >
-                  9:00
+                  9:00 AM
                 </Button>
                 <Button
                   variant="outline"
@@ -221,21 +305,23 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
                   onClick={() => {
                     setHours(12);
                     setMinutes(0);
+                    setAmPm('PM');
                   }}
                   className="text-xs"
                 >
-                  12:00
+                  12:00 PM
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    setHours(15);
+                    setHours(3);
                     setMinutes(0);
+                    setAmPm('PM');
                   }}
                   className="text-xs"
                 >
-                  15:00
+                  3:00 PM
                 </Button>
               </div>
             </div>
