@@ -221,7 +221,7 @@ export default function JournalArchivePage() {
         <div className="flex items-center gap-3">
           <Link href="/add-mock-journal">
             <Button variant="outline" size="sm" className="text-xs border-slate-700/50 hover:bg-card/50">
-              Create Screenshot Journal
+              Create Dashboard Journal
             </Button>
           </Link>
         </div>
