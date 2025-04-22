@@ -95,6 +95,9 @@ export default function ProfilePage() {
       toast({
         title: "Profile Updated",
         description: "Your profile has been updated successfully.",
+        variant: "default",
+        className: "bg-background/80 border border-primary text-foreground",
+        duration: 3000,
       });
     },
     onError: (error) => {
@@ -368,6 +371,8 @@ export default function ProfilePage() {
                       toast({
                         title: "Theme Updated",
                         description: `Dark Theme has been ${!stats.darkThemeEnabled ? 'enabled' : 'disabled'}.`,
+                        variant: "default",
+                        className: "bg-background/80 border border-primary text-foreground",
                         duration: 2000,
                       });
                     }}
@@ -423,6 +428,8 @@ export default function ProfilePage() {
                         toast({
                           title: "Setting Updated",
                           description: `Notifications have been ${newValue ? 'enabled' : 'disabled'}.`,
+                          variant: "default",
+                          className: "bg-background/80 border border-primary text-foreground",
                           duration: 2000,
                         });
                       } catch (error) {
