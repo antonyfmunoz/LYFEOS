@@ -409,8 +409,6 @@ export function ContactDetailPage() {
                           <SelectContent>
                             <SelectItem value="personal">Personal</SelectItem>
                             <SelectItem value="work">Work</SelectItem>
-                            <SelectItem value="family">Family</SelectItem>
-                            <SelectItem value="friend">Friend</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
