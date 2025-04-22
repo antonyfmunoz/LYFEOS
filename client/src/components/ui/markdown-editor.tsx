@@ -83,7 +83,7 @@ export function MarkdownEditor({
     } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       setIsEditing(false);
     }
-    // All bullet-related functionality has been removed
+    // No bullet functionality
   };
 
   // Insert auto bullet on Enter - Now modified to just add a normal newline
@@ -193,17 +193,8 @@ export function MarkdownEditor({
             value={value}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
-            className="w-full h-full min-h-[inherit] p-3 bg-background text-foreground resize-none outline-none border-none rounded-md 
-                     placeholder:text-muted-foreground focus:border-primary/50 font-mono"
-            onClick={(e) => {
-              // Bullet handling disabled
-            }}
-            onMouseDown={(e) => {
-              // Bullet handling disabled
-            }}
-            onMouseMove={(e) => {
-              // Bullet handling disabled
-            }}
+            className="w-full h-full min-h-[inherit] p-3 bg-background text-foreground resize-none outline-none border-none rounded-md placeholder:text-muted-foreground"
+            placeholder={placeholder}
             style={{ minHeight }}
           />
           <div className="absolute top-2 right-2 flex space-x-1">

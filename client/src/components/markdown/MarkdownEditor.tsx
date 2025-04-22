@@ -366,7 +366,7 @@ export default function MarkdownEditor({
       </div>
       
       {/* Editor / Viewer */}
-      <div className="rounded-md border border-primary/30 overflow-hidden">
+      <div className="border border-primary/30 rounded-md overflow-hidden">
         {isEditing ? (
           <textarea
             ref={textareaRef}
@@ -374,7 +374,7 @@ export default function MarkdownEditor({
             onChange={handleContentChange}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            className="w-full h-[500px] p-4 bg-transparent resize-vertical font-mono text-sm border-none outline-none"
+            className="w-full h-[500px] p-4 bg-transparent resize-vertical text-sm border-none outline-none"
             disabled={readOnly}
           />
         ) : (
