@@ -130,7 +130,7 @@ export default function CalendarPage() {
         </div>
         <Button 
           onClick={handleAddEventClick}
-          className="bg-primary/20 hover:bg-primary/30 text-primary"
+          className="bg-primary/20 text-primary hover:bg-yellow-400 hover:text-black"
         >
           <Plus className="mr-2 h-4 w-4" /> Add Event
         </Button>
@@ -294,7 +294,7 @@ export default function CalendarPage() {
             </Button>
             <Button 
               onClick={handleSaveEvent}
-              className="bg-primary/20 hover:bg-primary/30 text-primary"
+              className="bg-primary/20 text-primary hover:bg-yellow-400 hover:text-black"
             >
               Add Event
             </Button>
@@ -407,7 +407,7 @@ export default function CalendarPage() {
             </Button>
             <Button 
               onClick={handleUpdateEvent}
-              className="bg-primary/20 hover:bg-primary/30 text-primary"
+              className="bg-primary/20 text-primary hover:bg-yellow-400 hover:text-black"
             >
               <Edit className="mr-2 h-4 w-4" /> Update
             </Button>
@@ -476,7 +476,7 @@ export default function CalendarPage() {
                   handleEditEvent(selectedEvent);
                 }
               }}
-              className="bg-primary/20 hover:bg-primary/30 text-primary"
+              className="bg-primary/20 text-primary hover:bg-yellow-400 hover:text-black"
             >
               <Edit className="mr-2 h-4 w-4" /> Edit
             </Button>
