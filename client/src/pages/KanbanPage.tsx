@@ -49,13 +49,16 @@ function BoardCard({ board, onView, onEdit, onDelete }) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onEdit(board)}>
+              <DropdownMenuItem 
+                onClick={() => onEdit(board)}
+                className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black"
+              >
                 <Edit className="h-4 w-4 mr-2" />
                 Edit Board
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => onDelete(board.id)} 
-                className="text-destructive focus:text-destructive"
+                className="text-destructive hover:bg-red-500 hover:text-white focus:bg-red-500 focus:text-white"
               >
                 <Trash className="h-4 w-4 mr-2" />
                 Delete Board

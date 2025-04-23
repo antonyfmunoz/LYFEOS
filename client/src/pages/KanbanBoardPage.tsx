@@ -411,13 +411,16 @@ export default function KanbanBoardPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
+            <DropdownMenuItem 
+              onClick={() => setIsEditDialogOpen(true)}
+              className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black"
+            >
               <Edit className="h-4 w-4 mr-2" />
               Edit Board
             </DropdownMenuItem>
             <DropdownMenuItem 
-              className="text-destructive focus:text-destructive"
               onClick={handleDeleteBoard}
+              className="text-destructive hover:bg-red-500 hover:text-white focus:bg-red-500 focus:text-white"
             >
               <Trash className="h-4 w-4 mr-2" />
               Delete Board
