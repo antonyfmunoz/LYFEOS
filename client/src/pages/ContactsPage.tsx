@@ -199,7 +199,12 @@ export function ContactsPage() {
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/systems')}>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 hover:bg-yellow-400 hover:text-black" 
+            onClick={() => navigate('/systems')}
+          >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-2xl font-bold">Contacts</h1>
@@ -301,7 +306,7 @@ export function ContactsPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-8 w-8 hover:bg-yellow-400 hover:text-black"
                           onClick={() => toggleFavorite(contact.id)}
                         >
                           <Star className={`h-4 w-4 ${contact.favorite ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground"}`} />
@@ -309,7 +314,7 @@ export function ContactsPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-yellow-400"
                           onClick={() => deleteContact(contact.id)}
                         >
                           <Trash2 className="h-4 w-4" />

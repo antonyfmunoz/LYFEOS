@@ -322,7 +322,7 @@ export function ContactDetailPage() {
           <p className="text-red-500">Failed to load contact. Please try again.</p>
           <Button 
             variant="outline" 
-            className="mt-4" 
+            className="mt-4 hover:bg-yellow-400 hover:text-black" 
             onClick={() => navigate('/contacts')}
           >
             Back to Contacts
@@ -335,7 +335,12 @@ export function ContactDetailPage() {
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/contacts')}>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-8 w-8 hover:bg-yellow-400 hover:text-black" 
+          onClick={() => navigate('/contacts')}
+        >
           <ArrowLeft className="h-4 w-4" />
         </Button>
         
@@ -343,14 +348,26 @@ export function ContactDetailPage() {
           <div className="flex items-center gap-2">
             {!isEditing && (
               <>
-                <Button variant="outline" onClick={toggleFavorite}>
+                <Button 
+                  variant="outline" 
+                  onClick={toggleFavorite}
+                  className="hover:bg-yellow-400 hover:text-black"
+                >
                   <Star className={`mr-2 h-4 w-4 ${contact?.favorite ? "text-yellow-500 fill-yellow-500" : ""}`} />
                   {contact?.favorite ? 'Remove favorite' : 'Add to favorites'}
                 </Button>
-                <Button variant="outline" onClick={() => setIsEditing(true)}>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsEditing(true)}
+                  className="hover:bg-yellow-400 hover:text-black"
+                >
                   <Pencil className="mr-2 h-4 w-4" /> Edit
                 </Button>
-                <Button variant="destructive" onClick={handleDelete}>
+                <Button 
+                  variant="destructive" 
+                  onClick={handleDelete}
+                  className="hover:bg-yellow-400 hover:text-black"
+                >
                   <Trash2 className="mr-2 h-4 w-4" /> Delete
                 </Button>
               </>
@@ -559,11 +576,16 @@ export function ContactDetailPage() {
                       type="button" 
                       variant="outline" 
                       onClick={() => setIsEditing(false)}
+                      className="hover:bg-yellow-400 hover:text-black"
                     >
                       Cancel
                     </Button>
                   )}
-                  <Button type="submit" disabled={createContactMutation.isPending || updateContactMutation.isPending}>
+                  <Button 
+                    type="submit" 
+                    disabled={createContactMutation.isPending || updateContactMutation.isPending}
+                    className="hover:bg-yellow-400 hover:text-black"
+                  >
                     <Save className="mr-2 h-4 w-4" />
                     {createContactMutation.isPending || updateContactMutation.isPending 
                       ? 'Saving...' 
