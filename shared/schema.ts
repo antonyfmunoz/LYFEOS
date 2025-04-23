@@ -365,8 +365,81 @@ export const insertGraphSchema = createInsertSchema(graphs).omit({
   updatedAt: true,
 });
 
+// Folders table
+export const folders = pgTable("folders", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  parentId: integer("parent_id"), // null for root folders
+  favorite: boolean("favorite").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Documents table
+export const documents = pgTable("documents", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  folderId: integer("folder_id").references(() => folders.id),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  description: text("description"),
+  format: text("format").default("markdown").notNull(), // markdown, text, etc.
+  favorite: boolean("favorite").default(false).notNull(),
+  tags: text("tags").array(), // Array of tags
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Folder relations
+export const folderRelations = relations(folders, ({ one, many }) => ({
+  user: one(users, {
+    fields: [folders.userId],
+    references: [users.id],
+  }),
+  parent: one(folders, {
+    fields: [folders.parentId],
+    references: [folders.id],
+  }),
+  children: many(folders),
+  documents: many(documents),
+}));
+
+// Document relations
+export const documentRelations = relations(documents, ({ one }) => ({
+  user: one(users, {
+    fields: [documents.userId],
+    references: [users.id],
+  }),
+  folder: one(folders, {
+    fields: [documents.folderId],
+    references: [folders.id],
+  }),
+}));
+
+// Insert schema for Folder
+export const insertFolderSchema = createInsertSchema(folders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Insert schema for Document
+export const insertDocumentSchema = createInsertSchema(documents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type Canvas = typeof canvases.$inferSelect;
 export type InsertCanvas = z.infer<typeof insertCanvasSchema>;
 
 export type Graph = typeof graphs.$inferSelect;
 export type InsertGraph = z.infer<typeof insertGraphSchema>;
+
+export type Folder = typeof folders.$inferSelect;
+export type InsertFolder = z.infer<typeof insertFolderSchema>;
+
+export type Document = typeof documents.$inferSelect;
+export type InsertDocument = z.infer<typeof insertDocumentSchema>;

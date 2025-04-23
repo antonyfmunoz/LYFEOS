@@ -1,11 +1,12 @@
 import { CollapsibleWidget } from "@/components/ui/collapsible-widget";
-import { Calendar, Clipboard, Contact2, FileSpreadsheet, Paintbrush, Network } from "lucide-react";
+import { Calendar, Clipboard, Contact2, FileSpreadsheet, Paintbrush, Network, FileText } from "lucide-react";
 import { Link } from "wouter";
 import { KanbanWidget } from "@/components/ui/kanban-widget";
 import { RolodexWidget } from "@/components/ui/rolodex-widget";
 import { SpreadsheetWidget } from "@/components/ui/spreadsheet-widget";
 import { CanvasWidget } from "@/components/ui/canvas-widget";
 import { GraphWidget } from "@/components/ui/graph-widget";
+import DocumentsWidget from "@/components/ui/documents-widget";
 
 export default function SystemsPage() {
   return (
@@ -122,6 +123,17 @@ export default function SystemsPage() {
           defaultOpen={true}
         >
           <GraphWidget />
+        </CollapsibleWidget>
+      </section>
+      
+      {/* Documents Module */}
+      <section className="mb-6">
+        <CollapsibleWidget 
+          title="Documents" 
+          icon={<FileText className="h-5 w-5 text-primary" />}
+          defaultOpen={true}
+        >
+          <DocumentsWidget />
         </CollapsibleWidget>
       </section>
     </>
