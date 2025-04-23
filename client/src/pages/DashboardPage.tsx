@@ -5,6 +5,10 @@ import { useToast } from "@/hooks/use-toast";
 import { AIAgentFAB } from "@/components/ui/ai-agent-fab";
 import { cn } from "@/lib/utils";
 import { CollapsibleWidget } from "@/components/ui/collapsible-widget";
+import { DraggableWidget } from "@/components/ui/draggable-widget";
+import { useWidgets } from "@/hooks/use-widgets";
+import { DndProvider } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
 import {
   Brain,
   BookOpen,
@@ -23,7 +27,8 @@ import {
   Calendar,
   CheckCircle2,
   Zap,
-  BarChart
+  BarChart,
+  RotateCcw
 } from "lucide-react";
 import MissionLogWidget from "@/components/dashboard/MissionLogWidget";
 import EnhancedMissionWidget from "@/components/dashboard/EnhancedMissionWidget";
