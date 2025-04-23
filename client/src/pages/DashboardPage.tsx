@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/button";
 import { CustomTimePicker } from "@/components/ui/custom-time-picker";
 import { ObsidianMarkdown } from "@/components/ui/obsidian-markdown";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
-import { usePageTitle } from "@/hooks/use-page-title";
 import { useToast } from "@/hooks/use-toast";
+import { usePageTitle } from "@/hooks/use-page-title";
 
 // Define types
 interface TimeBlock {
@@ -137,6 +137,79 @@ export default function DashboardPage() {
     const key = `dailyLog-${reflection.date}`;
     localStorage.setItem(key, JSON.stringify(reflection));
   }, [reflection]);
+  
+  // Helper function to add a new time block
+  const addTimeBlock = () => {
+    if (!newBlockName.trim()) return;
+    
+    const newBlock: TimeBlock = {
+      id: Date.now().toString(),
+      name: newBlockName,
+      startTime: newBlockStartTime,
+      endTime: newBlockEndTime,
+      tasks: []
+    };
+    
+    setTimeBlocks([...timeBlocks, newBlock]);
+    setNewBlockName("");
+  };
+  
+  // Helper function to add a task to a block
+  const addTaskToBlock = (blockId: string) => {
+    if (!newTaskText.trim()) return;
+    
+    const newTask = {
+      id: Date.now().toString(),
+      text: newTaskText,
+      completed: false
+    };
+    
+    setTimeBlocks(timeBlocks.map(block => {
+      if (block.id === blockId) {
+        return {
+          ...block,
+          tasks: [...block.tasks, newTask]
+        };
+      }
+      return block;
+    }));
+    
+    setNewTaskText("");
+  };
+  
+  // Helper function to save block edits
+  const saveBlockEdit = (blockId: string, field: keyof TimeBlock, value: any) => {
+    setTimeBlocks(timeBlocks.map(block => {
+      if (block.id === blockId) {
+        return {
+          ...block,
+          [field]: value
+        };
+      }
+      return block;
+    }));
+  };
+  
+  // Helper function to save task edits
+  const saveTaskEdit = (blockId: string, taskId: string, value: string) => {
+    setTimeBlocks(timeBlocks.map(block => {
+      if (block.id === blockId) {
+        return {
+          ...block,
+          tasks: block.tasks.map(task => {
+            if (task.id === taskId) {
+              return {
+                ...task,
+                text: value
+              };
+            }
+            return task;
+          })
+        };
+      }
+      return block;
+    }));
+  };
   
   // Render state selector (1-10 scale)
   const renderStateSelector = (
@@ -278,7 +351,7 @@ export default function DashboardPage() {
                           </div>
                         </div>
                         <span className="text-[#7DAAB2] self-center"> - </span>
-                        <div className="w-32">
+                        <div className="w-28">
                           <CustomTimePicker
                             value={block.endTime}
                             onChange={(time) => saveBlockEdit(block.id, 'endTime', time)}
@@ -309,17 +382,15 @@ export default function DashboardPage() {
                         Done
                       </Button>
                     ) : (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-primary/40 text-xs gap-1 hover:bg-yellow-400 hover:text-black transition-colors"
-                          onClick={() => setEditingBlockId(block.id)}
-                        >
-                          <Edit className="h-3 w-3" />
-                          Edit
-                        </Button>
-                      </>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-primary/40 text-xs gap-1 hover:bg-yellow-400 hover:text-black transition-colors"
+                        onClick={() => setEditingBlockId(block.id)}
+                      >
+                        <Edit className="h-3 w-3" />
+                        Edit
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -605,25 +676,4 @@ export default function DashboardPage() {
       </section>
     </div>
   );
-}
-
-// Add missing functions needed from the original code
-function saveBlockEdit(blockId: string, field: string, value: string) {
-  console.log(`Editing block ${blockId}, field ${field} to ${value}`);
-  // Implementation would go here
-}
-
-function addTaskToBlock(blockId: string) {
-  console.log(`Adding task to block ${blockId}`);
-  // Implementation would go here
-}
-
-function saveTaskEdit(blockId: string, taskId: string, value: string) {
-  console.log(`Editing task ${taskId} in block ${blockId} to ${value}`);
-  // Implementation would go here
-}
-
-function addTimeBlock() {
-  console.log("Adding new time block");
-  // Implementation would go here
 }
