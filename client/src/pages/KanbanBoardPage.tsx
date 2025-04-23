@@ -348,7 +348,7 @@ function KanbanColumn({
     <div 
       ref={drop} 
       className={`glassmorphic rounded-xl p-4 w-72 flex-shrink-0 flex flex-col h-full
-        ${isOver && canDrop ? 'ring-2 ring-yellow-400 bg-yellow-50 dark:bg-yellow-900/10' : ''}
+        ${isOver && canDrop ? 'ring-2 ring-primary/50' : ''}
         ${isDragging ? 'opacity-50' : 'opacity-100'}
       `}
     >
