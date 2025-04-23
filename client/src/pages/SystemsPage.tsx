@@ -29,8 +29,8 @@ export default function SystemsPage() {
               <Calendar className="h-4 w-4 mr-2 text-primary" />
               Calendar
             </div>
-            <Link to="/calendar" className="h-7 px-3 py-1 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium flex items-center hover:shadow-[0_0_5px_var(--primary-glow-light)] border border-primary/50 transition-shadow">
-              View All
+            <Link to="/calendar" className="h-7 px-3 py-1 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium rounded-md flex items-center hover:shadow-[0_0_5px_var(--primary-glow-light)] border border-primary/50 transition-shadow">
+              View Calendar
               <ChevronRight className="ml-1 h-3 w-3" />
             </Link>
           </div>
