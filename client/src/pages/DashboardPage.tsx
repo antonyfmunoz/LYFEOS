@@ -9,8 +9,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { CustomTimePicker } from "@/components/ui/custom-time-picker";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { useWidgets } from "@/hooks/use-widgets";
-import { DndProvider } from "react-dnd";
-import { HTML5Backend } from "react-dnd-html5-backend";
 import { DraggableWidget } from "@/components/ui/draggable-widget";
 
 import {
@@ -43,7 +41,7 @@ enum StatType {
   EXPERIENCE = "experience"
 }
 
-interface CalendarEvent {
+interface DashboardTimelineEvent {
   id: string;
   title: string;
   date: string;
@@ -94,7 +92,7 @@ function MissionLogSystem() {
   );
 }
 
-function MissionTimeline({ events }: { events: CalendarEvent[] }) {
+function MissionTimeline({ events }: { events: DashboardTimelineEvent[] }) {
   return (
     <div>
       {events.length > 0 ? (
@@ -225,7 +223,6 @@ export default function DashboardPage() {
   };
 
   return (
-    <DndProvider backend={HTML5Backend}>
       <div className="dashboard-container">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -383,7 +380,14 @@ export default function DashboardPage() {
               <CalendarDays className="h-4 w-4 text-primary mr-2" />
               <span className="text-sm font-medium">Timeline</span>
             </div>
-            <MissionTimeline events={events || []} />
+            <MissionTimeline events={(events || []).map(event => ({
+              id: event.id,
+              title: event.title,
+              date: event.startTime || new Date().toISOString(),
+              time: event.startTime ? event.startTime.split('T')[1]?.substring(0, 5) : undefined,
+              completed: false,
+              type: event.category || 'event'
+            }))} />
           </DraggableWidget>
           
           {/* Daily Reflection Widget */}
@@ -779,6 +783,5 @@ export default function DashboardPage() {
         
         <AIAgentFAB />
       </div>
-    </DndProvider>
   );
 }
