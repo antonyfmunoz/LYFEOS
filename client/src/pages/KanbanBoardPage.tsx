@@ -77,6 +77,38 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
   };
   const priorityColor = priorityColors[task.priority] || priorityColors.medium;
 
+  // Copy task to clipboard function
+  const copyTask = () => {
+    // Create a simplified version of the task to copy
+    const taskCopy = {
+      title: task.title,
+      description: task.description,
+      priority: task.priority,
+      tags: task.tags,
+      startDate: task.startDate,
+      dueDate: task.dueDate
+    };
+    
+    navigator.clipboard.writeText(JSON.stringify(taskCopy, null, 2))
+      .then(() => {
+        toast({
+          title: "Copied to clipboard",
+          description: `Task "${task.title}" copied to clipboard`,
+          className: "bg-background/80 border border-primary text-foreground",
+          duration: 2000,
+        });
+      })
+      .catch(err => {
+        toast({
+          title: "Failed to copy",
+          description: "Could not copy task to clipboard",
+          variant: "destructive",
+          duration: 2000,
+        });
+        console.error('Failed to copy task:', err);
+      });
+  };
+
   // Set up drag source
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.TASK,
@@ -118,6 +150,16 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
               >
                 <Edit className="h-4 w-4 mr-2" />
                 Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={copyTask}
+                className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                Copy
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => onDelete(task.id)} 
@@ -220,6 +262,41 @@ function KanbanColumn({
     }),
   }));
 
+  // Function to copy column configuration to clipboard
+  const copyColumn = () => {
+    const columnConfig = {
+      title: title,
+      status: status,
+      tasks: tasks.map(task => ({
+        title: task.title,
+        description: task.description,
+        priority: task.priority,
+        tags: task.tags,
+        startDate: task.startDate,
+        dueDate: task.dueDate
+      }))
+    };
+    
+    navigator.clipboard.writeText(JSON.stringify(columnConfig, null, 2))
+      .then(() => {
+        toast({
+          title: "Column Copied",
+          description: `Column "${title}" with ${tasks.length} tasks copied to clipboard`,
+          className: "bg-background/80 border border-primary text-foreground",
+          duration: 2000,
+        });
+      })
+      .catch(err => {
+        toast({
+          title: "Failed to copy",
+          description: "Could not copy column to clipboard",
+          variant: "destructive",
+          duration: 2000,
+        });
+        console.error('Failed to copy column:', err);
+      });
+  };
+
   const handleStartEditing = () => {
     setIsEditing(true);
     setTimeout(() => {
@@ -294,6 +371,17 @@ function KanbanColumn({
             onClick={() => onAddTask(status)}
           >
             <Plus className="h-3 w-3" />
+          </Button>
+          <Button 
+            size="icon" 
+            variant="ghost" 
+            className="h-6 w-6 hover:bg-yellow-400 hover:text-black"
+            onClick={copyColumn}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
           </Button>
           <Button 
             size="icon" 
