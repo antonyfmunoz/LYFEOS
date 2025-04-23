@@ -46,6 +46,8 @@ import GraphDetailPage from "./pages/GraphDetailPage";
 import GraphNewPage from "./pages/GraphNewPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import TemplateDetail from "./pages/TemplateDetail";
+import DocumentsPage from "./pages/DocumentsPage";
+import DocumentDetailPage from "./pages/DocumentDetailPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -390,6 +392,23 @@ function Router() {
         <ProtectedRoute>
           <RootLayout>
             <TemplateDetail />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      {/* Documents routes */}
+      <Route path="/documents">
+        <ProtectedRoute>
+          <RootLayout>
+            <DocumentsPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/documents/:id">
+        <ProtectedRoute>
+          <RootLayout>
+            <DocumentDetailPage />
           </RootLayout>
         </ProtectedRoute>
       </Route>
