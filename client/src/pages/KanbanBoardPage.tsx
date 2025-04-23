@@ -77,9 +77,9 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
   };
   const priorityColor = priorityColors[task.priority] || priorityColors.medium;
 
-  // Duplicate task to clipboard function
+  // Copy task to clipboard function
   const duplicateTask = () => {
-    // Create a simplified version of the task to duplicate
+    // Create a simplified version of the task to copy
     const taskDuplicate = {
       title: task.title,
       description: task.description,
@@ -159,7 +159,7 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
                   <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                   <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                 </svg>
-                Duplicate
+                Copy
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => onDelete(task.id)} 
@@ -262,7 +262,7 @@ function KanbanColumn({
     }),
   }));
 
-  // Function to duplicate column configuration to clipboard
+  // Function to copy column configuration to clipboard
   const duplicateColumn = () => {
     const columnConfig = {
       title: title,
@@ -280,16 +280,16 @@ function KanbanColumn({
     navigator.clipboard.writeText(JSON.stringify(columnConfig, null, 2))
       .then(() => {
         toast({
-          title: "Column Duplicated",
-          description: `Column "${title}" with ${tasks.length} tasks duplicated to clipboard`,
+          title: "Column Copied",
+          description: `Column "${title}" with ${tasks.length} tasks copied to clipboard`,
           className: "bg-background/80 border border-primary text-foreground",
           duration: 2000,
         });
       })
       .catch(err => {
         toast({
-          title: "Failed to Duplicate",
-          description: "Could not duplicate column to clipboard",
+          title: "Failed to Copy",
+          description: "Could not copy column to clipboard",
           variant: "destructive",
           duration: 2000,
         });
