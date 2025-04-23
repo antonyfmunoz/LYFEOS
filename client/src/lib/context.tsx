@@ -936,6 +936,236 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Kanban Task Methods
+  // Kanban board functions
+  const createKanbanBoard = (board: Omit<KanbanBoard, "id" | "createdAt" | "updatedAt" | "columns">): KanbanBoard => {
+    const timestamp = new Date().toISOString();
+    const boardId = `board-${Date.now()}`;
+    
+    // Create default columns for the new board
+    const defaultColumns = [
+      { id: `col-backlog-${Date.now()}`, title: "Backlog", status: "backlog" as KanbanStatus, order: 0, boardId },
+      { id: `col-inprogress-${Date.now() + 1}`, title: "In Progress", status: "inProgress" as KanbanStatus, order: 1, boardId },
+      { id: `col-review-${Date.now() + 2}`, title: "Review", status: "review" as KanbanStatus, order: 2, boardId },
+      { id: `col-done-${Date.now() + 3}`, title: "Done", status: "done" as KanbanStatus, order: 3, boardId }
+    ];
+    
+    // Check if this is the first board
+    const isFirstBoard = kanbanBoards.length === 0;
+    
+    // Extract isDefault from board if it exists
+    const { isDefault: providedIsDefault, ...restBoard } = board;
+    
+    const newBoard: KanbanBoard = {
+      id: boardId,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      columns: defaultColumns,
+      // Use provided isDefault if it exists, otherwise use isFirstBoard
+      isDefault: providedIsDefault !== undefined ? providedIsDefault : isFirstBoard,
+      // Spread the rest of the board properties
+      ...restBoard
+    };
+    
+    // Update board ID in columns
+    newBoard.columns = defaultColumns.map(col => ({
+      ...col,
+      boardId: newBoard.id
+    }));
+    
+    setKanbanBoards(prev => [...prev, newBoard]);
+    
+    // Show toast notification
+    toast({
+      title: "Board Created",
+      description: `New board "${newBoard.title}" created`,
+      variant: "default",
+      className: "bg-background/80 border border-primary text-foreground",
+      duration: 3000,
+    });
+    
+    return newBoard;
+  };
+  
+  const updateKanbanBoard = (id: string, boardData: Partial<KanbanBoard>) => {
+    setKanbanBoards(prev => prev.map(board => 
+      board.id === id 
+        ? { 
+            ...board, 
+            ...boardData, 
+            updatedAt: new Date().toISOString() 
+          } 
+        : board
+    ));
+    
+    // Show toast notification
+    toast({
+      title: "Board Updated",
+      description: "Board details have been updated",
+      variant: "default",
+      className: "bg-background/80 border border-primary text-foreground",
+      duration: 3000,
+    });
+  };
+  
+  const deleteKanbanBoard = (id: string) => {
+    const boardToDelete = kanbanBoards.find(board => board.id === id);
+    if (!boardToDelete) return;
+    
+    // Check if this is the default board
+    if (boardToDelete.isDefault && kanbanBoards.length > 1) {
+      // Make another board the default
+      const nextBoard = kanbanBoards.find(board => board.id !== id);
+      if (nextBoard) {
+        updateKanbanBoard(nextBoard.id, { isDefault: true });
+      }
+    }
+    
+    // Delete associated tasks
+    setKanbanTasks(prev => prev.filter(task => task.boardId !== id));
+    
+    // Delete the board
+    setKanbanBoards(prev => prev.filter(board => board.id !== id));
+    
+    // Show toast notification
+    toast({
+      title: "Board Deleted",
+      description: `Board "${boardToDelete.title}" and its tasks have been removed`,
+      variant: "destructive", 
+      className: "bg-background/80 border border-destructive text-foreground",
+      duration: 3000,
+    });
+  };
+  
+  // Kanban column functions
+  const addKanbanColumn = (boardId: string, column: Omit<KanbanColumn, "id" | "boardId" | "order">): KanbanColumn => {
+    const board = kanbanBoards.find(b => b.id === boardId);
+    if (!board) throw new Error(`Board with ID ${boardId} not found`);
+    
+    // Get max order value to append this column at the end
+    const maxOrder = Math.max(...board.columns.map(c => c.order), -1);
+    
+    const newColumn: KanbanColumn = {
+      id: `col-${Date.now()}`,
+      boardId,
+      order: maxOrder + 1,
+      ...column
+    };
+    
+    setKanbanBoards(prev => prev.map(b => 
+      b.id === boardId 
+        ? {
+            ...b,
+            columns: [...b.columns, newColumn],
+            updatedAt: new Date().toISOString()
+          }
+        : b
+    ));
+    
+    // Show toast notification
+    toast({
+      title: "Column Added",
+      description: `New column "${newColumn.title}" created`,
+      variant: "default",
+      className: "bg-background/80 border border-primary text-foreground",
+      duration: 3000,
+    });
+    
+    return newColumn;
+  };
+  
+  const updateKanbanColumn = (id: string, columnData: Partial<KanbanColumn>) => {
+    setKanbanBoards(prev => prev.map(board => {
+      const columnIndex = board.columns.findIndex(col => col.id === id);
+      if (columnIndex === -1) return board;
+      
+      const updatedColumns = [...board.columns];
+      updatedColumns[columnIndex] = {
+        ...updatedColumns[columnIndex],
+        ...columnData
+      };
+      
+      return {
+        ...board,
+        columns: updatedColumns,
+        updatedAt: new Date().toISOString()
+      };
+    }));
+    
+    // Show toast notification
+    toast({
+      title: "Column Updated",
+      description: "Column settings have been updated",
+      variant: "default",
+      className: "bg-background/80 border border-primary text-foreground",
+      duration: 3000,
+    });
+  };
+  
+  const deleteKanbanColumn = (id: string) => {
+    // Find which board contains this column
+    let columnTitle = "";
+    
+    setKanbanBoards(prev => {
+      return prev.map(board => {
+        const columnIndex = board.columns.findIndex(col => col.id === id);
+        if (columnIndex === -1) return board;
+        
+        // Store column title for the notification
+        columnTitle = board.columns[columnIndex].title;
+        
+        // Don't delete if this is the only column left
+        if (board.columns.length <= 1) {
+          toast({
+            title: "Cannot Delete Column",
+            description: "A board must have at least one column",
+            variant: "destructive",
+            className: "bg-background/80 border border-destructive text-foreground",
+            duration: 3000,
+          });
+          return board;
+        }
+        
+        // Move tasks from this column to the first available column
+        const columnStatus = board.columns[columnIndex].status;
+        const firstColumn = board.columns.find(col => col.id !== id);
+        
+        if (firstColumn) {
+          setKanbanTasks(tasks => tasks.map(task => 
+            task.boardId === board.id && task.status === columnStatus
+              ? { ...task, status: firstColumn.status }
+              : task
+          ));
+        }
+        
+        // Remove the column
+        const updatedColumns = board.columns.filter(col => col.id !== id);
+        // Reorder remaining columns
+        const reorderedColumns = updatedColumns.map((col, idx) => ({
+          ...col,
+          order: idx
+        }));
+        
+        return {
+          ...board,
+          columns: reorderedColumns,
+          updatedAt: new Date().toISOString()
+        };
+      });
+    });
+    
+    if (columnTitle) {
+      // Show toast notification
+      toast({
+        title: "Column Deleted",
+        description: `Column "${columnTitle}" has been removed`,
+        variant: "destructive", 
+        className: "bg-background/80 border border-destructive text-foreground",
+        duration: 3000,
+      });
+    }
+  };
+  
+  // Kanban task functions
   const createKanbanTask = (task: Omit<KanbanTask, "id" | "createdAt" | "updatedAt">): KanbanTask => {
     const timestamp = new Date().toISOString();
     const newTask: KanbanTask = {
@@ -1001,13 +1231,18 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     });
   };
   
-  const moveKanbanTask = (id: string, newStatus: KanbanStatus) => {
+  const moveKanbanTask = (id: string, newStatus: KanbanStatus, boardId?: string) => {
     const taskToMove = kanbanTasks.find(task => task.id === id);
     if (!taskToMove) return;
     
     setKanbanTasks(prev => prev.map(task => 
       task.id === id 
-        ? { ...task, status: newStatus, updatedAt: new Date().toISOString() } 
+        ? { 
+            ...task, 
+            status: newStatus,
+            ...(boardId ? { boardId } : {}), // Only update boardId if provided
+            updatedAt: new Date().toISOString() 
+          } 
         : task
     ));
     
@@ -1019,9 +1254,14 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       done: "Done"
     };
     
+    // Different messages based on whether it was moved between boards
+    const message = boardId && boardId !== taskToMove.boardId
+      ? `"${taskToMove.title}" moved to ${statusLabels[newStatus]} in another board`
+      : `"${taskToMove.title}" moved to ${statusLabels[newStatus]}`;
+    
     toast({
       title: "Task Moved",
-      description: `"${taskToMove.title}" moved to ${statusLabels[newStatus]}`,
+      description: message,
       variant: "default",
       className: "bg-background/80 border border-primary text-foreground",
       duration: 3000,
@@ -1038,6 +1278,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         missionPages,
         chatSessions,
         kanbanTasks,
+        kanbanBoards,
         activeChatSessionId,
         toggleQuestCompletion,
         sendMessage,
@@ -1060,6 +1301,15 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         updateChatSessionTitle,
         updateUserStats,
         setPrimaryColor,
+        // Kanban board functions
+        createKanbanBoard,
+        updateKanbanBoard,
+        deleteKanbanBoard,
+        // Kanban column functions
+        addKanbanColumn,
+        updateKanbanColumn,
+        deleteKanbanColumn,
+        // Kanban task functions
         createKanbanTask,
         updateKanbanTask,
         deleteKanbanTask,
