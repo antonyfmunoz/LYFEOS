@@ -363,6 +363,8 @@ export default function KanbanBoardPage() {
       description: '',
       priority: 'medium',
       tags: '',
+      startDate: '',
+      dueDate: '',
     });
     setIsAddTaskDialogOpen(true);
   };
@@ -376,6 +378,8 @@ export default function KanbanBoardPage() {
       status: taskStatus,
       priority: formData.priority as "low" | "medium" | "high",
       tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : [],
+      startDate: formData.startDate,
+      dueDate: formData.dueDate,
       boardId: boardId
     };
     
@@ -389,6 +393,8 @@ export default function KanbanBoardPage() {
       description: formData.description,
       priority: formData.priority as "low" | "medium" | "high",
       tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : [],
+      startDate: formData.startDate,
+      dueDate: formData.dueDate,
     };
     
     updateKanbanTask(activeTaskId, taskData);
@@ -614,6 +620,28 @@ export default function KanbanBoardPage() {
                 placeholder="work, personal, etc."
               />
             </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label htmlFor="startDate">Start Date</label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label htmlFor="dueDate">Due Date</label>
+                <Input
+                  id="dueDate"
+                  type="date"
+                  value={formData.dueDate}
+                  onChange={(e) => setFormData({...formData, dueDate: e.target.value})}
+                />
+              </div>
+            </div>
           </div>
           
           <DialogFooter>
@@ -685,6 +713,28 @@ export default function KanbanBoardPage() {
                 onChange={(e) => setFormData({...formData, tags: e.target.value})}
                 placeholder="work, personal, etc."
               />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label htmlFor="edit-startDate">Start Date</label>
+                <Input
+                  id="edit-startDate"
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label htmlFor="edit-dueDate">Due Date</label>
+                <Input
+                  id="edit-dueDate"
+                  type="date"
+                  value={formData.dueDate}
+                  onChange={(e) => setFormData({...formData, dueDate: e.target.value})}
+                />
+              </div>
             </div>
           </div>
           
