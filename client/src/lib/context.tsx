@@ -178,6 +178,7 @@ interface LYFEOSContextType {
   addKanbanColumn: (boardId: string, column: Omit<KanbanColumn, "id" | "boardId" | "order">) => KanbanColumn;
   updateKanbanColumn: (id: string, columnData: Partial<KanbanColumn>) => void;
   deleteKanbanColumn: (id: string) => void;
+  moveKanbanColumn: (boardId: string, columnId: string, targetIndex: number) => void;
   // Kanban task functions
   createKanbanTask: (task: Omit<KanbanTask, "id" | "createdAt" | "updatedAt">) => KanbanTask;
   updateKanbanTask: (id: string, taskData: Partial<KanbanTask>) => void;
@@ -1309,6 +1310,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         addKanbanColumn,
         updateKanbanColumn,
         deleteKanbanColumn,
+        moveKanbanColumn,
         // Kanban task functions
         createKanbanTask,
         updateKanbanTask,
@@ -1329,3 +1331,43 @@ export function useLYFEOS() {
   }
   return context;
 }
+
+  // Move a column to a new position within a board
+  const moveKanbanColumn = (boardId: string, columnId: string, targetIndex: number) => {
+    // Find the board
+    const board = kanbanBoards.find(b => b.id === boardId);
+    if (!board) return;
+    
+    // Find the column to move
+    const columnIndex = board.columns.findIndex(col => col.id === columnId);
+    if (columnIndex === -1) return;
+    
+    // Update the board
+    setKanbanBoards(prev => {
+      return prev.map(board => {
+        if (board.id === boardId) {
+          // Make a copy of the columns array
+          const columns = [...board.columns];
+          
+          // Remove the column from its current position
+          const [column] = columns.splice(columnIndex, 1);
+          
+          // Insert it at the target position
+          columns.splice(targetIndex, 0, column);
+          
+          // Update order property of all columns
+          const updatedColumns = columns.map((col, idx) => ({
+            ...col,
+            order: idx
+          }));
+          
+          return {
+            ...board,
+            columns: updatedColumns,
+            updatedAt: new Date().toISOString()
+          };
+        }
+        return board;
+      });
+    });
+  };
