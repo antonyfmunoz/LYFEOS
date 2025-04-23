@@ -2,10 +2,17 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLYFEOS } from "@/lib/context";
 import { KanbanTask, KanbanStatus } from "@/lib/types";
-import { Clipboard, ArrowRight, CheckSquare, Plus, ChevronRight, Kanban } from "lucide-react";
+import { Clipboard, ArrowRight, CheckSquare, Plus, ChevronRight, Kanban, GripVertical, MoreHorizontal, Edit, Trash, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
+import { toast } from "@/hooks/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface BoardItemProps {
   id: string;
@@ -15,17 +22,72 @@ interface BoardItemProps {
 }
 
 function BoardItem({ id, title, taskCount, onClick }: BoardItemProps) {
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering the parent onClick
+    
+    navigator.clipboard.writeText(JSON.stringify({ id, title }))
+      .then(() => {
+        toast({
+          title: "Board Copied",
+          description: `Board "${title}" copied to clipboard`,
+          className: "bg-background/80 border border-primary text-foreground",
+          duration: 2000,
+        });
+      })
+      .catch(err => {
+        toast({
+          title: "Failed to Copy",
+          description: "Could not copy board to clipboard",
+          variant: "destructive",
+          duration: 2000,
+        });
+      });
+  };
+  
   return (
     <div 
       className="p-2 rounded cursor-pointer bg-card/30 backdrop-blur-sm hover:bg-card/50 transition-all border-l-2 border-l-primary/30 hover:border-l-primary/70 shadow-sm flex items-center justify-between mb-2"
       onClick={() => onClick(id)}
     >
       <div className="flex items-center gap-2">
+        <GripVertical className="h-3.5 w-3.5 text-muted-foreground cursor-move" />
         <Kanban className="h-3.5 w-3.5 text-primary" />
         <p className="text-xs font-medium truncate">{title}</p>
       </div>
-      <div className="bg-primary/10 text-primary text-[10px] rounded-full px-1.5 py-0.5 font-medium">
-        {taskCount} tasks
+      <div className="flex items-center gap-1">
+        <div className="bg-primary/10 text-primary text-[10px] rounded-full px-1.5 py-0.5 font-medium">
+          {taskCount} tasks
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-6 w-6 ml-1 hover:bg-yellow-400 hover:text-black"
+            >
+              <MoreHorizontal className="h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black text-xs"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClick(id);
+              }}
+            >
+              <Edit className="h-3 w-3 mr-2" />
+              Open
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black text-xs"
+              onClick={handleCopy}
+            >
+              <Copy className="h-3 w-3 mr-2" />
+              Copy
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );

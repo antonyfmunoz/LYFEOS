@@ -12,8 +12,18 @@ import {
   Search, 
   Star,
   Mail,
-  ChevronRight
+  ChevronRight,
+  GripVertical,
+  MoreHorizontal,
+  Edit,
+  Copy
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Link, useLocation } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
@@ -174,6 +184,7 @@ export function RolodexWidget() {
                 className="flex items-center justify-between p-2 rounded-md border border-slate-700/30 hover:border-primary/50 transition-colors cursor-pointer hover:bg-primary/5"
                 onClick={() => navigate(`/contacts/${contact.id}`)}>
                 <div className="flex items-center gap-2">
+                  <GripVertical className="h-3.5 w-3.5 text-muted-foreground cursor-move" />
                   <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
                     contact.category === "work" ? "bg-blue-500/20" : "bg-purple-500/20"
                   }`}>
@@ -203,6 +214,53 @@ export function RolodexWidget() {
                   >
                     <Star className={`h-3.5 w-3.5 ${contact.favorite ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground"}`} />
                   </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 hover:bg-yellow-400 hover:text-black"
+                      >
+                        <MoreHorizontal className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/contacts/${contact.id}`);
+                        }}
+                      >
+                        <Edit className="h-3 w-3 mr-2" />
+                        View
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const contactData = {
+                            name: contact.name,
+                            email: contact.email,
+                            phone: contact.phone,
+                            category: contact.category
+                          };
+                          navigator.clipboard.writeText(JSON.stringify(contactData, null, 2))
+                            .then(() => {
+                              toast({
+                                title: "Contact Copied",
+                                description: `Contact "${contact.name}" copied to clipboard`,
+                                className: "bg-background/80 border border-primary text-foreground",
+                                duration: 2000,
+                              });
+                            });
+                        }}
+                      >
+                        <Copy className="h-3 w-3 mr-2" />
+                        Copy
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             ))
