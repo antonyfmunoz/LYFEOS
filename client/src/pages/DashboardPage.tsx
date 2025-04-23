@@ -40,7 +40,16 @@ import { ObsidianMarkdown } from "@/components/ui/obsidian-markdown";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { Checkbox } from "@/components/ui/checkbox";
 import CompactStatsWidget from "@/components/dashboard/CompactStatsWidget";
-import { StatType, CalendarEvent } from "@/lib/types";
+import { CalendarEvent } from "@/lib/types";
+
+// Define local enum for stats types as it differs from the global StatType
+enum StatType {
+  ATTENTION = "attention",
+  TIME = "time",
+  ENERGY = "energy",
+  HEALTH = "health",
+  EXPERIENCE = "experience"
+}
 
 // Define types
 interface TimeBlock {
@@ -568,371 +577,639 @@ export default function DashboardPage() {
       return block;
     }));
   };
-  
-  // Update reflection
-  const updateReflection = (field: keyof DailyReflection, value: any) => {
-    setReflection(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-  
-  // Render state selector (1-10 scale)
-  const renderStateSelector = (
-    state: number,
-    onChange: (value: number) => void,
-    label: string,
-    icon: React.ReactNode
-  ) => (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between">
-        <label className="text-sm flex items-center text-[#7DAAB2]">
-          {icon}
-          <span className="ml-2">{label}</span>
-        </label>
-        <span className="text-[#D6F4FF] font-mono">{state}/10</span>
-      </div>
-      <div className="flex gap-0.5">
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-          <Button
-            key={num}
-            type="button"
-            size="sm"
-            variant="ghost"
-            className={`p-0 w-7 h-7 rounded-md ${
-              num === state
-                ? "bg-primary/20 text-primary border border-primary/50"
-                : "text-[#7DAAB2] hover:bg-yellow-400 hover:text-black"
-            }`}
-            onClick={() => onChange(num)}
-          >
-            {num}
-          </Button>
-        ))}
-      </div>
-    </div>
-  );
-  
-  return (
-    <div className="dashboard-container">
-      <AIAgentFAB />
-      
-      {/* Daily Dashboard Header */}
-      <div className="mb-4 flex items-center">
-        <h1 className="text-3xl font-orbitron text-primary mr-2">Daily Dashboard</h1>
-        <div className="flex-grow h-0.5 bg-gradient-to-r from-primary/80 to-transparent"></div>
-      </div>
-      
-      {/* Date Header - Cinematic HUD Style */}
-      <section className="mb-6">
-        <div className="glassmorphic rounded-xl p-3 neon-border">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-            <div className="flex items-center">
-              <CalendarDays className="h-5 w-5 text-primary mr-2" />
-              <h1 className="text-xl sm:text-2xl font-orbitron text-[#D6F4FF]">{formattedDate}</h1>
-            </div>
-            <div className="flex items-center gap-2 mt-2 sm:mt-0">
-              <Clock className="h-4 w-4 text-[#7DAAB2] mr-2" />
-              <span className="text-[#7DAAB2] font-mono">{formattedTime}</span>
-              
-              <select 
-                value={timezone}
-                onChange={(e) => setTimezone(e.target.value)}
-                className="ml-3 bg-card border border-primary/30 rounded text-xs p-1"
-              >
-                {[
-                  { label: 'EST', value: 'America/New_York' },
-                  { label: 'CST', value: 'America/Chicago' },
-                  { label: 'MST', value: 'America/Denver' },
-                  { label: 'PST', value: 'America/Los_Angeles' },
-                  { label: 'GMT', value: 'Europe/London' },
-                  { label: 'CET', value: 'Europe/Paris' },
-                  { label: 'JST', value: 'Asia/Tokyo' },
-                  { label: 'AEST', value: 'Australia/Sydney' },
-                  { label: 'NZST', value: 'Pacific/Auckland' }
-                ].map(tz => (
-                  <option key={tz.value} value={tz.value}>
-                    {tz.label}
-                  </option>
-                ))}
-              </select>
-              
-              <button 
-                onClick={() => setTimeFormat(prev => prev === '12h' ? '24h' : '12h')}
-                className="bg-primary/10 hover:bg-yellow-400 hover:text-black rounded px-2 py-1 text-xs"
-              >
-                {timeFormat === '12h' ? '24h' : '12h'}
-              </button>
-              
 
+  // Create widget components map
+  const widgetComponentsMap: Record<string, {
+    content: React.ReactNode;
+    icon: React.ReactNode;
+    title: string;
+  }> = {
+    stats: {
+      title: "Stats Log",
+      icon: <BarChart className="h-5 w-5 text-primary" />,
+      content: (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="glassmorphic rounded-xl p-4 flex flex-col">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center">
+                <div className="w-8 h-8 rounded-lg bg-[rgba(54,241,205,0.2)] flex items-center justify-center mr-2">
+                  <Zap className="h-4 w-4 text-[#36F1CD]" />
+                </div>
+                <span className="text-sm font-medium">Energy</span>
+              </div>
+              <span className="text-sm text-[#36F1CD]">{stats?.energyPoints?.current || 0}/{stats?.energyPoints?.max || 100}</span>
+            </div>
+            <div className="w-full bg-primary/10 rounded-full h-2 mb-2">
+              <div className="bg-[#36F1CD] h-2 rounded-full" style={{ width: `${((stats?.energyPoints?.current || 0) / (stats?.energyPoints?.max || 100)) * 100}%` }}></div>
+            </div>
+            <p className="text-xs text-[#7DAAB2]">
+              Energy for physical and mental tasks
+            </p>
+          </div>
+          
+          <div className="glassmorphic rounded-xl p-4 flex flex-col">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center">
+                <div className="w-8 h-8 rounded-lg bg-[rgba(137,173,253,0.2)] flex items-center justify-center mr-2">
+                  <TargetIcon className="h-4 w-4 text-[#89ADFD]" />
+                </div>
+                <span className="text-sm font-medium">Focus</span>
+              </div>
+              <span className="text-sm text-[#89ADFD]">{stats?.attentionTokens?.current || 0}/{stats?.attentionTokens?.max || 100}</span>
+            </div>
+            <div className="w-full bg-primary/10 rounded-full h-2 mb-2">
+              <div className="bg-[#89ADFD] h-2 rounded-full" style={{ width: `${((stats?.attentionTokens?.current || 0) / (stats?.attentionTokens?.max || 100)) * 100}%` }}></div>
+            </div>
+            <p className="text-xs text-[#7DAAB2]">
+              Mental focus and concentration ability
+            </p>
+          </div>
+          
+          <div className="glassmorphic rounded-xl p-4 flex flex-col">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center">
+                <div className="w-8 h-8 rounded-lg bg-[rgba(255,98,161,0.2)] flex items-center justify-center mr-2">
+                  <HeartPulse className="h-4 w-4 text-[#FF62A1]" />
+                </div>
+                <span className="text-sm font-medium">Health</span>
+              </div>
+              <span className="text-sm text-[#FF62A1]">{stats?.healthPoints?.current || 0}/{stats?.healthPoints?.max || 100}</span>
+            </div>
+            <div className="w-full bg-primary/10 rounded-full h-2 mb-2">
+              <div className="bg-[#FF62A1] h-2 rounded-full" style={{ width: `${((stats?.healthPoints?.current || 0) / (stats?.healthPoints?.max || 100)) * 100}%` }}></div>
+            </div>
+            <p className="text-xs text-[#7DAAB2]">
+              Overall physical wellbeing status
+            </p>
+          </div>
+          
+          <div className="glassmorphic rounded-xl p-4 flex flex-col">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center">
+                <div className="w-8 h-8 rounded-lg bg-[rgba(250,204,21,0.2)] flex items-center justify-center mr-2">
+                  <Clock className="h-4 w-4 text-[#FACC15]" />
+                </div>
+                <span className="text-sm font-medium">Time</span>
+              </div>
+              <span className="text-sm text-[#FACC15]">{stats?.timeTokens?.current || 0}/{stats?.timeTokens?.max || 100}</span>
+            </div>
+            <div className="w-full bg-primary/10 rounded-full h-2 mb-2">
+              <div className="bg-[#FACC15] h-2 rounded-full" style={{ width: `${((stats?.timeTokens?.current || 0) / (stats?.timeTokens?.max || 100)) * 100}%` }}></div>
+            </div>
+            <p className="text-xs text-[#7DAAB2]">
+              Temporal resources remaining today
+            </p>
+          </div>
+          
+          <div className="glassmorphic rounded-xl p-4 col-span-2">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center">
+                <PlusCircle className="h-4 w-4 text-primary mr-2" />
+                <span className="text-sm font-medium">Experience</span>
+              </div>
+              <span className="text-sm text-primary">{stats?.experience?.current || 0}/{stats?.experience?.max || 100}</span>
+            </div>
+            <div className="w-full bg-primary/10 rounded-full h-2 mb-2">
+              <div className="bg-primary h-2 rounded-full" style={{ width: `${((stats?.experience?.current || 0) / (stats?.experience?.max || 100)) * 100}%` }}></div>
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-[#7DAAB2]">
+                Level {stats?.experience?.level || 1}
+              </p>
+              <p className="text-xs text-[#7DAAB2]">
+                +{stats?.experience?.max - (stats?.experience?.current || 0)} XP to Level {(stats?.experience?.level || 1) + 1}
+              </p>
+            </div>
+          </div>
+          
+          <div className="glassmorphic rounded-xl p-4 col-span-2">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm font-medium">Daily Progress</span>
+              <div className="flex items-center">
+                <div className="flex items-center mr-3">
+                  <div className="w-2 h-2 rounded-full bg-primary mr-1"></div>
+                  <span className="text-xs text-[#7DAAB2]">Progress</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-2 h-2 rounded-full bg-[#36F1CD] mr-1"></div>
+                  <span className="text-xs text-[#7DAAB2]">Target</span>
+                </div>
+              </div>
+            </div>
+            <div className="h-16">
+              <div className="flex h-full items-end justify-between">
+                <div className="w-1/7 h-8 bg-primary rounded-sm relative">
+                  <div className="w-full h-4 bg-[#36F1CD]/20 absolute bottom-0 border-t border-[#36F1CD]"></div>
+                </div>
+                <div className="w-1/7 h-12 bg-primary rounded-sm relative">
+                  <div className="w-full h-6 bg-[#36F1CD]/20 absolute bottom-0 border-t border-[#36F1CD]"></div>
+                </div>
+                <div className="w-1/7 h-10 bg-primary rounded-sm relative">
+                  <div className="w-full h-8 bg-[#36F1CD]/20 absolute bottom-0 border-t border-[#36F1CD]"></div>
+                </div>
+                <div className="w-1/7 h-14 bg-primary rounded-sm relative">
+                  <div className="w-full h-10 bg-[#36F1CD]/20 absolute bottom-0 border-t border-[#36F1CD]"></div>
+                </div>
+                <div className="w-1/7 h-7 bg-primary rounded-sm relative">
+                  <div className="w-full h-9 bg-[#36F1CD]/20 absolute bottom-0 border-t border-[#36F1CD]"></div>
+                </div>
+                <div className="w-1/7 h-9 bg-primary rounded-sm relative">
+                  <div className="w-full h-11 bg-[#36F1CD]/20 absolute bottom-0 border-t border-[#36F1CD]"></div>
+                </div>
+                <div className="w-1/7 h-5 bg-primary rounded-sm relative">
+                  <div className="w-full h-7 bg-[#36F1CD]/20 absolute bottom-0 border-t border-[#36F1CD]"></div>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-between mt-1">
+              <span className="text-xs text-[#7DAAB2]">Mon</span>
+              <span className="text-xs text-[#7DAAB2]">Tue</span>
+              <span className="text-xs text-[#7DAAB2]">Wed</span>
+              <span className="text-xs text-[#7DAAB2]">Thu</span>
+              <span className="text-xs text-[#7DAAB2]">Fri</span>
+              <span className="text-xs text-[#7DAAB2]">Sat</span>
+              <span className="text-xs text-[#7DAAB2]">Sun</span>
             </div>
           </div>
         </div>
-      </section>
-      
-      {/* Stats and Progress Section */}
-      <section className="mb-6">
-        
-        <CollapsibleWidget 
-          title="Stats Log" 
-          icon={<BarChart className="h-5 w-5 text-primary" />}
-          className="mb-4"
-        >
-          <CompactStatsWidget stats={stats} />
-        </CollapsibleWidget>
-      </section>
-      
-      {/* Mission Log Panel */}
-      <section className="mb-6">
-        
-        <CollapsibleWidget 
-          title="Mission Log" 
-          icon={<Calendar className="h-5 w-5 text-primary" />}
-          className="mb-4"
-        >
-          <EnhancedMissionWidget 
-            events={events} 
-            maxHeight="96"
-            hideHeader={true}
-          />
-        </CollapsibleWidget>
-      </section>
-      
-      {/* Data Entry Log Panel */}
-      <section className="mb-6">
-        
-        <CollapsibleWidget 
-          title="Data Entry Log" 
-          icon={<BookOpen className="h-5 w-5 text-primary" />}
-          className="mb-4"
-        >
+      )
+    },
+    mission: {
+      title: "Mission Log",
+      icon: <Calendar className="h-5 w-5 text-primary" />,
+      content: <EnhancedMissionWidget events={events || []} />
+    },
+    timeline: {
+      title: "Timeline",
+      icon: <CalendarDays className="h-5 w-5 text-primary" />,
+      content: <MissionTimeline events={events || []} />
+    },
+    reflection: {
+      title: "Daily Reflection",
+      icon: <BookOpen className="h-5 w-5 text-primary" />,
+      content: (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Today's Thoughts */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <Brain className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Today's Thoughts</span>
-                </label>
-                <div className="flex flex-col space-y-2">
-                  <MarkdownEditor
-                    placeholder="Ideas worth saving..."
-                    value={reflection.thoughts}
-                    onChange={(value) => updateReflection("thoughts", value)}
-                    minHeight="100px"
-                    autoBullets={true}
-                  />
-                </div>
-              </div>
-              
-              {/* Content Consumed */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <Book className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Content Consumed</span>
-                </label>
-                <div className="flex flex-col space-y-2">
-                  <MarkdownEditor
-                    placeholder="Books, podcasts, videos..."
-                    value={reflection.contentConsumed}
-                    onChange={(value) => updateReflection("contentConsumed", value)}
-                    minHeight="100px"
-                  />
-                </div>
-              </div>
-              
-              {/* Today's Research */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <BookOpen className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Today's Research</span>
-                </label>
-                <div className="flex flex-col space-y-2">
-                  <MarkdownEditor
-                    placeholder="Summarize learnings or add links..."
-                    value={reflection.research}
-                    onChange={(value) => updateReflection("research", value)}
-                    minHeight="100px"
-                  />
-                </div>
-              </div>
-              
-              {/* New To-Do-List Ideas */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <ListChecks className="h-4 w-4 text-primary" />
-                  <span className="ml-2">New To-Do-List Ideas</span>
-                </label>
-                <div className="flex flex-col space-y-2">
-                  <MarkdownEditor
-                    placeholder="Add anything..."
-                    value={reflection.todoIdeas}
-                    onChange={(value) => updateReflection("todoIdeas", value)}
-                    minHeight="100px"
-                  />
-                </div>
-              </div>
-            </div>
-            
-            {/* Auto-saved, no button needed */}
-          </div>
-        </CollapsibleWidget>
-      </section>
-      
-      {/* Recalibration Log Panel */}
-      <section className="mb-6" style={{ position: 'relative', zIndex: 1 }}>
-        
-        <CollapsibleWidget 
-          title="Recalibration Log" 
-          icon={<Brain className="h-5 w-5 text-primary" />}
-          className="mb-4"
-        >
-          <div className="space-y-4">
-            {/* Sleep Tracker Section */}
-            <div className="mb-3">
-              <h3 className="text-sm flex items-center text-[#7DAAB2] mb-3 font-bold">
-                <MoonStar className="h-4 w-4 text-primary mr-2" />
-                Sleep Tracker
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
-                    <AlarmClock className="h-4 w-4 text-primary" />
-                    <span className="ml-2">Wake Up Time</span>
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-2 w-full">
-                      <AlarmClock className="h-4 w-4 text-primary/70" />
-                      <CustomTimePicker
-                        value={reflection.wakeTime}
-                        onChange={(value) => updateReflection("wakeTime", value)}
-                        className="flex-grow"
-                      />
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
-                    <MoonStar className="h-4 w-4 text-primary" />
-                    <span className="ml-2">Sleep Time</span>
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-2 w-full">
-                      <MoonStar className="h-4 w-4 text-primary/70" />
-                      <CustomTimePicker
-                        value={reflection.sleepTime}
-                        onChange={(value) => updateReflection("sleepTime", value)}
-                        className="flex-grow"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* State ratings - in a row for desktop, stacked for mobile */}
-            <div className="border-t border-primary/10 pt-4 mb-2">
-              <div className="flex items-center justify-between text-sm mb-3">
-                <label className="flex items-center text-[#7DAAB2] font-bold">
-                  <Brain className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Energy Recap</span>
-                </label>
+            <div className="glassmorphic rounded-xl p-4">
+              <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center">
-                  <span className="text-[#7DAAB2] mr-2">Daily Total:</span>
-                  <span className="text-[#D6F4FF] font-mono">
-                    {Math.round(((reflection.mentalState + reflection.physicalState + reflection.emotionalState) / 30) * 100)}%
-                  </span>
+                  <Smile className="h-4 w-4 text-primary mr-2" />
+                  <span className="text-sm font-medium">Mental State</span>
                 </div>
+                <span className="text-sm text-primary">{reflection.mentalState}/10</span>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {renderStateSelector(
-                  reflection.mentalState,
-                  (value) => updateReflection("mentalState", value),
-                  "Mental State",
-                  <Brain className="h-4 w-4 text-primary" />
-                )}
-                
-                {renderStateSelector(
-                  reflection.physicalState,
-                  (value) => updateReflection("physicalState", value),
-                  "Physical State",
-                  <HeartPulse className="h-4 w-4 text-primary" />
-                )}
-                
-                {renderStateSelector(
-                  reflection.emotionalState,
-                  (value) => updateReflection("emotionalState", value),
-                  "Emotional State",
-                  <Smile className="h-4 w-4 text-primary" />
-                )}
+              <input
+                type="range"
+                min="1"
+                max="10"
+                value={reflection.mentalState}
+                onChange={(e) => setReflection({...reflection, mentalState: parseInt(e.target.value)})}
+                className="w-full accent-primary cursor-pointer"
+              />
+              <div className="flex justify-between mt-1">
+                <span className="text-xs text-[#7DAAB2]">Low</span>
+                <span className="text-xs text-[#7DAAB2]">High</span>
               </div>
             </div>
             
-            <div className="border-t border-primary/10 pt-4">
-              <h3 className="text-sm flex items-center text-[#7DAAB2] mb-3 font-bold">
-                <TargetIcon className="h-4 w-4 text-primary mr-2" />
-                Intention Setter
-              </h3>
-              
-              <div className="space-y-4">
-                {/* Gratitude */}
-                <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
-                    <Smile className="h-4 w-4 text-primary" />
-                    <span className="ml-2">Gratitude</span>
-                  </label>
-                  <div className="flex flex-col space-y-2">
-                    <MarkdownEditor
-                      placeholder="What three things are you most grateful for today?"
-                      value={reflection.gratitude}
-                      onChange={(value) => updateReflection("gratitude", value)}
-                      minHeight="80px"
-                    />
-                  </div>
+            <div className="glassmorphic rounded-xl p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <HeartPulse className="h-4 w-4 text-primary mr-2" />
+                  <span className="text-sm font-medium">Physical State</span>
                 </div>
-                
-                {/* Tomorrow's Goals */}
-                <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
-                    <ListChecks className="h-4 w-4 text-primary" />
-                    <span className="ml-2">Tomorrow's Goals</span>
-                  </label>
-                  <div className="flex flex-col space-y-2">
-                    <MarkdownEditor
-                      placeholder="What three things do you want to accomplish tomorrow?"
-                      value={reflection.tomorrowGoals}
-                      onChange={(value) => updateReflection("tomorrowGoals", value)}
-                      minHeight="60px"
-                    />
-                  </div>
-                </div>
-                
-                {/* Annual Goals */}
-                <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
-                    <TargetIcon className="h-4 w-4 text-primary" />
-                    <span className="ml-2">Annual Goals</span>
-                  </label>
-                  <div className="flex flex-col space-y-2">
-                    <MarkdownEditor
-                      placeholder="What are your three big targets for the year?"
-                      value={reflection.annualGoals}
-                      onChange={(value) => updateReflection("annualGoals", value)}
-                      minHeight="80px"
-                    />
-                  </div>
-                </div>
+                <span className="text-sm text-primary">{reflection.physicalState}/10</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="10"
+                value={reflection.physicalState}
+                onChange={(e) => setReflection({...reflection, physicalState: parseInt(e.target.value)})}
+                className="w-full accent-primary cursor-pointer"
+              />
+              <div className="flex justify-between mt-1">
+                <span className="text-xs text-[#7DAAB2]">Low</span>
+                <span className="text-xs text-[#7DAAB2]">High</span>
               </div>
             </div>
             
-            {/* Auto-saved, no button needed */}
+            <div className="glassmorphic rounded-xl p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <Brain className="h-4 w-4 text-primary mr-2" />
+                  <span className="text-sm font-medium">Emotional State</span>
+                </div>
+                <span className="text-sm text-primary">{reflection.emotionalState}/10</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="10"
+                value={reflection.emotionalState}
+                onChange={(e) => setReflection({...reflection, emotionalState: parseInt(e.target.value)})}
+                className="w-full accent-primary cursor-pointer"
+              />
+              <div className="flex justify-between mt-1">
+                <span className="text-xs text-[#7DAAB2]">Low</span>
+                <span className="text-xs text-[#7DAAB2]">High</span>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="glassmorphic rounded-xl p-4">
+                <div className="flex items-center mb-2">
+                  <AlarmClock className="h-4 w-4 text-primary mr-2" />
+                  <span className="text-sm font-medium">Wake Time</span>
+                </div>
+                <CustomTimePicker 
+                  value={reflection.wakeTime} 
+                  onChange={(time) => setReflection({...reflection, wakeTime: time})}
+                />
+              </div>
+              
+              <div className="glassmorphic rounded-xl p-4">
+                <div className="flex items-center mb-2">
+                  <MoonStar className="h-4 w-4 text-primary mr-2" />
+                  <span className="text-sm font-medium">Sleep Time</span>
+                </div>
+                <CustomTimePicker 
+                  value={reflection.sleepTime} 
+                  onChange={(time) => setReflection({...reflection, sleepTime: time})}
+                />
+              </div>
+            </div>
           </div>
-        </CollapsibleWidget>
-      </section>
-      
-    </div>
+          
+          <div className="space-y-4">
+            <div className="glassmorphic rounded-xl p-4">
+              <div className="flex items-center mb-2">
+                <CalendarDays className="h-4 w-4 text-primary mr-2" />
+                <span className="text-sm font-medium">Gratitude</span>
+              </div>
+              <textarea
+                value={reflection.gratitude}
+                onChange={(e) => setReflection({...reflection, gratitude: e.target.value})}
+                placeholder="What are you grateful for today?"
+                className="w-full h-20 bg-transparent border border-primary/20 rounded-md p-3 text-sm resize-none focus:border-primary focus:outline-none transition-colors"
+              />
+            </div>
+            
+            <div className="glassmorphic rounded-xl p-4">
+              <div className="flex items-center mb-2">
+                <TargetIcon className="h-4 w-4 text-primary mr-2" />
+                <span className="text-sm font-medium">Tomorrow's Goals</span>
+              </div>
+              <textarea
+                value={reflection.tomorrowGoals}
+                onChange={(e) => setReflection({...reflection, tomorrowGoals: e.target.value})}
+                placeholder="Set your intentions for tomorrow..."
+                className="w-full h-20 bg-transparent border border-primary/20 rounded-md p-3 text-sm resize-none focus:border-primary focus:outline-none transition-colors"
+              />
+            </div>
+            
+            <div className="glassmorphic rounded-xl p-4">
+              <div className="flex items-center mb-2">
+                <Book className="h-4 w-4 text-primary mr-2" />
+                <span className="text-sm font-medium">Content Consumed</span>
+              </div>
+              <textarea
+                value={reflection.contentConsumed}
+                onChange={(e) => setReflection({...reflection, contentConsumed: e.target.value})}
+                placeholder="Books, articles, videos, podcasts..."
+                className="w-full h-20 bg-transparent border border-primary/20 rounded-md p-3 text-sm resize-none focus:border-primary focus:outline-none transition-colors"
+              />
+            </div>
+          </div>
+        </div>
+      )
+    },
+    routine: {
+      title: "Routine",
+      icon: <Brain className="h-5 w-5 text-primary" />,
+      content: (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="glassmorphic rounded-xl p-4">
+            <div className="flex items-center mb-4">
+              <ListChecks className="h-4 w-4 text-primary mr-2" />
+              <span className="text-sm font-medium">Routine</span>
+            </div>
+            
+            {timeBlocks.length > 0 ? (
+              <div className="space-y-4 max-h-80 overflow-y-auto pr-2">
+                {timeBlocks.sort((a, b) => a.startTime.localeCompare(b.startTime)).map((block) => (
+                  <div key={block.id} className="border border-primary/20 rounded-lg p-3">
+                    <div className="flex justify-between items-center mb-2">
+                      {editingBlockId === block.id ? (
+                        <Input
+                          value={block.name}
+                          onChange={(e) => saveBlockEdit(block.id, 'name', e.target.value)}
+                          className="h-7 text-sm"
+                          onBlur={() => setEditingBlockId(null)}
+                          autoFocus
+                        />
+                      ) : (
+                        <div 
+                          className="font-medium text-sm flex-1"
+                          onClick={() => setEditingBlockId(block.id)}
+                        >
+                          {block.name}
+                        </div>
+                      )}
+                      <div className="flex items-center space-x-2">
+                        <div className="text-xs text-[#7DAAB2] font-mono flex items-center">
+                          <CustomTimePicker 
+                            value={block.startTime} 
+                            onChange={(time) => saveBlockEdit(block.id, 'startTime', time)}
+                            buttonClassName="h-6 px-2 py-0 min-w-[60px] text-xs"
+                          />
+                          <span className="mx-1">-</span>
+                          <CustomTimePicker 
+                            value={block.endTime} 
+                            onChange={(time) => saveBlockEdit(block.id, 'endTime', time)}
+                            buttonClassName="h-6 px-2 py-0 min-w-[60px] text-xs"
+                          />
+                        </div>
+                        <button
+                          onClick={() => handleDeleteBlock(block.id)}
+                          className="h-6 w-6 flex items-center justify-center rounded-full hover:bg-destructive/20 transition-colors text-destructive"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2 mt-3">
+                      {block.tasks.length > 0 && (
+                        <div className="space-y-2">
+                          {block.tasks.map((task) => (
+                            <div key={task.id} className="flex items-start space-x-2">
+                              <Checkbox
+                                id={`task-${task.id}`}
+                                checked={task.completed}
+                                onCheckedChange={() => toggleTaskCompletion(block.id, task.id)}
+                                className="mt-1"
+                              />
+                              <div className="flex-1">
+                                {editingTaskId === task.id ? (
+                                  <Input
+                                    value={task.text}
+                                    onChange={(e) => setNewTaskText(e.target.value)}
+                                    className="h-7 text-sm"
+                                    onBlur={() => saveTaskEdit(block.id, task.id, newTaskText)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        saveTaskEdit(block.id, task.id, newTaskText);
+                                      }
+                                    }}
+                                    autoFocus
+                                  />
+                                ) : (
+                                  <label
+                                    htmlFor={`task-${task.id}`}
+                                    className={`text-sm ${task.completed ? 'line-through text-muted-foreground' : ''}`}
+                                    onClick={() => {
+                                      setEditingTaskId(task.id);
+                                      setNewTaskText(task.text);
+                                    }}
+                                  >
+                                    {task.text}
+                                  </label>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => handleDeleteTask(block.id, task.id)}
+                                className="h-5 w-5 flex items-center justify-center rounded-full hover:bg-destructive/20 transition-colors text-destructive"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center">
+                        <Input
+                          placeholder="Add a task..."
+                          value={newTaskText}
+                          onChange={(e) => setNewTaskText(e.target.value)}
+                          className="h-7 text-sm"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && newTaskText.trim()) {
+                              handleAddTask(block.id, newTaskText);
+                            }
+                          }}
+                        />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="ml-2 h-7 w-7 p-0 hover:bg-primary/20"
+                          onClick={() => {
+                            if (newTaskText.trim()) {
+                              handleAddTask(block.id, newTaskText);
+                            }
+                          }}
+                          disabled={!newTaskText.trim()}
+                        >
+                          <PlusCircle className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-muted-foreground text-sm italic">
+                No routine blocks created yet. Add your first one below.
+              </div>
+            )}
+            
+            <div className="mt-4 space-y-4">
+              <div className="glassmorphic p-3 rounded-lg">
+                <h3 className="text-sm font-medium mb-2">Add New Block</h3>
+                <div className="space-y-2">
+                  <Input
+                    placeholder="Block name"
+                    value={newBlockName}
+                    onChange={(e) => setNewBlockName(e.target.value)}
+                    className="h-8 text-sm"
+                  />
+                  <div className="flex space-x-2">
+                    <div className="flex-1">
+                      <CustomTimePicker
+                        value={newBlockStartTime}
+                        onChange={setNewBlockStartTime}
+                        buttonClassName="w-full h-8 text-sm"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <CustomTimePicker
+                        value={newBlockEndTime}
+                        onChange={setNewBlockEndTime}
+                        buttonClassName="w-full h-8 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    className="w-full h-8 mt-2 text-sm hover:bg-yellow-400 hover:text-black transition-colors"
+                    onClick={handleAddTimeBlock}
+                  >
+                    Add Block
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="glassmorphic p-3 rounded-lg text-center">
+                <div className="flex items-center justify-center mb-2">
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center mr-2">
+                    <div className="text-primary text-sm font-semibold">{totalXpEarned}</div>
+                  </div>
+                  <span className="text-sm">XP earned today</span>
+                </div>
+                <p className="text-xs text-[#7DAAB2]">
+                  Complete tasks to earn XP points
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="glassmorphic rounded-xl p-4">
+              <div className="flex items-center mb-4">
+                <Edit className="h-4 w-4 text-primary mr-2" />
+                <span className="text-sm font-medium">Thoughts & Reflections</span>
+              </div>
+              <MarkdownEditor
+                value={reflection.thoughts}
+                onChange={(value) => setReflection({...reflection, thoughts: value})}
+                placeholder="Reflect on your day..."
+                height="180px"
+              />
+            </div>
+            
+            <div className="glassmorphic rounded-xl p-4">
+              <div className="flex items-center mb-4">
+                <Brain className="h-4 w-4 text-primary mr-2" />
+                <span className="text-sm font-medium">Research & Discoveries</span>
+              </div>
+              <textarea
+                value={reflection.research}
+                onChange={(e) => setReflection({...reflection, research: e.target.value})}
+                placeholder="Any new insights or learnings..."
+                className="w-full h-36 bg-transparent border border-primary/20 rounded-md p-3 text-sm resize-none focus:border-primary focus:outline-none transition-colors"
+              />
+            </div>
+            
+            <div className="glassmorphic rounded-xl p-4">
+              <div className="flex items-center mb-4">
+                <ListChecks className="h-4 w-4 text-primary mr-2" />
+                <span className="text-sm font-medium">To-Do Ideas</span>
+              </div>
+              <textarea
+                value={reflection.todoIdeas}
+                onChange={(e) => setReflection({...reflection, todoIdeas: e.target.value})}
+                placeholder="Ideas for future tasks..."
+                className="w-full h-24 bg-transparent border border-primary/20 rounded-md p-3 text-sm resize-none focus:border-primary focus:outline-none transition-colors"
+              />
+            </div>
+          </div>
+        </div>
+      )
+    }
+  };
+
+  return (
+    <DndProvider backend={HTML5Backend}>
+      <div className="dashboard-container">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-orbitron mb-1">Daily Log</h1>
+            <p className="text-[#7DAAB2]">
+              {formattedDate} <span className="mx-2">•</span> {formattedTime}
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="hover:bg-yellow-400 hover:text-black transition-colors"
+              onClick={handleReset}
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Reset Layout
+            </Button>
+            <CompactStatsWidget 
+              stats={[
+                { 
+                  label: 'Energy', 
+                  current: stats?.energyPoints?.current || 0, 
+                  max: stats?.energyPoints?.max || 100, 
+                  icon: <Zap className="w-3 h-3" />,
+                  color: '#36F1CD',
+                  bgColor: 'rgba(54, 241, 205, 0.2)',
+                  type: StatType.ENERGY 
+                },
+                { 
+                  label: 'Focus', 
+                  current: stats?.attentionTokens?.current || 0,
+                  max: stats?.attentionTokens?.max || 100, 
+                  icon: <TargetIcon className="w-3 h-3" />,
+                  color: '#89ADFD',
+                  bgColor: 'rgba(137, 173, 253, 0.2)',
+                  type: StatType.ATTENTION
+                },
+                { 
+                  label: 'Health', 
+                  current: stats?.healthPoints?.current || 0, 
+                  max: stats?.healthPoints?.max || 100, 
+                  icon: <HeartPulse className="w-3 h-3" />,
+                  color: '#FF62A1',
+                  bgColor: 'rgba(255, 98, 161, 0.2)',
+                  type: StatType.HEALTH 
+                },
+                { 
+                  label: 'Time', 
+                  current: stats?.timeTokens?.current || 0, 
+                  max: stats?.timeTokens?.max || 100, 
+                  icon: <Clock className="w-3 h-3" />,
+                  color: '#FACC15',
+                  bgColor: 'rgba(250, 204, 21, 0.2)',
+                  type: StatType.TIME 
+                }
+              ]}
+            />
+          </div>
+        </div>
+        
+        {/* Draggable Widgets */}
+        {widgets.map((widget, index) => {
+          if (!widget.enabled) return null;
+          
+          const widgetInfo = widgetComponentsMap[widget.type];
+          if (!widgetInfo) return null;
+          
+          return (
+            <DraggableWidget 
+              key={widget.id} 
+              id={widget.id}
+              index={index}
+              moveWidget={moveWidget}
+              className="mb-6 pl-5"
+            >
+              <CollapsibleWidget 
+                title={widgetInfo.title || widget.title} 
+                icon={widgetInfo.icon}
+                className="mb-4"
+                defaultOpen={true}
+              >
+                {widgetInfo.content}
+              </CollapsibleWidget>
+            </DraggableWidget>
+          );
+        })}
+        
+        <AIAgentFAB />
+      </div>
+    </DndProvider>
   );
 }

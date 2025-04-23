@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Clock, ChevronUp, ChevronDown } from "lucide-react";
 
-interface CustomTimePickerProps {
+export interface CustomTimePickerProps {
   value: string;
   onChange: (value: string) => void;
   className?: string;
+  buttonClassName?: string;
 }
 
-export function CustomTimePicker({ value, onChange, className }: CustomTimePickerProps) {
+export function CustomTimePicker({ value, onChange, className, buttonClassName }: CustomTimePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [hours, setHours] = useState<number>(
     value ? parseInt(value.split(":")[0]) : 9
