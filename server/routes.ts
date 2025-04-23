@@ -1162,6 +1162,342 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // CANVAS ROUTES
+  app.get("/api/users/:userId/canvases", isOwner, async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+      
+      const canvases = await storage.getCanvases(userId);
+      
+      return res.status(200).json({ canvases });
+    } catch (error) {
+      console.error("Error getting canvases:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.get("/api/canvases/category/:category", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { category } = req.params;
+      const userIdRaw = req.session.userId;
+      
+      if (!userIdRaw) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+      
+      const userId = Number(userIdRaw);
+      const canvases = await storage.getCanvasesByCategory(userId, category);
+      
+      return res.status(200).json({ canvases });
+    } catch (error) {
+      console.error("Error getting canvases by category:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.get("/api/canvases/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      if (isNaN(canvasId)) {
+        return res.status(400).json({ error: "Invalid canvas ID" });
+      }
+      
+      const canvas = await storage.getCanvas(canvasId);
+      if (!canvas) {
+        return res.status(404).json({ error: "Canvas not found" });
+      }
+      
+      // Verify ownership
+      if (canvas.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to access this canvas" });
+      }
+      
+      return res.status(200).json({ canvas });
+    } catch (error) {
+      console.error("Error getting canvas:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/canvases", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      // Validate canvas data
+      const validateData = insertCanvasSchema.parse({
+        ...req.body,
+        userId: req.session.userId
+      });
+      
+      // Create canvas
+      const canvas = await storage.createCanvas(validateData);
+      
+      return res.status(201).json({ canvas });
+    } catch (error) {
+      console.error("Error creating canvas:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.patch("/api/canvases/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      if (isNaN(canvasId)) {
+        return res.status(400).json({ error: "Invalid canvas ID" });
+      }
+      
+      // Get the canvas to check ownership
+      const canvas = await storage.getCanvas(canvasId);
+      if (!canvas) {
+        return res.status(404).json({ error: "Canvas not found" });
+      }
+      
+      // Verify ownership
+      if (canvas.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to update this canvas" });
+      }
+      
+      // Update canvas
+      const updatedCanvas = await storage.updateCanvas(canvasId, req.body);
+      
+      return res.status(200).json({ canvas: updatedCanvas });
+    } catch (error) {
+      console.error("Error updating canvas:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.delete("/api/canvases/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      if (isNaN(canvasId)) {
+        return res.status(400).json({ error: "Invalid canvas ID" });
+      }
+      
+      // Get the canvas to check ownership
+      const canvas = await storage.getCanvas(canvasId);
+      if (!canvas) {
+        return res.status(404).json({ error: "Canvas not found" });
+      }
+      
+      // Verify ownership
+      if (canvas.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to delete this canvas" });
+      }
+      
+      // Delete canvas
+      await storage.deleteCanvas(canvasId);
+      
+      return res.status(200).json({ message: "Canvas deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting canvas:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/canvases/:id/toggle-favorite", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const canvasId = parseInt(req.params.id);
+      if (isNaN(canvasId)) {
+        return res.status(400).json({ error: "Invalid canvas ID" });
+      }
+      
+      // Get the canvas to check ownership
+      const canvas = await storage.getCanvas(canvasId);
+      if (!canvas) {
+        return res.status(404).json({ error: "Canvas not found" });
+      }
+      
+      // Verify ownership
+      if (canvas.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to update this canvas" });
+      }
+      
+      // Toggle favorite status
+      const updatedCanvas = await storage.toggleFavoriteCanvas(canvasId);
+      
+      return res.status(200).json({ canvas: updatedCanvas });
+    } catch (error) {
+      console.error("Error toggling canvas favorite status:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // GRAPH ROUTES
+  app.get("/api/users/:userId/graphs", isOwner, async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+      
+      const graphs = await storage.getGraphs(userId);
+      
+      return res.status(200).json({ graphs });
+    } catch (error) {
+      console.error("Error getting graphs:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.get("/api/graphs/category/:category", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { category } = req.params;
+      const userIdRaw = req.session.userId;
+      
+      if (!userIdRaw) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+      
+      const userId = Number(userIdRaw);
+      const graphs = await storage.getGraphsByCategory(userId, category);
+      
+      return res.status(200).json({ graphs });
+    } catch (error) {
+      console.error("Error getting graphs by category:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.get("/api/graphs/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const graphId = parseInt(req.params.id);
+      if (isNaN(graphId)) {
+        return res.status(400).json({ error: "Invalid graph ID" });
+      }
+      
+      const graph = await storage.getGraph(graphId);
+      if (!graph) {
+        return res.status(404).json({ error: "Graph not found" });
+      }
+      
+      // Verify ownership
+      if (graph.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to access this graph" });
+      }
+      
+      return res.status(200).json({ graph });
+    } catch (error) {
+      console.error("Error getting graph:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/graphs", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      // Validate graph data
+      const validateData = insertGraphSchema.parse({
+        ...req.body,
+        userId: req.session.userId
+      });
+      
+      // Create graph
+      const graph = await storage.createGraph(validateData);
+      
+      return res.status(201).json({ graph });
+    } catch (error) {
+      console.error("Error creating graph:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.patch("/api/graphs/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const graphId = parseInt(req.params.id);
+      if (isNaN(graphId)) {
+        return res.status(400).json({ error: "Invalid graph ID" });
+      }
+      
+      // Get the graph to check ownership
+      const graph = await storage.getGraph(graphId);
+      if (!graph) {
+        return res.status(404).json({ error: "Graph not found" });
+      }
+      
+      // Verify ownership
+      if (graph.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to update this graph" });
+      }
+      
+      // Update graph
+      const updatedGraph = await storage.updateGraph(graphId, req.body);
+      
+      return res.status(200).json({ graph: updatedGraph });
+    } catch (error) {
+      console.error("Error updating graph:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.delete("/api/graphs/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const graphId = parseInt(req.params.id);
+      if (isNaN(graphId)) {
+        return res.status(400).json({ error: "Invalid graph ID" });
+      }
+      
+      // Get the graph to check ownership
+      const graph = await storage.getGraph(graphId);
+      if (!graph) {
+        return res.status(404).json({ error: "Graph not found" });
+      }
+      
+      // Verify ownership
+      if (graph.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to delete this graph" });
+      }
+      
+      // Delete graph
+      await storage.deleteGraph(graphId);
+      
+      return res.status(200).json({ message: "Graph deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting graph:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/graphs/:id/toggle-favorite", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const graphId = parseInt(req.params.id);
+      if (isNaN(graphId)) {
+        return res.status(400).json({ error: "Invalid graph ID" });
+      }
+      
+      // Get the graph to check ownership
+      const graph = await storage.getGraph(graphId);
+      if (!graph) {
+        return res.status(404).json({ error: "Graph not found" });
+      }
+      
+      // Verify ownership
+      if (graph.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to update this graph" });
+      }
+      
+      // Toggle favorite status
+      const updatedGraph = await storage.toggleFavoriteGraph(graphId);
+      
+      return res.status(200).json({ graph: updatedGraph });
+    } catch (error) {
+      console.error("Error toggling graph favorite status:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -6,7 +6,9 @@ import {
   calendarEvents, type CalendarEvent, type InsertCalendarEvent,
   missionPages, type MissionPage, type InsertMissionPage,
   contacts, type Contact, type InsertContact,
-  spreadsheets, type Spreadsheet, type InsertSpreadsheet
+  spreadsheets, type Spreadsheet, type InsertSpreadsheet,
+  canvases, type Canvas, type InsertCanvas,
+  graphs, type Graph, type InsertGraph
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -65,6 +67,24 @@ export interface IStorage {
   updateSpreadsheet(id: number, spreadsheet: Partial<InsertSpreadsheet>): Promise<Spreadsheet>;
   deleteSpreadsheet(id: number): Promise<void>;
   toggleFavoriteSpreadsheet(id: number): Promise<Spreadsheet>;
+  
+  // Canvas methods
+  getCanvases(userId: number): Promise<Canvas[]>;
+  getCanvasesByCategory(userId: number, category: string): Promise<Canvas[]>;
+  getCanvas(id: number): Promise<Canvas | undefined>;
+  createCanvas(canvas: InsertCanvas): Promise<Canvas>;
+  updateCanvas(id: number, canvas: Partial<InsertCanvas>): Promise<Canvas>;
+  deleteCanvas(id: number): Promise<void>;
+  toggleFavoriteCanvas(id: number): Promise<Canvas>;
+  
+  // Graph methods
+  getGraphs(userId: number): Promise<Graph[]>;
+  getGraphsByCategory(userId: number, category: string): Promise<Graph[]>;
+  getGraph(id: number): Promise<Graph | undefined>;
+  createGraph(graph: InsertGraph): Promise<Graph>;
+  updateGraph(id: number, graph: Partial<InsertGraph>): Promise<Graph>;
+  deleteGraph(id: number): Promise<void>;
+  toggleFavoriteGraph(id: number): Promise<Graph>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -387,6 +407,118 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return updatedSpreadsheet;
+  }
+
+  // Canvas methods
+  async getCanvases(userId: number): Promise<Canvas[]> {
+    return db.select().from(canvases).where(eq(canvases.userId, userId));
+  }
+  
+  async getCanvasesByCategory(userId: number, category: string): Promise<Canvas[]> {
+    return db.select()
+      .from(canvases)
+      .where(and(
+        eq(canvases.userId, userId),
+        eq(canvases.category, category)
+      ));
+  }
+  
+  async getCanvas(id: number): Promise<Canvas | undefined> {
+    const [canvas] = await db.select().from(canvases).where(eq(canvases.id, id));
+    return canvas;
+  }
+  
+  async createCanvas(canvas: InsertCanvas): Promise<Canvas> {
+    const [newCanvas] = await db
+      .insert(canvases)
+      .values(canvas)
+      .returning();
+    return newCanvas;
+  }
+  
+  async updateCanvas(id: number, canvasUpdate: Partial<InsertCanvas>): Promise<Canvas> {
+    const [updatedCanvas] = await db
+      .update(canvases)
+      .set({ ...canvasUpdate, updatedAt: new Date() })
+      .where(eq(canvases.id, id))
+      .returning();
+    return updatedCanvas;
+  }
+  
+  async deleteCanvas(id: number): Promise<void> {
+    await db.delete(canvases).where(eq(canvases.id, id));
+  }
+  
+  async toggleFavoriteCanvas(id: number): Promise<Canvas> {
+    const canvas = await this.getCanvas(id);
+    if (!canvas) throw new Error("Canvas not found");
+    
+    const [updatedCanvas] = await db
+      .update(canvases)
+      .set({ 
+        favorite: !canvas.favorite,
+        updatedAt: new Date()
+      })
+      .where(eq(canvases.id, id))
+      .returning();
+    
+    return updatedCanvas;
+  }
+  
+  // Graph methods
+  async getGraphs(userId: number): Promise<Graph[]> {
+    return db.select().from(graphs).where(eq(graphs.userId, userId));
+  }
+  
+  async getGraphsByCategory(userId: number, category: string): Promise<Graph[]> {
+    return db.select()
+      .from(graphs)
+      .where(and(
+        eq(graphs.userId, userId),
+        eq(graphs.category, category)
+      ));
+  }
+  
+  async getGraph(id: number): Promise<Graph | undefined> {
+    const [graph] = await db.select().from(graphs).where(eq(graphs.id, id));
+    return graph;
+  }
+  
+  async createGraph(graph: InsertGraph): Promise<Graph> {
+    const [newGraph] = await db
+      .insert(graphs)
+      .values(graph)
+      .returning();
+    return newGraph;
+  }
+  
+  async updateGraph(id: number, graphUpdate: Partial<InsertGraph>): Promise<Graph> {
+    const [updatedGraph] = await db
+      .update(graphs)
+      .set({ ...graphUpdate, updatedAt: new Date() })
+      .where(eq(graphs.id, id))
+      .returning();
+    return updatedGraph;
+  }
+  
+  async deleteGraph(id: number): Promise<void> {
+    await db.delete(graphs).where(eq(graphs.id, id));
+  }
+  
+  async toggleFavoriteGraph(id: number): Promise<Graph> {
+    const graph = await this.getGraph(id);
+    if (!graph) throw new Error("Graph not found");
+    
+    const [updatedGraph] = await db
+      .update(graphs)
+      .set({ 
+        favorite: !graph.favorite,
+        updatedAt: new Date()
+      })
+      .where(eq(graphs.id, id))
+      .returning();
+    
+    return updatedGraph;
   }
 }
 

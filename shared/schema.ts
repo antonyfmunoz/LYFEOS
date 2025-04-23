@@ -308,3 +308,65 @@ export type InsertContact = z.infer<typeof insertContactSchema>;
 
 export type Spreadsheet = typeof spreadsheets.$inferSelect;
 export type InsertSpreadsheet = z.infer<typeof insertSpreadsheetSchema>;
+
+// Canvas table
+export const canvases = pgTable("canvases", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  content: jsonb("content").notNull().default({}), // Stores canvas elements like shapes, connections, text
+  favorite: boolean("favorite").default(false).notNull(),
+  category: text("category").default("general").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Canvas relations
+export const canvasRelations = relations(canvases, ({ one }) => ({
+  user: one(users, {
+    fields: [canvases.userId],
+    references: [users.id],
+  }),
+}));
+
+// Insert schema for Canvas
+export const insertCanvasSchema = createInsertSchema(canvases).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Graph table
+export const graphs = pgTable("graphs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  content: jsonb("content").notNull().default({}), // Stores nodes, edges, and styling
+  favorite: boolean("favorite").default(false).notNull(),
+  category: text("category").default("general").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Graph relations
+export const graphRelations = relations(graphs, ({ one }) => ({
+  user: one(users, {
+    fields: [graphs.userId],
+    references: [users.id],
+  }),
+}));
+
+// Insert schema for Graph
+export const insertGraphSchema = createInsertSchema(graphs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type Canvas = typeof canvases.$inferSelect;
+export type InsertCanvas = z.infer<typeof insertCanvasSchema>;
+
+export type Graph = typeof graphs.$inferSelect;
+export type InsertGraph = z.infer<typeof insertGraphSchema>;
