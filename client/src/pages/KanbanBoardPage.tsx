@@ -361,7 +361,9 @@ function KanbanColumn({
 
   // Use drag preview to maintain opacity during drag
   useEffect(() => {
-    preview(getEmptyImage(), { captureDraggingState: true });
+    if (preview) {
+      preview(getEmptyImage(), { captureDraggingState: true });
+    }
   }, [preview]);
 
   return (
