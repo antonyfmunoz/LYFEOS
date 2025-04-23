@@ -1246,27 +1246,6 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
           } 
         : task
     ));
-    
-    // Show toast notification
-    const statusLabels: Record<KanbanStatus, string> = {
-      backlog: "Backlog",
-      inProgress: "In Progress",
-      review: "Review",
-      done: "Done"
-    };
-    
-    // Different messages based on whether it was moved between boards
-    const message = boardId && boardId !== taskToMove.boardId
-      ? `"${taskToMove.title}" moved to ${statusLabels[newStatus]} in another board`
-      : `"${taskToMove.title}" moved to ${statusLabels[newStatus]}`;
-    
-    toast({
-      title: "Task Moved",
-      description: message,
-      variant: "default",
-      className: "bg-background/80 border border-primary text-foreground",
-      duration: 3000,
-    });
   };
   
   // Move a column to a new position within a board
@@ -1307,17 +1286,6 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         return board;
       });
     });
-    
-    // Get column title for the toast
-    const column = board.columns.find(c => c.id === columnId);
-    if (column) {
-      toast({
-        title: "Column Moved",
-        description: `"${column.title}" column has been moved to position ${targetIndex + 1}`,
-        className: "bg-background/80 border border-primary text-foreground",
-        duration: 3000,
-      });
-    }
   };
 
   return (
