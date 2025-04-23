@@ -13,8 +13,16 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Clipboard, Plus, Trash2, PenLine, MoveRight, Search, GripVertical, ArrowLeft } from "lucide-react";
+import { Clipboard, Plus, Trash2, PenLine, MoveRight, Search, GripVertical, ArrowLeft, MoreHorizontal } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { KanbanTask, KanbanStatus } from "@/lib/types";
 import { toast } from "@/hooks/use-toast";
@@ -433,6 +441,107 @@ export default function KanbanPage() {
         <p className="text-[#7DAAB2]">Visualize and manage your workflow</p>
       </div>
       
+      {/* Board selector */}
+      <div className="flex items-center gap-4 mb-4">
+        <Label htmlFor="board-selector">Active Board:</Label>
+        <Select 
+          value={activeBoardId || ''}
+          onValueChange={(value) => setActiveBoardId(value)}
+          disabled={kanbanBoards.length === 0}
+        >
+          <SelectTrigger className="w-[250px]">
+            <SelectValue placeholder="Select a board" />
+          </SelectTrigger>
+          <SelectContent>
+            {kanbanBoards.map(board => (
+              <SelectItem key={board.id} value={board.id}>
+                {board.title} {board.isDefault && "(Default)"}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        
+        <Dialog open={isNewBoardDialogOpen} onOpenChange={setIsNewBoardDialogOpen}>
+          <DialogTrigger asChild>
+            <Button 
+              className="bg-primary/10 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow hover:bg-yellow-400 hover:text-black"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              New Board
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New Board</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="board-title">Board Title</Label>
+                <Input
+                  id="board-title"
+                  value={newBoardTitle}
+                  onChange={e => setNewBoardTitle(e.target.value)}
+                  placeholder="Enter board title"
+                  autoFocus
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="board-description">Description</Label>
+                <Textarea
+                  id="board-description"
+                  value={newBoardDescription}
+                  onChange={e => setNewBoardDescription(e.target.value)}
+                  placeholder="Board description"
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsNewBoardDialogOpen(false)}
+                className="hover:bg-yellow-400 hover:text-black"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleCreateBoard}
+                className="hover:bg-yellow-400 hover:text-black"
+              >
+                Create Board
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        {activeBoard && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Board Options</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => updateKanbanBoard(activeBoard.id, {isDefault: true})}>
+                Set as Default
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={() => {
+                  if (confirm("Are you sure you want to delete this board? All tasks in this board will be deleted.")) {
+                    deleteKanbanBoard(activeBoard.id);
+                  }
+                }}
+                className="text-red-500"
+              >
+                Delete Board
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-4">
           <div className="relative max-w-xs">
@@ -445,48 +554,50 @@ export default function KanbanPage() {
             />
           </div>
           
-          <Dialog open={isNewColumnDialogOpen} onOpenChange={setIsNewColumnDialogOpen}>
-            <DialogTrigger asChild>
-              <Button 
-                className="bg-primary/10 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow hover:bg-yellow-400 hover:text-black"
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Add Column
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New Column</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="column-title">Column Title</Label>
-                  <Input
-                    id="column-title"
-                    value={newColumnTitle}
-                    onChange={e => setNewColumnTitle(e.target.value)}
-                    placeholder="Enter column title"
-                    autoFocus
-                  />
+          {activeBoard && (
+            <Dialog open={isNewColumnDialogOpen} onOpenChange={setIsNewColumnDialogOpen}>
+              <DialogTrigger asChild>
+                <Button 
+                  className="bg-primary/10 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow hover:bg-yellow-400 hover:text-black"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Column
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add New Column</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="column-title">Column Title</Label>
+                    <Input
+                      id="column-title"
+                      value={newColumnTitle}
+                      onChange={e => setNewColumnTitle(e.target.value)}
+                      placeholder="Enter column title"
+                      autoFocus
+                    />
+                  </div>
                 </div>
-              </div>
-              <DialogFooter>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsNewColumnDialogOpen(false)}
-                  className="hover:bg-yellow-400 hover:text-black"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleCreateColumn}
-                  className="hover:bg-yellow-400 hover:text-black"
-                >
-                  Create Column
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                <DialogFooter>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setIsNewColumnDialogOpen(false)}
+                    className="hover:bg-yellow-400 hover:text-black"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleCreateColumn}
+                    className="hover:bg-yellow-400 hover:text-black"
+                  >
+                    Create Column
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
         
         <Dialog open={isNewTaskDialogOpen} onOpenChange={setIsNewTaskDialogOpen}>
@@ -722,57 +833,42 @@ export default function KanbanPage() {
       
 
       
-      <div className="overflow-x-auto pb-4">
-        <div className="flex gap-4 min-w-max">
-          {columns.sort((a, b) => a.order - b.order).map(column => (
-            <div 
-              key={column.id}
-              className="min-w-[280px] max-w-[320px] border border-slate-700/30 rounded-lg bg-card/30 p-3 group"
-              draggable
-              onDragStart={(e) => {
-                e.dataTransfer.setData('columnId', column.id);
-                e.currentTarget.classList.add('opacity-50');
-              }}
-              onDragEnd={(e) => {
-                e.currentTarget.classList.remove('opacity-50');
-              }}
-              onDragOver={(e) => {
-                e.preventDefault();
-                e.currentTarget.classList.add('border-primary');
-              }}
-              onDragLeave={(e) => {
-                e.currentTarget.classList.remove('border-primary');
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                e.currentTarget.classList.remove('border-primary');
-                const draggedId = e.dataTransfer.getData('columnId');
-                if (draggedId && draggedId !== column.id) {
-                  handleColumnReorder(draggedId, column.id);
-                }
-              }}
-            >
-              <div className="flex items-center gap-1 mb-2 cursor-move opacity-0 group-hover:opacity-100 transition-opacity">
-                <GripVertical className="h-4 w-4 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Drag to reorder</span>
+      {activeBoard ? (
+        <div className="overflow-x-auto pb-4">
+          <div className="flex gap-4 min-w-max">
+            {columns.sort((a, b) => a.order - b.order).map(column => (
+              <div 
+                key={column.id}
+                className="min-w-[280px] max-w-[320px] border border-slate-700/30 rounded-lg bg-card/30 p-3 group"
+              >
+                <KanbanColumn
+                  columnId={column.id}
+                  title={column.title}
+                  status={column.status}
+                  tasks={getTasksByStatus(column.status)}
+                  onEditTask={openEditDialog}
+                  onDeleteTask={deleteKanbanTask}
+                  onMoveTask={handleMoveTask}
+                  onEditTitle={handleEditColumnTitle}
+                  onDeleteColumn={handleDeleteColumn}
+                  onAddTask={handleAddTask}
+                />
               </div>
-              
-              <KanbanColumn
-                columnId={column.id}
-                title={column.title}
-                status={column.status}
-                tasks={getTasksByStatus(column.status)}
-                onEditTask={openEditDialog}
-                onDeleteTask={deleteKanbanTask}
-                onMoveTask={handleMoveTask}
-                onEditTitle={handleEditColumnTitle}
-                onDeleteColumn={handleDeleteColumn}
-                onAddTask={handleAddTask}
-              />
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center p-10 border border-dashed border-slate-700/30 rounded-lg">
+          <p className="text-muted-foreground mb-4">Create a board to get started</p>
+          <Button 
+            onClick={() => setIsNewBoardDialogOpen(true)}
+            className="bg-primary/10 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow hover:bg-yellow-400 hover:text-black"
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Create First Board
+          </Button>
+        </div>
+      )}
     </>
   );
 }
