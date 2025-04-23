@@ -1,9 +1,11 @@
 import { CollapsibleWidget } from "@/components/ui/collapsible-widget";
-import { Calendar, Clipboard, Contact2, FileSpreadsheet } from "lucide-react";
+import { Calendar, Clipboard, Contact2, FileSpreadsheet, Paintbrush, Network } from "lucide-react";
 import { Link } from "wouter";
 import { KanbanWidget } from "@/components/ui/kanban-widget";
 import { RolodexWidget } from "@/components/ui/rolodex-widget";
 import { SpreadsheetWidget } from "@/components/ui/spreadsheet-widget";
+import { CanvasWidget } from "@/components/ui/canvas-widget";
+import { GraphWidget } from "@/components/ui/graph-widget";
 
 export default function SystemsPage() {
   return (
@@ -98,6 +100,28 @@ export default function SystemsPage() {
           defaultOpen={true}
         >
           <SpreadsheetWidget />
+        </CollapsibleWidget>
+      </section>
+      
+      {/* Canvas Module */}
+      <section className="mb-6">
+        <CollapsibleWidget 
+          title="Canvas" 
+          icon={<Paintbrush className="h-5 w-5 text-primary" />}
+          defaultOpen={true}
+        >
+          <CanvasWidget />
+        </CollapsibleWidget>
+      </section>
+      
+      {/* Graph Module */}
+      <section className="mb-6">
+        <CollapsibleWidget 
+          title="Knowledge Graph" 
+          icon={<Network className="h-5 w-5 text-primary" />}
+          defaultOpen={true}
+        >
+          <GraphWidget />
         </CollapsibleWidget>
       </section>
     </>

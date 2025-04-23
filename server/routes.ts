@@ -10,7 +10,9 @@ import {
   insertCalendarEventSchema,
   insertMissionPageSchema,
   insertContactSchema,
-  insertSpreadsheetSchema
+  insertSpreadsheetSchema,
+  insertCanvasSchema,
+  insertGraphSchema
 } from "@shared/schema";
 
 // Extend Request type to include session
