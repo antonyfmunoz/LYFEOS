@@ -27,10 +27,15 @@ interface Spreadsheet {
   title: string;
   description: string | null;
   content: {
-    cells: Record<string, string>;
+    cells?: Record<string, string>;
+    elements?: Array<any>;
+    connections?: Array<any>;
+    nodes?: Array<any>;
+    edges?: Array<any>;
   };
   favorite: boolean;
   category: string;
+  type: string; // 'regular', 'canvas', or 'graph'
   createdAt: string;
   updatedAt: string;
 }
@@ -70,9 +75,14 @@ export default function SpreadsheetDetailPage() {
   
   // Spreadsheet data
   const [cells, setCells] = useState<Record<string, string>>({});
+  const [elements, setElements] = useState<any[]>([]);
+  const [connections, setConnections] = useState<any[]>([]);
+  const [nodes, setNodes] = useState<any[]>([]);
+  const [edges, setEdges] = useState<any[]>([]);
   const [rows, setRows] = useState<number[]>(Array.from({ length: 10 }, (_, i) => i));
   const [cols, setCols] = useState<number[]>(Array.from({ length: 10 }, (_, i) => i));
   const [isEditing, setIsEditing] = useState(false);
+  const [spreadsheetType, setSpreadsheetType] = useState<string>('regular');
   
   // Fetch spreadsheet data
   const {
