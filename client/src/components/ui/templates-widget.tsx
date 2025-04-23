@@ -249,7 +249,7 @@ export default function TemplatesWidget() {
         <Button 
           variant="outline" 
           size="sm"
-          className="h-7 text-xs"
+          className="h-7 text-xs hover:text-black hover:bg-yellow-400 hover:border-yellow-500"
           onClick={() => navigate('/templates/new')}
         >
           <FilePlus className="h-3.5 w-3.5 mr-1" />
