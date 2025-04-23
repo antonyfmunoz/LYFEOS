@@ -206,6 +206,7 @@ export default function DashboardPage() {
   
   const { stats, username, events } = useLYFEOS();
   const { toast } = useToast();
+  const { widgets, moveWidget, resetWidgets } = useWidgets('dashboard');
   
   // Test function for toast notifications
   const testToast = () => {
@@ -248,6 +249,16 @@ export default function DashboardPage() {
     todoIdeas: "",
     date: new Date().toISOString().split('T')[0]
   });
+  
+  const handleReset = () => {
+    resetWidgets();
+    toast({
+      title: "Widgets Reset",
+      description: "The dashboard widget layout has been reset to the default order.",
+      className: "bg-background/80 border border-primary text-foreground",
+      duration: 3000,
+    });
+  };
   
   // Format current date 
   const formattedDate = currentDate.toLocaleDateString('en-US', {
