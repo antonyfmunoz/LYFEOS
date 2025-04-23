@@ -152,7 +152,7 @@ export default function KanbanPage() {
     <>
       <div className="container mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center">
+          <div className="flex items-center w-full">
             <Button
               variant="ghost"
               size="icon"
@@ -161,7 +161,7 @@ export default function KanbanPage() {
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <h1 className="text-2xl font-bold">Boards</h1>
+            <h1 className="text-2xl font-bold mx-auto pr-8">Boards</h1>
           </div>
           
           <Button 

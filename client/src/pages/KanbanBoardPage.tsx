@@ -253,7 +253,7 @@ export default function KanbanBoardPage() {
   if (!activeBoard) {
     return (
       <div className="container mx-auto p-6">
-        <div className="flex items-center mb-6">
+        <div className="flex items-center w-full mb-6">
           <Button
             variant="ghost"
             size="icon"
@@ -262,7 +262,7 @@ export default function KanbanBoardPage() {
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-2xl font-bold">Board not found</h1>
+          <h1 className="text-2xl font-bold mx-auto pr-8">Board not found</h1>
         </div>
         <Card>
           <CardContent className="p-6">
@@ -388,7 +388,7 @@ export default function KanbanBoardPage() {
   return (
     <div className="container mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center">
+        <div className="flex items-center w-full">
           <Button
             variant="ghost"
             size="icon"
@@ -397,7 +397,7 @@ export default function KanbanBoardPage() {
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-2xl font-bold">{activeBoard.title}</h1>
+          <h1 className="text-2xl font-bold mx-auto pr-8">{activeBoard.title}</h1>
         </div>
         
         <DropdownMenu>
