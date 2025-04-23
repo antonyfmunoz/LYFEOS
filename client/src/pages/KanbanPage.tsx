@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronLeft, Plus, MoreHorizontal, Trash, Edit } from 'lucide-react';
+import { ArrowLeft, Plus, MoreHorizontal, Trash, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -153,12 +153,14 @@ export default function KanbanPage() {
       <div className="container mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
-            <button 
-              onClick={() => navigate('/systems')} 
-              className="flex items-center text-muted-foreground hover:text-foreground transition-colors mr-2"
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 hover:bg-yellow-400 hover:text-black" 
+              onClick={() => navigate('/systems')}
             >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
             <h1 className="text-2xl font-bold">Boards</h1>
           </div>
           
