@@ -236,24 +236,86 @@ interface KanbanColumnProps {
   onEditTitle: (columnId: string, newTitle: string) => void;
   onDeleteColumn: (columnId: string) => void;
   onAddTask: (status: KanbanStatus) => void;
+  index?: number;
+  moveColumn?: (dragIndex: number, hoverIndex: number) => void;
 }
 
 // Column Drop component for drag and drop between columns
 function ColumnDrop({ children }: { children: React.ReactNode }) {
+  const { kanbanBoards, moveKanbanColumn } = useLYFEOS();
+  const params = useParams<{ boardId: string }>();
+  const boardId = params?.boardId;
+  
   const [{ isOver }, drop] = useDrop({
     accept: ItemTypes.COLUMN,
-    drop: () => ({}),
+    drop: (item: { id: string, status: string, index: number }, monitor) => {
+      console.log('Column dropped:', item);
+      return { moved: true };
+    },
+    hover: (item: { id: string, status: string, index: number }, monitor) => {
+      if (!monitor.isOver({ shallow: true })) {
+        return;
+      }
+      
+      // Find the hovered column component
+      const hoverIndex = item.index;
+      
+      // Don't replace items with themselves
+      if (hoverIndex === item.index) {
+        return;
+      }
+      
+      // Determine rectangle on screen
+      const hoverBoundingRect = monitor.getClientOffset();
+      
+      if (!hoverBoundingRect) {
+        return;
+      }
+      
+      // Find the hovered item's position
+      const clientOffset = monitor.getClientOffset();
+      
+      if (!clientOffset) {
+        return;
+      }
+      
+      // Time to actually perform the action
+      if (boardId && handleColumnMove && typeof item.index === 'number') {
+        handleColumnMove(item.index, hoverIndex);
+      }
+      
+      // Update the dragged item's index
+      item.index = hoverIndex;
+    },
     collect: (monitor) => ({
       isOver: !!monitor.isOver(),
     }),
   });
+  
+  const handleColumnMove = (dragIndex: number, hoverIndex: number) => {
+    if (boardId) {
+      const board = kanbanBoards.find(b => b.id === boardId);
+      if (board && dragIndex !== hoverIndex) {
+        const columnId = board.columns[dragIndex].id;
+        moveKanbanColumn(boardId, columnId, hoverIndex);
+      }
+    }
+  };
   
   return (
     <div 
       ref={drop} 
       className="flex gap-6 min-w-max h-full"
     >
-      {children}
+      {React.Children.map(children, (child, index) => {
+        if (React.isValidElement(child)) {
+          return React.cloneElement(child, {
+            index,
+            moveColumn: handleColumnMove
+          });
+        }
+        return child;
+      })}
     </div>
   );
 }
@@ -268,7 +330,9 @@ function KanbanColumn({
   onMoveTask,
   onEditTitle,
   onDeleteColumn,
-  onAddTask
+  onAddTask,
+  index,
+  moveColumn
 }: KanbanColumnProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [columnTitle, setColumnTitle] = useState(title);
@@ -357,11 +421,19 @@ function KanbanColumn({
     type: ItemTypes.COLUMN,
     item: () => ({ 
       id: columnId,
-      status
+      status,
+      index
     }),
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
+    end: (item, monitor) => {
+      const dropResult = monitor.getDropResult();
+      if (item && dropResult && moveColumn && typeof index === 'number') {
+        // Handle column moved within the drop target
+        console.log('Column drag ended:', item, 'Result:', dropResult);
+      }
+    },
   });
 
   return (
@@ -466,6 +538,7 @@ export default function KanbanBoardPage() {
     updateKanbanTask,
     deleteKanbanTask,
     moveKanbanTask,
+    moveKanbanColumn,
     updateKanbanBoard,
     deleteKanbanBoard,
     addKanbanColumn,
