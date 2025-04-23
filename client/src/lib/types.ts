@@ -82,6 +82,24 @@ export type StatType = "attention" | "time" | "energy" | "health" | "experience"
 
 export type KanbanStatus = "backlog" | "inProgress" | "review" | "done";
 
+export interface KanbanBoard {
+  id: string;
+  title: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  isDefault: boolean;
+  columns: KanbanColumn[];
+}
+
+export interface KanbanColumn {
+  id: string;
+  title: string;
+  status: KanbanStatus;
+  order: number;
+  boardId: string;
+}
+
 export interface KanbanTask {
   id: string;
   title: string;
@@ -93,4 +111,5 @@ export interface KanbanTask {
   startDate?: string; // Optional start date
   dueDate?: string;   // Optional due date
   tags: string[];
+  boardId: string;     // Reference to the board this task belongs to
 }

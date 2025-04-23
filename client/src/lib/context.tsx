@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { UserStats, Quest, AIMessage, CalendarEvent, MissionPage, ChatSession, KanbanTask, KanbanStatus } from "./types";
+import { UserStats, Quest, AIMessage, CalendarEvent, MissionPage, ChatSession, KanbanTask, KanbanStatus, KanbanBoard, KanbanColumn } from "./types";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "./authContext";
 import { apiRequest } from "./queryClient";
@@ -83,6 +83,24 @@ const initialEvents: CalendarEvent[] = [];
 // Initial mission pages
 const initialMissionPages: MissionPage[] = [];
 
+// Initial kanban boards
+const initialKanbanBoards: KanbanBoard[] = [
+  {
+    id: "board1",
+    title: "Main Project",
+    description: "Primary project board for tracking all tasks",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    isDefault: true,
+    columns: [
+      { id: "col1", title: "Backlog", status: "backlog", order: 0, boardId: "board1" },
+      { id: "col2", title: "In Progress", status: "inProgress", order: 1, boardId: "board1" },
+      { id: "col3", title: "Review", status: "review", order: 2, boardId: "board1" },
+      { id: "col4", title: "Done", status: "done", order: 3, boardId: "board1" }
+    ]
+  }
+];
+
 // Initial kanban tasks
 const initialKanbanTasks: KanbanTask[] = [
   {
@@ -93,7 +111,8 @@ const initialKanbanTasks: KanbanTask[] = [
     priority: "high",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    tags: ["research", "strategy"]
+    tags: ["research", "strategy"],
+    boardId: "board1"
   },
   {
     id: "task2",
@@ -103,7 +122,8 @@ const initialKanbanTasks: KanbanTask[] = [
     priority: "medium",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    tags: ["content", "planning"]
+    tags: ["content", "planning"],
+    boardId: "board1"
   },
   {
     id: "task3",
@@ -113,7 +133,8 @@ const initialKanbanTasks: KanbanTask[] = [
     priority: "medium",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    tags: ["design", "frontend"]
+    tags: ["design", "frontend"],
+    boardId: "board1"
   }
 ];
 
@@ -126,6 +147,7 @@ interface LYFEOSContextType {
   missionPages: MissionPage[];
   chatSessions: ChatSession[];
   kanbanTasks: KanbanTask[];
+  kanbanBoards: KanbanBoard[];
   activeChatSessionId: string;
   toggleQuestCompletion: (id: string) => void;
   sendMessage: (content: string) => void;
@@ -148,10 +170,19 @@ interface LYFEOSContextType {
   updateChatSessionTitle: (id: string, title: string) => void;
   updateUserStats: (stats: UserStats) => void;
   setPrimaryColor: (color: string) => void;
+  // Kanban board functions
+  createKanbanBoard: (board: Omit<KanbanBoard, "id" | "createdAt" | "updatedAt" | "columns">) => KanbanBoard;
+  updateKanbanBoard: (id: string, boardData: Partial<KanbanBoard>) => void;
+  deleteKanbanBoard: (id: string) => void;
+  // Kanban column functions
+  addKanbanColumn: (boardId: string, column: Omit<KanbanColumn, "id" | "boardId" | "order">) => KanbanColumn;
+  updateKanbanColumn: (id: string, columnData: Partial<KanbanColumn>) => void;
+  deleteKanbanColumn: (id: string) => void;
+  // Kanban task functions
   createKanbanTask: (task: Omit<KanbanTask, "id" | "createdAt" | "updatedAt">) => KanbanTask;
   updateKanbanTask: (id: string, taskData: Partial<KanbanTask>) => void;
   deleteKanbanTask: (id: string) => void;
-  moveKanbanTask: (id: string, newStatus: KanbanStatus) => void;
+  moveKanbanTask: (id: string, newStatus: KanbanStatus, boardId?: string) => void;
 }
 
 // Create the context
@@ -176,6 +207,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
   const [missionPages, setMissionPages] = useState<MissionPage[]>(initialMissionPages);
   const [kanbanTasks, setKanbanTasks] = useState<KanbanTask[]>(initialKanbanTasks);
+  const [kanbanBoards, setKanbanBoards] = useState<KanbanBoard[]>(initialKanbanBoards);
   const [username, setUsername] = useState<string>("Alex Chen");
   const [aiCompanionName, setAICompanionNameState] = useState<string>("Lyfe");
   const [chatSessions, setChatSessions] = useState<ChatSession[]>(initialChatSessions);
