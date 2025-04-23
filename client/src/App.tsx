@@ -38,6 +38,12 @@ import { ContactDetailPage } from "./pages/ContactDetailPage";
 import SpreadsheetsPage from "./pages/SpreadsheetsPage";
 import SpreadsheetDetailPage from "./pages/SpreadsheetDetailPage";
 import SpreadsheetNewPage from "./pages/SpreadsheetNewPage";
+import CanvasesPage from "./pages/CanvasesPage";
+import CanvasDetailPage from "./pages/CanvasDetailPage";
+import CanvasNewPage from "./pages/CanvasNewPage";
+import GraphsPage from "./pages/GraphsPage";
+import GraphDetailPage from "./pages/GraphDetailPage";
+import GraphNewPage from "./pages/GraphNewPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -315,6 +321,56 @@ function Router() {
         <ProtectedRoute>
           <RootLayout>
             <SpreadsheetDetailPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      {/* Canvas routes */}
+      <Route path="/canvases">
+        <ProtectedRoute>
+          <RootLayout>
+            <CanvasesPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/canvases/new">
+        <ProtectedRoute>
+          <RootLayout>
+            <CanvasNewPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/canvases/:id">
+        <ProtectedRoute>
+          <RootLayout>
+            <CanvasDetailPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      {/* Graph routes */}
+      <Route path="/graphs">
+        <ProtectedRoute>
+          <RootLayout>
+            <GraphsPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/graphs/new">
+        <ProtectedRoute>
+          <RootLayout>
+            <GraphNewPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/graphs/:id">
+        <ProtectedRoute>
+          <RootLayout>
+            <GraphDetailPage />
           </RootLayout>
         </ProtectedRoute>
       </Route>

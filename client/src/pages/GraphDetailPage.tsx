@@ -3,7 +3,7 @@ import { useParams, useLocation } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { useToast } from '@/hooks/use-toast';
-import { ChevronLeft, Save, Paintbrush, Star } from 'lucide-react';
+import { ChevronLeft, Save, Network, Star } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,27 +11,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 
-// Interface matching the Canvas type defined in schema.ts
-interface Canvas {
+// Interface matching the Graph type defined in schema.ts
+interface Graph {
   id: number;
   userId: number;
   title: string;
   description: string | null;
-  content: any; // JSON data for canvas elements
+  content: any; // JSON data for nodes and edges
   favorite: boolean;
   category: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export default function CanvasDetailPage() {
+export default function GraphDetailPage() {
   const params = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  const canvasId = parseInt(params.id);
+  const graphId = parseInt(params.id);
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -40,61 +40,61 @@ export default function CanvasDetailPage() {
   const [favorite, setFavorite] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   
-  // Fetch canvas
-  const { data: canvasData, isLoading, isError } = useQuery({
-    queryKey: ['/api/canvases', canvasId],
+  // Fetch graph
+  const { data: graphData, isLoading, isError } = useQuery({
+    queryKey: ['/api/graphs', graphId],
     queryFn: async () => {
-      if (!user || isNaN(canvasId)) return null;
-      const response = await fetch(`/api/canvases/${canvasId}`);
+      if (!user || isNaN(graphId)) return null;
+      const response = await fetch(`/api/graphs/${graphId}`);
       if (!response.ok) {
-        throw new Error('Failed to fetch canvas');
+        throw new Error('Failed to fetch graph');
       }
       return response.json();
     },
-    enabled: !!user && !isNaN(canvasId),
+    enabled: !!user && !isNaN(graphId),
   });
   
-  // Update form state when canvas data is loaded
+  // Update form state when graph data is loaded
   useEffect(() => {
-    if (canvasData?.canvas) {
-      setTitle(canvasData.canvas.title);
-      setDescription(canvasData.canvas.description || '');
-      setCategory(canvasData.canvas.category);
-      setContent(canvasData.canvas.content);
-      setFavorite(canvasData.canvas.favorite);
+    if (graphData?.graph) {
+      setTitle(graphData.graph.title);
+      setDescription(graphData.graph.description || '');
+      setCategory(graphData.graph.category);
+      setContent(graphData.graph.content);
+      setFavorite(graphData.graph.favorite);
     }
-  }, [canvasData]);
+  }, [graphData]);
   
-  const canvas = canvasData?.canvas;
+  const graph = graphData?.graph;
   
-  // Update canvas mutation
+  // Update graph mutation
   const updateMutation = useMutation({
-    mutationFn: async (updatedCanvas: Partial<Canvas>) => {
-      const response = await fetch(`/api/canvases/${canvasId}`, {
+    mutationFn: async (updatedGraph: Partial<Graph>) => {
+      const response = await fetch(`/api/graphs/${graphId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(updatedCanvas),
+        body: JSON.stringify(updatedGraph),
       });
       if (!response.ok) {
-        throw new Error('Failed to update canvas');
+        throw new Error('Failed to update graph');
       }
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/canvases', canvasId] });
-      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'canvases'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/graphs', graphId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'graphs'] });
       setIsEditing(false);
       toast({
         title: 'Success',
-        description: 'Canvas updated successfully',
+        description: 'Graph updated successfully',
       });
     },
     onError: () => {
       toast({
         title: 'Error',
-        description: 'Failed to update canvas',
+        description: 'Failed to update graph',
         variant: 'destructive',
       });
     },
@@ -103,7 +103,7 @@ export default function CanvasDetailPage() {
   // Toggle favorite mutation
   const toggleFavoriteMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch(`/api/canvases/${canvasId}/toggle-favorite`, {
+      const response = await fetch(`/api/graphs/${graphId}/toggle-favorite`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -115,12 +115,12 @@ export default function CanvasDetailPage() {
       return response.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/canvases', canvasId] });
-      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'canvases'] });
-      setFavorite(data.canvas.favorite);
+      queryClient.invalidateQueries({ queryKey: ['/api/graphs', graphId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'graphs'] });
+      setFavorite(data.graph.favorite);
       toast({
         title: 'Success',
-        description: `Canvas ${data.canvas.favorite ? 'added to' : 'removed from'} favorites`,
+        description: `Graph ${data.graph.favorite ? 'added to' : 'removed from'} favorites`,
       });
     },
     onError: () => {
@@ -155,12 +155,12 @@ export default function CanvasDetailPage() {
     toggleFavoriteMutation.mutate();
   };
   
-  if (isNaN(canvasId)) {
+  if (isNaN(graphId)) {
     return (
       <div className="container mx-auto py-6 text-center">
-        <h1 className="text-2xl font-medium mb-4">Invalid Canvas ID</h1>
-        <Button variant="default" onClick={() => navigate("/canvases")}>
-          Back to Canvases
+        <h1 className="text-2xl font-medium mb-4">Invalid Graph ID</h1>
+        <Button variant="default" onClick={() => navigate("/graphs")}>
+          Back to Graphs
         </Button>
       </div>
     );
@@ -170,7 +170,7 @@ export default function CanvasDetailPage() {
     <div className="container mx-auto py-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center">
-          <Button variant="ghost" size="icon" className="mr-2" onClick={() => navigate("/canvases")}>
+          <Button variant="ghost" size="icon" className="mr-2" onClick={() => navigate("/graphs")}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           
@@ -179,13 +179,13 @@ export default function CanvasDetailPage() {
           ) : (
             <div>
               <h1 className="text-2xl font-orbitron flex items-center">
-                <Paintbrush className="mr-2 h-5 w-5 text-primary" />
+                <Network className="mr-2 h-5 w-5 text-primary" />
                 {isEditing ? (
                   <Input
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     className="ml-1 font-orbitron text-xl py-0 h-8"
-                    placeholder="Canvas Title"
+                    placeholder="Graph Title"
                   />
                 ) : (
                   <span className="flex items-center">
@@ -196,7 +196,7 @@ export default function CanvasDetailPage() {
               </h1>
               {!isEditing && (
                 <p className="text-[#7DAAB2]">
-                  {category.charAt(0).toUpperCase() + category.slice(1)} Canvas
+                  {category.charAt(0).toUpperCase() + category.slice(1)} Knowledge Graph
                 </p>
               )}
             </div>
@@ -227,7 +227,7 @@ export default function CanvasDetailPage() {
                     {favorite ? "Unfavorite" : "Favorite"}
                   </Button>
                   <Button variant="default" onClick={() => setIsEditing(true)}>
-                    Edit Canvas
+                    Edit Graph
                   </Button>
                 </>
               )}
@@ -244,10 +244,10 @@ export default function CanvasDetailPage() {
         </div>
       ) : isError ? (
         <div className="text-center py-10 border border-dashed rounded-md border-slate-700/30">
-          <h3 className="text-lg font-medium mb-1">Failed to load canvas</h3>
-          <p className="text-muted-foreground mb-4">There was an error loading this canvas</p>
-          <Button variant="default" onClick={() => navigate("/canvases")}>
-            Back to Canvases
+          <h3 className="text-lg font-medium mb-1">Failed to load graph</h3>
+          <p className="text-muted-foreground mb-4">There was an error loading this graph</p>
+          <Button variant="default" onClick={() => navigate("/graphs")}>
+            Back to Graphs
           </Button>
         </div>
       ) : (
@@ -267,8 +267,8 @@ export default function CanvasDetailPage() {
                     <SelectItem value="general">General</SelectItem>
                     <SelectItem value="work">Work</SelectItem>
                     <SelectItem value="personal">Personal</SelectItem>
-                    <SelectItem value="ideas">Ideas</SelectItem>
-                    <SelectItem value="projects">Projects</SelectItem>
+                    <SelectItem value="research">Research</SelectItem>
+                    <SelectItem value="concepts">Concepts</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -277,7 +277,7 @@ export default function CanvasDetailPage() {
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
-                  placeholder="Canvas description"
+                  placeholder="Graph description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="resize-none"
@@ -293,14 +293,14 @@ export default function CanvasDetailPage() {
             </div>
           )}
           
-          {/* Canvas Drawing Area (Placeholder) */}
+          {/* Graph Visualization Area (Placeholder) */}
           <div className="border border-slate-700/30 rounded-md h-[600px] flex items-center justify-center bg-black/10 relative">
             <div className="text-center p-4">
-              <Paintbrush className="mx-auto h-10 w-10 text-primary mb-2" />
-              <h3 className="text-lg font-medium mb-1">Canvas Drawing Area</h3>
+              <Network className="mx-auto h-10 w-10 text-primary mb-2" />
+              <h3 className="text-lg font-medium mb-1">Knowledge Graph Visualization</h3>
               <p className="text-muted-foreground mb-4">
-                This is a placeholder for the canvas drawing area. In a real implementation, 
-                you would integrate a drawing library here.
+                This is a placeholder for the graph visualization area. In a real implementation, 
+                you would integrate a graph visualization library here.
               </p>
               <p className="text-xs text-muted-foreground">
                 Content will be stored as JSON in the database and rendered here.
