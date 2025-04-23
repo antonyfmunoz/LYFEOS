@@ -14,7 +14,8 @@ import {
   insertCanvasSchema,
   insertGraphSchema,
   insertFolderSchema,
-  insertDocumentSchema
+  insertDocumentSchema,
+  insertTemplateSchema
 } from "@shared/schema";
 
 // Extend Request type to include session
@@ -1853,6 +1854,229 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(200).json({ document: updatedDocument });
     } catch (error) {
       console.error("Error toggling document favorite status:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Template routes
+  app.get("/api/users/:userId/templates", isOwner, async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+      
+      const templates = await storage.getTemplates(userId);
+      
+      return res.status(200).json({ templates });
+    } catch (error) {
+      console.error("Error getting templates:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.get("/api/users/:userId/templates/category/:category", isOwner, async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+      
+      const { category } = req.params;
+      if (!category) {
+        return res.status(400).json({ error: "Category is required" });
+      }
+      
+      const templates = await storage.getTemplatesByCategory(userId, category);
+      
+      return res.status(200).json({ templates });
+    } catch (error) {
+      console.error("Error getting templates by category:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.get("/api/templates/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const templateId = parseInt(req.params.id);
+      if (isNaN(templateId)) {
+        return res.status(400).json({ error: "Invalid template ID" });
+      }
+      
+      const template = await storage.getTemplate(templateId);
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+      
+      // Check ownership
+      if (template.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      
+      return res.status(200).json({ template });
+    } catch (error) {
+      console.error("Error getting template:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/templates", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const templateData = insertTemplateSchema.parse(req.body);
+      
+      if (!templateData.title || templateData.title.trim() === '') {
+        return res.status(400).json({ error: "Template title is required" });
+      }
+      
+      if (!templateData.content) {
+        templateData.content = '';  // Default empty content
+      }
+      
+      const userId = req.session.userId;
+      
+      const newTemplate = await storage.createTemplate({
+        ...templateData,
+        userId
+      });
+      
+      return res.status(201).json({ template: newTemplate });
+    } catch (error) {
+      console.error("Error creating template:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.patch("/api/templates/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const templateId = parseInt(req.params.id);
+      if (isNaN(templateId)) {
+        return res.status(400).json({ error: "Invalid template ID" });
+      }
+      
+      const template = await storage.getTemplate(templateId);
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+      
+      // Check ownership
+      if (template.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      
+      const templateUpdate = req.body;
+      
+      const updatedTemplate = await storage.updateTemplate(templateId, templateUpdate);
+      
+      return res.status(200).json({ template: updatedTemplate });
+    } catch (error) {
+      console.error("Error updating template:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.delete("/api/templates/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const templateId = parseInt(req.params.id);
+      if (isNaN(templateId)) {
+        return res.status(400).json({ error: "Invalid template ID" });
+      }
+      
+      const template = await storage.getTemplate(templateId);
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+      
+      // Check ownership
+      if (template.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      
+      await storage.deleteTemplate(templateId);
+      
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("Error deleting template:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/templates/:id/toggle-favorite", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const templateId = parseInt(req.params.id);
+      if (isNaN(templateId)) {
+        return res.status(400).json({ error: "Invalid template ID" });
+      }
+      
+      const template = await storage.getTemplate(templateId);
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+      
+      // Check ownership
+      if (template.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      
+      const updatedTemplate = await storage.toggleFavoriteTemplate(templateId);
+      
+      return res.status(200).json({ template: updatedTemplate });
+    } catch (error) {
+      console.error("Error toggling template favorite status:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Create document from template
+  app.post("/api/templates/:id/create-document", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const templateId = parseInt(req.params.id);
+      if (isNaN(templateId)) {
+        return res.status(400).json({ error: "Invalid template ID" });
+      }
+      
+      const template = await storage.getTemplate(templateId);
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+      
+      // Check ownership
+      if (template.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to use this template" });
+      }
+      
+      const { title, folderId } = req.body;
+      const documentTitle = title || `${template.title} (Copy)`;
+      
+      // If folderId provided, verify it exists and belongs to user
+      if (folderId) {
+        const folder = await storage.getFolder(folderId);
+        if (!folder) {
+          return res.status(404).json({ error: "Target folder not found" });
+        }
+        
+        if (folder.userId !== req.session.userId) {
+          return res.status(403).json({ error: "Not authorized to add to this folder" });
+        }
+      }
+      
+      // Create new document from template
+      const newDocument = await storage.createDocument({
+        userId: req.session.userId,
+        folderId: folderId || null,
+        title: documentTitle,
+        content: template.content,
+        description: template.description,
+        format: template.format,
+        tags: template.tags,
+        favorite: false
+      });
+      
+      return res.status(201).json({ document: newDocument });
+    } catch (error) {
+      console.error("Error creating document from template:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });

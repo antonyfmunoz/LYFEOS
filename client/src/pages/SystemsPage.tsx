@@ -1,5 +1,5 @@
 import { CollapsibleWidget } from "@/components/ui/collapsible-widget";
-import { Calendar, Clipboard, Contact2, FileSpreadsheet, Paintbrush, Network, FileText } from "lucide-react";
+import { Calendar, Clipboard, Contact2, FileSpreadsheet, Paintbrush, Network, FileText, FileCheck } from "lucide-react";
 import { Link } from "wouter";
 import { KanbanWidget } from "@/components/ui/kanban-widget";
 import { RolodexWidget } from "@/components/ui/rolodex-widget";
@@ -7,6 +7,7 @@ import { SpreadsheetWidget } from "@/components/ui/spreadsheet-widget";
 import { CanvasWidget } from "@/components/ui/canvas-widget";
 import { GraphWidget } from "@/components/ui/graph-widget";
 import DocumentsWidget from "@/components/ui/documents-widget";
+import TemplatesWidget from "@/components/ui/templates-widget";
 
 export default function SystemsPage() {
   return (
