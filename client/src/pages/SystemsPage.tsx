@@ -137,6 +137,17 @@ export default function SystemsPage() {
           <DocumentsWidget />
         </CollapsibleWidget>
       </section>
+      
+      {/* Templates Module */}
+      <section className="mb-6">
+        <CollapsibleWidget 
+          title="Templates" 
+          icon={<FileCheck className="h-5 w-5 text-primary" />}
+          defaultOpen={true}
+        >
+          <TemplatesWidget />
+        </CollapsibleWidget>
+      </section>
     </>
   );
 }

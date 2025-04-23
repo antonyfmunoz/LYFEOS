@@ -1934,6 +1934,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const userId = req.session.userId;
       
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      
       const newTemplate = await storage.createTemplate({
         ...templateData,
         userId
