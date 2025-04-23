@@ -98,6 +98,25 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
         {task.description && (
           <p className="text-xs text-muted-foreground mb-2">{task.description}</p>
         )}
+        
+        {/* Date display section */}
+        {(task.startDate || task.dueDate) && (
+          <div className="flex flex-wrap gap-2 mb-2 text-xs text-muted-foreground">
+            {task.startDate && (
+              <div className="flex items-center">
+                <span className="font-medium mr-1">Start:</span> 
+                {new Date(task.startDate).toLocaleDateString()}
+              </div>
+            )}
+            {task.dueDate && (
+              <div className="flex items-center">
+                <span className="font-medium mr-1">Due:</span> 
+                {new Date(task.dueDate).toLocaleDateString()}
+              </div>
+            )}
+          </div>
+        )}
+        
         <div className="flex justify-between items-center">
           <span className={`text-xs font-medium rounded-full px-2 py-0.5 border ${priorityColor}`}>
             {task.priority}
