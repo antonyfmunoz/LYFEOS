@@ -81,7 +81,7 @@ export default function TemplatesWidget() {
           <Button 
             variant="outline" 
             size="sm" 
-            className="text-xs h-7"
+            className="text-xs h-7 hover:bg-yellow-400 hover:text-black"
             onClick={() => navigate('/templates')}
           >
             View All
