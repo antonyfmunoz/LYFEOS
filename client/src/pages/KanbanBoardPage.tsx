@@ -254,18 +254,24 @@ export default function KanbanBoardPage() {
     return (
       <div className="container mx-auto p-6">
         <div className="flex items-center mb-6">
-          <Button variant="ghost" onClick={() => navigate('/kanban')} className="mr-2">
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Back to Boards
-          </Button>
+          <button 
+            onClick={() => navigate('/kanban')} 
+            className="flex items-center text-muted-foreground hover:text-foreground transition-colors mr-2"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
           <h1 className="text-2xl font-bold">Board not found</h1>
         </div>
         <Card>
           <CardContent className="p-6">
             <p>The requested board was not found. Please select another board.</p>
-            <Button onClick={() => navigate('/kanban')} className="mt-4">
+            <button 
+              onClick={() => navigate('/kanban')} 
+              className="mt-4 flex items-center gap-2 text-primary border border-primary/50 px-4 py-2 rounded-md hover:bg-yellow-400 hover:text-black transition-all"
+            >
+              <ChevronLeft className="h-4 w-4" />
               Back to Kanban Boards
-            </Button>
+            </button>
           </CardContent>
         </Card>
       </div>
@@ -381,10 +387,12 @@ export default function KanbanBoardPage() {
     <div className="container mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center">
-          <Button variant="ghost" onClick={() => navigate('/kanban')} className="mr-2">
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Back to Boards
-          </Button>
+          <button 
+            onClick={() => navigate('/kanban')} 
+            className="flex items-center text-muted-foreground hover:text-foreground transition-colors mr-2"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
           <h1 className="text-2xl font-bold">{activeBoard.title}</h1>
         </div>
         
