@@ -430,6 +430,8 @@ function KanbanColumn({
   );
 }
 
+
+
 // Main Component
 export default function KanbanBoardPage() {
   // Get the boardId from URL parameters
