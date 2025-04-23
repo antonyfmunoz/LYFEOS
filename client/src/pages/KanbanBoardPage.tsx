@@ -49,15 +49,18 @@ import { useLYFEOS } from '@/lib/context';
 import { KanbanStatus, KanbanTask } from '@/lib/types';
 
 // Define item types for drag and drop
+// These constants are used by react-dnd to identify draggable item types
 const ItemTypes = {
-  TASK: 'task',
-  COLUMN: 'column'
+  TASK: 'kanban-task',
+  COLUMN: 'kanban-column'
 };
 
 // Interface for dragged task item
 interface DragItem {
   id: string;
   status: KanbanStatus;
+  boardId?: string;
+  type?: string;
 }
 
 // Task Card Component
@@ -109,14 +112,13 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
   };
 
   // Set up drag source with dependencies to handle re-renders
+  // This configuration enables the TaskCard to be dragged between columns
   const [{ isDragging }, drag] = useDrag({
     type: ItemTypes.TASK,
-    item: () => {
-      console.log('Starting drag for task:', task.id, 'with status:', task.status);
-      return { 
-        id: task.id, 
-        status: task.status
-      };
+    item: { 
+      id: task.id, 
+      status: task.status,
+      boardId: task.boardId
     },
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
@@ -124,9 +126,15 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
     end: (item, monitor) => {
       const didDrop = monitor.didDrop();
       console.log('Drag ended, was dropped:', didDrop);
+      
       if (didDrop) {
-        const dropResult = monitor.getDropResult();
+        const dropResult = monitor.getDropResult() as { status: KanbanStatus } | null;
         console.log('Drop result:', dropResult);
+        
+        // After successful drop, we can perform additional actions if needed
+        if (dropResult && dropResult.status !== item.status) {
+          console.log(`Task moved from ${item.status} to ${dropResult.status}`);
+        }
       }
     }
   });
@@ -134,10 +142,10 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
   return (
     <div 
       ref={drag} 
-      className={`${isDragging ? 'opacity-50' : 'opacity-100'} cursor-move w-full`}
+      className={`${isDragging ? 'opacity-50' : 'opacity-100'} cursor-move w-full hover:ring-1 hover:ring-yellow-400 transition-all`}
       style={{ touchAction: 'none' }}
     >
-      <Card className="mb-2 shadow-sm glassmorphic rounded-lg border-none">
+      <Card className="mb-2 shadow-sm glassmorphic rounded-lg border-l-4 border-l-yellow-400 border-t-0 border-r-0 border-b-0">
         <CardHeader className="p-3 pb-0 flex flex-row justify-between items-start">
           <div className="flex items-center">
             <GripVertical className="h-4 w-4 mr-2 cursor-move text-muted-foreground" />
@@ -257,20 +265,27 @@ function KanbanColumn({
   const { moveKanbanTask } = useLYFEOS();
 
   // Set up drop target with direct object syntax for better reactivity
+  // This configuration allows the column to receive tasks when they're dropped
   const [{ isOver, canDrop }, drop] = useDrop({
     accept: ItemTypes.TASK,
     drop: (item: DragItem) => {
       // Handle the drop, update task status
       console.log('Dropping item:', item, 'into status:', status);
+      
+      // Check if the task is being moved to a different column
       if (item.status !== status) {
+        // Call the context function to update the task status
         moveKanbanTask(item.id, status);
+        
+        // Make sure to return the new status so the drag source knows where the item was dropped
+        return { status };
       }
+      
+      // Return the current status even if no change is made to complete the drop interaction
       return { status };
     },
-    canDrop: (item: DragItem) => {
-      console.log('Checking if can drop item with status:', item.status, 'into column with status:', status);
-      return true; // Allow drops from any column
-    },
+    // Allow drops from any column, including self (we'll handle the logic in the drop function)
+    canDrop: () => true,
     collect: (monitor) => ({
       isOver: !!monitor.isOver(),
       canDrop: !!monitor.canDrop(),
@@ -355,7 +370,7 @@ function KanbanColumn({
     >
       <div 
         ref={drag}
-        className="flex items-center justify-between mb-3 cursor-move"
+        className="flex items-center justify-between mb-3 cursor-move rounded-md p-1 hover:bg-yellow-400/10 transition-colors"
         style={{ touchAction: 'none' }}
       >
         <div className="flex items-center">
@@ -679,7 +694,7 @@ export default function KanbanBoardPage() {
   };
 
   return (
-    <DndProvider backend={HTML5Backend}>
+    <DndProvider backend={HTML5Backend} options={{ enableMouseEvents: true, enableTouchEvents: true }}>
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center w-full">
