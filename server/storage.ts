@@ -105,6 +105,15 @@ export interface IStorage {
   updateDocument(id: number, document: Partial<InsertDocument>): Promise<Document>;
   deleteDocument(id: number): Promise<void>;
   toggleFavoriteDocument(id: number): Promise<Document>;
+  
+  // Template methods
+  getTemplates(userId: number): Promise<Template[]>;
+  getTemplatesByCategory(userId: number, category: string): Promise<Template[]>;
+  getTemplate(id: number): Promise<Template | undefined>;
+  createTemplate(template: InsertTemplate): Promise<Template>;
+  updateTemplate(id: number, template: Partial<InsertTemplate>): Promise<Template>;
+  deleteTemplate(id: number): Promise<void>;
+  toggleFavoriteTemplate(id: number): Promise<Template>;
 }
 
 export class DatabaseStorage implements IStorage {

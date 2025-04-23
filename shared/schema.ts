@@ -135,6 +135,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   missionPages: many(missionPages),
   contacts: many(contacts),
   spreadsheets: many(spreadsheets),
+  templates: many(templates),
 }));
 
 export const userStatsRelations = relations(userStats, ({ one }) => ({
@@ -443,3 +444,36 @@ export type InsertFolder = z.infer<typeof insertFolderSchema>;
 
 export type Document = typeof documents.$inferSelect;
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
+
+// Document Templates
+export const templates = pgTable("templates", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  content: text("content").notNull(),
+  format: text("format").default("markdown").notNull(),
+  category: text("category").default("general").notNull(),
+  tags: text("tags").array(),
+  favorite: boolean("favorite").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Template relations
+export const templateRelations = relations(templates, ({ one }) => ({
+  user: one(users, {
+    fields: [templates.userId],
+    references: [users.id],
+  }),
+}));
+
+// Insert schema for Template
+export const insertTemplateSchema = createInsertSchema(templates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type Template = typeof templates.$inferSelect;
+export type InsertTemplate = z.infer<typeof insertTemplateSchema>;
