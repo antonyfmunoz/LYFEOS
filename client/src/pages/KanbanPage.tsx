@@ -598,7 +598,12 @@ export default function KanbanPage() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsNewTaskDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleCreateTask}>Create Task</Button>
+              <Button 
+                onClick={handleCreateTask}
+                className="hover:bg-yellow-400 hover:text-black"
+              >
+                Create Task
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -707,7 +712,12 @@ export default function KanbanPage() {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsEditTaskDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleEditTask}>Update Task</Button>
+                <Button 
+                  onClick={handleEditTask}
+                  className="hover:bg-yellow-400 hover:text-black"
+                >
+                  Update Task
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
