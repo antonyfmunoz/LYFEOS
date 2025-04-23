@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
+import { HTML5Backend, getEmptyImage } from 'react-dnd-html5-backend';
 import { 
   ArrowLeft, 
   Plus, 
@@ -242,46 +242,9 @@ interface KanbanColumnProps {
 
 // Column Drop component for drag and drop between columns
 function ColumnDrop({ children }: { children: React.ReactNode }) {
-  const { kanbanBoards, moveKanbanColumn } = useLYFEOS();
-  const params = useParams<{ boardId: string }>();
-  const boardId = params?.boardId;
-  
-  const [{ isOver }, drop] = useDrop({
-    accept: ItemTypes.COLUMN,
-    drop: (item: { id: string, status: string, index: number }, monitor) => {
-      console.log('Column dropped:', item);
-      // Process all drops here instead of in hover
-      return { moved: true };
-    },
-    collect: (monitor) => ({
-      isOver: !!monitor.isOver(),
-    }),
-  });
-  
-  const handleColumnMove = (dragIndex: number, hoverIndex: number) => {
-    if (boardId) {
-      const board = kanbanBoards.find(b => b.id === boardId);
-      if (board && dragIndex !== hoverIndex) {
-        const columnId = board.columns[dragIndex].id;
-        moveKanbanColumn(boardId, columnId, hoverIndex);
-      }
-    }
-  };
-  
   return (
-    <div 
-      ref={drop} 
-      className="flex gap-6 min-w-max h-full"
-    >
-      {React.Children.map(children, (child, index) => {
-        if (React.isValidElement(child)) {
-          return React.cloneElement(child, {
-            index,
-            moveColumn: handleColumnMove
-          });
-        }
-        return child;
-      })}
+    <div className="flex gap-6 min-w-max h-full">
+      {children}
     </div>
   );
 }
@@ -297,13 +260,14 @@ function KanbanColumn({
   onEditTitle,
   onDeleteColumn,
   onAddTask,
-  index,
-  moveColumn
+  index
 }: KanbanColumnProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [columnTitle, setColumnTitle] = useState(title);
   const inputRef = useRef<HTMLInputElement>(null);
   const { moveKanbanTask } = useLYFEOS();
+  const params = useParams<{ boardId: string }>();
+  const boardId = params?.boardId || '';
 
   // Set up drop target with direct object syntax for better reactivity
   const [{ isOver, canDrop }, drop] = useDrop({
@@ -383,60 +347,34 @@ function KanbanColumn({
   };
 
   // Set column drag with direct object syntax for better reactivity
-  const [{ isDragging }, drag] = useDrag({
+  const [{ isDragging }, drag, preview] = useDrag({
     type: ItemTypes.COLUMN,
-    item: () => ({ 
+    item: { 
       id: columnId,
-      status,
-      index
-    }),
+      index: typeof index === 'number' ? index : 0,
+      boardId
+    },
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
-    end: (item, monitor) => {
-      const dropResult = monitor.getDropResult();
-      if (item && dropResult && moveColumn && typeof index === 'number') {
-        // Handle column moved within the drop target
-        console.log('Column drag ended:', item, 'Result:', dropResult);
-        
-        // Calculate drop position based on horizontal position
-        const finalDropClientOffset = monitor.getClientOffset();
-        const initialClientOffset = monitor.getInitialClientOffset();
-        
-        if (finalDropClientOffset && initialClientOffset) {
-          const columns = document.querySelectorAll('.glassmorphic');
-          let targetIndex = -1;
-          let minDistance = Number.MAX_VALUE;
-          
-          columns.forEach((column, idx) => {
-            const rect = column.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const distance = Math.abs(finalDropClientOffset.x - centerX);
-            
-            if (distance < minDistance) {
-              minDistance = distance;
-              targetIndex = idx;
-            }
-          });
-          
-          if (targetIndex !== -1 && targetIndex !== index) {
-            moveColumn(index, targetIndex);
-          }
-        }
-      }
-    },
   });
+
+  // Use drag preview to maintain opacity during drag
+  useEffect(() => {
+    preview(getEmptyImage(), { captureDraggingState: true });
+  }, [preview]);
 
   return (
     <div 
-      ref={drop} 
+      ref={(node) => drop(node)}
       className={`glassmorphic rounded-xl p-4 w-72 flex-shrink-0 flex flex-col h-full
         ${isOver && canDrop ? 'ring-2 ring-primary/50' : ''}
         ${isDragging ? 'opacity-50' : 'opacity-100'}
       `}
+      data-column-id={columnId}
     >
       <div 
-        ref={drag}
+        ref={(node) => drag(node)}
         className="flex items-center justify-between mb-3 cursor-move"
       >
         <div className="flex items-center">
@@ -761,6 +699,89 @@ export default function KanbanBoardPage() {
   const handleDeleteColumn = (columnId: string) => {
     deleteKanbanColumn(columnId);
   };
+  
+  // Create a board container component with column drop functionality
+  const BoardContainer = () => {
+    const [{ isOver }, drop] = useDrop({
+      accept: ItemTypes.COLUMN,
+      hover: (item: { id: string, index: number, boardId: string }, monitor) => {
+        if (!boardId) return;
+        
+        // Find the column we're hovering over
+        const dragIndex = item.index;
+        
+        // Get horizontal position
+        const clientOffset = monitor.getClientOffset();
+        if (!clientOffset) return;
+        
+        // Get all column elements
+        const columnElements = Array.from(document.querySelectorAll('[data-column-id]'));
+        if (columnElements.length === 0) return;
+        
+        // Find the target column based on horizontal position
+        let targetIndex = -1;
+        let minDistance = Number.MAX_VALUE;
+        
+        columnElements.forEach((column, idx) => {
+          const rect = column.getBoundingClientRect();
+          const centerX = rect.left + rect.width / 2;
+          const distance = Math.abs(clientOffset.x - centerX);
+          
+          if (distance < minDistance) {
+            minDistance = distance;
+            targetIndex = idx;
+          }
+        });
+        
+        // Don't replace items with themselves
+        if (dragIndex === targetIndex) return;
+        
+        if (targetIndex !== -1 && targetIndex !== dragIndex) {
+          // Move the column to the new position
+          moveKanbanColumn(boardId, item.id, targetIndex);
+          
+          // Update the index for the dragged item
+          item.index = targetIndex;
+        }
+      },
+      collect: (monitor) => ({
+        isOver: !!monitor.isOver(),
+      }),
+    });
+    
+    return (
+      <div ref={drop} className="flex gap-6 min-w-max h-full board-container">
+        {activeBoard && activeBoard.columns.sort((a, b) => a.order - b.order).map((column, index) => (
+          <KanbanColumn
+            key={column.id}
+            columnId={column.id}
+            title={column.title}
+            status={column.status}
+            tasks={getTasksByStatus(column.status)}
+            onEditTask={openEditDialog}
+            onDeleteTask={deleteKanbanTask}
+            onMoveTask={handleMoveTask}
+            onEditTitle={handleEditColumnTitle}
+            onDeleteColumn={handleDeleteColumn}
+            onAddTask={handleAddTask}
+            index={index}
+          />
+        ))}
+        
+        {/* Add new column button */}
+        <div className="min-w-[100px] h-full flex items-center">
+          <Button 
+            variant="outline"
+            className="border-dashed border-slate-700/50 p-6 h-[100px] hover:bg-yellow-400 hover:text-black transition-colors"
+            onClick={() => setIsAddColumnDialogOpen(true)}
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Add Column
+          </Button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -812,37 +833,7 @@ export default function KanbanBoardPage() {
         )}
 
         <div className="overflow-x-auto pb-4" style={{ height: 'calc(100vh - 160px)' }}>
-          <ColumnDrop>
-            {activeBoard && activeBoard.columns.map((column, index) => (
-              <KanbanColumn
-                key={column.id}
-                columnId={column.id}
-                title={column.title}
-                status={column.status}
-                tasks={getTasksByStatus(column.status)}
-                onEditTask={openEditDialog}
-                onDeleteTask={deleteKanbanTask}
-                onMoveTask={handleMoveTask}
-                onEditTitle={handleEditColumnTitle}
-                onDeleteColumn={handleDeleteColumn}
-                onAddTask={handleAddTask}
-                index={index}
-                moveColumn={(dragIndex, hoverIndex) => moveKanbanColumn(boardId!, column.id, hoverIndex)}
-              />
-            ))}
-            
-            {/* Add new column button */}
-            <div className="min-w-[100px] h-full flex items-center">
-              <Button 
-                variant="outline"
-                className="border-dashed border-slate-700/50 p-6 h-[100px] hover:bg-yellow-400 hover:text-black transition-colors"
-                onClick={() => setIsAddColumnDialogOpen(true)}
-              >
-                <Plus className="h-5 w-5 mr-2" />
-                Add Column
-              </Button>
-            </div>
-          </ColumnDrop>
+          <BoardContainer />
         </div>
       
       {/* Add Task Dialog */}
