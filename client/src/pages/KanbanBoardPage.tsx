@@ -593,10 +593,10 @@ export default function KanbanBoardPage() {
                 >
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
+                <SelectContent className="select-content-custom">
+                  <SelectItem value="low" className="select-item-hover">Low</SelectItem>
+                  <SelectItem value="medium" className="select-item-hover">Medium</SelectItem>
+                  <SelectItem value="high" className="select-item-hover">High</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -665,10 +665,10 @@ export default function KanbanBoardPage() {
                 >
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
+                <SelectContent className="select-content-custom">
+                  <SelectItem value="low" className="select-item-hover">Low</SelectItem>
+                  <SelectItem value="medium" className="select-item-hover">Medium</SelectItem>
+                  <SelectItem value="high" className="select-item-hover">High</SelectItem>
                 </SelectContent>
               </Select>
             </div>

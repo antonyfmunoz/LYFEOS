@@ -2,6 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom styles for LYFEOS */
+@layer components {
+  /* Yellow hover effect for select items and dropdown menus */
+  .select-item-hover:hover,
+  .select-item-hover:focus {
+    background-color: #FACC15 !important;
+    color: black !important;
+  }
+  
+  /* Custom styles for SelectContent */
+  .select-content-custom {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    background-color: hsl(var(--background));
+    border-radius: 0.5rem;
+    border-width: 1px;
+    border-style: solid;
+    border-color: hsl(var(--border));
+  }
+}
+
 @layer base {
   /* Dark Theme (Default) */
   .dark-theme {
