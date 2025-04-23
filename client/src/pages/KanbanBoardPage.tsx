@@ -347,7 +347,7 @@ function KanbanColumn({
   return (
     <div 
       ref={drop} 
-      className={`glassmorphic rounded-xl p-4 w-72 flex-shrink-0 flex flex-col
+      className={`glassmorphic rounded-xl p-4 w-72 flex-shrink-0 flex flex-col h-full
         ${isOver && canDrop ? 'ring-2 ring-yellow-400 bg-yellow-50 dark:bg-yellow-900/10' : ''}
         ${isDragging ? 'opacity-50' : 'opacity-100'}
       `}
@@ -410,7 +410,7 @@ function KanbanColumn({
           </Button>
         </div>
       </div>
-      <div className="space-y-2 flex-grow">
+      <div className="space-y-2 flex-grow overflow-y-auto pr-1 max-h-[calc(100%-40px)]">
         {tasks.map(task => (
           <TaskCard
             key={task.id}
@@ -725,8 +725,8 @@ export default function KanbanBoardPage() {
           <p className="text-muted-foreground mb-6">{activeBoard.description}</p>
         )}
 
-        <div className="overflow-x-auto pb-4">
-          <div className="flex gap-6 min-w-max min-h-[calc(100vh-240px)]">
+        <div className="overflow-x-auto pb-4" style={{ height: 'calc(100vh - 160px)' }}>
+          <div className="flex gap-6 min-w-max h-full">
             {activeBoard && activeBoard.columns.map(column => (
               <KanbanColumn
                 key={column.id}
