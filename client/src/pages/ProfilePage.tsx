@@ -240,6 +240,7 @@ export default function ProfilePage() {
                   variant="outline" 
                   size="sm"
                   onClick={handleCancel}
+                  className="hover:bg-yellow-400 hover:text-black"
                 >
                   <X className="mr-2 h-4 w-4" />
                   Cancel
@@ -249,6 +250,7 @@ export default function ProfilePage() {
                   size="sm"
                   onClick={handleSave}
                   disabled={updateProfileMutation.isPending}
+                  className="hover:bg-yellow-400 hover:text-black"
                 >
                   <Save className="mr-2 h-4 w-4" />
                   Save
@@ -259,6 +261,7 @@ export default function ProfilePage() {
                 variant="outline" 
                 size="sm"
                 onClick={() => setIsEditing(true)}
+                className="hover:bg-yellow-400 hover:text-black"
               >
                 <Edit className="mr-2 h-4 w-4" />
                 Edit Profile
