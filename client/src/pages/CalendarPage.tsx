@@ -289,6 +289,7 @@ export default function CalendarPage() {
               type="button"
               variant="outline"
               onClick={() => setIsAddEventOpen(false)}
+              className="hover:bg-yellow-400 hover:text-black"
             >
               Cancel
             </Button>
@@ -402,6 +403,7 @@ export default function CalendarPage() {
               type="button"
               variant="outline"
               onClick={() => setIsEditEventOpen(false)}
+              className="hover:bg-yellow-400 hover:text-black"
             >
               Cancel
             </Button>
@@ -456,7 +458,7 @@ export default function CalendarPage() {
                   <Button 
                     variant="outline"
                     size="sm"
-                    className="text-primary border-primary/30"
+                    className="text-primary border-primary/30 hover:bg-yellow-400 hover:text-black"
                   >
                     View Mission <ExternalLink className="ml-2 h-3.5 w-3.5" />
                   </Button>
@@ -467,7 +469,7 @@ export default function CalendarPage() {
           
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Close</Button>
+              <Button variant="outline" className="hover:bg-yellow-400 hover:text-black">Close</Button>
             </DialogClose>
             <Button 
               onClick={() => {
