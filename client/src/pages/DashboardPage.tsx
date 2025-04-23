@@ -4,11 +4,17 @@ import { usePageTitle } from "@/hooks/use-page-title";
 import { useToast } from "@/hooks/use-toast";
 import { AIAgentFAB } from "@/components/ui/ai-agent-fab";
 import { cn } from "@/lib/utils";
-import { CollapsibleWidget } from "@/components/ui/collapsible-widget";
-import { DraggableWidget } from "@/components/ui/draggable-widget";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { CustomTimePicker } from "@/components/ui/custom-time-picker";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
+import { CompactStatsWidget } from "@/components/ui/compact-stats-widget";
 import { useWidgets } from "@/hooks/use-widgets";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
+import { DraggableWidget } from "@/components/ui/draggable-widget";
+
 import {
   Brain,
   BookOpen,
@@ -28,21 +34,9 @@ import {
   CheckCircle2,
   Zap,
   BarChart,
-  RotateCcw
+  RotateCcw,
 } from "lucide-react";
-import MissionLogWidget from "@/components/dashboard/MissionLogWidget";
-import EnhancedMissionWidget from "@/components/dashboard/EnhancedMissionWidget";
-import MissionLogSystem from "@/components/dashboard/MissionLogSystem";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { CustomTimePicker } from "@/components/ui/custom-time-picker";
-import { ObsidianMarkdown } from "@/components/ui/obsidian-markdown";
-import { MarkdownEditor } from "@/components/ui/markdown-editor";
-import { Checkbox } from "@/components/ui/checkbox";
-import CompactStatsWidget from "@/components/dashboard/CompactStatsWidget";
-import { CalendarEvent, UserStats } from "@/lib/types";
 
-// Define local enum for stats types as it differs from the global StatType
 enum StatType {
   ATTENTION = "attention",
   TIME = "time",
@@ -51,7 +45,15 @@ enum StatType {
   EXPERIENCE = "experience"
 }
 
-// Define types
+interface CalendarEvent {
+  id: string;
+  title: string;
+  date: string;
+  time?: string;
+  completed: boolean;
+  type: string;
+}
+
 interface TimeBlock {
   id: string;
   startTime: string;
@@ -76,105 +78,57 @@ interface DailyReflection {
   date: string; // YYYY-MM-DD format
 }
 
-// Mission Timeline Component
-function MissionTimeline({ events }: { events: CalendarEvent[] }) {
-  const [completedMissions, setCompletedMissions] = useState<Record<string, boolean>>({});
-  
-  const toggleMission = (id: string) => {
-    setCompletedMissions(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
-  };
-  
+function MissionLogSystem() {
   return (
-    <div className="relative pl-10 pr-2 py-2 max-h-96 overflow-y-auto mission-timeline-container">
-      {/* Vertical Timeline Line */}
-      <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-gradient-to-b from-primary/80 via-primary/30 to-primary/10 z-0"></div>
-      
+    <div>
+      <p className="text-sm text-[#7DAAB2] mb-4">
+        Record your ongoing missions, insights, and adventures.
+      </p>
+      <Button
+        variant="outline"
+        size="sm"
+        className="hover:bg-yellow-400 hover:text-black transition-colors"
+      >
+        <Edit className="h-4 w-4 mr-2" />
+        Add Entry
+      </Button>
+    </div>
+  );
+}
+
+function MissionTimeline({ events }: { events: CalendarEvent[] }) {
+  return (
+    <div>
       {events.length > 0 ? (
-        events
-          .sort((a, b) => a.startTime.localeCompare(b.startTime))
-          .map((event) => {
-            const isCompleted = completedMissions[event.id] || false;
-            
-            return (
-              <div 
-                key={event.id}
-                className={`mb-5 relative mission-block ${isCompleted ? 'opacity-60' : ''}`}
-              >
-                {/* Timeline Dot */}
-                <div className={`absolute left-[-20px] top-2 w-4 h-4 rounded-full bg-black border-2 
-                  ${event.category === 'work' ? 'border-blue-500' : 
-                    event.category === 'health' ? 'border-green-500' : 'border-purple-500'}`}>
+        <div className="space-y-4">
+          {events.map((event) => (
+            <div 
+              key={event.id} 
+              className="flex items-start py-2 border-b border-primary/10 last:border-none"
+            >
+              <div className="w-24 shrink-0 text-sm text-[#7DAAB2]">
+                {event.time || "All day"}
+              </div>
+              <div className="flex-grow">
+                <div className="flex items-center">
+                  <span className={`text-sm font-medium ${event.completed ? 'line-through text-[#7DAAB2]' : ''}`}>
+                    {event.title}
+                  </span>
                 </div>
-                
-                {/* Time Label */}
-                <div className="absolute left-[-130px] top-1 w-24 text-right">
-                  <span className="text-xs font-mono text-[#7DAAB2]">{event.startTime}</span>
-                </div>
-                
-                {/* Mission Card */}
-                <div 
-                  className={`glassmorphic rounded-xl p-4 neon-border hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition ml-2 cursor-pointer ${isCompleted ? 'border-green-400/30 bg-green-400/5' : ''}`}
-                  onClick={() => toggleMission(event.id)}
-                >
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 
-                        ${isCompleted ? 'bg-green-500/20' :
-                          event.category === 'work' ? 'bg-blue-500/20' : 
-                          event.category === 'health' ? 'bg-green-500/20' : 'bg-purple-500/20'}`}>
-                        {isCompleted ? (
-                          <CheckCircle2 className="h-5 w-5 text-green-400" />
-                        ) : event.category === 'work' ? (
-                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-                        ) : event.category === 'health' ? (
-                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-                        ) : (
-                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-9.33-5"/><path d="m10.67 21.33-.67-1.33"/><path d="M3 7v2"/><path d="M7 3h2"/><path d="M5.67 5.67 4.33 4.33"/><path d="M18 21l3-3h-6l3-3"/><path d="M16 3h5v5"/><path d="m16 8-5-5"/></svg>
-                        )}
-                      </div>
-                      
-                      <div>
-                        <div className="flex items-center">
-                          <h3 className={`font-medium ${isCompleted ? 'line-through text-[#7DAAB2]' : 'text-[#D6F4FF]'}`}>{event.title}</h3>
-                          <div className="ml-2 px-2 py-0.5 bg-primary/10 rounded text-xs font-mono text-[#36F1CD]">
-                            +15 XP
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center mt-1">
-                          <Clock className="h-3 w-3 text-primary mr-1" />
-                          <p className="text-xs text-[#7DAAB2]">{event.startTime} – {getEndTime(event.startTime, event.duration)}</p>
-                        </div>
-                        
-                        {event.description && (
-                          <p className={`text-xs text-[#7DAAB2] mt-1 italic ${isCompleted ? 'line-through' : ''}`}>{event.description}</p>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-col items-end">
-                      <div className={`text-xs font-semibold rounded-full px-2 py-0.5 
-                        ${isCompleted ? 'bg-green-500/10 text-green-400' :
-                          event.category === 'work' ? 'bg-blue-500/10 text-blue-400' : 
-                          event.category === 'health' ? 'bg-green-500/10 text-green-400' : 
-                            'bg-purple-500/10 text-purple-400'}`}>
-                        {isCompleted ? 'Completed' : event.category.charAt(0).toUpperCase() + event.category.slice(1)}
-                      </div>
-                    </div>
-                  </div>
+                <div className="flex items-center mt-1">
+                  <span className="text-xs text-[#7DAAB2] bg-primary/10 px-2 py-0.5 rounded-full">
+                    {event.type}
+                  </span>
                 </div>
               </div>
-            );
-          })
+            </div>
+          ))}
+        </div>
       ) : (
-        <div className="glassmorphic rounded-xl p-6 text-center opacity-80 mt-6">
-          <Calendar className="h-10 w-10 text-primary/50 mx-auto mb-3" />
-          <p className="text-[#7DAAB2]">No missions scheduled for today</p>
-          <p className="text-xs text-[#7DAAB2] mt-2">
-            Visit the Calendar page to add missions to your daily schedule
+        <div className="text-center py-6 text-[#7DAAB2]">
+          <p>No events scheduled for today.</p>
+          <p className="text-xs mt-1">
+            Add events from the Calendar module or by using the 'Add Event' button.
           </p>
         </div>
       )}
@@ -182,78 +136,36 @@ function MissionTimeline({ events }: { events: CalendarEvent[] }) {
   );
 }
 
-// Helper functions
-const getEndTime = (startTime: string, duration: string): string => {
-  // Parse the start time
-  const [hourStr, minuteStr] = startTime.split(':');
-  let hour = parseInt(hourStr, 10);
-  let minute = parseInt(minuteStr, 10);
-  
-  // Parse the duration (assuming format like "30m" or "1h 15m")
-  let durationMinutes = 0;
-  if (duration.includes('h')) {
-    const hourPart = duration.split('h')[0].trim();
-    durationMinutes += parseInt(hourPart, 10) * 60;
-    
-    if (duration.includes('m')) {
-      const minutePart = duration.split('h')[1].split('m')[0].trim();
-      durationMinutes += parseInt(minutePart, 10);
-    }
-  } else if (duration.includes('m')) {
-    const minutePart = duration.split('m')[0].trim();
-    durationMinutes += parseInt(minutePart, 10);
-  }
-  
-  // Calculate end time
-  minute += durationMinutes;
-  hour += Math.floor(minute / 60);
-  minute = minute % 60;
-  hour = hour % 24;
-  
-  // Format the end time
-  return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-};
-
 export default function DashboardPage() {
-  // Set the page title
-  usePageTitle('Dashboard');
-  
-  const { stats, username, events } = useLYFEOS();
+  usePageTitle("Dashboard");
   const { toast } = useToast();
+  const { 
+    stats,
+    updateUserStats
+  } = useLYFEOS();
+  
+  // Mock function for journal entries since they're not in the context
+  const addJournalEntry = (entry: any) => {
+    console.log("Journal entry added:", entry);
+    // In a real implementation, this would save to the context
+  };
+  
+  // Widget management
   const { widgets, moveWidget, resetWidgets } = useWidgets('dashboard');
   
-  // Test function for toast notifications
-  const testToast = () => {
-    toast({
-      title: "Theme Toast Test",
-      description: "This toast should use the primary color theme",
-      duration: 3000,
-    });
-  };
+  // Current date and time
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [totalXpEarned, setTotalXpEarned] = useState(0);
-  const [timeFormat, setTimeFormat] = useState<'12h' | '24h'>('12h');
-  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const [formattedDate, setFormattedDate] = useState("");
+  const [formattedTime, setFormattedTime] = useState("");
   
-  // Time blocks state
-  const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
-  const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
-  const [newBlockName, setNewBlockName] = useState("");
-  const [newBlockStartTime, setNewBlockStartTime] = useState("09:00");
-  const [newBlockEndTime, setNewBlockEndTime] = useState("10:00");
-  
-  // Task editing state
-  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  const [newTaskText, setNewTaskText] = useState("");
-  
-  // Reflection state
+  // State for daily reflection
   const [reflection, setReflection] = useState<DailyReflection>({
     mentalState: 5,
     physicalState: 5,
     emotionalState: 5,
-    wakeTime: "06:00",
-    sleepTime: "22:00",
+    wakeTime: "07:00",
+    sleepTime: "23:00",
     gratitude: "",
     tomorrowGoals: "",
     annualGoals: "",
@@ -264,325 +176,96 @@ export default function DashboardPage() {
     date: new Date().toISOString().split('T')[0]
   });
   
+  // Get events from context
+  const { events } = useLYFEOS();
+  
+  // Time blocks state
+  const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
+  const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
+  const [newBlockName, setNewBlockName] = useState("");
+  const [newBlockStartTime, setNewBlockStartTime] = useState("09:00");
+  const [newBlockEndTime, setNewBlockEndTime] = useState("10:00");
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [newTaskText, setNewTaskText] = useState("");
+  
+  // Update date and time every minute
+  useEffect(() => {
+    const updateDateTime = () => {
+      const now = new Date();
+      setCurrentTime(now);
+      
+      const options: Intl.DateTimeFormatOptions = {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+      };
+      
+      setFormattedDate(now.toLocaleDateString(undefined, options));
+      setFormattedTime(now.toLocaleTimeString(undefined, { 
+        hour: '2-digit', 
+        minute: '2-digit'
+      }));
+    };
+    
+    updateDateTime();
+    const intervalId = setInterval(updateDateTime, 60000);
+    
+    return () => clearInterval(intervalId);
+  }, []);
+  
+  // Function to save reflection as a journal entry
+  const saveReflectionAsJournalEntry = (reflectionData: DailyReflection) => {
+    // Convert reflection data to a markdown journal entry
+    const journalContent = `
+# Daily Reflection - ${formattedDate}
+
+## Mental State: ${reflectionData.mentalState}/10
+## Physical State: ${reflectionData.physicalState}/10  
+## Emotional State: ${reflectionData.emotionalState}/10
+
+**Wake Time**: ${reflectionData.wakeTime}
+**Sleep Time**: ${reflectionData.sleepTime}
+
+## Thoughts & Reflections
+${reflectionData.thoughts}
+
+## Research & Discoveries
+${reflectionData.research}
+
+## Tomorrow's Goals
+${reflectionData.tomorrowGoals}
+    `;
+    
+    // Add to journal
+    addJournalEntry({
+      id: crypto.randomUUID(),
+      title: `Daily Reflection - ${formattedDate}`,
+      content: journalContent,
+      date: new Date().toISOString(),
+      tags: ["reflection", "daily"]
+    });
+    
+    toast({
+      title: "Reflection Saved",
+      description: "Your daily reflection has been saved to the journal.",
+    });
+  };
+  
+  // Function to handle resetting widgets to default layout
   const handleReset = () => {
     resetWidgets();
     toast({
-      title: "Widgets Reset",
-      description: "The dashboard widget layout has been reset to the default order.",
-      className: "bg-background/80 border border-primary text-foreground",
-      duration: 3000,
+      title: "Layout Reset",
+      description: "Dashboard widgets have been reset to the default layout.",
     });
   };
   
-  // Format current date 
-  const formattedDate = currentDate.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric'
-  });
-  
-  // Format time
-  const formattedTime = currentTime.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: timeFormat === '12h',
-    timeZone: timezone
-  });
-  
-  // Update time every minute
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 60000);
-    
-    return () => clearInterval(interval);
-  }, []);
-  
-  // Load time blocks from localStorage
-  useEffect(() => {
-    const savedRoutine = localStorage.getItem("routineData");
-    if (savedRoutine) {
-      try {
-        setTimeBlocks(JSON.parse(savedRoutine));
-      } catch (e) {
-        console.error("Failed to parse saved routine:", e);
-        setTimeBlocks([]);
-      }
-    }
-  }, []);
-
-  // Function to convert reflection to a journal entry
-  const saveReflectionAsJournalEntry = (reflectionData: DailyReflection) => {
-    const date = new Date(reflectionData.date);
-    const formattedDate = date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
-    });
-    
-    // Create content for the journal entry
-    let content = `# Daily Reflection - ${formattedDate}\n\n`;
-    
-    // Add state metrics
-    content += `## Daily State\n`;
-    content += `- Mental State: ${reflectionData.mentalState}/10\n`;
-    content += `- Physical State: ${reflectionData.physicalState}/10\n`;
-    content += `- Emotional State: ${reflectionData.emotionalState}/10\n`;
-    content += `- Wake Time: ${reflectionData.wakeTime}\n`;
-    content += `- Sleep Time: ${reflectionData.sleepTime}\n\n`;
-    
-    // Add gratitude section if not empty
-    if (reflectionData.gratitude && reflectionData.gratitude.trim()) {
-      content += `## Gratitude\n${reflectionData.gratitude}\n\n`;
-    }
-    
-    // Add tomorrow's goals if not empty
-    if (reflectionData.tomorrowGoals && reflectionData.tomorrowGoals.trim()) {
-      content += `## Tomorrow's Goals\n${reflectionData.tomorrowGoals}\n\n`;
-    }
-    
-    // Add annual goals if not empty
-    if (reflectionData.annualGoals && reflectionData.annualGoals.trim()) {
-      content += `## Annual Goals\n${reflectionData.annualGoals}\n\n`;
-    }
-    
-    // Add thoughts if not empty
-    if (reflectionData.thoughts && reflectionData.thoughts.trim()) {
-      content += `## Thoughts & Reflections\n${reflectionData.thoughts}\n\n`;
-    }
-    
-    // Add content consumed if not empty
-    if (reflectionData.contentConsumed && reflectionData.contentConsumed.trim()) {
-      content += `## Content Consumed\n${reflectionData.contentConsumed}\n\n`;
-    }
-    
-    // Add research if not empty
-    if (reflectionData.research && reflectionData.research.trim()) {
-      content += `## Research & Discoveries\n${reflectionData.research}\n\n`;
-    }
-    
-    // Add to-do ideas if not empty
-    if (reflectionData.todoIdeas && reflectionData.todoIdeas.trim()) {
-      content += `## To-Do Ideas\n${reflectionData.todoIdeas}\n\n`;
-    }
-    
-    // Create a mission page for this journal entry
-    const title = `Journal - ${formattedDate}`;
-    const slug = `journal-${reflectionData.date}`;
-    
-    try {
-      useLYFEOS().createMissionPage({
-        title,
-        slug,
-        content,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        completed: false,
-        xpValue: 20,
-        tags: ['Journal', 'Daily Reflection']
-      });
-      
-      toast({
-        title: "Journal Entry Created",
-        description: `Your daily reflection from ${formattedDate} has been saved to your journal.`,
-        variant: "default",
-        className: "bg-background/80 border border-primary text-foreground",
-        duration: 5000,
-      });
-    } catch (error) {
-      console.error("Failed to create journal entry:", error);
-    }
-  };
-
-  // Load reflection data from localStorage and check for date change
-  useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const lastCheckedDate = localStorage.getItem('lastCheckedDate');
-    const savedReflection = localStorage.getItem(`dailyLog-${today}`);
-    
-    // If today is different from the last checked date, 
-    // save yesterday's reflection as a journal entry
-    if (lastCheckedDate && lastCheckedDate !== today) {
-      const yesterdayReflection = localStorage.getItem(`dailyLog-${lastCheckedDate}`);
-      if (yesterdayReflection) {
-        try {
-          const parsedReflection = JSON.parse(yesterdayReflection);
-          // Only save if there's any content in the reflection
-          const hasContent = Object.entries(parsedReflection).some(([key, value]) => {
-            return typeof value === 'string' && value.trim() !== '' && 
-              !['date', 'wakeTime', 'sleepTime'].includes(key);
-          });
-          
-          if (hasContent) {
-            saveReflectionAsJournalEntry(parsedReflection);
-          }
-        } catch (e) {
-          console.error("Failed to parse yesterday's reflection:", e);
-        }
-      }
-      
-      // Reset the reflection to default values but keep the date as today
-      setReflection({
-        mentalState: 5,
-        physicalState: 5,
-        emotionalState: 5,
-        wakeTime: "06:00",
-        sleepTime: "22:00",
-        gratitude: "",
-        tomorrowGoals: "",
-        annualGoals: "",
-        thoughts: "",
-        contentConsumed: "",
-        research: "",
-        todoIdeas: "",
-        date: today
-      });
-    } else if (savedReflection) {
-      // If today's reflection exists, load it
-      try {
-        setReflection(JSON.parse(savedReflection));
-      } catch (e) {
-        console.error("Failed to parse saved reflection:", e);
-      }
-    }
-    
-    // Update last checked date
-    localStorage.setItem('lastCheckedDate', today);
-  }, []);
-  
-  // Calculate total XP earned whenever timeBlocks change
-  useEffect(() => {
-    let xpTotal = 0;
-    timeBlocks.forEach(block => {
-      block.tasks.forEach(task => {
-        if (task.completed) {
-          // Each completed task earns 10 XP
-          xpTotal += 10;
-        }
-      });
-    });
-    setTotalXpEarned(xpTotal);
-  }, [timeBlocks]);
-  
-  // Save time blocks to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem("routineData", JSON.stringify(timeBlocks));
-  }, [timeBlocks]);
-  
-  // Auto-save the reflection to localStorage whenever it changes
-  useEffect(() => {
-    const key = `dailyLog-${reflection.date}`;
-    localStorage.setItem(key, JSON.stringify(reflection));
-  }, [reflection]);
-  
-  // Handle adding a new time block
-  const handleAddTimeBlock = () => {
-    const newBlock: TimeBlock = {
-      id: `block-${Date.now()}`,
-      startTime: newBlockStartTime,
-      endTime: newBlockEndTime,
-      name: newBlockName || "New Block",
-      tasks: []
-    };
-    
-    setTimeBlocks([...timeBlocks, newBlock]);
-    
-    // Reset fields
-    setNewBlockName("");
-    setNewBlockStartTime("09:00");
-    setNewBlockEndTime("10:00");
-  };
-  
-  // Handle editing block name
-  const saveBlockEdit = (blockId: string, field: 'name' | 'startTime' | 'endTime', value: string) => {
-    setTimeBlocks(timeBlocks.map(block => {
-      if (block.id === blockId) {
-        return { ...block, [field]: value };
-      }
-      return block;
-    }));
-  };
-  
-  // Handle deleting a time block
-  const handleDeleteBlock = (blockId: string) => {
-    setTimeBlocks(timeBlocks.filter(block => block.id !== blockId));
-  };
-  
-  // Handle adding a task to a block
-  const handleAddTask = (blockId: string, taskText: string) => {
-    if (!taskText.trim()) return;
-    
-    const newTask = {
-      id: `task-${Date.now()}`,
-      text: taskText,
-      completed: false
-    };
-    
-    setTimeBlocks(timeBlocks.map(block => {
-      if (block.id === blockId) {
-        return { ...block, tasks: [...block.tasks, newTask] };
-      }
-      return block;
-    }));
-    
-    setNewTaskText("");
-  };
-  
-  // Handle deleting a task
-  const handleDeleteTask = (blockId: string, taskId: string) => {
-    setTimeBlocks(timeBlocks.map(block => {
-      if (block.id === blockId) {
-        return { ...block, tasks: block.tasks.filter(task => task.id !== taskId) };
-      }
-      return block;
-    }));
-  };
-  
-  // Save task edit
-  const saveTaskEdit = (blockId: string, taskId: string, newText: string) => {
-    setTimeBlocks(timeBlocks.map(block => {
-      if (block.id === blockId) {
-        return {
-          ...block,
-          tasks: block.tasks.map(task => {
-            if (task.id === taskId) {
-              return { ...task, text: newText };
-            }
-            return task;
-          })
-        };
-      }
-      return block;
-    }));
-    
-    setEditingTaskId(null);
-  };
-  
-  // Toggle task completion
-  const toggleTaskCompletion = (blockId: string, taskId: string) => {
-    setTimeBlocks(timeBlocks.map(block => {
-      if (block.id === blockId) {
-        return {
-          ...block,
-          tasks: block.tasks.map(task => {
-            if (task.id === taskId) {
-              return { ...task, completed: !task.completed };
-            }
-            return task;
-          })
-        };
-      }
-      return block;
-    }));
-  };
-
-  // Create widget components map
+  // Define widgets with their content
   const widgetComponentsMap: Record<string, {
-    content: React.ReactNode;
-    icon: React.ReactNode;
     title: string;
+    icon: React.ReactNode;
+    content: React.ReactNode;
   }> = {
     stats: {
       title: "Stats Log",
@@ -621,7 +304,7 @@ export default function DashboardPage() {
               <div className="bg-[#89ADFD] h-2 rounded-full" style={{ width: `${((stats?.attentionTokens?.current || 0) / (stats?.attentionTokens?.max || 100)) * 100}%` }}></div>
             </div>
             <p className="text-xs text-[#7DAAB2]">
-              Mental focus and concentration ability
+              Attention tokens for focus activities
             </p>
           </div>
           
@@ -639,7 +322,7 @@ export default function DashboardPage() {
               <div className="bg-[#FF62A1] h-2 rounded-full" style={{ width: `${((stats?.healthPoints?.current || 0) / (stats?.healthPoints?.max || 100)) * 100}%` }}></div>
             </div>
             <p className="text-xs text-[#7DAAB2]">
-              Overall physical wellbeing status
+              Health points for physical wellbeing
             </p>
           </div>
           
@@ -657,87 +340,16 @@ export default function DashboardPage() {
               <div className="bg-[#FACC15] h-2 rounded-full" style={{ width: `${((stats?.timeTokens?.current || 0) / (stats?.timeTokens?.max || 100)) * 100}%` }}></div>
             </div>
             <p className="text-xs text-[#7DAAB2]">
-              Temporal resources remaining today
+              Time tokens for daily allocation
             </p>
-          </div>
-          
-          <div className="glassmorphic rounded-xl p-4 col-span-2">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center">
-                <PlusCircle className="h-4 w-4 text-primary mr-2" />
-                <span className="text-sm font-medium">Experience</span>
-              </div>
-              <span className="text-sm text-primary">{stats?.experience?.current || 0}/{stats?.experience?.max || 100}</span>
-            </div>
-            <div className="w-full bg-primary/10 rounded-full h-2 mb-2">
-              <div className="bg-primary h-2 rounded-full" style={{ width: `${((stats?.experience?.current || 0) / (stats?.experience?.max || 100)) * 100}%` }}></div>
-            </div>
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-[#7DAAB2]">
-                Level {stats?.experience?.level || 1}
-              </p>
-              <p className="text-xs text-[#7DAAB2]">
-                +{stats?.experience?.max - (stats?.experience?.current || 0)} XP to Level {(stats?.experience?.level || 1) + 1}
-              </p>
-            </div>
-          </div>
-          
-          <div className="glassmorphic rounded-xl p-4 col-span-2">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-medium">Daily Progress</span>
-              <div className="flex items-center">
-                <div className="flex items-center mr-3">
-                  <div className="w-2 h-2 rounded-full bg-primary mr-1"></div>
-                  <span className="text-xs text-[#7DAAB2]">Progress</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-2 h-2 rounded-full bg-[#36F1CD] mr-1"></div>
-                  <span className="text-xs text-[#7DAAB2]">Target</span>
-                </div>
-              </div>
-            </div>
-            <div className="h-16">
-              <div className="flex h-full items-end justify-between">
-                <div className="w-1/7 h-8 bg-primary rounded-sm relative">
-                  <div className="w-full h-4 bg-[#36F1CD]/20 absolute bottom-0 border-t border-[#36F1CD]"></div>
-                </div>
-                <div className="w-1/7 h-12 bg-primary rounded-sm relative">
-                  <div className="w-full h-6 bg-[#36F1CD]/20 absolute bottom-0 border-t border-[#36F1CD]"></div>
-                </div>
-                <div className="w-1/7 h-10 bg-primary rounded-sm relative">
-                  <div className="w-full h-8 bg-[#36F1CD]/20 absolute bottom-0 border-t border-[#36F1CD]"></div>
-                </div>
-                <div className="w-1/7 h-14 bg-primary rounded-sm relative">
-                  <div className="w-full h-10 bg-[#36F1CD]/20 absolute bottom-0 border-t border-[#36F1CD]"></div>
-                </div>
-                <div className="w-1/7 h-7 bg-primary rounded-sm relative">
-                  <div className="w-full h-9 bg-[#36F1CD]/20 absolute bottom-0 border-t border-[#36F1CD]"></div>
-                </div>
-                <div className="w-1/7 h-9 bg-primary rounded-sm relative">
-                  <div className="w-full h-11 bg-[#36F1CD]/20 absolute bottom-0 border-t border-[#36F1CD]"></div>
-                </div>
-                <div className="w-1/7 h-5 bg-primary rounded-sm relative">
-                  <div className="w-full h-7 bg-[#36F1CD]/20 absolute bottom-0 border-t border-[#36F1CD]"></div>
-                </div>
-              </div>
-            </div>
-            <div className="flex justify-between mt-1">
-              <span className="text-xs text-[#7DAAB2]">Mon</span>
-              <span className="text-xs text-[#7DAAB2]">Tue</span>
-              <span className="text-xs text-[#7DAAB2]">Wed</span>
-              <span className="text-xs text-[#7DAAB2]">Thu</span>
-              <span className="text-xs text-[#7DAAB2]">Fri</span>
-              <span className="text-xs text-[#7DAAB2]">Sat</span>
-              <span className="text-xs text-[#7DAAB2]">Sun</span>
-            </div>
           </div>
         </div>
       )
     },
     mission: {
       title: "Mission Log",
-      icon: <Calendar className="h-5 w-5 text-primary" />,
-      content: <EnhancedMissionWidget events={events || []} />
+      icon: <Book className="h-5 w-5 text-primary" />,
+      content: <MissionLogSystem />
     },
     timeline: {
       title: "Timeline",
@@ -746,17 +358,27 @@ export default function DashboardPage() {
     },
     reflection: {
       title: "Daily Reflection",
-      icon: <BookOpen className="h-5 w-5 text-primary" />,
+      icon: <Brain className="h-5 w-5 text-primary" />,
       content: (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-4">
+        <div className="daily-reflection">
+          <div className="flex items-center justify-between mb-4">
+            <div></div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs hover:bg-yellow-400 hover:text-black transition-colors"
+              onClick={() => saveReflectionAsJournalEntry(reflection)}
+            >
+              <Save className="h-3.5 w-3.5 mr-1.5" />
+              Save to Journal
+            </Button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div className="glassmorphic rounded-xl p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center">
-                  <Smile className="h-4 w-4 text-primary mr-2" />
-                  <span className="text-sm font-medium">Mental State</span>
-                </div>
-                <span className="text-sm text-primary">{reflection.mentalState}/10</span>
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-xs font-medium">Mental State</span>
+                <span className="text-sm text-[#89ADFD]">{reflection.mentalState}/10</span>
               </div>
               <input
                 type="range"
@@ -764,21 +386,14 @@ export default function DashboardPage() {
                 max="10"
                 value={reflection.mentalState}
                 onChange={(e) => setReflection({...reflection, mentalState: parseInt(e.target.value)})}
-                className="w-full accent-primary cursor-pointer"
+                className="w-full h-2 appearance-none bg-primary/10 rounded-full outline-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#89ADFD]"
               />
-              <div className="flex justify-between mt-1">
-                <span className="text-xs text-[#7DAAB2]">Low</span>
-                <span className="text-xs text-[#7DAAB2]">High</span>
-              </div>
             </div>
             
             <div className="glassmorphic rounded-xl p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center">
-                  <HeartPulse className="h-4 w-4 text-primary mr-2" />
-                  <span className="text-sm font-medium">Physical State</span>
-                </div>
-                <span className="text-sm text-primary">{reflection.physicalState}/10</span>
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-xs font-medium">Physical State</span>
+                <span className="text-sm text-[#FF62A1]">{reflection.physicalState}/10</span>
               </div>
               <input
                 type="range"
@@ -786,21 +401,14 @@ export default function DashboardPage() {
                 max="10"
                 value={reflection.physicalState}
                 onChange={(e) => setReflection({...reflection, physicalState: parseInt(e.target.value)})}
-                className="w-full accent-primary cursor-pointer"
+                className="w-full h-2 appearance-none bg-primary/10 rounded-full outline-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#FF62A1]"
               />
-              <div className="flex justify-between mt-1">
-                <span className="text-xs text-[#7DAAB2]">Low</span>
-                <span className="text-xs text-[#7DAAB2]">High</span>
-              </div>
             </div>
             
             <div className="glassmorphic rounded-xl p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center">
-                  <Brain className="h-4 w-4 text-primary mr-2" />
-                  <span className="text-sm font-medium">Emotional State</span>
-                </div>
-                <span className="text-sm text-primary">{reflection.emotionalState}/10</span>
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-xs font-medium">Emotional State</span>
+                <span className="text-sm text-[#FACC15]">{reflection.emotionalState}/10</span>
               </div>
               <input
                 type="range"
@@ -808,268 +416,32 @@ export default function DashboardPage() {
                 max="10"
                 value={reflection.emotionalState}
                 onChange={(e) => setReflection({...reflection, emotionalState: parseInt(e.target.value)})}
-                className="w-full accent-primary cursor-pointer"
+                className="w-full h-2 appearance-none bg-primary/10 rounded-full outline-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#FACC15]"
               />
-              <div className="flex justify-between mt-1">
-                <span className="text-xs text-[#7DAAB2]">Low</span>
-                <span className="text-xs text-[#7DAAB2]">High</span>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="glassmorphic rounded-xl p-4">
-                <div className="flex items-center mb-2">
-                  <AlarmClock className="h-4 w-4 text-primary mr-2" />
-                  <span className="text-sm font-medium">Wake Time</span>
-                </div>
-                <CustomTimePicker 
-                  value={reflection.wakeTime} 
-                  onChange={(time) => setReflection({...reflection, wakeTime: time})}
-                />
-              </div>
-              
-              <div className="glassmorphic rounded-xl p-4">
-                <div className="flex items-center mb-2">
-                  <MoonStar className="h-4 w-4 text-primary mr-2" />
-                  <span className="text-sm font-medium">Sleep Time</span>
-                </div>
-                <CustomTimePicker 
-                  value={reflection.sleepTime} 
-                  onChange={(time) => setReflection({...reflection, sleepTime: time})}
-                />
-              </div>
             </div>
           </div>
           
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
             <div className="glassmorphic rounded-xl p-4">
-              <div className="flex items-center mb-2">
-                <CalendarDays className="h-4 w-4 text-primary mr-2" />
-                <span className="text-sm font-medium">Gratitude</span>
+              <div className="flex items-center mb-4">
+                <AlarmClock className="h-3.5 w-3.5 text-primary mr-2" />
+                <span className="text-xs font-medium">Wake Time</span>
               </div>
-              <textarea
-                value={reflection.gratitude}
-                onChange={(e) => setReflection({...reflection, gratitude: e.target.value})}
-                placeholder="What are you grateful for today?"
-                className="w-full h-20 bg-transparent border border-primary/20 rounded-md p-3 text-sm resize-none focus:border-primary focus:outline-none transition-colors"
+              <CustomTimePicker
+                value={reflection.wakeTime}
+                onChange={(time) => setReflection({...reflection, wakeTime: time})}
               />
             </div>
             
             <div className="glassmorphic rounded-xl p-4">
-              <div className="flex items-center mb-2">
-                <TargetIcon className="h-4 w-4 text-primary mr-2" />
-                <span className="text-sm font-medium">Tomorrow's Goals</span>
+              <div className="flex items-center mb-4">
+                <MoonStar className="h-3.5 w-3.5 text-primary mr-2" />
+                <span className="text-xs font-medium">Sleep Time</span>
               </div>
-              <textarea
-                value={reflection.tomorrowGoals}
-                onChange={(e) => setReflection({...reflection, tomorrowGoals: e.target.value})}
-                placeholder="Set your intentions for tomorrow..."
-                className="w-full h-20 bg-transparent border border-primary/20 rounded-md p-3 text-sm resize-none focus:border-primary focus:outline-none transition-colors"
+              <CustomTimePicker
+                value={reflection.sleepTime}
+                onChange={(time) => setReflection({...reflection, sleepTime: time})}
               />
-            </div>
-            
-            <div className="glassmorphic rounded-xl p-4">
-              <div className="flex items-center mb-2">
-                <Book className="h-4 w-4 text-primary mr-2" />
-                <span className="text-sm font-medium">Content Consumed</span>
-              </div>
-              <textarea
-                value={reflection.contentConsumed}
-                onChange={(e) => setReflection({...reflection, contentConsumed: e.target.value})}
-                placeholder="Books, articles, videos, podcasts..."
-                className="w-full h-20 bg-transparent border border-primary/20 rounded-md p-3 text-sm resize-none focus:border-primary focus:outline-none transition-colors"
-              />
-            </div>
-          </div>
-        </div>
-      )
-    },
-    routine: {
-      title: "Routine",
-      icon: <Brain className="h-5 w-5 text-primary" />,
-      content: (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="glassmorphic rounded-xl p-4">
-            <div className="flex items-center mb-4">
-              <ListChecks className="h-4 w-4 text-primary mr-2" />
-              <span className="text-sm font-medium">Routine</span>
-            </div>
-            
-            {timeBlocks.length > 0 ? (
-              <div className="space-y-4 max-h-80 overflow-y-auto pr-2">
-                {timeBlocks.sort((a, b) => a.startTime.localeCompare(b.startTime)).map((block) => (
-                  <div key={block.id} className="border border-primary/20 rounded-lg p-3">
-                    <div className="flex justify-between items-center mb-2">
-                      {editingBlockId === block.id ? (
-                        <Input
-                          value={block.name}
-                          onChange={(e) => saveBlockEdit(block.id, 'name', e.target.value)}
-                          className="h-7 text-sm"
-                          onBlur={() => setEditingBlockId(null)}
-                          autoFocus
-                        />
-                      ) : (
-                        <div 
-                          className="font-medium text-sm flex-1"
-                          onClick={() => setEditingBlockId(block.id)}
-                        >
-                          {block.name}
-                        </div>
-                      )}
-                      <div className="flex items-center space-x-2">
-                        <div className="text-xs text-[#7DAAB2] font-mono flex items-center">
-                          <CustomTimePicker 
-                            value={block.startTime} 
-                            onChange={(time) => saveBlockEdit(block.id, 'startTime', time)}
-                            buttonClassName="h-6 px-2 py-0 min-w-[60px] text-xs"
-                          />
-                          <span className="mx-1">-</span>
-                          <CustomTimePicker 
-                            value={block.endTime} 
-                            onChange={(time) => saveBlockEdit(block.id, 'endTime', time)}
-                            buttonClassName="h-6 px-2 py-0 min-w-[60px] text-xs"
-                          />
-                        </div>
-                        <button
-                          onClick={() => handleDeleteBlock(block.id)}
-                          className="h-6 w-6 flex items-center justify-center rounded-full hover:bg-destructive/20 transition-colors text-destructive"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2 mt-3">
-                      {block.tasks.length > 0 && (
-                        <div className="space-y-2">
-                          {block.tasks.map((task) => (
-                            <div key={task.id} className="flex items-start space-x-2">
-                              <Checkbox
-                                id={`task-${task.id}`}
-                                checked={task.completed}
-                                onCheckedChange={() => toggleTaskCompletion(block.id, task.id)}
-                                className="mt-1"
-                              />
-                              <div className="flex-1">
-                                {editingTaskId === task.id ? (
-                                  <Input
-                                    value={task.text}
-                                    onChange={(e) => setNewTaskText(e.target.value)}
-                                    className="h-7 text-sm"
-                                    onBlur={() => saveTaskEdit(block.id, task.id, newTaskText)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') {
-                                        saveTaskEdit(block.id, task.id, newTaskText);
-                                      }
-                                    }}
-                                    autoFocus
-                                  />
-                                ) : (
-                                  <label
-                                    htmlFor={`task-${task.id}`}
-                                    className={`text-sm ${task.completed ? 'line-through text-muted-foreground' : ''}`}
-                                    onClick={() => {
-                                      setEditingTaskId(task.id);
-                                      setNewTaskText(task.text);
-                                    }}
-                                  >
-                                    {task.text}
-                                  </label>
-                                )}
-                              </div>
-                              <button
-                                onClick={() => handleDeleteTask(block.id, task.id)}
-                                className="h-5 w-5 flex items-center justify-center rounded-full hover:bg-destructive/20 transition-colors text-destructive"
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      
-                      <div className="flex items-center">
-                        <Input
-                          placeholder="Add a task..."
-                          value={newTaskText}
-                          onChange={(e) => setNewTaskText(e.target.value)}
-                          className="h-7 text-sm"
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && newTaskText.trim()) {
-                              handleAddTask(block.id, newTaskText);
-                            }
-                          }}
-                        />
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="ml-2 h-7 w-7 p-0 hover:bg-primary/20"
-                          onClick={() => {
-                            if (newTaskText.trim()) {
-                              handleAddTask(block.id, newTaskText);
-                            }
-                          }}
-                          disabled={!newTaskText.trim()}
-                        >
-                          <PlusCircle className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-muted-foreground text-sm italic">
-                No routine blocks created yet. Add your first one below.
-              </div>
-            )}
-            
-            <div className="mt-4 space-y-4">
-              <div className="glassmorphic p-3 rounded-lg">
-                <h3 className="text-sm font-medium mb-2">Add New Block</h3>
-                <div className="space-y-2">
-                  <Input
-                    placeholder="Block name"
-                    value={newBlockName}
-                    onChange={(e) => setNewBlockName(e.target.value)}
-                    className="h-8 text-sm"
-                  />
-                  <div className="flex space-x-2">
-                    <div className="flex-1">
-                      <CustomTimePicker
-                        value={newBlockStartTime}
-                        onChange={setNewBlockStartTime}
-                        buttonClassName="w-full h-8 text-sm"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <CustomTimePicker
-                        value={newBlockEndTime}
-                        onChange={setNewBlockEndTime}
-                        buttonClassName="w-full h-8 text-sm"
-                      />
-                    </div>
-                  </div>
-                  <Button
-                    className="w-full h-8 mt-2 text-sm hover:bg-yellow-400 hover:text-black transition-colors"
-                    onClick={handleAddTimeBlock}
-                  >
-                    Add Block
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="glassmorphic p-3 rounded-lg text-center">
-                <div className="flex items-center justify-center mb-2">
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center mr-2">
-                    <div className="text-primary text-sm font-semibold">{totalXpEarned}</div>
-                  </div>
-                  <span className="text-sm">XP earned today</span>
-                </div>
-                <p className="text-xs text-[#7DAAB2]">
-                  Complete tasks to earn XP points
-                </p>
-              </div>
             </div>
           </div>
           
@@ -1099,19 +471,269 @@ export default function DashboardPage() {
                 className="w-full h-36 bg-transparent border border-primary/20 rounded-md p-3 text-sm resize-none focus:border-primary focus:outline-none transition-colors"
               />
             </div>
-            
+
             <div className="glassmorphic rounded-xl p-4">
               <div className="flex items-center mb-4">
                 <ListChecks className="h-4 w-4 text-primary mr-2" />
-                <span className="text-sm font-medium">To-Do Ideas</span>
+                <span className="text-sm font-medium">Tomorrow's Goals</span>
               </div>
               <textarea
-                value={reflection.todoIdeas}
-                onChange={(e) => setReflection({...reflection, todoIdeas: e.target.value})}
-                placeholder="Ideas for future tasks..."
-                className="w-full h-24 bg-transparent border border-primary/20 rounded-md p-3 text-sm resize-none focus:border-primary focus:outline-none transition-colors"
+                value={reflection.tomorrowGoals}
+                onChange={(e) => setReflection({...reflection, tomorrowGoals: e.target.value})}
+                placeholder="What do you aim to accomplish tomorrow?"
+                className="w-full h-36 bg-transparent border border-primary/20 rounded-md p-3 text-sm resize-none focus:border-primary focus:outline-none transition-colors"
               />
             </div>
+          </div>
+        </div>
+      )
+    },
+    routine: {
+      title: "Routine",
+      icon: <Clock className="h-5 w-5 text-primary" />,
+      content: (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <div></div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs hover:bg-yellow-400 hover:text-black transition-colors"
+              onClick={() => {
+                const newId = crypto.randomUUID();
+                setTimeBlocks([
+                  ...timeBlocks,
+                  {
+                    id: newId,
+                    name: "New Time Block",
+                    startTime: "09:00",
+                    endTime: "10:00",
+                    tasks: []
+                  }
+                ]);
+                setEditingBlockId(newId);
+              }}
+            >
+              <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
+              Add Time Block
+            </Button>
+          </div>
+          
+          <div className="space-y-4">
+            {timeBlocks.length > 0 ? (
+              timeBlocks
+                .sort((a, b) => a.startTime.localeCompare(b.startTime))
+                .map((block) => (
+                  <div key={block.id} className="glassmorphic rounded-xl p-4 border border-primary/20">
+                    {editingBlockId === block.id ? (
+                      <div className="space-y-4">
+                        <div className="flex flex-col md:flex-row md:items-center gap-4">
+                          <div className="flex-grow">
+                            <Input
+                              value={newBlockName}
+                              onChange={(e) => setNewBlockName(e.target.value)}
+                              placeholder="Block name"
+                              className="bg-background border-primary/30"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-24">
+                              <CustomTimePicker
+                                value={newBlockStartTime}
+                                onChange={(time) => setNewBlockStartTime(time)}
+                              />
+                            </div>
+                            <span className="text-sm text-[#7DAAB2]">to</span>
+                            <div className="w-24">
+                              <CustomTimePicker
+                                value={newBlockEndTime}
+                                onChange={(time) => setNewBlockEndTime(time)}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs hover:bg-yellow-400 hover:text-black transition-colors"
+                            onClick={() => {
+                              setEditingBlockId(null);
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs hover:bg-yellow-400 hover:text-black transition-colors"
+                            onClick={() => {
+                              if (newBlockName.trim() === "") return;
+                              
+                              setTimeBlocks(timeBlocks.map(tb => 
+                                tb.id === block.id ? {
+                                  ...tb,
+                                  name: newBlockName,
+                                  startTime: newBlockStartTime,
+                                  endTime: newBlockEndTime
+                                } : tb
+                              ));
+                              
+                              setEditingBlockId(null);
+                            }}
+                          >
+                            Save
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="flex justify-between items-center mb-4">
+                          <h3 className="text-base font-orbitron">{block.name}</h3>
+                          <div className="flex items-center">
+                            <span className="text-sm text-[#7DAAB2] mr-2">{block.startTime} - {block.endTime}</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 hover:bg-yellow-400 hover:text-black transition-colors"
+                              onClick={() => {
+                                setNewBlockName(block.name);
+                                setNewBlockStartTime(block.startTime);
+                                setNewBlockEndTime(block.endTime);
+                                setEditingBlockId(block.id);
+                              }}
+                            >
+                              <Edit className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          {block.tasks.map(task => (
+                            <div
+                              key={task.id}
+                              className="flex items-start gap-2 py-2 border-t border-primary/10"
+                            >
+                              <Checkbox
+                                id={`task-${task.id}`}
+                                checked={task.completed}
+                                onCheckedChange={(checked) => {
+                                  setTimeBlocks(timeBlocks.map(tb => 
+                                    tb.id === block.id ? {
+                                      ...tb,
+                                      tasks: tb.tasks.map(t => 
+                                        t.id === task.id ? { ...t, completed: !!checked } : t
+                                      )
+                                    } : tb
+                                  ));
+                                }}
+                              />
+                              
+                              {editingTaskId === task.id ? (
+                                <div className="flex-grow flex items-center gap-2">
+                                  <Input
+                                    value={newTaskText}
+                                    onChange={(e) => setNewTaskText(e.target.value)}
+                                    placeholder="Task description"
+                                    className="h-8 text-sm bg-background border-primary/30"
+                                  />
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 px-2 text-xs hover:bg-yellow-400 hover:text-black transition-colors"
+                                    onClick={() => {
+                                      if (newTaskText.trim() === "") return;
+                                      
+                                      setTimeBlocks(timeBlocks.map(tb => 
+                                        tb.id === block.id ? {
+                                          ...tb,
+                                          tasks: tb.tasks.map(t => 
+                                            t.id === task.id ? { ...t, text: newTaskText } : t
+                                          )
+                                        } : tb
+                                      ));
+                                      
+                                      setEditingTaskId(null);
+                                    }}
+                                  >
+                                    Save
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 px-2 text-xs hover:bg-red-400 hover:text-black transition-colors"
+                                    onClick={() => {
+                                      setEditingTaskId(null);
+                                    }}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              ) : (
+                                <label
+                                  htmlFor={`task-${task.id}`}
+                                  className={`text-sm flex-grow ${task.completed ? 'line-through text-[#7DAAB2]' : ''}`}
+                                >
+                                  {task.text}
+                                </label>
+                              )}
+                              
+                              {editingTaskId !== task.id && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 hover:bg-yellow-400 hover:text-black transition-colors"
+                                  onClick={() => {
+                                    setNewTaskText(task.text);
+                                    setEditingTaskId(task.id);
+                                  }}
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                          
+                          <div className="mt-4">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full text-xs justify-center hover:bg-primary/10 text-[#7DAAB2]"
+                              onClick={() => {
+                                const newTaskId = crypto.randomUUID();
+                                
+                                setTimeBlocks(timeBlocks.map(tb => 
+                                  tb.id === block.id ? {
+                                    ...tb,
+                                    tasks: [
+                                      ...tb.tasks,
+                                      { id: newTaskId, text: "New task", completed: false }
+                                    ]
+                                  } : tb
+                                ));
+                                
+                                setNewTaskText("New task");
+                                setEditingTaskId(newTaskId);
+                              }}
+                            >
+                              <PlusCircle className="h-3.5 w-3.5 mr-2" />
+                              Add Task
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+            ) : (
+              <div className="text-center p-6 text-[#7DAAB2]">
+                <p>No time blocks added yet.</p>
+                <p className="text-xs mt-1">
+                  Add time blocks to organize your day into manageable chunks.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )
@@ -1169,31 +791,30 @@ export default function DashboardPage() {
         </div>
         
         {/* Draggable Widgets */}
-        {widgets.map((widget, index) => {
-          if (!widget.enabled) return null;
-          
-          const widgetInfo = widgetComponentsMap[widget.type];
-          if (!widgetInfo) return null;
-          
-          return (
-            <DraggableWidget 
-              key={widget.id} 
-              id={widget.id}
-              index={index}
-              moveWidget={moveWidget}
-              className="mb-6 pl-5"
-            >
-              <CollapsibleWidget 
-                title={widgetInfo.title || widget.title} 
-                icon={widgetInfo.icon}
-                className="mb-4"
-                defaultOpen={true}
+        <div className="space-y-6">
+          {widgets.map((widget, index) => {
+            if (!widget.enabled) return null;
+            
+            const widgetInfo = widgetComponentsMap[widget.type];
+            if (!widgetInfo) return null;
+            
+            return (
+              <DraggableWidget 
+                key={widget.id} 
+                id={widget.id}
+                index={index}
+                moveWidget={moveWidget}
+                className="glassmorphic rounded-xl p-4"
               >
+                <div className="flex items-center mb-4">
+                  {widgetInfo.icon}
+                  <span className="text-sm font-medium ml-2">{widgetInfo.title}</span>
+                </div>
                 {widgetInfo.content}
-              </CollapsibleWidget>
-            </DraggableWidget>
-          );
-        })}
+              </DraggableWidget>
+            );
+          })}
+        </div>
         
         <AIAgentFAB />
       </div>
