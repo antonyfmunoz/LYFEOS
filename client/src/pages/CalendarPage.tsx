@@ -138,7 +138,7 @@ export default function CalendarPage() {
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Calendar widget */}
-        <div className="glassmorphic rounded-xl p-4 neon-border">
+        <div className="glassmorphic rounded-xl p-4 neon-border hover:bg-yellow-400 hover:text-black">
           <Calendar
             mode="single"
             selected={date}
@@ -148,7 +148,7 @@ export default function CalendarPage() {
         </div>
         
         {/* Events for selected date */}
-        <div className="glassmorphic rounded-xl p-4 neon-border md:col-span-2">
+        <div className="glassmorphic rounded-xl p-4 neon-border md:col-span-2 hover:bg-yellow-400 hover:text-black">
           <h2 className="text-xl font-orbitron mb-4">
             {date ? format(date, "MMMM d, yyyy") : "Select a date"}
           </h2>
@@ -181,7 +181,7 @@ export default function CalendarPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-5 w-5 rounded-full text-[#7DAAB2]"
+                            className="h-5 w-5 rounded-full text-[#7DAAB2] hover:bg-yellow-400 hover:text-black"
                           >
                             <Info className="h-3.5 w-3.5" />
                           </Button>
