@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { UserStats, Quest, AIMessage, CalendarEvent, MissionPage, ChatSession } from "./types";
+import { UserStats, Quest, AIMessage, CalendarEvent, MissionPage, ChatSession, KanbanTask, KanbanStatus, KanbanBoard, KanbanColumn } from "./types";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "./authContext";
 import { apiRequest } from "./queryClient";
@@ -83,6 +83,61 @@ const initialEvents: CalendarEvent[] = [];
 // Initial mission pages
 const initialMissionPages: MissionPage[] = [];
 
+// Initial kanban boards
+const initialKanbanBoards: KanbanBoard[] = [
+  {
+    id: "board1",
+    title: "Main Project",
+    description: "Primary project board for tracking all tasks",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    isDefault: true,
+    columns: [
+      { id: "col1", title: "Backlog", status: "backlog", order: 0, boardId: "board1" },
+      { id: "col2", title: "In Progress", status: "inProgress", order: 1, boardId: "board1" },
+      { id: "col3", title: "Review", status: "review", order: 2, boardId: "board1" },
+      { id: "col4", title: "Done", status: "done", order: 3, boardId: "board1" }
+    ]
+  }
+];
+
+// Initial kanban tasks
+const initialKanbanTasks: KanbanTask[] = [
+  {
+    id: "task1",
+    title: "Research competitors",
+    description: "Analyze top 3 competitors in the market",
+    status: "backlog",
+    priority: "high",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tags: ["research", "strategy"],
+    boardId: "board1"
+  },
+  {
+    id: "task2",
+    title: "Draft content outline",
+    description: "Create content structure for the project",
+    status: "inProgress",
+    priority: "medium",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tags: ["content", "planning"],
+    boardId: "board1"
+  },
+  {
+    id: "task3",
+    title: "UI Component refinement",
+    description: "Improve existing UI components",
+    status: "review",
+    priority: "medium",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tags: ["design", "frontend"],
+    boardId: "board1"
+  }
+];
+
 // Create context types
 interface LYFEOSContextType {
   stats: UserStats;
@@ -91,6 +146,8 @@ interface LYFEOSContextType {
   events: CalendarEvent[];
   missionPages: MissionPage[];
   chatSessions: ChatSession[];
+  kanbanTasks: KanbanTask[];
+  kanbanBoards: KanbanBoard[];
   activeChatSessionId: string;
   toggleQuestCompletion: (id: string) => void;
   sendMessage: (content: string) => void;
@@ -113,6 +170,20 @@ interface LYFEOSContextType {
   updateChatSessionTitle: (id: string, title: string) => void;
   updateUserStats: (stats: UserStats) => void;
   setPrimaryColor: (color: string) => void;
+  // Kanban board functions
+  createKanbanBoard: (board: Omit<KanbanBoard, "id" | "createdAt" | "updatedAt" | "columns">) => KanbanBoard;
+  updateKanbanBoard: (id: string, boardData: Partial<KanbanBoard>) => void;
+  deleteKanbanBoard: (id: string) => void;
+  // Kanban column functions
+  addKanbanColumn: (boardId: string, column: Omit<KanbanColumn, "id" | "boardId" | "order">) => KanbanColumn;
+  updateKanbanColumn: (id: string, columnData: Partial<KanbanColumn>) => void;
+  deleteKanbanColumn: (id: string) => void;
+  moveKanbanColumn: (boardId: string, columnId: string, targetIndex: number) => void;
+  // Kanban task functions
+  createKanbanTask: (task: Omit<KanbanTask, "id" | "createdAt" | "updatedAt">) => KanbanTask;
+  updateKanbanTask: (id: string, taskData: Partial<KanbanTask>) => void;
+  deleteKanbanTask: (id: string) => void;
+  moveKanbanTask: (id: string, newStatus: KanbanStatus, boardId?: string) => void;
 }
 
 // Create the context
@@ -136,6 +207,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<AIMessage[]>(initialMessages);
   const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
   const [missionPages, setMissionPages] = useState<MissionPage[]>(initialMissionPages);
+  const [kanbanTasks, setKanbanTasks] = useState<KanbanTask[]>(initialKanbanTasks);
+  const [kanbanBoards, setKanbanBoards] = useState<KanbanBoard[]>(initialKanbanBoards);
   const [username, setUsername] = useState<string>("Alex Chen");
   const [aiCompanionName, setAICompanionNameState] = useState<string>("Lyfe");
   const [chatSessions, setChatSessions] = useState<ChatSession[]>(initialChatSessions);
@@ -309,7 +382,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       title: "AI Assistant Updated",
       description: `AI Assistant name set to ${name}`,
       variant: "default",
-      className: "bg-[#001E26] border border-[#36F1CD] text-white",
+      className: "bg-background/80 border border-primary text-foreground",
       duration: 3000,
     });
     
@@ -366,7 +439,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
                 title: "Level Up!",
                 description: `You've reached level ${newLevel}! Keep up the good work!`,
                 variant: "default",
-                className: "bg-[#001E26] border border-[#36F1CD] text-white",
+                className: "bg-background/80 border border-primary text-foreground",
                 duration: 5000,
               });
             }
@@ -390,7 +463,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             title: "Quest Completed",
             description: `${quest.title} — +${quest.experienceReward} XP`,
             variant: "default",
-            className: "bg-[#001E26] border border-[#36F1CD] text-white",
+            className: "bg-background/80 border border-primary text-foreground",
             duration: 3000,
           });
         } else {
@@ -434,7 +507,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             title: "Quest Unmarked",
             description: `${quest.title} has been marked as incomplete`,
             variant: "destructive",
-            className: "bg-[#181818] border border-red-500 text-white",
+            className: "bg-background/80 border border-destructive text-foreground",
             duration: 3000,
           });
         }
@@ -516,7 +589,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       title: "Event Added",
       description: `${newEvent.title} - ${newEvent.startTime}`,
       variant: "default",
-      className: "bg-[#001E26] border border-[#36F1CD] text-white",
+      className: "bg-background/80 border border-primary text-foreground",
       duration: 3000,
     });
   };
@@ -534,7 +607,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       title: "Event Updated",
       description: "Calendar event has been updated",
       variant: "default",
-      className: "bg-[#001E26] border border-[#36F1CD] text-white",
+      className: "bg-background/80 border border-primary text-foreground",
       duration: 3000,
     });
   };
@@ -553,7 +626,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         title: "Event Deleted",
         description: `${eventToDelete.title} has been removed`,
         variant: "destructive",
-        className: "bg-[#181818] border border-red-500 text-white",
+        className: "bg-background/80 border border-destructive text-foreground",
         duration: 3000,
       });
     }
@@ -575,7 +648,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       title: "Mission Page Created",
       description: `${newMissionPage.title} page has been created`,
       variant: "default",
-      className: "bg-[#001E26] border border-[#36F1CD] text-white",
+      className: "bg-background/80 border border-primary text-foreground",
       duration: 3000,
     });
     
@@ -595,7 +668,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       title: "Mission Page Updated",
       description: "Your mission page has been updated",
       variant: "default",
-      className: "bg-[#001E26] border border-[#36F1CD] text-white",
+      className: "bg-background/80 border border-primary text-foreground",
       duration: 3000,
     });
   };
@@ -614,7 +687,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         title: "Mission Page Deleted",
         description: `${pageToDelete.title} has been removed`,
         variant: "destructive",
-        className: "bg-[#181818] border border-red-500 text-white",
+        className: "bg-background/80 border border-destructive text-foreground",
         duration: 3000,
       });
     }
@@ -760,7 +833,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       title: "New Chat Created",
       description: `${title}`,
       variant: "default",
-      className: "bg-[#001E26] border border-purple-500 text-white",
+      className: "bg-background/80 border border-primary text-foreground",
       duration: 3000,
     });
     
@@ -778,7 +851,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         title: "Cannot Delete",
         description: "You need to have at least one chat session",
         variant: "destructive",
-        className: "bg-[#181818] border border-red-500 text-white",
+        className: "bg-background/80 border border-destructive text-foreground",
         duration: 3000,
       });
       return;
@@ -803,7 +876,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         title: "Chat Deleted",
         description: `${chatToDelete.title} has been removed`,
         variant: "destructive",
-        className: "bg-[#181818] border border-red-500 text-white",
+        className: "bg-background/80 border border-destructive text-foreground",
         duration: 3000,
       });
     }
@@ -835,7 +908,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       title: "Chat Updated",
       description: "Chat title has been updated",
       variant: "default",
-      className: "bg-[#001E26] border border-purple-500 text-white",
+      className: "bg-background/80 border border-primary text-foreground",
       duration: 3000,
     });
   };
@@ -863,6 +936,339 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, []);
 
+  // Kanban Task Methods
+  // Kanban board functions
+  const createKanbanBoard = (board: Omit<KanbanBoard, "id" | "createdAt" | "updatedAt" | "columns">): KanbanBoard => {
+    const timestamp = new Date().toISOString();
+    const boardId = `board-${Date.now()}`;
+    
+    // Create default columns for the new board
+    const defaultColumns = [
+      { id: `col-backlog-${Date.now()}`, title: "Backlog", status: "backlog" as KanbanStatus, order: 0, boardId },
+      { id: `col-inprogress-${Date.now() + 1}`, title: "In Progress", status: "inProgress" as KanbanStatus, order: 1, boardId },
+      { id: `col-review-${Date.now() + 2}`, title: "Review", status: "review" as KanbanStatus, order: 2, boardId },
+      { id: `col-done-${Date.now() + 3}`, title: "Done", status: "done" as KanbanStatus, order: 3, boardId }
+    ];
+    
+    // Check if this is the first board
+    const isFirstBoard = kanbanBoards.length === 0;
+    
+    // Extract isDefault from board if it exists
+    const { isDefault: providedIsDefault, ...restBoard } = board;
+    
+    const newBoard: KanbanBoard = {
+      id: boardId,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      columns: defaultColumns,
+      // Use provided isDefault if it exists, otherwise use isFirstBoard
+      isDefault: providedIsDefault !== undefined ? providedIsDefault : isFirstBoard,
+      // Spread the rest of the board properties
+      ...restBoard
+    };
+    
+    // Update board ID in columns
+    newBoard.columns = defaultColumns.map(col => ({
+      ...col,
+      boardId: newBoard.id
+    }));
+    
+    setKanbanBoards(prev => [...prev, newBoard]);
+    
+    // Show toast notification
+    toast({
+      title: "Board Created",
+      description: `New board "${newBoard.title}" created`,
+      variant: "default",
+      className: "bg-background/80 border border-primary text-foreground",
+      duration: 3000,
+    });
+    
+    return newBoard;
+  };
+  
+  const updateKanbanBoard = (id: string, boardData: Partial<KanbanBoard>) => {
+    setKanbanBoards(prev => prev.map(board => 
+      board.id === id 
+        ? { 
+            ...board, 
+            ...boardData, 
+            updatedAt: new Date().toISOString() 
+          } 
+        : board
+    ));
+    
+    // Show toast notification
+    toast({
+      title: "Board Updated",
+      description: "Board details have been updated",
+      variant: "default",
+      className: "bg-background/80 border border-primary text-foreground",
+      duration: 3000,
+    });
+  };
+  
+  const deleteKanbanBoard = (id: string) => {
+    const boardToDelete = kanbanBoards.find(board => board.id === id);
+    if (!boardToDelete) return;
+    
+    // Check if this is the default board
+    if (boardToDelete.isDefault && kanbanBoards.length > 1) {
+      // Make another board the default
+      const nextBoard = kanbanBoards.find(board => board.id !== id);
+      if (nextBoard) {
+        updateKanbanBoard(nextBoard.id, { isDefault: true });
+      }
+    }
+    
+    // Delete associated tasks
+    setKanbanTasks(prev => prev.filter(task => task.boardId !== id));
+    
+    // Delete the board
+    setKanbanBoards(prev => prev.filter(board => board.id !== id));
+    
+    // Show toast notification
+    toast({
+      title: "Board Deleted",
+      description: `Board "${boardToDelete.title}" and its tasks have been removed`,
+      variant: "destructive", 
+      className: "bg-background/80 border border-destructive text-foreground",
+      duration: 3000,
+    });
+  };
+  
+  // Kanban column functions
+  const addKanbanColumn = (boardId: string, column: Omit<KanbanColumn, "id" | "boardId" | "order">): KanbanColumn => {
+    const board = kanbanBoards.find(b => b.id === boardId);
+    if (!board) throw new Error(`Board with ID ${boardId} not found`);
+    
+    // Get max order value to append this column at the end
+    const maxOrder = Math.max(...board.columns.map(c => c.order), -1);
+    
+    const newColumn: KanbanColumn = {
+      id: `col-${Date.now()}`,
+      boardId,
+      order: maxOrder + 1,
+      ...column
+    };
+    
+    setKanbanBoards(prev => prev.map(b => 
+      b.id === boardId 
+        ? {
+            ...b,
+            columns: [...b.columns, newColumn],
+            updatedAt: new Date().toISOString()
+          }
+        : b
+    ));
+    
+    // Show toast notification
+    toast({
+      title: "Column Added",
+      description: `New column "${newColumn.title}" created`,
+      variant: "default",
+      className: "bg-background/80 border border-primary text-foreground",
+      duration: 3000,
+    });
+    
+    return newColumn;
+  };
+  
+  const updateKanbanColumn = (id: string, columnData: Partial<KanbanColumn>) => {
+    setKanbanBoards(prev => prev.map(board => {
+      const columnIndex = board.columns.findIndex(col => col.id === id);
+      if (columnIndex === -1) return board;
+      
+      const updatedColumns = [...board.columns];
+      updatedColumns[columnIndex] = {
+        ...updatedColumns[columnIndex],
+        ...columnData
+      };
+      
+      return {
+        ...board,
+        columns: updatedColumns,
+        updatedAt: new Date().toISOString()
+      };
+    }));
+    
+    // Show toast notification
+    toast({
+      title: "Column Updated",
+      description: "Column settings have been updated",
+      variant: "default",
+      className: "bg-background/80 border border-primary text-foreground",
+      duration: 3000,
+    });
+  };
+  
+  const deleteKanbanColumn = (id: string) => {
+    // Find which board contains this column
+    let columnTitle = "";
+    
+    setKanbanBoards(prev => {
+      return prev.map(board => {
+        const columnIndex = board.columns.findIndex(col => col.id === id);
+        if (columnIndex === -1) return board;
+        
+        // Store column title for the notification
+        columnTitle = board.columns[columnIndex].title;
+        
+        // Don't delete if this is the only column left
+        if (board.columns.length <= 1) {
+          toast({
+            title: "Cannot Delete Column",
+            description: "A board must have at least one column",
+            variant: "destructive",
+            className: "bg-background/80 border border-destructive text-foreground",
+            duration: 3000,
+          });
+          return board;
+        }
+        
+        // Move tasks from this column to the first available column
+        const columnStatus = board.columns[columnIndex].status;
+        const firstColumn = board.columns.find(col => col.id !== id);
+        
+        if (firstColumn) {
+          setKanbanTasks(tasks => tasks.map(task => 
+            task.boardId === board.id && task.status === columnStatus
+              ? { ...task, status: firstColumn.status }
+              : task
+          ));
+        }
+        
+        // Remove the column
+        const updatedColumns = board.columns.filter(col => col.id !== id);
+        // Reorder remaining columns
+        const reorderedColumns = updatedColumns.map((col, idx) => ({
+          ...col,
+          order: idx
+        }));
+        
+        return {
+          ...board,
+          columns: reorderedColumns,
+          updatedAt: new Date().toISOString()
+        };
+      });
+    });
+    
+    if (columnTitle) {
+      // Show toast notification
+      toast({
+        title: "Column Deleted",
+        description: `Column "${columnTitle}" has been removed`,
+        variant: "destructive", 
+        className: "bg-background/80 border border-destructive text-foreground",
+        duration: 3000,
+      });
+    }
+  };
+  
+  // Kanban task functions
+  const createKanbanTask = (task: Omit<KanbanTask, "id" | "createdAt" | "updatedAt">): KanbanTask => {
+    const timestamp = new Date().toISOString();
+    const newTask: KanbanTask = {
+      id: `task-${Date.now()}`,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      startDate: task.startDate || undefined,
+      dueDate: task.dueDate || undefined,
+      ...task
+    };
+    
+    setKanbanTasks(prev => [...prev, newTask]);
+    
+    // Show toast notification
+    toast({
+      title: "Task Created",
+      description: `New task "${task.title}" added`,
+      variant: "default",
+      className: "bg-background/80 border border-primary text-foreground",
+      duration: 3000,
+    });
+    
+    return newTask;
+  };
+  
+  const updateKanbanTask = (id: string, taskData: Partial<KanbanTask>) => {
+    setKanbanTasks(prev => prev.map(task => 
+      task.id === id 
+        ? { 
+            ...task, 
+            ...taskData, 
+            updatedAt: new Date().toISOString(),
+            // Explicitly handle date fields to ensure they're properly updated
+            startDate: taskData.startDate !== undefined ? taskData.startDate : task.startDate,
+            dueDate: taskData.dueDate !== undefined ? taskData.dueDate : task.dueDate
+          } 
+        : task
+    ));
+    
+    // Show toast notification
+    toast({
+      title: "Task Updated",
+      description: `Task has been updated`,
+      variant: "default",
+      className: "bg-background/80 border border-primary text-foreground",
+      duration: 3000,
+    });
+  };
+  
+  const deleteKanbanTask = (id: string) => {
+    const taskToDelete = kanbanTasks.find(task => task.id === id);
+    if (!taskToDelete) return;
+    
+    setKanbanTasks(prev => prev.filter(task => task.id !== id));
+    
+    // Show toast notification
+    toast({
+      title: "Task Deleted",
+      description: `"${taskToDelete.title}" has been removed`,
+      variant: "destructive",
+      className: "bg-background/80 border border-destructive text-foreground",
+      duration: 3000,
+    });
+  };
+  
+  const moveKanbanTask = (id: string, newStatus: KanbanStatus, boardId?: string) => {
+    const taskToMove = kanbanTasks.find(task => task.id === id);
+    if (!taskToMove) return;
+    
+    setKanbanTasks(prev => prev.map(task => 
+      task.id === id 
+        ? { 
+            ...task, 
+            status: newStatus,
+            ...(boardId ? { boardId } : {}), // Only update boardId if provided
+            updatedAt: new Date().toISOString() 
+          } 
+        : task
+    ));
+    
+    // Show toast notification
+    const statusLabels: Record<KanbanStatus, string> = {
+      backlog: "Backlog",
+      inProgress: "In Progress",
+      review: "Review",
+      done: "Done"
+    };
+    
+    // Different messages based on whether it was moved between boards
+    const message = boardId && boardId !== taskToMove.boardId
+      ? `"${taskToMove.title}" moved to ${statusLabels[newStatus]} in another board`
+      : `"${taskToMove.title}" moved to ${statusLabels[newStatus]}`;
+    
+    toast({
+      title: "Task Moved",
+      description: message,
+      variant: "default",
+      className: "bg-background/80 border border-primary text-foreground",
+      duration: 3000,
+    });
+  };
+
   return (
     <LYFEOSContext.Provider
       value={{
@@ -872,6 +1278,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         events,
         missionPages,
         chatSessions,
+        kanbanTasks,
+        kanbanBoards,
         activeChatSessionId,
         toggleQuestCompletion,
         sendMessage,
@@ -894,6 +1302,20 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         updateChatSessionTitle,
         updateUserStats,
         setPrimaryColor,
+        // Kanban board functions
+        createKanbanBoard,
+        updateKanbanBoard,
+        deleteKanbanBoard,
+        // Kanban column functions
+        addKanbanColumn,
+        updateKanbanColumn,
+        deleteKanbanColumn,
+        moveKanbanColumn,
+        // Kanban task functions
+        createKanbanTask,
+        updateKanbanTask,
+        deleteKanbanTask,
+        moveKanbanTask
       }}
     >
       {children}
@@ -909,3 +1331,6 @@ export function useLYFEOS() {
   }
   return context;
 }
+
+
+  };

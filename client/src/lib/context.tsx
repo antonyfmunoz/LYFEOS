@@ -1268,6 +1268,57 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       duration: 3000,
     });
   };
+  
+  // Move a column to a new position within a board
+  const moveKanbanColumn = (boardId: string, columnId: string, targetIndex: number) => {
+    // Find the board
+    const board = kanbanBoards.find(b => b.id === boardId);
+    if (!board) return;
+    
+    // Find the column to move
+    const columnIndex = board.columns.findIndex(col => col.id === columnId);
+    if (columnIndex === -1) return;
+    
+    // Update the board
+    setKanbanBoards(prev => {
+      return prev.map(board => {
+        if (board.id === boardId) {
+          // Make a copy of the columns array
+          const columns = [...board.columns];
+          
+          // Remove the column from its current position
+          const [column] = columns.splice(columnIndex, 1);
+          
+          // Insert it at the target position
+          columns.splice(targetIndex, 0, column);
+          
+          // Update order property of all columns
+          const updatedColumns = columns.map((col, idx) => ({
+            ...col,
+            order: idx
+          }));
+          
+          return {
+            ...board,
+            columns: updatedColumns,
+            updatedAt: new Date().toISOString()
+          };
+        }
+        return board;
+      });
+    });
+    
+    // Get column title for the toast
+    const column = board.columns.find(c => c.id === columnId);
+    if (column) {
+      toast({
+        title: "Column Moved",
+        description: `"${column.title}" column has been moved to position ${targetIndex + 1}`,
+        className: "bg-background/80 border border-primary text-foreground",
+        duration: 3000,
+      });
+    }
+  };
 
   return (
     <LYFEOSContext.Provider
@@ -1332,42 +1383,4 @@ export function useLYFEOS() {
   return context;
 }
 
-  // Move a column to a new position within a board
-  const moveKanbanColumn = (boardId: string, columnId: string, targetIndex: number) => {
-    // Find the board
-    const board = kanbanBoards.find(b => b.id === boardId);
-    if (!board) return;
-    
-    // Find the column to move
-    const columnIndex = board.columns.findIndex(col => col.id === columnId);
-    if (columnIndex === -1) return;
-    
-    // Update the board
-    setKanbanBoards(prev => {
-      return prev.map(board => {
-        if (board.id === boardId) {
-          // Make a copy of the columns array
-          const columns = [...board.columns];
-          
-          // Remove the column from its current position
-          const [column] = columns.splice(columnIndex, 1);
-          
-          // Insert it at the target position
-          columns.splice(targetIndex, 0, column);
-          
-          // Update order property of all columns
-          const updatedColumns = columns.map((col, idx) => ({
-            ...col,
-            order: idx
-          }));
-          
-          return {
-            ...board,
-            columns: updatedColumns,
-            updatedAt: new Date().toISOString()
-          };
-        }
-        return board;
-      });
-    });
-  };
+
