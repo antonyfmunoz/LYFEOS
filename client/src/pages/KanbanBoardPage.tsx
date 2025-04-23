@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
+import { TouchBackend } from 'react-dnd-touch-backend';
+import { MultiBackend, TouchTransition, MouseTransition } from 'react-dnd-multi-backend';
 import { 
   ArrowLeft, 
   Plus, 
@@ -12,6 +14,24 @@ import {
   ChevronRight,
   GripVertical
 } from 'lucide-react';
+
+// Define a custom backend for both mouse and touch interfaces
+const CustomHTML5toTouch = {
+  backends: [
+    {
+      id: 'html5',
+      backend: HTML5Backend,
+      transition: MouseTransition,
+    },
+    {
+      id: 'touch',
+      backend: TouchBackend,
+      options: { enableMouseEvents: true },
+      preview: true,
+      transition: TouchTransition,
+    },
+  ],
+};
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -139,11 +159,13 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
     }
   });
 
+  // Create a dragging element with ref attached that's optimized for touch and mouse interactions
   return (
     <div 
       ref={drag} 
-      className={`${isDragging ? 'opacity-50' : 'opacity-100'} cursor-move w-full hover:ring-1 hover:ring-yellow-400 transition-all`}
+      className={`${isDragging ? 'opacity-50 ring-2 ring-primary' : 'opacity-100'} cursor-move w-full hover:ring-1 hover:ring-yellow-400 transition-all active:ring-2 active:ring-primary`}
       style={{ touchAction: 'none' }}
+      data-handler-id={task.id}
     >
       <Card className="mb-2 shadow-sm glassmorphic rounded-lg border-l-4 border-l-yellow-400 border-t-0 border-r-0 border-b-0">
         <CardHeader className="p-3 pb-0 flex flex-row justify-between items-start">
@@ -363,10 +385,12 @@ function KanbanColumn({
   return (
     <div 
       ref={drop} 
-      className={`glassmorphic rounded-xl p-4 w-72 flex-shrink-0 flex flex-col h-full
-        ${isOver && canDrop ? 'ring-2 ring-yellow-400 bg-yellow-50 dark:bg-yellow-900/10' : ''}
-        ${isDragging ? 'opacity-50' : 'opacity-100'}
+      className={`glassmorphic rounded-xl p-4 w-72 flex-shrink-0 flex flex-col h-full transition-all
+        ${isOver && canDrop ? 'ring-4 ring-yellow-400 bg-yellow-50 dark:bg-yellow-900/10 shadow-lg' : ''}
+        ${isDragging ? 'opacity-50 scale-95' : 'opacity-100'}
+        ${isOver ? 'scale-105' : ''}
       `}
+      data-column-id={columnId}
     >
       <div 
         ref={drag}
@@ -694,7 +718,7 @@ export default function KanbanBoardPage() {
   };
 
   return (
-    <DndProvider backend={HTML5Backend} options={{ enableMouseEvents: true, enableTouchEvents: true }}>
+    <DndProvider backend={MultiBackend} options={CustomHTML5toTouch}>
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center w-full">
