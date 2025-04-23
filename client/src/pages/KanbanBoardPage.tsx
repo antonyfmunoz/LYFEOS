@@ -92,16 +92,16 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
     navigator.clipboard.writeText(JSON.stringify(taskDuplicate, null, 2))
       .then(() => {
         toast({
-          title: "Task Duplicated",
-          description: `Task "${task.title}" duplicated to clipboard`,
+          title: "Copied to clipboard",
+          description: `Task "${task.title}" copied to clipboard`,
           className: "bg-background/80 border border-primary text-foreground",
           duration: 2000,
         });
       })
       .catch(err => {
         toast({
-          title: "Failed to Duplicate",
-          description: "Could not duplicate task to clipboard",
+          title: "Failed to copy",
+          description: "Could not copy task to clipboard",
           variant: "destructive",
           duration: 2000,
         });
