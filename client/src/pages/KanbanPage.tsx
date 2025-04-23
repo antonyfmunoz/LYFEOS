@@ -153,10 +153,12 @@ export default function KanbanPage() {
       <div className="container mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
-            <Button variant="ghost" onClick={() => navigate('/systems')} className="mr-2">
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Back to Systems
-            </Button>
+            <button 
+              onClick={() => navigate('/systems')} 
+              className="flex items-center text-muted-foreground hover:text-foreground transition-colors mr-2"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
             <h1 className="text-2xl font-bold">Kanban Boards</h1>
           </div>
           
