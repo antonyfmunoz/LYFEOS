@@ -40,7 +40,7 @@ import { ObsidianMarkdown } from "@/components/ui/obsidian-markdown";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { Checkbox } from "@/components/ui/checkbox";
 import CompactStatsWidget from "@/components/dashboard/CompactStatsWidget";
-import { CalendarEvent } from "@/lib/types";
+import { CalendarEvent, UserStats } from "@/lib/types";
 
 // Define local enum for stats types as it differs from the global StatType
 enum StatType {
@@ -1138,46 +1138,39 @@ export default function DashboardPage() {
               <RotateCcw className="h-4 w-4 mr-2" />
               Reset Layout
             </Button>
-            <CompactStatsWidget 
-              stats={[
-                { 
-                  label: 'Energy', 
-                  current: stats?.energyPoints?.current || 0, 
-                  max: stats?.energyPoints?.max || 100, 
-                  icon: <Zap className="w-3 h-3" />,
-                  color: '#36F1CD',
-                  bgColor: 'rgba(54, 241, 205, 0.2)',
-                  type: StatType.ENERGY 
-                },
-                { 
-                  label: 'Focus', 
-                  current: stats?.attentionTokens?.current || 0,
-                  max: stats?.attentionTokens?.max || 100, 
-                  icon: <TargetIcon className="w-3 h-3" />,
-                  color: '#89ADFD',
-                  bgColor: 'rgba(137, 173, 253, 0.2)',
-                  type: StatType.ATTENTION
-                },
-                { 
-                  label: 'Health', 
-                  current: stats?.healthPoints?.current || 0, 
-                  max: stats?.healthPoints?.max || 100, 
-                  icon: <HeartPulse className="w-3 h-3" />,
-                  color: '#FF62A1',
-                  bgColor: 'rgba(255, 98, 161, 0.2)',
-                  type: StatType.HEALTH 
-                },
-                { 
-                  label: 'Time', 
-                  current: stats?.timeTokens?.current || 0, 
-                  max: stats?.timeTokens?.max || 100, 
-                  icon: <Clock className="w-3 h-3" />,
-                  color: '#FACC15',
-                  bgColor: 'rgba(250, 204, 21, 0.2)',
-                  type: StatType.TIME 
-                }
-              ]}
-            />
+            <div className="flex items-center gap-2">
+              {/* Energy */}
+              <div className="flex items-center gap-1 p-1.5 px-2 rounded-md bg-primary/5 border border-primary/20">
+                <Zap className="w-3.5 h-3.5 text-[#36F1CD]" />
+                <span className="text-xs text-[#D6F4FF]">
+                  {stats?.energyPoints?.current || 0}/{stats?.energyPoints?.max || 100}
+                </span>
+              </div>
+              
+              {/* Focus */}
+              <div className="flex items-center gap-1 p-1.5 px-2 rounded-md bg-primary/5 border border-primary/20">
+                <TargetIcon className="w-3.5 h-3.5 text-[#89ADFD]" />
+                <span className="text-xs text-[#D6F4FF]">
+                  {stats?.attentionTokens?.current || 0}/{stats?.attentionTokens?.max || 100}
+                </span>
+              </div>
+              
+              {/* Health */}
+              <div className="flex items-center gap-1 p-1.5 px-2 rounded-md bg-primary/5 border border-primary/20">
+                <HeartPulse className="w-3.5 h-3.5 text-[#FF62A1]" />
+                <span className="text-xs text-[#D6F4FF]">
+                  {stats?.healthPoints?.current || 0}/{stats?.healthPoints?.max || 100}
+                </span>
+              </div>
+              
+              {/* Time */}
+              <div className="flex items-center gap-1 p-1.5 px-2 rounded-md bg-primary/5 border border-primary/20">
+                <Clock className="w-3.5 h-3.5 text-[#FACC15]" />
+                <span className="text-xs text-[#D6F4FF]">
+                  {stats?.timeTokens?.current || 0}/{stats?.timeTokens?.max || 100}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
         
