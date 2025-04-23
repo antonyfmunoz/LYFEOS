@@ -393,9 +393,9 @@ export default function CalendarPage() {
           <DialogFooter className="flex flex-col sm:flex-row gap-2">
             <Button
               type="button"
-              variant="outline"
+              variant="destructive"
               onClick={handleDeleteEvent}
-              className="sm:mr-auto hover:bg-yellow-400 hover:text-black"
+              className="sm:mr-auto"
             >
               <Trash className="h-4 w-4 mr-2" /> Delete
             </Button>
