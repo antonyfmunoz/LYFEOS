@@ -250,42 +250,8 @@ function ColumnDrop({ children }: { children: React.ReactNode }) {
     accept: ItemTypes.COLUMN,
     drop: (item: { id: string, status: string, index: number }, monitor) => {
       console.log('Column dropped:', item);
+      // Process all drops here instead of in hover
       return { moved: true };
-    },
-    hover: (item: { id: string, status: string, index: number }, monitor) => {
-      if (!monitor.isOver({ shallow: true })) {
-        return;
-      }
-      
-      // Find the hovered column component
-      const hoverIndex = item.index;
-      
-      // Don't replace items with themselves
-      if (hoverIndex === item.index) {
-        return;
-      }
-      
-      // Determine rectangle on screen
-      const hoverBoundingRect = monitor.getClientOffset();
-      
-      if (!hoverBoundingRect) {
-        return;
-      }
-      
-      // Find the hovered item's position
-      const clientOffset = monitor.getClientOffset();
-      
-      if (!clientOffset) {
-        return;
-      }
-      
-      // Time to actually perform the action
-      if (boardId && handleColumnMove && typeof item.index === 'number') {
-        handleColumnMove(item.index, hoverIndex);
-      }
-      
-      // Update the dragged item's index
-      item.index = hoverIndex;
     },
     collect: (monitor) => ({
       isOver: !!monitor.isOver(),
@@ -432,6 +398,31 @@ function KanbanColumn({
       if (item && dropResult && moveColumn && typeof index === 'number') {
         // Handle column moved within the drop target
         console.log('Column drag ended:', item, 'Result:', dropResult);
+        
+        // Calculate drop position based on horizontal position
+        const finalDropClientOffset = monitor.getClientOffset();
+        const initialClientOffset = monitor.getInitialClientOffset();
+        
+        if (finalDropClientOffset && initialClientOffset) {
+          const columns = document.querySelectorAll('.glassmorphic');
+          let targetIndex = -1;
+          let minDistance = Number.MAX_VALUE;
+          
+          columns.forEach((column, idx) => {
+            const rect = column.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const distance = Math.abs(finalDropClientOffset.x - centerX);
+            
+            if (distance < minDistance) {
+              minDistance = distance;
+              targetIndex = idx;
+            }
+          });
+          
+          if (targetIndex !== -1 && targetIndex !== index) {
+            moveColumn(index, targetIndex);
+          }
+        }
       }
     },
   });
@@ -822,7 +813,7 @@ export default function KanbanBoardPage() {
 
         <div className="overflow-x-auto pb-4" style={{ height: 'calc(100vh - 160px)' }}>
           <ColumnDrop>
-            {activeBoard && activeBoard.columns.map(column => (
+            {activeBoard && activeBoard.columns.map((column, index) => (
               <KanbanColumn
                 key={column.id}
                 columnId={column.id}
@@ -835,6 +826,8 @@ export default function KanbanBoardPage() {
                 onEditTitle={handleEditColumnTitle}
                 onDeleteColumn={handleDeleteColumn}
                 onAddTask={handleAddTask}
+                index={index}
+                moveColumn={(dragIndex, hoverIndex) => moveKanbanColumn(boardId!, column.id, hoverIndex)}
               />
             ))}
             
