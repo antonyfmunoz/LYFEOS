@@ -332,6 +332,62 @@ export class DatabaseStorage implements IStorage {
     
     return updatedContact;
   }
+
+  // Spreadsheet methods
+  async getSpreadsheets(userId: number): Promise<Spreadsheet[]> {
+    return db.select().from(spreadsheets).where(eq(spreadsheets.userId, userId));
+  }
+  
+  async getSpreadsheetsByCategory(userId: number, category: string): Promise<Spreadsheet[]> {
+    return db.select()
+      .from(spreadsheets)
+      .where(and(
+        eq(spreadsheets.userId, userId),
+        eq(spreadsheets.category, category)
+      ));
+  }
+  
+  async getSpreadsheet(id: number): Promise<Spreadsheet | undefined> {
+    const [spreadsheet] = await db.select().from(spreadsheets).where(eq(spreadsheets.id, id));
+    return spreadsheet;
+  }
+  
+  async createSpreadsheet(spreadsheet: InsertSpreadsheet): Promise<Spreadsheet> {
+    const [newSpreadsheet] = await db
+      .insert(spreadsheets)
+      .values(spreadsheet)
+      .returning();
+    return newSpreadsheet;
+  }
+  
+  async updateSpreadsheet(id: number, spreadsheetUpdate: Partial<InsertSpreadsheet>): Promise<Spreadsheet> {
+    const [updatedSpreadsheet] = await db
+      .update(spreadsheets)
+      .set({ ...spreadsheetUpdate, updatedAt: new Date() })
+      .where(eq(spreadsheets.id, id))
+      .returning();
+    return updatedSpreadsheet;
+  }
+  
+  async deleteSpreadsheet(id: number): Promise<void> {
+    await db.delete(spreadsheets).where(eq(spreadsheets.id, id));
+  }
+  
+  async toggleFavoriteSpreadsheet(id: number): Promise<Spreadsheet> {
+    const spreadsheet = await this.getSpreadsheet(id);
+    if (!spreadsheet) throw new Error("Spreadsheet not found");
+    
+    const [updatedSpreadsheet] = await db
+      .update(spreadsheets)
+      .set({ 
+        favorite: !spreadsheet.favorite,
+        updatedAt: new Date()
+      })
+      .where(eq(spreadsheets.id, id))
+      .returning();
+    
+    return updatedSpreadsheet;
+  }
 }
 
 export const storage = new DatabaseStorage();

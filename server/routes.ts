@@ -9,7 +9,8 @@ import {
   insertAIMessageSchema, 
   insertCalendarEventSchema,
   insertMissionPageSchema,
-  insertContactSchema
+  insertContactSchema,
+  insertSpreadsheetSchema
 } from "@shared/schema";
 
 // Extend Request type to include session
@@ -989,6 +990,169 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(200).json({ contact: updatedContact });
     } catch (error) {
       console.error("Error toggling contact favorite status:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // SPREADSHEET ROUTES
+  app.get("/api/users/:userId/spreadsheets", isOwner, async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+      
+      const spreadsheets = await storage.getSpreadsheets(userId);
+      
+      return res.status(200).json({ spreadsheets });
+    } catch (error) {
+      console.error("Error getting spreadsheets:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.get("/api/spreadsheets/category/:category", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { category } = req.params;
+      const userId = req.session.userId;
+      
+      const spreadsheets = await storage.getSpreadsheetsByCategory(userId, category);
+      
+      return res.status(200).json({ spreadsheets });
+    } catch (error) {
+      console.error("Error getting spreadsheets by category:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.get("/api/spreadsheets/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const spreadsheetId = parseInt(req.params.id);
+      if (isNaN(spreadsheetId)) {
+        return res.status(400).json({ error: "Invalid spreadsheet ID" });
+      }
+      
+      const spreadsheet = await storage.getSpreadsheet(spreadsheetId);
+      if (!spreadsheet) {
+        return res.status(404).json({ error: "Spreadsheet not found" });
+      }
+      
+      // Verify ownership
+      if (spreadsheet.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to access this spreadsheet" });
+      }
+      
+      return res.status(200).json({ spreadsheet });
+    } catch (error) {
+      console.error("Error getting spreadsheet:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/spreadsheets", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      // Validate spreadsheet data
+      const validateData = insertSpreadsheetSchema.parse({
+        ...req.body,
+        userId: req.session.userId
+      });
+      
+      // Create spreadsheet
+      const spreadsheet = await storage.createSpreadsheet(validateData);
+      
+      return res.status(201).json({ spreadsheet });
+    } catch (error) {
+      console.error("Error creating spreadsheet:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.patch("/api/spreadsheets/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const spreadsheetId = parseInt(req.params.id);
+      if (isNaN(spreadsheetId)) {
+        return res.status(400).json({ error: "Invalid spreadsheet ID" });
+      }
+      
+      // Get the spreadsheet to check ownership
+      const spreadsheet = await storage.getSpreadsheet(spreadsheetId);
+      if (!spreadsheet) {
+        return res.status(404).json({ error: "Spreadsheet not found" });
+      }
+      
+      // Verify ownership
+      if (spreadsheet.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to update this spreadsheet" });
+      }
+      
+      // Update spreadsheet
+      const updatedSpreadsheet = await storage.updateSpreadsheet(spreadsheetId, req.body);
+      
+      return res.status(200).json({ spreadsheet: updatedSpreadsheet });
+    } catch (error) {
+      console.error("Error updating spreadsheet:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.delete("/api/spreadsheets/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const spreadsheetId = parseInt(req.params.id);
+      if (isNaN(spreadsheetId)) {
+        return res.status(400).json({ error: "Invalid spreadsheet ID" });
+      }
+      
+      // Get the spreadsheet to check ownership
+      const spreadsheet = await storage.getSpreadsheet(spreadsheetId);
+      if (!spreadsheet) {
+        return res.status(404).json({ error: "Spreadsheet not found" });
+      }
+      
+      // Verify ownership
+      if (spreadsheet.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to delete this spreadsheet" });
+      }
+      
+      // Delete spreadsheet
+      await storage.deleteSpreadsheet(spreadsheetId);
+      
+      return res.status(200).json({ message: "Spreadsheet deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting spreadsheet:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/spreadsheets/:id/toggle-favorite", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const spreadsheetId = parseInt(req.params.id);
+      if (isNaN(spreadsheetId)) {
+        return res.status(400).json({ error: "Invalid spreadsheet ID" });
+      }
+      
+      // Get the spreadsheet to check ownership
+      const spreadsheet = await storage.getSpreadsheet(spreadsheetId);
+      if (!spreadsheet) {
+        return res.status(404).json({ error: "Spreadsheet not found" });
+      }
+      
+      // Verify ownership
+      if (spreadsheet.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to update this spreadsheet" });
+      }
+      
+      // Toggle favorite status
+      const updatedSpreadsheet = await storage.toggleFavoriteSpreadsheet(spreadsheetId);
+      
+      return res.status(200).json({ spreadsheet: updatedSpreadsheet });
+    } catch (error) {
+      console.error("Error toggling spreadsheet favorite status:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });
