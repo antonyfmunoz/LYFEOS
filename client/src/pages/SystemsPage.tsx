@@ -24,10 +24,13 @@ export default function SystemsPage() {
           icon={<Calendar className="h-5 w-5 text-primary" />}
           defaultOpen={true}
         >
-          <div className="flex justify-start items-center mb-3">
-            <Link to="/calendar" className="px-4 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium rounded-md transition-colors duration-200 flex items-center hover:shadow-[0_0_5px_var(--primary-glow-light)] border border-primary/50">
-              <Calendar className="h-3.5 w-3.5 mr-1.5" />
-              View Calendar
+          <div className="flex justify-between items-center mb-3">
+            <div className="text-sm font-medium flex items-center">
+              <Calendar className="h-4 w-4 mr-2 text-primary" />
+              Calendar
+            </div>
+            <Link to="/calendar" className="h-7 px-3 py-1 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium flex items-center hover:shadow-[0_0_5px_var(--primary-glow-light)] border border-primary/50 transition-shadow">
+              View All
               <ChevronRight className="ml-1 h-3 w-3" />
             </Link>
           </div>
