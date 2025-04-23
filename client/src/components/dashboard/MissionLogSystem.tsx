@@ -123,7 +123,11 @@ export default function MissionLogSystem() {
           onKeyDown={(e) => e.key === 'Enter' && handleAddMission()}
           className="flex-grow"
         />
-        <Button onClick={handleAddMission} size="icon">
+        <Button 
+          onClick={handleAddMission} 
+          size="icon"
+          className="hover:bg-yellow-400 hover:text-black"
+        >
           <Plus className="h-4 w-4" />
         </Button>
       </div>
@@ -189,12 +193,14 @@ export default function MissionLogSystem() {
             <Button
               variant="outline"
               onClick={() => setInfoDialogOpen(false)}
+              className="hover:bg-yellow-400 hover:text-black"
             >
               Close
             </Button>
             <Button
               variant="default"
               disabled={true} // Placeholder for now
+              className="hover:bg-yellow-400 hover:text-black"
             >
               View Full Report
             </Button>
