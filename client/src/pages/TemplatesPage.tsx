@@ -183,7 +183,7 @@ export default function TemplatesPage() {
                 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8">
+                    <Button variant="outline" size="sm" className="h-8 hover:bg-yellow-400 hover:text-black">
                       <Filter className="h-3.5 w-3.5 mr-1.5" />
                       Sort
                     </Button>
@@ -296,7 +296,10 @@ export default function TemplatesPage() {
                       ? "Try adjusting your search or filters"
                       : "Create your first template to get started"}
                   </p>
-                  <Button onClick={() => navigate('/templates/new')}>
+                  <Button 
+                    onClick={() => navigate('/templates/new')}
+                    className="hover:bg-yellow-400 hover:text-black"
+                  >
                     <FilePlus className="mr-2 h-4 w-4" />
                     Create Template
                   </Button>
