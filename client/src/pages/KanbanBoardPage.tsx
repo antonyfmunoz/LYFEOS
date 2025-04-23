@@ -134,8 +134,7 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
   return (
     <div 
       ref={drag} 
-      className={`${isDragging ? 'opacity-50' : 'opacity-100'} cursor-move w-full`}
-      style={{ touchAction: 'none' }}
+      className={`${isDragging ? 'opacity-50' : 'opacity-100'} cursor-move`}
     >
       <Card className="mb-2 shadow-sm glassmorphic rounded-lg border-none">
         <CardHeader className="p-3 pb-0 flex flex-row justify-between items-start">
@@ -269,7 +268,7 @@ function KanbanColumn({
     },
     canDrop: (item: DragItem) => {
       console.log('Checking if can drop item with status:', item.status, 'into column with status:', status);
-      return true; // Allow drops from any column
+      return item.status !== status;
     },
     collect: (monitor) => ({
       isOver: !!monitor.isOver(),
@@ -356,7 +355,6 @@ function KanbanColumn({
       <div 
         ref={drag}
         className="flex items-center justify-between mb-3 cursor-move"
-        style={{ touchAction: 'none' }}
       >
         <div className="flex items-center">
           <GripVertical className="h-4 w-4 mr-2 text-muted-foreground" />
