@@ -258,7 +258,7 @@ export default function SpreadsheetsPage() {
         <Button 
           variant="ghost" 
           size="icon" 
-          className="h-8 w-8 mr-1" 
+          className="h-8 w-8 mr-1 hover:bg-yellow-400 hover:text-black" 
           onClick={() => navigate('/systems')}
           aria-label="Back to systems"
         >
@@ -282,7 +282,7 @@ export default function SpreadsheetsPage() {
           
           <Dialog open={isNewDialogOpen} onOpenChange={setIsNewDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-primary/10 hover:bg-primary/20 text-primary border border-primary/50">
+              <Button className="bg-primary/10 hover:bg-yellow-400 hover:text-black text-primary border border-primary/50">
                 <Plus className="h-4 w-4 mr-1" />
                 New Spreadsheet
               </Button>
@@ -326,10 +326,17 @@ export default function SpreadsheetsPage() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsNewDialogOpen(false)}>Cancel</Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsNewDialogOpen(false)}
+                  className="hover:bg-yellow-400 hover:text-black"
+                >
+                  Cancel
+                </Button>
                 <Button 
                   onClick={handleCreateSpreadsheet}
                   disabled={createSpreadsheetMutation.isPending}
+                  className="hover:bg-yellow-400 hover:text-black"
                 >
                   {createSpreadsheetMutation.isPending ? 'Creating...' : 'Create Spreadsheet'}
                 </Button>
@@ -413,7 +420,7 @@ export default function SpreadsheetsPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-8 w-8 hover:bg-yellow-400 hover:text-black"
                       onClick={(e) => toggleFavorite(spreadsheet.id, e)}
                       title={spreadsheet.favorite ? "Remove from favorites" : "Add to favorites"}
                     >
@@ -422,7 +429,7 @@ export default function SpreadsheetsPage() {
                     
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-yellow-400 hover:text-black">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -449,7 +456,7 @@ export default function SpreadsheetsPage() {
               : "Create your first spreadsheet to get started"}
           </p>
           <Button 
-            className="bg-primary/10 hover:bg-primary/20 text-primary border border-primary/50"
+            className="bg-primary/10 hover:bg-yellow-400 hover:text-black text-primary border border-primary/50"
             onClick={() => setIsNewDialogOpen(true)}
           >
             <Plus className="h-4 w-4 mr-1" />
@@ -468,11 +475,18 @@ export default function SpreadsheetsPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsDeleteDialogOpen(false)} 
+              className="hover:bg-yellow-400 hover:text-black"
+            >
+              Cancel
+            </Button>
             <Button 
               variant="destructive" 
               onClick={handleDeleteSpreadsheet}
               disabled={deleteSpreadsheetMutation.isPending}
+              className="hover:bg-yellow-400 hover:text-black"
             >
               {deleteSpreadsheetMutation.isPending ? 'Deleting...' : 'Delete'}
             </Button>
