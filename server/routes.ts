@@ -1014,8 +1014,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/spreadsheets/category/:category", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { category } = req.params;
-      const userId = req.session.userId;
+      const userIdRaw = req.session.userId;
       
+      if (!userIdRaw) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+      
+      const userId = Number(userIdRaw);
       const spreadsheets = await storage.getSpreadsheetsByCategory(userId, category);
       
       return res.status(200).json({ spreadsheets });
