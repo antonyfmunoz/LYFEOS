@@ -11,7 +11,8 @@ import {
   Plus, 
   Search, 
   Star,
-  LayoutDashboard
+  LayoutDashboard,
+  ChevronRight
 } from "lucide-react";
 import { Link, useLocation } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -126,9 +127,15 @@ export function CanvasWidget() {
             </div>
           </div>
           
-          <Link to="/canvases" className="text-xs text-primary hover:underline">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-7 text-xs bg-primary/10 hover:bg-primary/20 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+            onClick={() => navigate("/canvases")}
+          >
             View All
-          </Link>
+            <ChevronRight className="ml-1 h-3 w-3" />
+          </Button>
         </div>
         
         <div className="flex gap-2 mb-3 flex-wrap">
