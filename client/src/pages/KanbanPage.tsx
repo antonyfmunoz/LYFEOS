@@ -475,7 +475,7 @@ export default function KanbanPage() {
           <Dialog open={isNewColumnDialogOpen} onOpenChange={setIsNewColumnDialogOpen}>
             <DialogTrigger asChild>
               <Button 
-                className="bg-primary/10 hover:bg-primary/20 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+                className="bg-primary/10 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow hover:bg-yellow-400 hover:text-black"
               >
                 <Plus className="h-4 w-4 mr-1" />
                 Add Column
@@ -499,7 +499,12 @@ export default function KanbanPage() {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsNewColumnDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleCreateColumn}>Create Column</Button>
+                <Button 
+                  onClick={handleCreateColumn}
+                  className="hover:bg-yellow-400 hover:text-black"
+                >
+                  Create Column
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
