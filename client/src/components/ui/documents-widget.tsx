@@ -123,9 +123,8 @@ export default function DocumentsWidget() {
       
       <Tabs defaultValue="recent" className="w-full">
         <div className="px-4">
-          <TabsList className="w-full grid grid-cols-3 mb-2">
+          <TabsList className="w-full grid grid-cols-2 mb-2">
             <TabsTrigger value="recent" className="text-xs">Recent</TabsTrigger>
-            <TabsTrigger value="favorites" className="text-xs">Favorites</TabsTrigger>
             <TabsTrigger value="folders" className="text-xs">Folders</TabsTrigger>
           </TabsList>
         </div>
