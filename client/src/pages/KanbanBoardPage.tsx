@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { 
-  ChevronLeft, 
+  ArrowLeft, 
   Plus, 
   MoreHorizontal, 
   X,
@@ -254,12 +254,14 @@ export default function KanbanBoardPage() {
     return (
       <div className="container mx-auto p-6">
         <div className="flex items-center mb-6">
-          <button 
-            onClick={() => navigate('/kanban')} 
-            className="flex items-center text-muted-foreground hover:text-foreground transition-colors mr-2"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 hover:bg-yellow-400 hover:text-black" 
+            onClick={() => navigate('/kanban')}
           >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
           <h1 className="text-2xl font-bold">Board not found</h1>
         </div>
         <Card>
@@ -269,7 +271,7 @@ export default function KanbanBoardPage() {
               onClick={() => navigate('/kanban')} 
               className="mt-4 flex items-center gap-2 text-primary border border-primary/50 px-4 py-2 rounded-md hover:bg-yellow-400 hover:text-black transition-all"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ArrowLeft className="h-4 w-4" />
               Back to Boards
             </button>
           </CardContent>
@@ -387,12 +389,14 @@ export default function KanbanBoardPage() {
     <div className="container mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center">
-          <button 
-            onClick={() => navigate('/kanban')} 
-            className="flex items-center text-muted-foreground hover:text-foreground transition-colors mr-2"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 hover:bg-yellow-400 hover:text-black" 
+            onClick={() => navigate('/kanban')}
           >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
           <h1 className="text-2xl font-bold">{activeBoard.title}</h1>
         </div>
         
