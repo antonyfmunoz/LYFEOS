@@ -16,29 +16,26 @@ interface KanbanColumnProps {
 
 function KanbanColumn({ title, status, tasks, onTaskClick }: KanbanColumnProps) {
   return (
-    <div className="flex flex-col min-w-[120px] gap-2">
-      <div className="flex items-center justify-between mb-1">
+    <div className="flex flex-col min-w-[120px] gap-1">
+      <div className="flex items-center justify-between">
         <h3 className="text-xs font-medium text-muted-foreground">{title} ({tasks.length})</h3>
       </div>
-      <div className="h-[130px] overflow-y-auto space-y-1.5 pr-1">
+      <div className="h-[120px] overflow-y-auto space-y-1 pr-1">
         {tasks.map((task) => (
-          <Card 
+          <div 
             key={task.id} 
-            className="p-2 cursor-pointer hover:bg-card/50 transition-all border border-slate-700/30 hover:border-primary/30 hover:shadow-[0_0_5px_var(--primary-glow-light)]"
+            className="p-1.5 rounded cursor-pointer bg-card/30 backdrop-blur-sm hover:bg-card/50 transition-all border-l-2 border-l-primary/30 hover:border-l-primary/70 shadow-sm"
             onClick={() => onTaskClick(task)}
           >
             <p className="text-xs font-medium truncate">{task.title}</p>
-            <div className="flex items-center mt-1.5 gap-1">
-              {task.priority === "high" && <Badge variant="destructive" className="text-[0.6rem] px-1 py-0">High</Badge>}
-              {task.tags.slice(0, 1).map((tag, i) => (
-                <Badge key={i} variant="outline" className="text-[0.6rem] px-1 py-0">{tag}</Badge>
-              ))}
-            </div>
-          </Card>
+            {task.priority === "high" && 
+              <div className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1"></div>
+            }
+          </div>
         ))}
         {tasks.length === 0 && (
-          <div className="h-full border border-dashed border-slate-700/30 rounded-lg flex items-center justify-center">
-            <p className="text-xs text-muted-foreground">No tasks</p>
+          <div className="h-full border-l-2 border-l-slate-700/30 rounded flex items-center justify-center p-1">
+            <p className="text-[10px] text-muted-foreground">Empty</p>
           </div>
         )}
       </div>
@@ -59,8 +56,8 @@ export function KanbanWidget() {
   };
 
   return (
-    <Card className="w-full border border-slate-700/30 p-0 overflow-hidden">
-      <CardHeader className="p-4 pb-2">
+    <Card className="w-full border-transparent shadow-md glassmorphic p-0 overflow-hidden">
+      <CardHeader className="p-3 pb-1">
         <div className="flex justify-between items-center">
           <CardTitle className="text-sm font-medium flex items-center">
             <Clipboard className="h-4 w-4 mr-2 text-primary" />
@@ -69,7 +66,7 @@ export function KanbanWidget() {
           <Button 
             variant="ghost" 
             size="sm" 
-            className="h-7 text-xs bg-primary/10 hover:bg-primary/20 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+            className="h-6 text-xs bg-primary/5 hover:bg-primary/10 text-primary hover:shadow-sm transition-shadow px-2"
             onClick={() => setLocation("/kanban")}
           >
             View All
@@ -77,8 +74,8 @@ export function KanbanWidget() {
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="p-4 pt-2">
-        <div className="grid grid-cols-4 gap-3">
+      <CardContent className="p-3 pt-0">
+        <div className="grid grid-cols-4 gap-2">
           <KanbanColumn
             title="Backlog"
             status="backlog"
