@@ -270,7 +270,7 @@ export default function KanbanBoardPage() {
               className="mt-4 flex items-center gap-2 text-primary border border-primary/50 px-4 py-2 rounded-md hover:bg-yellow-400 hover:text-black transition-all"
             >
               <ChevronLeft className="h-4 w-4" />
-              Back to Kanban Boards
+              Back to Boards
             </button>
           </CardContent>
         </Card>

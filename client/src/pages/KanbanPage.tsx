@@ -159,7 +159,7 @@ export default function KanbanPage() {
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
-            <h1 className="text-2xl font-bold">Kanban Boards</h1>
+            <h1 className="text-2xl font-bold">Boards</h1>
           </div>
           
           <Button 
@@ -185,7 +185,7 @@ export default function KanbanPage() {
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center p-10 border border-dashed border-slate-700/30 rounded-lg">
-            <p className="text-muted-foreground mb-4">You don't have any Kanban boards yet</p>
+            <p className="text-muted-foreground mb-4">You don't have any boards yet</p>
             <Button 
               onClick={() => setIsNewBoardDialogOpen(true)}
               className="bg-primary/10 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow hover:bg-yellow-400 hover:text-black"
@@ -203,7 +203,7 @@ export default function KanbanPage() {
           <DialogHeader>
             <DialogTitle>Create New Board</DialogTitle>
             <DialogDescription>
-              Create a new Kanban board to organize your tasks.
+              Create a new board to organize your tasks.
             </DialogDescription>
           </DialogHeader>
           
@@ -245,7 +245,7 @@ export default function KanbanPage() {
           <DialogHeader>
             <DialogTitle>Edit Board</DialogTitle>
             <DialogDescription>
-              Update your Kanban board details.
+              Update your board details.
             </DialogDescription>
           </DialogHeader>
           
