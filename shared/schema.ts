@@ -136,6 +136,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   contacts: many(contacts),
   spreadsheets: many(spreadsheets),
   templates: many(templates),
+  kanbanBoards: many(kanbanBoards),
 }));
 
 export const userStatsRelations = relations(userStats, ({ one }) => ({
@@ -477,3 +478,94 @@ export const insertTemplateSchema = createInsertSchema(templates).omit({
 
 export type Template = typeof templates.$inferSelect;
 export type InsertTemplate = z.infer<typeof insertTemplateSchema>;
+
+// Kanban Board table
+export const kanbanBoards = pgTable("kanban_boards", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  isDefault: boolean("is_default").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Kanban Column table
+export const kanbanColumns = pgTable("kanban_columns", {
+  id: serial("id").primaryKey(),
+  boardId: integer("board_id").notNull().references(() => kanbanBoards.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  status: text("status").notNull(), // unique identifier for the column
+  order: integer("order").notNull(), // position in the board
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Kanban Task table
+export const kanbanTasks = pgTable("kanban_tasks", {
+  id: serial("id").primaryKey(),
+  boardId: integer("board_id").notNull().references(() => kanbanBoards.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  status: text("status").notNull(), // Matches column status
+  priority: text("priority").notNull().default("medium"), // low, medium, high
+  startDate: text("start_date"),
+  dueDate: text("due_date"),
+  tags: text("tags").array(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Board relations
+export const kanbanBoardRelations = relations(kanbanBoards, ({ one, many }) => ({
+  user: one(users, {
+    fields: [kanbanBoards.userId],
+    references: [users.id],
+  }),
+  columns: many(kanbanColumns),
+  tasks: many(kanbanTasks),
+}));
+
+// Column relations
+export const kanbanColumnRelations = relations(kanbanColumns, ({ one }) => ({
+  board: one(kanbanBoards, {
+    fields: [kanbanColumns.boardId],
+    references: [kanbanBoards.id],
+  }),
+}));
+
+// Task relations
+export const kanbanTaskRelations = relations(kanbanTasks, ({ one }) => ({
+  board: one(kanbanBoards, {
+    fields: [kanbanTasks.boardId],
+    references: [kanbanBoards.id],
+  }),
+}));
+
+// Insert schemas
+export const insertKanbanBoardSchema = createInsertSchema(kanbanBoards).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertKanbanColumnSchema = createInsertSchema(kanbanColumns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertKanbanTaskSchema = createInsertSchema(kanbanTasks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type KanbanBoard = typeof kanbanBoards.$inferSelect;
+export type InsertKanbanBoard = z.infer<typeof insertKanbanBoardSchema>;
+
+export type KanbanColumn = typeof kanbanColumns.$inferSelect;
+export type InsertKanbanColumn = z.infer<typeof insertKanbanColumnSchema>;
+
+export type KanbanTask = typeof kanbanTasks.$inferSelect;
+export type InsertKanbanTask = z.infer<typeof insertKanbanTaskSchema>;

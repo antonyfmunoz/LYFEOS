@@ -11,7 +11,10 @@ import {
   graphs, type Graph, type InsertGraph,
   folders, type Folder, type InsertFolder,
   documents, type Document, type InsertDocument,
-  templates, type Template, type InsertTemplate
+  templates, type Template, type InsertTemplate,
+  kanbanBoards, type KanbanBoard, type InsertKanbanBoard,
+  kanbanColumns, type KanbanColumn, type InsertKanbanColumn,
+  kanbanTasks, type KanbanTask, type InsertKanbanTask
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -115,6 +118,28 @@ export interface IStorage {
   updateTemplate(id: number, template: Partial<InsertTemplate>): Promise<Template>;
   deleteTemplate(id: number): Promise<void>;
   toggleFavoriteTemplate(id: number): Promise<Template>;
+  
+  // Kanban Board methods
+  getKanbanBoards(userId: number): Promise<KanbanBoard[]>;
+  getKanbanBoard(id: number): Promise<KanbanBoard | undefined>;
+  getDefaultKanbanBoard(userId: number): Promise<KanbanBoard | undefined>;
+  createKanbanBoard(board: InsertKanbanBoard): Promise<KanbanBoard>;
+  updateKanbanBoard(id: number, board: Partial<InsertKanbanBoard>): Promise<KanbanBoard>;
+  deleteKanbanBoard(id: number): Promise<void>;
+  
+  // Kanban Column methods
+  getKanbanColumns(boardId: number): Promise<KanbanColumn[]>;
+  getKanbanColumn(id: number): Promise<KanbanColumn | undefined>;
+  createKanbanColumn(column: InsertKanbanColumn): Promise<KanbanColumn>;
+  updateKanbanColumn(id: number, column: Partial<InsertKanbanColumn>): Promise<KanbanColumn>;
+  deleteKanbanColumn(id: number): Promise<void>;
+  
+  // Kanban Task methods
+  getKanbanTasks(boardId: number): Promise<KanbanTask[]>;
+  getKanbanTask(id: number): Promise<KanbanTask | undefined>;
+  createKanbanTask(task: InsertKanbanTask): Promise<KanbanTask>;
+  updateKanbanTask(id: number, task: Partial<InsertKanbanTask>): Promise<KanbanTask>;
+  deleteKanbanTask(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -494,7 +519,7 @@ export class DatabaseStorage implements IStorage {
     
     return updatedCanvas;
   }
-  
+
   // Graph methods
   async getGraphs(userId: number): Promise<Graph[]> {
     return db.select().from(graphs).where(eq(graphs.userId, userId));
@@ -583,26 +608,6 @@ export class DatabaseStorage implements IStorage {
   }
   
   async deleteFolder(id: number): Promise<void> {
-    // First get all child folders recursively
-    const childFolders = await this.getAllChildFolders(id);
-    
-    // Get all documents in this folder and child folders
-    const folderIds = [id, ...childFolders.map(f => f.id)];
-    
-    // Delete all documents in these folders
-    for (const folderId of folderIds) {
-      const folderDocuments = await this.getDocumentsByFolder(folderId);
-      for (const doc of folderDocuments) {
-        await this.deleteDocument(doc.id);
-      }
-    }
-    
-    // Delete child folders (from leaf to root)
-    for (const folder of childFolders.reverse()) {
-      await db.delete(folders).where(eq(folders.id, folder.id));
-    }
-    
-    // Finally delete the folder itself
     await db.delete(folders).where(eq(folders.id, id));
   }
   
@@ -621,20 +626,7 @@ export class DatabaseStorage implements IStorage {
     
     return updatedFolder;
   }
-  
-  // Helper method to get all child folders recursively
-  private async getAllChildFolders(folderId: number): Promise<Folder[]> {
-    const directChildren = await this.getFolderChildren(folderId);
-    let allChildren: Folder[] = [...directChildren];
-    
-    for (const child of directChildren) {
-      const grandchildren = await this.getAllChildFolders(child.id);
-      allChildren = [...allChildren, ...grandchildren];
-    }
-    
-    return allChildren;
-  }
-  
+
   // Document methods
   async getDocuments(userId: number): Promise<Document[]> {
     return db.select().from(documents).where(eq(documents.userId, userId));
@@ -692,8 +684,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getTemplatesByCategory(userId: number, category: string): Promise<Template[]> {
-    return db
-      .select()
+    return db.select()
       .from(templates)
       .where(and(
         eq(templates.userId, userId),
@@ -729,17 +720,194 @@ export class DatabaseStorage implements IStorage {
   
   async toggleFavoriteTemplate(id: number): Promise<Template> {
     const template = await this.getTemplate(id);
-    if (!template) {
-      throw new Error("Template not found");
-    }
+    if (!template) throw new Error("Template not found");
     
     const [updatedTemplate] = await db
       .update(templates)
-      .set({ favorite: !template.favorite, updatedAt: new Date() })
+      .set({ 
+        favorite: !template.favorite,
+        updatedAt: new Date()
+      })
       .where(eq(templates.id, id))
       .returning();
     
     return updatedTemplate;
+  }
+
+  // Kanban Board methods
+  async getKanbanBoards(userId: number): Promise<KanbanBoard[]> {
+    return db.select().from(kanbanBoards).where(eq(kanbanBoards.userId, userId));
+  }
+  
+  async getKanbanBoard(id: number): Promise<KanbanBoard | undefined> {
+    const [board] = await db.select().from(kanbanBoards).where(eq(kanbanBoards.id, id));
+    return board;
+  }
+  
+  async getDefaultKanbanBoard(userId: number): Promise<KanbanBoard | undefined> {
+    const [board] = await db.select()
+      .from(kanbanBoards)
+      .where(and(
+        eq(kanbanBoards.userId, userId),
+        eq(kanbanBoards.isDefault, true)
+      ));
+    return board;
+  }
+  
+  async createKanbanBoard(board: InsertKanbanBoard): Promise<KanbanBoard> {
+    // If this is the first board or it's marked as default, ensure it's the only default
+    if (board.isDefault) {
+      // Remove default status from all other boards for this user
+      await db.update(kanbanBoards)
+        .set({ isDefault: false })
+        .where(and(
+          eq(kanbanBoards.userId, board.userId),
+          eq(kanbanBoards.isDefault, true)
+        ));
+    }
+    
+    // If this is the first board for the user, make it default regardless
+    const existingBoards = await this.getKanbanBoards(board.userId);
+    if (existingBoards.length === 0) {
+      board.isDefault = true;
+    }
+    
+    const [newBoard] = await db
+      .insert(kanbanBoards)
+      .values(board)
+      .returning();
+    
+    // Create default columns for the new board
+    const defaultColumns = [
+      { boardId: newBoard.id, title: "Backlog", status: "backlog", order: 0 },
+      { boardId: newBoard.id, title: "In Progress", status: "inProgress", order: 1 },
+      { boardId: newBoard.id, title: "Review", status: "review", order: 2 },
+      { boardId: newBoard.id, title: "Done", status: "done", order: 3 }
+    ];
+    
+    for (const column of defaultColumns) {
+      await this.createKanbanColumn(column);
+    }
+    
+    return newBoard;
+  }
+  
+  async updateKanbanBoard(id: number, boardUpdate: Partial<InsertKanbanBoard>): Promise<KanbanBoard> {
+    // If setting as default, ensure it's the only default for this user
+    if (boardUpdate.isDefault) {
+      const board = await this.getKanbanBoard(id);
+      if (board) {
+        await db.update(kanbanBoards)
+          .set({ isDefault: false })
+          .where(and(
+            eq(kanbanBoards.userId, board.userId),
+            eq(kanbanBoards.isDefault, true)
+          ));
+      }
+    }
+    
+    const [updatedBoard] = await db
+      .update(kanbanBoards)
+      .set({ ...boardUpdate, updatedAt: new Date() })
+      .where(eq(kanbanBoards.id, id))
+      .returning();
+    return updatedBoard;
+  }
+  
+  async deleteKanbanBoard(id: number): Promise<void> {
+    // Get the board to check if it's the default
+    const board = await this.getKanbanBoard(id);
+    
+    // Delete the board (cascade will handle columns and tasks)
+    await db.delete(kanbanBoards).where(eq(kanbanBoards.id, id));
+    
+    // If this was the default board, set a new default if there are any remaining boards
+    if (board && board.isDefault) {
+      const remainingBoards = await this.getKanbanBoards(board.userId);
+      if (remainingBoards.length > 0) {
+        await this.updateKanbanBoard(remainingBoards[0].id, { isDefault: true });
+      }
+    }
+  }
+  
+  // Kanban Column methods
+  async getKanbanColumns(boardId: number): Promise<KanbanColumn[]> {
+    return db.select()
+      .from(kanbanColumns)
+      .where(eq(kanbanColumns.boardId, boardId))
+      .orderBy(kanbanColumns.order);
+  }
+  
+  async getKanbanColumn(id: number): Promise<KanbanColumn | undefined> {
+    const [column] = await db.select().from(kanbanColumns).where(eq(kanbanColumns.id, id));
+    return column;
+  }
+  
+  async createKanbanColumn(column: InsertKanbanColumn): Promise<KanbanColumn> {
+    const [newColumn] = await db
+      .insert(kanbanColumns)
+      .values(column)
+      .returning();
+    return newColumn;
+  }
+  
+  async updateKanbanColumn(id: number, columnUpdate: Partial<InsertKanbanColumn>): Promise<KanbanColumn> {
+    const [updatedColumn] = await db
+      .update(kanbanColumns)
+      .set({ ...columnUpdate, updatedAt: new Date() })
+      .where(eq(kanbanColumns.id, id))
+      .returning();
+    return updatedColumn;
+  }
+  
+  async deleteKanbanColumn(id: number): Promise<void> {
+    // First, get the column to get its board ID and order
+    const column = await this.getKanbanColumn(id);
+    if (!column) return;
+    
+    // Delete the column
+    await db.delete(kanbanColumns).where(eq(kanbanColumns.id, id));
+    
+    // Reorder remaining columns
+    const remainingColumns = await this.getKanbanColumns(column.boardId);
+    for (let i = 0; i < remainingColumns.length; i++) {
+      if (remainingColumns[i].order !== i) {
+        await this.updateKanbanColumn(remainingColumns[i].id, { order: i });
+      }
+    }
+  }
+  
+  // Kanban Task methods
+  async getKanbanTasks(boardId: number): Promise<KanbanTask[]> {
+    return db.select()
+      .from(kanbanTasks)
+      .where(eq(kanbanTasks.boardId, boardId));
+  }
+  
+  async getKanbanTask(id: number): Promise<KanbanTask | undefined> {
+    const [task] = await db.select().from(kanbanTasks).where(eq(kanbanTasks.id, id));
+    return task;
+  }
+  
+  async createKanbanTask(task: InsertKanbanTask): Promise<KanbanTask> {
+    const [newTask] = await db
+      .insert(kanbanTasks)
+      .values(task)
+      .returning();
+    return newTask;
+  }
+  
+  async updateKanbanTask(id: number, taskUpdate: Partial<InsertKanbanTask>): Promise<KanbanTask> {
+    const [updatedTask] = await db
+      .update(kanbanTasks)
+      .set({ ...taskUpdate, updatedAt: new Date() })
+      .where(eq(kanbanTasks.id, id))
+      .returning();
+    return updatedTask;
+  }
+  
+  async deleteKanbanTask(id: number): Promise<void> {
+    await db.delete(kanbanTasks).where(eq(kanbanTasks.id, id));
   }
 }
 
