@@ -190,16 +190,18 @@ function KanbanColumn({
           >
             <Plus className="h-3 w-3" />
           </Button>
-          {columnId !== "default" && (
-            <Button 
-              size="icon" 
-              variant="ghost" 
-              className="h-6 w-6 text-red-500 hover:bg-red-500 hover:text-white"
-              onClick={() => onDeleteColumn(columnId)}
-            >
-              <X className="h-3 w-3" />
-            </Button>
-          )}
+          <Button 
+            size="icon" 
+            variant="ghost" 
+            className="h-6 w-6 text-red-500 hover:bg-red-500 hover:text-white"
+            onClick={() => {
+              if (window.confirm(`Are you sure you want to delete the "${title}" column? All tasks in this column will be lost.`)) {
+                onDeleteColumn(columnId);
+              }
+            }}
+          >
+            <X className="h-3 w-3" />
+          </Button>
         </div>
       </div>
       <div className="space-y-2">
@@ -243,6 +245,7 @@ export default function KanbanBoardPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = useState(false);
   const [isEditTaskDialogOpen, setIsEditTaskDialogOpen] = useState(false);
+  const [isAddColumnDialogOpen, setIsAddColumnDialogOpen] = useState(false);
   
   const [activeTaskId, setActiveTaskId] = useState('');
   const [taskStatus, setTaskStatus] = useState<KanbanStatus>('backlog');
@@ -252,6 +255,11 @@ export default function KanbanBoardPage() {
     description: '',
     priority: 'medium',
     tags: '',
+  });
+  
+  const [columnFormData, setColumnFormData] = useState({
+    title: '',
+    status: '',
   });
 
   // Find the active board
@@ -390,14 +398,63 @@ export default function KanbanBoardPage() {
     navigate('/kanban');
   };
 
-  const handleEditColumnTitle = () => {
-    // This is a placeholder function for the column component
-    // We're not implementing column editing in this version
+  const handleAddColumn = () => {
+    if (!boardId) return;
+    
+    // Validate inputs
+    if (!columnFormData.title || !columnFormData.status) {
+      toast({
+        title: "Validation Error",
+        description: "Column title and status are required",
+        variant: "destructive",
+        duration: 3000,
+      });
+      return;
+    }
+    
+    // Add the new column
+    try {
+      addKanbanColumn(boardId, {
+        title: columnFormData.title,
+        status: columnFormData.status as KanbanStatus
+      });
+      
+      // Reset form and close dialog
+      setColumnFormData({ title: '', status: '' });
+      setIsAddColumnDialogOpen(false);
+      
+      toast({
+        title: "Column Added",
+        description: `"${columnFormData.title}" column has been added`,
+        className: "bg-background/80 border border-primary text-foreground",
+        duration: 3000,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add column. " + (error instanceof Error ? error.message : "Unknown error"),
+        variant: "destructive",
+        duration: 5000,
+      });
+    }
   };
 
-  const handleDeleteColumn = () => {
-    // This is a placeholder function for the column component
-    // We're not implementing column deletion in this version
+  const handleEditColumnTitle = (columnId: string, newTitle: string) => {
+    if (!newTitle.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Column title cannot be empty",
+        variant: "destructive",
+        duration: 3000,
+      });
+      return;
+    }
+    
+    updateKanbanColumn(columnId, { title: newTitle });
+  };
+
+  const handleDeleteColumn = (columnId: string) => {
+    deleteKanbanColumn(columnId);
   };
 
   return (
@@ -450,64 +507,33 @@ export default function KanbanBoardPage() {
 
       <div className="overflow-x-auto pb-4">
         <div className="flex gap-4 min-w-max">
-          <div className="min-w-[280px] max-w-[320px] border border-slate-700/30 rounded-lg bg-card/30 p-3">
-            <KanbanColumn
-              columnId="backlog"
-              title="Backlog"
-              status="backlog"
-              tasks={getTasksByStatus('backlog')}
-              onEditTask={openEditDialog}
-              onDeleteTask={deleteKanbanTask}
-              onMoveTask={handleMoveTask}
-              onEditTitle={handleEditColumnTitle}
-              onDeleteColumn={handleDeleteColumn}
-              onAddTask={handleAddTask}
-            />
-          </div>
+          {activeBoard && activeBoard.columns.map(column => (
+            <div key={column.id} className="min-w-[280px] max-w-[320px] border border-slate-700/30 rounded-lg bg-card/30 p-3">
+              <KanbanColumn
+                columnId={column.id}
+                title={column.title}
+                status={column.status}
+                tasks={getTasksByStatus(column.status)}
+                onEditTask={openEditDialog}
+                onDeleteTask={deleteKanbanTask}
+                onMoveTask={handleMoveTask}
+                onEditTitle={handleEditColumnTitle}
+                onDeleteColumn={handleDeleteColumn}
+                onAddTask={handleAddTask}
+              />
+            </div>
+          ))}
           
-          <div className="min-w-[280px] max-w-[320px] border border-slate-700/30 rounded-lg bg-card/30 p-3">
-            <KanbanColumn
-              columnId="inProgress"
-              title="In Progress"
-              status="inProgress"
-              tasks={getTasksByStatus('inProgress')}
-              onEditTask={openEditDialog}
-              onDeleteTask={deleteKanbanTask}
-              onMoveTask={handleMoveTask}
-              onEditTitle={handleEditColumnTitle}
-              onDeleteColumn={handleDeleteColumn}
-              onAddTask={handleAddTask}
-            />
-          </div>
-          
-          <div className="min-w-[280px] max-w-[320px] border border-slate-700/30 rounded-lg bg-card/30 p-3">
-            <KanbanColumn
-              columnId="review"
-              title="Review"
-              status="review"
-              tasks={getTasksByStatus('review')}
-              onEditTask={openEditDialog}
-              onDeleteTask={deleteKanbanTask}
-              onMoveTask={handleMoveTask}
-              onEditTitle={handleEditColumnTitle}
-              onDeleteColumn={handleDeleteColumn}
-              onAddTask={handleAddTask}
-            />
-          </div>
-          
-          <div className="min-w-[280px] max-w-[320px] border border-slate-700/30 rounded-lg bg-card/30 p-3">
-            <KanbanColumn
-              columnId="done"
-              title="Done"
-              status="done"
-              tasks={getTasksByStatus('done')}
-              onEditTask={openEditDialog}
-              onDeleteTask={deleteKanbanTask}
-              onMoveTask={handleMoveTask}
-              onEditTitle={handleEditColumnTitle}
-              onDeleteColumn={handleDeleteColumn}
-              onAddTask={handleAddTask}
-            />
+          {/* Add new column button */}
+          <div className="min-w-[100px] h-full flex items-center">
+            <Button 
+              variant="outline"
+              className="border-dashed border-slate-700/50 p-6 h-[100px] hover:bg-yellow-400 hover:text-black transition-colors"
+              onClick={() => setIsAddColumnDialogOpen(true)}
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Add Column
+            </Button>
           </div>
         </div>
       </div>
@@ -686,6 +712,50 @@ export default function KanbanBoardPage() {
               Cancel
             </Button>
             <Button onClick={handleEditBoard}>Update Board</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Add Column Dialog */}
+      <Dialog open={isAddColumnDialogOpen} onOpenChange={setIsAddColumnDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Column</DialogTitle>
+            <DialogDescription>
+              Create a new column for your board.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="column-title">Title</label>
+              <Input
+                id="column-title"
+                value={columnFormData.title}
+                onChange={(e) => setColumnFormData({...columnFormData, title: e.target.value})}
+                placeholder="Column title"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label htmlFor="column-status">Status ID</label>
+              <Input
+                id="column-status"
+                value={columnFormData.status}
+                onChange={(e) => setColumnFormData({...columnFormData, status: e.target.value.toLowerCase().replace(/\s+/g, '')})}
+                placeholder="E.g. todo, inreview, inprogress"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                This will be used as the column's unique identifier. Use lowercase letters without spaces.
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddColumnDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddColumn}>Add Column</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
