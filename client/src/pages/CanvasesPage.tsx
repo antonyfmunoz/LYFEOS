@@ -146,7 +146,12 @@ export default function CanvasesPage() {
   return (
     <div className="container mx-auto py-6">
       <div className="flex items-center mb-6">
-        <Button variant="ghost" size="icon" className="mr-2" onClick={() => navigate("/systems")}>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="mr-2 hover:bg-yellow-400 hover:text-black" 
+          onClick={() => navigate("/systems")}
+        >
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <div>
@@ -166,7 +171,11 @@ export default function CanvasesPage() {
           />
         </div>
         
-        <Button variant="default" onClick={() => navigate("/canvases/new")}>
+        <Button 
+          variant="default" 
+          onClick={() => navigate("/canvases/new")}
+          className="hover:bg-yellow-400 hover:text-black"
+        >
           <Plus className="h-4 w-4 mr-2" />
           New Canvas
         </Button>
@@ -211,7 +220,11 @@ export default function CanvasesPage() {
       ) : isError ? (
         <div className="text-center py-10">
           <div className="text-destructive">Error loading canvases</div>
-          <Button variant="outline" className="mt-2" onClick={() => refetch()}>
+          <Button 
+            variant="outline" 
+            className="mt-2 hover:bg-yellow-400 hover:text-black" 
+            onClick={() => refetch()}
+          >
             Retry
           </Button>
         </div>
@@ -225,7 +238,11 @@ export default function CanvasesPage() {
               : "Create your first canvas to get started"
             }
           </p>
-          <Button variant="default" onClick={() => navigate("/canvases/new")}>
+          <Button 
+            variant="default" 
+            onClick={() => navigate("/canvases/new")}
+            className="hover:bg-yellow-400 hover:text-black"
+          >
             <Plus className="h-4 w-4 mr-2" />
             New Canvas
           </Button>
@@ -259,7 +276,7 @@ export default function CanvasesPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
+                      className="h-7 w-7 hover:bg-yellow-400 hover:text-black"
                       onClick={(e) => toggleFavorite(canvas.id, e)}
                     >
                       <Star className={`h-4 w-4 ${canvas.favorite ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground"}`} />
@@ -267,7 +284,7 @@ export default function CanvasesPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 text-destructive"
+                      className="h-7 w-7 text-destructive hover:bg-yellow-400 hover:text-black"
                       onClick={(e) => deleteCanvas(canvas.id, e)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -297,10 +314,18 @@ export default function CanvasesPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+            <Button 
+              variant="outline" 
+              onClick={() => setDeleteDialogOpen(false)}
+              className="hover:bg-yellow-400 hover:text-black"
+            >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={confirmDelete}>
+            <Button 
+              variant="destructive" 
+              onClick={confirmDelete}
+              className="hover:bg-yellow-400 hover:text-black"
+            >
               Delete
             </Button>
           </DialogFooter>
