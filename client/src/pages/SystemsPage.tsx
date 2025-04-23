@@ -1,5 +1,5 @@
 import { CollapsibleWidget } from "@/components/ui/collapsible-widget";
-import { Calendar, Clipboard, Contact2, FileSpreadsheet, Paintbrush, Network, FileText, FileCheck } from "lucide-react";
+import { Calendar, Clipboard, Contact2, FileSpreadsheet, Paintbrush, Network, FileText, FileCheck, ChevronRight } from "lucide-react";
 import { Link } from "wouter";
 import { KanbanWidget } from "@/components/ui/kanban-widget";
 import { RolodexWidget } from "@/components/ui/rolodex-widget";
@@ -27,7 +27,8 @@ export default function SystemsPage() {
           <div className="flex justify-start items-center mb-3">
             <Link to="/calendar" className="px-4 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium rounded-md transition-colors duration-200 flex items-center hover:shadow-[0_0_5px_var(--primary-glow-light)] border border-primary/50">
               <Calendar className="h-3.5 w-3.5 mr-1.5" />
-              Go to Calendar
+              View Calendar
+              <ChevronRight className="ml-1 h-3 w-3" />
             </Link>
           </div>
           
