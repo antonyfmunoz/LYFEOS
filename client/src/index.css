@@ -147,7 +147,7 @@
   
   /* Glassmorphic effect */
   .glassmorphic {
-    @apply bg-card/70 backdrop-blur-md border border-primary/20;
+    @apply bg-card/70 backdrop-blur-md border border-transparent shadow-md;
   }
   
 /* Light theme text color overrides */

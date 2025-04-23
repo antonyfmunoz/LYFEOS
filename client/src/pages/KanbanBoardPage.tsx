@@ -136,7 +136,7 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
       ref={drag} 
       className={`${isDragging ? 'opacity-50' : 'opacity-100'} cursor-move`}
     >
-      <Card className="mb-2 shadow-sm glassmorphic rounded-lg">
+      <Card className="mb-2 shadow-sm glassmorphic rounded-lg border-none">
         <CardHeader className="p-3 pb-0 flex flex-row justify-between items-start">
           <div className="flex items-center">
             <GripVertical className="h-4 w-4 mr-2 cursor-move text-muted-foreground" />
@@ -347,7 +347,7 @@ function KanbanColumn({
   return (
     <div 
       ref={drop} 
-      className={`glassmorphic neon-border rounded-xl p-4 w-72 flex-shrink-0 flex flex-col
+      className={`glassmorphic rounded-xl p-4 w-72 flex-shrink-0 flex flex-col
         ${isOver && canDrop ? 'ring-2 ring-yellow-400 bg-yellow-50 dark:bg-yellow-900/10' : ''}
         ${isDragging ? 'opacity-50' : 'opacity-100'}
       `}
