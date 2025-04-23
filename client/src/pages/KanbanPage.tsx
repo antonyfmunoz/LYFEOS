@@ -217,7 +217,7 @@ function KanbanColumn({
         
         <Button
           variant="ghost"
-          className="w-full h-10 border border-dashed border-slate-700/30 text-muted-foreground text-sm hover:border-primary/50 hover:text-primary"
+          className="w-full h-10 border border-dashed border-slate-700/30 text-muted-foreground text-sm hover:border-primary/50 hover:text-primary hover:bg-yellow-400 hover:text-black"
           onClick={() => onAddTask(status)}
         >
           <Plus className="h-3.5 w-3.5 mr-2" />
@@ -449,7 +449,7 @@ export default function KanbanPage() {
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-8 w-8 mr-1" 
+            className="h-8 w-8 mr-1 hover:bg-yellow-400 hover:text-black" 
             onClick={() => navigate('/systems')}
             aria-label="Back to systems"
           >
@@ -498,7 +498,13 @@ export default function KanbanPage() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsNewColumnDialogOpen(false)}>Cancel</Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsNewColumnDialogOpen(false)}
+                  className="hover:bg-yellow-400 hover:text-black"
+                >
+                  Cancel
+                </Button>
                 <Button 
                   onClick={handleCreateColumn}
                   className="hover:bg-yellow-400 hover:text-black"
@@ -602,7 +608,13 @@ export default function KanbanPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsNewTaskDialogOpen(false)}>Cancel</Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsNewTaskDialogOpen(false)}
+                className="hover:bg-yellow-400 hover:text-black"
+              >
+                Cancel
+              </Button>
               <Button 
                 onClick={handleCreateTask}
                 className="hover:bg-yellow-400 hover:text-black"
@@ -716,7 +728,13 @@ export default function KanbanPage() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsEditTaskDialogOpen(false)}>Cancel</Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsEditTaskDialogOpen(false)}
+                  className="hover:bg-yellow-400 hover:text-black"
+                >
+                  Cancel
+                </Button>
                 <Button 
                   onClick={handleEditTask}
                   className="hover:bg-yellow-400 hover:text-black"
