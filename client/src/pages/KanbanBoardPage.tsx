@@ -36,6 +36,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useLYFEOS } from '@/lib/context';
 import { KanbanStatus, KanbanTask } from '@/lib/types';
 
@@ -576,16 +583,22 @@ export default function KanbanBoardPage() {
             
             <div className="space-y-2">
               <label htmlFor="priority">Priority</label>
-              <select
-                id="priority"
-                value={formData.priority}
-                onChange={(e) => setFormData({...formData, priority: e.target.value})}
-                className="w-full p-2 border rounded-md"
+              <Select 
+                value={formData.priority} 
+                onValueChange={(value) => setFormData({...formData, priority: value})}
               >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
+                <SelectTrigger 
+                  id="priority"
+                  className="w-full hover:bg-yellow-400 hover:text-black focus:ring-yellow-400"
+                >
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             
             <div className="space-y-2">
@@ -642,16 +655,22 @@ export default function KanbanBoardPage() {
             
             <div className="space-y-2">
               <label htmlFor="edit-priority">Priority</label>
-              <select
-                id="edit-priority"
-                value={formData.priority}
-                onChange={(e) => setFormData({...formData, priority: e.target.value})}
-                className="w-full p-2 border rounded-md"
+              <Select 
+                value={formData.priority} 
+                onValueChange={(value) => setFormData({...formData, priority: value})}
               >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
+                <SelectTrigger 
+                  id="edit-priority"
+                  className="w-full hover:bg-yellow-400 hover:text-black focus:ring-yellow-400"
+                >
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             
             <div className="space-y-2">
