@@ -60,16 +60,26 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
         <CardTitle className="text-sm font-medium">{task.title}</CardTitle>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-7 w-7 hover:bg-yellow-400 hover:text-black"
+            >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onEdit(task)}>
+            <DropdownMenuItem 
+              onClick={() => onEdit(task)}
+              className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black"
+            >
               <Edit className="h-4 w-4 mr-2" />
               Edit
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onDelete(task.id)} className="text-red-500">
+            <DropdownMenuItem 
+              onClick={() => onDelete(task.id)} 
+              className="text-red-500 hover:bg-red-500 hover:text-white focus:bg-red-500 focus:text-white"
+            >
               <Trash className="h-4 w-4 mr-2" />
               Delete
             </DropdownMenuItem>
@@ -88,7 +98,7 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
             <Button 
               size="sm" 
               variant="ghost" 
-              className="h-6 px-2 text-xs"
+              className="h-6 px-2 text-xs hover:bg-yellow-400 hover:text-black"
               onClick={() => onMoveRight(task.id, task.status)}
             >
               Move <ChevronRight className="h-3 w-3 ml-1" />
@@ -172,14 +182,19 @@ function KanbanColumn({
           </h3>
         )}
         <div className="flex gap-1">
-          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => onAddTask(status)}>
+          <Button 
+            size="icon" 
+            variant="ghost" 
+            className="h-6 w-6 hover:bg-yellow-400 hover:text-black" 
+            onClick={() => onAddTask(status)}
+          >
             <Plus className="h-3 w-3" />
           </Button>
           {columnId !== "default" && (
             <Button 
               size="icon" 
               variant="ghost" 
-              className="h-6 w-6 text-red-500"
+              className="h-6 w-6 text-red-500 hover:bg-red-500 hover:text-white"
               onClick={() => onDeleteColumn(columnId)}
             >
               <X className="h-3 w-3" />
