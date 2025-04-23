@@ -8,7 +8,9 @@ import {
   contacts, type Contact, type InsertContact,
   spreadsheets, type Spreadsheet, type InsertSpreadsheet,
   canvases, type Canvas, type InsertCanvas,
-  graphs, type Graph, type InsertGraph
+  graphs, type Graph, type InsertGraph,
+  folders, type Folder, type InsertFolder,
+  documents, type Document, type InsertDocument
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -85,6 +87,24 @@ export interface IStorage {
   updateGraph(id: number, graph: Partial<InsertGraph>): Promise<Graph>;
   deleteGraph(id: number): Promise<void>;
   toggleFavoriteGraph(id: number): Promise<Graph>;
+  
+  // Folder methods
+  getFolders(userId: number): Promise<Folder[]>;
+  getFolder(id: number): Promise<Folder | undefined>;
+  getFolderChildren(folderId: number): Promise<Folder[]>;
+  createFolder(folder: InsertFolder): Promise<Folder>;
+  updateFolder(id: number, folder: Partial<InsertFolder>): Promise<Folder>;
+  deleteFolder(id: number): Promise<void>;
+  toggleFavoriteFolder(id: number): Promise<Folder>;
+  
+  // Document methods
+  getDocuments(userId: number): Promise<Document[]>;
+  getDocumentsByFolder(folderId: number): Promise<Document[]>;
+  getDocument(id: number): Promise<Document | undefined>;
+  createDocument(document: InsertDocument): Promise<Document>;
+  updateDocument(id: number, document: Partial<InsertDocument>): Promise<Document>;
+  deleteDocument(id: number): Promise<void>;
+  toggleFavoriteDocument(id: number): Promise<Document>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -519,6 +539,141 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return updatedGraph;
+  }
+
+  // Folder methods
+  async getFolders(userId: number): Promise<Folder[]> {
+    return db.select().from(folders).where(eq(folders.userId, userId));
+  }
+  
+  async getFolder(id: number): Promise<Folder | undefined> {
+    const [folder] = await db.select().from(folders).where(eq(folders.id, id));
+    return folder;
+  }
+  
+  async getFolderChildren(folderId: number): Promise<Folder[]> {
+    return db.select().from(folders).where(eq(folders.parentId, folderId));
+  }
+  
+  async createFolder(folder: InsertFolder): Promise<Folder> {
+    const [newFolder] = await db
+      .insert(folders)
+      .values(folder)
+      .returning();
+    return newFolder;
+  }
+  
+  async updateFolder(id: number, folderUpdate: Partial<InsertFolder>): Promise<Folder> {
+    const [updatedFolder] = await db
+      .update(folders)
+      .set({ ...folderUpdate, updatedAt: new Date() })
+      .where(eq(folders.id, id))
+      .returning();
+    return updatedFolder;
+  }
+  
+  async deleteFolder(id: number): Promise<void> {
+    // First get all child folders recursively
+    const childFolders = await this.getAllChildFolders(id);
+    
+    // Get all documents in this folder and child folders
+    const folderIds = [id, ...childFolders.map(f => f.id)];
+    
+    // Delete all documents in these folders
+    for (const folderId of folderIds) {
+      const folderDocuments = await this.getDocumentsByFolder(folderId);
+      for (const doc of folderDocuments) {
+        await this.deleteDocument(doc.id);
+      }
+    }
+    
+    // Delete child folders (from leaf to root)
+    for (const folder of childFolders.reverse()) {
+      await db.delete(folders).where(eq(folders.id, folder.id));
+    }
+    
+    // Finally delete the folder itself
+    await db.delete(folders).where(eq(folders.id, id));
+  }
+  
+  async toggleFavoriteFolder(id: number): Promise<Folder> {
+    const folder = await this.getFolder(id);
+    if (!folder) throw new Error("Folder not found");
+    
+    const [updatedFolder] = await db
+      .update(folders)
+      .set({ 
+        favorite: !folder.favorite,
+        updatedAt: new Date()
+      })
+      .where(eq(folders.id, id))
+      .returning();
+    
+    return updatedFolder;
+  }
+  
+  // Helper method to get all child folders recursively
+  private async getAllChildFolders(folderId: number): Promise<Folder[]> {
+    const directChildren = await this.getFolderChildren(folderId);
+    let allChildren: Folder[] = [...directChildren];
+    
+    for (const child of directChildren) {
+      const grandchildren = await this.getAllChildFolders(child.id);
+      allChildren = [...allChildren, ...grandchildren];
+    }
+    
+    return allChildren;
+  }
+  
+  // Document methods
+  async getDocuments(userId: number): Promise<Document[]> {
+    return db.select().from(documents).where(eq(documents.userId, userId));
+  }
+  
+  async getDocumentsByFolder(folderId: number): Promise<Document[]> {
+    return db.select().from(documents).where(eq(documents.folderId, folderId));
+  }
+  
+  async getDocument(id: number): Promise<Document | undefined> {
+    const [document] = await db.select().from(documents).where(eq(documents.id, id));
+    return document;
+  }
+  
+  async createDocument(document: InsertDocument): Promise<Document> {
+    const [newDocument] = await db
+      .insert(documents)
+      .values(document)
+      .returning();
+    return newDocument;
+  }
+  
+  async updateDocument(id: number, documentUpdate: Partial<InsertDocument>): Promise<Document> {
+    const [updatedDocument] = await db
+      .update(documents)
+      .set({ ...documentUpdate, updatedAt: new Date() })
+      .where(eq(documents.id, id))
+      .returning();
+    return updatedDocument;
+  }
+  
+  async deleteDocument(id: number): Promise<void> {
+    await db.delete(documents).where(eq(documents.id, id));
+  }
+  
+  async toggleFavoriteDocument(id: number): Promise<Document> {
+    const document = await this.getDocument(id);
+    if (!document) throw new Error("Document not found");
+    
+    const [updatedDocument] = await db
+      .update(documents)
+      .set({ 
+        favorite: !document.favorite,
+        updatedAt: new Date()
+      })
+      .where(eq(documents.id, id))
+      .returning();
+    
+    return updatedDocument;
   }
 }
 
