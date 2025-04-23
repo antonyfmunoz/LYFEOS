@@ -152,7 +152,11 @@ export default function GraphNewPage() {
           <Button variant="outline" onClick={() => navigate("/graphs")}>
             Cancel
           </Button>
-          <Button onClick={createGraph} disabled={createMutation.isPending}>
+          <Button 
+            onClick={createGraph} 
+            disabled={createMutation.isPending}
+            className="hover:bg-yellow-400 hover:text-black"
+          >
             {createMutation.isPending ? "Creating..." : "Create Graph"}
           </Button>
         </div>

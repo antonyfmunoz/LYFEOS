@@ -204,7 +204,10 @@ export function ContactsPage() {
           </Button>
           <h1 className="text-2xl font-bold">Contacts</h1>
         </div>
-        <Button onClick={() => navigate('/contacts/new')}>
+        <Button 
+          onClick={() => navigate('/contacts/new')}
+          className="hover:bg-yellow-400 hover:text-black"
+        >
           <Plus className="mr-2 h-4 w-4" /> New Contact
         </Button>
       </div>

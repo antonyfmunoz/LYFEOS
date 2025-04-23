@@ -149,7 +149,11 @@ export default function CanvasNewPage() {
           <Button variant="outline" onClick={() => navigate("/canvases")}>
             Cancel
           </Button>
-          <Button onClick={createCanvas} disabled={createMutation.isPending}>
+          <Button 
+            onClick={createCanvas} 
+            disabled={createMutation.isPending}
+            className="hover:bg-yellow-400 hover:text-black"
+          >
             {createMutation.isPending ? "Creating..." : "Create Canvas"}
           </Button>
         </div>
