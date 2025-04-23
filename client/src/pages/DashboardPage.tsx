@@ -10,6 +10,8 @@ import { CustomTimePicker } from "@/components/ui/custom-time-picker";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { useWidgets } from "@/hooks/use-widgets";
 import { DraggableWidget } from "@/components/ui/draggable-widget";
+import StatWidget from "../components/dashboard/StatWidget";
+import ExperienceBar from "../components/dashboard/ExperienceBar";
 
 import {
   Brain,
@@ -224,49 +226,34 @@ export default function DashboardPage() {
 
   return (
       <div className="dashboard-container">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-orbitron mb-1">Daily Log</h1>
-            <p className="text-[#7DAAB2]">
-              {formattedDate} <span className="mx-2">•</span> {formattedTime}
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="hover:bg-yellow-400 hover:text-black transition-colors"
-              onClick={handleReset}
-            >
-              <RotateCcw className="h-4 w-4 mr-2" />
-              Reset Layout
-            </Button>
-            <div className="compact-stats flex items-center gap-4">
-              <div className="level-indicator flex items-center bg-primary/10 rounded-full px-3 py-1">
-                <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center mr-2">
-                  <Calendar className="h-3 w-3 text-background" />
-                </div>
-                <span className="text-xs font-semibold">Lv.{stats?.experience?.level || 1}</span>
+        {/* Date Header - Cinematic HUD Style */}
+        <section className="mb-6">
+          <div className="glassmorphic rounded-xl p-3 neon-border">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+              <div className="flex items-center">
+                <CalendarDays className="h-5 w-5 text-primary mr-2" />
+                <h1 className="text-xl sm:text-2xl font-orbitron text-[#D6F4FF]">{formattedDate}</h1>
               </div>
-              
-              <div className="streak-days flex items-center bg-primary/10 rounded-full px-3 py-1">
-                <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center mr-2">
-                  <Calendar className="h-3 w-3 text-background" />
+              <div className="flex items-center gap-4 mt-2 sm:mt-0">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="hover:bg-yellow-400 hover:text-black transition-colors"
+                  onClick={handleReset}
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Reset Layout
+                </Button>
+                <div className="flex items-center">
+                  <Clock className="h-4 w-4 text-[#7DAAB2] mr-2" />
+                  <span className="text-[#7DAAB2] font-mono">{formattedTime}</span>
                 </div>
-                <span className="text-xs font-semibold">{stats?.streakDays || 0} Days</span>
-              </div>
-              
-              <div className="efficiency-score flex items-center bg-primary/10 rounded-full px-3 py-1">
-                <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center mr-2">
-                  <BarChart className="h-3 w-3 text-background" />
-                </div>
-                <span className="text-xs font-semibold">{stats?.efficiencyScore || 0}% Eff.</span>
               </div>
             </div>
           </div>
-        </div>
+        </section>
         
-        {/* Main Dashboard Content - Original UI with Draggable Widgets */}
+        {/* Stats and Progress Section (Wrapped in DraggableWidget) */}
         <div className="space-y-6">
           {/* Stats Widget */}
           <DraggableWidget 
