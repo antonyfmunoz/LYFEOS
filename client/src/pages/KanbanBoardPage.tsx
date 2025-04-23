@@ -266,6 +266,8 @@ export default function KanbanBoardPage() {
     description: '',
     priority: 'medium',
     tags: '',
+    startDate: '',
+    dueDate: '',
   });
   
   const [columnFormData, setColumnFormData] = useState({
@@ -348,6 +350,8 @@ export default function KanbanBoardPage() {
       description: task.description || '',
       priority: task.priority,
       tags: task.tags ? task.tags.join(', ') : '',
+      startDate: task.startDate || '',
+      dueDate: task.dueDate || '',
     });
     setIsEditTaskDialogOpen(true);
   };
