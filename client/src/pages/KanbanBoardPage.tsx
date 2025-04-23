@@ -62,38 +62,6 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
   };
   const priorityColor = priorityColors[task.priority] || priorityColors.medium;
 
-  // Copy task to clipboard function
-  const copyTask = () => {
-    // Create a simplified version of the task to copy
-    const taskCopy = {
-      title: task.title,
-      description: task.description,
-      priority: task.priority,
-      tags: task.tags,
-      startDate: task.startDate,
-      dueDate: task.dueDate
-    };
-    
-    navigator.clipboard.writeText(JSON.stringify(taskCopy, null, 2))
-      .then(() => {
-        toast({
-          title: "Copied to clipboard",
-          description: `Task "${task.title}" copied to clipboard`,
-          className: "bg-background/80 border border-primary text-foreground",
-          duration: 2000,
-        });
-      })
-      .catch(err => {
-        toast({
-          title: "Failed to copy",
-          description: "Could not copy task to clipboard",
-          variant: "destructive",
-          duration: 2000,
-        });
-        console.error('Failed to copy task:', err);
-      });
-  };
-
   return (
     <Card className="mb-2 shadow-sm">
       <CardHeader className="p-3 pb-0 flex flex-row justify-between items-start">
@@ -115,16 +83,6 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
             >
               <Edit className="h-4 w-4 mr-2" />
               Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={copyTask}
-              className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-              </svg>
-              Copy
             </DropdownMenuItem>
             <DropdownMenuItem 
               onClick={() => onDelete(task.id)} 
