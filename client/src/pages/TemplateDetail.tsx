@@ -318,7 +318,10 @@ export default function TemplateDetail() {
       <div className="p-6 max-w-4xl mx-auto text-center">
         <h1 className="text-2xl font-medium mb-4">Error Loading Template</h1>
         <p className="text-muted-foreground mb-6">Unable to load template details.</p>
-        <Button onClick={() => navigate('/templates')}>
+        <Button 
+          onClick={() => navigate('/templates')}
+          className="hover:bg-yellow-400 hover:text-black"
+        >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Templates
         </Button>
@@ -328,7 +331,11 @@ export default function TemplateDetail() {
   
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <Button variant="ghost" onClick={() => navigate('/templates')} className="mb-6">
+      <Button 
+        variant="ghost" 
+        onClick={() => navigate('/templates')} 
+        className="mb-6 hover:bg-yellow-400 hover:text-black"
+      >
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Templates
       </Button>
@@ -357,7 +364,10 @@ export default function TemplateDetail() {
                 
                 <Dialog open={isCreateDocumentOpen} onOpenChange={setIsCreateDocumentOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" className="h-8 text-xs">
+                    <Button 
+                      variant="outline" 
+                      className="h-8 text-xs hover:bg-yellow-400 hover:text-black"
+                    >
                       <FilePlus className="h-3.5 w-3.5 mr-1.5" />
                       Create Document
                     </Button>
@@ -403,10 +413,17 @@ export default function TemplateDetail() {
                     </div>
                     
                     <DialogFooter>
-                      <Button variant="secondary" onClick={() => setIsCreateDocumentOpen(false)}>
+                      <Button 
+                        variant="secondary" 
+                        onClick={() => setIsCreateDocumentOpen(false)}
+                        className="hover:bg-yellow-400 hover:text-black"
+                      >
                         Cancel
                       </Button>
-                      <Button onClick={handleCreateDocument}>
+                      <Button 
+                        onClick={handleCreateDocument}
+                        className="hover:bg-yellow-400 hover:text-black"
+                      >
                         Create Document
                       </Button>
                     </DialogFooter>
@@ -520,7 +537,11 @@ export default function TemplateDetail() {
                   }
                 }}
               />
-              <Button variant="outline" onClick={handleAddTag} className="shrink-0">
+              <Button 
+                variant="outline" 
+                onClick={handleAddTag} 
+                className="shrink-0 hover:bg-yellow-400 hover:text-black"
+              >
                 <Plus className="h-4 w-4 mr-1" />
                 Add
               </Button>
@@ -542,10 +563,17 @@ export default function TemplateDetail() {
         <Separator />
         
         <CardFooter className="p-4 bg-muted/20 flex justify-between">
-          <Button variant="outline" onClick={() => navigate('/templates')}>Cancel</Button>
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/templates')}
+            className="hover:bg-yellow-400 hover:text-black"
+          >
+            Cancel
+          </Button>
           <Button 
             onClick={handleSaveTemplate} 
             disabled={!title.trim() || createMutation.isPending || updateMutation.isPending}
+            className="hover:bg-yellow-400 hover:text-black"
           >
             <Save className="mr-2 h-4 w-4" />
             {createMutation.isPending || updateMutation.isPending ? 'Saving...' : 'Save Template'}
