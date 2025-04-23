@@ -229,28 +229,45 @@ function KanbanColumn({
 }
 
 export default function KanbanPage() {
-  const { kanbanTasks, createKanbanTask, updateKanbanTask, deleteKanbanTask, moveKanbanTask } = useLYFEOS();
+  const { 
+    kanbanTasks, 
+    kanbanBoards,
+    createKanbanTask, 
+    updateKanbanTask, 
+    deleteKanbanTask, 
+    moveKanbanTask,
+    createKanbanBoard,
+    updateKanbanBoard,
+    deleteKanbanBoard,
+    addKanbanColumn,
+    updateKanbanColumn,
+    deleteKanbanColumn
+  } = useLYFEOS();
+  
   const [, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [editingTask, setEditingTask] = useState<KanbanTask | null>(null);
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
   const [isEditTaskDialogOpen, setIsEditTaskDialogOpen] = useState(false);
   
-  // Define a column type to store more information
-  interface KanbanColumn {
-    id: string;
-    title: string;
-    status: KanbanStatus;
-    order: number;
-  }
+  // New state for active board
+  const [activeBoardId, setActiveBoardId] = useState<string | null>(null);
   
-  // Board columns state
-  const [columns, setColumns] = useState<KanbanColumn[]>([
-    { id: "col-backlog", title: "Backlog", status: "backlog", order: 0 },
-    { id: "col-inProgress", title: "In Progress", status: "inProgress", order: 1 },
-    { id: "col-review", title: "Review", status: "review", order: 2 },
-    { id: "col-done", title: "Done", status: "done", order: 3 }
-  ]);
+  // Set active board when boards change
+  useEffect(() => {
+    // Set default active board if none is selected
+    if (kanbanBoards.length > 0 && !activeBoardId) {
+      // Find default board or use the first board
+      const defaultBoard = kanbanBoards.find(board => board.isDefault) || kanbanBoards[0];
+      setActiveBoardId(defaultBoard.id);
+    }
+  }, [kanbanBoards, activeBoardId]);
+  
+  // Get the active board
+  const activeBoard = kanbanBoards.find(board => board.id === activeBoardId) || null;
+  
+  // Use board's columns or empty array if no active board
+  const columns = activeBoard?.columns || [];
   
   // New task form state
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -272,7 +289,7 @@ export default function KanbanPage() {
   };
 
   const handleCreateTask = () => {
-    if (!newTaskTitle.trim()) return;
+    if (!newTaskTitle.trim() || !activeBoardId) return;
     
     createKanbanTask({
       title: newTaskTitle,
@@ -281,7 +298,8 @@ export default function KanbanPage() {
       status: newTaskStatus,
       startDate: newTaskStartDate || undefined,
       dueDate: newTaskDueDate || undefined,
-      tags: newTaskTags.split(",").map(tag => tag.trim()).filter(tag => tag !== "")
+      tags: newTaskTags.split(",").map(tag => tag.trim()).filter(tag => tag !== ""),
+      boardId: activeBoardId
     });
     
     // Reset form
@@ -336,104 +354,59 @@ export default function KanbanPage() {
   const [newColumnTitle, setNewColumnTitle] = useState("");
   
   const handleCreateColumn = () => {
-    if (!newColumnTitle.trim()) return;
+    if (!newColumnTitle.trim() || !activeBoardId) return;
     
     // Generate a new unique status ID (will be cast to KanbanStatus via type assertion)
     const newStatus = `custom_${Date.now()}` as KanbanStatus;
     
-    // Create the new column
-    const newColumn: KanbanColumn = {
-      id: `col-${newStatus}`,
+    // Add a new column to the active board
+    addKanbanColumn(activeBoardId, {
       title: newColumnTitle,
       status: newStatus,
-      order: columns.length, // Place at the end
-    };
+    });
     
-    setColumns(prev => [...prev, newColumn]);
     setNewColumnTitle("");
     setIsNewColumnDialogOpen(false);
-    
-    toast({
-      title: "Column Created",
-      description: `New column "${newColumnTitle}" has been added`,
-      variant: "default",
-      className: "bg-background/80 border border-primary text-foreground",
-      duration: 3000,
-    });
   };
   
   // Delete a column
   const handleDeleteColumn = (columnId: string) => {
-    const columnToDelete = columns.find(col => col.id === columnId);
-    if (!columnToDelete) return;
+    if (!columnId) return;
     
-    // Move tasks from this column to the first column (or you could have a "delete tasks too" option)
-    const firstAvailableColumn = columns.find(col => col.id !== columnId);
-    if (firstAvailableColumn) {
-      kanbanTasks
-        .filter(task => task.status === columnToDelete.status)
-        .forEach(task => {
-          updateKanbanTask(task.id, { status: firstAvailableColumn.status });
-        });
-    }
-    
-    // Remove the column
-    setColumns(prev => prev.filter(col => col.id !== columnId));
-    
-    toast({
-      title: "Column Deleted",
-      description: `Column "${columnToDelete.title}" has been removed`,
-      variant: "destructive",
-      className: "bg-background/80 border border-destructive text-foreground",
-      duration: 3000,
-    });
+    // Use the context function to delete the column
+    deleteKanbanColumn(columnId);
   };
   
-  // Handle column reordering with drag and drop
-  const handleColumnReorder = (draggedId: string, targetId: string) => {
-    if (draggedId === targetId) return;
+  // New state and handlers for board management
+  const [isNewBoardDialogOpen, setIsNewBoardDialogOpen] = useState(false);
+  const [newBoardTitle, setNewBoardTitle] = useState("");
+  const [newBoardDescription, setNewBoardDescription] = useState("");
+  
+  // Create a new board
+  const handleCreateBoard = () => {
+    if (!newBoardTitle.trim()) return;
     
-    setColumns(prev => {
-      const newColumns = [...prev];
-      const draggedIndex = newColumns.findIndex(col => col.id === draggedId);
-      const targetIndex = newColumns.findIndex(col => col.id === targetId);
-      
-      // Move the dragged column to the target position
-      const [draggedColumn] = newColumns.splice(draggedIndex, 1);
-      newColumns.splice(targetIndex, 0, draggedColumn);
-      
-      // Update order values
-      return newColumns.map((col, index) => ({
-        ...col,
-        order: index
-      }));
+    const newBoard = createKanbanBoard({
+      title: newBoardTitle,
+      description: newBoardDescription,
+      isDefault: kanbanBoards.length === 0, // Make default if it's the first board
     });
     
-    toast({
-      title: "Columns Reordered",
-      description: "The board columns have been rearranged",
-      variant: "default",
-      className: "bg-background/80 border border-primary text-foreground",
-      duration: 3000,
-    });
+    // Set the new board as active
+    setActiveBoardId(newBoard.id);
+    
+    // Reset form
+    setNewBoardTitle("");
+    setNewBoardDescription("");
+    setIsNewBoardDialogOpen(false);
   };
   
   // Edit column title
   const handleEditColumnTitle = (columnId: string, newTitle: string) => {
-    setColumns(prev => prev.map(col => 
-      col.id === columnId 
-        ? { ...col, title: newTitle } 
-        : col
-    ));
+    if (!columnId || !newTitle.trim()) return;
     
-    // Show toast notification
-    toast({
-      title: "Column Updated",
-      description: `Column title has been updated to "${newTitle}"`,
-      variant: "default",
-      className: "bg-background/80 border border-primary text-foreground",
-      duration: 3000,
-    });
+    // Use the context function to update the column
+    updateKanbanColumn(columnId, { title: newTitle });
   };
   
   // Handle adding a task for a specific column
