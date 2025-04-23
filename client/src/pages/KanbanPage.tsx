@@ -162,9 +162,11 @@ export default function KanbanPage() {
           
           <Button 
             onClick={() => setIsNewBoardDialogOpen(true)}
-            className="bg-primary/10 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow hover:bg-yellow-400 hover:text-black"
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-1"
           >
-            <Plus className="h-4 w-4 mr-1" />
+            <Plus className="h-4 w-4" />
             New Board
           </Button>
         </div>
@@ -186,9 +188,11 @@ export default function KanbanPage() {
             <p className="text-muted-foreground mb-4">You don't have any Kanban boards yet</p>
             <Button 
               onClick={() => setIsNewBoardDialogOpen(true)}
-              className="bg-primary/10 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow hover:bg-yellow-400 hover:text-black"
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1"
             >
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="h-4 w-4" />
               Create First Board
             </Button>
           </div>
