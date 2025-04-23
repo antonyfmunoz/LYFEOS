@@ -79,9 +79,9 @@ export default function TemplatesWidget() {
             <CardTitle className="text-lg font-orbitron">Templates</CardTitle>
           </div>
           <Button 
-            variant="outline" 
+            variant="ghost" 
             size="sm" 
-            className="text-xs h-7 hover:bg-yellow-400 hover:text-black"
+            className="h-7 text-xs bg-primary/10 hover:bg-primary/20 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
             onClick={() => navigate('/templates')}
           >
             View All
@@ -247,9 +247,9 @@ export default function TemplatesWidget() {
       
       <CardFooter className="p-3 flex items-center justify-between bg-muted/20">
         <Button 
-          variant="outline" 
+          variant="ghost" 
           size="sm"
-          className="h-7 text-xs hover:text-black hover:bg-yellow-400 hover:border-yellow-500"
+          className="h-7 text-xs bg-primary/10 hover:bg-yellow-400 hover:text-black text-primary border border-primary/50"
           onClick={() => navigate('/templates/new')}
         >
           <FilePlus className="h-3.5 w-3.5 mr-1" />
