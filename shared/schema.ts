@@ -110,6 +110,19 @@ export const contacts = pgTable("contacts", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Spreadsheets table
+export const spreadsheets = pgTable("spreadsheets", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  content: jsonb("content").notNull(), // Store spreadsheet data as JSON
+  favorite: boolean("favorite").notNull().default(false),
+  category: text("category").notNull().default("general"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relationships
 export const usersRelations = relations(users, ({ one, many }) => ({
   stats: one(userStats, {
@@ -121,6 +134,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   events: many(calendarEvents),
   missionPages: many(missionPages),
   contacts: many(contacts),
+  spreadsheets: many(spreadsheets),
 }));
 
 export const userStatsRelations = relations(userStats, ({ one }) => ({
@@ -166,6 +180,13 @@ export const missionPagesRelations = relations(missionPages, ({ one }) => ({
 export const contactsRelations = relations(contacts, ({ one }) => ({
   user: one(users, {
     fields: [contacts.userId],
+    references: [users.id],
+  }),
+}));
+
+export const spreadsheetsRelations = relations(spreadsheets, ({ one }) => ({
+  user: one(users, {
+    fields: [spreadsheets.userId],
     references: [users.id],
   }),
 }));
@@ -254,6 +275,15 @@ export const insertContactSchema = createInsertSchema(contacts).pick({
   address: true,
 });
 
+export const insertSpreadsheetSchema = createInsertSchema(spreadsheets).pick({
+  userId: true,
+  title: true,
+  description: true,
+  content: true,
+  favorite: true,
+  category: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -275,3 +305,6 @@ export type InsertMissionPage = z.infer<typeof insertMissionPageSchema>;
 
 export type Contact = typeof contacts.$inferSelect;
 export type InsertContact = z.infer<typeof insertContactSchema>;
+
+export type Spreadsheet = typeof spreadsheets.$inferSelect;
+export type InsertSpreadsheet = z.infer<typeof insertSpreadsheetSchema>;

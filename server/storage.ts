@@ -5,7 +5,8 @@ import {
   aiMessages, type AIMessage, type InsertAIMessage,
   calendarEvents, type CalendarEvent, type InsertCalendarEvent,
   missionPages, type MissionPage, type InsertMissionPage,
-  contacts, type Contact, type InsertContact
+  contacts, type Contact, type InsertContact,
+  spreadsheets, type Spreadsheet, type InsertSpreadsheet
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -55,6 +56,15 @@ export interface IStorage {
   updateContact(id: number, contact: Partial<InsertContact>): Promise<Contact>;
   deleteContact(id: number): Promise<void>;
   toggleFavoriteContact(id: number): Promise<Contact>;
+  
+  // Spreadsheet methods
+  getSpreadsheets(userId: number): Promise<Spreadsheet[]>;
+  getSpreadsheetsByCategory(userId: number, category: string): Promise<Spreadsheet[]>;
+  getSpreadsheet(id: number): Promise<Spreadsheet | undefined>;
+  createSpreadsheet(spreadsheet: InsertSpreadsheet): Promise<Spreadsheet>;
+  updateSpreadsheet(id: number, spreadsheet: Partial<InsertSpreadsheet>): Promise<Spreadsheet>;
+  deleteSpreadsheet(id: number): Promise<void>;
+  toggleFavoriteSpreadsheet(id: number): Promise<Spreadsheet>;
 }
 
 export class DatabaseStorage implements IStorage {
