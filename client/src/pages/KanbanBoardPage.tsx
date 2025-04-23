@@ -49,18 +49,16 @@ import { useLYFEOS } from '@/lib/context';
 import { KanbanStatus, KanbanTask } from '@/lib/types';
 
 // Define item types for drag and drop
-// These constants are used by react-dnd to identify draggable item types
 const ItemTypes = {
   TASK: 'kanban-task',
   COLUMN: 'kanban-column'
 };
 
-// Interface for dragged task item
+// Interface for dragged item
 interface DragItem {
   id: string;
   status: KanbanStatus;
   boardId?: string;
-  type?: string;
 }
 
 // Task Card Component
@@ -111,9 +109,8 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
       });
   };
 
-  // Set up drag source with dependencies to handle re-renders
-  // This configuration enables the TaskCard to be dragged between columns
-  const [{ isDragging }, drag] = useDrag({
+  // Set up drag source with simple direct syntax for better reactivity
+  const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.TASK,
     item: { 
       id: task.id, 
@@ -123,26 +120,12 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
-    end: (item, monitor) => {
-      const didDrop = monitor.didDrop();
-      console.log('Drag ended, was dropped:', didDrop);
-      
-      if (didDrop) {
-        const dropResult = monitor.getDropResult() as { status: KanbanStatus } | null;
-        console.log('Drop result:', dropResult);
-        
-        // After successful drop, we can perform additional actions if needed
-        if (dropResult && dropResult.status !== item.status) {
-          console.log(`Task moved from ${item.status} to ${dropResult.status}`);
-        }
-      }
-    }
-  });
+  }), [task.id, task.status, task.boardId]);
 
   return (
     <div 
       ref={drag} 
-      className={`${isDragging ? 'opacity-50' : 'opacity-100'} cursor-move w-full hover:ring-1 hover:ring-yellow-400 transition-all`}
+      className={`${isDragging ? 'opacity-50' : 'opacity-100'} cursor-move w-full`}
       style={{ touchAction: 'none' }}
     >
       <Card className="mb-2 shadow-sm glassmorphic rounded-lg border-l-4 border-l-yellow-400 border-t-0 border-r-0 border-b-0">
@@ -264,33 +247,23 @@ function KanbanColumn({
   const inputRef = useRef<HTMLInputElement>(null);
   const { moveKanbanTask } = useLYFEOS();
 
-  // Set up drop target with direct object syntax for better reactivity
-  // This configuration allows the column to receive tasks when they're dropped
-  const [{ isOver, canDrop }, drop] = useDrop({
+  // Set up drop target with simplified syntax for better reactivity
+  const [{ isOver, canDrop }, drop] = useDrop(() => ({
     accept: ItemTypes.TASK,
     drop: (item: DragItem) => {
-      // Handle the drop, update task status
-      console.log('Dropping item:', item, 'into status:', status);
+      console.log('Dropping task:', item, 'into column:', status);
       
-      // Check if the task is being moved to a different column
+      // Check if task status is different from column status
       if (item.status !== status) {
-        // Call the context function to update the task status
         moveKanbanTask(item.id, status);
-        
-        // Make sure to return the new status so the drag source knows where the item was dropped
-        return { status };
       }
-      
-      // Return the current status even if no change is made to complete the drop interaction
       return { status };
     },
-    // Allow drops from any column, including self (we'll handle the logic in the drop function)
-    canDrop: () => true,
     collect: (monitor) => ({
       isOver: !!monitor.isOver(),
       canDrop: !!monitor.canDrop(),
     }),
-  });
+  }), [status, moveKanbanTask]);
 
   // Function to copy column configuration to clipboard
   const duplicateColumn = () => {
@@ -348,8 +321,8 @@ function KanbanColumn({
     }
   };
 
-  // Set column drag with direct object syntax for better reactivity
-  const [{ isDragging }, drag] = useDrag({
+  // Column drag setup
+  const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.COLUMN,
     item: { 
       id: columnId,
@@ -358,7 +331,7 @@ function KanbanColumn({
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
-  });
+  }), [columnId, status]);
 
   return (
     <div 
@@ -370,7 +343,7 @@ function KanbanColumn({
     >
       <div 
         ref={drag}
-        className="flex items-center justify-between mb-3 cursor-move rounded-md p-1 hover:bg-yellow-400/10 transition-colors"
+        className="flex items-center justify-between mb-3 cursor-move rounded-md p-1"
         style={{ touchAction: 'none' }}
       >
         <div className="flex items-center">
@@ -1030,15 +1003,15 @@ export default function KanbanBoardPage() {
             </div>
             
             <div className="space-y-2">
-              <label htmlFor="column-status">Status ID</label>
+              <label htmlFor="column-status">Status Key</label>
               <Input
                 id="column-status"
                 value={columnFormData.status}
-                onChange={(e) => setColumnFormData({...columnFormData, status: e.target.value.toLowerCase().replace(/\s+/g, '')})}
-                placeholder="E.g. todo, inreview, inprogress"
+                onChange={(e) => setColumnFormData({...columnFormData, status: e.target.value})}
+                placeholder="e.g. todo, inReview, etc."
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                This will be used as the column's unique identifier. Use lowercase letters without spaces.
+              <p className="text-xs text-muted-foreground">
+                This is used as a unique identifier for the column. Use a unique, camelCase string without spaces.
               </p>
             </div>
           </div>
@@ -1051,7 +1024,7 @@ export default function KanbanBoardPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      </div>
-    </DndProvider>
+    </div>
+  </DndProvider>
   );
 }
