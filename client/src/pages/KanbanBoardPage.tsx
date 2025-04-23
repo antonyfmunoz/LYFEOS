@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation } from 'wouter';
+import { DndProvider, useDrag, useDrop } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import { 
   ArrowLeft, 
   Plus, 
@@ -46,6 +48,19 @@ import {
 import { useLYFEOS } from '@/lib/context';
 import { KanbanStatus, KanbanTask } from '@/lib/types';
 
+// Define item types for drag and drop
+const ItemTypes = {
+  TASK: 'task',
+  COLUMN: 'column'
+};
+
+// Interface for dragged task item
+interface DragItem {
+  id: string;
+  status: KanbanStatus;
+  type: string;
+}
+
 // Task Card Component
 interface TaskCardProps {
   task: KanbanTask;
@@ -62,78 +77,99 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
   };
   const priorityColor = priorityColors[task.priority] || priorityColors.medium;
 
+  // Set up drag source
+  const [{ isDragging }, drag] = useDrag(() => ({
+    type: ItemTypes.TASK,
+    item: { 
+      id: task.id, 
+      status: task.status,
+      type: ItemTypes.TASK 
+    },
+    collect: (monitor) => ({
+      isDragging: !!monitor.isDragging(),
+    }),
+  }));
+
   return (
-    <Card className="mb-2 shadow-sm">
-      <CardHeader className="p-3 pb-0 flex flex-row justify-between items-start">
-        <CardTitle className="text-sm font-medium">{task.title}</CardTitle>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-7 w-7 hover:bg-yellow-400 hover:text-black"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem 
-              onClick={() => onEdit(task)}
-              className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black"
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => onDelete(task.id)} 
-              className="text-red-500 hover:bg-red-500 hover:text-white focus:bg-red-500 focus:text-white"
-            >
-              <Trash className="h-4 w-4 mr-2" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </CardHeader>
-      <CardContent className="p-3 pt-1">
-        {task.description && (
-          <p className="text-xs text-muted-foreground mb-2">{task.description}</p>
-        )}
-        
-        {/* Date display section */}
-        {(task.startDate || task.dueDate) && (
-          <div className="flex flex-wrap gap-2 mb-2 text-xs text-muted-foreground">
-            {task.startDate && (
-              <div className="flex items-center">
-                <span className="font-medium mr-1">Start:</span> 
-                {new Date(task.startDate).toLocaleDateString()}
-              </div>
-            )}
-            {task.dueDate && (
-              <div className="flex items-center">
-                <span className="font-medium mr-1">Due:</span> 
-                {new Date(task.dueDate).toLocaleDateString()}
-              </div>
+    <div 
+      ref={drag} 
+      className={`${isDragging ? 'opacity-50' : 'opacity-100'} cursor-move`}
+    >
+      <Card className="mb-2 shadow-sm">
+        <CardHeader className="p-3 pb-0 flex flex-row justify-between items-start">
+          <div className="flex items-center">
+            <GripVertical className="h-4 w-4 mr-2 cursor-move text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">{task.title}</CardTitle>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-7 w-7 hover:bg-yellow-400 hover:text-black"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem 
+                onClick={() => onEdit(task)}
+                className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => onDelete(task.id)} 
+                className="text-red-500 hover:bg-red-500 hover:text-white focus:bg-red-500 focus:text-white"
+              >
+                <Trash className="h-4 w-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </CardHeader>
+        <CardContent className="p-3 pt-1">
+          {task.description && (
+            <p className="text-xs text-muted-foreground mb-2">{task.description}</p>
+          )}
+          
+          {/* Date display section */}
+          {(task.startDate || task.dueDate) && (
+            <div className="flex flex-wrap gap-2 mb-2 text-xs text-muted-foreground">
+              {task.startDate && (
+                <div className="flex items-center">
+                  <span className="font-medium mr-1">Start:</span> 
+                  {new Date(task.startDate).toLocaleDateString()}
+                </div>
+              )}
+              {task.dueDate && (
+                <div className="flex items-center">
+                  <span className="font-medium mr-1">Due:</span> 
+                  {new Date(task.dueDate).toLocaleDateString()}
+                </div>
+              )}
+            </div>
+          )}
+          
+          <div className="flex justify-between items-center">
+            <span className={`text-xs font-medium rounded-full px-2 py-0.5 border ${priorityColor}`}>
+              {task.priority}
+            </span>
+            {task.status !== 'done' && (
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                className="h-6 px-2 text-xs hover:bg-yellow-400 hover:text-black"
+                onClick={() => onMoveRight(task.id, task.status)}
+              >
+                Move <ChevronRight className="h-3 w-3 ml-1" />
+              </Button>
             )}
           </div>
-        )}
-        
-        <div className="flex justify-between items-center">
-          <span className={`text-xs font-medium rounded-full px-2 py-0.5 border ${priorityColor}`}>
-            {task.priority}
-          </span>
-          {task.status !== 'done' && (
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              className="h-6 px-2 text-xs hover:bg-yellow-400 hover:text-black"
-              onClick={() => onMoveRight(task.id, task.status)}
-            >
-              Move <ChevronRight className="h-3 w-3 ml-1" />
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -166,6 +202,23 @@ function KanbanColumn({
   const [isEditing, setIsEditing] = useState(false);
   const [columnTitle, setColumnTitle] = useState(title);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { moveKanbanTask } = useLYFEOS();
+
+  // Set up drop target
+  const [{ isOver, canDrop }, drop] = useDrop(() => ({
+    accept: ItemTypes.TASK,
+    drop: (item: DragItem) => {
+      // Handle the drop, update task status
+      if (item.status !== status) {
+        moveKanbanTask(item.id, status);
+      }
+    },
+    canDrop: (item: DragItem) => item.status !== status,
+    collect: (monitor) => ({
+      isOver: !!monitor.isOver(),
+      canDrop: !!monitor.canDrop(),
+    }),
+  }));
 
   const handleStartEditing = () => {
     setIsEditing(true);
@@ -188,26 +241,51 @@ function KanbanColumn({
     }
   };
 
+  // Set column drag
+  const [{ isDragging }, drag] = useDrag(() => ({
+    type: ItemTypes.COLUMN,
+    item: { 
+      id: columnId,
+      type: ItemTypes.COLUMN,
+      status
+    },
+    collect: (monitor) => ({
+      isDragging: !!monitor.isDragging(),
+    }),
+  }));
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-3">
-        {isEditing ? (
-          <Input
-            ref={inputRef}
-            value={columnTitle}
-            onChange={(e) => setColumnTitle(e.target.value)}
-            onBlur={handleSaveTitle}
-            onKeyDown={handleKeyPress}
-            className="text-sm h-7 py-1 px-2"
-          />
-        ) : (
-          <h3 
-            className="font-medium text-sm cursor-pointer hover:text-primary transition-colors"
-            onClick={handleStartEditing}
-          >
-            {title} ({tasks.length})
-          </h3>
-        )}
+    <div 
+      ref={drop} 
+      className={`bg-background rounded-lg p-4 w-72 flex-shrink-0 flex flex-col
+        ${isOver && canDrop ? 'ring-2 ring-yellow-400 bg-yellow-50 dark:bg-yellow-900/10' : ''}
+        ${isDragging ? 'opacity-50' : 'opacity-100'}
+      `}
+    >
+      <div 
+        ref={drag}
+        className="flex items-center justify-between mb-3 cursor-move"
+      >
+        <div className="flex items-center">
+          <GripVertical className="h-4 w-4 mr-2 text-muted-foreground" />
+          {isEditing ? (
+            <Input
+              ref={inputRef}
+              value={columnTitle}
+              onChange={(e) => setColumnTitle(e.target.value)}
+              onBlur={handleSaveTitle}
+              onKeyDown={handleKeyPress}
+              className="text-sm h-7 py-1 px-2"
+            />
+          ) : (
+            <h3 
+              className="font-medium text-sm cursor-pointer hover:text-primary transition-colors"
+              onClick={handleStartEditing}
+            >
+              {title} ({tasks.length})
+            </h3>
+          )}
+        </div>
         <div className="flex gap-1">
           <Button 
             size="icon" 
@@ -231,7 +309,7 @@ function KanbanColumn({
           </Button>
         </div>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-2 flex-grow">
         {tasks.map(task => (
           <TaskCard
             key={task.id}
@@ -498,58 +576,59 @@ export default function KanbanBoardPage() {
   };
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center w-full">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 hover:bg-yellow-400 hover:text-black" 
-            onClick={() => navigate('/kanban')}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-2xl font-bold mx-auto pr-8">{activeBoard.title}</h1>
+    <DndProvider backend={HTML5Backend}>
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center w-full">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 hover:bg-yellow-400 hover:text-black" 
+              onClick={() => navigate('/kanban')}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <h1 className="text-2xl font-bold mx-auto pr-8">{activeBoard.title}</h1>
+          </div>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="hover:bg-yellow-400 hover:text-black"
+              >
+                <MoreHorizontal className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem 
+                onClick={() => setIsEditDialogOpen(true)}
+                className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Board
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={handleDeleteBoard}
+                className="text-destructive hover:bg-red-500 hover:text-white focus:bg-red-500 focus:text-white"
+              >
+                <Trash className="h-4 w-4 mr-2" />
+                Delete Board
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="hover:bg-yellow-400 hover:text-black"
-            >
-              <MoreHorizontal className="h-5 w-5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem 
-              onClick={() => setIsEditDialogOpen(true)}
-              className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black"
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Board
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={handleDeleteBoard}
-              className="text-destructive hover:bg-red-500 hover:text-white focus:bg-red-500 focus:text-white"
-            >
-              <Trash className="h-4 w-4 mr-2" />
-              Delete Board
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      
-      {activeBoard.description && (
-        <p className="text-muted-foreground mb-6">{activeBoard.description}</p>
-      )}
+        {activeBoard.description && (
+          <p className="text-muted-foreground mb-6">{activeBoard.description}</p>
+        )}
 
-      <div className="overflow-x-auto pb-4">
-        <div className="flex gap-4 min-w-max">
-          {activeBoard && activeBoard.columns.map(column => (
-            <div key={column.id} className="min-w-[280px] max-w-[320px] border border-slate-700/30 rounded-lg bg-card/30 p-3">
+        <div className="overflow-x-auto pb-4">
+          <div className="flex gap-6 min-w-max min-h-[calc(100vh-240px)]">
+            {activeBoard && activeBoard.columns.map(column => (
               <KanbanColumn
+                key={column.id}
                 columnId={column.id}
                 title={column.title}
                 status={column.status}
@@ -561,22 +640,21 @@ export default function KanbanBoardPage() {
                 onDeleteColumn={handleDeleteColumn}
                 onAddTask={handleAddTask}
               />
+            ))}
+            
+            {/* Add new column button */}
+            <div className="min-w-[100px] h-full flex items-center">
+              <Button 
+                variant="outline"
+                className="border-dashed border-slate-700/50 p-6 h-[100px] hover:bg-yellow-400 hover:text-black transition-colors"
+                onClick={() => setIsAddColumnDialogOpen(true)}
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Add Column
+              </Button>
             </div>
-          ))}
-          
-          {/* Add new column button */}
-          <div className="min-w-[100px] h-full flex items-center">
-            <Button 
-              variant="outline"
-              className="border-dashed border-slate-700/50 p-6 h-[100px] hover:bg-yellow-400 hover:text-black transition-colors"
-              onClick={() => setIsAddColumnDialogOpen(true)}
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              Add Column
-            </Button>
           </div>
         </div>
-      </div>
       
       {/* Add Task Dialog */}
       <Dialog open={isAddTaskDialogOpen} onOpenChange={setIsAddTaskDialogOpen}>
@@ -855,6 +933,7 @@ export default function KanbanBoardPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </DndProvider>
   );
 }
