@@ -58,7 +58,6 @@ const ItemTypes = {
 interface DragItem {
   id: string;
   status: KanbanStatus;
-  type: string;
 }
 
 // Task Card Component
@@ -112,14 +111,24 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
   // Set up drag source with dependencies to handle re-renders
   const [{ isDragging }, drag] = useDrag({
     type: ItemTypes.TASK,
-    item: { 
-      id: task.id, 
-      status: task.status,
-      type: ItemTypes.TASK 
+    item: () => {
+      console.log('Starting drag for task:', task.id, 'with status:', task.status);
+      return { 
+        id: task.id, 
+        status: task.status
+      };
     },
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
+    end: (item, monitor) => {
+      const didDrop = monitor.didDrop();
+      console.log('Drag ended, was dropped:', didDrop);
+      if (didDrop) {
+        const dropResult = monitor.getDropResult();
+        console.log('Drop result:', dropResult);
+      }
+    }
   });
 
   return (
@@ -251,12 +260,16 @@ function KanbanColumn({
     accept: ItemTypes.TASK,
     drop: (item: DragItem) => {
       // Handle the drop, update task status
+      console.log('Dropping item:', item, 'into status:', status);
       if (item.status !== status) {
         moveKanbanTask(item.id, status);
       }
       return { status };
     },
-    canDrop: (item: DragItem) => item.status !== status,
+    canDrop: (item: DragItem) => {
+      console.log('Checking if can drop item with status:', item.status, 'into column with status:', status);
+      return item.status !== status;
+    },
     collect: (monitor) => ({
       isOver: !!monitor.isOver(),
       canDrop: !!monitor.canDrop(),
@@ -324,7 +337,6 @@ function KanbanColumn({
     type: ItemTypes.COLUMN,
     item: { 
       id: columnId,
-      type: ItemTypes.COLUMN,
       status
     },
     collect: (monitor) => ({
