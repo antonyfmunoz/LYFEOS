@@ -3,13 +3,12 @@ import { ObsidianMarkdown } from './obsidian-markdown';
 import { cn } from '@/lib/utils';
 import { Edit2, Save, CheckSquare } from 'lucide-react';
 
-export interface MarkdownEditorProps {
+interface MarkdownEditorProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
   minHeight?: string;
-  height?: string;
   autoBullets?: boolean;
 }
 
@@ -19,7 +18,6 @@ export function MarkdownEditor({
   placeholder = "",
   className = "",
   minHeight = "100px",
-  height,
   autoBullets = false,
 }: MarkdownEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -186,7 +184,7 @@ export function MarkdownEditor({
         "relative min-h-[100px] group",
         className
       )}
-      style={{ minHeight, height }}
+      style={{ minHeight }}
     >
       {isEditing ? (
         <div className="relative rounded-md border border-primary/30 bg-background">
@@ -197,7 +195,7 @@ export function MarkdownEditor({
             onKeyDown={handleKeyDown}
             className="w-full h-full min-h-[100px] p-3 bg-transparent resize-none outline-none border-none rounded-md placeholder:text-muted-foreground dark:text-[#D6F4FF] light:text-slate-700 text-base"
             placeholder={placeholder}
-            style={{ minHeight, height }}
+            style={{ minHeight }}
           />
           <div className="absolute top-2 right-2 flex space-x-1">
             <button
@@ -210,7 +208,7 @@ export function MarkdownEditor({
           </div>
         </div>
       ) : (
-        <div className="relative rounded-md border border-primary/30 bg-background" style={{ minHeight, height }}>
+        <div className="relative rounded-md border border-primary/30 bg-background" style={{ minHeight }}>
           <div className="p-3 cursor-default min-h-[100px]" onDoubleClick={handleDoubleClick}>
             {value ? (
               <ObsidianMarkdown className="dark:text-[#D6F4FF] light:text-slate-700">

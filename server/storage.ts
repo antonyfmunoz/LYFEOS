@@ -169,19 +169,9 @@ export class DatabaseStorage implements IStorage {
       energyPointsMax: 10,
       healthPointsCurrent: 10,
       healthPointsMax: 10,
-      attentionTokensCurrent: 10,
-      attentionTokensMax: 10,
       experienceCurrent: 0,
       experienceMax: 100,
-      level: 1,
-      streakDays: 0,
-      efficiencyScore: 0,
-      aiAssistantName: "NOVA",
-      notificationsEnabled: false,
-      darkThemeEnabled: true,
-      autoSyncEnabled: true,
-      aiAssistantEnabled: true,
-      primaryColor: "#00e0ff"
+      level: 1
     });
     
     return user;

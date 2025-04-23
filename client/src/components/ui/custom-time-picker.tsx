@@ -4,14 +4,13 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Clock, ChevronUp, ChevronDown } from "lucide-react";
 
-export interface CustomTimePickerProps {
+interface CustomTimePickerProps {
   value: string;
   onChange: (value: string) => void;
   className?: string;
-  buttonClassName?: string;
 }
 
-export function CustomTimePicker({ value, onChange, className, buttonClassName }: CustomTimePickerProps) {
+export function CustomTimePicker({ value, onChange, className }: CustomTimePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [hours, setHours] = useState<number>(
     value ? parseInt(value.split(":")[0]) : 9
@@ -195,10 +194,7 @@ export function CustomTimePicker({ value, onChange, className, buttonClassName }
           variant="ghost"
           size="icon"
           onClick={() => setIsOpen(!isOpen)}
-          className={cn(
-            "absolute right-0 top-0 h-full px-3 text-primary/70 hover:text-primary hover:bg-primary/10",
-            buttonClassName
-          )}
+          className="absolute right-0 top-0 h-full px-3 text-primary/70 hover:text-primary hover:bg-primary/10"
         >
           <Clock className="h-4 w-4" />
         </Button>
