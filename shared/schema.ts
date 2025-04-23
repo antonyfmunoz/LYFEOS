@@ -119,6 +119,7 @@ export const spreadsheets = pgTable("spreadsheets", {
   content: jsonb("content").notNull(), // Store spreadsheet data as JSON
   favorite: boolean("favorite").notNull().default(false),
   category: text("category").notNull().default("general"),
+  type: text("type").notNull().default("regular"), // regular, canvas, or graph
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -282,6 +283,7 @@ export const insertSpreadsheetSchema = createInsertSchema(spreadsheets).pick({
   content: true,
   favorite: true,
   category: true,
+  type: true,
 });
 
 // Types

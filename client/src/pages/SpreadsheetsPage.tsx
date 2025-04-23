@@ -69,6 +69,7 @@ export default function SpreadsheetsPage() {
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newCategory, setNewCategory] = useState('general');
+  const [newType, setNewType] = useState('regular'); // regular, canvas, or graph
   
   // Fetch spreadsheets from the database
   const { data: spreadsheetsData, isLoading, isError } = useQuery({
@@ -88,7 +89,18 @@ export default function SpreadsheetsPage() {
   
   // Create spreadsheet mutation
   const createSpreadsheetMutation = useMutation({
-    mutationFn: async (spreadsheetData: { title: string; description: string; category: string }) => {
+    mutationFn: async (spreadsheetData: { title: string; description: string; category: string; type: string }) => {
+      // Prepare content based on type
+      let content = {};
+      
+      if (spreadsheetData.type === 'regular') {
+        content = { cells: {} }; // Regular spreadsheet with cells
+      } else if (spreadsheetData.type === 'canvas') {
+        content = { elements: [], connections: [] }; // Canvas with elements and connections
+      } else if (spreadsheetData.type === 'graph') {
+        content = { nodes: [], edges: [] }; // Graph with nodes and edges
+      }
+      
       const response = await fetch('/api/spreadsheets', {
         method: 'POST',
         headers: {
@@ -96,7 +108,7 @@ export default function SpreadsheetsPage() {
         },
         body: JSON.stringify({
           ...spreadsheetData,
-          content: { cells: {} }, // Empty spreadsheet content
+          content,
         }),
       });
       
@@ -117,6 +129,7 @@ export default function SpreadsheetsPage() {
       setNewTitle('');
       setNewDescription('');
       setNewCategory('general');
+      setNewType('regular');
       setIsNewDialogOpen(false);
     },
     onError: () => {
@@ -216,6 +229,7 @@ export default function SpreadsheetsPage() {
       title: newTitle,
       description: newDescription,
       category: newCategory,
+      type: newType,
     });
   };
   
