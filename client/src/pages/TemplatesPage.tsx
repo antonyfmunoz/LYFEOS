@@ -111,7 +111,11 @@ export default function TemplatesPage() {
   
   return (
     <div className="container py-6 max-w-6xl">
-      <Button variant="ghost" onClick={() => navigate('/systems')} className="mb-6">
+      <Button 
+        variant="ghost" 
+        onClick={() => navigate('/systems')} 
+        className="mb-6 hover:bg-yellow-400 hover:text-black"
+      >
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Systems
       </Button>
@@ -121,7 +125,10 @@ export default function TemplatesPage() {
           <h1 className="text-2xl font-orbitron mb-1">Document Templates</h1>
           <p className="text-[#7DAAB2]">Create, manage, and use document templates</p>
         </div>
-        <Button onClick={() => navigate('/templates/new')}>
+        <Button 
+          onClick={() => navigate('/templates/new')}
+          className="hover:bg-yellow-400 hover:text-black"
+        >
           <FilePlus className="mr-2 h-4 w-4" />
           Create Template
         </Button>
