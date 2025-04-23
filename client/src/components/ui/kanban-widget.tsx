@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLYFEOS } from "@/lib/context";
 import { KanbanTask, KanbanStatus } from "@/lib/types";
-import { Clipboard, ArrowRight, CheckSquare, Plus } from "lucide-react";
+import { Clipboard, ArrowRight, CheckSquare, Plus, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
@@ -72,7 +72,8 @@ export function KanbanWidget() {
             className="h-7 text-xs bg-primary/10 hover:bg-primary/20 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
             onClick={() => setLocation("/kanban")}
           >
-            View Boards
+            View All
+            <ChevronRight className="ml-1 h-3 w-3" />
           </Button>
         </div>
       </CardHeader>
