@@ -99,7 +99,7 @@ export default function DocumentsWidget() {
           <Button 
             variant="outline" 
             size="sm" 
-            className="text-xs h-7"
+            className="text-xs h-7 hover:bg-yellow-400 hover:text-black"
             onClick={() => navigate('/documents')}
           >
             View All
@@ -314,7 +314,7 @@ export default function DocumentsWidget() {
           <Button 
             variant="outline" 
             size="sm"
-            className="h-7 text-xs"
+            className="h-7 text-xs hover:bg-yellow-400 hover:text-black"
             onClick={() => navigate('/folders/new')}
           >
             <FolderPlus className="h-3.5 w-3.5 mr-1" />
@@ -323,7 +323,7 @@ export default function DocumentsWidget() {
           <Button 
             variant="outline" 
             size="sm"
-            className="h-7 text-xs"
+            className="h-7 text-xs hover:bg-yellow-400 hover:text-black"
             onClick={() => navigate('/documents/new')}
           >
             <FilePlus className="h-3.5 w-3.5 mr-1" />
