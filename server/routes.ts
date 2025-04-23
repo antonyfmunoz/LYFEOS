@@ -12,7 +12,9 @@ import {
   insertContactSchema,
   insertSpreadsheetSchema,
   insertCanvasSchema,
-  insertGraphSchema
+  insertGraphSchema,
+  insertFolderSchema,
+  insertDocumentSchema
 } from "@shared/schema";
 
 // Extend Request type to include session
@@ -1496,6 +1498,361 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(200).json({ graph: updatedGraph });
     } catch (error) {
       console.error("Error toggling graph favorite status:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Folder routes
+  app.get("/api/users/:userId/folders", isOwner, async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+      
+      const folders = await storage.getFolders(userId);
+      
+      return res.status(200).json({ folders });
+    } catch (error) {
+      console.error("Error getting folders:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.get("/api/folders/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const folderId = parseInt(req.params.id);
+      if (isNaN(folderId)) {
+        return res.status(400).json({ error: "Invalid folder ID" });
+      }
+      
+      const folder = await storage.getFolder(folderId);
+      if (!folder) {
+        return res.status(404).json({ error: "Folder not found" });
+      }
+      
+      // Check ownership
+      if (folder.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      
+      // Get children
+      const childFolders = await storage.getFolderChildren(folderId);
+      const documents = await storage.getDocumentsByFolder(folderId);
+      
+      return res.status(200).json({ 
+        folder, 
+        children: {
+          folders: childFolders,
+          documents
+        } 
+      });
+    } catch (error) {
+      console.error("Error getting folder:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/folders", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const folderData = req.body;
+      if (!folderData.name || folderData.name.trim() === '') {
+        return res.status(400).json({ error: "Folder name is required" });
+      }
+      
+      const userId = req.session.userId;
+      
+      // Verify parent folder exists and belongs to user if provided
+      if (folderData.parentId) {
+        const parentFolder = await storage.getFolder(folderData.parentId);
+        if (!parentFolder) {
+          return res.status(404).json({ error: "Parent folder not found" });
+        }
+        
+        if (parentFolder.userId !== userId) {
+          return res.status(403).json({ error: "Not authorized to add to this folder" });
+        }
+      }
+      
+      const newFolder = await storage.createFolder({
+        ...folderData,
+        userId
+      });
+      
+      return res.status(201).json({ folder: newFolder });
+    } catch (error) {
+      console.error("Error creating folder:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.patch("/api/folders/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const folderId = parseInt(req.params.id);
+      if (isNaN(folderId)) {
+        return res.status(400).json({ error: "Invalid folder ID" });
+      }
+      
+      const folder = await storage.getFolder(folderId);
+      if (!folder) {
+        return res.status(404).json({ error: "Folder not found" });
+      }
+      
+      // Check ownership
+      if (folder.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      
+      // Prevent cycles in folder structure
+      if (req.body.parentId && req.body.parentId !== folder.parentId) {
+        if (req.body.parentId === folderId) {
+          return res.status(400).json({ error: "A folder cannot be its own parent" });
+        }
+        
+        // Check if the new parent is a descendant of this folder
+        const checkForCycle = async (currentFolderId: number, targetFolderId: number): Promise<boolean> => {
+          if (currentFolderId === targetFolderId) return true;
+          
+          const children = await storage.getFolderChildren(currentFolderId);
+          for (const child of children) {
+            const hasCycle = await checkForCycle(child.id, targetFolderId);
+            if (hasCycle) return true;
+          }
+          
+          return false;
+        };
+        
+        const wouldCreateCycle = await checkForCycle(folderId, req.body.parentId);
+        if (wouldCreateCycle) {
+          return res.status(400).json({ error: "This would create a cycle in the folder structure" });
+        }
+      }
+      
+      const updatedFolder = await storage.updateFolder(folderId, req.body);
+      
+      return res.status(200).json({ folder: updatedFolder });
+    } catch (error) {
+      console.error("Error updating folder:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.delete("/api/folders/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const folderId = parseInt(req.params.id);
+      if (isNaN(folderId)) {
+        return res.status(400).json({ error: "Invalid folder ID" });
+      }
+      
+      const folder = await storage.getFolder(folderId);
+      if (!folder) {
+        return res.status(404).json({ error: "Folder not found" });
+      }
+      
+      // Check ownership
+      if (folder.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      
+      await storage.deleteFolder(folderId);
+      
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("Error deleting folder:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/folders/:id/toggle-favorite", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const folderId = parseInt(req.params.id);
+      if (isNaN(folderId)) {
+        return res.status(400).json({ error: "Invalid folder ID" });
+      }
+      
+      const folder = await storage.getFolder(folderId);
+      if (!folder) {
+        return res.status(404).json({ error: "Folder not found" });
+      }
+      
+      // Check ownership
+      if (folder.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      
+      const updatedFolder = await storage.toggleFavoriteFolder(folderId);
+      
+      return res.status(200).json({ folder: updatedFolder });
+    } catch (error) {
+      console.error("Error toggling folder favorite status:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Document routes
+  app.get("/api/users/:userId/documents", isOwner, async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+      
+      const documents = await storage.getDocuments(userId);
+      
+      return res.status(200).json({ documents });
+    } catch (error) {
+      console.error("Error getting documents:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.get("/api/documents/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const documentId = parseInt(req.params.id);
+      if (isNaN(documentId)) {
+        return res.status(400).json({ error: "Invalid document ID" });
+      }
+      
+      const document = await storage.getDocument(documentId);
+      if (!document) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+      
+      // Check ownership
+      if (document.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      
+      return res.status(200).json({ document });
+    } catch (error) {
+      console.error("Error getting document:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/documents", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const documentData = req.body;
+      if (!documentData.title || documentData.title.trim() === '') {
+        return res.status(400).json({ error: "Document title is required" });
+      }
+      
+      if (!documentData.content) {
+        documentData.content = '';  // Default empty content
+      }
+      
+      const userId = req.session.userId;
+      
+      // Verify folder exists and belongs to user if provided
+      if (documentData.folderId) {
+        const folder = await storage.getFolder(documentData.folderId);
+        if (!folder) {
+          return res.status(404).json({ error: "Folder not found" });
+        }
+        
+        if (folder.userId !== userId) {
+          return res.status(403).json({ error: "Not authorized to add to this folder" });
+        }
+      }
+      
+      const newDocument = await storage.createDocument({
+        ...documentData,
+        userId
+      });
+      
+      return res.status(201).json({ document: newDocument });
+    } catch (error) {
+      console.error("Error creating document:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.patch("/api/documents/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const documentId = parseInt(req.params.id);
+      if (isNaN(documentId)) {
+        return res.status(400).json({ error: "Invalid document ID" });
+      }
+      
+      const document = await storage.getDocument(documentId);
+      if (!document) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+      
+      // Check ownership
+      if (document.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      
+      // If moving to a different folder, verify folder exists and belongs to user
+      if (req.body.folderId && req.body.folderId !== document.folderId) {
+        const folder = await storage.getFolder(req.body.folderId);
+        if (!folder) {
+          return res.status(404).json({ error: "Target folder not found" });
+        }
+        
+        if (folder.userId !== req.session.userId) {
+          return res.status(403).json({ error: "Not authorized to move to this folder" });
+        }
+      }
+      
+      const updatedDocument = await storage.updateDocument(documentId, req.body);
+      
+      return res.status(200).json({ document: updatedDocument });
+    } catch (error) {
+      console.error("Error updating document:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.delete("/api/documents/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const documentId = parseInt(req.params.id);
+      if (isNaN(documentId)) {
+        return res.status(400).json({ error: "Invalid document ID" });
+      }
+      
+      const document = await storage.getDocument(documentId);
+      if (!document) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+      
+      // Check ownership
+      if (document.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      
+      await storage.deleteDocument(documentId);
+      
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("Error deleting document:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/documents/:id/toggle-favorite", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const documentId = parseInt(req.params.id);
+      if (isNaN(documentId)) {
+        return res.status(400).json({ error: "Invalid document ID" });
+      }
+      
+      const document = await storage.getDocument(documentId);
+      if (!document) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+      
+      // Check ownership
+      if (document.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      
+      const updatedDocument = await storage.toggleFavoriteDocument(documentId);
+      
+      return res.status(200).json({ document: updatedDocument });
+    } catch (error) {
+      console.error("Error toggling document favorite status:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });
