@@ -238,6 +238,26 @@ interface KanbanColumnProps {
   onAddTask: (status: KanbanStatus) => void;
 }
 
+// Column Drop component for drag and drop between columns
+function ColumnDrop({ children }: { children: React.ReactNode }) {
+  const [{ isOver }, drop] = useDrop({
+    accept: ItemTypes.COLUMN,
+    drop: () => ({}),
+    collect: (monitor) => ({
+      isOver: !!monitor.isOver(),
+    }),
+  });
+  
+  return (
+    <div 
+      ref={drop} 
+      className="flex gap-6 min-w-max h-full"
+    >
+      {children}
+    </div>
+  );
+}
+
 function KanbanColumn({ 
   columnId,
   title, 
@@ -335,10 +355,10 @@ function KanbanColumn({
   // Set column drag with direct object syntax for better reactivity
   const [{ isDragging }, drag] = useDrag({
     type: ItemTypes.COLUMN,
-    item: { 
+    item: () => ({ 
       id: columnId,
       status
-    },
+    }),
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
@@ -728,7 +748,7 @@ export default function KanbanBoardPage() {
         )}
 
         <div className="overflow-x-auto pb-4" style={{ height: 'calc(100vh - 160px)' }}>
-          <div className="flex gap-6 min-w-max h-full">
+          <ColumnDrop>
             {activeBoard && activeBoard.columns.map(column => (
               <KanbanColumn
                 key={column.id}
@@ -756,7 +776,7 @@ export default function KanbanBoardPage() {
                 Add Column
               </Button>
             </div>
-          </div>
+          </ColumnDrop>
         </div>
       
       {/* Add Task Dialog */}
