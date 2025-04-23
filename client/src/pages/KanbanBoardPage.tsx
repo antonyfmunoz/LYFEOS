@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { toast } from '@/hooks/use-toast';
 import {
   Card,
   CardContent,
@@ -239,7 +240,10 @@ export default function KanbanBoardPage() {
     deleteKanbanTask,
     moveKanbanTask,
     updateKanbanBoard,
-    deleteKanbanBoard
+    deleteKanbanBoard,
+    addKanbanColumn,
+    updateKanbanColumn,
+    deleteKanbanColumn
   } = useLYFEOS();
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
