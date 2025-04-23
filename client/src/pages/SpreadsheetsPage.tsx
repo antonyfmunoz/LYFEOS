@@ -69,7 +69,6 @@ export default function SpreadsheetsPage() {
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newCategory, setNewCategory] = useState('general');
-  const [newType, setNewType] = useState('regular'); // regular, canvas, or graph
   
   // Fetch spreadsheets from the database
   const { data: spreadsheetsData, isLoading, isError } = useQuery({
@@ -89,18 +88,7 @@ export default function SpreadsheetsPage() {
   
   // Create spreadsheet mutation
   const createSpreadsheetMutation = useMutation({
-    mutationFn: async (spreadsheetData: { title: string; description: string; category: string; type: string }) => {
-      // Prepare content based on type
-      let content = {};
-      
-      if (spreadsheetData.type === 'regular') {
-        content = { cells: {} }; // Regular spreadsheet with cells
-      } else if (spreadsheetData.type === 'canvas') {
-        content = { elements: [], connections: [] }; // Canvas with elements and connections
-      } else if (spreadsheetData.type === 'graph') {
-        content = { nodes: [], edges: [] }; // Graph with nodes and edges
-      }
-      
+    mutationFn: async (spreadsheetData: { title: string; description: string; category: string }) => {
       const response = await fetch('/api/spreadsheets', {
         method: 'POST',
         headers: {
@@ -108,7 +96,7 @@ export default function SpreadsheetsPage() {
         },
         body: JSON.stringify({
           ...spreadsheetData,
-          content,
+          content: { cells: {} }, // Empty spreadsheet content
         }),
       });
       
@@ -129,7 +117,6 @@ export default function SpreadsheetsPage() {
       setNewTitle('');
       setNewDescription('');
       setNewCategory('general');
-      setNewType('regular');
       setIsNewDialogOpen(false);
     },
     onError: () => {
@@ -229,7 +216,6 @@ export default function SpreadsheetsPage() {
       title: newTitle,
       description: newDescription,
       category: newCategory,
-      type: newType,
     });
   };
   
@@ -337,56 +323,6 @@ export default function SpreadsheetsPage() {
                     placeholder="Enter category"
                   />
                   <p className="text-xs text-muted-foreground">Default is "general"</p>
-                </div>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="type">Spreadsheet Type</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    <Button
-                      type="button"
-                      variant={newType === 'regular' ? 'default' : 'outline'}
-                      className="flex flex-col items-center justify-center h-24 p-2"
-                      onClick={() => setNewType('regular')}
-                    >
-                      <FileSpreadsheet className="h-10 w-10 mb-2" />
-                      <span className="text-xs">Regular</span>
-                    </Button>
-                    
-                    <Button
-                      type="button"
-                      variant={newType === 'canvas' ? 'default' : 'outline'}
-                      className="flex flex-col items-center justify-center h-24 p-2"
-                      onClick={() => setNewType('canvas')}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-10 w-10 mb-2">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                        <path d="M21 15l-5-5L5 21"></path>
-                      </svg>
-                      <span className="text-xs">Canvas</span>
-                    </Button>
-                    
-                    <Button
-                      type="button"
-                      variant={newType === 'graph' ? 'default' : 'outline'}
-                      className="flex flex-col items-center justify-center h-24 p-2"
-                      onClick={() => setNewType('graph')}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-10 w-10 mb-2">
-                        <circle cx="5" cy="6" r="3"></circle>
-                        <circle cx="10" cy="17" r="3"></circle>
-                        <circle cx="19" cy="7" r="3"></circle>
-                        <line x1="5" y1="9" x2="9" y2="14"></line>
-                        <line x1="10" y1="14" x2="16" y2="10"></line>
-                      </svg>
-                      <span className="text-xs">Graph</span>
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {newType === 'regular' && 'Create a traditional spreadsheet with cells and formulas'}
-                    {newType === 'canvas' && 'Create a freeform canvas for visual notes and diagrams like Obsidian Canvas'}
-                    {newType === 'graph' && 'Create a connected graph with nodes and relationships like Obsidian Graph view'}
-                  </p>
                 </div>
               </div>
               <DialogFooter>
