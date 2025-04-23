@@ -104,7 +104,7 @@ export default function EnhancedMissionWidget({
       <Button
         variant="outline" 
         size="sm"
-        className="mt-4"
+        className="mt-4 hover:bg-yellow-400 hover:text-black"
         onClick={() => window.location.href = '/calendar'}
       >
         <Calendar className="h-4 w-4 mr-2" />
@@ -124,7 +124,7 @@ export default function EnhancedMissionWidget({
       <Button
         variant="outline" 
         size="sm"
-        className="mt-4"
+        className="mt-4 hover:bg-yellow-400 hover:text-black"
         onClick={() => window.location.href = '/calendar'}
       >
         <Calendar className="h-4 w-4 mr-2" />
