@@ -146,7 +146,12 @@ export default function GraphsPage() {
   return (
     <div className="container mx-auto py-6">
       <div className="flex items-center mb-6">
-        <Button variant="ghost" size="icon" className="mr-2" onClick={() => navigate("/systems")}>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="mr-2 hover:bg-yellow-400 hover:text-black" 
+          onClick={() => navigate("/systems")}
+        >
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <div>
@@ -166,7 +171,11 @@ export default function GraphsPage() {
           />
         </div>
         
-        <Button variant="default" onClick={() => navigate("/graphs/new")}>
+        <Button 
+          variant="default" 
+          onClick={() => navigate("/graphs/new")}
+          className="hover:bg-yellow-400 hover:text-black"
+        >
           <Plus className="h-4 w-4 mr-2" />
           New Graph
         </Button>
@@ -211,7 +220,11 @@ export default function GraphsPage() {
       ) : isError ? (
         <div className="text-center py-10">
           <div className="text-destructive">Error loading graphs</div>
-          <Button variant="outline" className="mt-2" onClick={() => refetch()}>
+          <Button 
+            variant="outline" 
+            className="mt-2 hover:bg-yellow-400 hover:text-black" 
+            onClick={() => refetch()}
+          >
             Retry
           </Button>
         </div>
@@ -225,7 +238,11 @@ export default function GraphsPage() {
               : "Create your first knowledge graph to get started"
             }
           </p>
-          <Button variant="default" onClick={() => navigate("/graphs/new")}>
+          <Button 
+            variant="default" 
+            onClick={() => navigate("/graphs/new")}
+            className="hover:bg-yellow-400 hover:text-black"
+          >
             <Plus className="h-4 w-4 mr-2" />
             New Graph
           </Button>
@@ -259,7 +276,7 @@ export default function GraphsPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
+                      className="h-7 w-7 hover:bg-yellow-400 hover:text-black"
                       onClick={(e) => toggleFavorite(graph.id, e)}
                     >
                       <Star className={`h-4 w-4 ${graph.favorite ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground"}`} />
@@ -267,7 +284,7 @@ export default function GraphsPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 text-destructive"
+                      className="h-7 w-7 text-destructive hover:bg-yellow-400 hover:text-black"
                       onClick={(e) => deleteGraph(graph.id, e)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -297,10 +314,18 @@ export default function GraphsPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+            <Button 
+              variant="outline" 
+              onClick={() => setDeleteDialogOpen(false)}
+              className="hover:bg-yellow-400 hover:text-black"
+            >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={confirmDelete}>
+            <Button 
+              variant="destructive" 
+              onClick={confirmDelete}
+              className="hover:bg-yellow-400 hover:text-black"
+            >
               Delete
             </Button>
           </DialogFooter>
