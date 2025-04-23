@@ -706,13 +706,13 @@ export default function KanbanBoardPage() {
   const BoardContainer = () => {
     const [{ isOver }, drop] = useDrop({
       accept: ItemTypes.COLUMN,
-      hover: (item: { id: string, index: number, boardId: string }, monitor) => {
+      drop: (item: { id: string, index: number, boardId: string }, monitor) => {
         if (!boardId) return;
         
-        // Find the column we're hovering over
+        // Find the column we're dragging
         const dragIndex = item.index;
         
-        // Get horizontal position
+        // Get final drop position
         const clientOffset = monitor.getClientOffset();
         if (!clientOffset) return;
         
@@ -741,10 +741,9 @@ export default function KanbanBoardPage() {
         if (targetIndex !== -1 && targetIndex !== dragIndex) {
           // Move the column to the new position
           moveKanbanColumn(boardId, item.id, targetIndex);
-          
-          // Update the index for the dragged item
-          item.index = targetIndex;
         }
+        
+        return { moved: true };
       },
       collect: (monitor) => ({
         isOver: !!monitor.isOver(),
