@@ -109,8 +109,8 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
       });
   };
 
-  // Set up drag source
-  const [{ isDragging }, drag] = useDrag(() => ({
+  // Set up drag source with dependencies to handle re-renders
+  const [{ isDragging }, drag] = useDrag({
     type: ItemTypes.TASK,
     item: { 
       id: task.id, 
@@ -120,7 +120,7 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
-  }));
+  });
 
   return (
     <div 
@@ -246,21 +246,22 @@ function KanbanColumn({
   const inputRef = useRef<HTMLInputElement>(null);
   const { moveKanbanTask } = useLYFEOS();
 
-  // Set up drop target
-  const [{ isOver, canDrop }, drop] = useDrop(() => ({
+  // Set up drop target with direct object syntax for better reactivity
+  const [{ isOver, canDrop }, drop] = useDrop({
     accept: ItemTypes.TASK,
     drop: (item: DragItem) => {
       // Handle the drop, update task status
       if (item.status !== status) {
         moveKanbanTask(item.id, status);
       }
+      return { status };
     },
     canDrop: (item: DragItem) => item.status !== status,
     collect: (monitor) => ({
       isOver: !!monitor.isOver(),
       canDrop: !!monitor.canDrop(),
     }),
-  }));
+  });
 
   // Function to copy column configuration to clipboard
   const duplicateColumn = () => {
@@ -318,8 +319,8 @@ function KanbanColumn({
     }
   };
 
-  // Set column drag
-  const [{ isDragging }, drag] = useDrag(() => ({
+  // Set column drag with direct object syntax for better reactivity
+  const [{ isDragging }, drag] = useDrag({
     type: ItemTypes.COLUMN,
     item: { 
       id: columnId,
@@ -329,7 +330,7 @@ function KanbanColumn({
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
-  }));
+  });
 
   return (
     <div 
