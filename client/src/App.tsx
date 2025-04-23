@@ -35,6 +35,9 @@ import KnowledgeArchivePage from "./pages/KnowledgeArchivePage";
 import GoalsArchivePage from "./pages/GoalsArchivePage";
 import { ContactsPage } from "./pages/ContactsPage";
 import { ContactDetailPage } from "./pages/ContactDetailPage";
+import SpreadsheetsPage from "./pages/SpreadsheetsPage";
+import SpreadsheetDetailPage from "./pages/SpreadsheetDetailPage";
+import SpreadsheetNewPage from "./pages/SpreadsheetNewPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -287,6 +290,31 @@ function Router() {
         <ProtectedRoute>
           <RootLayout>
             <ContactDetailPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      {/* Spreadsheets routes */}
+      <Route path="/spreadsheets">
+        <ProtectedRoute>
+          <RootLayout>
+            <SpreadsheetsPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/spreadsheets/new">
+        <ProtectedRoute>
+          <RootLayout>
+            <SpreadsheetNewPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/spreadsheets/:id">
+        <ProtectedRoute>
+          <RootLayout>
+            <SpreadsheetDetailPage />
           </RootLayout>
         </ProtectedRoute>
       </Route>

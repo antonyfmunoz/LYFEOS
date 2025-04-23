@@ -239,7 +239,7 @@ export default function SpreadsheetsPage() {
   };
   
   // Get all unique categories
-  const categories = Array.from(new Set(spreadsheets.map((s: Spreadsheet) => s.category)));
+  const categories = Array.from(new Set(spreadsheets.map((s: Spreadsheet) => s.category))) as string[];
   
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -357,7 +357,7 @@ export default function SpreadsheetsPage() {
         </Badge>
         {categories
           .filter(c => c !== "general")
-          .map(category => (
+          .map((category: string) => (
             <Badge 
               key={category}
               variant={selectedCategory === category ? "default" : "outline"} 

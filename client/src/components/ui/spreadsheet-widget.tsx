@@ -108,7 +108,7 @@ export function SpreadsheetWidget() {
   };
   
   // Get all unique categories
-  const categories = Array.from(new Set(spreadsheets.map((s: Spreadsheet) => s.category)));
+  const categories = Array.from(new Set(spreadsheets.map((s: Spreadsheet) => s.category))) as string[];
   
   return (
     <Card className="w-full border border-slate-700/30 p-0 overflow-hidden">
@@ -148,7 +148,7 @@ export function SpreadsheetWidget() {
           </Badge>
           {categories
             .filter(c => c !== "general")
-            .map(category => (
+            .map((category: string) => (
               <Badge 
                 key={category}
                 variant={selectedCategory === category ? "default" : "outline"} 
