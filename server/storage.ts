@@ -10,7 +10,8 @@ import {
   canvases, type Canvas, type InsertCanvas,
   graphs, type Graph, type InsertGraph,
   folders, type Folder, type InsertFolder,
-  documents, type Document, type InsertDocument
+  documents, type Document, type InsertDocument,
+  templates, type Template, type InsertTemplate
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -683,6 +684,62 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return updatedDocument;
+  }
+
+  // Template methods
+  async getTemplates(userId: number): Promise<Template[]> {
+    return db.select().from(templates).where(eq(templates.userId, userId));
+  }
+  
+  async getTemplatesByCategory(userId: number, category: string): Promise<Template[]> {
+    return db
+      .select()
+      .from(templates)
+      .where(and(
+        eq(templates.userId, userId),
+        eq(templates.category, category)
+      ));
+  }
+  
+  async getTemplate(id: number): Promise<Template | undefined> {
+    const [template] = await db.select().from(templates).where(eq(templates.id, id));
+    return template;
+  }
+  
+  async createTemplate(template: InsertTemplate): Promise<Template> {
+    const [newTemplate] = await db
+      .insert(templates)
+      .values(template)
+      .returning();
+    return newTemplate;
+  }
+  
+  async updateTemplate(id: number, templateUpdate: Partial<InsertTemplate>): Promise<Template> {
+    const [updatedTemplate] = await db
+      .update(templates)
+      .set({ ...templateUpdate, updatedAt: new Date() })
+      .where(eq(templates.id, id))
+      .returning();
+    return updatedTemplate;
+  }
+  
+  async deleteTemplate(id: number): Promise<void> {
+    await db.delete(templates).where(eq(templates.id, id));
+  }
+  
+  async toggleFavoriteTemplate(id: number): Promise<Template> {
+    const template = await this.getTemplate(id);
+    if (!template) {
+      throw new Error("Template not found");
+    }
+    
+    const [updatedTemplate] = await db
+      .update(templates)
+      .set({ favorite: !template.favorite, updatedAt: new Date() })
+      .where(eq(templates.id, id))
+      .returning();
+    
+    return updatedTemplate;
   }
 }
 
