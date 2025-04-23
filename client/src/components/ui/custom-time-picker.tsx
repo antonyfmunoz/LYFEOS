@@ -195,7 +195,10 @@ export function CustomTimePicker({ value, onChange, className, buttonClassName }
           variant="ghost"
           size="icon"
           onClick={() => setIsOpen(!isOpen)}
-          className="absolute right-0 top-0 h-full px-3 text-primary/70 hover:text-primary hover:bg-primary/10"
+          className={cn(
+            "absolute right-0 top-0 h-full px-3 text-primary/70 hover:text-primary hover:bg-primary/10",
+            buttonClassName
+          )}
         >
           <Clock className="h-4 w-4" />
         </Button>
