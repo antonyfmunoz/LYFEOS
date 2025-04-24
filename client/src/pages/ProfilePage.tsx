@@ -636,17 +636,7 @@ export default function ProfilePage() {
               </CollapsibleContent>
             </Collapsible>
             
-            {/* Logout Button */}
-            <div className="mt-4 flex justify-end">
-              <Button 
-                variant="outline" 
-                className="border-red-500/30 text-red-500 hover:bg-red-500/10 hover:text-red-400"
-                onClick={logout}
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-              </Button>
-            </div>
+
           </div>
         </div>
       </div>
