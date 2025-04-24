@@ -207,16 +207,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/auth/logout", (req: Request, res: Response) => {
     try {
+      // If no session exists, just respond successfully
+      if (!req.session || !req.session.userId) {
+        res.clearCookie("connect.sid");
+        return res.status(200).json({ message: "Already logged out" });
+      }
+      
       // Destroy session
       req.session.destroy((err) => {
         if (err) {
+          console.error("Error destroying session:", err);
           return res.status(500).json({ error: "Failed to logout" });
         }
         
-        res.clearCookie("connect.sid");
+        res.clearCookie("connect.sid", {
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: process.env.NODE_ENV === "production",
+          path: '/'
+        });
+        
         return res.status(200).json({ message: "Logged out successfully" });
       });
     } catch (error) {
+      console.error("Logout error:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });
