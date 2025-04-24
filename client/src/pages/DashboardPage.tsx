@@ -144,7 +144,7 @@ export default function DashboardPage() {
             className={`p-0 w-7 h-7 rounded-md ${
               num === state
                 ? "bg-primary/20 text-primary border border-primary/50"
-                : "text-[#7DAAB2] hover:bg-yellow-400 hover:text-black"
+                : "text-[#7DAAB2] hover:bg-primary hover:text-black"
             }`}
             onClick={() => onChange(num)}
           >

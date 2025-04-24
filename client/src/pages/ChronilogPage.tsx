@@ -125,6 +125,9 @@ const DraggableCategoryCard = ({ id, index, item, moveCategory, navigate }: Drag
       navigate('/goals-archive');
     }
   };
+
+  // Get stats from context to access primary color
+  const { stats } = useLYFEOS();
   
   const handleButtonClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent the parent div's onClick from firing
@@ -170,8 +173,12 @@ const DraggableCategoryCard = ({ id, index, item, moveCategory, navigate }: Drag
             item.color === 'secondary' ? 'bg-secondary/10 text-secondary' : 
             item.color === 'accent' ? 'bg-accent/10 text-accent' : 
             'bg-emerald-400/10 text-emerald-400'
-          } hover:bg-opacity-20 transition`}
+          } hover:bg-primary hover:text-black transition-all`}
           onClick={handleButtonClick}
+          style={{
+            // Fallback in case stats.primaryColor is not available
+            "--hover-color": stats?.primaryColor || "#ecc94b"
+          } as React.CSSProperties}
         >
           OPEN
         </button>
