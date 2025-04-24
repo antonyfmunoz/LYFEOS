@@ -21,7 +21,9 @@ import {
   Palette,
   Upload,
   Camera,
-  Paintbrush
+  Paintbrush,
+  Settings,
+  ArrowLeft
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -193,24 +195,58 @@ export default function ProfilePage() {
   if (isLoading) {
     return (
       <RootLayout>
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto pb-20">
           <div className="flex items-center gap-2 mb-6">
-            <Link 
-              href="/dashboard" 
-              className="text-primary hover:text-primary/80 transition"
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 hover:bg-primary hover:text-background" 
+              onClick={() => window.history.back()}
             >
-              <span className="material-icons">arrow_back</span>
-            </Link>
-            <h1 className="text-2xl font-orbitron text-foreground">Profile</h1>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <h1 className="text-2xl font-orbitron text-foreground">My Account</h1>
           </div>
-          <div className="bg-background border border-primary/20 backdrop-blur-md rounded-lg p-6 shadow-lg flex items-center justify-center h-96">
-            <div className="animate-pulse flex space-x-4">
-              <div className="rounded-full bg-primary/20 h-12 w-12"></div>
-              <div className="flex-1 space-y-4 py-1">
-                <div className="h-4 bg-primary/20 rounded w-3/4"></div>
-                <div className="space-y-2">
-                  <div className="h-4 bg-primary/20 rounded"></div>
-                  <div className="h-4 bg-primary/20 rounded w-5/6"></div>
+          
+          {/* Loading Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-background border border-primary/20 backdrop-blur-md rounded-lg p-6 shadow-lg"
+                style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
+              <div className="animate-pulse">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="h-4 bg-primary/20 rounded w-24"></div>
+                  <div className="h-8 bg-primary/20 rounded w-24"></div>
+                </div>
+                
+                <div className="flex justify-center mb-6">
+                  <div className="rounded-full bg-primary/20 h-24 w-24"></div>
+                </div>
+                
+                <div className="flex flex-col items-center space-y-2 mb-6">
+                  <div className="h-5 bg-primary/20 rounded w-40"></div>
+                  <div className="h-3 bg-primary/20 rounded w-32"></div>
+                  <div className="h-6 bg-primary/20 rounded w-full max-w-xs mt-2"></div>
+                </div>
+                
+                <div className="space-y-6">
+                  <div className="h-32 bg-primary/10 rounded w-full"></div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-background border border-primary/20 backdrop-blur-md rounded-lg p-6 shadow-lg"
+                style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
+              <div className="animate-pulse">
+                <div className="h-5 bg-primary/20 rounded w-24 mb-6"></div>
+                
+                <div className="space-y-4">
+                  <div className="h-32 bg-primary/10 rounded w-full"></div>
+                  <div className="h-32 bg-primary/10 rounded w-full"></div>
+                  <div className="h-32 bg-primary/10 rounded w-full"></div>
+                </div>
+                
+                <div className="flex justify-end mt-6">
+                  <div className="h-9 bg-primary/20 rounded w-24"></div>
                 </div>
               </div>
             </div>
@@ -224,50 +260,15 @@ export default function ProfilePage() {
     <RootLayout>
       <div className="max-w-4xl mx-auto pb-20">
         <div className="flex items-center gap-2 mb-6">
-          <Link 
-            href="/dashboard" 
-            className="text-primary hover:text-primary/80 transition"
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 hover:bg-primary hover:text-background" 
+            onClick={() => window.history.back()}
           >
-            <span className="material-icons">arrow_back</span>
-          </Link>
-          <h1 className="text-2xl font-orbitron text-foreground">Profile</h1>
-          
-          {/* Edit/Save buttons */}
-          <div className="ml-auto">
-            {isEditing ? (
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleCancel}
-                  className="hover:bg-primary hover:text-background"
-                >
-                  <X className="mr-2 h-4 w-4" />
-                  Cancel
-                </Button>
-                <Button 
-                  variant="default" 
-                  size="sm"
-                  onClick={handleSave}
-                  disabled={updateProfileMutation.isPending}
-                  className="hover:bg-primary hover:text-background"
-                >
-                  <Save className="mr-2 h-4 w-4" />
-                  Save
-                </Button>
-              </div>
-            ) : (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setIsEditing(true)}
-                className="hover:bg-primary hover:text-background"
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Profile
-              </Button>
-            )}
-          </div>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-2xl font-orbitron text-foreground">My Account</h1>
         </div>
 
         {updateProfileMutation.isError && (
@@ -278,301 +279,342 @@ export default function ProfilePage() {
           </Alert>
         )}
 
-        <div className="bg-background border border-primary/20 backdrop-blur-md rounded-lg p-6 shadow-lg"
-             style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
-          
-          {/* Profile Image - Centered at the top */}
-          <div className="flex justify-center mb-4">
-            <div 
-              className="w-24 h-24 rounded-full border-2 border-primary/50 relative overflow-hidden"
-              style={{ 
-                boxShadow: "0 0 15px var(--primary-glow-light)"
-              }}
-            >
-              {profileData.profilePicture ? (
-                <img 
-                  src={profileData.profilePicture} 
-                  alt="Profile" 
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div 
-                  className="w-full h-full flex items-center justify-center bg-primary"
-                >
-                  <span className="material-icons text-background text-4xl">person</span>
+        {/* Profile Card */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-background border border-primary/20 backdrop-blur-md rounded-lg p-6 shadow-lg"
+              style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-orbitron text-foreground flex items-center">
+                <User className="mr-2 h-5 w-5 text-primary" />
+                Profile
+              </h2>
+              {isEditing ? (
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleCancel}
+                    className="hover:bg-primary hover:text-background"
+                  >
+                    <X className="mr-2 h-4 w-4" />
+                    Cancel
+                  </Button>
+                  <Button 
+                    variant="default" 
+                    size="sm"
+                    onClick={handleSave}
+                    disabled={updateProfileMutation.isPending}
+                    className="hover:bg-primary hover:text-background"
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    Save
+                  </Button>
                 </div>
+              ) : (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setIsEditing(true)}
+                  className="hover:bg-primary hover:text-background"
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit Profile
+                </Button>
+              )}
+            </div>
+            
+            {/* Profile Image - Centered at the top */}
+            <div className="flex justify-center mb-4">
+              <div 
+                className="w-24 h-24 rounded-full border-2 border-primary/50 relative overflow-hidden"
+                style={{ 
+                  boxShadow: "0 0 15px var(--primary-glow-light)"
+                }}
+              >
+                {profileData.profilePicture ? (
+                  <img 
+                    src={profileData.profilePicture} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div 
+                    className="w-full h-full flex items-center justify-center bg-primary"
+                  >
+                    <span className="material-icons text-background text-4xl">person</span>
+                  </div>
+                )}
+                
+                {isEditing && (
+                  <label 
+                    htmlFor="profile-picture-upload" 
+                    className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer"
+                  >
+                    <div className="flex flex-col items-center text-white">
+                      <Camera className="h-6 w-6 mb-1" />
+                      <span className="text-xs">Change</span>
+                    </div>
+                    <input
+                      type="file"
+                      id="profile-picture-upload"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
+            
+            {/* User Info - Centered below profile picture */}
+            <div className="flex flex-col items-center text-center mb-4">
+              <h2 className="text-xl font-orbitron text-foreground mb-1">
+                {profileData.displayName || username}
+              </h2>
+              
+              {profileData.title && (
+                <p className="text-primary text-sm mb-3 font-medium">{profileData.title}</p>
               )}
               
-              {isEditing && (
-                <label 
-                  htmlFor="profile-picture-upload" 
-                  className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer"
-                >
-                  <div className="flex flex-col items-center text-white">
-                    <Camera className="h-6 w-6 mb-1" />
-                    <span className="text-xs">Change</span>
-                  </div>
-                  <input
-                    type="file"
-                    id="profile-picture-upload"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
-                </label>
-              )}
+              <div className="mb-2 flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full text-xs bg-primary/10 text-primary border border-primary/30">
+                  Level {stats.experience.level}
+                </span>
+                <span className="text-muted-foreground text-sm">
+                  {stats.experience.current}/{stats.experience.max} XP
+                </span>
+              </div>
+              
+              <div className="h-2 w-full max-w-xs mb-2 bg-primary/20 rounded-full">
+                <div 
+                  className="h-full bg-primary rounded-full transition-all duration-500" 
+                  style={{ width: `${(stats.experience.current / stats.experience.max) * 100}%` }}
+                ></div>
+              </div>
             </div>
+            
+            {isEditing ? (
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="displayName" className="flex items-center gap-2 mb-2">
+                    <User className="h-4 w-4 text-primary" />
+                    Display Name
+                  </Label>
+                  <Input
+                    id="displayName"
+                    name="displayName"
+                    value={profileData.displayName || ""}
+                    onChange={handleInputChange}
+                    placeholder="Enter your display name"
+                    className="bg-background/50 border-primary/30 focus:border-primary/50"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="title" className="flex items-center gap-2 mb-2">
+                    <Terminal className="h-4 w-4 text-primary" />
+                    Title
+                  </Label>
+                  <Input
+                    id="title"
+                    name="title"
+                    value={profileData.title || ""}
+                    onChange={handleInputChange}
+                    placeholder="e.g. Adventurer, Developer, Explorer"
+                    className="bg-background/50 border-primary/30 focus:border-primary/50"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="bio" className="flex items-center gap-2 mb-2">
+                    <FileText className="h-4 w-4 text-primary" />
+                    Bio
+                  </Label>
+                  <Textarea
+                    id="bio"
+                    name="bio"
+                    value={profileData.bio || ""}
+                    onChange={handleInputChange}
+                    placeholder="Write a short bio about yourself"
+                    className="bg-background/50 border-primary/30 focus:border-primary/50 resize-none min-h-[120px]"
+                  />
+                </div>
+              </div>
+            ) : (
+              <>
+                {profileData.bio && (
+                  <div className="p-4 bg-background/30 border border-primary/10 rounded-md mb-4 text-muted-foreground">
+                    <h3 className="text-md font-orbitron text-foreground mb-2">Bio</h3>
+                    {profileData.bio}
+                  </div>
+                )}
+              </>
+            )}
           </div>
-          
-          {/* User Info - Centered below profile picture */}
-          <div className="flex flex-col items-center text-center mb-6">
-            <h2 className="text-xl font-orbitron text-foreground mb-1">
-              {profileData.displayName || username}
+
+          {/* Settings Card */}
+          <div className="bg-background border border-primary/20 backdrop-blur-md rounded-lg p-6 shadow-lg"
+              style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
+            <h2 className="text-lg font-orbitron text-foreground flex items-center mb-4">
+              <Settings className="mr-2 h-5 w-5 text-primary" />
+              Settings
             </h2>
             
-            {profileData.title && (
-              <p className="text-primary text-sm mb-3 font-medium">{profileData.title}</p>
-            )}
-            
-            <div className="mb-2 flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full text-xs bg-primary/10 text-primary border border-primary/30">
-                Level {stats.experience.level}
-              </span>
-              <span className="text-muted-foreground text-sm">
-                {stats.experience.current}/{stats.experience.max} XP
-              </span>
-            </div>
-            
-            <div className="h-2 w-full max-w-xs mb-2 bg-primary/20 rounded-full">
-              <div 
-                className="h-full bg-primary rounded-full transition-all duration-500" 
-                style={{ width: `${(stats.experience.current / stats.experience.max) * 100}%` }}
-              ></div>
-            </div>
-          </div>
-          
-          <div className="flex flex-col md:flex-row gap-6">
-            {/* Left Column: Theme Settings */}
-            <div className="md:w-64">
-              {/* Dark Theme toggle */}
-              <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="material-icons text-primary text-sm">dark_mode</span>
-                  <Label className="text-sm text-foreground">Dark Theme</Label>
+            {/* Dark Theme toggle */}
+            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="material-icons text-primary text-sm">dark_mode</span>
+                <Label className="text-sm text-foreground">Dark Theme</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Toggle between light and dark interface mode.
+              </p>
+              <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
+                <div className="flex items-center">
+                  <span className="material-icons text-primary text-sm mr-2">dark_mode</span>
+                  <span className="text-sm">Dark Theme</span>
                 </div>
-                <p className="text-xs text-muted-foreground mb-3">
-                  Toggle between light and dark interface mode.
-                </p>
-                <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
-                  <div className="flex items-center">
-                    <span className="material-icons text-primary text-sm mr-2">dark_mode</span>
-                    <span className="text-sm">Dark Theme</span>
-                  </div>
-                  <button 
-                    onClick={() => {
-                      toggleDarkMode();
+                <button 
+                  onClick={() => {
+                    toggleDarkMode();
+                    toast({
+                      title: "Theme Updated",
+                      description: `Dark Theme has been ${!stats.darkThemeEnabled ? 'enabled' : 'disabled'}.`,
+                      variant: "default",
+                      className: "bg-background/80 border border-primary text-foreground",
+                      duration: 2000,
+                    });
+                  }}
+                  className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
+                    stats.darkThemeEnabled ? 'bg-primary/30' : 'bg-card'
+                  }`}
+                  aria-pressed={stats.darkThemeEnabled}
+                  role="switch"
+                >
+                  <div 
+                    className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
+                      stats.darkThemeEnabled ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
+                    }`}
+                  ></div>
+                </button>
+              </div>
+            </div>
+            
+            {/* Notifications toggle */}
+            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="material-icons text-primary text-sm">notifications</span>
+                <Label className="text-sm text-foreground">Notifications</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Enable or disable system notifications.
+              </p>
+              <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
+                <div className="flex items-center">
+                  <span className="material-icons text-primary text-sm mr-2">notifications</span>
+                  <span className="text-sm">Notifications</span>
+                </div>
+                <button 
+                  onClick={async () => {
+                    if (!user?.id) return;
+                    
+                    const newValue = !stats.notificationsEnabled;
+                    
+                    try {
+                      // Make API call to update setting
+                      const response = await fetch(`/api/users/${user.id}/stats`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ notificationsEnabled: newValue }),
+                        credentials: "include"
+                      });
+                      
+                      if (!response.ok) throw new Error("Failed to update setting");
+                      
+                      const updatedStats = await response.json();
+                      updateUserStats(updatedStats.stats);
+                      
                       toast({
-                        title: "Theme Updated",
-                        description: `Dark Theme has been ${!stats.darkThemeEnabled ? 'enabled' : 'disabled'}.`,
+                        title: "Setting Updated",
+                        description: `Notifications have been ${newValue ? 'enabled' : 'disabled'}.`,
                         variant: "default",
                         className: "bg-background/80 border border-primary text-foreground",
                         duration: 2000,
                       });
-                    }}
-                    className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
-                      stats.darkThemeEnabled ? 'bg-primary/30' : 'bg-card'
+                    } catch (error) {
+                      toast({
+                        title: "Error",
+                        description: "Failed to update notification settings.",
+                        variant: "destructive",
+                      });
+                      console.error("Error updating notification settings:", error);
+                    }
+                  }}
+                  className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
+                    stats.notificationsEnabled ? 'bg-primary/30' : 'bg-card'
+                  }`}
+                  aria-pressed={stats.notificationsEnabled}
+                  role="switch"
+                >
+                  <div 
+                    className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
+                      stats.notificationsEnabled ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
                     }`}
-                    aria-pressed={stats.darkThemeEnabled}
-                    role="switch"
-                  >
-                    <div 
-                      className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
-                        stats.darkThemeEnabled ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
-                      }`}
-                    ></div>
-                  </button>
-                </div>
-              </div>
-              
-              {/* Notifications toggle */}
-              <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="material-icons text-primary text-sm">notifications</span>
-                  <Label className="text-sm text-foreground">Notifications</Label>
-                </div>
-                <p className="text-xs text-muted-foreground mb-3">
-                  Enable or disable system notifications.
-                </p>
-                <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
-                  <div className="flex items-center">
-                    <span className="material-icons text-primary text-sm mr-2">notifications</span>
-                    <span className="text-sm">Notifications</span>
-                  </div>
-                  <button 
-                    onClick={async () => {
-                      if (!user?.id) return;
-                      
-                      const newValue = !stats.notificationsEnabled;
-                      
-                      try {
-                        // Make API call to update setting
-                        const response = await fetch(`/api/users/${user.id}/stats`, {
-                          method: "PATCH",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ notificationsEnabled: newValue }),
-                          credentials: "include"
-                        });
-                        
-                        if (!response.ok) throw new Error("Failed to update setting");
-                        
-                        const updatedStats = await response.json();
-                        updateUserStats(updatedStats.stats);
-                        
-                        toast({
-                          title: "Setting Updated",
-                          description: `Notifications have been ${newValue ? 'enabled' : 'disabled'}.`,
-                          variant: "default",
-                          className: "bg-background/80 border border-primary text-foreground",
-                          duration: 2000,
-                        });
-                      } catch (error) {
-                        toast({
-                          title: "Error",
-                          description: "Failed to update notification settings.",
-                          variant: "destructive",
-                        });
-                        console.error("Error updating notification settings:", error);
-                      }
-                    }}
-                    className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
-                      stats.notificationsEnabled ? 'bg-primary/30' : 'bg-card'
-                    }`}
-                    aria-pressed={stats.notificationsEnabled}
-                    role="switch"
-                  >
-                    <div 
-                      className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
-                        stats.notificationsEnabled ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
-                      }`}
-                    ></div>
-                  </button>
-                </div>
-              </div>
-              
-              {/* Primary Theme Color Selector */}
-              <div className="p-4 border border-primary/10 rounded-lg bg-background/40">
-                <div className="flex items-center gap-2 mb-2">
-                  <Paintbrush className="h-4 w-4 text-primary" />
-                  <Label className="text-sm text-foreground">UI Theme Color</Label>
-                </div>
-                <p className="text-xs text-muted-foreground mb-3">
-                  Select your preferred interface color.
-                </p>
-                <div className="grid grid-cols-4 gap-2">
-                  {STAT_COLORS.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      className={`w-8 h-8 rounded-md transition-all ${
-                        stats.primaryColor === color 
-                          ? 'ring-2 ring-offset-2 ring-offset-background ring-primary scale-110' 
-                          : 'ring-1 ring-primary/20 hover:scale-105'
-                      }`}
-                      style={{ backgroundColor: color }}
-                      onClick={() => handlePrimaryColorChange(color)}
-                      aria-label={`Select theme color ${color}`}
-                    >
-                      {stats.primaryColor === color && (
-                        <span className="flex items-center justify-center text-background text-xs">
-                          <span className="material-icons" style={{ fontSize: '16px' }}>check</span>
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center mt-3 gap-2">
-                  <span className="block w-3 h-3 rounded-full animate-pulse" style={{ backgroundColor: stats.primaryColor || "#00e0ff" }}></span>
-                  <p className="text-xs text-muted-foreground">
-                    Current color: {stats.primaryColor || "#00e0ff"}
-                  </p>
-                </div>
+                  ></div>
+                </button>
               </div>
             </div>
             
-            {/* Right Column: Profile details */}
-            <div className="flex-1">
-              {isEditing ? (
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="displayName" className="flex items-center gap-2 mb-2">
-                      <User className="h-4 w-4 text-primary" />
-                      Display Name
-                    </Label>
-                    <Input
-                      id="displayName"
-                      name="displayName"
-                      value={profileData.displayName || ""}
-                      onChange={handleInputChange}
-                      placeholder="Enter your display name"
-                      className="bg-background/50 border-primary/30 focus:border-primary/50"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="title" className="flex items-center gap-2 mb-2">
-                      <Terminal className="h-4 w-4 text-primary" />
-                      Title
-                    </Label>
-                    <Input
-                      id="title"
-                      name="title"
-                      value={profileData.title || ""}
-                      onChange={handleInputChange}
-                      placeholder="e.g. Adventurer, Developer, Explorer"
-                      className="bg-background/50 border-primary/30 focus:border-primary/50"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="bio" className="flex items-center gap-2 mb-2">
-                      <FileText className="h-4 w-4 text-primary" />
-                      Bio
-                    </Label>
-                    <Textarea
-                      id="bio"
-                      name="bio"
-                      value={profileData.bio || ""}
-                      onChange={handleInputChange}
-                      placeholder="Write a short bio about yourself"
-                      className="bg-background/50 border-primary/30 focus:border-primary/50 resize-none min-h-[120px]"
-                    />
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {profileData.bio && (
-                    <div className="p-4 bg-background/30 border border-primary/10 rounded-md mb-4 text-muted-foreground">
-                      <h3 className="text-md font-orbitron text-foreground mb-2">Bio</h3>
-                      {profileData.bio}
-                    </div>
-                  )}
-                </>
-              )}
-              
-
+            {/* Primary Theme Color Selector */}
+            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Paintbrush className="h-4 w-4 text-primary" />
+                <Label className="text-sm text-foreground">UI Theme Color</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Select your preferred interface color.
+              </p>
+              <div className="grid grid-cols-4 gap-2">
+                {STAT_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    className={`w-8 h-8 rounded-md transition-all ${
+                      stats.primaryColor === color 
+                        ? 'ring-2 ring-offset-2 ring-offset-background ring-primary scale-110' 
+                        : 'ring-1 ring-primary/20 hover:scale-105'
+                    }`}
+                    style={{ backgroundColor: color }}
+                    onClick={() => handlePrimaryColorChange(color)}
+                    aria-label={`Select theme color ${color}`}
+                  >
+                    {stats.primaryColor === color && (
+                      <span className="flex items-center justify-center text-background text-xs">
+                        <span className="material-icons" style={{ fontSize: '16px' }}>check</span>
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center mt-3 gap-2">
+                <span className="block w-3 h-3 rounded-full animate-pulse" style={{ backgroundColor: stats.primaryColor || "#00e0ff" }}></span>
+                <p className="text-xs text-muted-foreground">
+                  Current color: {stats.primaryColor || "#00e0ff"}
+                </p>
+              </div>
             </div>
-          </div>
-          
-          {/* Logout Button */}
-          <div className="mt-8 flex justify-end">
-            <Button 
-              variant="outline" 
-              className="border-red-500/30 text-red-500 hover:bg-red-500/10 hover:text-red-400"
-              onClick={logout}
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
-            </Button>
+            
+            {/* Logout Button */}
+            <div className="mt-4 flex justify-end">
+              <Button 
+                variant="outline" 
+                className="border-red-500/30 text-red-500 hover:bg-red-500/10 hover:text-red-400"
+                onClick={logout}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </div>
