@@ -63,14 +63,14 @@ function BoardItem({ id, title, taskCount, onClick }: BoardItemProps) {
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-6 w-6 ml-1 hover:bg-yellow-400 hover:text-black"
+              className="h-6 w-6 ml-1 hover:bg-primary hover:text-background"
             >
               <MoreHorizontal className="h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem
-              className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black text-xs"
+              className="hover:bg-primary hover:text-background focus:bg-primary focus:text-background text-xs"
               onClick={(e) => {
                 e.stopPropagation();
                 onClick(id);
@@ -80,7 +80,7 @@ function BoardItem({ id, title, taskCount, onClick }: BoardItemProps) {
               Open
             </DropdownMenuItem>
             <DropdownMenuItem
-              className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black text-xs"
+              className="hover:bg-primary hover:text-background focus:bg-primary focus:text-background text-xs"
               onClick={handleCopy}
             >
               <Copy className="h-3 w-3 mr-2" />
