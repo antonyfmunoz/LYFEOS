@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import { CollapsibleWidget } from "@/components/ui/collapsible-widget";
 import { Calendar, Clipboard, Contact2, FileSpreadsheet, Paintbrush, Network, FileText, FileCheck, ChevronRight } from "lucide-react";
 import { Link } from "wouter";
@@ -8,22 +9,29 @@ import { CanvasWidget } from "@/components/ui/canvas-widget";
 import { GraphWidget } from "@/components/ui/graph-widget";
 import DocumentsWidget from "@/components/ui/documents-widget";
 import TemplatesWidget from "@/components/ui/templates-widget";
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import { v4 as uuidv4 } from 'uuid';
+import update from 'immutability-helper';
+
+// Define widget data structure
+interface WidgetData {
+  id: string;
+  title: string;
+  icon: React.ReactNode;
+  content: React.ReactNode;
+  defaultOpen?: boolean;
+}
 
 export default function SystemsPage() {
-  return (
-    <>
-      <div className="mb-6">
-        <h1 className="text-2xl font-orbitron mb-1">Systems</h1>
-        <p className="text-[#7DAAB2]">Manage your personal operating system settings and view analytics.</p>
-      </div>
-      
-      {/* Calendar Module */}
-      <section className="mb-6">
-        <CollapsibleWidget 
-          title="Calendar" 
-          icon={<Calendar className="h-5 w-5 text-primary" />}
-          defaultOpen={true}
-        >
+  // Define initial widgets with unique IDs
+  const [widgets, setWidgets] = useState<WidgetData[]>([
+    {
+      id: uuidv4(),
+      title: "Calendar",
+      icon: <Calendar className="h-5 w-5 text-primary" />,
+      content: (
+        <div>
           <div className="flex justify-between items-center mb-3">
             <div className="text-sm font-medium flex items-center">
               <Calendar className="h-4 w-4 mr-2 text-primary" />
@@ -73,85 +81,94 @@ export default function SystemsPage() {
               </div>
             </div>
           </div>
-        </CollapsibleWidget>
-      </section>
+        </div>
+      ),
+      defaultOpen: true
+    },
+    {
+      id: uuidv4(),
+      title: "Boards",
+      icon: <Clipboard className="h-5 w-5 text-primary" />,
+      content: <KanbanWidget />,
+      defaultOpen: true
+    },
+    {
+      id: uuidv4(),
+      title: "Rolodex",
+      icon: <Contact2 className="h-5 w-5 text-primary" />,
+      content: <RolodexWidget />,
+      defaultOpen: true
+    },
+    {
+      id: uuidv4(),
+      title: "Spreadsheets",
+      icon: <FileSpreadsheet className="h-5 w-5 text-primary" />,
+      content: <SpreadsheetWidget />,
+      defaultOpen: true
+    },
+    {
+      id: uuidv4(),
+      title: "Canvas",
+      icon: <Paintbrush className="h-5 w-5 text-primary" />,
+      content: <CanvasWidget />,
+      defaultOpen: true
+    },
+    {
+      id: uuidv4(),
+      title: "Knowledge Graph",
+      icon: <Network className="h-5 w-5 text-primary" />,
+      content: <GraphWidget />,
+      defaultOpen: true
+    },
+    {
+      id: uuidv4(),
+      title: "Documents",
+      icon: <FileText className="h-5 w-5 text-primary" />,
+      content: <DocumentsWidget />,
+      defaultOpen: true
+    },
+    {
+      id: uuidv4(),
+      title: "Templates",
+      icon: <FileCheck className="h-5 w-5 text-primary" />,
+      content: <TemplatesWidget />,
+      defaultOpen: true
+    },
+  ]);
+
+  // Callback for widget drag and drop reordering
+  const moveWidget = useCallback((dragIndex: number, hoverIndex: number) => {
+    setWidgets((prevWidgets) => 
+      update(prevWidgets, {
+        $splice: [
+          [dragIndex, 1],
+          [hoverIndex, 0, prevWidgets[dragIndex]],
+        ],
+      })
+    );
+  }, []);
+
+  return (
+    <DndProvider backend={HTML5Backend}>
+      <div className="mb-6">
+        <h1 className="text-2xl font-orbitron mb-1">Systems</h1>
+        <p className="text-[#7DAAB2]">Manage your personal operating system settings and view analytics.</p>
+      </div>
       
-      {/* Boards Module */}
-      <section className="mb-6">
-        <CollapsibleWidget 
-          title="Boards" 
-          icon={<Clipboard className="h-5 w-5 text-primary" />}
-          defaultOpen={true}
-        >
-          <KanbanWidget />
-        </CollapsibleWidget>
-      </section>
-      
-      {/* Rolodex Module */}
-      <section className="mb-6">
-        <CollapsibleWidget 
-          title="Rolodex" 
-          icon={<Contact2 className="h-5 w-5 text-primary" />}
-          defaultOpen={true}
-        >
-          <RolodexWidget />
-        </CollapsibleWidget>
-      </section>
-      
-      {/* Spreadsheets Module */}
-      <section className="mb-6">
-        <CollapsibleWidget 
-          title="Spreadsheets" 
-          icon={<FileSpreadsheet className="h-5 w-5 text-primary" />}
-          defaultOpen={true}
-        >
-          <SpreadsheetWidget />
-        </CollapsibleWidget>
-      </section>
-      
-      {/* Canvas Module */}
-      <section className="mb-6">
-        <CollapsibleWidget 
-          title="Canvas" 
-          icon={<Paintbrush className="h-5 w-5 text-primary" />}
-          defaultOpen={true}
-        >
-          <CanvasWidget />
-        </CollapsibleWidget>
-      </section>
-      
-      {/* Graph Module */}
-      <section className="mb-6">
-        <CollapsibleWidget 
-          title="Knowledge Graph" 
-          icon={<Network className="h-5 w-5 text-primary" />}
-          defaultOpen={true}
-        >
-          <GraphWidget />
-        </CollapsibleWidget>
-      </section>
-      
-      {/* Documents Module */}
-      <section className="mb-6">
-        <CollapsibleWidget 
-          title="Documents" 
-          icon={<FileText className="h-5 w-5 text-primary" />}
-          defaultOpen={true}
-        >
-          <DocumentsWidget />
-        </CollapsibleWidget>
-      </section>
-      
-      {/* Templates Module */}
-      <section className="mb-6">
-        <CollapsibleWidget 
-          title="Templates" 
-          icon={<FileCheck className="h-5 w-5 text-primary" />}
-          defaultOpen={true}
-        >
-          <TemplatesWidget />
-        </CollapsibleWidget>
-      </section>
-    </>
+      {widgets.map((widget, index) => (
+        <section key={widget.id} className="mb-6">
+          <CollapsibleWidget 
+            title={widget.title} 
+            icon={widget.icon}
+            defaultOpen={widget.defaultOpen}
+            id={widget.id}
+            index={index}
+            moveWidget={moveWidget}
+          >
+            {widget.content}
+          </CollapsibleWidget>
+        </section>
+      ))}
+    </DndProvider>
   );
 }
