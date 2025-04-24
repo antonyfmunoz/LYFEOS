@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button as BaseButton } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 // Dynamic color button that uses CSS variables directly for consistent theming
@@ -12,7 +12,7 @@ interface DynamicColorButtonProps {
   style?: React.CSSProperties;
 }
 
-export const DynamicColorButton = ({
+export function DynamicColorButton({
   children,
   className,
   variant = 'outline',
@@ -20,9 +20,57 @@ export const DynamicColorButton = ({
   onClick,
   style,
   ...props
-}: DynamicColorButtonProps & React.ButtonHTMLAttributes<HTMLButtonElement>) => {
+}: DynamicColorButtonProps & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  // Compute the appropriate styles based on the variant
+  const getButtonStyles = () => {
+    switch (variant) {
+      case 'default':
+        return {
+          backgroundColor: 'var(--primary)',
+          color: 'var(--primary-foreground)',
+          border: '1px solid var(--primary)',
+          boxShadow: 'none',
+          '&:hover': {
+            backgroundColor: 'var(--primary-glow-strong)',
+          }
+        };
+      case 'outline':
+        return {
+          backgroundColor: 'transparent',
+          color: 'var(--primary)',
+          border: '1px solid var(--primary-border)',
+          '&:hover': {
+            backgroundColor: 'var(--primary-bg-subtle)',
+            borderColor: 'var(--primary)',
+          }
+        };
+      case 'ghost':
+        return {
+          backgroundColor: 'transparent',
+          color: 'var(--primary)',
+          border: 'none',
+          '&:hover': {
+            backgroundColor: 'var(--primary-bg-subtle)',
+          }
+        };
+      case 'link':
+        return {
+          backgroundColor: 'transparent',
+          color: 'var(--primary)',
+          border: 'none',
+          textDecoration: 'underline',
+          textUnderlineOffset: '4px',
+          '&:hover': {
+            textDecoration: 'none',
+          }
+        };
+      default:
+        return {};
+    }
+  };
+
   return (
-    <BaseButton
+    <Button
       variant={variant}
       size={size}
       className={cn(
@@ -41,11 +89,6 @@ export const DynamicColorButton = ({
       {...props}
     >
       {children}
-    </BaseButton>
+    </Button>
   );
-};
-
-// Also export as DynamicButton for backward compatibility
-export const DynamicButton = DynamicColorButton;
-
-export default DynamicColorButton;
+}
