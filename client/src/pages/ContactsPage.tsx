@@ -202,7 +202,7 @@ export function ContactsPage() {
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-8 w-8 hover:bg-yellow-400 hover:text-black" 
+            className="h-8 w-8 hover:bg-primary hover:text-background" 
             onClick={() => navigate('/systems')}
           >
             <ArrowLeft className="h-4 w-4" />
@@ -211,7 +211,7 @@ export function ContactsPage() {
         </div>
         <Button 
           onClick={() => navigate('/contacts/new')}
-          className="hover:bg-yellow-400 hover:text-black"
+          className="hover:bg-primary hover:text-background"
         >
           <Plus className="mr-2 h-4 w-4" /> New Contact
         </Button>
@@ -306,7 +306,7 @@ export function ContactsPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 hover:bg-yellow-400 hover:text-black"
+                          className="h-8 w-8 hover:bg-primary hover:text-background"
                           onClick={() => toggleFavorite(contact.id)}
                         >
                           <Star className={`h-4 w-4 ${contact.favorite ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground"}`} />
@@ -314,7 +314,7 @@ export function ContactsPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-yellow-400"
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-red-100 dark:hover:bg-red-900/30"
                           onClick={() => deleteContact(contact.id)}
                         >
                           <Trash2 className="h-4 w-4" />
