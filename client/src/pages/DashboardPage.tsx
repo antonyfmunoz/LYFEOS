@@ -1,10 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useToast } from "@/hooks/use-toast";
 import { AIAgentFAB } from "@/components/ui/ai-agent-fab";
 import { cn } from "@/lib/utils";
 import { CollapsibleWidget } from "@/components/ui/collapsible-widget";
+import { DraggableWidget } from "@/components/ui/draggable-widget";
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import update from 'immutability-helper';
+import { v4 as uuidv4 } from 'uuid';
 import {
   Brain,
   BookOpen,
@@ -206,6 +211,60 @@ export default function DashboardPage() {
   
   const { stats, username, events } = useLYFEOS();
   const { toast } = useToast();
+  
+  // Define the widget data structure
+  interface WidgetData {
+    id: string;
+    title: string;
+    icon: React.ReactNode;
+    content: React.ReactNode;
+    defaultOpen?: boolean;
+  }
+  
+  // Initialize widgets with unique IDs and add them to state
+  const [widgets, setWidgets] = useState<WidgetData[]>([
+    {
+      id: uuidv4(),
+      title: "Stats Log",
+      icon: <BarChart className="h-5 w-5 text-primary" />,
+      content: <CompactStatsWidget stats={stats} />,
+      defaultOpen: true
+    },
+    {
+      id: uuidv4(),
+      title: "Mission Log",
+      icon: <Calendar className="h-5 w-5 text-primary" />,
+      content: <EnhancedMissionWidget 
+                events={events} 
+                maxHeight="96"
+                hideHeader={true}
+              />,
+      defaultOpen: true
+    },
+    {
+      id: uuidv4(),
+      title: "Data Entry Log",
+      icon: <BookOpen className="h-5 w-5 text-primary" />,
+      content: <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Placeholder for Data Entry Log content */}
+                </div>
+               </div>,
+      defaultOpen: true
+    }
+  ]);
+  
+  // Callback for widget drag and drop reordering
+  const moveWidget = useCallback((dragIndex: number, hoverIndex: number) => {
+    setWidgets((prevWidgets) => 
+      update(prevWidgets, {
+        $splice: [
+          [dragIndex, 1],
+          [hoverIndex, 0, prevWidgets[dragIndex]],
+        ],
+      })
+    );
+  }, []);
   
   // Test function for toast notifications
   const testToast = () => {

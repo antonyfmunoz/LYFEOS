@@ -1,6 +1,5 @@
-import { useState, useCallback, useRef } from "react";
-import { CollapsibleWidget } from "@/components/ui/collapsible-widget";
-import { Calendar, Clipboard, Contact2, FileSpreadsheet, Paintbrush, Network, FileText, FileCheck, ChevronRight, GripVertical, MoreHorizontal, Copy } from "lucide-react";
+import { useState, useCallback } from "react";
+import { Calendar, Clipboard, Contact2, FileSpreadsheet, Paintbrush, Network, FileText, FileCheck, ChevronRight } from "lucide-react";
 import { Link } from "wouter";
 import { KanbanWidget } from "@/components/ui/kanban-widget";
 import { RolodexWidget } from "@/components/ui/rolodex-widget";
@@ -9,23 +8,11 @@ import { CanvasWidget } from "@/components/ui/canvas-widget";
 import { GraphWidget } from "@/components/ui/graph-widget";
 import DocumentsWidget from "@/components/ui/documents-widget";
 import TemplatesWidget from "@/components/ui/templates-widget";
-import { DndProvider, useDrag, useDrop } from 'react-dnd';
+import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { v4 as uuidv4 } from 'uuid';
 import update from 'immutability-helper';
-import { cn } from "@/lib/utils";
-import { toast } from "@/hooks/use-toast";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-
-const ItemTypes = {
-  WIDGET: 'widget',
-};
+import { DraggableWidget } from "@/components/ui/draggable-widget";
 
 // Define widget data structure
 interface WidgetData {
@@ -34,176 +21,6 @@ interface WidgetData {
   icon: React.ReactNode;
   content: React.ReactNode;
   defaultOpen?: boolean;
-}
-
-interface DraggableWidgetProps {
-  id: string;
-  index: number;
-  title: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-  moveWidget: (dragIndex: number, hoverIndex: number) => void;
-}
-
-function DraggableWidget({ 
-  id, 
-  index,
-  title, 
-  icon, 
-  children, 
-  defaultOpen = true,
-  moveWidget
-}: DraggableWidgetProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-  const ref = useRef<HTMLDivElement>(null);
-  const dragHandleRef = useRef<HTMLDivElement>(null);
-  
-  const handleCopy = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    navigator.clipboard.writeText(title)
-      .then(() => {
-        toast({
-          title: "Widget Name Copied",
-          description: `"${title}" copied to clipboard`,
-          className: "bg-background/80 border border-primary text-foreground",
-          duration: 2000,
-        });
-      })
-      .catch(err => {
-        toast({
-          title: "Failed to Copy",
-          description: "Could not copy widget name to clipboard",
-          variant: "destructive",
-          duration: 2000,
-        });
-      });
-  };
-
-  const [{ isDragging }, drag, preview] = useDrag({
-    type: ItemTypes.WIDGET,
-    item: { id, index },
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
-  });
-
-  const [{ handlerId }, drop] = useDrop({
-    accept: ItemTypes.WIDGET,
-    collect(monitor) {
-      return {
-        handlerId: monitor.getHandlerId(),
-      };
-    },
-    hover(item: any, monitor) {
-      if (!ref.current) {
-        return;
-      }
-      const dragIndex = item.index;
-      const hoverIndex = index;
-
-      // Don't replace items with themselves
-      if (dragIndex === hoverIndex) {
-        return;
-      }
-
-      // Determine rectangle on screen
-      const hoverBoundingRect = ref.current?.getBoundingClientRect();
-
-      // Get vertical middle
-      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
-
-      // Determine mouse position
-      const clientOffset = monitor.getClientOffset();
-
-      // Get pixels to the top
-      const hoverClientY = (clientOffset as any).y - hoverBoundingRect.top;
-
-      // Only perform the move when the mouse has crossed half of the items height
-      if (
-        (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) ||
-        (dragIndex > hoverIndex && hoverClientY > hoverMiddleY)
-      ) {
-        return;
-      }
-
-      // Time to actually perform the action
-      moveWidget(dragIndex, hoverIndex);
-
-      // Note: we're mutating the monitor item here!
-      item.index = hoverIndex;
-    },
-  });
-  
-  // Connect drag preview to the entire widget
-  preview(drop(ref));
-  
-  // Connect drag handle to the grip icon
-  if (dragHandleRef.current) {
-    drag(dragHandleRef);
-  }
-
-  return (
-    <div 
-      ref={ref}
-      className={cn(
-        "glassmorphic rounded-xl neon-border overflow-hidden", 
-        isDragging && "opacity-50"
-      )}
-      data-handler-id={handlerId}
-    >
-      <div 
-        className="p-3 flex items-center justify-between cursor-pointer border-b border-primary/20 hover:bg-primary/5 transition-colors"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <div className="flex items-center">
-          <div ref={dragHandleRef} onClick={(e) => e.stopPropagation()}>
-            <GripVertical className="h-4 w-4 mr-2 text-muted-foreground cursor-move" />
-          </div>
-          {icon && <div className="mr-2">{icon}</div>}
-          <h2 className="text-lg font-orbitron text-foreground">{title}</h2>
-        </div>
-        <div className="flex items-center">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-7 w-7 hover:bg-yellow-400 hover:text-black mr-1"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black text-xs"
-                onClick={handleCopy}
-              >
-                <Copy className="h-3 w-3 mr-2" />
-                Copy Widget Name
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <button 
-            className="text-primary/70 hover:text-primary transition-colors p-1 rounded-full hover:bg-primary/10"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsOpen(!isOpen);
-            }}
-          >
-            {isOpen ? <ChevronRight className="h-5 w-5 rotate-90" /> : <ChevronRight className="h-5 w-5" />}
-          </button>
-        </div>
-      </div>
-      
-      <div className={`transition-all duration-300 ${isOpen ? 'max-h-[3000px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}>
-        <div className="p-4">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export default function SystemsPage() {
