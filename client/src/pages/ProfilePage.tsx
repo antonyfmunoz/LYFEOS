@@ -4,6 +4,7 @@ import { useLYFEOS } from "../lib/context";
 import { useAuth } from "@/lib/authContext";
 import { useTheme } from "@/lib/themeContext";
 import { usePageTitle } from "@/hooks/use-page-title";
+import IntegrationsManager from "@/components/profile/IntegrationsManager";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -605,6 +606,19 @@ export default function ProfilePage() {
                   Current color: {stats.primaryColor || "#00e0ff"}
                 </p>
               </div>
+            </div>
+            
+            {/* Integrations Section */}
+            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <LinkIcon className="h-4 w-4 text-primary" />
+                <Label className="text-sm text-foreground">Integrations</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Connect external services to enhance your LYFEOS experience.
+              </p>
+              
+              <IntegrationsManager userId={user?.id} />
             </div>
             
             {/* Logout Button */}
