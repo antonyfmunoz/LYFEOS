@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useToast } from "@/hooks/use-toast";
@@ -36,6 +36,10 @@ import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { Checkbox } from "@/components/ui/checkbox";
 import CompactStatsWidget from "@/components/dashboard/CompactStatsWidget";
 import { StatType, CalendarEvent } from "@/lib/types";
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import { v4 as uuidv4 } from 'uuid';
+import update from 'immutability-helper';
 
 // Define types
 interface TimeBlock {
@@ -200,12 +204,65 @@ const getEndTime = (startTime: string, duration: string): string => {
   return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
 };
 
+// Define widget data structure
+interface WidgetData {
+  id: string;
+  title: string;
+  icon: React.ReactNode;
+  content: React.ReactNode;
+  defaultOpen?: boolean;
+}
+
 export default function DashboardPage() {
   // Set the page title
   usePageTitle('Dashboard');
   
   const { stats, username, events } = useLYFEOS();
   const { toast } = useToast();
+  
+  // Define widgets with unique IDs for drag and drop
+  const [widgets, setWidgets] = useState<WidgetData[]>([
+    {
+      id: uuidv4(),
+      title: "Daily Mission Log",
+      icon: <Clock className="h-5 w-5 text-primary" />,
+      content: <MissionLogWidget />,
+      defaultOpen: true
+    },
+    {
+      id: uuidv4(),
+      title: "Daily Journal",
+      icon: <Edit className="h-5 w-5 text-primary" />,
+      content: null, // This will be filled dynamically later
+      defaultOpen: true
+    },
+    {
+      id: uuidv4(),
+      title: "Mission Timeline",
+      icon: <CalendarDays className="h-5 w-5 text-primary" />,
+      content: <MissionTimeline events={events} />,
+      defaultOpen: true
+    },
+    {
+      id: uuidv4(),
+      title: "Stats & Progress",
+      icon: <BarChart className="h-5 w-5 text-primary" />,
+      content: <CompactStatsWidget stats={stats} />,
+      defaultOpen: true
+    }
+  ]);
+  
+  // Callback for widget drag and drop reordering
+  const moveWidget = useCallback((dragIndex: number, hoverIndex: number) => {
+    setWidgets((prevWidgets) => 
+      update(prevWidgets, {
+        $splice: [
+          [dragIndex, 1],
+          [hoverIndex, 0, prevWidgets[dragIndex]],
+        ],
+      })
+    );
+  }, []);
   
   // Test function for toast notifications
   const testToast = () => {

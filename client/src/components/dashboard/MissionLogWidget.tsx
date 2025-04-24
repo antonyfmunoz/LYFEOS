@@ -6,7 +6,6 @@ import { CalendarEvent } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import InfoIconButton from './InfoIconButton';
-import { Button } from '@/components/ui/dynamic-color-button';
 
 // Helper function to convert hex to rgba
 const hexToRgba = (hex: string, alpha: number = 1) => {
