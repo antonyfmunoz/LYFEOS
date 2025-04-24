@@ -399,7 +399,6 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <DndProvider backend={HTML5Backend}>
       <div className="dashboard-container">
         <AIAgentFAB />
         
@@ -469,6 +468,5 @@ export default function DashboardPage() {
           </DraggableWidget>
         ))}
       </div>
-    </DndProvider>
   );
 }
