@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useToast } from "@/hooks/use-toast";
@@ -23,7 +23,12 @@ import {
   Calendar,
   CheckCircle2,
   Zap,
-  BarChart
+  BarChart,
+  GripVertical,
+  MoreHorizontal,
+  Copy,
+  ChevronUp,
+  ChevronDown
 } from "lucide-react";
 import MissionLogWidget from "@/components/dashboard/MissionLogWidget";
 import EnhancedMissionWidget from "@/components/dashboard/EnhancedMissionWidget";
@@ -36,6 +41,15 @@ import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { Checkbox } from "@/components/ui/checkbox";
 import CompactStatsWidget from "@/components/dashboard/CompactStatsWidget";
 import { StatType, CalendarEvent } from "@/lib/types";
+import { DndProvider, useDrag, useDrop } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import update from 'immutability-helper';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // Define types
 interface TimeBlock {
