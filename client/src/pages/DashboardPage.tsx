@@ -144,7 +144,7 @@ export default function DashboardPage() {
             className={`p-0 w-7 h-7 rounded-md ${
               num === state
                 ? "bg-primary/20 text-primary border border-primary/50"
-                : "text-[#7DAAB2] hover:bg-yellow-400 hover:text-black"
+                : "text-[#7DAAB2] hover:bg-primary hover:text-background"
             }`}
             onClick={() => onChange(num)}
           >
@@ -445,7 +445,7 @@ export default function DashboardPage() {
                 
                 <button 
                   onClick={() => setTimeFormat(prev => prev === '12h' ? '24h' : '12h')}
-                  className="bg-primary/10 hover:bg-yellow-400 hover:text-black rounded px-2 py-1 text-xs"
+                  className="bg-primary/10 hover:bg-primary hover:text-background rounded px-2 py-1 text-xs"
                 >
                   {timeFormat === '12h' ? '24h' : '12h'}
                 </button>

@@ -133,7 +133,7 @@ function TaskCard({ task, index, onEdit, onDelete, onMoveRight }: TaskCardProps)
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-7 w-7 hover:bg-yellow-400 hover:text-black"
+                className="h-7 w-7 hover:bg-primary hover:text-background"
               >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
@@ -141,14 +141,14 @@ function TaskCard({ task, index, onEdit, onDelete, onMoveRight }: TaskCardProps)
             <DropdownMenuContent align="end">
               <DropdownMenuItem 
                 onClick={() => onEdit(task)}
-                className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black"
+                className="hover:bg-primary hover:text-background focus:bg-primary focus:text-background"
               >
                 <Edit className="h-4 w-4 mr-2" />
                 Edit
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={copyTask}
-                className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black"
+                className="hover:bg-primary hover:text-background focus:bg-primary focus:text-background"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2">
                   <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -197,7 +197,7 @@ function TaskCard({ task, index, onEdit, onDelete, onMoveRight }: TaskCardProps)
               <Button 
                 size="sm" 
                 variant="ghost" 
-                className="h-6 px-2 text-xs hover:bg-yellow-400 hover:text-black"
+                className="h-6 px-2 text-xs hover:bg-primary hover:text-background"
                 onClick={() => onMoveRight(task.id, task.status)}
               >
                 Move <ChevronRight className="h-3 w-3 ml-1" />
@@ -377,7 +377,7 @@ function KanbanColumn({
               <Button 
                 size="icon" 
                 variant="ghost" 
-                className="h-6 w-6 hover:bg-yellow-400 hover:text-black"
+                className="h-6 w-6 hover:bg-primary hover:text-background"
               >
                 <MoreHorizontal className="h-3 w-3" />
               </Button>
@@ -385,14 +385,14 @@ function KanbanColumn({
             <DropdownMenuContent align="end">
               <DropdownMenuItem 
                 onClick={() => onAddTask(status)}
-                className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black"
+                className="hover:bg-primary hover:text-background focus:bg-primary focus:text-background"
               >
                 <Plus className="h-3 w-3 mr-2" />
                 Add Task
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={copyColumn}
-                className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black"
+                className="hover:bg-primary hover:text-background focus:bg-primary focus:text-background"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 mr-2">
                   <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -509,7 +509,7 @@ export default function KanbanBoardPage() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 hover:bg-yellow-400 hover:text-black" 
+            className="h-8 w-8 hover:bg-primary hover:text-background" 
             onClick={() => navigate('/kanban')}
           >
             <ArrowLeft className="h-4 w-4" />
@@ -521,7 +521,7 @@ export default function KanbanBoardPage() {
             <p>The requested board was not found. Please select another board.</p>
             <button 
               onClick={() => navigate('/kanban')} 
-              className="mt-4 flex items-center gap-2 text-primary border border-primary/50 px-4 py-2 rounded-md hover:bg-yellow-400 hover:text-black transition-all"
+              className="mt-4 flex items-center gap-2 text-primary border border-primary/50 px-4 py-2 rounded-md hover:bg-primary hover:text-background transition-all"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to Boards
@@ -788,7 +788,7 @@ export default function KanbanBoardPage() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 hover:bg-yellow-400 hover:text-black" 
+            className="h-8 w-8 hover:bg-primary hover:text-background" 
             onClick={() => navigate('/kanban')}
           >
             <ArrowLeft className="h-4 w-4" />
@@ -799,7 +799,7 @@ export default function KanbanBoardPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="hover:bg-yellow-400 hover:text-black"
+                className="hover:bg-primary hover:text-background"
               >
                 Actions
               </Button>
@@ -807,21 +807,21 @@ export default function KanbanBoardPage() {
             <DropdownMenuContent>
               <DropdownMenuItem 
                 onClick={() => setIsEditDialogOpen(true)}
-                className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black"
+                className="hover:bg-primary hover:text-background focus:bg-primary focus:text-background"
               >
                 <Edit className="h-4 w-4 mr-2" />
                 Edit Board
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => setIsAddColumnDialogOpen(true)}
-                className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black"
+                className="hover:bg-primary hover:text-background focus:bg-primary focus:text-background"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Column
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={handlePasteFromClipboard}
-                className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black"
+                className="hover:bg-primary hover:text-background focus:bg-primary focus:text-background"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2">
                   <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
@@ -877,7 +877,7 @@ export default function KanbanBoardPage() {
               <p className="text-muted-foreground mb-4">This board doesn't have any columns yet.</p>
               <Button 
                 onClick={() => setIsAddColumnDialogOpen(true)}
-                className="hover:bg-yellow-400 hover:text-black"
+                className="hover:bg-primary hover:text-background"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Column
@@ -972,7 +972,7 @@ export default function KanbanBoardPage() {
                   value={formData.priority} 
                   onValueChange={(value) => setFormData({...formData, priority: value})}
                 >
-                  <SelectTrigger id="taskPriority" className="hover:bg-yellow-400 hover:text-black">
+                  <SelectTrigger id="taskPriority" className="hover:bg-primary hover:text-background">
                     <SelectValue placeholder="Select Priority" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1073,7 +1073,7 @@ export default function KanbanBoardPage() {
                   value={formData.priority} 
                   onValueChange={(value) => setFormData({...formData, priority: value})}
                 >
-                  <SelectTrigger id="editTaskPriority" className="hover:bg-yellow-400 hover:text-black">
+                  <SelectTrigger id="editTaskPriority" className="hover:bg-primary hover:text-background">
                     <SelectValue placeholder="Select Priority" />
                   </SelectTrigger>
                   <SelectContent>

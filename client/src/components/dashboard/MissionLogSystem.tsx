@@ -126,7 +126,7 @@ export default function MissionLogSystem() {
         <Button 
           onClick={handleAddMission} 
           size="icon"
-          className="hover:bg-yellow-400 hover:text-black"
+          className="hover:bg-primary hover:text-background"
         >
           <Plus className="h-4 w-4" />
         </Button>
@@ -193,14 +193,14 @@ export default function MissionLogSystem() {
             <Button
               variant="outline"
               onClick={() => setInfoDialogOpen(false)}
-              className="hover:bg-yellow-400 hover:text-black"
+              className="hover:bg-primary hover:text-background"
             >
               Close
             </Button>
             <Button
               variant="default"
               disabled={true} // Placeholder for now
-              className="hover:bg-yellow-400 hover:text-black"
+              className="hover:bg-primary hover:text-background"
             >
               View Full Report
             </Button>

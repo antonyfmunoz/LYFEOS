@@ -170,14 +170,14 @@ function DraggableWidget({
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-7 w-7 hover:bg-yellow-400 hover:text-black mr-1"
+                className="h-7 w-7 hover:bg-primary hover:text-background mr-1"
               >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
-                className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black text-xs"
+                className="hover:bg-primary hover:text-background focus:bg-primary focus:text-background text-xs"
                 onClick={handleCopy}
               >
                 <Copy className="h-3 w-3 mr-2" />

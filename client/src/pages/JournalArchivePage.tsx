@@ -208,7 +208,7 @@ export default function JournalArchivePage() {
           </p>
           <Button 
             onClick={createNewJournalEntry}
-            className="bg-primary/10 hover:bg-yellow-400 hover:text-black border border-primary/50"
+            className="bg-primary/10 hover:bg-primary hover:text-background border border-primary/50"
           >
             Create Your First Entry
           </Button>

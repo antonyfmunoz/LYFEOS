@@ -147,7 +147,7 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-7 w-7 hover:bg-yellow-400 hover:text-black"
+                className="h-7 w-7 hover:bg-primary hover:text-background"
               >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
@@ -155,14 +155,14 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
             <DropdownMenuContent align="end">
               <DropdownMenuItem 
                 onClick={() => onEdit(task)}
-                className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black"
+                className="hover:bg-primary hover:text-background focus:bg-primary focus:text-background"
               >
                 <Edit className="h-4 w-4 mr-2" />
                 Edit
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={duplicateTask}
-                className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black"
+                className="hover:bg-primary hover:text-background focus:bg-primary focus:text-background"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2">
                   <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -211,7 +211,7 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
               <Button 
                 size="sm" 
                 variant="ghost" 
-                className="h-6 px-2 text-xs hover:bg-yellow-400 hover:text-black"
+                className="h-6 px-2 text-xs hover:bg-primary hover:text-background"
                 onClick={() => onMoveRight(task.id, task.status)}
               >
                 Move <ChevronRight className="h-3 w-3 ml-1" />
@@ -403,7 +403,7 @@ function KanbanColumn({
           <Button 
             size="icon" 
             variant="ghost" 
-            className="h-6 w-6 hover:bg-yellow-400 hover:text-black" 
+            className="h-6 w-6 hover:bg-primary hover:text-background" 
             onClick={() => onAddTask(status)}
           >
             <Plus className="h-3 w-3" />
@@ -411,7 +411,7 @@ function KanbanColumn({
           <Button 
             size="icon" 
             variant="ghost" 
-            className="h-6 w-6 hover:bg-yellow-400 hover:text-black"
+            className="h-6 w-6 hover:bg-primary hover:text-background"
             onClick={duplicateColumn}
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3">
@@ -517,7 +517,7 @@ export default function KanbanBoardPage() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 hover:bg-yellow-400 hover:text-black" 
+            className="h-8 w-8 hover:bg-primary hover:text-background" 
             onClick={() => navigate('/kanban')}
           >
             <ArrowLeft className="h-4 w-4" />
@@ -529,7 +529,7 @@ export default function KanbanBoardPage() {
             <p>The requested board was not found. Please select another board.</p>
             <button 
               onClick={() => navigate('/kanban')} 
-              className="mt-4 flex items-center gap-2 text-primary border border-primary/50 px-4 py-2 rounded-md hover:bg-yellow-400 hover:text-black transition-all"
+              className="mt-4 flex items-center gap-2 text-primary border border-primary/50 px-4 py-2 rounded-md hover:bg-primary hover:text-background transition-all"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to Boards
@@ -773,7 +773,7 @@ export default function KanbanBoardPage() {
         <div className="min-w-[100px] h-full flex items-center">
           <Button 
             variant="outline"
-            className="border-dashed border-slate-700/50 p-6 h-[100px] hover:bg-yellow-400 hover:text-black transition-colors"
+            className="border-dashed border-slate-700/50 p-6 h-[100px] hover:bg-primary hover:text-background transition-colors"
             onClick={() => setIsAddColumnDialogOpen(true)}
           >
             <Plus className="h-5 w-5 mr-2" />
@@ -792,7 +792,7 @@ export default function KanbanBoardPage() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 hover:bg-yellow-400 hover:text-black" 
+              className="h-8 w-8 hover:bg-primary hover:text-background" 
               onClick={() => navigate('/kanban')}
             >
               <ArrowLeft className="h-4 w-4" />
@@ -805,7 +805,7 @@ export default function KanbanBoardPage() {
               <Button 
                 variant="ghost" 
                 size="icon"
-                className="hover:bg-yellow-400 hover:text-black"
+                className="hover:bg-primary hover:text-background"
               >
                 <MoreHorizontal className="h-5 w-5" />
               </Button>
@@ -813,7 +813,7 @@ export default function KanbanBoardPage() {
             <DropdownMenuContent>
               <DropdownMenuItem 
                 onClick={() => setIsEditDialogOpen(true)}
-                className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black"
+                className="hover:bg-primary hover:text-background focus:bg-primary focus:text-background"
               >
                 <Edit className="h-4 w-4 mr-2" />
                 Edit Board
@@ -877,7 +877,7 @@ export default function KanbanBoardPage() {
               >
                 <SelectTrigger 
                   id="priority"
-                  className="w-full hover:bg-yellow-400 hover:text-black focus:ring-yellow-400"
+                  className="w-full hover:bg-primary hover:text-background focus:ring-primary"
                 >
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
@@ -971,7 +971,7 @@ export default function KanbanBoardPage() {
               >
                 <SelectTrigger 
                   id="edit-priority"
-                  className="w-full hover:bg-yellow-400 hover:text-black focus:ring-yellow-400"
+                  className="w-full hover:bg-primary hover:text-background focus:ring-primary"
                 >
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>

@@ -152,7 +152,7 @@ export default function CanvasNewPage() {
           <Button 
             onClick={createCanvas} 
             disabled={createMutation.isPending}
-            className="hover:bg-yellow-400 hover:text-black"
+            className="hover:bg-primary hover:text-background"
           >
             {createMutation.isPending ? "Creating..." : "Create Canvas"}
           </Button>

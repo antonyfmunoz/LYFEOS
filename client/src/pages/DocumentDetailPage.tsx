@@ -222,7 +222,7 @@ export default function DocumentDetailPage() {
         <p className="text-muted-foreground mb-6">Unable to load document details.</p>
         <Button 
           onClick={() => navigate('/documents')}
-          className="hover:bg-yellow-400 hover:text-black"
+          className="hover:bg-primary hover:text-background"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Documents
@@ -236,7 +236,7 @@ export default function DocumentDetailPage() {
       <Button 
         variant="ghost" 
         onClick={() => navigate('/documents')} 
-        className="mb-6 hover:bg-yellow-400 hover:text-black"
+        className="mb-6 hover:bg-primary hover:text-background"
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Documents
@@ -254,7 +254,7 @@ export default function DocumentDetailPage() {
                 <Button
                   variant="outline"
                   size="icon"
-                  className={`h-8 w-8 ${documentData?.document.favorite ? 'text-yellow-500' : ''} hover:bg-yellow-400 hover:text-black`}
+                  className={`h-8 w-8 ${documentData?.document.favorite ? 'text-yellow-500' : ''} hover:bg-primary hover:text-background`}
                   onClick={() => toggleFavoriteMutation.mutate()}
                 >
                   <Star
@@ -278,7 +278,7 @@ export default function DocumentDetailPage() {
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel className="hover:bg-yellow-400 hover:text-black">Cancel</AlertDialogCancel>
+                      <AlertDialogCancel className="hover:bg-primary hover:text-background">Cancel</AlertDialogCancel>
                       <AlertDialogAction
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         onClick={() => deleteMutation.mutate()}
@@ -384,7 +384,7 @@ export default function DocumentDetailPage() {
               <Button 
                 variant="outline" 
                 onClick={handleAddTag} 
-                className="shrink-0 hover:bg-yellow-400 hover:text-black"
+                className="shrink-0 hover:bg-primary hover:text-background"
               >
                 <Plus className="h-4 w-4 mr-1" />
                 Add
@@ -410,14 +410,14 @@ export default function DocumentDetailPage() {
           <Button 
             variant="outline" 
             onClick={() => navigate('/documents')}
-            className="hover:bg-yellow-400 hover:text-black"
+            className="hover:bg-primary hover:text-background"
           >
             Cancel
           </Button>
           <Button 
             onClick={handleSaveDocument} 
             disabled={!title.trim() || createMutation.isPending || updateMutation.isPending}
-            className="hover:bg-yellow-400 hover:text-black"
+            className="hover:bg-primary hover:text-background"
           >
             <Save className="mr-2 h-4 w-4" />
             {createMutation.isPending || updateMutation.isPending ? 'Saving...' : 'Save Document'}

@@ -237,7 +237,7 @@ export function QuickMissionFAB() {
                 {/* Submit button */}
                 <DynamicColorButton 
                   type="submit"
-                  className="w-full hover:bg-yellow-400 hover:text-black"
+                  className="w-full hover:bg-primary hover:text-background"
                   style={{
                     backgroundColor: "var(--primary-bg-subtle)",
                     borderColor: "var(--primary-border-subtle)"

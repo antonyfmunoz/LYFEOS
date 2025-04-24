@@ -155,7 +155,7 @@ export default function GraphNewPage() {
           <Button 
             onClick={createGraph} 
             disabled={createMutation.isPending}
-            className="hover:bg-yellow-400 hover:text-black"
+            className="hover:bg-primary hover:text-background"
           >
             {createMutation.isPending ? "Creating..." : "Create Graph"}
           </Button>

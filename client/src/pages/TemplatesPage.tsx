@@ -114,7 +114,7 @@ export default function TemplatesPage() {
       <Button 
         variant="ghost" 
         onClick={() => navigate('/systems')} 
-        className="mb-6 hover:bg-yellow-400 hover:text-black"
+        className="mb-6 hover:bg-primary hover:text-background"
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Systems
@@ -127,7 +127,7 @@ export default function TemplatesPage() {
         </div>
         <Button 
           onClick={() => navigate('/templates/new')}
-          className="hover:bg-yellow-400 hover:text-black"
+          className="hover:bg-primary hover:text-background"
         >
           <FilePlus className="mr-2 h-4 w-4" />
           Create Template
@@ -190,7 +190,7 @@ export default function TemplatesPage() {
                 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8 hover:bg-yellow-400 hover:text-black">
+                    <Button variant="outline" size="sm" className="h-8 hover:bg-primary hover:text-background">
                       <Filter className="h-3.5 w-3.5 mr-1.5" />
                       Sort
                     </Button>
@@ -305,7 +305,7 @@ export default function TemplatesPage() {
                   </p>
                   <Button 
                     onClick={() => navigate('/templates/new')}
-                    className="hover:bg-yellow-400 hover:text-black"
+                    className="hover:bg-primary hover:text-background"
                   >
                     <FilePlus className="mr-2 h-4 w-4" />
                     Create Template

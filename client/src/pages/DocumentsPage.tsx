@@ -122,7 +122,7 @@ export default function DocumentsPage() {
       <Button 
         variant="ghost" 
         onClick={() => navigate('/systems')} 
-        className="mb-6 hover:bg-yellow-400 hover:text-black"
+        className="mb-6 hover:bg-primary hover:text-background"
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Systems
@@ -137,14 +137,14 @@ export default function DocumentsPage() {
           <Button 
             variant="outline"
             onClick={() => navigate('/folders/new')}
-            className="hover:bg-yellow-400 hover:text-black"
+            className="hover:bg-primary hover:text-background"
           >
             <Folder className="mr-2 h-4 w-4" />
             New Folder
           </Button>
           <Button 
             onClick={() => navigate('/documents/new')}
-            className="hover:bg-yellow-400 hover:text-black"
+            className="hover:bg-primary hover:text-background"
           >
             <FilePlus className="mr-2 h-4 w-4" />
             New Document
@@ -196,7 +196,7 @@ export default function DocumentsPage() {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="w-full mt-2 text-xs hover:bg-yellow-400 hover:text-black"
+                  className="w-full mt-2 text-xs hover:bg-primary hover:text-background"
                   onClick={() => navigate('/folders/new')}
                 >
                   New Folder
@@ -223,7 +223,7 @@ export default function DocumentsPage() {
                 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8 hover:bg-yellow-400 hover:text-black">
+                    <Button variant="outline" size="sm" className="h-8 hover:bg-primary hover:text-background">
                       <Filter className="h-3.5 w-3.5 mr-1.5" />
                       Sort
                     </Button>
@@ -329,7 +329,7 @@ export default function DocumentsPage() {
                   </p>
                   <Button 
                     onClick={() => navigate('/documents/new')}
-                    className="hover:bg-yellow-400 hover:text-black"
+                    className="hover:bg-primary hover:text-background"
                   >
                     <FilePlus className="mr-2 h-4 w-4" />
                     Create Document

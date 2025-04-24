@@ -320,7 +320,7 @@ export default function TemplateDetail() {
         <p className="text-muted-foreground mb-6">Unable to load template details.</p>
         <Button 
           onClick={() => navigate('/templates')}
-          className="hover:bg-yellow-400 hover:text-black"
+          className="hover:bg-primary hover:text-background"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Templates
@@ -334,7 +334,7 @@ export default function TemplateDetail() {
       <Button 
         variant="ghost" 
         onClick={() => navigate('/templates')} 
-        className="mb-6 hover:bg-yellow-400 hover:text-black"
+        className="mb-6 hover:bg-primary hover:text-background"
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Templates
@@ -366,7 +366,7 @@ export default function TemplateDetail() {
                   <DialogTrigger asChild>
                     <Button 
                       variant="outline" 
-                      className="h-8 text-xs hover:bg-yellow-400 hover:text-black"
+                      className="h-8 text-xs hover:bg-primary hover:text-background"
                     >
                       <FilePlus className="h-3.5 w-3.5 mr-1.5" />
                       Create Document
@@ -416,13 +416,13 @@ export default function TemplateDetail() {
                       <Button 
                         variant="secondary" 
                         onClick={() => setIsCreateDocumentOpen(false)}
-                        className="hover:bg-yellow-400 hover:text-black"
+                        className="hover:bg-primary hover:text-background"
                       >
                         Cancel
                       </Button>
                       <Button 
                         onClick={handleCreateDocument}
-                        className="hover:bg-yellow-400 hover:text-black"
+                        className="hover:bg-primary hover:text-background"
                       >
                         Create Document
                       </Button>
@@ -540,7 +540,7 @@ export default function TemplateDetail() {
               <Button 
                 variant="outline" 
                 onClick={handleAddTag} 
-                className="shrink-0 hover:bg-yellow-400 hover:text-black"
+                className="shrink-0 hover:bg-primary hover:text-background"
               >
                 <Plus className="h-4 w-4 mr-1" />
                 Add
@@ -566,14 +566,14 @@ export default function TemplateDetail() {
           <Button 
             variant="outline" 
             onClick={() => navigate('/templates')}
-            className="hover:bg-yellow-400 hover:text-black"
+            className="hover:bg-primary hover:text-background"
           >
             Cancel
           </Button>
           <Button 
             onClick={handleSaveTemplate} 
             disabled={!title.trim() || createMutation.isPending || updateMutation.isPending}
-            className="hover:bg-yellow-400 hover:text-black"
+            className="hover:bg-primary hover:text-background"
           >
             <Save className="mr-2 h-4 w-4" />
             {createMutation.isPending || updateMutation.isPending ? 'Saving...' : 'Save Template'}

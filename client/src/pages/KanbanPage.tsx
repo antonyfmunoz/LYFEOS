@@ -43,7 +43,7 @@ function BoardCard({ board, onView, onEdit, onDelete }) {
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-8 w-8 hover:bg-yellow-400 hover:text-black"
+                className="h-8 w-8 hover:bg-primary hover:text-background"
               >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
@@ -51,7 +51,7 @@ function BoardCard({ board, onView, onEdit, onDelete }) {
             <DropdownMenuContent align="end">
               <DropdownMenuItem 
                 onClick={() => onEdit(board)}
-                className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black"
+                className="hover:bg-primary hover:text-background focus:bg-primary focus:text-background"
               >
                 <Edit className="h-4 w-4 mr-2" />
                 Edit Board
@@ -163,7 +163,7 @@ export default function KanbanPage() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 hover:bg-yellow-400 hover:text-black" 
+              className="h-8 w-8 hover:bg-primary hover:text-background" 
               onClick={() => navigate('/systems')}
             >
               <ArrowLeft className="h-4 w-4" />
@@ -173,7 +173,7 @@ export default function KanbanPage() {
           
           <Button 
             onClick={() => setIsNewBoardDialogOpen(true)}
-            className="bg-primary/10 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow hover:bg-yellow-400 hover:text-black"
+            className="bg-primary/10 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow hover:bg-primary hover:text-background"
           >
             <Plus className="h-4 w-4 mr-1" />
             New Board
@@ -197,7 +197,7 @@ export default function KanbanPage() {
             <p className="text-muted-foreground mb-4">You don't have any boards yet</p>
             <Button 
               onClick={() => setIsNewBoardDialogOpen(true)}
-              className="bg-primary/10 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow hover:bg-yellow-400 hover:text-black"
+              className="bg-primary/10 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow hover:bg-primary hover:text-background"
             >
               <Plus className="h-4 w-4 mr-1" />
               Create First Board

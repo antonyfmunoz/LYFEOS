@@ -219,14 +219,14 @@ export function RolodexWidget() {
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-6 w-6 hover:bg-yellow-400 hover:text-black"
+                        className="h-6 w-6 hover:bg-primary hover:text-background"
                       >
                         <MoreHorizontal className="h-3 w-3" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
-                        className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black text-xs"
+                        className="hover:bg-primary hover:text-background focus:bg-primary focus:text-background text-xs"
                         onClick={(e) => {
                           e.stopPropagation();
                           navigate(`/contacts/${contact.id}`);
@@ -236,7 +236,7 @@ export function RolodexWidget() {
                         View
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        className="hover:bg-yellow-400 hover:text-black focus:bg-yellow-400 focus:text-black text-xs"
+                        className="hover:bg-primary hover:text-background focus:bg-primary focus:text-background text-xs"
                         onClick={(e) => {
                           e.stopPropagation();
                           const contactData = {
@@ -274,7 +274,7 @@ export function RolodexWidget() {
           <Button 
             variant="outline" 
             size="sm" 
-            className="w-full border-dashed border-slate-700/30 text-xs hover:text-black hover:bg-yellow-400 hover:border-yellow-500"
+            className="w-full border-dashed border-slate-700/30 text-xs hover:text-background hover:bg-primary hover:border-primary"
             onClick={() => navigate("/contacts/new")}
           >
             <Plus className="h-3.5 w-3.5 mr-1" />

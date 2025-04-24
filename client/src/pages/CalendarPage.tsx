@@ -130,7 +130,7 @@ export default function CalendarPage() {
         </div>
         <Button 
           onClick={handleAddEventClick}
-          className="bg-primary/20 text-primary hover:bg-yellow-400 hover:text-black"
+          className="bg-primary/20 text-primary hover:bg-primary hover:text-background"
         >
           <Plus className="mr-2 h-4 w-4" /> Add Event
         </Button>
@@ -181,7 +181,7 @@ export default function CalendarPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-5 w-5 rounded-full text-[#7DAAB2] hover:bg-yellow-400 hover:text-black"
+                            className="h-5 w-5 rounded-full text-[#7DAAB2] hover:bg-primary hover:text-background"
                           >
                             <Info className="h-3.5 w-3.5" />
                           </Button>
@@ -289,13 +289,13 @@ export default function CalendarPage() {
               type="button"
               variant="outline"
               onClick={() => setIsAddEventOpen(false)}
-              className="hover:bg-yellow-400 hover:text-black"
+              className="hover:bg-primary hover:text-background"
             >
               Cancel
             </Button>
             <Button 
               onClick={handleSaveEvent}
-              className="bg-primary/20 text-primary hover:bg-yellow-400 hover:text-black"
+              className="bg-primary/20 text-primary hover:bg-primary hover:text-background"
             >
               Add Event
             </Button>
@@ -403,13 +403,13 @@ export default function CalendarPage() {
               type="button"
               variant="outline"
               onClick={() => setIsEditEventOpen(false)}
-              className="hover:bg-yellow-400 hover:text-black"
+              className="hover:bg-primary hover:text-background"
             >
               Cancel
             </Button>
             <Button 
               onClick={handleUpdateEvent}
-              className="bg-primary/20 text-primary hover:bg-yellow-400 hover:text-black"
+              className="bg-primary/20 text-primary hover:bg-primary hover:text-background"
             >
               <Edit className="mr-2 h-4 w-4" /> Update
             </Button>
@@ -458,7 +458,7 @@ export default function CalendarPage() {
                   <Button 
                     variant="outline"
                     size="sm"
-                    className="text-primary border-primary/30 hover:bg-yellow-400 hover:text-black"
+                    className="text-primary border-primary/30 hover:bg-primary hover:text-background"
                   >
                     View Mission <ExternalLink className="ml-2 h-3.5 w-3.5" />
                   </Button>
@@ -469,7 +469,7 @@ export default function CalendarPage() {
           
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline" className="hover:bg-yellow-400 hover:text-black">Close</Button>
+              <Button variant="outline" className="hover:bg-primary hover:text-background">Close</Button>
             </DialogClose>
             <Button 
               onClick={() => {
@@ -478,7 +478,7 @@ export default function CalendarPage() {
                   handleEditEvent(selectedEvent);
                 }
               }}
-              className="bg-primary/20 text-primary hover:bg-yellow-400 hover:text-black"
+              className="bg-primary/20 text-primary hover:bg-primary hover:text-background"
             >
               <Edit className="mr-2 h-4 w-4" /> Edit
             </Button>

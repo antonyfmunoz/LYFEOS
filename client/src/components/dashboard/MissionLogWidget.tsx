@@ -153,7 +153,7 @@ export default function MissionLogWidget({
       <Button
         variant="outline"
         size="sm"
-        className="mt-4 hover:bg-yellow-400 hover:text-black"
+        className="mt-4 hover:bg-primary hover:text-background"
         onClick={() => window.location.href = '/calendar'}
       >
         <Calendar className="mr-2 h-4 w-4" />
@@ -173,7 +173,7 @@ export default function MissionLogWidget({
       <Button
         variant="outline"
         size="sm"
-        className="mt-4 hover:bg-yellow-400 hover:text-black"
+        className="mt-4 hover:bg-primary hover:text-background"
         onClick={() => window.location.href = '/calendar'}
       >
         <Calendar className="mr-2 h-4 w-4" />

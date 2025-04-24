@@ -211,7 +211,7 @@ export function GraphWidget() {
           <Button 
             variant="outline" 
             size="sm" 
-            className="w-full border-dashed border-slate-700/30 text-xs hover:text-black hover:bg-yellow-400 hover:border-yellow-500"
+            className="w-full border-dashed border-slate-700/30 text-xs hover:text-background hover:bg-primary hover:border-primary"
             onClick={() => navigate("/graphs/new")}
           >
             <Plus className="h-3.5 w-3.5 mr-1" />
