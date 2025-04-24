@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Coffee, Brain, HeartPulse, RefreshCw } from 'lucide-react';
+import { BrainCircuit, Clock, Zap, Heart, RefreshCw } from 'lucide-react';
 import { useLYFEOS } from '@/lib/context';
 import { useToast } from '@/hooks/use-toast';
 import { DynamicColorButton } from '@/components/ui/dynamic-color-button';
@@ -108,162 +108,168 @@ const RecalibrationWidget: React.FC<RecalibrationWidgetProps> = ({ className }) 
     });
   };
 
-  // Function to render a progress bar
-  const renderProgressBar = (current: number, max: number, color: string) => {
-    const percentage = (current / max) * 100;
-    return (
-      <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-        <div 
-          className={`h-full ${color}`}
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
-    );
-  };
-
   return (
     <div className={cn("space-y-4", className)}>
-      <div className="text-sm text-muted-foreground mb-3">
+      <div className="text-sm text-[#7DAAB2] mb-3">
         Recalibrate your current state metrics
       </div>
 
-      {/* Attention tokens */}
-      <div className="space-y-2">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center">
-            <Brain className="h-4 w-4 text-blue-400 mr-2" />
-            <span className="text-sm font-medium text-slate-300">Focus</span>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {/* Attention tokens */}
+        <div className="stat-block rounded-lg p-3 border border-primary/20">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center">
+              <BrainCircuit className="h-4 w-4 text-[#6366F1] mr-1" />
+              <h3 className="text-xs font-orbitron text-[#D6F4FF]">ATTENTION</h3>
+            </div>
+            <div className="flex items-center">
+              <button 
+                onClick={() => handleAdjustToken('attention', -10)}
+                className="h-5 w-5 rounded-full bg-[#1A2C35] hover:bg-[#2A3C45] flex items-center justify-center text-[#D6F4FF] mx-0.5"
+              >
+                -
+              </button>
+              <span className="text-[#D6F4FF] font-mono text-xs mx-1">
+                {localStats.attentionTokens.current}/{localStats.attentionTokens.max}
+              </span>
+              <button 
+                onClick={() => handleAdjustToken('attention', 10)}
+                className="h-5 w-5 rounded-full bg-[#1A2C35] hover:bg-[#2A3C45] flex items-center justify-center text-[#D6F4FF] mx-0.5"
+              >
+                +
+              </button>
+            </div>
           </div>
-          <div className="flex items-center">
-            <button 
-              onClick={() => handleAdjustToken('attention', -10)}
-              className="h-6 w-6 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 mr-1"
-            >
-              -
-            </button>
-            <span className="text-sm text-slate-300 w-16 text-center">
-              {localStats.attentionTokens.current}/{localStats.attentionTokens.max}
-            </span>
-            <button 
-              onClick={() => handleAdjustToken('attention', 10)}
-              className="h-6 w-6 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 ml-1"
-            >
-              +
-            </button>
-          </div>
-        </div>
-        {renderProgressBar(
-          localStats.attentionTokens.current, 
-          localStats.attentionTokens.max,
-          'bg-blue-600'
-        )}
-      </div>
-
-      {/* Time tokens */}
-      <div className="space-y-2">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center">
-            <Coffee className="h-4 w-4 text-amber-400 mr-2" />
-            <span className="text-sm font-medium text-slate-300">Time</span>
-          </div>
-          <div className="flex items-center">
-            <button 
-              onClick={() => handleAdjustToken('time', -10)}
-              className="h-6 w-6 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 mr-1"
-            >
-              -
-            </button>
-            <span className="text-sm text-slate-300 w-16 text-center">
-              {localStats.timeTokens.current}/{localStats.timeTokens.max}
-            </span>
-            <button 
-              onClick={() => handleAdjustToken('time', 10)}
-              className="h-6 w-6 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 ml-1"
-            >
-              +
-            </button>
+          <div className="progress-bar progress-at h-1.5">
+            <div 
+              className="progress-fill" 
+              style={{ 
+                width: `${(localStats.attentionTokens.current / localStats.attentionTokens.max) * 100}%`,
+                backgroundColor: "#6366F1"
+              }}
+            />
           </div>
         </div>
-        {renderProgressBar(
-          localStats.timeTokens.current, 
-          localStats.timeTokens.max,
-          'bg-amber-600'
-        )}
-      </div>
 
-      {/* Energy points */}
-      <div className="space-y-2">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center">
-            <Zap className="h-4 w-4 text-yellow-400 mr-2" />
-            <span className="text-sm font-medium text-slate-300">Energy</span>
+        {/* Time tokens */}
+        <div className="stat-block rounded-lg p-3 border border-primary/20">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center">
+              <Clock className="h-4 w-4 text-[#22D3EE] mr-1" />
+              <h3 className="text-xs font-orbitron text-[#D6F4FF]">TIME</h3>
+            </div>
+            <div className="flex items-center">
+              <button 
+                onClick={() => handleAdjustToken('time', -10)}
+                className="h-5 w-5 rounded-full bg-[#1A2C35] hover:bg-[#2A3C45] flex items-center justify-center text-[#D6F4FF] mx-0.5"
+              >
+                -
+              </button>
+              <span className="text-[#D6F4FF] font-mono text-xs mx-1">
+                {localStats.timeTokens.current}/{localStats.timeTokens.max}
+              </span>
+              <button 
+                onClick={() => handleAdjustToken('time', 10)}
+                className="h-5 w-5 rounded-full bg-[#1A2C35] hover:bg-[#2A3C45] flex items-center justify-center text-[#D6F4FF] mx-0.5"
+              >
+                +
+              </button>
+            </div>
           </div>
-          <div className="flex items-center">
-            <button 
-              onClick={() => handleAdjustToken('energy', -10)}
-              className="h-6 w-6 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 mr-1"
-            >
-              -
-            </button>
-            <span className="text-sm text-slate-300 w-16 text-center">
-              {localStats.energyPoints.current}/{localStats.energyPoints.max}
-            </span>
-            <button 
-              onClick={() => handleAdjustToken('energy', 10)}
-              className="h-6 w-6 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 ml-1"
-            >
-              +
-            </button>
+          <div className="progress-bar progress-tt h-1.5">
+            <div 
+              className="progress-fill" 
+              style={{ 
+                width: `${(localStats.timeTokens.current / localStats.timeTokens.max) * 100}%`,
+                backgroundColor: "#22D3EE"
+              }}
+            />
           </div>
         </div>
-        {renderProgressBar(
-          localStats.energyPoints.current, 
-          localStats.energyPoints.max,
-          'bg-yellow-600'
-        )}
-      </div>
 
-      {/* Health points */}
-      <div className="space-y-2">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center">
-            <HeartPulse className="h-4 w-4 text-rose-400 mr-2" />
-            <span className="text-sm font-medium text-slate-300">Health</span>
+        {/* Energy points */}
+        <div className="stat-block rounded-lg p-3 border border-primary/20">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center">
+              <Zap className="h-4 w-4 text-[#F97316] mr-1" />
+              <h3 className="text-xs font-orbitron text-[#D6F4FF]">ENERGY</h3>
+            </div>
+            <div className="flex items-center">
+              <button 
+                onClick={() => handleAdjustToken('energy', -10)}
+                className="h-5 w-5 rounded-full bg-[#1A2C35] hover:bg-[#2A3C45] flex items-center justify-center text-[#D6F4FF] mx-0.5"
+              >
+                -
+              </button>
+              <span className="text-[#D6F4FF] font-mono text-xs mx-1">
+                {localStats.energyPoints.current}/{localStats.energyPoints.max}
+              </span>
+              <button 
+                onClick={() => handleAdjustToken('energy', 10)}
+                className="h-5 w-5 rounded-full bg-[#1A2C35] hover:bg-[#2A3C45] flex items-center justify-center text-[#D6F4FF] mx-0.5"
+              >
+                +
+              </button>
+            </div>
           </div>
-          <div className="flex items-center">
-            <button 
-              onClick={() => handleAdjustToken('health', -10)}
-              className="h-6 w-6 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 mr-1"
-            >
-              -
-            </button>
-            <span className="text-sm text-slate-300 w-16 text-center">
-              {localStats.healthPoints.current}/{localStats.healthPoints.max}
-            </span>
-            <button 
-              onClick={() => handleAdjustToken('health', 10)}
-              className="h-6 w-6 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 ml-1"
-            >
-              +
-            </button>
+          <div className="progress-bar progress-ep h-1.5">
+            <div 
+              className="progress-fill" 
+              style={{ 
+                width: `${(localStats.energyPoints.current / localStats.energyPoints.max) * 100}%`,
+                backgroundColor: "#F97316"
+              }}
+            />
           </div>
         </div>
-        {renderProgressBar(
-          localStats.healthPoints.current, 
-          localStats.healthPoints.max,
-          'bg-rose-600'
-        )}
+
+        {/* Health points */}
+        <div className="stat-block rounded-lg p-3 border border-primary/20">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center">
+              <Heart className="h-4 w-4 text-[#EF4444] mr-1" />
+              <h3 className="text-xs font-orbitron text-[#D6F4FF]">HEALTH</h3>
+            </div>
+            <div className="flex items-center">
+              <button 
+                onClick={() => handleAdjustToken('health', -10)}
+                className="h-5 w-5 rounded-full bg-[#1A2C35] hover:bg-[#2A3C45] flex items-center justify-center text-[#D6F4FF] mx-0.5"
+              >
+                -
+              </button>
+              <span className="text-[#D6F4FF] font-mono text-xs mx-1">
+                {localStats.healthPoints.current}/{localStats.healthPoints.max}
+              </span>
+              <button 
+                onClick={() => handleAdjustToken('health', 10)}
+                className="h-5 w-5 rounded-full bg-[#1A2C35] hover:bg-[#2A3C45] flex items-center justify-center text-[#D6F4FF] mx-0.5"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div className="progress-bar progress-hp h-1.5">
+            <div 
+              className="progress-fill" 
+              style={{ 
+                width: `${(localStats.healthPoints.current / localStats.healthPoints.max) * 100}%`,
+                backgroundColor: "#EF4444"
+              }}
+            />
+          </div>
+        </div>
       </div>
 
-      <DynamicColorButton
-        onClick={handleResetTokens}
-        variant="outline"
-        size="sm"
-        className="w-full flex items-center justify-center gap-2 border-primary/50 mt-2"
-      >
-        <RefreshCw className="h-4 w-4" />
-        <span>Reset All Metrics</span>
-      </DynamicColorButton>
+      <div className="mt-2">
+        <button
+          onClick={handleResetTokens}
+          className="w-full py-2 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded text-xs text-[#D6F4FF] font-medium flex items-center justify-center transition-colors"
+        >
+          <RefreshCw className="h-3 w-3 mr-1" />
+          <span>RESET ALL METRICS</span>
+        </button>
+      </div>
     </div>
   );
 };
