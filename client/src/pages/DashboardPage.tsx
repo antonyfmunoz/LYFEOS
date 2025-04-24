@@ -4,7 +4,6 @@ import { usePageTitle } from "@/hooks/use-page-title";
 import { useToast } from "@/hooks/use-toast";
 import { AIAgentFAB } from "@/components/ui/ai-agent-fab";
 import { cn } from "@/lib/utils";
-import { CollapsibleWidget } from "@/components/ui/collapsible-widget";
 import { DraggableWidget } from "@/components/ui/draggable-widget";
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -212,7 +211,7 @@ export default function DashboardPage() {
   const { stats, username, events } = useLYFEOS();
   const { toast } = useToast();
   
-  // Define the widget data structure
+  // Define widget data structure
   interface WidgetData {
     id: string;
     title: string;
@@ -220,6 +219,80 @@ export default function DashboardPage() {
     content: React.ReactNode;
     defaultOpen?: boolean;
   }
+  
+  // Get the correct content for the Data Entry widget
+  const getDataEntryContent = () => {
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Today's Thoughts */}
+          <div className="space-y-2">
+            <label className="text-sm flex items-center text-[#7DAAB2]">
+              <Brain className="h-4 w-4 text-primary" />
+              <span className="ml-2">Today's Thoughts</span>
+            </label>
+            <div className="flex flex-col space-y-2">
+              <MarkdownEditor
+                placeholder="Ideas worth saving..."
+                value={reflection.thoughts}
+                onChange={(value) => updateReflection("thoughts", value)}
+                minHeight="100px"
+                autoBullets={true}
+              />
+            </div>
+          </div>
+          
+          {/* Content Consumed */}
+          <div className="space-y-2">
+            <label className="text-sm flex items-center text-[#7DAAB2]">
+              <Book className="h-4 w-4 text-primary" />
+              <span className="ml-2">Content Consumed</span>
+            </label>
+            <div className="flex flex-col space-y-2">
+              <MarkdownEditor
+                placeholder="Books, podcasts, videos..."
+                value={reflection.contentConsumed}
+                onChange={(value) => updateReflection("contentConsumed", value)}
+                minHeight="100px"
+              />
+            </div>
+          </div>
+          
+          {/* Today's Research */}
+          <div className="space-y-2">
+            <label className="text-sm flex items-center text-[#7DAAB2]">
+              <BookOpen className="h-4 w-4 text-primary" />
+              <span className="ml-2">Today's Research</span>
+            </label>
+            <div className="flex flex-col space-y-2">
+              <MarkdownEditor
+                placeholder="Summarize learnings or add links..."
+                value={reflection.research}
+                onChange={(value) => updateReflection("research", value)}
+                minHeight="100px"
+              />
+            </div>
+          </div>
+          
+          {/* New To-Do-List Ideas */}
+          <div className="space-y-2">
+            <label className="text-sm flex items-center text-[#7DAAB2]">
+              <ListChecks className="h-4 w-4 text-primary" />
+              <span className="ml-2">New To-Do-List Ideas</span>
+            </label>
+            <div className="flex flex-col space-y-2">
+              <MarkdownEditor
+                placeholder="Add anything..."
+                value={reflection.todoIdeas}
+                onChange={(value) => updateReflection("todoIdeas", value)}
+                minHeight="100px"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
   
   // Initialize widgets with unique IDs and add them to state
   const [widgets, setWidgets] = useState<WidgetData[]>([
@@ -245,11 +318,7 @@ export default function DashboardPage() {
       id: uuidv4(),
       title: "Data Entry Log",
       icon: <BookOpen className="h-5 w-5 text-primary" />,
-      content: <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Placeholder for Data Entry Log content */}
-                </div>
-               </div>,
+      content: getDataEntryContent(),
       defaultOpen: true
     }
   ]);
@@ -511,6 +580,11 @@ export default function DashboardPage() {
     localStorage.setItem(key, JSON.stringify(reflection));
   }, [reflection]);
   
+  // Function to update a field in the reflection
+  const updateReflection = (field: keyof DailyReflection, value: any) => {
+    setReflection(prev => ({ ...prev, [field]: value }));
+  };
+  
   // Handle adding a new time block
   const handleAddTimeBlock = () => {
     const newBlock: TimeBlock = {
@@ -574,8 +648,8 @@ export default function DashboardPage() {
     }));
   };
   
-  // Save task edit
-  const saveTaskEdit = (blockId: string, taskId: string, newText: string) => {
+  // Handle editing a task
+  const handleEditTask = (blockId: string, taskId: string, newText: string) => {
     setTimeBlocks(timeBlocks.map(block => {
       if (block.id === blockId) {
         return {
@@ -590,12 +664,10 @@ export default function DashboardPage() {
       }
       return block;
     }));
-    
-    setEditingTaskId(null);
   };
   
-  // Toggle task completion
-  const toggleTaskCompletion = (blockId: string, taskId: string) => {
+  // Handle toggling task completion status
+  const handleToggleTaskCompletion = (blockId: string, taskId: string) => {
     setTimeBlocks(timeBlocks.map(block => {
       if (block.id === blockId) {
         return {
@@ -611,371 +683,80 @@ export default function DashboardPage() {
       return block;
     }));
   };
-  
-  // Update reflection
-  const updateReflection = (field: keyof DailyReflection, value: any) => {
-    setReflection(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-  
-  // Render state selector (1-10 scale)
-  const renderStateSelector = (
-    state: number,
-    onChange: (value: number) => void,
-    label: string,
-    icon: React.ReactNode
-  ) => (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between">
-        <label className="text-sm flex items-center text-[#7DAAB2]">
-          {icon}
-          <span className="ml-2">{label}</span>
-        </label>
-        <span className="text-[#D6F4FF] font-mono">{state}/10</span>
-      </div>
-      <div className="flex gap-0.5">
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-          <Button
-            key={num}
-            type="button"
-            size="sm"
-            variant="ghost"
-            className={`p-0 w-7 h-7 rounded-md ${
-              num === state
-                ? "bg-primary/20 text-primary border border-primary/50"
-                : "text-[#7DAAB2] hover:bg-yellow-400 hover:text-black"
-            }`}
-            onClick={() => onChange(num)}
-          >
-            {num}
-          </Button>
-        ))}
-      </div>
-    </div>
-  );
-  
-  return (
-    <div className="dashboard-container">
-      <AIAgentFAB />
-      
-      {/* Daily Dashboard Header */}
-      <div className="mb-4 flex items-center">
-        <h1 className="text-3xl font-orbitron text-primary mr-2">Daily Dashboard</h1>
-        <div className="flex-grow h-0.5 bg-gradient-to-r from-primary/80 to-transparent"></div>
-      </div>
-      
-      {/* Date Header - Cinematic HUD Style */}
-      <section className="mb-6">
-        <div className="glassmorphic rounded-xl p-3 neon-border">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-            <div className="flex items-center">
-              <CalendarDays className="h-5 w-5 text-primary mr-2" />
-              <h1 className="text-xl sm:text-2xl font-orbitron text-[#D6F4FF]">{formattedDate}</h1>
-            </div>
-            <div className="flex items-center gap-2 mt-2 sm:mt-0">
-              <Clock className="h-4 w-4 text-[#7DAAB2] mr-2" />
-              <span className="text-[#7DAAB2] font-mono">{formattedTime}</span>
-              
-              <select 
-                value={timezone}
-                onChange={(e) => setTimezone(e.target.value)}
-                className="ml-3 bg-card border border-primary/30 rounded text-xs p-1"
-              >
-                {[
-                  { label: 'EST', value: 'America/New_York' },
-                  { label: 'CST', value: 'America/Chicago' },
-                  { label: 'MST', value: 'America/Denver' },
-                  { label: 'PST', value: 'America/Los_Angeles' },
-                  { label: 'GMT', value: 'Europe/London' },
-                  { label: 'CET', value: 'Europe/Paris' },
-                  { label: 'JST', value: 'Asia/Tokyo' },
-                  { label: 'AEST', value: 'Australia/Sydney' },
-                  { label: 'NZST', value: 'Pacific/Auckland' }
-                ].map(tz => (
-                  <option key={tz.value} value={tz.value}>
-                    {tz.label}
-                  </option>
-                ))}
-              </select>
-              
-              <button 
-                onClick={() => setTimeFormat(prev => prev === '12h' ? '24h' : '12h')}
-                className="bg-primary/10 hover:bg-yellow-400 hover:text-black rounded px-2 py-1 text-xs"
-              >
-                {timeFormat === '12h' ? '24h' : '12h'}
-              </button>
-              
 
-            </div>
-          </div>
+  return (
+    <DndProvider backend={HTML5Backend}>
+      <div className="dashboard-container">
+        <AIAgentFAB />
+        
+        {/* Daily Dashboard Header */}
+        <div className="mb-4 flex items-center">
+          <h1 className="text-3xl font-orbitron text-primary mr-2">Daily Dashboard</h1>
+          <div className="flex-grow h-0.5 bg-gradient-to-r from-primary/80 to-transparent"></div>
         </div>
-      </section>
       
-      {/* Stats and Progress Section */}
-      <section className="mb-6">
-        
-        <CollapsibleWidget 
-          title="Stats Log" 
-          icon={<BarChart className="h-5 w-5 text-primary" />}
-          className="mb-4"
-        >
-          <CompactStatsWidget stats={stats} />
-        </CollapsibleWidget>
-      </section>
-      
-      {/* Mission Log Panel */}
-      <section className="mb-6">
-        
-        <CollapsibleWidget 
-          title="Mission Log" 
-          icon={<Calendar className="h-5 w-5 text-primary" />}
-          className="mb-4"
-        >
-          <EnhancedMissionWidget 
-            events={events} 
-            maxHeight="96"
-            hideHeader={true}
-          />
-        </CollapsibleWidget>
-      </section>
-      
-      {/* Data Entry Log Panel */}
-      <section className="mb-6">
-        
-        <CollapsibleWidget 
-          title="Data Entry Log" 
-          icon={<BookOpen className="h-5 w-5 text-primary" />}
-          className="mb-4"
-        >
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Today's Thoughts */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <Brain className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Today's Thoughts</span>
-                </label>
-                <div className="flex flex-col space-y-2">
-                  <MarkdownEditor
-                    placeholder="Ideas worth saving..."
-                    value={reflection.thoughts}
-                    onChange={(value) => updateReflection("thoughts", value)}
-                    minHeight="100px"
-                    autoBullets={true}
-                  />
-                </div>
+        {/* Date Header - Cinematic HUD Style */}
+        <section className="mb-6">
+          <div className="glassmorphic rounded-xl p-3 neon-border">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+              <div className="flex items-center">
+                <CalendarDays className="h-5 w-5 text-primary mr-2" />
+                <h1 className="text-xl sm:text-2xl font-orbitron text-[#D6F4FF]">{formattedDate}</h1>
               </div>
-              
-              {/* Content Consumed */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <Book className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Content Consumed</span>
-                </label>
-                <div className="flex flex-col space-y-2">
-                  <MarkdownEditor
-                    placeholder="Books, podcasts, videos..."
-                    value={reflection.contentConsumed}
-                    onChange={(value) => updateReflection("contentConsumed", value)}
-                    minHeight="100px"
-                  />
-                </div>
-              </div>
-              
-              {/* Today's Research */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <BookOpen className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Today's Research</span>
-                </label>
-                <div className="flex flex-col space-y-2">
-                  <MarkdownEditor
-                    placeholder="Summarize learnings or add links..."
-                    value={reflection.research}
-                    onChange={(value) => updateReflection("research", value)}
-                    minHeight="100px"
-                  />
-                </div>
-              </div>
-              
-              {/* New To-Do-List Ideas */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <ListChecks className="h-4 w-4 text-primary" />
-                  <span className="ml-2">New To-Do-List Ideas</span>
-                </label>
-                <div className="flex flex-col space-y-2">
-                  <MarkdownEditor
-                    placeholder="Add anything..."
-                    value={reflection.todoIdeas}
-                    onChange={(value) => updateReflection("todoIdeas", value)}
-                    minHeight="100px"
-                  />
-                </div>
+              <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                <Clock className="h-4 w-4 text-[#7DAAB2] mr-2" />
+                <span className="text-[#7DAAB2] font-mono">{formattedTime}</span>
+                
+                <select 
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                  className="ml-3 bg-card border border-primary/30 rounded text-xs p-1"
+                >
+                  {[
+                    { label: 'EST', value: 'America/New_York' },
+                    { label: 'CST', value: 'America/Chicago' },
+                    { label: 'MST', value: 'America/Denver' },
+                    { label: 'PST', value: 'America/Los_Angeles' },
+                    { label: 'GMT', value: 'Europe/London' },
+                    { label: 'CET', value: 'Europe/Paris' },
+                    { label: 'JST', value: 'Asia/Tokyo' },
+                    { label: 'AEST', value: 'Australia/Sydney' },
+                    { label: 'NZST', value: 'Pacific/Auckland' }
+                  ].map(tz => (
+                    <option key={tz.value} value={tz.value}>
+                      {tz.label}
+                    </option>
+                  ))}
+                </select>
+                
+                <button 
+                  onClick={() => setTimeFormat(prev => prev === '12h' ? '24h' : '12h')}
+                  className="bg-primary/10 hover:bg-yellow-400 hover:text-black rounded px-2 py-1 text-xs"
+                >
+                  {timeFormat === '12h' ? '24h' : '12h'}
+                </button>
               </div>
             </div>
-            
-            {/* Auto-saved, no button needed */}
           </div>
-        </CollapsibleWidget>
-      </section>
-      
-      {/* Recalibration Log Panel */}
-      <section className="mb-6" style={{ position: 'relative', zIndex: 1 }}>
+        </section>
         
-        <CollapsibleWidget 
-          title="Recalibration Log" 
-          icon={<Brain className="h-5 w-5 text-primary" />}
-          className="mb-4"
-        >
-          <div className="space-y-4">
-            {/* Sleep Tracker Section */}
-            <div className="mb-3">
-              <h3 className="text-sm flex items-center text-[#7DAAB2] mb-3 font-bold">
-                <MoonStar className="h-4 w-4 text-primary mr-2" />
-                Sleep Tracker
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
-                    <AlarmClock className="h-4 w-4 text-primary" />
-                    <span className="ml-2">Wake Up Time</span>
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-2 w-full">
-                      <AlarmClock className="h-4 w-4 text-primary/70" />
-                      <CustomTimePicker
-                        value={reflection.wakeTime}
-                        onChange={(value) => updateReflection("wakeTime", value)}
-                        className="flex-grow"
-                      />
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
-                    <MoonStar className="h-4 w-4 text-primary" />
-                    <span className="ml-2">Sleep Time</span>
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-2 w-full">
-                      <MoonStar className="h-4 w-4 text-primary/70" />
-                      <CustomTimePicker
-                        value={reflection.sleepTime}
-                        onChange={(value) => updateReflection("sleepTime", value)}
-                        className="flex-grow"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* State ratings - in a row for desktop, stacked for mobile */}
-            <div className="border-t border-primary/10 pt-4 mb-2">
-              <div className="flex items-center justify-between text-sm mb-3">
-                <label className="flex items-center text-[#7DAAB2] font-bold">
-                  <Brain className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Energy Recap</span>
-                </label>
-                <div className="flex items-center">
-                  <span className="text-[#7DAAB2] mr-2">Daily Total:</span>
-                  <span className="text-[#D6F4FF] font-mono">
-                    {Math.round(((reflection.mentalState + reflection.physicalState + reflection.emotionalState) / 30) * 100)}%
-                  </span>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {renderStateSelector(
-                  reflection.mentalState,
-                  (value) => updateReflection("mentalState", value),
-                  "Mental State",
-                  <Brain className="h-4 w-4 text-primary" />
-                )}
-                
-                {renderStateSelector(
-                  reflection.physicalState,
-                  (value) => updateReflection("physicalState", value),
-                  "Physical State",
-                  <HeartPulse className="h-4 w-4 text-primary" />
-                )}
-                
-                {renderStateSelector(
-                  reflection.emotionalState,
-                  (value) => updateReflection("emotionalState", value),
-                  "Emotional State",
-                  <Smile className="h-4 w-4 text-primary" />
-                )}
-              </div>
-            </div>
-            
-            <div className="border-t border-primary/10 pt-4">
-              <h3 className="text-sm flex items-center text-[#7DAAB2] mb-3 font-bold">
-                <TargetIcon className="h-4 w-4 text-primary mr-2" />
-                Intention Setter
-              </h3>
-              
-              <div className="space-y-4">
-                {/* Gratitude */}
-                <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
-                    <Smile className="h-4 w-4 text-primary" />
-                    <span className="ml-2">Gratitude</span>
-                  </label>
-                  <div className="flex flex-col space-y-2">
-                    <MarkdownEditor
-                      placeholder="What three things are you most grateful for today?"
-                      value={reflection.gratitude}
-                      onChange={(value) => updateReflection("gratitude", value)}
-                      minHeight="80px"
-                    />
-                  </div>
-                </div>
-                
-                {/* Tomorrow's Goals */}
-                <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
-                    <ListChecks className="h-4 w-4 text-primary" />
-                    <span className="ml-2">Tomorrow's Goals</span>
-                  </label>
-                  <div className="flex flex-col space-y-2">
-                    <MarkdownEditor
-                      placeholder="What three things do you want to accomplish tomorrow?"
-                      value={reflection.tomorrowGoals}
-                      onChange={(value) => updateReflection("tomorrowGoals", value)}
-                      minHeight="60px"
-                    />
-                  </div>
-                </div>
-                
-                {/* Annual Goals */}
-                <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
-                    <TargetIcon className="h-4 w-4 text-primary" />
-                    <span className="ml-2">Annual Goals</span>
-                  </label>
-                  <div className="flex flex-col space-y-2">
-                    <MarkdownEditor
-                      placeholder="What are your three big targets for the year?"
-                      value={reflection.annualGoals}
-                      onChange={(value) => updateReflection("annualGoals", value)}
-                      minHeight="80px"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Auto-saved, no button needed */}
-          </div>
-        </CollapsibleWidget>
-      </section>
-      
-    </div>
+        {/* Draggable Widgets Section */}
+        {widgets.map((widget, index) => (
+          <section key={widget.id} className="mb-6">
+            <DraggableWidget
+              id={widget.id}
+              index={index}
+              title={widget.title}
+              icon={widget.icon}
+              defaultOpen={widget.defaultOpen}
+              moveWidget={moveWidget}
+            >
+              {widget.content}
+            </DraggableWidget>
+          </section>
+        ))}
+        
+      </div>
+    </DndProvider>
   );
 }

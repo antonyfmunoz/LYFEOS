@@ -1,15 +1,46 @@
-import { useEffect, useState } from "react";
-import { useLYFEOS } from "../lib/context";
-import StatWidget from "../components/dashboard/StatWidget";
-import ExperienceBar from "../components/dashboard/ExperienceBar";
-import { CalendarDays, Clock, Edit, PlusCircle, Save, Brain, HeartPulse, Smile, BookOpen, Book, AlarmClock, MoonStar, TargetIcon, ListChecks } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
+import React, { useState, useEffect, useCallback } from "react";
+import { useLYFEOS } from "@/lib/context";
+import { usePageTitle } from "@/hooks/use-page-title";
+import { useToast } from "@/hooks/use-toast";
+import { AIAgentFAB } from "@/components/ui/ai-agent-fab";
+import { cn } from "@/lib/utils";
+import { CollapsibleWidget } from "@/components/ui/collapsible-widget";
+import { DraggableWidget } from "@/components/ui/draggable-widget";
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import update from 'immutability-helper';
+import { v4 as uuidv4 } from 'uuid';
+import {
+  Brain,
+  BookOpen,
+  Edit,
+  Save,
+  AlarmClock,
+  Clock,
+  CalendarDays,
+  PlusCircle,
+  Book,
+  Smile,
+  MoonStar,
+  HeartPulse,
+  TargetIcon,
+  ListChecks,
+  Calendar,
+  CheckCircle2,
+  Zap,
+  BarChart
+} from "lucide-react";
+import MissionLogWidget from "@/components/dashboard/MissionLogWidget";
+import EnhancedMissionWidget from "@/components/dashboard/EnhancedMissionWidget";
+import MissionLogSystem from "@/components/dashboard/MissionLogSystem";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { CustomTimePicker } from "@/components/ui/custom-time-picker";
 import { ObsidianMarkdown } from "@/components/ui/obsidian-markdown";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
+import { Checkbox } from "@/components/ui/checkbox";
+import CompactStatsWidget from "@/components/dashboard/CompactStatsWidget";
+import { StatType, CalendarEvent } from "@/lib/types";
 
 // Define types
 interface TimeBlock {
@@ -36,11 +67,218 @@ interface DailyReflection {
   date: string; // YYYY-MM-DD format
 }
 
+// Mission Timeline Component
+function MissionTimeline({ events }: { events: CalendarEvent[] }) {
+  const [completedMissions, setCompletedMissions] = useState<Record<string, boolean>>({});
+  
+  const toggleMission = (id: string) => {
+    setCompletedMissions(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+  
+  return (
+    <div className="relative pl-10 pr-2 py-2 max-h-96 overflow-y-auto mission-timeline-container">
+      {/* Vertical Timeline Line */}
+      <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-gradient-to-b from-primary/80 via-primary/30 to-primary/10 z-0"></div>
+      
+      {events.length > 0 ? (
+        events
+          .sort((a, b) => a.startTime.localeCompare(b.startTime))
+          .map((event) => {
+            const isCompleted = completedMissions[event.id] || false;
+            
+            return (
+              <div 
+                key={event.id}
+                className={`mb-5 relative mission-block ${isCompleted ? 'opacity-60' : ''}`}
+              >
+                {/* Timeline Dot */}
+                <div className={`absolute left-[-20px] top-2 w-4 h-4 rounded-full bg-black border-2 
+                  ${event.category === 'work' ? 'border-blue-500' : 
+                    event.category === 'health' ? 'border-green-500' : 'border-purple-500'}`}>
+                </div>
+                
+                {/* Time Label */}
+                <div className="absolute left-[-130px] top-1 w-24 text-right">
+                  <span className="text-xs font-mono text-[#7DAAB2]">{event.startTime}</span>
+                </div>
+                
+                {/* Mission Card */}
+                <div 
+                  className={`glassmorphic rounded-xl p-4 neon-border hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition ml-2 cursor-pointer ${isCompleted ? 'border-green-400/30 bg-green-400/5' : ''}`}
+                  onClick={() => toggleMission(event.id)}
+                >
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 
+                        ${isCompleted ? 'bg-green-500/20' :
+                          event.category === 'work' ? 'bg-blue-500/20' : 
+                          event.category === 'health' ? 'bg-green-500/20' : 'bg-purple-500/20'}`}>
+                        {isCompleted ? (
+                          <CheckCircle2 className="h-5 w-5 text-green-400" />
+                        ) : event.category === 'work' ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                        ) : event.category === 'health' ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-9.33-5"/><path d="m10.67 21.33-.67-1.33"/><path d="M3 7v2"/><path d="M7 3h2"/><path d="M5.67 5.67 4.33 4.33"/><path d="M18 21l3-3h-6l3-3"/><path d="M16 3h5v5"/><path d="m16 8-5-5"/></svg>
+                        )}
+                      </div>
+                      
+                      <div>
+                        <div className="flex items-center">
+                          <h3 className={`font-medium ${isCompleted ? 'line-through text-[#7DAAB2]' : 'text-[#D6F4FF]'}`}>{event.title}</h3>
+                          <div className="ml-2 px-2 py-0.5 bg-primary/10 rounded text-xs font-mono text-[#36F1CD]">
+                            +15 XP
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center mt-1">
+                          <Clock className="h-3 w-3 text-primary mr-1" />
+                          <p className="text-xs text-[#7DAAB2]">{event.startTime} – {getEndTime(event.startTime, event.duration)}</p>
+                        </div>
+                        
+                        {event.description && (
+                          <p className={`text-xs text-[#7DAAB2] mt-1 italic ${isCompleted ? 'line-through' : ''}`}>{event.description}</p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col items-end">
+                      <div className={`text-xs font-semibold rounded-full px-2 py-0.5 
+                        ${isCompleted ? 'bg-green-500/10 text-green-400' :
+                          event.category === 'work' ? 'bg-blue-500/10 text-blue-400' : 
+                          event.category === 'health' ? 'bg-green-500/10 text-green-400' : 
+                            'bg-purple-500/10 text-purple-400'}`}>
+                        {isCompleted ? 'Completed' : event.category.charAt(0).toUpperCase() + event.category.slice(1)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+      ) : (
+        <div className="glassmorphic rounded-xl p-6 text-center opacity-80 mt-6">
+          <Calendar className="h-10 w-10 text-primary/50 mx-auto mb-3" />
+          <p className="text-[#7DAAB2]">No missions scheduled for today</p>
+          <p className="text-xs text-[#7DAAB2] mt-2">
+            Visit the Calendar page to add missions to your daily schedule
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Helper functions
+const getEndTime = (startTime: string, duration: string): string => {
+  // Parse the start time
+  const [hourStr, minuteStr] = startTime.split(':');
+  let hour = parseInt(hourStr, 10);
+  let minute = parseInt(minuteStr, 10);
+  
+  // Parse the duration (assuming format like "30m" or "1h 15m")
+  let durationMinutes = 0;
+  if (duration.includes('h')) {
+    const hourPart = duration.split('h')[0].trim();
+    durationMinutes += parseInt(hourPart, 10) * 60;
+    
+    if (duration.includes('m')) {
+      const minutePart = duration.split('h')[1].split('m')[0].trim();
+      durationMinutes += parseInt(minutePart, 10);
+    }
+  } else if (duration.includes('m')) {
+    const minutePart = duration.split('m')[0].trim();
+    durationMinutes += parseInt(minutePart, 10);
+  }
+  
+  // Calculate end time
+  minute += durationMinutes;
+  hour += Math.floor(minute / 60);
+  minute = minute % 60;
+  hour = hour % 24;
+  
+  // Format the end time
+  return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+};
+
 export default function DashboardPage() {
-  const { stats, username } = useLYFEOS();
+  // Set the page title
+  usePageTitle('Dashboard');
+  
+  const { stats, username, events } = useLYFEOS();
+  const { toast } = useToast();
+  
+  // Define the widget data structure
+  interface WidgetData {
+    id: string;
+    title: string;
+    icon: React.ReactNode;
+    content: React.ReactNode;
+    defaultOpen?: boolean;
+  }
+  
+  // Initialize widgets with unique IDs and add them to state
+  const [widgets, setWidgets] = useState<WidgetData[]>([
+    {
+      id: uuidv4(),
+      title: "Stats Log",
+      icon: <BarChart className="h-5 w-5 text-primary" />,
+      content: <CompactStatsWidget stats={stats} />,
+      defaultOpen: true
+    },
+    {
+      id: uuidv4(),
+      title: "Mission Log",
+      icon: <Calendar className="h-5 w-5 text-primary" />,
+      content: <EnhancedMissionWidget 
+                events={events} 
+                maxHeight="96"
+                hideHeader={true}
+              />,
+      defaultOpen: true
+    },
+    {
+      id: uuidv4(),
+      title: "Data Entry Log",
+      icon: <BookOpen className="h-5 w-5 text-primary" />,
+      content: <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Placeholder for Data Entry Log content */}
+                </div>
+               </div>,
+      defaultOpen: true
+    }
+  ]);
+  
+  // Callback for widget drag and drop reordering
+  const moveWidget = useCallback((dragIndex: number, hoverIndex: number) => {
+    setWidgets((prevWidgets) => 
+      update(prevWidgets, {
+        $splice: [
+          [dragIndex, 1],
+          [hoverIndex, 0, prevWidgets[dragIndex]],
+        ],
+      })
+    );
+  }, []);
+  
+  // Test function for toast notifications
+  const testToast = () => {
+    toast({
+      title: "Theme Toast Test",
+      description: "This toast should use the primary color theme",
+      duration: 3000,
+    });
+  };
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentTime, setCurrentTime] = useState(new Date());
   const [totalXpEarned, setTotalXpEarned] = useState(0);
+  const [timeFormat, setTimeFormat] = useState<'12h' | '24h'>('12h');
+  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
   
   // Time blocks state
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
@@ -82,7 +320,8 @@ export default function DashboardPage() {
   const formattedTime = currentTime.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
-    hour12: true
+    hour12: timeFormat === '12h',
+    timeZone: timezone
   });
   
   // Update time every minute
@@ -107,18 +346,144 @@ export default function DashboardPage() {
     }
   }, []);
 
-  // Load reflection data from localStorage
+  // Function to convert reflection to a journal entry
+  const saveReflectionAsJournalEntry = (reflectionData: DailyReflection) => {
+    const date = new Date(reflectionData.date);
+    const formattedDate = date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    });
+    
+    // Create content for the journal entry
+    let content = `# Daily Reflection - ${formattedDate}\n\n`;
+    
+    // Add state metrics
+    content += `## Daily State\n`;
+    content += `- Mental State: ${reflectionData.mentalState}/10\n`;
+    content += `- Physical State: ${reflectionData.physicalState}/10\n`;
+    content += `- Emotional State: ${reflectionData.emotionalState}/10\n`;
+    content += `- Wake Time: ${reflectionData.wakeTime}\n`;
+    content += `- Sleep Time: ${reflectionData.sleepTime}\n\n`;
+    
+    // Add gratitude section if not empty
+    if (reflectionData.gratitude && reflectionData.gratitude.trim()) {
+      content += `## Gratitude\n${reflectionData.gratitude}\n\n`;
+    }
+    
+    // Add tomorrow's goals if not empty
+    if (reflectionData.tomorrowGoals && reflectionData.tomorrowGoals.trim()) {
+      content += `## Tomorrow's Goals\n${reflectionData.tomorrowGoals}\n\n`;
+    }
+    
+    // Add annual goals if not empty
+    if (reflectionData.annualGoals && reflectionData.annualGoals.trim()) {
+      content += `## Annual Goals\n${reflectionData.annualGoals}\n\n`;
+    }
+    
+    // Add thoughts if not empty
+    if (reflectionData.thoughts && reflectionData.thoughts.trim()) {
+      content += `## Thoughts & Reflections\n${reflectionData.thoughts}\n\n`;
+    }
+    
+    // Add content consumed if not empty
+    if (reflectionData.contentConsumed && reflectionData.contentConsumed.trim()) {
+      content += `## Content Consumed\n${reflectionData.contentConsumed}\n\n`;
+    }
+    
+    // Add research if not empty
+    if (reflectionData.research && reflectionData.research.trim()) {
+      content += `## Research & Discoveries\n${reflectionData.research}\n\n`;
+    }
+    
+    // Add to-do ideas if not empty
+    if (reflectionData.todoIdeas && reflectionData.todoIdeas.trim()) {
+      content += `## To-Do Ideas\n${reflectionData.todoIdeas}\n\n`;
+    }
+    
+    // Create a mission page for this journal entry
+    const title = `Journal - ${formattedDate}`;
+    const slug = `journal-${reflectionData.date}`;
+    
+    try {
+      useLYFEOS().createMissionPage({
+        title,
+        slug,
+        content,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        completed: false,
+        xpValue: 20,
+        tags: ['Journal', 'Daily Reflection']
+      });
+      
+      toast({
+        title: "Journal Entry Created",
+        description: `Your daily reflection from ${formattedDate} has been saved to your journal.`,
+        variant: "default",
+        className: "bg-background/80 border border-primary text-foreground",
+        duration: 5000,
+      });
+    } catch (error) {
+      console.error("Failed to create journal entry:", error);
+    }
+  };
+
+  // Load reflection data from localStorage and check for date change
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
+    const lastCheckedDate = localStorage.getItem('lastCheckedDate');
     const savedReflection = localStorage.getItem(`dailyLog-${today}`);
     
-    if (savedReflection) {
+    // If today is different from the last checked date, 
+    // save yesterday's reflection as a journal entry
+    if (lastCheckedDate && lastCheckedDate !== today) {
+      const yesterdayReflection = localStorage.getItem(`dailyLog-${lastCheckedDate}`);
+      if (yesterdayReflection) {
+        try {
+          const parsedReflection = JSON.parse(yesterdayReflection);
+          // Only save if there's any content in the reflection
+          const hasContent = Object.entries(parsedReflection).some(([key, value]) => {
+            return typeof value === 'string' && value.trim() !== '' && 
+              !['date', 'wakeTime', 'sleepTime'].includes(key);
+          });
+          
+          if (hasContent) {
+            saveReflectionAsJournalEntry(parsedReflection);
+          }
+        } catch (e) {
+          console.error("Failed to parse yesterday's reflection:", e);
+        }
+      }
+      
+      // Reset the reflection to default values but keep the date as today
+      setReflection({
+        mentalState: 5,
+        physicalState: 5,
+        emotionalState: 5,
+        wakeTime: "06:00",
+        sleepTime: "22:00",
+        gratitude: "",
+        tomorrowGoals: "",
+        annualGoals: "",
+        thoughts: "",
+        contentConsumed: "",
+        research: "",
+        todoIdeas: "",
+        date: today
+      });
+    } else if (savedReflection) {
+      // If today's reflection exists, load it
       try {
         setReflection(JSON.parse(savedReflection));
       } catch (e) {
         console.error("Failed to parse saved reflection:", e);
       }
     }
+    
+    // Update last checked date
+    localStorage.setItem('lastCheckedDate', today);
   }, []);
   
   // Calculate total XP earned whenever timeBlocks change
@@ -139,6 +504,12 @@ export default function DashboardPage() {
   useEffect(() => {
     localStorage.setItem("routineData", JSON.stringify(timeBlocks));
   }, [timeBlocks]);
+  
+  // Auto-save the reflection to localStorage whenever it changes
+  useEffect(() => {
+    const key = `dailyLog-${reflection.date}`;
+    localStorage.setItem(key, JSON.stringify(reflection));
+  }, [reflection]);
   
   // Handle adding a new time block
   const handleAddTimeBlock = () => {
@@ -249,12 +620,6 @@ export default function DashboardPage() {
     }));
   };
   
-  // Auto-save the reflection to localStorage whenever it changes
-  useEffect(() => {
-    const key = `dailyLog-${reflection.date}`;
-    localStorage.setItem(key, JSON.stringify(reflection));
-  }, [reflection]);
-  
   // Render state selector (1-10 scale)
   const renderStateSelector = (
     state: number,
@@ -280,7 +645,7 @@ export default function DashboardPage() {
             className={`p-0 w-7 h-7 rounded-md ${
               num === state
                 ? "bg-primary/20 text-primary border border-primary/50"
-                : "text-[#7DAAB2] hover:bg-primary/10 hover:text-primary"
+                : "text-[#7DAAB2] hover:bg-yellow-400 hover:text-black"
             }`}
             onClick={() => onChange(num)}
           >
@@ -291,545 +656,109 @@ export default function DashboardPage() {
     </div>
   );
   
-  return (
-    <div className="dashboard-container">
-      {/* Date Header - Cinematic HUD Style */}
-      <section className="mb-6">
-        <div className="glassmorphic rounded-xl p-3 neon-border">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-            <div className="flex items-center">
-              <CalendarDays className="h-5 w-5 text-primary mr-2" />
-              <h1 className="text-xl sm:text-2xl font-orbitron text-[#D6F4FF]">{formattedDate}</h1>
-            </div>
-            <div className="flex items-center mt-2 sm:mt-0">
-              <Clock className="h-4 w-4 text-[#7DAAB2] mr-2" />
-              <span className="text-[#7DAAB2] font-mono">{formattedTime}</span>
-            </div>
-          </div>
-        </div>
-      </section>
-      
-      {/* Stats and Progress Section */}
-      <section className="mb-6">
-        <div className="mb-3">
-          <ExperienceBar
-            current={stats.experience.current}
-            max={stats.experience.max}
-            level={stats.experience.level}
-          />
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <StatWidget
-            type="time"
-            icon="schedule"
-            title="TIME TOKENS"
-            current={stats.timeTokens.current}
-            max={stats.timeTokens.max}
-            description="Unallocated time remaining today"
-          />
-          <StatWidget
-            type="energy"
-            icon="bolt"
-            title="ENERGY POINTS"
-            current={stats.energyPoints.current}
-            max={stats.energyPoints.max}
-            description="Current cognitive and physical capacity"
-          />
-          <StatWidget
-            type="health"
-            icon="favorite"
-            title="HEALTH POINTS"
-            current={stats.healthPoints.current}
-            max={stats.healthPoints.max}
-            description="Overall physical and mental wellness"
-          />
-        </div>
-      </section>
-      
-      {/* Routine Execution Panel */}
-      <section className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-orbitron flex items-center">
-            <Clock className="h-5 w-5 text-primary mr-2" />
-            <span>Daily Routine</span>
-          </h2>
-          <div className="flex items-center text-sm text-[#36F1CD] font-mono">
-            <span>XP Earned Today: +{totalXpEarned}</span>
-          </div>
-        </div>
-        
-        {/* Time Blocks */}
-        <div className="space-y-3">
-          {timeBlocks
-            .sort((a, b) => a.startTime.localeCompare(b.startTime))
-            .map((block) => (
-              <div 
-                key={block.id} 
-                className="glassmorphic rounded-xl p-4 neon-border hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition"
-              >
-                {/* Block Header */}
-                <div className="flex justify-between items-center mb-3">
-                  <div className="flex items-center">
-                    <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center mr-3">
-                      <Clock className="h-4 w-4 text-primary" />
-                    </div>
-                    
-                    {editingBlockId === block.id ? (
-                      <div className="flex flex-wrap gap-2">
-                        <Input 
-                          className="w-full sm:w-40 mb-1 sm:mb-0 bg-[#00141A] border-primary/30 text-[#D6F4FF]"
-                          value={block.name}
-                          onChange={(e) => saveBlockEdit(block.id, 'name', e.target.value)}
-                          placeholder="Block Name"
-                        />
-                        <div className="relative w-28">
-                          <Input 
-                            type="time"
-                            className="w-full custom-time-input font-mono pr-8"
-                            value={block.startTime}
-                            onChange={(e) => saveBlockEdit(block.id, 'startTime', e.target.value)}
-                          />
-                          <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
-                            <Clock className="h-3 w-3 text-primary/70" />
-                          </div>
-                        </div>
-                        <span className="text-[#7DAAB2] self-center"> - </span>
-                        <div className="w-32">
-                          <CustomTimePicker
-                            value={block.endTime}
-                            onChange={(value) => saveBlockEdit(block.id, 'endTime', value)}
-                            icon={<Clock className="h-3 w-3 text-primary/70" />}
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <h3 className="font-medium text-[#D6F4FF]">{block.name}</h3>
-                        <p className="text-xs text-[#7DAAB2]">{block.startTime} - {block.endTime}</p>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="flex">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-primary hover:bg-primary/10"
-                      onClick={() => editingBlockId === block.id ? setEditingBlockId(null) : setEditingBlockId(block.id)}
-                    >
-                      {editingBlockId === block.id ? <Save className="h-4 w-4" /> : <Edit className="h-4 w-4" />}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:bg-destructive/10 ml-1"
-                      onClick={() => handleDeleteBlock(block.id)}
-                    >
-                      <span className="sr-only">Delete</span>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                    </Button>
-                  </div>
-                </div>
-                
-                {/* Tasks */}
-                <div className="space-y-2 ml-12 mt-3">
-                  {block.tasks.map((task) => (
-                    <div key={task.id} className="flex items-start group">
-                      <div className="flex items-center h-5 mt-0.5">
-                        <Checkbox
-                          id={task.id}
-                          checked={task.completed}
-                          onCheckedChange={() => toggleTaskCompletion(block.id, task.id)}
-                          className="border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
-                        />
-                      </div>
-                      
-                      {editingTaskId === task.id ? (
-                        <div className="flex-grow flex ml-2">
-                          <Input 
-                            className="bg-[#00141A] border-primary/30 text-[#D6F4FF] flex-grow"
-                            value={newTaskText}
-                            onChange={(e) => setNewTaskText(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                saveTaskEdit(block.id, task.id, newTaskText);
-                              }
-                            }}
-                          />
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="ml-1 text-primary"
-                            onClick={() => saveTaskEdit(block.id, task.id, newTaskText)}
-                          >
-                            <Save className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <>
-                          <label
-                            htmlFor={task.id}
-                            className={`ml-2 flex-grow text-sm ${
-                              task.completed 
-                                ? "text-[#7DAAB2] line-through" 
-                                : "text-[#D6F4FF]"
-                            }`}
-                          >
-                            {task.text}
-                          </label>
-                          
-                          <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-5 w-5 p-0 text-primary"
-                              onClick={() => {
-                                setEditingTaskId(task.id);
-                                setNewTaskText(task.text);
-                              }}
-                            >
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-5 w-5 p-0 text-destructive ml-1"
-                              onClick={() => handleDeleteTask(block.id, task.id)}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                            </Button>
-                          </div>
-                          
-                          {task.completed && (
-                            <span className="text-xs text-[#36F1CD] font-mono ml-2">
-                              +10 XP
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  ))}
-                  
-                  {/* Add Task Input */}
-                  <div className="flex items-center mt-3">
-                    <Input 
-                      className="bg-[#00141A] border-primary/30 text-[#D6F4FF] flex-grow text-sm h-8 placeholder:text-[#7DAAB2]/50"
-                      placeholder="Add new task..."
-                      value={editingBlockId === block.id ? newTaskText : ""}
-                      onChange={(e) => setNewTaskText(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newTaskText.trim()) {
-                          handleAddTask(block.id, newTaskText);
-                        }
-                      }}
-                    />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="ml-1 text-primary h-8"
-                      onClick={() => handleAddTask(block.id, newTaskText)}
-                    >
-                      <PlusCircle className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
+  // Render state selector component (Mental/Physical/Emotional state)
+  const renderStateSelector = (
+    currentValue: number,
+    onChange: (value: number) => void,
+    label: string,
+    icon: React.ReactNode
+  ) => {
+    return (
+      <div className="space-y-2">
+        <label className="text-xs flex items-center text-[#7DAAB2]">
+          {icon}
+          <span className="ml-2">{label}</span>
+        </label>
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center space-x-1">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => (
+              <button
+                key={value}
+                className={`w-4 h-${value <= currentValue ? 6 : 4} rounded-sm transition-all duration-150 
+                ${value <= currentValue ? 'bg-primary' : 'bg-primary/20'} hover:bg-yellow-400 hover:text-black`}
+                onClick={() => onChange(value)}
+              />
             ))}
-        </div>
-        
-        {/* Add New Block Section */}
-        <div className="mt-4 glassmorphic rounded-xl p-4 neon-border">
-          <h3 className="font-medium text-[#D6F4FF] mb-3 flex items-center">
-            <PlusCircle className="h-4 w-4 mr-2 text-primary" />
-            Add New Time Block
-          </h3>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
-            <Input 
-              className="bg-[#00141A] border-primary/30 text-[#D6F4FF] sm:col-span-2"
-              placeholder="Block Name"
-              value={newBlockName}
-              onChange={(e) => setNewBlockName(e.target.value)}
-            />
-            
-            <div className="flex items-center gap-2 sm:col-span-2">
-              <div className="flex-1">
-                <CustomTimePicker
-                  value={newBlockStartTime}
-                  onChange={(value) => setNewBlockStartTime(value)}
-                  icon={<Clock className="h-3 w-3 text-primary/70" />}
-                />
-              </div>
-              <span className="text-[#7DAAB2]">-</span>
-              <div className="flex-1">
-                <CustomTimePicker
-                  value={newBlockEndTime}
-                  onChange={(value) => setNewBlockEndTime(value)}
-                  icon={<Clock className="h-3 w-3 text-primary/70" />}
-                />
-              </div>
-            </div>
-            
-            <Button
-              className="bg-primary text-primary-foreground hover:bg-primary/90 w-full"
-              onClick={handleAddTimeBlock}
-            >
-              Add Block
-            </Button>
           </div>
+          <span className="text-xs text-[#7DAAB2] ml-2">{currentValue}/10</span>
         </div>
-      </section>
-      
-      {/* Reflection & Calibration Panel */}
-      <section className="mb-6" style={{ position: 'relative', zIndex: 1 }}>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-orbitron flex items-center">
-            <Brain className="h-5 w-5 text-primary mr-2" />
-            <span>Reflection & Calibration</span>
-          </h2>
-        </div>
+      </div>
+    );
+  };
+  
+  return (
+    <DndProvider backend={HTML5Backend}>
+      <div className="dashboard-container">
+        <AIAgentFAB />
         
-        <div className="glassmorphic rounded-xl p-4 neon-border">
-          <div className="space-y-4">
-            {/* Sleep Tracker Section */}
-            <div className="mb-3">
-              <h3 className="text-sm flex items-center text-[#7DAAB2] mb-3">
-                <MoonStar className="h-4 w-4 text-primary mr-2" />
-                Sleep Tracker
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
-                    <AlarmClock className="h-4 w-4 text-primary" />
-                    <span className="ml-2">Wake Up Time</span>
-                  </label>
-                  <CustomTimePicker
-                    value={reflection.wakeTime}
-                    onChange={(value) => updateReflection("wakeTime", value)}
-                    icon={<AlarmClock className="h-4 w-4 text-primary/70" />}
-                    className="w-full"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
-                    <MoonStar className="h-4 w-4 text-primary" />
-                    <span className="ml-2">Sleep Time</span>
-                  </label>
-                  <CustomTimePicker
-                    value={reflection.sleepTime}
-                    onChange={(value) => updateReflection("sleepTime", value)}
-                    icon={<MoonStar className="h-4 w-4 text-primary/70" />}
-                    className="w-full"
-                  />
-                </div>
-              </div>
-            </div>
-            
-            {/* State ratings - in a row for desktop, stacked for mobile */}
-            <div className="border-t border-primary/10 pt-4 mb-2">
-              <div className="flex items-center justify-between text-sm mb-3">
-                <label className="flex items-center text-[#7DAAB2]">
-                  <Brain className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Energy Recap</span>
-                </label>
-                <div className="flex items-center">
-                  <span className="text-[#7DAAB2] mr-2">Daily Total:</span>
-                  <span className="text-[#D6F4FF] font-mono">
-                    {Math.round(((reflection.mentalState + reflection.physicalState + reflection.emotionalState) / 30) * 100)}%
-                  </span>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {renderStateSelector(
-                  reflection.mentalState,
-                  (value) => updateReflection("mentalState", value),
-                  "Mental State",
-                  <Brain className="h-4 w-4 text-primary" />
-                )}
-                
-                {renderStateSelector(
-                  reflection.physicalState,
-                  (value) => updateReflection("physicalState", value),
-                  "Physical State",
-                  <HeartPulse className="h-4 w-4 text-primary" />
-                )}
-                
-                {renderStateSelector(
-                  reflection.emotionalState,
-                  (value) => updateReflection("emotionalState", value),
-                  "Emotional State",
-                  <Smile className="h-4 w-4 text-primary" />
-                )}
-              </div>
-            </div>
-            
-            <div className="border-t border-primary/10 pt-4">
-              <h3 className="text-sm flex items-center text-[#7DAAB2] mb-3">
-                <TargetIcon className="h-4 w-4 text-primary mr-2" />
-                Intention Setter
-              </h3>
-              
-              <div className="space-y-4">
-                {/* Gratitude */}
-                <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
-                    <Smile className="h-4 w-4 text-primary" />
-                    <span className="ml-2">Gratitude</span>
-                  </label>
-                  <div className="flex flex-col space-y-2">
-                    <MarkdownEditor
-                      placeholder="What three things are you most grateful for today?"
-                      value={reflection.gratitude}
-                      onChange={(value) => updateReflection("gratitude", value)}
-                      minHeight="80px"
-                    />
-                  </div>
-                </div>
-                
-                {/* Tomorrow's Goals */}
-                <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
-                    <ListChecks className="h-4 w-4 text-primary" />
-                    <span className="ml-2">Tomorrow's Goals</span>
-                  </label>
-                  <div className="flex flex-col space-y-2">
-                    <MarkdownEditor
-                      placeholder="What three things do you want to accomplish tomorrow?"
-                      value={reflection.tomorrowGoals}
-                      onChange={(value) => updateReflection("tomorrowGoals", value)}
-                      minHeight="60px"
-                    />
-                  </div>
-                </div>
-                
-                {/* Annual Goals */}
-                <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
-                    <TargetIcon className="h-4 w-4 text-primary" />
-                    <span className="ml-2">Annual Goals</span>
-                  </label>
-                  <div className="flex flex-col space-y-2">
-                    <MarkdownEditor
-                      placeholder="What are your three big targets for the year?"
-                      value={reflection.annualGoals}
-                      onChange={(value) => updateReflection("annualGoals", value)}
-                      minHeight="80px"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* End of Intention Setter Section */}
-            
-            {/* Save button */}
-            <div className="flex justify-end">
-              <Button
-                type="submit"
-                className="bg-primary hover:bg-primary/90"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                Save Daily Log
-              </Button>
-            </div>
-          </form>
+        {/* Daily Dashboard Header */}
+        <div className="mb-4 flex items-center">
+          <h1 className="text-3xl font-orbitron text-primary mr-2">Daily Dashboard</h1>
+          <div className="flex-grow h-0.5 bg-gradient-to-r from-primary/80 to-transparent"></div>
         </div>
-      </section>
       
-      {/* Daily Log Panel - Separate Widget */}
-      <section className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-orbitron flex items-center">
-            <BookOpen className="h-5 w-5 text-primary mr-2" />
-            <span>Daily Log</span>
-          </h2>
-        </div>
+        {/* Date Header - Cinematic HUD Style */}
+        <section className="mb-6">
+          <div className="glassmorphic rounded-xl p-3 neon-border">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+              <div className="flex items-center">
+                <CalendarDays className="h-5 w-5 text-primary mr-2" />
+                <h1 className="text-xl sm:text-2xl font-orbitron text-[#D6F4FF]">{formattedDate}</h1>
+              </div>
+              <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                <Clock className="h-4 w-4 text-[#7DAAB2] mr-2" />
+                <span className="text-[#7DAAB2] font-mono">{formattedTime}</span>
+                
+                <select 
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                  className="ml-3 bg-card border border-primary/30 rounded text-xs p-1"
+                >
+                  {[
+                    { label: 'EST', value: 'America/New_York' },
+                    { label: 'CST', value: 'America/Chicago' },
+                    { label: 'MST', value: 'America/Denver' },
+                    { label: 'PST', value: 'America/Los_Angeles' },
+                    { label: 'GMT', value: 'Europe/London' },
+                    { label: 'CET', value: 'Europe/Paris' },
+                    { label: 'JST', value: 'Asia/Tokyo' },
+                    { label: 'AEST', value: 'Australia/Sydney' },
+                    { label: 'NZST', value: 'Pacific/Auckland' }
+                  ].map(tz => (
+                    <option key={tz.value} value={tz.value}>
+                      {tz.label}
+                    </option>
+                  ))}
+                </select>
+                
+                <button 
+                  onClick={() => setTimeFormat(prev => prev === '12h' ? '24h' : '12h')}
+                  className="bg-primary/10 hover:bg-yellow-400 hover:text-black rounded px-2 py-1 text-xs"
+                >
+                  {timeFormat === '12h' ? '24h' : '12h'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
         
-        <div className="glassmorphic rounded-xl p-4 neon-border">
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Today's Thoughts */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <Brain className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Today's Thoughts</span>
-                </label>
-                <div className="flex flex-col space-y-2">
-                  <MarkdownEditor
-                    placeholder="Ideas worth saving..."
-                    value={reflection.thoughts}
-                    onChange={(value) => updateReflection("thoughts", value)}
-                    minHeight="100px"
-                  />
-                </div>
-              </div>
-              
-              {/* Content Consumed */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <Book className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Content Consumed</span>
-                </label>
-                <div className="flex flex-col space-y-2">
-                  <MarkdownEditor
-                    placeholder="Books, podcasts, videos..."
-                    value={reflection.contentConsumed}
-                    onChange={(value) => updateReflection("contentConsumed", value)}
-                    minHeight="100px"
-                  />
-                </div>
-              </div>
-              
-              {/* Today's Research */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <BookOpen className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Today's Research</span>
-                </label>
-                <div className="flex flex-col space-y-2">
-                  <MarkdownEditor
-                    placeholder="Summarize learnings or add links..."
-                    value={reflection.research}
-                    onChange={(value) => updateReflection("research", value)}
-                    minHeight="100px"
-                  />
-                </div>
-              </div>
-              
-              {/* New To-Do-List Ideas */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <ListChecks className="h-4 w-4 text-primary" />
-                  <span className="ml-2">New To-Do-List Ideas</span>
-                </label>
-                <div className="flex flex-col space-y-2">
-                  <MarkdownEditor
-                    placeholder="Add to Brain Dump..."
-                    value={reflection.todoIdeas}
-                    onChange={(value) => updateReflection("todoIdeas", value)}
-                    minHeight="100px"
-                  />
-                </div>
-              </div>
-            </div>
-            
-            {/* Save button */}
-            <div className="flex justify-end">
-              <Button
-                type="submit"
-                className="bg-primary hover:bg-primary/90"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                Save Daily Log
-              </Button>
-            </div>
-          </form>
-        </div>
-      </section>
-    </div>
+        {/* Draggable Widgets Section */}
+        {widgets.map((widget, index) => (
+          <section key={widget.id} className="mb-6">
+            <DraggableWidget
+              id={widget.id}
+              index={index}
+              title={widget.title}
+              icon={widget.icon}
+              defaultOpen={widget.defaultOpen}
+              moveWidget={moveWidget}
+            >
+              {widget.content}
+            </DraggableWidget>
+          </section>
+        ))}
+        
+      </div>
+    </DndProvider>
   );
 }
