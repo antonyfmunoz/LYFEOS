@@ -104,6 +104,7 @@ function DraggableCollapsibleWidget({
 
       // Determine mouse position
       const clientOffset = monitor.getClientOffset();
+      if (!clientOffset) return;
 
       // Get pixels to the top
       const hoverClientY = clientOffset.y - hoverBoundingRect.top;

@@ -77,6 +77,38 @@ function MissionTimeline({ events }: { events: CalendarEvent[] }) {
     }));
   };
   
+  // Helper function to get end time
+  const getEndTime = (startTime: string, duration: string): string => {
+    // Parse the start time
+    const [hourStr, minuteStr] = startTime.split(':');
+    let hour = parseInt(hourStr, 10);
+    let minute = parseInt(minuteStr, 10);
+    
+    // Parse the duration (assuming format like "30m" or "1h 15m")
+    let durationMinutes = 0;
+    if (duration.includes('h')) {
+      const hourPart = duration.split('h')[0].trim();
+      durationMinutes += parseInt(hourPart, 10) * 60;
+      
+      if (duration.includes('m')) {
+        const minutePart = duration.split('h')[1].split('m')[0].trim();
+        durationMinutes += parseInt(minutePart, 10);
+      }
+    } else if (duration.includes('m')) {
+      const minutePart = duration.split('m')[0].trim();
+      durationMinutes += parseInt(minutePart, 10);
+    }
+    
+    // Calculate end time
+    minute += durationMinutes;
+    hour += Math.floor(minute / 60);
+    minute = minute % 60;
+    hour = hour % 24;
+    
+    // Format the end time
+    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+  };
+  
   return (
     <div className="relative pl-10 pr-2 py-2 max-h-96 overflow-y-auto mission-timeline-container">
       {/* Vertical Timeline Line */}
@@ -172,38 +204,6 @@ function MissionTimeline({ events }: { events: CalendarEvent[] }) {
   );
 }
 
-// Helper functions
-const getEndTime = (startTime: string, duration: string): string => {
-  // Parse the start time
-  const [hourStr, minuteStr] = startTime.split(':');
-  let hour = parseInt(hourStr, 10);
-  let minute = parseInt(minuteStr, 10);
-  
-  // Parse the duration (assuming format like "30m" or "1h 15m")
-  let durationMinutes = 0;
-  if (duration.includes('h')) {
-    const hourPart = duration.split('h')[0].trim();
-    durationMinutes += parseInt(hourPart, 10) * 60;
-    
-    if (duration.includes('m')) {
-      const minutePart = duration.split('h')[1].split('m')[0].trim();
-      durationMinutes += parseInt(minutePart, 10);
-    }
-  } else if (duration.includes('m')) {
-    const minutePart = duration.split('m')[0].trim();
-    durationMinutes += parseInt(minutePart, 10);
-  }
-  
-  // Calculate end time
-  minute += durationMinutes;
-  hour += Math.floor(minute / 60);
-  minute = minute % 60;
-  hour = hour % 24;
-  
-  // Format the end time
-  return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-};
-
 // Define widget data structure
 interface WidgetData {
   id: string;
@@ -220,64 +220,6 @@ export default function DashboardPage() {
   const { stats, username, events } = useLYFEOS();
   const { toast } = useToast();
   
-  // Define widgets with unique IDs for drag and drop
-  const [widgets, setWidgets] = useState<WidgetData[]>([
-    {
-      id: uuidv4(),
-      title: "Daily Mission Log",
-      icon: <Clock className="h-5 w-5 text-primary" />,
-      content: <MissionLogWidget />,
-      defaultOpen: true
-    },
-    {
-      id: uuidv4(),
-      title: "Daily Journal",
-      icon: <Edit className="h-5 w-5 text-primary" />,
-      content: null, // This will be filled dynamically later
-      defaultOpen: true
-    },
-    {
-      id: uuidv4(),
-      title: "Mission Timeline",
-      icon: <CalendarDays className="h-5 w-5 text-primary" />,
-      content: <MissionTimeline events={events} />,
-      defaultOpen: true
-    },
-    {
-      id: uuidv4(),
-      title: "Stats & Progress",
-      icon: <BarChart className="h-5 w-5 text-primary" />,
-      content: <CompactStatsWidget stats={stats} />,
-      defaultOpen: true
-    }
-  ]);
-  
-  // Callback for widget drag and drop reordering
-  const moveWidget = useCallback((dragIndex: number, hoverIndex: number) => {
-    setWidgets((prevWidgets) => 
-      update(prevWidgets, {
-        $splice: [
-          [dragIndex, 1],
-          [hoverIndex, 0, prevWidgets[dragIndex]],
-        ],
-      })
-    );
-  }, []);
-  
-  // Test function for toast notifications
-  const testToast = () => {
-    toast({
-      title: "Theme Toast Test",
-      description: "This toast should use the primary color theme",
-      duration: 3000,
-    });
-  };
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [totalXpEarned, setTotalXpEarned] = useState(0);
-  const [timeFormat, setTimeFormat] = useState<'12h' | '24h'>('12h');
-  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
-  
   // Time blocks state
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
@@ -288,6 +230,13 @@ export default function DashboardPage() {
   // Task editing state
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [newTaskText, setNewTaskText] = useState("");
+  
+  // Date and time state
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [totalXpEarned, setTotalXpEarned] = useState(0);
+  const [timeFormat, setTimeFormat] = useState<'12h' | '24h'>('12h');
+  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
   
   // Reflection state
   const [reflection, setReflection] = useState<DailyReflection>({
@@ -331,516 +280,94 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, []);
   
-  // Load time blocks from localStorage
-  useEffect(() => {
-    const savedRoutine = localStorage.getItem("routineData");
-    if (savedRoutine) {
-      try {
-        setTimeBlocks(JSON.parse(savedRoutine));
-      } catch (e) {
-        console.error("Failed to parse saved routine:", e);
-        setTimeBlocks([]);
-      }
-    }
-  }, []);
-
-  // Function to convert reflection to a journal entry
-  const saveReflectionAsJournalEntry = (reflectionData: DailyReflection) => {
-    const date = new Date(reflectionData.date);
-    const formattedDate = date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
-    });
-    
-    // Create content for the journal entry
-    let content = `# Daily Reflection - ${formattedDate}\n\n`;
-    
-    // Add state metrics
-    content += `## Daily State\n`;
-    content += `- Mental State: ${reflectionData.mentalState}/10\n`;
-    content += `- Physical State: ${reflectionData.physicalState}/10\n`;
-    content += `- Emotional State: ${reflectionData.emotionalState}/10\n`;
-    content += `- Wake Time: ${reflectionData.wakeTime}\n`;
-    content += `- Sleep Time: ${reflectionData.sleepTime}\n\n`;
-    
-    // Add gratitude section if not empty
-    if (reflectionData.gratitude && reflectionData.gratitude.trim()) {
-      content += `## Gratitude\n${reflectionData.gratitude}\n\n`;
-    }
-    
-    // Add tomorrow's goals if not empty
-    if (reflectionData.tomorrowGoals && reflectionData.tomorrowGoals.trim()) {
-      content += `## Tomorrow's Goals\n${reflectionData.tomorrowGoals}\n\n`;
-    }
-    
-    // Add annual goals if not empty
-    if (reflectionData.annualGoals && reflectionData.annualGoals.trim()) {
-      content += `## Annual Goals\n${reflectionData.annualGoals}\n\n`;
-    }
-    
-    // Add thoughts if not empty
-    if (reflectionData.thoughts && reflectionData.thoughts.trim()) {
-      content += `## Thoughts & Reflections\n${reflectionData.thoughts}\n\n`;
-    }
-    
-    // Add content consumed if not empty
-    if (reflectionData.contentConsumed && reflectionData.contentConsumed.trim()) {
-      content += `## Content Consumed\n${reflectionData.contentConsumed}\n\n`;
-    }
-    
-    // Add research if not empty
-    if (reflectionData.research && reflectionData.research.trim()) {
-      content += `## Research & Discoveries\n${reflectionData.research}\n\n`;
-    }
-    
-    // Add to-do ideas if not empty
-    if (reflectionData.todoIdeas && reflectionData.todoIdeas.trim()) {
-      content += `## To-Do Ideas\n${reflectionData.todoIdeas}\n\n`;
-    }
-    
-    // Create a mission page for this journal entry
-    const title = `Journal - ${formattedDate}`;
-    const slug = `journal-${reflectionData.date}`;
-    
-    try {
-      useLYFEOS().createMissionPage({
-        title,
-        slug,
-        content,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        completed: false,
-        xpValue: 20,
-        tags: ['Journal', 'Daily Reflection']
-      });
-      
-      toast({
-        title: "Journal Entry Created",
-        description: `Your daily reflection from ${formattedDate} has been saved to your journal.`,
-        variant: "default",
-        className: "bg-background/80 border border-primary text-foreground",
-        duration: 5000,
-      });
-    } catch (error) {
-      console.error("Failed to create journal entry:", error);
-    }
-  };
-
-  // Load reflection data from localStorage and check for date change
-  useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const lastCheckedDate = localStorage.getItem('lastCheckedDate');
-    const savedReflection = localStorage.getItem(`dailyLog-${today}`);
-    
-    // If today is different from the last checked date, 
-    // save yesterday's reflection as a journal entry
-    if (lastCheckedDate && lastCheckedDate !== today) {
-      const yesterdayReflection = localStorage.getItem(`dailyLog-${lastCheckedDate}`);
-      if (yesterdayReflection) {
-        try {
-          const parsedReflection = JSON.parse(yesterdayReflection);
-          // Only save if there's any content in the reflection
-          const hasContent = Object.entries(parsedReflection).some(([key, value]) => {
-            return typeof value === 'string' && value.trim() !== '' && 
-              !['date', 'wakeTime', 'sleepTime'].includes(key);
-          });
-          
-          if (hasContent) {
-            saveReflectionAsJournalEntry(parsedReflection);
-          }
-        } catch (e) {
-          console.error("Failed to parse yesterday's reflection:", e);
-        }
-      }
-      
-      // Reset the reflection to default values but keep the date as today
-      setReflection({
-        mentalState: 5,
-        physicalState: 5,
-        emotionalState: 5,
-        wakeTime: "06:00",
-        sleepTime: "22:00",
-        gratitude: "",
-        tomorrowGoals: "",
-        annualGoals: "",
-        thoughts: "",
-        contentConsumed: "",
-        research: "",
-        todoIdeas: "",
-        date: today
-      });
-    } else if (savedReflection) {
-      // If today's reflection exists, load it
-      try {
-        setReflection(JSON.parse(savedReflection));
-      } catch (e) {
-        console.error("Failed to parse saved reflection:", e);
-      }
-    }
-    
-    // Update last checked date
-    localStorage.setItem('lastCheckedDate', today);
-  }, []);
-  
-  // Calculate total XP earned whenever timeBlocks change
-  useEffect(() => {
-    let xpTotal = 0;
-    timeBlocks.forEach(block => {
-      block.tasks.forEach(task => {
-        if (task.completed) {
-          // Each completed task earns 10 XP
-          xpTotal += 10;
-        }
-      });
-    });
-    setTotalXpEarned(xpTotal);
-  }, [timeBlocks]);
-  
-  // Save time blocks to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem("routineData", JSON.stringify(timeBlocks));
-  }, [timeBlocks]);
-  
-  // Auto-save the reflection to localStorage whenever it changes
-  useEffect(() => {
-    const key = `dailyLog-${reflection.date}`;
-    localStorage.setItem(key, JSON.stringify(reflection));
-  }, [reflection]);
-  
-  // Handle adding a new time block
-  const handleAddTimeBlock = () => {
-    const newBlock: TimeBlock = {
-      id: `block-${Date.now()}`,
-      startTime: newBlockStartTime,
-      endTime: newBlockEndTime,
-      name: newBlockName || "New Block",
-      tasks: []
-    };
-    
-    setTimeBlocks([...timeBlocks, newBlock]);
-    
-    // Reset fields
-    setNewBlockName("");
-    setNewBlockStartTime("09:00");
-    setNewBlockEndTime("10:00");
-  };
-  
-  // Handle editing block name
-  const saveBlockEdit = (blockId: string, field: 'name' | 'startTime' | 'endTime', value: string) => {
-    setTimeBlocks(timeBlocks.map(block => {
-      if (block.id === blockId) {
-        return { ...block, [field]: value };
-      }
-      return block;
-    }));
-  };
-  
-  // Handle deleting a time block
-  const handleDeleteBlock = (blockId: string) => {
-    setTimeBlocks(timeBlocks.filter(block => block.id !== blockId));
-  };
-  
-  // Handle adding a task to a block
-  const handleAddTask = (blockId: string, taskText: string) => {
-    if (!taskText.trim()) return;
-    
-    const newTask = {
-      id: `task-${Date.now()}`,
-      text: taskText,
-      completed: false
-    };
-    
-    setTimeBlocks(timeBlocks.map(block => {
-      if (block.id === blockId) {
-        return { ...block, tasks: [...block.tasks, newTask] };
-      }
-      return block;
-    }));
-    
-    setNewTaskText("");
-  };
-  
-  // Handle deleting a task
-  const handleDeleteTask = (blockId: string, taskId: string) => {
-    setTimeBlocks(timeBlocks.map(block => {
-      if (block.id === blockId) {
-        return { ...block, tasks: block.tasks.filter(task => task.id !== taskId) };
-      }
-      return block;
-    }));
-  };
-  
-  // Save task edit
-  const saveTaskEdit = (blockId: string, taskId: string, newText: string) => {
-    setTimeBlocks(timeBlocks.map(block => {
-      if (block.id === blockId) {
-        return {
-          ...block,
-          tasks: block.tasks.map(task => {
-            if (task.id === taskId) {
-              return { ...task, text: newText };
-            }
-            return task;
-          })
-        };
-      }
-      return block;
-    }));
-    
-    setEditingTaskId(null);
-  };
-  
-  // Toggle task completion
-  const toggleTaskCompletion = (blockId: string, taskId: string) => {
-    setTimeBlocks(timeBlocks.map(block => {
-      if (block.id === blockId) {
-        return {
-          ...block,
-          tasks: block.tasks.map(task => {
-            if (task.id === taskId) {
-              return { ...task, completed: !task.completed };
-            }
-            return task;
-          })
-        };
-      }
-      return block;
-    }));
-  };
-  
   // Update reflection
   const updateReflection = (field: keyof DailyReflection, value: any) => {
-    setReflection(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setReflection(prev => ({ ...prev, [field]: value }));
   };
   
-  // Render state selector (1-10 scale)
+  // Render state selector sliders
   const renderStateSelector = (
-    state: number,
+    value: number,
     onChange: (value: number) => void,
     label: string,
     icon: React.ReactNode
-  ) => (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between">
-        <label className="text-sm flex items-center text-[#7DAAB2]">
-          {icon}
-          <span className="ml-2">{label}</span>
-        </label>
-        <span className="text-[#D6F4FF] font-mono">{state}/10</span>
-      </div>
-      <div className="flex gap-0.5">
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-          <Button
-            key={num}
-            type="button"
-            size="sm"
-            variant="ghost"
-            className={`p-0 w-7 h-7 rounded-md ${
-              num === state
-                ? "bg-primary/20 text-primary border border-primary/50"
-                : "text-[#7DAAB2] hover:bg-yellow-400 hover:text-black"
-            }`}
-            onClick={() => onChange(num)}
-          >
-            {num}
-          </Button>
-        ))}
-      </div>
-    </div>
-  );
-  
-  return (
-    <div className="dashboard-container">
-      <AIAgentFAB />
-      
-      {/* Daily Dashboard Header */}
-      <div className="mb-4 flex items-center">
-        <h1 className="text-3xl font-orbitron text-primary mr-2">Daily Dashboard</h1>
-        <div className="flex-grow h-0.5 bg-gradient-to-r from-primary/80 to-transparent"></div>
-      </div>
-      
-      {/* Date Header - Cinematic HUD Style */}
-      <section className="mb-6">
-        <div className="glassmorphic rounded-xl p-3 neon-border">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-            <div className="flex items-center">
-              <CalendarDays className="h-5 w-5 text-primary mr-2" />
-              <h1 className="text-xl sm:text-2xl font-orbitron text-[#D6F4FF]">{formattedDate}</h1>
-            </div>
-            <div className="flex items-center gap-2 mt-2 sm:mt-0">
-              <Clock className="h-4 w-4 text-[#7DAAB2] mr-2" />
-              <span className="text-[#7DAAB2] font-mono">{formattedTime}</span>
-              
-              <select 
-                value={timezone}
-                onChange={(e) => setTimezone(e.target.value)}
-                className="ml-3 bg-card border border-primary/30 rounded text-xs p-1"
-              >
-                {[
-                  { label: 'EST', value: 'America/New_York' },
-                  { label: 'CST', value: 'America/Chicago' },
-                  { label: 'MST', value: 'America/Denver' },
-                  { label: 'PST', value: 'America/Los_Angeles' },
-                  { label: 'GMT', value: 'Europe/London' },
-                  { label: 'CET', value: 'Europe/Paris' },
-                  { label: 'JST', value: 'Asia/Tokyo' },
-                  { label: 'AEST', value: 'Australia/Sydney' },
-                  { label: 'NZST', value: 'Pacific/Auckland' }
-                ].map(tz => (
-                  <option key={tz.value} value={tz.value}>
-                    {tz.label}
-                  </option>
-                ))}
-              </select>
-              
-              <button 
-                onClick={() => setTimeFormat(prev => prev === '12h' ? '24h' : '12h')}
-                className="bg-primary/10 hover:bg-yellow-400 hover:text-black rounded px-2 py-1 text-xs"
-              >
-                {timeFormat === '12h' ? '24h' : '12h'}
-              </button>
-              
-
-            </div>
+  ) => {
+    return (
+      <div className="space-y-2">
+        <label className="text-sm flex items-center justify-between text-[#7DAAB2]">
+          <div className="flex items-center">
+            {icon}
+            <span className="ml-2">{label}</span>
           </div>
-        </div>
-      </section>
-      
-      {/* Stats and Progress Section */}
-      <section className="mb-6">
-        
-        <CollapsibleWidget 
-          title="Stats Log" 
-          icon={<BarChart className="h-5 w-5 text-primary" />}
-          className="mb-4"
-        >
-          <CompactStatsWidget stats={stats} />
-        </CollapsibleWidget>
-      </section>
-      
-      {/* Mission Log Panel */}
-      <section className="mb-6">
-        
-        <CollapsibleWidget 
-          title="Mission Log" 
-          icon={<Calendar className="h-5 w-5 text-primary" />}
-          className="mb-4"
-        >
-          <EnhancedMissionWidget 
-            events={events} 
-            maxHeight="96"
-            hideHeader={true}
+          <span className="text-[#D6F4FF] font-mono">{value}/10</span>
+        </label>
+        <div className="flex items-center space-x-2">
+          <input
+            type="range"
+            min="0"
+            max="10"
+            step="1"
+            value={value}
+            onChange={(e) => onChange(parseInt(e.target.value))}
+            className="w-full accent-primary"
           />
-        </CollapsibleWidget>
-      </section>
-      
-      {/* Data Entry Log Panel */}
-      <section className="mb-6">
-        
-        <CollapsibleWidget 
-          title="Data Entry Log" 
-          icon={<BookOpen className="h-5 w-5 text-primary" />}
-          className="mb-4"
-        >
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Today's Thoughts */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <Brain className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Today's Thoughts</span>
-                </label>
-                <div className="flex flex-col space-y-2">
-                  <MarkdownEditor
-                    placeholder="Ideas worth saving..."
-                    value={reflection.thoughts}
-                    onChange={(value) => updateReflection("thoughts", value)}
-                    minHeight="100px"
-                    autoBullets={true}
-                  />
-                </div>
-              </div>
+        </div>
+      </div>
+    );
+  };
+  
+  // Initialize widgets with unique IDs for drag and drop
+  const [widgets, setWidgets] = useState<WidgetData[]>([
+    {
+      id: uuidv4(),
+      title: "Daily Mission Log",
+      icon: <Clock className="h-5 w-5 text-primary" />,
+      content: <MissionLogWidget events={events || []} />,
+      defaultOpen: true
+    },
+    {
+      id: uuidv4(),
+      title: "Mission Timeline",
+      icon: <CalendarDays className="h-5 w-5 text-primary" />,
+      content: <MissionTimeline events={events} />,
+      defaultOpen: true
+    },
+    {
+      id: uuidv4(),
+      title: "Stats & Progress",
+      icon: <BarChart className="h-5 w-5 text-primary" />,
+      content: <CompactStatsWidget stats={stats} />,
+      defaultOpen: true
+    },
+    {
+      id: uuidv4(),
+      title: "Daily Journal",
+      icon: <Edit className="h-5 w-5 text-primary" />,
+      content: (
+        <div className="space-y-4">
+          {/* Basic info that shows at the top - date, wake/sleep, states */}
+          <div className="mb-5">
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-[#7DAAB2] text-sm flex items-center space-x-2">
+                <CalendarDays className="h-4 w-4 text-primary" />
+                <span>{formattedDate}</span>
+              </p>
               
-              {/* Content Consumed */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <Book className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Content Consumed</span>
-                </label>
-                <div className="flex flex-col space-y-2">
-                  <MarkdownEditor
-                    placeholder="Books, podcasts, videos..."
-                    value={reflection.contentConsumed}
-                    onChange={(value) => updateReflection("contentConsumed", value)}
-                    minHeight="100px"
-                  />
-                </div>
-              </div>
-              
-              {/* Today's Research */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <BookOpen className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Today's Research</span>
-                </label>
-                <div className="flex flex-col space-y-2">
-                  <MarkdownEditor
-                    placeholder="Summarize learnings or add links..."
-                    value={reflection.research}
-                    onChange={(value) => updateReflection("research", value)}
-                    minHeight="100px"
-                  />
-                </div>
-              </div>
-              
-              {/* New To-Do-List Ideas */}
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <ListChecks className="h-4 w-4 text-primary" />
-                  <span className="ml-2">New To-Do-List Ideas</span>
-                </label>
-                <div className="flex flex-col space-y-2">
-                  <MarkdownEditor
-                    placeholder="Add anything..."
-                    value={reflection.todoIdeas}
-                    onChange={(value) => updateReflection("todoIdeas", value)}
-                    minHeight="100px"
-                  />
+              <div className="text-xs md:text-sm text-[#7DAAB2] flex items-center mr-2">
+                <div className="flex items-center mr-4">
+                  <Zap className="h-4 w-4 text-yellow-400 mr-1" />
+                  <span className="text-yellow-400 font-mono">+5</span>
                 </div>
               </div>
             </div>
             
-            {/* Auto-saved, no button needed */}
-          </div>
-        </CollapsibleWidget>
-      </section>
-      
-      {/* Recalibration Log Panel */}
-      <section className="mb-6" style={{ position: 'relative', zIndex: 1 }}>
-        
-        <CollapsibleWidget 
-          title="Recalibration Log" 
-          icon={<Brain className="h-5 w-5 text-primary" />}
-          className="mb-4"
-        >
-          <div className="space-y-4">
-            {/* Sleep Tracker Section */}
-            <div className="mb-3">
-              <h3 className="text-sm flex items-center text-[#7DAAB2] mb-3 font-bold">
-                <MoonStar className="h-4 w-4 text-primary mr-2" />
-                Sleep Tracker
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Wake-Sleep times */}
+            <div className="flex flex-col md:flex-row gap-4 mb-3">
+              <div className="flex-1">
                 <div className="space-y-2">
                   <label className="text-sm flex items-center text-[#7DAAB2]">
                     <AlarmClock className="h-4 w-4 text-primary" />
-                    <span className="ml-2">Wake Up Time</span>
+                    <span className="ml-2">Wake Time</span>
                   </label>
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-2 w-full">
@@ -853,7 +380,9 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 </div>
-                
+              </div>
+              
+              <div className="flex-1">
                 <div className="space-y-2">
                   <label className="text-sm flex items-center text-[#7DAAB2]">
                     <MoonStar className="h-4 w-4 text-primary" />
@@ -872,108 +401,139 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
-            
-            {/* State ratings - in a row for desktop, stacked for mobile */}
-            <div className="border-t border-primary/10 pt-4 mb-2">
-              <div className="flex items-center justify-between text-sm mb-3">
-                <label className="flex items-center text-[#7DAAB2] font-bold">
-                  <Brain className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Energy Recap</span>
-                </label>
-                <div className="flex items-center">
-                  <span className="text-[#7DAAB2] mr-2">Daily Total:</span>
-                  <span className="text-[#D6F4FF] font-mono">
-                    {Math.round(((reflection.mentalState + reflection.physicalState + reflection.emotionalState) / 30) * 100)}%
-                  </span>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {renderStateSelector(
-                  reflection.mentalState,
-                  (value) => updateReflection("mentalState", value),
-                  "Mental State",
-                  <Brain className="h-4 w-4 text-primary" />
-                )}
-                
-                {renderStateSelector(
-                  reflection.physicalState,
-                  (value) => updateReflection("physicalState", value),
-                  "Physical State",
-                  <HeartPulse className="h-4 w-4 text-primary" />
-                )}
-                
-                {renderStateSelector(
-                  reflection.emotionalState,
-                  (value) => updateReflection("emotionalState", value),
-                  "Emotional State",
-                  <Smile className="h-4 w-4 text-primary" />
-                )}
-              </div>
-            </div>
-            
-            <div className="border-t border-primary/10 pt-4">
-              <h3 className="text-sm flex items-center text-[#7DAAB2] mb-3 font-bold">
-                <TargetIcon className="h-4 w-4 text-primary mr-2" />
-                Intention Setter
-              </h3>
-              
-              <div className="space-y-4">
-                {/* Gratitude */}
-                <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
-                    <Smile className="h-4 w-4 text-primary" />
-                    <span className="ml-2">Gratitude</span>
-                  </label>
-                  <div className="flex flex-col space-y-2">
-                    <MarkdownEditor
-                      placeholder="What three things are you most grateful for today?"
-                      value={reflection.gratitude}
-                      onChange={(value) => updateReflection("gratitude", value)}
-                      minHeight="80px"
-                    />
-                  </div>
-                </div>
-                
-                {/* Tomorrow's Goals */}
-                <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
-                    <ListChecks className="h-4 w-4 text-primary" />
-                    <span className="ml-2">Tomorrow's Goals</span>
-                  </label>
-                  <div className="flex flex-col space-y-2">
-                    <MarkdownEditor
-                      placeholder="What three things do you want to accomplish tomorrow?"
-                      value={reflection.tomorrowGoals}
-                      onChange={(value) => updateReflection("tomorrowGoals", value)}
-                      minHeight="60px"
-                    />
-                  </div>
-                </div>
-                
-                {/* Annual Goals */}
-                <div className="space-y-2">
-                  <label className="text-sm flex items-center text-[#7DAAB2]">
-                    <TargetIcon className="h-4 w-4 text-primary" />
-                    <span className="ml-2">Annual Goals</span>
-                  </label>
-                  <div className="flex flex-col space-y-2">
-                    <MarkdownEditor
-                      placeholder="What are your three big targets for the year?"
-                      value={reflection.annualGoals}
-                      onChange={(value) => updateReflection("annualGoals", value)}
-                      minHeight="80px"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Auto-saved, no button needed */}
           </div>
-        </CollapsibleWidget>
-      </section>
-      
-    </div>
+          
+          {/* State ratings - in a row for desktop, stacked for mobile */}
+          <div className="border-t border-primary/10 pt-4 mb-2">
+            <div className="flex items-center justify-between text-sm mb-3">
+              <label className="flex items-center text-[#7DAAB2] font-bold">
+                <Brain className="h-4 w-4 text-primary" />
+                <span className="ml-2">Energy Recap</span>
+              </label>
+              <div className="flex items-center">
+                <span className="text-[#7DAAB2] mr-2">Daily Total:</span>
+                <span className="text-[#D6F4FF] font-mono">
+                  {Math.round(((reflection.mentalState + reflection.physicalState + reflection.emotionalState) / 30) * 100)}%
+                </span>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {renderStateSelector(
+                reflection.mentalState,
+                (value) => updateReflection("mentalState", value),
+                "Mental State",
+                <Brain className="h-4 w-4 text-primary" />
+              )}
+              
+              {renderStateSelector(
+                reflection.physicalState,
+                (value) => updateReflection("physicalState", value),
+                "Physical State",
+                <HeartPulse className="h-4 w-4 text-primary" />
+              )}
+              
+              {renderStateSelector(
+                reflection.emotionalState,
+                (value) => updateReflection("emotionalState", value),
+                "Emotional State",
+                <Smile className="h-4 w-4 text-primary" />
+              )}
+            </div>
+          </div>
+          
+          <div className="border-t border-primary/10 pt-4">
+            <h3 className="text-sm flex items-center text-[#7DAAB2] mb-3 font-bold">
+              <TargetIcon className="h-4 w-4 text-primary mr-2" />
+              Intention Setter
+            </h3>
+            
+            <div className="space-y-4">
+              {/* Gratitude */}
+              <div className="space-y-2">
+                <label className="text-sm flex items-center text-[#7DAAB2]">
+                  <Smile className="h-4 w-4 text-primary" />
+                  <span className="ml-2">Gratitude</span>
+                </label>
+                <div className="flex flex-col space-y-2">
+                  <MarkdownEditor
+                    placeholder="What three things are you most grateful for today?"
+                    value={reflection.gratitude}
+                    onChange={(value) => updateReflection("gratitude", value)}
+                    minHeight="80px"
+                  />
+                </div>
+              </div>
+              
+              {/* Tomorrow's Goals */}
+              <div className="space-y-2">
+                <label className="text-sm flex items-center text-[#7DAAB2]">
+                  <ListChecks className="h-4 w-4 text-primary" />
+                  <span className="ml-2">Tomorrow's Goals</span>
+                </label>
+                <div className="flex flex-col space-y-2">
+                  <MarkdownEditor
+                    placeholder="What three things do you want to accomplish tomorrow?"
+                    value={reflection.tomorrowGoals}
+                    onChange={(value) => updateReflection("tomorrowGoals", value)}
+                    minHeight="60px"
+                  />
+                </div>
+              </div>
+              
+              {/* Annual Goals */}
+              <div className="space-y-2">
+                <label className="text-sm flex items-center text-[#7DAAB2]">
+                  <TargetIcon className="h-4 w-4 text-primary" />
+                  <span className="ml-2">Annual Goals</span>
+                </label>
+                <div className="flex flex-col space-y-2">
+                  <MarkdownEditor
+                    placeholder="What are your three big targets for the year?"
+                    value={reflection.annualGoals}
+                    onChange={(value) => updateReflection("annualGoals", value)}
+                    minHeight="80px"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ),
+      defaultOpen: true
+    },
+  ]);
+  
+  // Callback for widget drag and drop reordering
+  const moveWidget = useCallback((dragIndex: number, hoverIndex: number) => {
+    setWidgets((prevWidgets) => 
+      update(prevWidgets, {
+        $splice: [
+          [dragIndex, 1],
+          [hoverIndex, 0, prevWidgets[dragIndex]],
+        ],
+      })
+    );
+  }, []);
+  
+  return (
+    <DndProvider backend={HTML5Backend}>
+      <div className="grid lg:grid-cols-2 gap-6 pb-10">
+        {widgets.map((widget, index) => (
+          <section key={widget.id} className="mb-6">
+            <CollapsibleWidget
+              id={widget.id}
+              index={index}
+              title={widget.title}
+              icon={widget.icon}
+              defaultOpen={widget.defaultOpen}
+              moveWidget={moveWidget}
+            >
+              {widget.content}
+            </CollapsibleWidget>
+          </section>
+        ))}
+      </div>
+    </DndProvider>
   );
 }
