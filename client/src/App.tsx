@@ -4,6 +4,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { LYFEOSProvider } from "./lib/context";
 import { AuthProvider, useAuth } from "./lib/authContext";
 import { ThemeProvider } from "./lib/themeContext";
+import { DndProvider } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
 import DashboardPage from "./pages/DashboardPage";
 import QuestsPage from "./pages/QuestsPage";
 import AIPage from "./pages/AIPage";
@@ -442,8 +444,10 @@ function App() {
     <AuthProvider>
       <LYFEOSProvider>
         <ThemeProvider>
-          <Router />
-          <Toaster />
+          <DndProvider backend={HTML5Backend}>
+            <Router />
+            <Toaster />
+          </DndProvider>
         </ThemeProvider>
       </LYFEOSProvider>
     </AuthProvider>
