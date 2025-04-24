@@ -181,53 +181,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = async () => {
+  const logout = () => {
     try {
-      setIsLoading(true);
       console.log("Logging out user...");
       
       // First clear local state
       setUser(null);
       localStorage.removeItem("lyfeos_user");
       
-      // Then attempt to logout on server
-      const response = await fetch("/api/auth/logout", {
+      // API call to server to logout
+      fetch("/api/auth/logout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         credentials: "include" // Important for session cookie handling
-      });
-      
-      if (!response.ok) {
-        console.error("Logout request failed with status:", response.status);
-        toast({
-          title: "Logout Issue",
-          description: "You've been logged out, but there was a server connection issue",
-          variant: "default",
-        });
-      } else {
+      }).then(response => {
+        if (!response.ok) {
+          console.error("Logout request failed with status:", response.status);
+        }
+        
+        // Navigate to login page using wouter's navigate
+        navigate("/login");
+        
+        // Show toast after navigation is complete
         toast({
           title: "Logged Out",
           description: "You have been successfully logged out",
           variant: "default",
         });
-      }
-      
-      // Force immediate navigation to login page
-      window.location.href = "/login";
-    } catch (error) {
-      console.error("Logout error:", error);
-      toast({
-        title: "Logout Issue",
-        description: "You've been logged out, but there was a server connection issue",
-        variant: "default",
+      }).catch(error => {
+        console.error("Logout error:", error);
+        
+        // Navigate even on error
+        navigate("/login");
+        
+        toast({
+          title: "Logout Issue",
+          description: "You've been logged out, but there was a server connection issue",
+          variant: "default",
+        });
       });
-      
-      // Force immediate navigation even on error
-      window.location.href = "/login";
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      console.error("Unexpected logout error:", error);
+      navigate("/login");
     }
   };
 
