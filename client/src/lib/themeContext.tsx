@@ -95,27 +95,28 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   // Initialize theme from stats or localStorage when component mounts
   useEffect(() => {
+    // First try to get stored colors from localStorage
+    const savedTheme = localStorage.getItem('lyfeos-theme');
+    if (savedTheme) {
+      setIsDarkMode(savedTheme === 'dark');
+    }
+    
+    const savedColor = localStorage.getItem('lyfeos-primary-color');
+    if (savedColor) {
+      setPrimaryColorState(savedColor);
+    }
+    
+    // Then if user stats are available, override with those values
     if (stats) {
-      // Initialize dark mode
+      // Initialize dark mode from stats
       if (stats.darkThemeEnabled !== undefined) {
         setIsDarkMode(stats.darkThemeEnabled);
-      } else {
-        // Fall back to localStorage if stats are not available
-        const savedTheme = localStorage.getItem('lyfeos-theme');
-        if (savedTheme) {
-          setIsDarkMode(savedTheme === 'dark');
-        }
       }
       
-      // Initialize primary color
+      // Initialize primary color from stats
       if (stats.primaryColor) {
+        console.log("Setting primary color from stats:", stats.primaryColor);
         setPrimaryColorState(stats.primaryColor);
-      } else {
-        // Fall back to localStorage
-        const savedColor = localStorage.getItem('lyfeos-primary-color');
-        if (savedColor) {
-          setPrimaryColorState(savedColor);
-        }
       }
     }
   }, [stats]);
