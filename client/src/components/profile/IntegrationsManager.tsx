@@ -19,7 +19,7 @@ import { Loader2, Plus, X, Globe, Check, RefreshCw, ExternalLink, AlertTriangle,
 import { Badge } from '@/components/ui/badge';
 
 // Icons for specific providers 
-import { SiGoogle, SiNotion, SiTrello, SiSlack, SiEvernote } from "react-icons/si";
+import { SiGoogle, SiNotion, SiTrello, SiSlack, SiEvernote, SiObsidian, SiGoogledocs } from "react-icons/si";
 
 interface Integration {
   id: number;
@@ -43,8 +43,10 @@ const OutlookIcon = (props: any) => <Mail {...props} />;
 // Available integrations
 const AVAILABLE_INTEGRATIONS = [
   { provider: 'google-drive', name: 'Google Drive', icon: SiGoogle, description: 'Sync documents with Google Drive' },
+  { provider: 'google-docs', name: 'Google Docs', icon: SiGoogledocs, description: 'Edit documents collaboratively with Google Docs' },
   { provider: 'google-calendar', name: 'Google Calendar', icon: SiGoogle, description: 'Sync events with Google Calendar' },
   { provider: 'notion', name: 'Notion', icon: SiNotion, description: 'Connect with your Notion workspace' },
+  { provider: 'obsidian', name: 'Obsidian', icon: SiObsidian, description: 'Sync notes with Obsidian knowledge base' },
   { provider: 'trello', name: 'Trello', icon: SiTrello, description: 'Sync tasks with Trello boards' },
   { provider: 'outlook', name: 'Outlook', icon: OutlookIcon, description: 'Sync email and calendar with Outlook' },
   { provider: 'slack', name: 'Slack', icon: SiSlack, description: 'Connect your Slack workspace' },
