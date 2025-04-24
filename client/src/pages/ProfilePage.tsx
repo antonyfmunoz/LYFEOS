@@ -11,6 +11,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger
+} from "@/components/ui/collapsible";
 import { 
   LogOut, 
   Edit, 
@@ -18,6 +23,7 @@ import {
   X, 
   User,
   Terminal,
+  ChevronDown,
   FileText,
   Palette,
   Upload,
@@ -609,17 +615,26 @@ export default function ProfilePage() {
             </div>
             
             {/* Integrations Section */}
-            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <LinkIcon className="h-4 w-4 text-primary" />
-                <Label className="text-sm text-foreground">Integrations</Label>
+            <Collapsible className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 mb-2">
+                  <LinkIcon className="h-4 w-4 text-primary" />
+                  <Label className="text-sm text-foreground">Integrations</Label>
+                </div>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="w-9 h-8 p-0">
+                    <ChevronDown className="h-4 w-4 text-primary transition-transform ui-open:rotate-180" />
+                  </Button>
+                </CollapsibleTrigger>
               </div>
               <p className="text-xs text-muted-foreground mb-3">
                 Connect external services to enhance your LYFEOS experience.
               </p>
               
-              <IntegrationsManager userId={user?.id} />
-            </div>
+              <CollapsibleContent>
+                <IntegrationsManager userId={user?.id} />
+              </CollapsibleContent>
+            </Collapsible>
             
             {/* Logout Button */}
             <div className="mt-4 flex justify-end">
