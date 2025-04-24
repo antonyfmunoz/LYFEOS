@@ -16,8 +16,7 @@ interface RootLayoutProps {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   const { username, stats } = useLYFEOS();
-  const auth = useAuth();
-  const { user } = auth;
+  const { user, logout } = useAuth();
   const [location] = useLocation();
   
   // Fetch user profile data
@@ -174,7 +173,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                     <button
                       onClick={() => {
                         closeDropdown();
-                        auth.logout();
+                        logout();
                       }} 
                       className="flex w-full items-center px-4 py-2 text-sm hover:bg-primary/10 rounded-md transition"
                       role="menuitem"
