@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLYFEOS } from "@/lib/context";
 import { KanbanTask, KanbanStatus } from "@/lib/types";
-import { Clipboard, ArrowRight, CheckSquare, Plus, ChevronRight, Kanban, GripVertical, MoreHorizontal, Edit, Trash, Copy } from "lucide-react";
+import { Clipboard, ArrowRight, CheckSquare, Plus, ChevronRight, Kanban, MoreHorizontal, Edit, Trash, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
@@ -50,7 +50,6 @@ function BoardItem({ id, title, taskCount, onClick }: BoardItemProps) {
       onClick={() => onClick(id)}
     >
       <div className="flex items-center gap-2">
-        <GripVertical className="h-3.5 w-3.5 text-muted-foreground cursor-move" />
         <Kanban className="h-3.5 w-3.5 text-primary" />
         <p className="text-xs font-medium truncate">{title}</p>
       </div>
