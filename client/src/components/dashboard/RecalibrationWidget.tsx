@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Coffee, Star, BatteryMedium, Brain, HeartPulse } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
+import { Zap, Coffee, Brain, HeartPulse, RefreshCw } from 'lucide-react';
 import { useLYFEOS } from '@/lib/context';
+import { useToast } from '@/hooks/use-toast';
 import { DynamicColorButton } from '@/components/ui/dynamic-color-button';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
 
 interface RecalibrationWidgetProps {
   className?: string;
@@ -54,48 +52,29 @@ const RecalibrationWidget: React.FC<RecalibrationWidgetProps> = ({ className }) 
     }
   }, [stats]);
 
-  // Handle token updates
-  const handleTokenChange = (type: 'attention' | 'time' | 'energy' | 'health', value: number[]) => {
-    const newValue = value[0];
-    
-    switch (type) {
-      case 'attention':
-        setLocalStats(prev => ({
-          ...prev,
-          attentionTokens: {
-            ...prev.attentionTokens,
-            current: newValue
-          }
-        }));
-        break;
-      case 'time':
-        setLocalStats(prev => ({
-          ...prev,
-          timeTokens: {
-            ...prev.timeTokens,
-            current: newValue
-          }
-        }));
-        break;
-      case 'energy':
-        setLocalStats(prev => ({
-          ...prev,
-          energyPoints: {
-            ...prev.energyPoints,
-            current: newValue
-          }
-        }));
-        break;
-      case 'health':
-        setLocalStats(prev => ({
-          ...prev,
-          healthPoints: {
-            ...prev.healthPoints,
-            current: newValue
-          }
-        }));
-        break;
-    }
+  // Handle adjusting a token value
+  const handleAdjustToken = (type: 'attention' | 'time' | 'energy' | 'health', amount: number) => {
+    setLocalStats(prev => {
+      const tokenKey = 
+        type === 'attention' ? 'attentionTokens' :
+        type === 'time' ? 'timeTokens' :
+        type === 'energy' ? 'energyPoints' :
+        'healthPoints';
+      
+      const currentValue = prev[tokenKey].current;
+      const maxValue = prev[tokenKey].max;
+      
+      // Calculate new value, ensuring it stays within bounds
+      const newValue = Math.max(0, Math.min(maxValue, currentValue + amount));
+      
+      return {
+        ...prev,
+        [tokenKey]: {
+          ...prev[tokenKey],
+          current: newValue
+        }
+      };
+    });
   };
 
   // Reset all tokens to maximum
@@ -129,99 +108,160 @@ const RecalibrationWidget: React.FC<RecalibrationWidgetProps> = ({ className }) 
     });
   };
 
+  // Function to render a progress bar
+  const renderProgressBar = (current: number, max: number, color: string) => {
+    const percentage = (current / max) * 100;
+    return (
+      <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+        <div 
+          className={`h-full ${color}`}
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+    );
+  };
+
   return (
     <div className={cn("space-y-4", className)}>
-      <div className="text-sm text-muted-foreground mb-1">
-        Recalibrate your daily metrics to reflect your current state
+      <div className="text-sm text-muted-foreground mb-3">
+        Recalibrate your current state metrics
       </div>
 
       {/* Attention tokens */}
       <div className="space-y-2">
         <div className="flex justify-between items-center">
           <div className="flex items-center">
-            <Brain className="h-4 w-4 text-primary mr-2" />
-            <span className="text-sm font-medium">Focus</span>
+            <Brain className="h-4 w-4 text-blue-400 mr-2" />
+            <span className="text-sm font-medium text-slate-300">Focus</span>
           </div>
-          <span className="text-sm text-muted-foreground">
-            {localStats.attentionTokens.current}/{localStats.attentionTokens.max}
-          </span>
+          <div className="flex items-center">
+            <button 
+              onClick={() => handleAdjustToken('attention', -10)}
+              className="h-6 w-6 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 mr-1"
+            >
+              -
+            </button>
+            <span className="text-sm text-slate-300 w-16 text-center">
+              {localStats.attentionTokens.current}/{localStats.attentionTokens.max}
+            </span>
+            <button 
+              onClick={() => handleAdjustToken('attention', 10)}
+              className="h-6 w-6 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 ml-1"
+            >
+              +
+            </button>
+          </div>
         </div>
-        <Slider 
-          value={[localStats.attentionTokens.current]}
-          max={localStats.attentionTokens.max}
-          step={1}
-          onValueChange={(value) => handleTokenChange('attention', value)}
-          className="focus-visible:ring-primary/50"
-        />
+        {renderProgressBar(
+          localStats.attentionTokens.current, 
+          localStats.attentionTokens.max,
+          'bg-blue-600'
+        )}
       </div>
 
       {/* Time tokens */}
       <div className="space-y-2">
         <div className="flex justify-between items-center">
           <div className="flex items-center">
-            <Coffee className="h-4 w-4 text-primary mr-2" />
-            <span className="text-sm font-medium">Time</span>
+            <Coffee className="h-4 w-4 text-amber-400 mr-2" />
+            <span className="text-sm font-medium text-slate-300">Time</span>
           </div>
-          <span className="text-sm text-muted-foreground">
-            {localStats.timeTokens.current}/{localStats.timeTokens.max}
-          </span>
+          <div className="flex items-center">
+            <button 
+              onClick={() => handleAdjustToken('time', -10)}
+              className="h-6 w-6 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 mr-1"
+            >
+              -
+            </button>
+            <span className="text-sm text-slate-300 w-16 text-center">
+              {localStats.timeTokens.current}/{localStats.timeTokens.max}
+            </span>
+            <button 
+              onClick={() => handleAdjustToken('time', 10)}
+              className="h-6 w-6 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 ml-1"
+            >
+              +
+            </button>
+          </div>
         </div>
-        <Slider 
-          value={[localStats.timeTokens.current]}
-          max={localStats.timeTokens.max}
-          step={1}
-          onValueChange={(value) => handleTokenChange('time', value)}
-          className="focus-visible:ring-primary/50"
-        />
+        {renderProgressBar(
+          localStats.timeTokens.current, 
+          localStats.timeTokens.max,
+          'bg-amber-600'
+        )}
       </div>
 
       {/* Energy points */}
       <div className="space-y-2">
         <div className="flex justify-between items-center">
           <div className="flex items-center">
-            <Zap className="h-4 w-4 text-primary mr-2" />
-            <span className="text-sm font-medium">Energy</span>
+            <Zap className="h-4 w-4 text-yellow-400 mr-2" />
+            <span className="text-sm font-medium text-slate-300">Energy</span>
           </div>
-          <span className="text-sm text-muted-foreground">
-            {localStats.energyPoints.current}/{localStats.energyPoints.max}
-          </span>
+          <div className="flex items-center">
+            <button 
+              onClick={() => handleAdjustToken('energy', -10)}
+              className="h-6 w-6 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 mr-1"
+            >
+              -
+            </button>
+            <span className="text-sm text-slate-300 w-16 text-center">
+              {localStats.energyPoints.current}/{localStats.energyPoints.max}
+            </span>
+            <button 
+              onClick={() => handleAdjustToken('energy', 10)}
+              className="h-6 w-6 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 ml-1"
+            >
+              +
+            </button>
+          </div>
         </div>
-        <Slider 
-          value={[localStats.energyPoints.current]}
-          max={localStats.energyPoints.max}
-          step={1}
-          onValueChange={(value) => handleTokenChange('energy', value)}
-          className="focus-visible:ring-primary/50"
-        />
+        {renderProgressBar(
+          localStats.energyPoints.current, 
+          localStats.energyPoints.max,
+          'bg-yellow-600'
+        )}
       </div>
 
       {/* Health points */}
       <div className="space-y-2">
         <div className="flex justify-between items-center">
           <div className="flex items-center">
-            <HeartPulse className="h-4 w-4 text-primary mr-2" />
-            <span className="text-sm font-medium">Health</span>
+            <HeartPulse className="h-4 w-4 text-rose-400 mr-2" />
+            <span className="text-sm font-medium text-slate-300">Health</span>
           </div>
-          <span className="text-sm text-muted-foreground">
-            {localStats.healthPoints.current}/{localStats.healthPoints.max}
-          </span>
+          <div className="flex items-center">
+            <button 
+              onClick={() => handleAdjustToken('health', -10)}
+              className="h-6 w-6 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 mr-1"
+            >
+              -
+            </button>
+            <span className="text-sm text-slate-300 w-16 text-center">
+              {localStats.healthPoints.current}/{localStats.healthPoints.max}
+            </span>
+            <button 
+              onClick={() => handleAdjustToken('health', 10)}
+              className="h-6 w-6 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 ml-1"
+            >
+              +
+            </button>
+          </div>
         </div>
-        <Slider 
-          value={[localStats.healthPoints.current]}
-          max={localStats.healthPoints.max}
-          step={1}
-          onValueChange={(value) => handleTokenChange('health', value)}
-          className="focus-visible:ring-primary/50"
-        />
+        {renderProgressBar(
+          localStats.healthPoints.current, 
+          localStats.healthPoints.max,
+          'bg-rose-600'
+        )}
       </div>
 
       <DynamicColorButton
         onClick={handleResetTokens}
         variant="outline"
         size="sm"
-        className="w-full flex items-center justify-center gap-2 border-primary/50"
+        className="w-full flex items-center justify-center gap-2 border-primary/50 mt-2"
       >
-        <BatteryMedium className="h-4 w-4" />
+        <RefreshCw className="h-4 w-4" />
         <span>Reset All Metrics</span>
       </DynamicColorButton>
     </div>
