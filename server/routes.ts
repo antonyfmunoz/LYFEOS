@@ -2099,6 +2099,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Integrations routes
+  app.get("/api/users/:userId/integrations", isOwner, async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const integrations = await storage.getUserIntegrations(userId);
+      
+      // For security, don't return tokens in the response
+      const safeIntegrations = integrations.map(integration => {
+        const { accessToken, refreshToken, ...safeIntegration } = integration;
+        return safeIntegration;
+      });
+      
+      return res.status(200).json({ integrations: safeIntegrations });
+    } catch (error) {
+      console.error("Error getting user integrations:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get a specific integration
+  app.get("/api/integrations/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const integrationId = parseInt(req.params.id);
+      if (isNaN(integrationId)) {
+        return res.status(400).json({ error: "Invalid integration ID" });
+      }
+      
+      const integration = await storage.getIntegration(integrationId);
+      if (!integration) {
+        return res.status(404).json({ error: "Integration not found" });
+      }
+      
+      // Check ownership
+      if (integration.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to access this integration" });
+      }
+      
+      // For security, don't return tokens in the response
+      const { accessToken, refreshToken, ...safeIntegration } = integration;
+      
+      return res.status(200).json({ integration: safeIntegration });
+    } catch (error) {
+      console.error("Error getting integration:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Create a new integration
+  app.post("/api/integrations", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId;
+      const { provider, providerName, accessToken, refreshToken, tokenExpiry, scope, status, settings } = req.body;
+      
+      // Basic validation
+      if (!provider || !providerName) {
+        return res.status(400).json({ error: "Provider and provider name are required" });
+      }
+      
+      const newIntegration = await storage.createIntegration({
+        userId,
+        provider,
+        providerName,
+        accessToken,
+        refreshToken,
+        tokenExpiry,
+        scope,
+        status: status || "active",
+        settings: settings || {}
+      });
+      
+      // For security, don't return tokens in the response
+      const { accessToken: _, refreshToken: __, ...safeIntegration } = newIntegration;
+      
+      return res.status(201).json({ integration: safeIntegration });
+    } catch (error) {
+      console.error("Error creating integration:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Update an integration
+  app.patch("/api/integrations/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const integrationId = parseInt(req.params.id);
+      if (isNaN(integrationId)) {
+        return res.status(400).json({ error: "Invalid integration ID" });
+      }
+      
+      // Check if integration exists and belongs to user
+      const existingIntegration = await storage.getIntegration(integrationId);
+      if (!existingIntegration) {
+        return res.status(404).json({ error: "Integration not found" });
+      }
+      
+      if (existingIntegration.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to update this integration" });
+      }
+      
+      // Update the integration
+      const updatedIntegration = await storage.updateIntegration(integrationId, req.body);
+      
+      // For security, don't return tokens in the response
+      const { accessToken, refreshToken, ...safeIntegration } = updatedIntegration;
+      
+      return res.status(200).json({ integration: safeIntegration });
+    } catch (error) {
+      console.error("Error updating integration:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Delete an integration
+  app.delete("/api/integrations/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const integrationId = parseInt(req.params.id);
+      if (isNaN(integrationId)) {
+        return res.status(400).json({ error: "Invalid integration ID" });
+      }
+      
+      // Check if integration exists and belongs to user
+      const existingIntegration = await storage.getIntegration(integrationId);
+      if (!existingIntegration) {
+        return res.status(404).json({ error: "Integration not found" });
+      }
+      
+      if (existingIntegration.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to delete this integration" });
+      }
+      
+      // Delete the integration
+      await storage.deleteIntegration(integrationId);
+      
+      return res.status(200).json({ message: "Integration deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting integration:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

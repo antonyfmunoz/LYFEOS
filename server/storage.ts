@@ -12,6 +12,7 @@ import {
   folders, type Folder, type InsertFolder,
   documents, type Document, type InsertDocument,
   templates, type Template, type InsertTemplate,
+  integrations, type Integration, type InsertIntegration,
   kanbanBoards, type KanbanBoard, type InsertKanbanBoard,
   kanbanColumns, type KanbanColumn, type InsertKanbanColumn,
   kanbanTasks, type KanbanTask, type InsertKanbanTask
@@ -140,6 +141,13 @@ export interface IStorage {
   createKanbanTask(task: InsertKanbanTask): Promise<KanbanTask>;
   updateKanbanTask(id: number, task: Partial<InsertKanbanTask>): Promise<KanbanTask>;
   deleteKanbanTask(id: number): Promise<void>;
+  
+  // Integration methods
+  getUserIntegrations(userId: number): Promise<Integration[]>;
+  getIntegration(id: number): Promise<Integration | undefined>;
+  createIntegration(integration: InsertIntegration): Promise<Integration>;
+  updateIntegration(id: number, integration: Partial<InsertIntegration>): Promise<Integration>;
+  deleteIntegration(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -908,6 +916,37 @@ export class DatabaseStorage implements IStorage {
   
   async deleteKanbanTask(id: number): Promise<void> {
     await db.delete(kanbanTasks).where(eq(kanbanTasks.id, id));
+  }
+
+  // Integration methods
+  async getUserIntegrations(userId: number): Promise<Integration[]> {
+    return db.select().from(integrations).where(eq(integrations.userId, userId));
+  }
+
+  async getIntegration(id: number): Promise<Integration | undefined> {
+    const [integration] = await db.select().from(integrations).where(eq(integrations.id, id));
+    return integration;
+  }
+
+  async createIntegration(integration: InsertIntegration): Promise<Integration> {
+    const [newIntegration] = await db
+      .insert(integrations)
+      .values(integration)
+      .returning();
+    return newIntegration;
+  }
+
+  async updateIntegration(id: number, integrationUpdate: Partial<InsertIntegration>): Promise<Integration> {
+    const [updatedIntegration] = await db
+      .update(integrations)
+      .set(integrationUpdate)
+      .where(eq(integrations.id, id))
+      .returning();
+    return updatedIntegration;
+  }
+
+  async deleteIntegration(id: number): Promise<void> {
+    await db.delete(integrations).where(eq(integrations.id, id));
   }
 }
 
