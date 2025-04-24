@@ -26,11 +26,13 @@ import {
   Calendar,
   CheckCircle2,
   Zap,
-  BarChart
+  BarChart,
+  Activity
 } from "lucide-react";
 import MissionLogWidget from "@/components/dashboard/MissionLogWidget";
 import EnhancedMissionWidget from "@/components/dashboard/EnhancedMissionWidget";
 import MissionLogSystem from "@/components/dashboard/MissionLogSystem";
+import RecalibrationWidget from "@/components/dashboard/RecalibrationWidget";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CustomTimePicker } from "@/components/ui/custom-time-picker";
@@ -226,6 +228,13 @@ export default function DashboardPage() {
           },
           {
             id: widgetOrder[2] || uuidv4(),
+            title: "Recalibration",
+            icon: <Activity className="h-5 w-5 text-primary" />,
+            content: <RecalibrationWidget />,
+            defaultOpen: true
+          },
+          {
+            id: widgetOrder[3] || uuidv4(),
             title: "Data Entry Log",
             icon: <BookOpen className="h-5 w-5 text-primary" />,
             content: getDataEntryContent(),
@@ -256,6 +265,13 @@ export default function DashboardPage() {
                  maxHeight="96"
                  hideHeader={true}
                />,
+        defaultOpen: true
+      },
+      {
+        id: uuidv4(),
+        title: "Recalibration",
+        icon: <Activity className="h-5 w-5 text-primary" />,
+        content: <RecalibrationWidget />,
         defaultOpen: true
       },
       {

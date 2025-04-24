@@ -45,4 +45,7 @@ export const DynamicColorButton = ({
   );
 };
 
+// Also export as DynamicButton for backward compatibility
+export const DynamicButton = DynamicColorButton;
+
 export default DynamicColorButton;
