@@ -203,24 +203,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         // Navigate to login page using wouter's navigate
         navigate("/login");
-        
-        // Show toast after navigation is complete
-        toast({
-          title: "Logged Out",
-          description: "You have been successfully logged out",
-          variant: "default",
-        });
       }).catch(error => {
         console.error("Logout error:", error);
         
         // Navigate even on error
         navigate("/login");
-        
-        toast({
-          title: "Logout Issue",
-          description: "You've been logged out, but there was a server connection issue",
-          variant: "default",
-        });
       });
     } catch (error) {
       console.error("Unexpected logout error:", error);
