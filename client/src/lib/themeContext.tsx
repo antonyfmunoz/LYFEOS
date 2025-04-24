@@ -87,6 +87,15 @@ interface ThemeContextType {
 // Create the context
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+// Hook to access the theme context
+export function useTheme() {
+  const context = useContext(ThemeContext);
+  if (context === undefined) {
+    throw new Error("useTheme must be used within a ThemeProvider");
+  }
+  return context;
+}
+
 // Provider component
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const { stats, updateUserStats } = useLYFEOS();
@@ -209,13 +218,4 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       {children}
     </ThemeContext.Provider>
   );
-}
-
-// Hook for accessing the theme context
-export const useTheme = () => {
-  const context = useContext(ThemeContext);
-  if (context === undefined) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
-  return context;
 }
