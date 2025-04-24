@@ -75,19 +75,32 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function Router() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const [, navigate] = useLocation();
   
   // Redirect from root to dashboard if authenticated, or to login if not
   useEffect(() => {
-    if (window.location.pathname === '/') {
-      if (isAuthenticated) {
-        navigate('/dashboard');
-      } else {
+    if (!isLoading) {
+      // Handle root path redirects
+      if (window.location.pathname === '/') {
+        if (isAuthenticated) {
+          navigate('/dashboard');
+        } else {
+          navigate('/login');
+        }
+      }
+      
+      // Also redirect protected paths to login if not authenticated
+      const protectedPaths = ['/dashboard', '/profile', '/systems', '/chronilog', '/kanban'];
+      const currentPath = window.location.pathname;
+      const isProtectedPath = protectedPaths.some(path => currentPath.startsWith(path));
+      
+      if (isProtectedPath && !isAuthenticated) {
+        console.log('Unauthorized access attempt to protected path:', currentPath);
         navigate('/login');
       }
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, isLoading, navigate]);
 
   return (
     <Switch>

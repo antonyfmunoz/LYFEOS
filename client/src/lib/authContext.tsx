@@ -184,6 +184,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       setIsLoading(true);
+      console.log("Logging out user...");
+      
+      // First clear local state
+      setUser(null);
+      localStorage.removeItem("lyfeos_user");
+      
+      // Then attempt to logout on server
       const response = await fetch("/api/auth/logout", {
         method: "POST",
         headers: {
@@ -192,13 +199,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         credentials: "include" // Important for session cookie handling
       });
       
-      // Clear user state regardless of response
-      setUser(null);
-      localStorage.removeItem("lyfeos_user");
-      
       if (!response.ok) {
         console.error("Logout request failed with status:", response.status);
-        // Still proceed with local logout
+        toast({
+          title: "Logout Issue",
+          description: "You've been logged out, but there was a server connection issue",
+          variant: "default",
+        });
       } else {
         toast({
           title: "Logged Out",
@@ -207,20 +214,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       }
       
-      // Redirect to login page after a brief delay
-      setTimeout(() => {
-        navigate("/login");
-      }, 500);
+      // Force immediate navigation to login page
+      window.location.href = "/login";
     } catch (error) {
       console.error("Logout error:", error);
-      // Still clear user state even if the request fails
       toast({
         title: "Logout Issue",
         description: "You've been logged out, but there was a server connection issue",
         variant: "default",
       });
-      // Redirect to login page
-      navigate("/login");
+      
+      // Force immediate navigation even on error
+      window.location.href = "/login";
     } finally {
       setIsLoading(false);
     }
