@@ -66,32 +66,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ username, password }),
-        credentials: "include"
+        credentials: "include" // Important for maintaining session cookies
       });
       
       const responseText = await response.text();
       console.log("Login response status:", response.status);
-      console.log("Login response text:", responseText);
       
       let data;
       try {
         data = JSON.parse(responseText) as AuthResponse;
       } catch (e) {
         console.error("Failed to parse JSON response:", e);
-        throw new Error("Invalid server response");
+        toast({
+          title: "Login Error",
+          description: "Invalid server response. Please try again.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
       }
       
       if (!response.ok) {
-        throw new Error(data.error || "Login failed");
+        toast({
+          title: "Login Failed",
+          description: data.error || "Check your username and password",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
       }
       
       if (data && data.user) {
         setUser(data.user);
         localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
+        toast({
+          title: "Login Successful",
+          description: `Welcome back, ${data.user.username}!`,
+          variant: "default",
+        });
         navigate("/dashboard");
       }
     } catch (error) {
       console.error("Login error:", error);
+      toast({
+        title: "Login Error",
+        description: "Could not connect to server. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -113,27 +134,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       const responseText = await response.text();
       console.log("Register response status:", response.status);
-      console.log("Register response text:", responseText);
       
       let data;
       try {
         data = JSON.parse(responseText) as AuthResponse;
       } catch (e) {
         console.error("Failed to parse JSON response:", e);
-        throw new Error("Invalid server response");
+        toast({
+          title: "Registration Error",
+          description: "Invalid server response. Please try again.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
       }
       
       if (!response.ok) {
-        throw new Error(data.error || "Registration failed");
+        toast({
+          title: "Registration Failed",
+          description: data.error || "Username may already be taken",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
       }
       
       if (data && data.user) {
         setUser(data.user);
         localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
+        toast({
+          title: "Registration Successful",
+          description: `Welcome to LYFEOS, ${data.user.username}!`,
+          variant: "default",
+        });
         navigate("/dashboard");
       }
     } catch (error) {
       console.error("Registration error:", error);
+      toast({
+        title: "Registration Error",
+        description: "Could not connect to server. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -147,21 +189,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include" // Important for session cookie handling
       });
-      
-      if (!response.ok) {
-        throw new Error("Logout failed");
-      }
       
       // Clear user state regardless of response
       setUser(null);
       localStorage.removeItem("lyfeos_user");
-      navigate("/login");
+      
+      if (!response.ok) {
+        console.error("Logout request failed with status:", response.status);
+        // Still proceed with local logout
+      } else {
+        toast({
+          title: "Logged Out",
+          description: "You have been successfully logged out",
+          variant: "default",
+        });
+      }
+      
+      // Redirect to login page after a brief delay
+      setTimeout(() => {
+        navigate("/login");
+      }, 500);
     } catch (error) {
       console.error("Logout error:", error);
       // Still clear user state even if the request fails
-      setUser(null);
-      localStorage.removeItem("lyfeos_user");
+      toast({
+        title: "Logout Issue",
+        description: "You've been logged out, but there was a server connection issue",
+        variant: "default",
+      });
+      // Redirect to login page
       navigate("/login");
     } finally {
       setIsLoading(false);
@@ -184,7 +242,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider");
