@@ -9,7 +9,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { useDrag, useDrop } from "react-dnd";
+
+// Only import react-dnd if it's available
+let useDrag: any;
+let useDrop: any;
+try {
+  const dnd = require('react-dnd');
+  useDrag = dnd.useDrag;
+  useDrop = dnd.useDrop;
+} catch (e) {
+  // Create dummy hooks if react-dnd is not available
+  useDrag = () => [{ isDragging: false }, () => {}, () => {}];
+  useDrop = () => [{ handlerId: null }, () => {}];
+}
 
 type DragItem = {
   index: number;
@@ -44,6 +56,7 @@ export function CollapsibleWidget({
 }: CollapsibleWidgetProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const ref = useRef<HTMLDivElement>(null);
+  const dragHandleRef = useRef<HTMLDivElement>(null);
   
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -67,83 +80,97 @@ export function CollapsibleWidget({
       });
   };
 
-  // Set up drag and drop if moveWidget is provided
-  const [{ isDragging }, drag, preview] = useDrag({
-    type: ItemTypes.WIDGET,
-    item: () => {
-      return { id, index };
-    },
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
-    canDrag: !!moveWidget,
-  });
+  // Only set up drag and drop if moveWidget is provided
+  const isDragDropEnabled = !!moveWidget && !!useDrag && !!useDrop;
 
-  const [{ handlerId }, drop] = useDrop<DragItem, void, { handlerId: string | symbol | null }>({
-    accept: ItemTypes.WIDGET,
-    collect(monitor) {
-      return {
-        handlerId: monitor.getHandlerId(),
-      };
-    },
-    hover(item, monitor) {
-      if (!ref.current || !moveWidget) {
-        return;
-      }
+  let dragSourceRef: any = null;
+  let dropTargetRef: any = null;
+  let isDragging = false;
+  let handlerId: any = null;
 
-      const dragItem = item as DragItem;
-      const dragIndex = dragItem.index;
-      const hoverIndex = index || 0;
+  if (isDragDropEnabled) {
+    // Set up drag source
+    const [dragSourceProps, dragSource, dragPreview] = useDrag({
+      type: ItemTypes.WIDGET,
+      item: () => {
+        return { id, index };
+      },
+      collect: (monitor: any) => ({
+        isDragging: monitor.isDragging(),
+      }),
+      canDrag: true,
+    });
 
-      // Don't replace items with themselves
-      if (dragIndex === hoverIndex) {
-        return;
-      }
+    // Set up drop target
+    const [dropTargetProps, dropTarget] = useDrop({
+      accept: ItemTypes.WIDGET,
+      collect(monitor: any) {
+        return {
+          handlerId: monitor.getHandlerId(),
+        };
+      },
+      hover(item: any, monitor: any) {
+        if (!ref.current || !moveWidget) {
+          return;
+        }
 
-      // Determine rectangle on screen
-      const hoverBoundingRect = ref.current?.getBoundingClientRect();
+        const dragItem = item;
+        const dragIndex = dragItem.index;
+        const hoverIndex = index || 0;
 
-      // Get vertical middle
-      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+        // Don't replace items with themselves
+        if (dragIndex === hoverIndex) {
+          return;
+        }
 
-      // Determine mouse position
-      const clientOffset = monitor.getClientOffset();
+        // Determine rectangle on screen
+        const hoverBoundingRect = ref.current?.getBoundingClientRect();
 
-      // Get pixels to the top
-      const hoverClientY = (clientOffset as { y: number }).y - hoverBoundingRect.top;
+        // Get vertical middle
+        const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
 
-      // Only perform the move when the mouse has crossed half of the items height
-      if (
-        (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) ||
-        (dragIndex > hoverIndex && hoverClientY > hoverMiddleY)
-      ) {
-        return;
-      }
+        // Determine mouse position
+        const clientOffset = monitor.getClientOffset();
 
-      // Time to actually perform the action
-      moveWidget(dragIndex, hoverIndex);
+        // Get pixels to the top
+        const hoverClientY = clientOffset?.y - hoverBoundingRect.top;
 
-      // Note: we're mutating the monitor item here!
-      // Generally it's better to avoid mutations,
-      // but it's good here for the sake of performance
-      // to avoid expensive index searches.
-      dragItem.index = hoverIndex;
-    },
-  });
+        // Only perform the move when the mouse has crossed half of the items height
+        if (
+          (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) ||
+          (dragIndex > hoverIndex && hoverClientY > hoverMiddleY)
+        ) {
+          return;
+        }
 
-  const dragHandleRef = useRef<HTMLDivElement>(null);
-  
-  // Connect drag to the grip handle only
-  if (dragHandleRef.current) {
-    drag(dragHandleRef);
-  }
-  
-  // Connect drop to the whole widget
-  drop(ref);
+        // Time to actually perform the action
+        moveWidget(dragIndex, hoverIndex);
 
-  // Set up preview for the whole widget
-  if (ref.current) {
-    preview(ref);
+        // Note: we're mutating the monitor item here!
+        // Generally it's better to avoid mutations,
+        // but it's good here for the sake of performance
+        // to avoid expensive index searches.
+        dragItem.index = hoverIndex;
+      },
+    });
+
+    dragSourceRef = dragSource;
+    dropTargetRef = dropTarget;
+    isDragging = dragSourceProps.isDragging;
+    handlerId = dropTargetProps.handlerId;
+
+    // Connect drag to the grip handle only if it exists
+    if (dragHandleRef.current) {
+      dragSourceRef(dragHandleRef);
+    }
+
+    // Connect drop to the whole widget
+    dropTargetRef(ref);
+
+    // Set up preview for the whole widget
+    if (ref.current) {
+      dragPreview(ref);
+    }
   }
 
   return (
