@@ -137,6 +137,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   spreadsheets: many(spreadsheets),
   templates: many(templates),
   kanbanBoards: many(kanbanBoards),
+  integrations: many(integrations),
 }));
 
 export const userStatsRelations = relations(userStats, ({ one }) => ({
@@ -478,6 +479,40 @@ export const insertTemplateSchema = createInsertSchema(templates).omit({
 
 export type Template = typeof templates.$inferSelect;
 export type InsertTemplate = z.infer<typeof insertTemplateSchema>;
+
+// User Integrations table
+export const integrations = pgTable("integrations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(), // google, notion, etc.
+  providerName: text("provider_name").notNull(), // Display name for the provider
+  accessToken: text("access_token"), // Encrypted access token
+  refreshToken: text("refresh_token"), // Encrypted refresh token
+  tokenExpiry: timestamp("token_expiry"), // When the token expires
+  scope: text("scope"), // Permissions scope
+  connectedAt: timestamp("connected_at").defaultNow().notNull(),
+  lastSyncedAt: timestamp("last_synced_at"),
+  status: text("status").default("active").notNull(), // active, expired, revoked
+  settings: jsonb("settings").default({}), // Provider-specific settings
+});
+
+// Integrations relations
+export const integrationsRelations = relations(integrations, ({ one }) => ({
+  user: one(users, {
+    fields: [integrations.userId],
+    references: [users.id],
+  }),
+}));
+
+// Insert schema for Integration
+export const insertIntegrationSchema = createInsertSchema(integrations).omit({
+  id: true,
+  connectedAt: true, 
+  lastSyncedAt: true,
+});
+
+export type Integration = typeof integrations.$inferSelect;
+export type InsertIntegration = z.infer<typeof insertIntegrationSchema>;
 
 // Kanban Board table
 export const kanbanBoards = pgTable("kanban_boards", {
