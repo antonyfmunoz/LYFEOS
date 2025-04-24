@@ -1343,7 +1343,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
 }
 
 // Custom hook to use the context
-export function useLYFEOS() {
+export const useLYFEOS = () => {
   const context = useContext(LYFEOSContext);
   if (context === undefined) {
     throw new Error("useLYFEOS must be used within a LYFEOSProvider");
