@@ -23,7 +23,10 @@ import {
   Camera,
   Paintbrush,
   Settings,
-  ArrowLeft
+  ArrowLeft,
+  Link as LinkIcon,
+  Globe,
+  Plus
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
