@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 
 // Icons for specific providers 
 import { SiGoogle, SiNotion, SiTrello, SiSlack, SiEvernote, SiObsidian, SiGoogledocs } from "react-icons/si";
+import { Activity, Heart } from "lucide-react";
 
 interface Integration {
   id: number;
@@ -37,8 +38,10 @@ interface IntegrationsManagerProps {
   userId?: number;
 }
 
-// Create a custom component for the Mail icon to match structure with SiGoogle, etc.
+// Create custom components for icons that aren't in react-icons
 const OutlookIcon = (props: any) => <Mail {...props} />;
+const WhoopIcon = (props: any) => <Activity {...props} />;
+const OuraIcon = (props: any) => <Heart {...props} />;
 
 // Available integrations
 const AVAILABLE_INTEGRATIONS = [
@@ -50,7 +53,9 @@ const AVAILABLE_INTEGRATIONS = [
   { provider: 'trello', name: 'Trello', icon: SiTrello, description: 'Sync tasks with Trello boards' },
   { provider: 'outlook', name: 'Outlook', icon: OutlookIcon, description: 'Sync email and calendar with Outlook' },
   { provider: 'slack', name: 'Slack', icon: SiSlack, description: 'Connect your Slack workspace' },
-  { provider: 'evernote', name: 'Evernote', icon: SiEvernote, description: 'Sync notes with Evernote' }
+  { provider: 'evernote', name: 'Evernote', icon: SiEvernote, description: 'Sync notes with Evernote' },
+  { provider: 'whoop', name: 'Whoop', icon: WhoopIcon, description: 'Sync fitness and recovery data from Whoop' },
+  { provider: 'oura', name: 'Oura Ring', icon: OuraIcon, description: 'Import sleep, activity and readiness metrics from Oura Ring' }
 ];
 
 const IntegrationsManager: React.FC<IntegrationsManagerProps> = ({ userId }) => {
