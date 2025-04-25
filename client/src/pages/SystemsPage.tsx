@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { CollapsibleWidget } from "@/components/ui/collapsible-widget";
-import { Calendar, Clipboard, Contact2, FileSpreadsheet, Paintbrush, Network, FileText, FileCheck, ChevronRight, GripVertical, MoreHorizontal, Copy } from "lucide-react";
+import { Calendar, Clipboard, Contact2, FileSpreadsheet, Paintbrush, Network, FileText, FileCheck, ChevronRight, GripVertical, MoreHorizontal, Copy, BarChart4 } from "lucide-react";
 import { Link } from "wouter";
 import { KanbanWidget } from "@/components/ui/kanban-widget";
 import { RolodexWidget } from "@/components/ui/rolodex-widget";
@@ -9,6 +9,7 @@ import { CanvasWidget } from "@/components/ui/canvas-widget";
 import { GraphWidget } from "@/components/ui/graph-widget";
 import DocumentsWidget from "@/components/ui/documents-widget";
 import TemplatesWidget from "@/components/ui/templates-widget";
+import ProgressTrackersWidget from "@/components/ui/progress-trackers-widget";
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { v4 as uuidv4 } from 'uuid';
@@ -315,6 +316,13 @@ export default function SystemsPage() {
       title: "Templates",
       icon: <FileCheck className="h-5 w-5 text-primary" />,
       content: <TemplatesWidget />,
+      defaultOpen: true
+    },
+    {
+      id: uuidv4(),
+      title: "Progress Trackers",
+      icon: <BarChart4 className="h-5 w-5 text-primary" />,
+      content: <ProgressTrackersWidget />,
       defaultOpen: true
     },
   ]);

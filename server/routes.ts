@@ -2149,7 +2149,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new integration
   app.post("/api/integrations", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.session.userId;
+      // Ensure userId is a number
+      const userId = req.session.userId as number;
       const { provider, providerName, accessToken, refreshToken, tokenExpiry, scope, status, settings } = req.body;
       
       // Basic validation
@@ -2288,7 +2289,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/progress-trackers", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.session.userId;
+      // Ensure userId is a number
+      const userId = req.session.userId as number;
       const trackerData = {
         ...req.body,
         userId
