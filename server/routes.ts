@@ -15,7 +15,9 @@ import {
   insertGraphSchema,
   insertFolderSchema,
   insertDocumentSchema,
-  insertTemplateSchema
+  insertTemplateSchema,
+  insertMediaItemSchema,
+  insertMediaAlbumSchema
 } from "@shared/schema";
 
 // Extend Request type to include session
@@ -2349,6 +2351,315 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to delete progress tracker:", error);
       res.status(500).json({ error: "Failed to delete progress tracker" });
+    }
+  });
+
+  // Media Items Routes
+  app.get("/api/users/:userId/media-items", isOwner, async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const mediaItems = await storage.getMediaItemsByUserId(userId);
+      res.json({ mediaItems });
+    } catch (error) {
+      console.error("Failed to fetch media items:", error);
+      res.status(500).json({ error: "Failed to fetch media items" });
+    }
+  });
+
+  app.get("/api/media-items/album/:albumId", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const albumId = parseInt(req.params.albumId);
+      if (isNaN(albumId)) {
+        return res.status(400).json({ error: "Invalid album ID" });
+      }
+      
+      // Ensure the user owns the album before fetching its items
+      const album = await storage.getMediaAlbum(albumId);
+      if (!album) {
+        return res.status(404).json({ error: "Album not found" });
+      }
+      
+      if (album.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to access this album" });
+      }
+      
+      const mediaItems = await storage.getMediaItemsByAlbum(albumId);
+      res.json({ mediaItems });
+    } catch (error) {
+      console.error("Failed to fetch media items by album:", error);
+      res.status(500).json({ error: "Failed to fetch media items by album" });
+    }
+  });
+
+  app.get("/api/media-items/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const itemId = parseInt(req.params.id);
+      if (isNaN(itemId)) {
+        return res.status(400).json({ error: "Invalid media item ID" });
+      }
+      
+      const mediaItem = await storage.getMediaItem(itemId);
+      if (!mediaItem) {
+        return res.status(404).json({ error: "Media item not found" });
+      }
+      
+      if (mediaItem.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to access this media item" });
+      }
+      
+      res.json({ mediaItem });
+    } catch (error) {
+      console.error("Failed to fetch media item:", error);
+      res.status(500).json({ error: "Failed to fetch media item" });
+    }
+  });
+
+  app.post("/api/media-items", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      // Ensure userId is a number
+      const userId = req.session.userId as number;
+      
+      // Handle file upload data which could be base64 encoded
+      const itemData = {
+        ...req.body,
+        userId
+      };
+      
+      // Validate with schema
+      const validatedData = insertMediaItemSchema.parse(itemData);
+      
+      const mediaItem = await storage.createMediaItem(validatedData);
+      res.status(201).json({ mediaItem });
+    } catch (error) {
+      console.error("Failed to create media item:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create media item" });
+    }
+  });
+
+  app.patch("/api/media-items/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const itemId = parseInt(req.params.id);
+      if (isNaN(itemId)) {
+        return res.status(400).json({ error: "Invalid media item ID" });
+      }
+      
+      const existingItem = await storage.getMediaItem(itemId);
+      if (!existingItem) {
+        return res.status(404).json({ error: "Media item not found" });
+      }
+      
+      if (existingItem.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to update this media item" });
+      }
+      
+      // Don't allow changing the userId
+      const { userId, ...updateData } = req.body;
+      
+      const updatedItem = await storage.updateMediaItem(itemId, updateData);
+      res.json({ mediaItem: updatedItem });
+    } catch (error) {
+      console.error("Failed to update media item:", error);
+      res.status(500).json({ error: "Failed to update media item" });
+    }
+  });
+
+  app.delete("/api/media-items/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const itemId = parseInt(req.params.id);
+      if (isNaN(itemId)) {
+        return res.status(400).json({ error: "Invalid media item ID" });
+      }
+      
+      const existingItem = await storage.getMediaItem(itemId);
+      if (!existingItem) {
+        return res.status(404).json({ error: "Media item not found" });
+      }
+      
+      if (existingItem.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to delete this media item" });
+      }
+      
+      await storage.deleteMediaItem(itemId);
+      res.json({ message: "Media item deleted successfully" });
+    } catch (error) {
+      console.error("Failed to delete media item:", error);
+      res.status(500).json({ error: "Failed to delete media item" });
+    }
+  });
+
+  app.post("/api/media-items/:id/toggle-favorite", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const itemId = parseInt(req.params.id);
+      if (isNaN(itemId)) {
+        return res.status(400).json({ error: "Invalid media item ID" });
+      }
+      
+      const existingItem = await storage.getMediaItem(itemId);
+      if (!existingItem) {
+        return res.status(404).json({ error: "Media item not found" });
+      }
+      
+      if (existingItem.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to update this media item" });
+      }
+      
+      const updatedItem = await storage.toggleFavoriteMediaItem(itemId);
+      res.json({ mediaItem: updatedItem });
+    } catch (error) {
+      console.error("Failed to toggle favorite status:", error);
+      res.status(500).json({ error: "Failed to toggle favorite status" });
+    }
+  });
+
+  // Media Albums Routes
+  app.get("/api/users/:userId/media-albums", isOwner, async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const mediaAlbums = await storage.getMediaAlbumsByUserId(userId);
+      res.json({ mediaAlbums });
+    } catch (error) {
+      console.error("Failed to fetch media albums:", error);
+      res.status(500).json({ error: "Failed to fetch media albums" });
+    }
+  });
+
+  app.get("/api/media-albums/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const albumId = parseInt(req.params.id);
+      if (isNaN(albumId)) {
+        return res.status(400).json({ error: "Invalid album ID" });
+      }
+      
+      const mediaAlbum = await storage.getMediaAlbum(albumId);
+      if (!mediaAlbum) {
+        return res.status(404).json({ error: "Album not found" });
+      }
+      
+      if (mediaAlbum.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to access this album" });
+      }
+      
+      res.json({ mediaAlbum });
+    } catch (error) {
+      console.error("Failed to fetch media album:", error);
+      res.status(500).json({ error: "Failed to fetch media album" });
+    }
+  });
+
+  app.post("/api/media-albums", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      // Ensure userId is a number
+      const userId = req.session.userId as number;
+      
+      const albumData = {
+        ...req.body,
+        userId
+      };
+      
+      // Validate with schema
+      const validatedData = insertMediaAlbumSchema.parse(albumData);
+      
+      const mediaAlbum = await storage.createMediaAlbum(validatedData);
+      res.status(201).json({ mediaAlbum });
+    } catch (error) {
+      console.error("Failed to create media album:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create media album" });
+    }
+  });
+
+  app.patch("/api/media-albums/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const albumId = parseInt(req.params.id);
+      if (isNaN(albumId)) {
+        return res.status(400).json({ error: "Invalid album ID" });
+      }
+      
+      const existingAlbum = await storage.getMediaAlbum(albumId);
+      if (!existingAlbum) {
+        return res.status(404).json({ error: "Album not found" });
+      }
+      
+      if (existingAlbum.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to update this album" });
+      }
+      
+      // Don't allow changing the userId
+      const { userId, ...updateData } = req.body;
+      
+      const updatedAlbum = await storage.updateMediaAlbum(albumId, updateData);
+      res.json({ mediaAlbum: updatedAlbum });
+    } catch (error) {
+      console.error("Failed to update media album:", error);
+      res.status(500).json({ error: "Failed to update media album" });
+    }
+  });
+
+  app.delete("/api/media-albums/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const albumId = parseInt(req.params.id);
+      if (isNaN(albumId)) {
+        return res.status(400).json({ error: "Invalid album ID" });
+      }
+      
+      const existingAlbum = await storage.getMediaAlbum(albumId);
+      if (!existingAlbum) {
+        return res.status(404).json({ error: "Album not found" });
+      }
+      
+      if (existingAlbum.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to delete this album" });
+      }
+      
+      await storage.deleteMediaAlbum(albumId);
+      res.json({ message: "Album deleted successfully" });
+    } catch (error) {
+      console.error("Failed to delete media album:", error);
+      res.status(500).json({ error: "Failed to delete media album" });
+    }
+  });
+
+  app.post("/api/media-albums/:id/set-cover", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const albumId = parseInt(req.params.id);
+      if (isNaN(albumId)) {
+        return res.status(400).json({ error: "Invalid album ID" });
+      }
+      
+      const existingAlbum = await storage.getMediaAlbum(albumId);
+      if (!existingAlbum) {
+        return res.status(404).json({ error: "Album not found" });
+      }
+      
+      if (existingAlbum.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to update this album" });
+      }
+      
+      const { mediaItemId } = req.body;
+      if (!mediaItemId) {
+        return res.status(400).json({ error: "Media item ID is required" });
+      }
+      
+      // Verify the media item exists and belongs to the user
+      const mediaItem = await storage.getMediaItem(mediaItemId);
+      if (!mediaItem) {
+        return res.status(404).json({ error: "Media item not found" });
+      }
+      
+      if (mediaItem.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to use this media item" });
+      }
+      
+      const updatedAlbum = await storage.setAlbumCoverImage(albumId, mediaItemId);
+      res.json({ mediaAlbum: updatedAlbum });
+    } catch (error) {
+      console.error("Failed to set album cover image:", error);
+      res.status(500).json({ error: "Failed to set album cover image" });
     }
   });
 
