@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
@@ -372,6 +372,25 @@ export default function MediaLibraryPage() {
     }
   };
   
+  // Cleanup blob URLs on component unmount
+  useEffect(() => {
+    return () => {
+      // Clean up any blob URLs when component unmounts
+      optimisticMedia.forEach(item => {
+        try {
+          if (item.thumbnailUrl && item.thumbnailUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(item.thumbnailUrl);
+          }
+          if (item.fileUrl && item.fileUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(item.fileUrl);
+          }
+        } catch (e) {
+          console.error('Error cleaning up blob URLs on unmount:', e);
+        }
+      });
+    };
+  }, [optimisticMedia]);
+  
   // Handle zoom in
   const zoomIn = () => {
     setZoomLevel(Math.min(4, zoomLevel + 1));
@@ -496,6 +515,20 @@ export default function MediaLibraryPage() {
           setIsUploading(false);
           // Reset progress after a delay to show 100% briefly
           setTimeout(() => setUploadProgress(0), 500);
+          
+          // Clean up any blob URLs we created to prevent memory leaks
+          optimisticItems.forEach(item => {
+            try {
+              if (item.thumbnailUrl && item.thumbnailUrl.startsWith('blob:')) {
+                URL.revokeObjectURL(item.thumbnailUrl);
+              }
+              if (item.fileUrl && item.fileUrl.startsWith('blob:')) {
+                URL.revokeObjectURL(item.fileUrl);
+              }
+            } catch (e) {
+              console.error('Error cleaning up blob URLs:', e);
+            }
+          });
         };
         
         // Set up and send the request
@@ -506,6 +539,20 @@ export default function MediaLibraryPage() {
     onSuccess: (data) => {
       // Query invalidation now handled in XHR onload handler
       console.log('Upload mutation completed successfully');
+      
+      // Clean up the blob URLs before clearing optimistic media
+      optimisticMedia.forEach(item => {
+        try {
+          if (item.thumbnailUrl && item.thumbnailUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(item.thumbnailUrl);
+          }
+          if (item.fileUrl && item.fileUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(item.fileUrl);
+          }
+        } catch (e) {
+          console.error('Error cleaning up blob URLs in onSuccess:', e);
+        }
+      });
       
       // Clear optimistic media when server response is received
       setOptimisticMedia([]);
