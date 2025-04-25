@@ -376,6 +376,10 @@ export default function MediaLibraryPage() {
     }
   ];
 
+  // Empty default arrays for when no data is available
+  const emptyItems: MediaItem[] = [];
+  const emptyAlbums: MediaAlbum[] = [];
+
   const { data: mediaItems, isLoading: isLoadingItems } = useQuery<{ mediaItems: MediaItem[] }>({
     queryKey: ['/api/users/2/media-items'],
     enabled: true
@@ -406,7 +410,7 @@ export default function MediaLibraryPage() {
   };
   
   // Filter items based on search query
-  const filteredItems = (mediaItems?.mediaItems || mockMediaItems).filter(
+  const filteredItems = (mediaItems?.mediaItems || emptyItems).filter(
     (item: MediaItem) => item.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
            item.fileName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -694,7 +698,7 @@ export default function MediaLibraryPage() {
                 </Dialog>
                 
                 {/* Album cards */}
-                {(mediaAlbums?.mediaAlbums || mockAlbums).map((album: MediaAlbum) => (
+                {(mediaAlbums?.mediaAlbums || emptyAlbums).map((album: MediaAlbum) => (
                   <AlbumItem 
                     key={album.id} 
                     album={album} 

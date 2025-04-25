@@ -174,7 +174,7 @@ export function MediaWidget() {
             </div>
           ) : (
             <>
-              <GalleryGrid items={mediaItems?.mediaItems || mockRecentItems} />
+              <GalleryGrid items={mediaItems?.mediaItems || emptyItems} />
               <div className="mt-3 flex justify-center">
                 <Button 
                   variant="outline"
@@ -197,7 +197,7 @@ export function MediaWidget() {
             </div>
           ) : (
             <>
-              <AlbumGrid albums={mediaAlbums?.mediaAlbums || mockAlbums} />
+              <AlbumGrid albums={mediaAlbums?.mediaAlbums || emptyAlbums} />
               <div className="mt-3 flex justify-center">
                 <Button 
                   variant="outline"
@@ -221,7 +221,7 @@ export function MediaWidget() {
             </div>
           ) : (
             <GalleryGrid 
-              items={(mediaItems?.mediaItems || mockRecentItems).filter((item: MediaItem) => item.isFavorite)} 
+              items={(mediaItems?.mediaItems || emptyItems).filter((item: MediaItem) => item.isFavorite)} 
             />
           )}
         </TabsContent>
