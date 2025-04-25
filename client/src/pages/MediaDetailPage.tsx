@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { Link, useParams, useLocation } from "wouter";
 import { 
   ChevronLeft, 
@@ -166,39 +167,58 @@ export default function MediaDetailPage() {
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          {isEditMode ? (
-            <div className="flex items-center gap-2 ml-4">
-              <h1 className="text-2xl font-orbitron">Details</h1>
-              <div className="flex ml-4">
-                <input 
-                  type="text" 
-                  value={editTitle} 
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  className="px-2 py-1 rounded-md border border-input bg-background text-sm"
-                  placeholder="Edit title"
-                  autoFocus
-                />
-                <Button 
-                  size="sm" 
-                  onClick={() => setIsEditMode(false)}
-                  className="ml-2"
-                >
-                  Save
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => {
-                    setEditTitle(mediaItem.title || mediaItem.fileName);
-                    setIsEditMode(false);
-                  }}
-                >
-                  Cancel
-                </Button>
+          <h1 className="text-2xl font-orbitron ml-4">Details</h1>
+          
+          {isEditMode && (
+            <div className="absolute top-[72px] left-0 right-0 bg-background border-y border-border p-3 shadow-md z-10">
+              <div className="container max-w-4xl flex items-center">
+                <div className="flex-1">
+                  <label className="text-xs text-muted-foreground mb-1 block">Title</label>
+                  <input 
+                    type="text" 
+                    value={editTitle} 
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm"
+                    placeholder="Enter media title"
+                    autoFocus
+                  />
+                </div>
+                <div className="flex ml-4 items-center">
+                  <Button 
+                    size="sm"
+                    onClick={() => {
+                      // TODO: In a real implementation, this would call a mutation to update the title
+                      console.log(`Saving new title: ${editTitle}`);
+                      // Update the local cache optimistically
+                      if (data?.mediaItems) {
+                        const updatedItems = data.mediaItems.map(item => 
+                          item.id === mediaItem.id 
+                            ? {...item, title: editTitle} 
+                            : item
+                        );
+                        // Update the TanStack Query cache
+                        queryClient.setQueryData(['/api/users/2/media-items'], { mediaItems: updatedItems });
+                      }
+                      setIsEditMode(false);
+                    }}
+                    className="ml-2"
+                  >
+                    Save
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => {
+                      setEditTitle(mediaItem.title || mediaItem.fileName);
+                      setIsEditMode(false);
+                    }}
+                    className="ml-2"
+                  >
+                    Cancel
+                  </Button>
+                </div>
               </div>
             </div>
-          ) : (
-            <h1 className="text-2xl font-orbitron ml-4">Details</h1>
           )}
         </div>
         <div className="flex gap-2">
