@@ -2252,7 +2252,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/progress-trackers/category/:category", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = req.session.userId;
+      // Ensure userId is a number
+      const userId = req.session.userId as number;
       const category = req.params.category;
       const progressTrackers = await storage.getProgressTrackersByCategory(userId, category);
       res.json({ progressTrackers });

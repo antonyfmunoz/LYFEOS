@@ -1,31 +1,18 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/lib/authContext';
-import { apiRequest } from '@/lib/queryClient';
-
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Activity, PlusCircle, ChevronRight, Star, Search, BarChart4 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  BarChart3, 
-  LineChart, 
-  ChevronRight, 
-  Search, 
-  Star, 
-  Plus, 
-  TrendingUp,
-  Timer,
-  Activity,
-  Scale,
-  Dumbbell 
-} from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 
-// Define the structure of a progress tracker
+// Define interfaces for our data types
 interface ProgressTracker {
   id: number;
   userId: number;
@@ -58,18 +45,15 @@ export default function ProgressTrackersWidget() {
     enabled: !!user,
   });
   
-  const trackers = trackersData?.progressTrackers || [];
-  
-  // Sort recent trackers by updated date
-  const recentTrackers = [...trackers].sort((a, b) => 
+  const progressTrackers = trackersData?.progressTrackers || [];
+  const recentTrackers = [...progressTrackers].sort((a, b) => 
     new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
   ).slice(0, 3);
   
-  // Get favorite trackers
-  const favoriteTrackers = trackers.filter(tracker => tracker.favorite);
+  const favoriteTrackers = progressTrackers.filter(tracker => tracker.favorite);
   
   // Group trackers by category
-  const trackersByCategory = trackers.reduce((acc, tracker) => {
+  const trackersByCategory = progressTrackers.reduce((acc, tracker) => {
     const category = tracker.category || 'Uncategorized';
     if (!acc[category]) {
       acc[category] = [];
@@ -80,46 +64,65 @@ export default function ProgressTrackersWidget() {
   
   const categories = Object.keys(trackersByCategory).sort();
   
-  // Filter trackers by search query
   const filteredTrackers = searchQuery
-    ? trackers.filter(tracker => 
+    ? progressTrackers.filter(tracker => 
         tracker.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (tracker.description && tracker.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
         tracker.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
         tracker.unit.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : [];
-  
-  // Get appropriate icon for a tracker based on its category or title
-  const getTrackerIcon = (tracker: ProgressTracker) => {
-    const lowerCategory = tracker.category.toLowerCase();
-    const lowerTitle = tracker.title.toLowerCase();
-    
-    if (lowerCategory.includes('fitness') || lowerTitle.includes('workout') || lowerTitle.includes('exercise')) {
-      return <Dumbbell className="h-4 w-4 mr-2 text-primary/70" />;
-    } else if (lowerCategory.includes('health') || lowerTitle.includes('weight') || lowerTitle.includes('calories')) {
-      return <Scale className="h-4 w-4 mr-2 text-primary/70" />;
-    } else if (lowerCategory.includes('time') || lowerTitle.includes('duration') || lowerTitle.includes('hours')) {
-      return <Timer className="h-4 w-4 mr-2 text-primary/70" />;
-    } else if (lowerCategory.includes('activity') || lowerTitle.includes('steps') || lowerTitle.includes('distance')) {
-      return <Activity className="h-4 w-4 mr-2 text-primary/70" />;
-    }
-    
-    return <BarChart3 className="h-4 w-4 mr-2 text-primary/70" />;
+
+  // Helper to calculate progress percentage
+  const calculateProgress = (current: number, target: number): number => {
+    if (target === 0) return 0;
+    return Math.min((current / target) * 100, 100);
   };
   
-  // Calculate progress percentage
-  const getProgressPercentage = (current: number, target: number) => {
-    const percentage = Math.min(Math.round((current / target) * 100), 100);
-    return percentage;
+  // Helper to format progress display
+  const formatProgress = (tracker: ProgressTracker): string => {
+    return `${tracker.currentValue}${tracker.unit} / ${tracker.targetValue}${tracker.unit}`;
+  };
+  
+  // Helper to get the appropriate icon for a tracker based on category
+  const getTrackerIcon = (tracker: ProgressTracker) => {
+    switch (tracker.category.toLowerCase()) {
+      case 'health':
+      case 'fitness':
+        return <Activity className="h-4 w-4 mr-2" style={{ color: tracker.color }} />;
+      default:
+        return <BarChart4 className="h-4 w-4 mr-2" style={{ color: tracker.color }} />;
+    }
   };
 
+  // Render an individual tracker list item
+  const renderTrackerItem = (tracker: ProgressTracker) => (
+    <div 
+      key={tracker.id}
+      className="p-2 rounded-md hover:bg-muted/50 cursor-pointer space-y-1"
+      onClick={() => navigate(`/progress-trackers/${tracker.id}`)}
+    >
+      <div className="flex items-center">
+        {getTrackerIcon(tracker)}
+        <div className="flex-1 truncate text-sm font-medium">{tracker.title}</div>
+        {tracker.favorite && <Star className="h-3 w-3 text-yellow-500 fill-yellow-500 ml-1" />}
+      </div>
+      <div className="px-1">
+        <Progress value={calculateProgress(tracker.currentValue, tracker.targetValue)} className="h-1.5" />
+        <div className="flex justify-between items-center mt-1 text-xs text-muted-foreground">
+          <span>{formatProgress(tracker)}</span>
+          <span>{Math.round(calculateProgress(tracker.currentValue, tracker.targetValue))}%</span>
+        </div>
+      </div>
+    </div>
+  );
+  
   return (
     <Card className="w-full shadow-md border-slate-700/20 overflow-hidden">
       <CardHeader className="bg-muted/30 pb-3">
         <div className="flex justify-between items-center">
           <div className="flex items-center">
-            <BarChart3 className="h-5 w-5 text-primary mr-2" />
+            <BarChart4 className="h-5 w-5 text-primary mr-2" />
             <CardTitle className="text-lg font-orbitron">Progress Trackers</CardTitle>
           </div>
           <Button 
@@ -133,7 +136,7 @@ export default function ProgressTrackersWidget() {
           </Button>
         </div>
         <CardDescription className="text-xs">
-          Track your personal goals and metrics over time
+          Track your personal and professional goals
         </CardDescription>
       </CardHeader>
       
@@ -157,34 +160,26 @@ export default function ProgressTrackersWidget() {
         </div>
         
         {searchQuery ? (
-          <CardContent className="p-4 space-y-2">
-            <div className="text-xs text-muted-foreground mb-2">
-              Search results for "{searchQuery}"
+          <CardContent className="p-0">
+            <div className="p-4 space-y-2">
+              <h3 className="text-xs font-medium">Search Results</h3>
+              {isLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : (
+                <>
+                  {filteredTrackers.length === 0 && (
+                    <div className="text-xs text-muted-foreground py-4 text-center">
+                      No results found
+                    </div>
+                  )}
+                  
+                  {filteredTrackers.slice(0, 4).map(tracker => renderTrackerItem(tracker))}
+                </>
+              )}
             </div>
-            
-            {filteredTrackers.length > 0 ? (
-              <>
-                {filteredTrackers.map(tracker => (
-                  <div 
-                    key={tracker.id}
-                    className="flex items-center p-1.5 rounded-md hover:bg-muted/50 cursor-pointer"
-                    onClick={() => navigate(`/progress-trackers/${tracker.id}`)}
-                  >
-                    {getTrackerIcon(tracker)}
-                    <div className="flex-1 truncate">{tracker.title}</div>
-                    <Badge variant="outline" className="text-[10px] h-5 ml-2">
-                      {tracker.category}
-                    </Badge>
-                    {tracker.favorite && <Star className="h-3 w-3 text-yellow-500 fill-yellow-500 ml-1" />}
-                  </div>
-                ))}
-              </>
-            ) : (
-              <div className="text-center py-4">
-                <Search className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" />
-                <p className="text-sm text-muted-foreground">No trackers found</p>
-              </div>
-            )}
           </CardContent>
         ) : (
           <>
@@ -192,42 +187,15 @@ export default function ProgressTrackersWidget() {
               <CardContent className="p-4 space-y-2">
                 {isLoading ? (
                   <div className="space-y-2">
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
                   </div>
                 ) : recentTrackers.length > 0 ? (
-                  recentTrackers.map(tracker => (
-                    <div 
-                      key={tracker.id}
-                      className="flex flex-col p-2 rounded-md hover:bg-muted/50 cursor-pointer"
-                      onClick={() => navigate(`/progress-trackers/${tracker.id}`)}
-                    >
-                      <div className="flex items-center mb-1">
-                        {getTrackerIcon(tracker)}
-                        <div className="flex-1 truncate">{tracker.title}</div>
-                        <Badge variant="outline" className="text-[10px] h-5 ml-2">
-                          {tracker.category}
-                        </Badge>
-                      </div>
-                      <div className="w-full h-2 bg-muted rounded-full">
-                        <div 
-                          className="h-full rounded-full bg-primary" 
-                          style={{ 
-                            width: `${getProgressPercentage(tracker.currentValue, tracker.targetValue)}%`,
-                            backgroundColor: tracker.color 
-                          }}
-                        ></div>
-                      </div>
-                      <div className="flex justify-between mt-1 text-xs text-muted-foreground">
-                        <span>{tracker.currentValue} {tracker.unit}</span>
-                        <span>{tracker.targetValue} {tracker.unit}</span>
-                      </div>
-                    </div>
-                  ))
+                  recentTrackers.map(tracker => renderTrackerItem(tracker))
                 ) : (
                   <div className="text-center py-4">
-                    <BarChart3 className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" />
+                    <BarChart4 className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" />
                     <p className="text-sm text-muted-foreground">No recent trackers</p>
                   </div>
                 )}
@@ -238,37 +206,12 @@ export default function ProgressTrackersWidget() {
               <CardContent className="p-4 space-y-2">
                 {isLoading ? (
                   <div className="space-y-2">
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
                   </div>
                 ) : favoriteTrackers.length > 0 ? (
-                  favoriteTrackers.map(tracker => (
-                    <div 
-                      key={tracker.id}
-                      className="flex flex-col p-2 rounded-md hover:bg-muted/50 cursor-pointer"
-                      onClick={() => navigate(`/progress-trackers/${tracker.id}`)}
-                    >
-                      <div className="flex items-center mb-1">
-                        {getTrackerIcon(tracker)}
-                        <div className="flex-1 truncate">{tracker.title}</div>
-                        <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
-                      </div>
-                      <div className="w-full h-2 bg-muted rounded-full">
-                        <div 
-                          className="h-full rounded-full bg-primary" 
-                          style={{ 
-                            width: `${getProgressPercentage(tracker.currentValue, tracker.targetValue)}%`,
-                            backgroundColor: tracker.color 
-                          }}
-                        ></div>
-                      </div>
-                      <div className="flex justify-between mt-1 text-xs text-muted-foreground">
-                        <span>{tracker.currentValue} {tracker.unit}</span>
-                        <span>{tracker.targetValue} {tracker.unit}</span>
-                      </div>
-                    </div>
-                  ))
+                  favoriteTrackers.map(tracker => renderTrackerItem(tracker))
                 ) : (
                   <div className="text-center py-4">
                     <Star className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" />
@@ -282,33 +225,20 @@ export default function ProgressTrackersWidget() {
               <CardContent className="p-4 space-y-4">
                 {isLoading ? (
                   <div className="space-y-2">
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
                   </div>
                 ) : categories.length > 0 ? (
                   categories.slice(0, 3).map(category => (
                     <div key={category} className="space-y-1">
                       <h3 className="text-xs font-medium capitalize">{category}</h3>
-                      {trackersByCategory[category].slice(0, 2).map(tracker => (
-                        <div 
-                          key={tracker.id}
-                          className="flex items-center p-1.5 rounded-md hover:bg-muted/50 cursor-pointer"
-                          onClick={() => navigate(`/progress-trackers/${tracker.id}`)}
-                        >
-                          {getTrackerIcon(tracker)}
-                          <div className="flex-1 truncate">{tracker.title}</div>
-                          <Badge variant="outline" className="text-[10px] h-5 ml-2">
-                            {`${tracker.currentValue}/${tracker.targetValue} ${tracker.unit}`}
-                          </Badge>
-                          {tracker.favorite && <Star className="h-3 w-3 text-yellow-500 fill-yellow-500 ml-1" />}
-                        </div>
-                      ))}
+                      {trackersByCategory[category].slice(0, 2).map(tracker => renderTrackerItem(tracker))}
                     </div>
                   ))
                 ) : (
                   <div className="text-center py-4">
-                    <BarChart3 className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" />
+                    <BarChart4 className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" />
                     <p className="text-sm text-muted-foreground">No trackers available</p>
                   </div>
                 )}
@@ -327,12 +257,12 @@ export default function ProgressTrackersWidget() {
           className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50"
           onClick={() => navigate('/progress-trackers/new')}
         >
-          <Plus className="h-3.5 w-3.5 mr-1" />
+          <PlusCircle className="h-3.5 w-3.5 mr-1" />
           New Tracker
         </Button>
         <div className="text-xs text-muted-foreground flex items-center">
-          <TrendingUp className="h-3 w-3 mr-1" />
-          {trackers.length} trackers
+          <BarChart4 className="h-3 w-3 mr-1" />
+          {progressTrackers.length} trackers
         </div>
       </CardFooter>
     </Card>
