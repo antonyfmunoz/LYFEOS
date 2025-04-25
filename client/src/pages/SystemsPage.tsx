@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { CollapsibleWidget } from "@/components/ui/collapsible-widget";
-import { Calendar, Clipboard, Contact2, FileSpreadsheet, Paintbrush, Network, FileText, FileCheck, ChevronRight, GripVertical, MoreHorizontal, Copy, BarChart4, Image } from "lucide-react";
+import { Calendar, Clipboard, Contact2, FileSpreadsheet, Paintbrush, Network, FileText, FileCheck, ChevronRight, GripVertical, BarChart4, Image } from "lucide-react";
 import { Link } from "wouter";
 import { KanbanWidget } from "@/components/ui/kanban-widget";
 import { RolodexWidget } from "@/components/ui/rolodex-widget";
@@ -16,14 +16,6 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { v4 as uuidv4 } from 'uuid';
 import update from 'immutability-helper';
 import { cn } from "@/lib/utils";
-import { toast } from "@/hooks/use-toast";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
 
 const ItemTypes = {
   WIDGET: 'widget',
@@ -61,27 +53,7 @@ function DraggableWidget({
   const ref = useRef<HTMLDivElement>(null);
   const dragHandleRef = useRef<HTMLDivElement>(null);
   
-  const handleCopy = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    navigator.clipboard.writeText(title)
-      .then(() => {
-        toast({
-          title: "Widget Name Copied",
-          description: `"${title}" copied to clipboard`,
-          className: "bg-background/80 border border-primary text-foreground",
-          duration: 2000,
-        });
-      })
-      .catch(err => {
-        toast({
-          title: "Failed to Copy",
-          description: "Could not copy widget name to clipboard",
-          variant: "destructive",
-          duration: 2000,
-        });
-      });
-  };
+  // Widget name copy function removed
 
   const [{ isDragging }, drag, preview] = useDrag({
     type: ItemTypes.WIDGET,
@@ -167,26 +139,6 @@ function DraggableWidget({
           <h2 className="text-lg font-orbitron text-foreground">{title}</h2>
         </div>
         <div className="flex items-center">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-7 w-7 hover:bg-primary hover:text-background mr-1"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                className="hover:bg-primary hover:text-background focus:bg-primary focus:text-background text-xs"
-                onClick={handleCopy}
-              >
-                <Copy className="h-3 w-3 mr-2" />
-                Copy Widget Name
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
           <button 
             className="text-primary/70 hover:text-primary transition-colors p-1 rounded-full hover:bg-primary/10"
             onClick={(e) => {
