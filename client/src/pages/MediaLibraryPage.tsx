@@ -82,6 +82,19 @@ interface MediaItemProps {
 }
 
 function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
+  // Safely extract media URL without causing memory leaks
+  const getImageUrl = () => {
+    // For server-rendered images (not blob URLs), use directly
+    const url = item.fileUrl || item.thumbnailUrl || '';
+    if (!url.startsWith('blob:')) {
+      return url;
+    }
+    
+    // For blob URLs, we want to avoid re-rendering issues
+    // by not directly using the URL in the style attribute
+    return '';
+  };
+  
   if (view === "grid") {
     return (
       <div 
@@ -89,21 +102,35 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
           ${isSelected ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-primary/50'}`}
         onClick={() => onSelect(item)}
       >
-        <div 
-          className="aspect-square bg-cover bg-center"
-          style={{ 
-            backgroundImage: item.fileType === 'image' 
-              ? `url(${item.fileUrl || item.thumbnailUrl || ''})` 
-              : 'none',
-            backgroundColor: '#1a1a1a'
-          }}
-        >
-          {item.fileType === 'video' && (
+        {item.fileType === 'image' ? (
+          item.thumbnailUrl?.startsWith('blob:') ? (
+            // For blob URLs, use an img tag instead of background-image
+            <img 
+              src={item.thumbnailUrl} 
+              alt={item.title} 
+              className="aspect-square object-cover w-full h-full"
+            />
+          ) : (
+            // For data URLs and regular URLs, use background-image for better performance
+            <div 
+              className="aspect-square bg-cover bg-center"
+              style={{ 
+                backgroundImage: `url(${getImageUrl()})`,
+                backgroundColor: '#1a1a1a'
+              }}
+            />
+          )
+        ) : (
+          // For videos
+          <div 
+            className="aspect-square bg-cover bg-center"
+            style={{ backgroundColor: '#1a1a1a' }}
+          >
             <div className="absolute inset-0 flex items-center justify-center">
               <Video className="h-8 w-8 text-white/50" />
             </div>
-          )}
-        </div>
+          </div>
+        )}
         
         {/* Hover overlay */}
         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2">
@@ -168,13 +195,23 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
     >
       <div className="w-10 h-10 mr-3 rounded-md overflow-hidden flex-shrink-0">
         {item.fileType === 'image' ? (
-          <div 
-            className="w-full h-full bg-cover bg-center"
-            style={{ 
-              backgroundImage: `url(${item.fileUrl || item.thumbnailUrl || ''})`,
-              backgroundColor: '#1a1a1a'
-            }}
-          />
+          item.thumbnailUrl?.startsWith('blob:') ? (
+            // For blob URLs, use img tag
+            <img 
+              src={item.thumbnailUrl} 
+              alt={item.title} 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            // For data URLs and regular URLs
+            <div 
+              className="w-full h-full bg-cover bg-center"
+              style={{ 
+                backgroundImage: `url(${getImageUrl()})`,
+                backgroundColor: '#1a1a1a'
+              }}
+            />
+          )
         ) : (
           <div className="w-full h-full bg-[#1a1a1a] flex items-center justify-center">
             <Video className="h-5 w-5 text-white/50" />
