@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -641,3 +641,80 @@ export type InsertKanbanColumn = z.infer<typeof insertKanbanColumnSchema>;
 
 export type KanbanTask = typeof kanbanTasks.$inferSelect;
 export type InsertKanbanTask = z.infer<typeof insertKanbanTaskSchema>;
+
+// Media Albums table
+export const mediaAlbums = pgTable("media_albums", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  coverImageId: integer("cover_image_id"),
+  isSmartAlbum: boolean("is_smart_album").default(false).notNull(),
+  smartAlbumRules: jsonb("smart_album_rules"), // Rules for automatically populating smart albums
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Media Items table (photos and videos)
+export const mediaItems = pgTable("media_items", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  albumId: integer("album_id").references(() => mediaAlbums.id),
+  fileName: text("file_name").notNull(),
+  fileType: text("file_type").notNull(), // 'image' or 'video'
+  mimeType: text("mime_type").notNull(), // 'image/jpeg', 'image/png', 'video/mp4', etc.
+  fileUrl: text("file_url"), // URL to the stored file (S3 or similar)
+  fileData: text("file_data"), // For base64 encoded images if not using external storage
+  filePath: text("file_path"), // Local path if stored on server
+  thumbnailUrl: text("thumbnail_url"), // Small thumbnail for preview
+  title: text("title"),
+  description: text("description"),
+  tags: text("tags").array(),
+  isFavorite: boolean("is_favorite").default(false).notNull(),
+  dateTaken: timestamp("date_taken"),
+  location: jsonb("location"), // { latitude, longitude, placeName }
+  metadata: jsonb("metadata"), // Camera info, dimensions, etc.
+  size: integer("size"), // File size in bytes
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Media Relations
+export const mediaItemsRelations = relations(mediaItems, ({ one }) => ({
+  user: one(users, {
+    fields: [mediaItems.userId],
+    references: [users.id],
+  }),
+  album: one(mediaAlbums, {
+    fields: [mediaItems.albumId],
+    references: [mediaAlbums.id],
+  }),
+}));
+
+export const mediaAlbumsRelations = relations(mediaAlbums, ({ one, many }) => ({
+  user: one(users, {
+    fields: [mediaAlbums.userId],
+    references: [users.id],
+  }),
+  items: many(mediaItems),
+}));
+
+// Insert schemas for media
+export const insertMediaItemSchema = createInsertSchema(mediaItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertMediaAlbumSchema = createInsertSchema(mediaAlbums).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Media types
+export type MediaItem = typeof mediaItems.$inferSelect;
+export type InsertMediaItem = z.infer<typeof insertMediaItemSchema>;
+
+export type MediaAlbum = typeof mediaAlbums.$inferSelect;
+export type InsertMediaAlbum = z.infer<typeof insertMediaAlbumSchema>;
