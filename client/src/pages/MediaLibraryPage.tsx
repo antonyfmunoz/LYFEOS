@@ -417,12 +417,12 @@ export default function MediaLibraryPage() {
             <Dialog>
               <DialogTrigger asChild>
                 <Button 
-                  variant="ghost" 
+                  variant="outline" 
                   size="sm"
-                  className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50 flex items-center"
+                  className="flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
                 >
-                  <Upload className="h-3.5 w-3.5 mr-1" />
-                  Upload
+                  <Upload className="h-4 w-4 mr-1" />
+                  <span>Upload</span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
@@ -440,12 +440,12 @@ export default function MediaLibraryPage() {
                 <DialogFooter className="sm:justify-start">
                   <Button 
                     type="button" 
-                    variant="ghost" 
+                    variant="outline" 
                     size="sm"
-                    className="h-7 text-xs mt-2 bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
+                    className="flex items-center mt-2 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
                   >
-                    <Upload className="h-3.5 w-3.5 mr-1" />
-                    Select Files
+                    <Upload className="h-4 w-4 mr-1" />
+                    <span>Select Files</span>
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -556,12 +556,12 @@ export default function MediaLibraryPage() {
                     <p className="text-lg font-medium mb-1">No media found</p>
                     <p className="text-sm mb-4">Upload some photos or videos to get started</p>
                     <Button 
-                      variant="ghost" 
+                      variant="outline" 
                       size="sm"
-                      className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
+                      className="flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
                     >
-                      <Upload className="h-3.5 w-3.5 mr-1" />
-                      Upload Media
+                      <Upload className="h-4 w-4 mr-1" />
+                      <span>Upload Media</span>
                     </Button>
                   </>
                 )}
@@ -635,12 +635,12 @@ export default function MediaLibraryPage() {
                     <DialogFooter>
                       <Button 
                         type="submit" 
-                        variant="ghost" 
+                        variant="outline" 
                         size="sm"
-                        className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
+                        className="flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
                       >
-                        <Plus className="h-3.5 w-3.5 mr-1" />
-                        Create Album
+                        <Plus className="h-4 w-4 mr-1" />
+                        <span>Create Album</span>
                       </Button>
                     </DialogFooter>
                   </DialogContent>
