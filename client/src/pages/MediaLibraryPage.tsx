@@ -112,7 +112,7 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="h-7 w-7 text-white hover:bg-white/20 rounded-full"
+                  className="h-7 w-7 text-white hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow rounded-full"
                 >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
@@ -192,7 +192,7 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
       )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
+          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
@@ -242,7 +242,7 @@ function AlbumItem({ album, onSelect }: { album: MediaAlbum, onSelect: (album: M
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7">
+              <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
