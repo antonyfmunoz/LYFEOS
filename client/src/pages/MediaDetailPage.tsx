@@ -169,33 +169,37 @@ export default function MediaDetailPage() {
           </Button>
           {isEditMode ? (
             <div className="flex items-center gap-2 ml-4">
-              <input 
-                type="text" 
-                value={editTitle} 
-                onChange={(e) => setEditTitle(e.target.value)}
-                className="px-2 py-1 rounded-md border border-input bg-background text-xl"
-                autoFocus
-              />
-              <Button 
-                size="sm" 
-                onClick={() => setIsEditMode(false)}
-                className="ml-2"
-              >
-                Save
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => {
-                  setEditTitle(mediaItem.title || mediaItem.fileName);
-                  setIsEditMode(false);
-                }}
-              >
-                Cancel
-              </Button>
+              <h1 className="text-2xl font-orbitron">Details</h1>
+              <div className="flex ml-4">
+                <input 
+                  type="text" 
+                  value={editTitle} 
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="px-2 py-1 rounded-md border border-input bg-background text-sm"
+                  placeholder="Edit title"
+                  autoFocus
+                />
+                <Button 
+                  size="sm" 
+                  onClick={() => setIsEditMode(false)}
+                  className="ml-2"
+                >
+                  Save
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => {
+                    setEditTitle(mediaItem.title || mediaItem.fileName);
+                    setIsEditMode(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
           ) : (
-            <h1 className="text-2xl font-orbitron ml-4">{mediaItem.title || mediaItem.fileName}</h1>
+            <h1 className="text-2xl font-orbitron ml-4">Details</h1>
           )}
         </div>
         <div className="flex gap-2">
@@ -265,7 +269,7 @@ export default function MediaDetailPage() {
       {/* Media details */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         <div>
-          <h2 className="text-lg font-semibold mb-2">Details</h2>
+          <h2 className="text-lg font-semibold mb-2">File Information</h2>
           <div className="space-y-2 text-sm">
             <div><span className="text-muted-foreground">Filename:</span> {mediaItem.fileName}</div>
             <div><span className="text-muted-foreground">Type:</span> {mediaItem.fileType}</div>
