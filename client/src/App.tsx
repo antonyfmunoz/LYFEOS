@@ -53,6 +53,7 @@ import DocumentsPage from "./pages/DocumentsPage";
 import DocumentDetailPage from "./pages/DocumentDetailPage";
 import ProgressTrackersPage from "./pages/ProgressTrackersPage";
 import ProgressTrackerFormPage from "./pages/ProgressTrackerFormPage";
+import MediaLibraryPage from "./pages/MediaLibraryPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -460,6 +461,15 @@ function Router() {
         <ProtectedRoute>
           <RootLayout>
             <ProgressTrackerFormPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+
+      {/* Media Library routes */}
+      <Route path="/media">
+        <ProtectedRoute>
+          <RootLayout>
+            <MediaLibraryPage />
           </RootLayout>
         </ProtectedRoute>
       </Route>

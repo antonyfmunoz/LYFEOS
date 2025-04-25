@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { 
   ChevronLeft, 
+  ChevronRight,
   Plus, 
   Search, 
   Filter, 
@@ -397,7 +398,7 @@ export default function MediaLibraryPage() {
   
   // Determine which items to display based on current state
   const displayItems = activeAlbum 
-    ? filteredItems.filter(item => item.albumId === activeAlbum.id)
+    ? filteredItems.filter(item => (item as any).albumId === activeAlbum.id)
     : filteredItems;
   
   // Favorites tab items
