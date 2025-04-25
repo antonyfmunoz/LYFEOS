@@ -19,7 +19,8 @@ import {
   Upload, 
   Pencil, 
   Trash2,
-  X
+  X,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -478,17 +479,15 @@ export default function MediaLibraryPage() {
             </div>
             
             {/* Filter button */}
-            <Button variant="outline" size="sm" className="flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
-              <Filter className="h-4 w-4 mr-1" />
-              <span>Filter</span>
+            <Button variant="outline" size="icon" className="h-8 w-8 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow" title="Filter">
+              <Filter className="h-4 w-4" />
             </Button>
             
             {/* Sort dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
-                  <SlidersHorizontal className="h-4 w-4 mr-1" />
-                  <span>Sort</span>
+                <Button variant="outline" size="icon" className="h-8 w-8 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow" title="Sort">
+                  <SlidersHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -513,11 +512,11 @@ export default function MediaLibraryPage() {
               <DialogTrigger asChild>
                 <Button 
                   variant="ghost" 
-                  size="sm"
-                  className="flex items-center bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
+                  size="icon"
+                  className="h-8 w-8 bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
+                  title="Upload Media"
                 >
-                  <Upload className="h-4 w-4 mr-1" />
-                  Upload
+                  <Upload className="h-4 w-4" />
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
@@ -602,22 +601,20 @@ export default function MediaLibraryPage() {
                   <Button 
                     type="button" 
                     variant="ghost" 
-                    size="sm"
-                    className={`h-7 text-xs mt-2 ${
+                    size="icon"
+                    className={`h-8 w-8 mt-2 ${
                       isUploading 
                         ? 'bg-muted text-muted-foreground cursor-not-allowed' 
                         : 'bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50'
                     }`}
                     onClick={() => !isUploading && fileInputRef.current?.click()}
                     disabled={isUploading}
+                    title={isUploading ? "Processing..." : "Select Files"}
                   >
                     {isUploading ? (
-                      <>Processing...</>
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <>
-                        <Upload className="h-3.5 w-3.5 mr-1" />
-                        Select Files
-                      </>
+                      <Upload className="h-4 w-4" />
                     )}
                   </Button>
                 </DialogFooter>
@@ -632,12 +629,12 @@ export default function MediaLibraryPage() {
             <div className="flex items-center">
               <Button 
                 variant="ghost" 
-                size="sm" 
+                size="icon" 
                 onClick={clearSelection}
-                className="h-7 text-xs bg-muted/50 hover:bg-muted text-muted-foreground hover:shadow-[0_0_5px_rgba(0,0,0,0.2)] transition-shadow"
+                className="h-7 w-7 bg-muted/50 hover:bg-muted text-muted-foreground hover:shadow-[0_0_5px_rgba(0,0,0,0.2)] transition-shadow"
+                title="Cancel Selection"
               >
-                <X className="h-3.5 w-3.5 mr-1" />
-                Cancel
+                <X className="h-3.5 w-3.5" />
               </Button>
               <Separator orientation="vertical" className="h-5 mx-2" />
               <span className="text-sm">{selectedItems.length} selected</span>
@@ -730,12 +727,12 @@ export default function MediaLibraryPage() {
                     <p className="text-sm mb-4">Upload some photos or videos to get started</p>
                     <Button 
                       variant="ghost" 
-                      size="sm"
-                      className="text-xs bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50 flex items-center"
+                      size="icon"
+                      className="h-8 w-8 bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
                       onClick={() => fileInputRef.current?.click()}
+                      title="Upload Media"
                     >
-                      <Upload className="h-3.5 w-3.5 mr-1" />
-                      Upload Media
+                      <Upload className="h-4 w-4" />
                     </Button>
                   </>
                 )}
@@ -810,11 +807,11 @@ export default function MediaLibraryPage() {
                       <Button 
                         type="submit" 
                         variant="ghost" 
-                        size="sm"
-                        className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
+                        size="icon"
+                        className="h-8 w-8 bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
+                        title="Create Album"
                       >
-                        <Plus className="h-3.5 w-3.5 mr-1" />
-                        Create Album
+                        <Plus className="h-4 w-4" />
                       </Button>
                     </DialogFooter>
                   </DialogContent>
