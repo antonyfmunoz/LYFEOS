@@ -645,27 +645,27 @@ export default function MediaLibraryPage() {
             <div className="flex gap-2">
               <Button 
                 variant="ghost" 
-                size="sm"
-                className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
+                size="icon"
+                className="h-7 w-7 bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
+                title="Add to Favorites"
               >
-                <Star className="h-3.5 w-3.5 mr-1" />
-                Add to Favorites
+                <Star className="h-3.5 w-3.5" />
               </Button>
               <Button 
                 variant="ghost" 
-                size="sm"
-                className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
+                size="icon"
+                className="h-7 w-7 bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
+                title="Add to Album"
               >
-                <FolderIcon className="h-3.5 w-3.5 mr-1" />
-                Add to Album
+                <FolderIcon className="h-3.5 w-3.5" />
               </Button>
               <Button 
                 variant="ghost" 
-                size="sm"
-                className="h-7 text-xs bg-destructive/10 hover:bg-destructive hover:text-destructive-foreground hover:shadow-[0_0_5px_rgba(239,68,68,0.5)] transition-shadow text-destructive border border-destructive/50"
+                size="icon"
+                className="h-7 w-7 bg-destructive/10 hover:bg-destructive hover:text-destructive-foreground hover:shadow-[0_0_5px_rgba(239,68,68,0.5)] transition-shadow text-destructive border border-destructive/50"
+                title="Delete"
               >
-                <Trash2 className="h-3.5 w-3.5 mr-1" />
-                Delete
+                <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
