@@ -558,7 +558,7 @@ export default function MediaLibraryPage() {
                     <Button 
                       variant="ghost" 
                       size="sm"
-                      className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
+                      className="text-xs bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50 flex items-center"
                     >
                       <Upload className="h-3.5 w-3.5 mr-1" />
                       Upload Media
