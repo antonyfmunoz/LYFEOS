@@ -118,16 +118,16 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="border-primary/30 shadow-[0_0_15px_rgba(255,255,0,0.5)] bg-background/95">
-                <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+                <DropdownMenuItem className="text-xs cursor-pointer">
                   <Pencil className="h-3 w-3 mr-2" />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+                <DropdownMenuItem className="text-xs cursor-pointer">
                   <Star className="h-3 w-3 mr-2" />
                   {item.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-xs cursor-pointer text-destructive hover:bg-destructive hover:text-destructive-foreground hover:shadow-[0_0_5px_rgba(239,68,68,0.5)] transition-shadow">
+                <DropdownMenuItem className="text-xs cursor-pointer text-destructive">
                   <Trash2 className="h-3 w-3 mr-2" />
                   Delete
                 </DropdownMenuItem>
@@ -197,16 +197,16 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="border-primary/30 shadow-[0_0_15px_rgba(255,255,0,0.5)] bg-background/95">
-          <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+          <DropdownMenuItem className="text-xs cursor-pointer">
             <Pencil className="h-3 w-3 mr-2" />
             Edit
           </DropdownMenuItem>
-          <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+          <DropdownMenuItem className="text-xs cursor-pointer">
             <Star className="h-3 w-3 mr-2" />
             {item.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-xs cursor-pointer text-destructive hover:bg-destructive hover:text-destructive-foreground hover:shadow-[0_0_5px_rgba(239,68,68,0.5)] transition-shadow">
+          <DropdownMenuItem className="text-xs cursor-pointer text-destructive">
             <Trash2 className="h-3 w-3 mr-2" />
             Delete
           </DropdownMenuItem>
@@ -247,12 +247,12 @@ function AlbumItem({ album, onSelect }: { album: MediaAlbum, onSelect: (album: M
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="border-primary/30 shadow-[0_0_15px_rgba(255,255,0,0.5)] bg-background/95">
-              <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+              <DropdownMenuItem className="text-xs cursor-pointer">
                 <Pencil className="h-3 w-3 mr-2" />
                 Edit
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-xs cursor-pointer text-destructive hover:bg-destructive hover:text-destructive-foreground hover:shadow-[0_0_5px_rgba(239,68,68,0.5)] transition-shadow">
+              <DropdownMenuItem className="text-xs cursor-pointer text-destructive">
                 <Trash2 className="h-3 w-3 mr-2" />
                 Delete
               </DropdownMenuItem>
@@ -566,16 +566,16 @@ export default function MediaLibraryPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="border-primary/30 shadow-[0_0_15px_rgba(255,255,0,0.5)] bg-background/95">
-                <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+                <DropdownMenuItem className="text-xs cursor-pointer">
                   Date (Newest)
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+                <DropdownMenuItem className="text-xs cursor-pointer">
                   Date (Oldest)
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+                <DropdownMenuItem className="text-xs cursor-pointer">
                   Name (A-Z)
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+                <DropdownMenuItem className="text-xs cursor-pointer">
                   Name (Z-A)
                 </DropdownMenuItem>
               </DropdownMenuContent>
