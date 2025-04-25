@@ -520,8 +520,8 @@ export default function MediaLibraryPage() {
             {/* Filter button */}
             <Button 
               variant="outline" 
-              size="icon" 
-              className="h-8 w-8 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow" 
+              size="sm" 
+              className="flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow" 
               title="Filter"
             >
               <Filter className="h-4 w-4" />
@@ -532,8 +532,8 @@ export default function MediaLibraryPage() {
               <div className="bg-background rounded-md flex">
                 <Button 
                   variant="outline" 
-                  size="icon" 
-                  className="h-8 w-8 rounded-r-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+                  size="sm" 
+                  className="flex items-center rounded-r-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
                   onClick={zoomOut}
                   title="Zoom Out"
                   disabled={zoomLevel <= 1}
@@ -542,8 +542,8 @@ export default function MediaLibraryPage() {
                 </Button>
                 <Button 
                   variant="outline" 
-                  size="icon" 
-                  className="h-8 w-8 rounded-l-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+                  size="sm" 
+                  className="flex items-center rounded-l-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
                   onClick={zoomIn}
                   title="Zoom In"
                   disabled={zoomLevel >= 4}
@@ -558,8 +558,8 @@ export default function MediaLibraryPage() {
               <DropdownMenuTrigger asChild>
                 <Button 
                   variant="outline" 
-                  size="icon" 
-                  className="h-8 w-8 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow" 
+                  size="sm"
+                  className="flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow" 
                   title="Sort"
                 >
                   <SlidersHorizontal className="h-4 w-4" />
@@ -587,8 +587,8 @@ export default function MediaLibraryPage() {
               <DialogTrigger asChild>
                 <Button 
                   variant="ghost" 
-                  size="icon"
-                  className="h-8 w-8 bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
+                  size="sm"
+                  className="flex items-center bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
                   title="Upload Media"
                 >
                   <Upload className="h-4 w-4" />
@@ -802,8 +802,8 @@ export default function MediaLibraryPage() {
                     <p className="text-sm mb-4">Upload some photos or videos to get started</p>
                     <Button 
                       variant="ghost" 
-                      size="icon"
-                      className="h-8 w-8 bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
+                      size="sm"
+                      className="flex items-center bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
                       onClick={() => fileInputRef.current?.click()}
                       title="Upload Media"
                     >
