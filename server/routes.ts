@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
@@ -32,7 +32,7 @@ declare module "express-session" {
 }
 
 // Middleware to check if user is authenticated
-const isAuthenticated = (req: Request, res: Response, next: any) => {
+const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
   if (req.session.userId) {
     return next();
   }
@@ -40,7 +40,7 @@ const isAuthenticated = (req: Request, res: Response, next: any) => {
 };
 
 // Middleware to check if user is accessing their own data
-const isOwner = (req: Request, res: Response, next: any) => {
+const isOwner = (req: Request, res: Response, next: NextFunction) => {
   if (!req.session.userId) {
     return res.status(401).json({ error: "Authentication required" });
   }
@@ -2424,7 +2424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     limits: {
       fileSize: 100 * 1024 * 1024, // 100MB limit
     },
-    fileFilter: (req, file, cb) => {
+    fileFilter: (req: Express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
       // Only allow images and videos
       if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
         cb(null, true);
