@@ -507,10 +507,10 @@ export default function MediaLibraryPage() {
                   size="sm" 
                   className={`flex items-center h-8 px-2 rounded-r-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow ${gridSize === 'small' ? 'bg-primary/10' : ''}`}
                   onClick={() => setGridSize("small")}
-                  title="Small thumbnails"
+                  title="Small thumbnails (more items)"
                 >
                   <div className="flex items-center">
-                    <Grid className="h-3 w-3" />
+                    <Grid className="h-5 w-5" />
                   </div>
                 </Button>
                 <Button 
@@ -529,10 +529,10 @@ export default function MediaLibraryPage() {
                   size="sm" 
                   className={`flex items-center h-8 px-2 rounded-l-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow ${gridSize === 'large' ? 'bg-primary/10' : ''}`}
                   onClick={() => setGridSize("large")}
-                  title="Large thumbnails"
+                  title="Large thumbnails (fewer items)"
                 >
                   <div className="flex items-center">
-                    <Grid className="h-5 w-5" />
+                    <Grid className="h-3 w-3" />
                   </div>
                 </Button>
               </div>
