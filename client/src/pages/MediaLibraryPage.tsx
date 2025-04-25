@@ -375,31 +375,59 @@ export default function MediaLibraryPage() {
   // Cleanup blob URLs on component unmount
   useEffect(() => {
     return () => {
-      // Clean up any blob URLs when component unmounts
-      const itemsToCleanup = [...optimisticMedia];
-      console.log('Component unmounting - cleaning up blob URLs for', itemsToCleanup.length, 'items');
+      console.log('Component unmounting - cleaning up blob registry');
       
-      itemsToCleanup.forEach(item => {
-        try {
-          if (item.thumbnailUrl && item.thumbnailUrl.startsWith('blob:')) {
-            URL.revokeObjectURL(item.thumbnailUrl);
-            console.log('Revoked blob URL on unmount:', item.thumbnailUrl);
-          }
-          
-          // Only revoke fileUrl if it's different from thumbnailUrl to avoid double revocation
-          if (item.fileUrl && item.fileUrl.startsWith('blob:') && item.fileUrl !== item.thumbnailUrl) {
-            URL.revokeObjectURL(item.fileUrl);
-            console.log('Revoked blob URL on unmount:', item.fileUrl);
-          }
-        } catch (e) {
-          console.error('Error cleaning up blob URLs on unmount:', e);
-        }
-      });
-      
-      // Help with garbage collection
-      itemsToCleanup.length = 0;
+      // Use the registry to clean up all blob URLs at once
+      cleanupAllBlobUrls();
     };
-  }, [optimisticMedia]);
+  }, []);
+  
+  // Track blob URLs to make sure we can clean them up properly
+  const [blobRegistry, setBlobRegistry] = useState<{[key: string]: boolean}>({});
+  
+  // Register a blob URL for tracking and future cleanup
+  const registerBlobUrl = (url: string) => {
+    if (url && url.startsWith('blob:')) {
+      setBlobRegistry(prev => ({...prev, [url]: true}));
+    }
+  };
+  
+  // Safely revoke a blob URL and remove it from registry
+  const revokeBlobUrl = (url: string | undefined) => {
+    if (!url || !url.startsWith('blob:')) return;
+    
+    try {
+      // Check if this URL is in our registry
+      if (blobRegistry[url]) {
+        URL.revokeObjectURL(url);
+        console.log('Safely revoked blob URL:', url);
+        
+        // Remove from registry
+        setBlobRegistry(prev => {
+          const updated = {...prev};
+          delete updated[url];
+          return updated;
+        });
+      }
+    } catch (e) {
+      console.error('Error revoking blob URL:', e);
+    }
+  };
+  
+  // Clean up all registered blob URLs
+  const cleanupAllBlobUrls = () => {
+    Object.keys(blobRegistry).forEach(url => {
+      try {
+        URL.revokeObjectURL(url);
+        console.log('Cleanup: revoked blob URL:', url);
+      } catch (e) {
+        console.error('Error in cleanup of blob URL:', e);
+      }
+    });
+    
+    // Reset registry
+    setBlobRegistry({});
+  };
   
   // Handle zoom in
   const zoomIn = () => {
@@ -418,13 +446,17 @@ export default function MediaLibraryPage() {
       setUploadProgress(0);
       
       // Create optimistic placeholders for each file to display instantly
+      const timestamp = Date.now();
       const optimisticItems = files.map((file, index) => {
         // Create a temporary object URL for the file
         const tempUrl = URL.createObjectURL(file);
         
+        // Register this blob URL for cleanup
+        registerBlobUrl(tempUrl);
+        
         // Create a proper media item with correct types
         return {
-          id: -(Date.now() + index), // Use negative IDs for optimistic items
+          id: -(timestamp + index), // Use negative IDs for optimistic items
           userId: 2, // Assuming current user ID is 2
           albumId: activeAlbum?.id || null,
           fileName: file.name,
@@ -440,6 +472,9 @@ export default function MediaLibraryPage() {
       
       // Get the current items from the cache
       const currentItems = mediaItems?.mediaItems || [];
+      
+      // Add to local state for tracking
+      setOptimisticMedia(prev => [...optimisticItems, ...prev]);
       
       // Log the update for debugging
       console.log('Adding optimistic items to UI', optimisticItems);
@@ -494,14 +529,18 @@ export default function MediaLibraryPage() {
                 });
               }
               
-              // Also refetch after a short delay to ensure the server has processed everything
-              setTimeout(() => {
-                queryClient.refetchQueries({ queryKey: ['/api/users/2/media-items'] });
-              }, 500);
+              // Clean up all blobs from these optimistic items
+              optimisticItems.forEach(item => {
+                if (item.thumbnailUrl) revokeBlobUrl(item.thumbnailUrl);
+                if (item.fileUrl && item.fileUrl !== item.thumbnailUrl) revokeBlobUrl(item.fileUrl);
+              });
               
               // Clear optimistic items now that we have real server items
-              setOptimisticMedia([]);
+              setOptimisticMedia(prev => 
+                prev.filter(item => !optimisticItems.some(oi => oi.id === item.id))
+              );
               
+              // Close upload modal
               setUploadModalOpen(false);
               resolve(response);
             } catch (error) {
@@ -517,6 +556,13 @@ export default function MediaLibraryPage() {
         // Handle network/connection errors
         xhr.onerror = () => {
           console.error('Network error during upload');
+          
+          // Clean up blob URLs even on network error
+          optimisticItems.forEach(item => {
+            if (item.thumbnailUrl) revokeBlobUrl(item.thumbnailUrl);
+            if (item.fileUrl && item.fileUrl !== item.thumbnailUrl) revokeBlobUrl(item.fileUrl);
+          });
+          
           reject(new Error('Network error during upload'));
         };
         
@@ -525,30 +571,6 @@ export default function MediaLibraryPage() {
           setIsUploading(false);
           // Reset progress after a delay to show 100% briefly
           setTimeout(() => setUploadProgress(0), 500);
-          
-          // Store a reference to items for cleanup
-          const itemsToCleanup = [...optimisticItems];
-          
-          // Clean up any blob URLs we created to prevent memory leaks
-          itemsToCleanup.forEach(item => {
-            try {
-              if (item.thumbnailUrl && item.thumbnailUrl.startsWith('blob:')) {
-                URL.revokeObjectURL(item.thumbnailUrl);
-                console.log('Revoked blob URL in onloadend:', item.thumbnailUrl);
-              }
-              
-              // Only revoke fileUrl if it's different from thumbnailUrl to avoid double revocation
-              if (item.fileUrl && item.fileUrl.startsWith('blob:') && item.fileUrl !== item.thumbnailUrl) {
-                URL.revokeObjectURL(item.fileUrl);
-                console.log('Revoked blob URL in onloadend:', item.fileUrl);
-              }
-            } catch (e) {
-              console.error('Error cleaning up blob URLs:', e);
-            }
-          });
-          
-          // Help with garbage collection
-          itemsToCleanup.length = 0;
         };
         
         // Set up and send the request
@@ -560,30 +582,7 @@ export default function MediaLibraryPage() {
       // Query invalidation now handled in XHR onload handler
       console.log('Upload mutation completed successfully');
       
-      // Create a copy of the current optimistic media before clearing it
-      const itemsToCleanup = [...optimisticMedia];
-      
-      // Clear optimistic media immediately
-      setOptimisticMedia([]);
-      
-      // Now clean up all blob URLs from the copied array to avoid memory leaks
-      itemsToCleanup.forEach(item => {
-        try {
-          if (item.thumbnailUrl && item.thumbnailUrl.startsWith('blob:')) {
-            URL.revokeObjectURL(item.thumbnailUrl);
-            console.log('Revoked blob URL:', item.thumbnailUrl);
-          }
-          if (item.fileUrl && item.fileUrl.startsWith('blob:') && item.fileUrl !== item.thumbnailUrl) {
-            URL.revokeObjectURL(item.fileUrl);
-            console.log('Revoked blob URL:', item.fileUrl);
-          }
-        } catch (e) {
-          console.error('Error cleaning up blob URLs in onSuccess:', e);
-        }
-      });
-      
-      // Clear the copied array to help with garbage collection
-      itemsToCleanup.length = 0;
+      // Already cleaned up in xhr.onload
       
       // Directly trigger a refetch
       refetchMediaItems();
@@ -596,21 +595,9 @@ export default function MediaLibraryPage() {
     onError: (error) => {
       console.error('Upload error:', error);
       
-      // Also clean up blob URLs on error
-      optimisticMedia.forEach(item => {
-        try {
-          if (item.thumbnailUrl && item.thumbnailUrl.startsWith('blob:')) {
-            URL.revokeObjectURL(item.thumbnailUrl);
-          }
-          if (item.fileUrl && item.fileUrl.startsWith('blob:') && item.fileUrl !== item.thumbnailUrl) {
-            URL.revokeObjectURL(item.fileUrl);
-          }
-        } catch (e) {
-          console.error('Error cleaning up blob URLs on error:', e);
-        }
-      });
+      // Clean up all blob URLs - already handled in xhr.onerror
       
-      // Clear optimistic media on error too
+      // Reset optimistic media
       setOptimisticMedia([]);
     }
   });
@@ -622,47 +609,8 @@ export default function MediaLibraryPage() {
         // Close dialog instantly
         setUploadModalOpen(false);
         
-        // Clean up any existing blob URLs before creating new ones
-        // This helps prevent memory leaks from abandoned blobs
-        optimisticMedia.forEach(item => {
-          try {
-            if (item.thumbnailUrl && item.thumbnailUrl.startsWith('blob:')) {
-              URL.revokeObjectURL(item.thumbnailUrl);
-            }
-            if (item.fileUrl && item.fileUrl.startsWith('blob:')) {
-              URL.revokeObjectURL(item.fileUrl);
-            }
-          } catch (e) {
-            console.error('Error cleaning up existing blob URLs:', e);
-          }
-        });
-        
-        // Create immediate optimistic updates with timestamp in the ID to ensure uniqueness
-        const timestamp = Date.now();
-        const optimisticItems = files.map((file, index) => {
-          // Create a new blob URL for this file
-          const tempUrl = URL.createObjectURL(file);
-          return {
-            id: -(timestamp + index), // Use negative IDs for optimistic items
-            userId: 2,
-            albumId: activeAlbum?.id || null,
-            fileName: file.name,
-            title: file.name,
-            fileType: file.type.startsWith('image/') ? 'image' : 'video',
-            thumbnailUrl: tempUrl,
-            fileUrl: tempUrl,
-            fileSize: file.size,
-            isFavorite: false,
-            createdAt: new Date().toISOString()
-          } as MediaItem;
-        });
-        
-        // Store a reference to these blob URLs for cleanup
-        setOptimisticMedia(prevItems => [...optimisticItems, ...prevItems]);
-        
-        console.log("Adding optimistic items locally:", optimisticItems);
-        
-        // Trigger the upload in the background
+        // Let mutation handle everything - don't create optimistic items here
+        // to avoid duplicate blob URLs
         uploadMediaMutation.mutate(files);
       } catch (error) {
         console.error("Error during file upload preparation:", error);
