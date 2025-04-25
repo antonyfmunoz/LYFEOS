@@ -337,6 +337,40 @@ export default function MediaLibraryPage() {
   // Favorites tab items
   const favoriteItems = filteredItems.filter((item: MediaItem) => item.isFavorite);
   
+  // Get appropriate grid layout based on zoom level
+  const getGridClass = () => {
+    switch(zoomLevel) {
+      case 1: // Small thumbnails
+        return "grid-cols-3 md:grid-cols-4 lg:grid-cols-6";
+      case 3: // Large thumbnails
+        return "grid-cols-1 md:grid-cols-2 lg:grid-cols-3";
+      case 2: // Medium thumbnails (default)
+      default:
+        return "grid-cols-2 md:grid-cols-3 lg:grid-cols-4";
+    }
+  };
+  
+  // Get appropriate skeleton count based on zoom level
+  const getSkeletonCount = () => {
+    switch(zoomLevel) {
+      case 1: return 12; // Small thumbnails
+      case 3: return 6;  // Large thumbnails
+      case 2: // Medium thumbnails (default)
+      default:
+        return 8;
+    }
+  };
+  
+  // Handle zoom in
+  const zoomIn = () => {
+    setZoomLevel(Math.min(3, zoomLevel + 1));
+  };
+  
+  // Handle zoom out
+  const zoomOut = () => {
+    setZoomLevel(Math.max(1, zoomLevel - 1));
+  };
+  
   // Media upload mutation
   const uploadMediaMutation = useMutation({
     mutationFn: async (files: File[]) => {
@@ -481,7 +515,12 @@ export default function MediaLibraryPage() {
             </div>
             
             {/* Filter button */}
-            <Button variant="outline" size="icon" className="h-8 w-8 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow" title="Filter">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="h-8 w-8 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow" 
+              title="Filter"
+            >
               <Filter className="h-4 w-4" />
             </Button>
             
@@ -492,7 +531,7 @@ export default function MediaLibraryPage() {
                   variant="outline" 
                   size="icon" 
                   className="h-8 w-8 rounded-r-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
-                  onClick={() => setZoomLevel(Math.max(1, zoomLevel - 1))}
+                  onClick={zoomOut}
                   title="Zoom Out"
                   disabled={zoomLevel <= 1}
                 >
@@ -502,7 +541,7 @@ export default function MediaLibraryPage() {
                   variant="outline" 
                   size="icon" 
                   className="h-8 w-8 rounded-l-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
-                  onClick={() => setZoomLevel(Math.min(3, zoomLevel + 1))}
+                  onClick={zoomIn}
                   title="Zoom In"
                   disabled={zoomLevel >= 3}
                 >
@@ -514,7 +553,12 @@ export default function MediaLibraryPage() {
             {/* Sort dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="h-8 w-8 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow" title="Sort">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  className="h-8 w-8 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow" 
+                  title="Sort"
+                >
                   <SlidersHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -729,12 +773,8 @@ export default function MediaLibraryPage() {
           <TabsContent value="all" className="mt-4">
             {isLoadingItems ? (
               activeView === "grid" ? (
-                <div className={`grid gap-4 ${
-                  gridSize === "small" ? "grid-cols-3 md:grid-cols-4 lg:grid-cols-6" : 
-                  gridSize === "large" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : 
-                  "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
-                }`}>
-                  {Array.from({ length: gridSize === "small" ? 12 : gridSize === "large" ? 6 : 8 }).map((_, i) => (
+                <div className={`grid gap-4 ${getGridClass()}`}>
+                  {Array.from({ length: getSkeletonCount() }).map((_, i) => (
                     <Skeleton key={i} className="aspect-square rounded-md" />
                   ))}
                 </div>
@@ -772,11 +812,7 @@ export default function MediaLibraryPage() {
             ) : (
               <>
                 {activeView === "grid" ? (
-                  <div className={`grid gap-4 ${
-                    gridSize === "small" ? "grid-cols-3 md:grid-cols-4 lg:grid-cols-6" : 
-                    gridSize === "large" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : 
-                    "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
-                  }`}>
+                  <div className={`grid gap-4 ${getGridClass()}`}>
                     {displayItems.map((item) => (
                       <MediaItem 
                         key={item.id} 
@@ -869,12 +905,8 @@ export default function MediaLibraryPage() {
           <TabsContent value="favorites" className="mt-4">
             {isLoadingItems ? (
               activeView === "grid" ? (
-                <div className={`grid gap-4 ${
-                  gridSize === "small" ? "grid-cols-3 md:grid-cols-4 lg:grid-cols-6" : 
-                  gridSize === "large" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : 
-                  "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
-                }`}>
-                  {Array.from({ length: gridSize === "small" ? 12 : gridSize === "large" ? 6 : 8 }).map((_, i) => (
+                <div className={`grid gap-4 ${getGridClass()}`}>
+                  {Array.from({ length: getSkeletonCount() }).map((_, i) => (
                     <Skeleton key={i} className="aspect-square rounded-md" />
                   ))}
                 </div>
@@ -894,11 +926,7 @@ export default function MediaLibraryPage() {
             ) : (
               <>
                 {activeView === "grid" ? (
-                  <div className={`grid gap-4 ${
-                    gridSize === "small" ? "grid-cols-3 md:grid-cols-4 lg:grid-cols-6" : 
-                    gridSize === "large" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : 
-                    "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
-                  }`}>
+                  <div className={`grid gap-4 ${getGridClass()}`}>
                     {favoriteItems.map((item: MediaItem) => (
                       <MediaItem 
                         key={item.id} 
