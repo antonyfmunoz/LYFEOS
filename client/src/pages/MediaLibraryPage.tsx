@@ -213,7 +213,7 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
 }
 
 // Album Item component
-function AlbumItem({ album, onSelect }: { album: any, onSelect: (album: any) => void }) {
+function AlbumItem({ album, onSelect }: { album: MediaAlbum, onSelect: (album: MediaAlbum) => void }) {
   return (
     <div 
       className="rounded-lg overflow-hidden border border-border hover:border-primary/50 cursor-pointer"
@@ -278,8 +278,8 @@ function formatFileSize(bytes?: number): string {
 export default function MediaLibraryPage() {
   const [activeView, setActiveView] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedItems, setSelectedItems] = useState<any[]>([]);
-  const [activeAlbum, setActiveAlbum] = useState<any | null>(null);
+  const [selectedItems, setSelectedItems] = useState<MediaItem[]>([]);
+  const [activeAlbum, setActiveAlbum] = useState<MediaAlbum | null>(null);
   
   // Mock data for quick UI development - will be replaced with actual API calls
   const mockMediaItems = [
@@ -376,20 +376,20 @@ export default function MediaLibraryPage() {
     }
   ];
 
-  const { data: mediaItems, isLoading: isLoadingItems } = useQuery({
+  const { data: mediaItems, isLoading: isLoadingItems } = useQuery<{ mediaItems: MediaItem[] }>({
     queryKey: ['/api/users/:userId/media-items'],
     // Enable actual API fetching
     enabled: true
   });
 
-  const { data: mediaAlbums, isLoading: isLoadingAlbums } = useQuery({
+  const { data: mediaAlbums, isLoading: isLoadingAlbums } = useQuery<{ mediaAlbums: MediaAlbum[] }>({
     queryKey: ['/api/users/:userId/media-albums'],
     // Enable actual API fetching
     enabled: true
   });
 
   // Handle item selection
-  const handleItemSelect = (item: any) => {
+  const handleItemSelect = (item: MediaItem) => {
     if (selectedItems.some(i => i.id === item.id)) {
       setSelectedItems(selectedItems.filter(i => i.id !== item.id));
     } else {
@@ -403,23 +403,23 @@ export default function MediaLibraryPage() {
   };
 
   // Handle album selection
-  const handleAlbumSelect = (album: any) => {
+  const handleAlbumSelect = (album: MediaAlbum) => {
     setActiveAlbum(album);
   };
   
   // Filter items based on search query
   const filteredItems = (mediaItems?.mediaItems || mockMediaItems).filter(
-    item => item.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (item: MediaItem) => item.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
            item.fileName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
   // Determine which items to display based on current state
   const displayItems = activeAlbum 
-    ? filteredItems.filter(item => (item as any).albumId === activeAlbum.id)
+    ? filteredItems.filter((item: MediaItem) => item.albumId === activeAlbum.id)
     : filteredItems;
   
   // Favorites tab items
-  const favoriteItems = filteredItems.filter(item => item.isFavorite);
+  const favoriteItems = filteredItems.filter((item: MediaItem) => item.isFavorite);
 
   return (
     <div className="pb-8">
@@ -696,7 +696,7 @@ export default function MediaLibraryPage() {
                 </Dialog>
                 
                 {/* Album cards */}
-                {(mediaAlbums?.mediaAlbums || mockAlbums).map((album) => (
+                {(mediaAlbums?.mediaAlbums || mockAlbums).map((album: MediaAlbum) => (
                   <AlbumItem 
                     key={album.id} 
                     album={album} 
@@ -733,7 +733,7 @@ export default function MediaLibraryPage() {
               <>
                 {activeView === "grid" ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {favoriteItems.map((item) => (
+                    {favoriteItems.map((item: MediaItem) => (
                       <MediaItem 
                         key={item.id} 
                         item={item} 
@@ -745,7 +745,7 @@ export default function MediaLibraryPage() {
                   </div>
                 ) : (
                   <div className="space-y-1 border rounded-md overflow-hidden">
-                    {favoriteItems.map((item) => (
+                    {favoriteItems.map((item: MediaItem) => (
                       <MediaItem 
                         key={item.id} 
                         item={item} 
