@@ -419,7 +419,7 @@ export default function MediaLibraryPage() {
                 <Button 
                   variant="ghost" 
                   size="sm"
-                  className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50 flex items-center"
+                  className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50 flex items-center hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
                 >
                   <Upload className="h-3.5 w-3.5 mr-1" />
                   Upload
@@ -442,7 +442,7 @@ export default function MediaLibraryPage() {
                     type="button" 
                     variant="ghost" 
                     size="sm"
-                    className="h-7 text-xs mt-2 bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50"
+                    className="h-7 text-xs mt-2 bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
                   >
                     <Upload className="h-3.5 w-3.5 mr-1" />
                     Select Files
@@ -473,7 +473,7 @@ export default function MediaLibraryPage() {
               <Button 
                 variant="ghost" 
                 size="sm"
-                className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50"
+                className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
               >
                 <Star className="h-3.5 w-3.5 mr-1" />
                 Add to Favorites
@@ -481,7 +481,7 @@ export default function MediaLibraryPage() {
               <Button 
                 variant="ghost" 
                 size="sm"
-                className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50"
+                className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
               >
                 <FolderIcon className="h-3.5 w-3.5 mr-1" />
                 Add to Album
@@ -489,7 +489,7 @@ export default function MediaLibraryPage() {
               <Button 
                 variant="ghost" 
                 size="sm"
-                className="h-7 text-xs bg-destructive/10 hover:bg-destructive hover:text-destructive-foreground text-destructive border border-destructive/50"
+                className="h-7 text-xs bg-destructive/10 hover:bg-destructive hover:text-destructive-foreground text-destructive border border-destructive/50 hover:shadow-[0_0_5px_#ff0000] transition-shadow"
               >
                 <Trash2 className="h-3.5 w-3.5 mr-1" />
                 Delete
@@ -558,7 +558,7 @@ export default function MediaLibraryPage() {
                     <Button 
                       variant="ghost" 
                       size="sm"
-                      className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50"
+                      className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
                     >
                       <Upload className="h-3.5 w-3.5 mr-1" />
                       Upload Media
@@ -637,7 +637,7 @@ export default function MediaLibraryPage() {
                         type="submit" 
                         variant="ghost" 
                         size="sm"
-                        className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50"
+                        className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
                       >
                         <Plus className="h-3.5 w-3.5 mr-1" />
                         Create Album
