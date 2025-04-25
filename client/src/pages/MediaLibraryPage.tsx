@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
 import { 
   ChevronLeft, 
@@ -282,6 +283,9 @@ export default function MediaLibraryPage() {
   const [selectedItems, setSelectedItems] = useState<MediaItem[]>([]);
   const [activeAlbum, setActiveAlbum] = useState<MediaAlbum | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
   
   // Empty default arrays for when no data is available
   const emptyItems: MediaItem[] = [];
@@ -329,6 +333,64 @@ export default function MediaLibraryPage() {
   
   // Favorites tab items
   const favoriteItems = filteredItems.filter((item: MediaItem) => item.isFavorite);
+  
+  // Media upload mutation
+  const uploadMediaMutation = useMutation({
+    mutationFn: async (files: File[]) => {
+      setIsUploading(true);
+      setUploadProgress(0);
+      
+      const formData = new FormData();
+      
+      // Append all files to the form data
+      files.forEach(file => {
+        formData.append('files', file);
+      });
+      
+      // If there's an active album, append the albumId
+      if (activeAlbum) {
+        formData.append('albumId', activeAlbum.id.toString());
+      }
+      
+      try {
+        // Upload the files and get the response
+        const response = await fetch('/api/media-items', {
+          method: 'POST',
+          body: formData,
+          // Don't set Content-Type header, let the browser set it for FormData
+        }).then(res => res.json());
+        
+        // Close the upload modal
+        setUploadModalOpen(false);
+        
+        return response;
+      } catch (error) {
+        console.error('Error uploading files:', error);
+        throw error;
+      } finally {
+        setIsUploading(false);
+        setUploadProgress(100);
+      }
+    },
+    onSuccess: () => {
+      // Invalidate the media items query to refetch the data
+      queryClient.invalidateQueries({ queryKey: ['/api/users/2/media-items'] });
+      
+      // If there's an active album, invalidate the album's media items query
+      if (activeAlbum) {
+        queryClient.invalidateQueries({ 
+          queryKey: ['/api/media-items/album', activeAlbum.id] 
+        });
+      }
+    }
+  });
+  
+  // Handle file upload
+  const handleFileUpload = (files: File[]) => {
+    if (files.length > 0) {
+      uploadMediaMutation.mutate(files);
+    }
+  };
 
   return (
     <div className="pb-8">
@@ -455,24 +517,8 @@ export default function MediaLibraryPage() {
                       const filesArray = Array.from(e.dataTransfer.files);
                       console.log('Files dropped:', filesArray);
                       
-                      // Here we would typically handle the file upload to the server
-                      // For demonstration purposes, we'll create and log preview information
-                      filesArray.forEach(file => {
-                        const reader = new FileReader();
-                        reader.onload = (event) => {
-                          if (event.target?.result) {
-                            console.log(`Preview for ${file.name}:`, {
-                              name: file.name,
-                              type: file.type,
-                              size: file.size,
-                              lastModified: file.lastModified,
-                              // The file data/URL would be available here
-                              // data: event.target.result
-                            });
-                          }
-                        };
-                        reader.readAsDataURL(file);
-                      });
+                      // Upload the files
+                      handleFileUpload(filesArray);
                     }
                   }}
                   onClick={() => fileInputRef.current?.click()}
@@ -495,24 +541,8 @@ export default function MediaLibraryPage() {
                         const filesArray = Array.from(e.target.files);
                         console.log('Files selected:', filesArray);
                         
-                        // Here we would typically handle the file upload to the server
-                        // For demonstration purposes, we'll create and log preview information
-                        filesArray.forEach(file => {
-                          const reader = new FileReader();
-                          reader.onload = (event) => {
-                            if (event.target?.result) {
-                              console.log(`Preview for ${file.name}:`, {
-                                name: file.name,
-                                type: file.type,
-                                size: file.size,
-                                lastModified: file.lastModified,
-                                // The file data/URL would be available here
-                                // data: event.target.result
-                              });
-                            }
-                          };
-                          reader.readAsDataURL(file);
-                        });
+                        // Upload the files
+                        handleFileUpload(filesArray);
                       }
                     }}
                   />
