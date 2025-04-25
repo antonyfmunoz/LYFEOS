@@ -266,12 +266,12 @@ export default function MediaLibraryPage() {
   // Function to get grid classes based on grid size
   const getGridClasses = (size: "small" | "medium" | "large") => {
     switch(size) {
-      case "large":
-        return "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"; // Fewer but larger thumbnails
       case "small":
-        return "grid-cols-3 md:grid-cols-4 lg:grid-cols-6"; // More but smaller thumbnails
-      default:
-        return "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"; // Medium size (default)
+        return "grid-cols-3 md:grid-cols-4 lg:grid-cols-6"; // Many smaller thumbnails
+      case "medium":
+        return "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"; // Medium size
+      case "large":
+        return "grid-cols-1 md:grid-cols-1 lg:grid-cols-2"; // Just 1-2 large photos per row
     }
   };
   
@@ -457,7 +457,7 @@ export default function MediaLibraryPage() {
                   size="sm" 
                   className={`flex items-center h-8 px-2 rounded-r-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow ${gridSize === 'large' ? 'bg-primary/10' : ''}`}
                   onClick={() => setGridSize("large")}
-                  title="Large thumbnails (fewer items)"
+                  title="Very large thumbnails (1-2 per row)"
                 >
                   <div className="flex items-center">
                     <Grid className="h-5 w-5" />
