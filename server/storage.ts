@@ -15,7 +15,8 @@ import {
   integrations, type Integration, type InsertIntegration,
   kanbanBoards, type KanbanBoard, type InsertKanbanBoard,
   kanbanColumns, type KanbanColumn, type InsertKanbanColumn,
-  kanbanTasks, type KanbanTask, type InsertKanbanTask
+  kanbanTasks, type KanbanTask, type InsertKanbanTask,
+  progressTrackers, type ProgressTracker, type InsertProgressTracker
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -148,6 +149,14 @@ export interface IStorage {
   createIntegration(integration: InsertIntegration): Promise<Integration>;
   updateIntegration(id: number, integration: Partial<InsertIntegration>): Promise<Integration>;
   deleteIntegration(id: number): Promise<void>;
+  
+  // Progress Tracker methods
+  getProgressTrackersByUserId(userId: number): Promise<ProgressTracker[]>;
+  getProgressTrackersByCategory(userId: number, category: string): Promise<ProgressTracker[]>;
+  getProgressTracker(id: number): Promise<ProgressTracker | undefined>;
+  createProgressTracker(tracker: InsertProgressTracker): Promise<ProgressTracker>;
+  updateProgressTracker(id: number, tracker: Partial<InsertProgressTracker>): Promise<ProgressTracker>;
+  deleteProgressTracker(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -947,6 +956,46 @@ export class DatabaseStorage implements IStorage {
 
   async deleteIntegration(id: number): Promise<void> {
     await db.delete(integrations).where(eq(integrations.id, id));
+  }
+
+  // Progress Tracker methods
+  async getProgressTrackersByUserId(userId: number): Promise<ProgressTracker[]> {
+    return db.select().from(progressTrackers).where(eq(progressTrackers.userId, userId));
+  }
+  
+  async getProgressTrackersByCategory(userId: number, category: string): Promise<ProgressTracker[]> {
+    return db.select()
+      .from(progressTrackers)
+      .where(and(
+        eq(progressTrackers.userId, userId),
+        eq(progressTrackers.category, category)
+      ));
+  }
+  
+  async getProgressTracker(id: number): Promise<ProgressTracker | undefined> {
+    const [tracker] = await db.select().from(progressTrackers).where(eq(progressTrackers.id, id));
+    return tracker;
+  }
+  
+  async createProgressTracker(tracker: InsertProgressTracker): Promise<ProgressTracker> {
+    const [newTracker] = await db
+      .insert(progressTrackers)
+      .values(tracker)
+      .returning();
+    return newTracker;
+  }
+  
+  async updateProgressTracker(id: number, trackerUpdate: Partial<InsertProgressTracker>): Promise<ProgressTracker> {
+    const [updatedTracker] = await db
+      .update(progressTrackers)
+      .set({ ...trackerUpdate, updatedAt: new Date() })
+      .where(eq(progressTrackers.id, id))
+      .returning();
+    return updatedTracker;
+  }
+  
+  async deleteProgressTracker(id: number): Promise<void> {
+    await db.delete(progressTrackers).where(eq(progressTrackers.id, id));
   }
 }
 

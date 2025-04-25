@@ -2238,6 +2238,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Progress Tracker Routes
+  app.get("/api/users/:userId/progress-trackers", isOwner, async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const progressTrackers = await storage.getProgressTrackersByUserId(userId);
+      res.json({ progressTrackers });
+    } catch (error) {
+      console.error("Failed to fetch progress trackers:", error);
+      res.status(500).json({ error: "Failed to fetch progress trackers" });
+    }
+  });
+
+  app.get("/api/progress-trackers/category/:category", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId;
+      const category = req.params.category;
+      const progressTrackers = await storage.getProgressTrackersByCategory(userId, category);
+      res.json({ progressTrackers });
+    } catch (error) {
+      console.error("Failed to fetch progress trackers by category:", error);
+      res.status(500).json({ error: "Failed to fetch progress trackers by category" });
+    }
+  });
+
+  app.get("/api/progress-trackers/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const trackerId = parseInt(req.params.id);
+      if (isNaN(trackerId)) {
+        return res.status(400).json({ error: "Invalid tracker ID" });
+      }
+      
+      const progressTracker = await storage.getProgressTracker(trackerId);
+      if (!progressTracker) {
+        return res.status(404).json({ error: "Progress tracker not found" });
+      }
+
+      if (progressTracker.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to access this tracker" });
+      }
+
+      res.json({ progressTracker });
+    } catch (error) {
+      console.error("Failed to fetch progress tracker:", error);
+      res.status(500).json({ error: "Failed to fetch progress tracker" });
+    }
+  });
+
+  app.post("/api/progress-trackers", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId;
+      const trackerData = {
+        ...req.body,
+        userId
+      };
+      
+      const progressTracker = await storage.createProgressTracker(trackerData);
+      res.status(201).json({ progressTracker });
+    } catch (error) {
+      console.error("Failed to create progress tracker:", error);
+      res.status(500).json({ error: "Failed to create progress tracker" });
+    }
+  });
+
+  app.patch("/api/progress-trackers/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const trackerId = parseInt(req.params.id);
+      if (isNaN(trackerId)) {
+        return res.status(400).json({ error: "Invalid tracker ID" });
+      }
+      
+      const existingTracker = await storage.getProgressTracker(trackerId);
+      if (!existingTracker) {
+        return res.status(404).json({ error: "Progress tracker not found" });
+      }
+      
+      if (existingTracker.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to update this tracker" });
+      }
+      
+      const updatedTracker = await storage.updateProgressTracker(trackerId, req.body);
+      res.json({ progressTracker: updatedTracker });
+    } catch (error) {
+      console.error("Failed to update progress tracker:", error);
+      res.status(500).json({ error: "Failed to update progress tracker" });
+    }
+  });
+
+  app.delete("/api/progress-trackers/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const trackerId = parseInt(req.params.id);
+      if (isNaN(trackerId)) {
+        return res.status(400).json({ error: "Invalid tracker ID" });
+      }
+      
+      const existingTracker = await storage.getProgressTracker(trackerId);
+      if (!existingTracker) {
+        return res.status(404).json({ error: "Progress tracker not found" });
+      }
+      
+      if (existingTracker.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to delete this tracker" });
+      }
+      
+      await storage.deleteProgressTracker(trackerId);
+      res.json({ message: "Progress tracker deleted successfully" });
+    } catch (error) {
+      console.error("Failed to delete progress tracker:", error);
+      res.status(500).json({ error: "Failed to delete progress tracker" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
