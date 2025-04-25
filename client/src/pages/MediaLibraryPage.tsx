@@ -111,23 +111,23 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
               <DropdownMenuTrigger asChild>
                 <Button 
                   variant="ghost" 
-                  size="sm" 
-                  className="flex items-center text-white hover:bg-white/20 rounded-full"
+                  size="icon" 
+                  className="h-7 w-7 text-white hover:bg-white/20 rounded-full"
                 >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+                <DropdownMenuItem className="text-xs cursor-pointer">
                   <Pencil className="h-3 w-3 mr-2" />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+                <DropdownMenuItem className="text-xs cursor-pointer">
                   <Star className="h-3 w-3 mr-2" />
                   {item.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-xs cursor-pointer text-destructive hover:bg-destructive/10 hover:text-destructive hover:shadow-[0_0_5px_rgba(239,68,68,0.5)] transition-shadow">
+                <DropdownMenuItem className="text-xs cursor-pointer text-destructive focus:text-destructive">
                   <Trash2 className="h-3 w-3 mr-2" />
                   Delete
                 </DropdownMenuItem>
@@ -192,21 +192,21 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
       )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="flex items-center">
+          <Button variant="ghost" size="icon" className="h-8 w-8">
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+          <DropdownMenuItem className="text-xs cursor-pointer">
             <Pencil className="h-3 w-3 mr-2" />
             Edit
           </DropdownMenuItem>
-          <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+          <DropdownMenuItem className="text-xs cursor-pointer">
             <Star className="h-3 w-3 mr-2" />
             {item.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-xs cursor-pointer text-destructive hover:bg-destructive/10 hover:text-destructive hover:shadow-[0_0_5px_rgba(239,68,68,0.5)] transition-shadow">
+          <DropdownMenuItem className="text-xs cursor-pointer text-destructive focus:text-destructive">
             <Trash2 className="h-3 w-3 mr-2" />
             Delete
           </DropdownMenuItem>
@@ -242,17 +242,17 @@ function AlbumItem({ album, onSelect }: { album: MediaAlbum, onSelect: (album: M
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="flex items-center">
+              <Button variant="ghost" size="icon" className="h-7 w-7">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+              <DropdownMenuItem className="text-xs cursor-pointer">
                 <Pencil className="h-3 w-3 mr-2" />
                 Edit
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-xs cursor-pointer text-destructive hover:bg-destructive/10 hover:text-destructive hover:shadow-[0_0_5px_rgba(239,68,68,0.5)] transition-shadow">
+              <DropdownMenuItem className="text-xs cursor-pointer text-destructive focus:text-destructive">
                 <Trash2 className="h-3 w-3 mr-2" />
                 Delete
               </DropdownMenuItem>
@@ -471,8 +471,8 @@ export default function MediaLibraryPage() {
           <Link to="/systems">
             <Button
               variant="ghost"
-              size="sm"
-              className="flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+              size="icon"
+              className="h-8 w-8 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow" 
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -566,16 +566,16 @@ export default function MediaLibraryPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+                <DropdownMenuItem className="text-xs cursor-pointer">
                   Date (Newest)
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+                <DropdownMenuItem className="text-xs cursor-pointer">
                   Date (Oldest)
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+                <DropdownMenuItem className="text-xs cursor-pointer">
                   Name (A-Z)
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+                <DropdownMenuItem className="text-xs cursor-pointer">
                   Name (Z-A)
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -676,8 +676,8 @@ export default function MediaLibraryPage() {
                   <Button 
                     type="button" 
                     variant="ghost" 
-                    size="sm"
-                    className={`flex items-center mt-2 ${
+                    size="icon"
+                    className={`h-8 w-8 mt-2 ${
                       isUploading 
                         ? 'bg-muted text-muted-foreground cursor-not-allowed' 
                         : 'bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50'
@@ -704,9 +704,9 @@ export default function MediaLibraryPage() {
             <div className="flex items-center">
               <Button 
                 variant="ghost" 
-                size="sm" 
+                size="icon" 
                 onClick={clearSelection}
-                className="flex items-center bg-muted/50 hover:bg-muted text-muted-foreground hover:shadow-[0_0_5px_rgba(0,0,0,0.2)] transition-shadow"
+                className="h-7 w-7 bg-muted/50 hover:bg-muted text-muted-foreground hover:shadow-[0_0_5px_rgba(0,0,0,0.2)] transition-shadow"
                 title="Cancel Selection"
               >
                 <X className="h-3.5 w-3.5" />
@@ -717,24 +717,24 @@ export default function MediaLibraryPage() {
             <div className="flex gap-2">
               <Button 
                 variant="ghost" 
-                size="sm"
-                className="flex items-center bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
+                size="icon"
+                className="h-7 w-7 bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
                 title="Add to Favorites"
               >
                 <Star className="h-3.5 w-3.5" />
               </Button>
               <Button 
                 variant="ghost" 
-                size="sm"
-                className="flex items-center bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
+                size="icon"
+                className="h-7 w-7 bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
                 title="Add to Album"
               >
                 <FolderIcon className="h-3.5 w-3.5" />
               </Button>
               <Button 
                 variant="ghost" 
-                size="sm"
-                className="flex items-center bg-destructive/10 hover:bg-destructive hover:text-destructive-foreground hover:shadow-[0_0_5px_rgba(239,68,68,0.5)] transition-shadow text-destructive border border-destructive/50"
+                size="icon"
+                className="h-7 w-7 bg-destructive/10 hover:bg-destructive hover:text-destructive-foreground hover:shadow-[0_0_5px_rgba(239,68,68,0.5)] transition-shadow text-destructive border border-destructive/50"
                 title="Delete"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -882,8 +882,8 @@ export default function MediaLibraryPage() {
                       <Button 
                         type="submit" 
                         variant="ghost" 
-                        size="sm"
-                        className="flex items-center bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
+                        size="icon"
+                        className="h-8 w-8 bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
                         title="Create Album"
                       >
                         <Plus className="h-4 w-4" />
