@@ -1,7 +1,9 @@
 import React from 'react';
-import { CalendarClock, ArrowUpRight, BookOpen, Sparkles, Milestone, CalendarDays, Trophy, MessageCircle } from 'lucide-react';
+import { CalendarClock, ArrowUpRight, BookOpen, Sparkles, Milestone, CalendarDays, Trophy, MessageCircle, GripVertical } from 'lucide-react';
 import { useLYFEOS } from '@/lib/context';
 import { MissionPage, CalendarEvent, Quest } from '@/lib/types';
+import { cn } from '@/lib/utils';
+import { useLocation } from 'wouter';
 
 // Define all the different types of timeline items
 type TimelineItemType = 'mission' | 'quest' | 'event' | 'achievement' | 'chat' | 'life' | 'journal' | 'ritual' | 'knowledge' | 'goal';
@@ -261,11 +263,25 @@ const TimelineWidget = () => {
     return new Date(b.date).getTime() - new Date(a.date).getTime();
   }).slice(0, 10); // Limit to 10 most recent items
 
+  const [, navigate] = useLocation();
+  const navigateToFullTimeline = () => {
+    // This would navigate to a full timeline view page when implemented
+    navigate('/chronolog/timeline');
+  };
+
   return (
-    <div className="glassmorphic rounded-xl p-6 neon-border hover:shadow-[0_0_10px_var(--primary-glow-medium)] hover:border-primary/60 transition-all duration-300">
+    <div 
+      className={cn(
+        "glassmorphic rounded-xl p-6 neon-border hover:shadow-[0_0_10px_var(--primary-glow-medium)] hover:border-primary/60 transition-all duration-300 cursor-pointer"
+      )}
+      onClick={navigateToFullTimeline}
+    >
       <div className="flex items-center mb-3">
+        <div className="cursor-move mr-2">
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </div>
         <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mr-4">
-          <CalendarClock className="h-6 w-6 text-primary" />
+          <span className="material-icons text-2xl text-primary">history</span>
         </div>
         <div>
           <h3 className="text-lg font-orbitron text-[#D6F4FF]">Life Timeline</h3>
@@ -323,10 +339,13 @@ const TimelineWidget = () => {
         {/* View more button */}
         <div className="flex justify-end mt-4">
           <button 
-            className="text-xs font-medium px-3 py-1 rounded-md bg-primary/10 text-primary hover:bg-opacity-20 transition flex items-center"
+            className="text-xs font-medium px-3 py-1 rounded-md bg-primary/10 text-primary hover:bg-opacity-20 transition"
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent the parent div's onClick from firing
+              navigateToFullTimeline();
+            }}
           >
-            <span>VIEW ALL</span>
-            <ArrowUpRight className="h-3 w-3 ml-1" />
+            OPEN
           </button>
         </div>
       </div>
