@@ -117,7 +117,7 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="border-primary/20 shadow-[0_0_5px_var(--primary-glow-light)]">
                 <DropdownMenuItem className="text-xs cursor-pointer">
                   <Pencil className="h-3 w-3 mr-2" />
                   Edit
@@ -196,7 +196,7 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" className="border-primary/20 shadow-[0_0_5px_var(--primary-glow-light)]">
           <DropdownMenuItem className="text-xs cursor-pointer">
             <Pencil className="h-3 w-3 mr-2" />
             Edit
@@ -246,7 +246,7 @@ function AlbumItem({ album, onSelect }: { album: MediaAlbum, onSelect: (album: M
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="border-primary/20 shadow-[0_0_5px_var(--primary-glow-light)]">
               <DropdownMenuItem className="text-xs cursor-pointer">
                 <Pencil className="h-3 w-3 mr-2" />
                 Edit
@@ -565,7 +565,7 @@ export default function MediaLibraryPage() {
                   <SlidersHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="border-primary/20 shadow-[0_0_5px_var(--primary-glow-light)]">
                 <DropdownMenuItem className="text-xs cursor-pointer">
                   Date (Newest)
                 </DropdownMenuItem>
