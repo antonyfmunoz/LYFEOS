@@ -332,14 +332,17 @@ export default function MediaLibraryPage() {
   return (
     <div className="pb-8">
       <div className="mb-6">
-        <div className="flex items-center">
+        <div className="flex items-center w-full">
           <Link to="/systems">
-            <Button variant="ghost" className="p-0 mr-2 h-auto">
-              <ChevronLeft className="h-5 w-5 mr-1" />
-              <span>Back</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 hover:bg-primary hover:text-background" 
+            >
+              <ChevronLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <h1 className="text-2xl font-orbitron">Media Library</h1>
+          <h1 className="text-2xl font-orbitron mx-auto pr-8">Media Library</h1>
         </div>
         <p className="text-[#7DAAB2] mt-1">Organize and manage your photos and videos</p>
       </div>
