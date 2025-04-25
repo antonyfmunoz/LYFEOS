@@ -374,6 +374,7 @@ export default function MediaLibraryPage() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState<number>(2); // 1=extra small, 2=small, 3=medium, 4=large
   const [optimisticMedia, setOptimisticMedia] = useState<MediaItem[]>([]);
+  const [activeFilter, setActiveFilter] = useState<string>("all"); // 'all', 'images', 'videos', 'recent7', 'recent30'
   
   // Empty default arrays for when no data is available
   const emptyItems: MediaItem[] = [];
@@ -414,11 +415,44 @@ export default function MediaLibraryPage() {
   // Combine server items with optimistic items
   const allItems = [...(mediaItems?.mediaItems || emptyItems), ...optimisticMedia];
   
-  // Filter items based on search query
-  const filteredItems = allItems.filter(
-    (item: MediaItem) => item.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-           item.fileName?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Apply type filter and date filter based on activeFilter
+  const applyFilters = (items: MediaItem[]) => {
+    // First apply search filter
+    let result = items.filter(
+      (item) => item.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+              item.fileName?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    
+    // Then apply type filter
+    switch (activeFilter) {
+      case 'images':
+        result = result.filter(item => item.fileType === 'image');
+        break;
+      case 'videos':
+        result = result.filter(item => item.fileType === 'video');
+        break;
+      case 'recent7':
+        // Filter for items created in the last 7 days
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        result = result.filter(item => new Date(item.createdAt || '') > sevenDaysAgo);
+        break;
+      case 'recent30':
+        // Filter for items created in the last 30 days
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        result = result.filter(item => new Date(item.createdAt || '') > thirtyDaysAgo);
+        break;
+      default:
+        // 'all' or any other value, no additional filtering
+        break;
+    }
+    
+    return result;
+  };
+  
+  // Apply all filters
+  const filteredItems = applyFilters(allItems);
   
   // Determine which items to display based on current state
   const displayItems = activeAlbum 
@@ -789,15 +823,55 @@ export default function MediaLibraryPage() {
               </Button>
             </div>
             
-            {/* Filter button */}
-            <Button 
-              variant="outline" 
-              size="icon" 
-              className="h-8 w-8 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow" 
-              title="Filter"
-            >
-              <Filter className="h-4 w-4" />
-            </Button>
+            {/* Filter dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  className={`h-8 w-8 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow ${activeFilter !== 'all' ? 'bg-primary/10 text-primary' : ''}`}
+                  title="Filter"
+                >
+                  <Filter className="h-4 w-4" />
+                  {activeFilter !== 'all' && (
+                    <span className="absolute -top-1 -right-1 h-2 w-2 bg-primary rounded-full"></span>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="border-primary/20">
+                <DropdownMenuItem 
+                  className={`text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all focus:bg-primary focus:text-background ${activeFilter === 'all' ? 'bg-primary/10' : ''}`}
+                  onClick={() => setActiveFilter('all')}
+                >
+                  All Media
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  className={`text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all focus:bg-primary focus:text-background ${activeFilter === 'images' ? 'bg-primary/10' : ''}`}
+                  onClick={() => setActiveFilter('images')}
+                >
+                  Images Only
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  className={`text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all focus:bg-primary focus:text-background ${activeFilter === 'videos' ? 'bg-primary/10' : ''}`}
+                  onClick={() => setActiveFilter('videos')}
+                >
+                  Videos Only
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-primary/20" />
+                <DropdownMenuItem 
+                  className={`text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all focus:bg-primary focus:text-background ${activeFilter === 'recent7' ? 'bg-primary/10' : ''}`}
+                  onClick={() => setActiveFilter('recent7')}
+                >
+                  Last 7 Days
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  className={`text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all focus:bg-primary focus:text-background ${activeFilter === 'recent30' ? 'bg-primary/10' : ''}`}
+                  onClick={() => setActiveFilter('recent30')}
+                >
+                  Last 30 Days
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             
             {/* Zoom controls - only show in grid view */}
             {activeView === "grid" && (
