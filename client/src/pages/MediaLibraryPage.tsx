@@ -290,6 +290,7 @@ export default function MediaLibraryPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState<number>(2); // 1=extra small, 2=small, 3=medium, 4=large
+  const [optimisticMedia, setOptimisticMedia] = useState<MediaItem[]>([]);
   
   // Empty default arrays for when no data is available
   const emptyItems: MediaItem[] = [];
@@ -327,8 +328,11 @@ export default function MediaLibraryPage() {
     setActiveAlbum(album);
   };
   
+  // Combine server items with optimistic items
+  const allItems = [...(mediaItems?.mediaItems || emptyItems), ...optimisticMedia];
+  
   // Filter items based on search query
-  const filteredItems = (mediaItems?.mediaItems || emptyItems).filter(
+  const filteredItems = allItems.filter(
     (item: MediaItem) => item.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
            item.fileName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -385,10 +389,11 @@ export default function MediaLibraryPage() {
       setUploadProgress(0);
       
       // Create optimistic placeholders for each file to display instantly
-      const optimisticItems: MediaItem[] = files.map((file, index) => {
+      const optimisticItems = files.map((file, index) => {
         // Create a temporary object URL for the file
         const tempUrl = URL.createObjectURL(file);
         
+        // Create a proper media item with correct types
         return {
           id: -(Date.now() + index), // Use negative IDs for optimistic items
           userId: 2, // Assuming current user ID is 2
@@ -401,12 +406,17 @@ export default function MediaLibraryPage() {
           fileSize: file.size,
           isFavorite: false,
           createdAt: new Date().toISOString()
-        };
+        } as MediaItem; // Force type as MediaItem
       });
       
-      // Immediately update the UI with optimistic items
+      // Get the current items from the cache
       const currentItems = mediaItems?.mediaItems || [];
-      queryClient.setQueryData(['/api/users/2/media-items'], { 
+      
+      // Log the update for debugging
+      console.log('Adding optimistic items to UI', optimisticItems);
+      
+      // Immediately update the UI with the new combined items
+      queryClient.setQueryData<{mediaItems: MediaItem[]}>(['/api/users/2/media-items'], { 
         mediaItems: [...optimisticItems, ...currentItems] 
       });
       
@@ -460,6 +470,9 @@ export default function MediaLibraryPage() {
                 queryClient.refetchQueries({ queryKey: ['/api/users/2/media-items'] });
               }, 500);
               
+              // Clear optimistic items now that we have real server items
+              setOptimisticMedia([]);
+              
               setUploadModalOpen(false);
               resolve(response);
             } catch (error) {
@@ -490,9 +503,12 @@ export default function MediaLibraryPage() {
         xhr.send(formData);
       });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       // Query invalidation now handled in XHR onload handler
       console.log('Upload mutation completed successfully');
+      
+      // Clear optimistic media when server response is received
+      setOptimisticMedia([]);
       
       // Directly trigger a refetch
       refetchMediaItems();
@@ -509,6 +525,29 @@ export default function MediaLibraryPage() {
     if (files.length > 0) {
       // Close dialog instantly
       setUploadModalOpen(false);
+      
+      // Create immediate optimistic updates
+      const optimisticItems = files.map((file, index) => {
+        const tempUrl = URL.createObjectURL(file);
+        return {
+          id: -(Date.now() + index),
+          userId: 2,
+          albumId: activeAlbum?.id || null,
+          fileName: file.name,
+          title: file.name,
+          fileType: file.type.startsWith('image/') ? 'image' : 'video',
+          thumbnailUrl: tempUrl,
+          fileUrl: tempUrl,
+          fileSize: file.size,
+          isFavorite: false,
+          createdAt: new Date().toISOString()
+        } as MediaItem;
+      });
+      
+      // Add to both local state and update query cache
+      setOptimisticMedia([...optimisticItems, ...optimisticMedia]);
+      
+      console.log("Adding optimistic items locally:", optimisticItems);
       
       // Trigger the upload in the background
       uploadMediaMutation.mutate(files);
