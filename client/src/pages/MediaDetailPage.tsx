@@ -201,12 +201,11 @@ export default function MediaDetailPage() {
         <div className="flex gap-2">
           <Button
             variant="outline"
-            size="sm"
-            className="flex items-center gap-1"
+            size="icon"
+            className="h-8 w-8"
             onClick={handleDownload}
           >
             <Download className="h-4 w-4" />
-            Download
           </Button>
 
           <DropdownMenu>
