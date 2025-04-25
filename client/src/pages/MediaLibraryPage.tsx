@@ -383,7 +383,7 @@ export default function MediaLibraryPage() {
             </div>
             
             {/* Filter button */}
-            <Button variant="outline" size="sm" className="flex items-center">
+            <Button variant="outline" size="sm" className="flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
               <Filter className="h-4 w-4 mr-1" />
               <span>Filter</span>
             </Button>
@@ -391,7 +391,7 @@ export default function MediaLibraryPage() {
             {/* Sort dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="flex items-center">
+                <Button variant="outline" size="sm" className="flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
                   <SlidersHorizontal className="h-4 w-4 mr-1" />
                   <span>Sort</span>
                 </Button>
@@ -461,7 +461,7 @@ export default function MediaLibraryPage() {
                 variant="ghost" 
                 size="sm" 
                 onClick={clearSelection}
-                className="h-7 text-xs bg-muted/50 hover:bg-muted text-muted-foreground"
+                className="h-7 text-xs bg-muted/50 hover:bg-muted text-muted-foreground hover:shadow-[0_0_5px_rgba(0,0,0,0.2)] transition-shadow"
               >
                 <X className="h-3.5 w-3.5 mr-1" />
                 Cancel
@@ -489,7 +489,7 @@ export default function MediaLibraryPage() {
               <Button 
                 variant="ghost" 
                 size="sm"
-                className="h-7 text-xs bg-destructive/10 hover:bg-destructive hover:text-destructive-foreground text-destructive border border-destructive/50"
+                className="h-7 text-xs bg-destructive/10 hover:bg-destructive hover:text-destructive-foreground hover:shadow-[0_0_5px_rgba(239,68,68,0.5)] transition-shadow text-destructive border border-destructive/50"
               >
                 <Trash2 className="h-3.5 w-3.5 mr-1" />
                 Delete
@@ -504,7 +504,7 @@ export default function MediaLibraryPage() {
             <Button 
               variant="ghost" 
               size="sm" 
-              className="text-sm p-0 h-auto hover:bg-transparent hover:text-primary"
+              className="text-sm p-0 h-auto hover:bg-transparent hover:text-primary hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
               onClick={() => setActiveAlbum(null)}
             >
               All Media
