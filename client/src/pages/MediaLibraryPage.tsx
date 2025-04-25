@@ -294,9 +294,12 @@ export default function MediaLibraryPage() {
   const emptyItems: MediaItem[] = [];
   const emptyAlbums: MediaAlbum[] = [];
 
-  const { data: mediaItems, isLoading: isLoadingItems } = useQuery<{ mediaItems: MediaItem[] }>({
+  const { data: mediaItems, isLoading: isLoadingItems, refetch: refetchMediaItems } = useQuery<{ mediaItems: MediaItem[] }>({
     queryKey: ['/api/users/2/media-items'],
-    enabled: true
+    enabled: true,
+    staleTime: 5000, // Consider data fresh for only 5 seconds
+    refetchOnMount: 'always', // Always refetch when component mounts
+    refetchOnWindowFocus: true // Refetch when the window regains focus
   });
 
   const { data: mediaAlbums, isLoading: isLoadingAlbums } = useQuery<{ mediaAlbums: MediaAlbum[] }>({
@@ -411,15 +414,24 @@ export default function MediaLibraryPage() {
               const response = JSON.parse(xhr.responseText);
               console.log('Upload completed successfully:', response);
               
-              // Manually invalidate queries to ensure the UI updates
-              queryClient.invalidateQueries({ queryKey: ['/api/users/2/media-items'] });
+              // Manually invalidate queries to ensure the UI updates - force a full refetch
+              queryClient.invalidateQueries({ 
+                queryKey: ['/api/users/2/media-items'],
+                refetchType: 'all'
+              });
               
               // If there's an active album, invalidate the album's media items query
               if (activeAlbum) {
                 queryClient.invalidateQueries({ 
-                  queryKey: ['/api/media-items/album', activeAlbum.id] 
+                  queryKey: ['/api/media-items/album', activeAlbum.id],
+                  refetchType: 'all'
                 });
               }
+              
+              // Also refetch after a short delay to ensure the server has processed everything
+              setTimeout(() => {
+                queryClient.refetchQueries({ queryKey: ['/api/users/2/media-items'] });
+              }, 500);
               
               setUploadModalOpen(false);
               resolve(response);
@@ -454,6 +466,14 @@ export default function MediaLibraryPage() {
     onSuccess: () => {
       // Query invalidation now handled in XHR onload handler
       console.log('Upload mutation completed successfully');
+      
+      // Directly trigger a refetch
+      refetchMediaItems();
+      
+      // Extra safety - refetch after a short delay too
+      setTimeout(() => {
+        refetchMediaItems();
+      }, 1000);
     }
   });
   
