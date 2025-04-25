@@ -6,7 +6,8 @@ import {
   Download,
   Star,
   Trash2,
-  Pencil
+  Pencil,
+  Share
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -225,7 +226,10 @@ export default function MediaDetailPage() {
                 <Star className="h-3 w-3 mr-2" />
                 {mediaItem.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
               </DropdownMenuItem>
-              {/* Share functionality to be implemented later */}
+              <DropdownMenuItem className="text-xs cursor-pointer">
+                <Share className="h-3 w-3 mr-2" />
+                Share
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-xs cursor-pointer text-destructive focus:text-destructive">
                 <Trash2 className="h-3 w-3 mr-2" />
