@@ -117,7 +117,7 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="border-primary/20 shadow-[0_0_5px_var(--primary-glow-light)]">
+              <DropdownMenuContent align="end" className="border-primary/30 shadow-[0_0_15px_rgba(255,255,0,0.5)] bg-background/95">
                 <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
                   <Pencil className="h-3 w-3 mr-2" />
                   Edit
@@ -196,7 +196,7 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="border-primary/20 shadow-[0_0_5px_var(--primary-glow-light)]">
+        <DropdownMenuContent align="end" className="border-primary/30 shadow-[0_0_15px_rgba(255,255,0,0.5)] bg-background/95">
           <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
             <Pencil className="h-3 w-3 mr-2" />
             Edit
@@ -246,7 +246,7 @@ function AlbumItem({ album, onSelect }: { album: MediaAlbum, onSelect: (album: M
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="border-primary/20 shadow-[0_0_5px_var(--primary-glow-light)]">
+            <DropdownMenuContent align="end" className="border-primary/30 shadow-[0_0_15px_rgba(255,255,0,0.5)] bg-background/95">
               <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
                 <Pencil className="h-3 w-3 mr-2" />
                 Edit
@@ -565,7 +565,7 @@ export default function MediaLibraryPage() {
                   <SlidersHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="border-primary/20 shadow-[0_0_5px_var(--primary-glow-light)]">
+              <DropdownMenuContent align="end" className="border-primary/30 shadow-[0_0_15px_rgba(255,255,0,0.5)] bg-background/95">
                 <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
                   Date (Newest)
                 </DropdownMenuItem>
