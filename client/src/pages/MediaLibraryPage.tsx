@@ -412,9 +412,13 @@ export default function MediaLibraryPage() {
           <div className="flex-shrink-0 ml-auto">
             <Dialog>
               <DialogTrigger asChild>
-                <Button className="flex items-center">
-                  <Upload className="h-4 w-4 mr-1" />
-                  <span>Upload</span>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50 flex items-center"
+                >
+                  <Upload className="h-3.5 w-3.5 mr-1" />
+                  Upload
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
@@ -430,7 +434,13 @@ export default function MediaLibraryPage() {
                   <p className="text-xs text-center text-muted-foreground">Supports JPG, PNG, GIF, MP4, MOV up to 100MB</p>
                 </div>
                 <DialogFooter className="sm:justify-start">
-                  <Button type="button" className="mt-2">
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm"
+                    className="h-7 text-xs mt-2 bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50"
+                  >
+                    <Upload className="h-3.5 w-3.5 mr-1" />
                     Select Files
                   </Button>
                 </DialogFooter>
@@ -443,23 +453,41 @@ export default function MediaLibraryPage() {
         {selectedItems.length > 0 && (
           <div className="bg-background border rounded-md p-2 flex items-center justify-between">
             <div className="flex items-center">
-              <Button variant="ghost" size="sm" onClick={clearSelection}>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={clearSelection}
+                className="h-7 text-xs bg-muted/50 hover:bg-muted text-muted-foreground"
+              >
+                <X className="h-3.5 w-3.5 mr-1" />
                 Cancel
               </Button>
               <Separator orientation="vertical" className="h-5 mx-2" />
               <span className="text-sm">{selectedItems.length} selected</span>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm">
-                <Star className="h-3 w-3 mr-1" />
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50"
+              >
+                <Star className="h-3.5 w-3.5 mr-1" />
                 Add to Favorites
               </Button>
-              <Button variant="outline" size="sm">
-                <FolderIcon className="h-3 w-3 mr-1" />
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50"
+              >
+                <FolderIcon className="h-3.5 w-3.5 mr-1" />
                 Add to Album
               </Button>
-              <Button variant="destructive" size="sm">
-                <Trash2 className="h-3 w-3 mr-1" />
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="h-7 text-xs bg-destructive/10 hover:bg-destructive hover:text-destructive-foreground text-destructive border border-destructive/50"
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
                 Delete
               </Button>
             </div>
@@ -523,8 +551,12 @@ export default function MediaLibraryPage() {
                   <>
                     <p className="text-lg font-medium mb-1">No media found</p>
                     <p className="text-sm mb-4">Upload some photos or videos to get started</p>
-                    <Button>
-                      <Upload className="h-4 w-4 mr-1" />
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50"
+                    >
+                      <Upload className="h-3.5 w-3.5 mr-1" />
                       Upload Media
                     </Button>
                   </>
@@ -597,7 +629,15 @@ export default function MediaLibraryPage() {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button type="submit">Create Album</Button>
+                      <Button 
+                        type="submit" 
+                        variant="ghost" 
+                        size="sm"
+                        className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50"
+                      >
+                        <Plus className="h-3.5 w-3.5 mr-1" />
+                        Create Album
+                      </Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
