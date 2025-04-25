@@ -112,22 +112,22 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="h-7 w-7 text-white hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow rounded-full"
+                  className="h-7 w-7 text-white hover:bg-white/20 rounded-full"
                 >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="border-primary/30 shadow-[0_0_15px_rgba(255,255,0,0.5)] bg-background/95">
-                <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary/20">
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem className="text-xs cursor-pointer">
                   <Pencil className="h-3 w-3 mr-2" />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary/20">
+                <DropdownMenuItem className="text-xs cursor-pointer">
                   <Star className="h-3 w-3 mr-2" />
                   {item.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-xs cursor-pointer text-destructive hover:bg-primary/20">
+                <DropdownMenuItem className="text-xs cursor-pointer text-destructive focus:text-destructive">
                   <Trash2 className="h-3 w-3 mr-2" />
                   Delete
                 </DropdownMenuItem>
@@ -192,21 +192,21 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
       )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+          <Button variant="ghost" size="icon" className="h-8 w-8">
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="border-primary/30 shadow-[0_0_15px_rgba(255,255,0,0.5)] bg-background/95">
-          <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary/20">
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem className="text-xs cursor-pointer">
             <Pencil className="h-3 w-3 mr-2" />
             Edit
           </DropdownMenuItem>
-          <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary/20">
+          <DropdownMenuItem className="text-xs cursor-pointer">
             <Star className="h-3 w-3 mr-2" />
             {item.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-xs cursor-pointer text-destructive hover:bg-primary/20">
+          <DropdownMenuItem className="text-xs cursor-pointer text-destructive focus:text-destructive">
             <Trash2 className="h-3 w-3 mr-2" />
             Delete
           </DropdownMenuItem>
@@ -242,17 +242,17 @@ function AlbumItem({ album, onSelect }: { album: MediaAlbum, onSelect: (album: M
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+              <Button variant="ghost" size="icon" className="h-7 w-7">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="border-primary/30 shadow-[0_0_15px_rgba(255,255,0,0.5)] bg-background/95">
-              <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary/20">
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem className="text-xs cursor-pointer">
                 <Pencil className="h-3 w-3 mr-2" />
                 Edit
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-xs cursor-pointer text-destructive hover:bg-primary/20">
+              <DropdownMenuItem className="text-xs cursor-pointer text-destructive focus:text-destructive">
                 <Trash2 className="h-3 w-3 mr-2" />
                 Delete
               </DropdownMenuItem>
@@ -520,8 +520,8 @@ export default function MediaLibraryPage() {
             {/* Filter button */}
             <Button 
               variant="outline" 
-              size="sm" 
-              className="flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow" 
+              size="icon" 
+              className="h-8 w-8 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow" 
               title="Filter"
             >
               <Filter className="h-4 w-4" />
@@ -532,8 +532,8 @@ export default function MediaLibraryPage() {
               <div className="bg-background rounded-md flex">
                 <Button 
                   variant="outline" 
-                  size="sm" 
-                  className="flex items-center rounded-r-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+                  size="icon" 
+                  className="h-8 w-8 rounded-r-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
                   onClick={zoomOut}
                   title="Zoom Out"
                   disabled={zoomLevel <= 1}
@@ -542,8 +542,8 @@ export default function MediaLibraryPage() {
                 </Button>
                 <Button 
                   variant="outline" 
-                  size="sm" 
-                  className="flex items-center rounded-l-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+                  size="icon" 
+                  className="h-8 w-8 rounded-l-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
                   onClick={zoomIn}
                   title="Zoom In"
                   disabled={zoomLevel >= 4}
@@ -558,24 +558,24 @@ export default function MediaLibraryPage() {
               <DropdownMenuTrigger asChild>
                 <Button 
                   variant="outline" 
-                  size="sm"
-                  className="flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow" 
+                  size="icon" 
+                  className="h-8 w-8 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow" 
                   title="Sort"
                 >
                   <SlidersHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="border-primary/30 shadow-[0_0_15px_rgba(255,255,0,0.5)] bg-background/95">
-                <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary/20">
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem className="text-xs cursor-pointer">
                   Date (Newest)
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary/20">
+                <DropdownMenuItem className="text-xs cursor-pointer">
                   Date (Oldest)
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary/20">
+                <DropdownMenuItem className="text-xs cursor-pointer">
                   Name (A-Z)
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-xs cursor-pointer hover:bg-primary/20">
+                <DropdownMenuItem className="text-xs cursor-pointer">
                   Name (Z-A)
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -587,8 +587,8 @@ export default function MediaLibraryPage() {
               <DialogTrigger asChild>
                 <Button 
                   variant="ghost" 
-                  size="sm"
-                  className="flex items-center bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
+                  size="icon"
+                  className="h-8 w-8 bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
                   title="Upload Media"
                 >
                   <Upload className="h-4 w-4" />
@@ -802,8 +802,8 @@ export default function MediaLibraryPage() {
                     <p className="text-sm mb-4">Upload some photos or videos to get started</p>
                     <Button 
                       variant="ghost" 
-                      size="sm"
-                      className="flex items-center bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
+                      size="icon"
+                      className="h-8 w-8 bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
                       onClick={() => fileInputRef.current?.click()}
                       title="Upload Media"
                     >
