@@ -123,58 +123,17 @@ function AlbumGrid({ albums }: { albums: MediaAlbum[] }) {
 }
 
 export function MediaWidget() {
-  // Mock data for quick UI development - will be replaced with actual API calls
-  const mockRecentItems = [
-    { 
-      id: 1, 
-      fileName: 'beach.jpg', 
-      title: 'Beach Sunset', 
-      fileType: 'image', 
-      thumbnailUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YmVhY2h8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60',
-      isFavorite: true
-    },
-    {
-      id: 2,
-      fileName: 'mountains.jpg',
-      title: 'Mountain View',
-      fileType: 'image',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8bW91bnRhaW5zfGVufDB8fDB8fHww&auto=format&fit=crop&w=800&q=60',
-      isFavorite: false
-    },
-    {
-      id: 3,
-      fileName: 'drone_video.mp4',
-      title: 'Drone Footage',
-      fileType: 'video',
-      thumbnailUrl: '',
-      isFavorite: false
-    }
-  ];
-
-  const mockAlbums = [
-    {
-      id: 1,
-      title: 'Vacations',
-      coverImageUrl: 'https://images.unsplash.com/photo-1607705703571-c5a8695f18f6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fGJlYWNoJTIwdmFjYXRpb258ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60',
-      itemCount: 32
-    },
-    {
-      id: 2,
-      title: 'Work Projects',
-      coverImageUrl: '',
-      itemCount: 15
-    }
-  ];
+  // Empty default arrays for when no data is available
+  const emptyItems: MediaItem[] = [];
+  const emptyAlbums: MediaAlbum[] = [];
 
   const { data: mediaItems, isLoading: isLoadingItems } = useQuery<{ mediaItems: MediaItem[] }>({
-    queryKey: ['/api/users/:userId/media-items'],
-    // Enable actual API fetching
+    queryKey: ['/api/users/2/media-items'],
     enabled: true
   });
 
   const { data: mediaAlbums, isLoading: isLoadingAlbums } = useQuery<{ mediaAlbums: MediaAlbum[] }>({
-    queryKey: ['/api/users/:userId/media-albums'],
-    // Enable actual API fetching
+    queryKey: ['/api/users/2/media-albums'],
     enabled: true
   });
 

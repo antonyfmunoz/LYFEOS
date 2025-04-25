@@ -377,14 +377,12 @@ export default function MediaLibraryPage() {
   ];
 
   const { data: mediaItems, isLoading: isLoadingItems } = useQuery<{ mediaItems: MediaItem[] }>({
-    queryKey: ['/api/users/:userId/media-items'],
-    // Enable actual API fetching
+    queryKey: ['/api/users/2/media-items'],
     enabled: true
   });
 
   const { data: mediaAlbums, isLoading: isLoadingAlbums } = useQuery<{ mediaAlbums: MediaAlbum[] }>({
-    queryKey: ['/api/users/:userId/media-albums'],
-    // Enable actual API fetching
+    queryKey: ['/api/users/2/media-albums'],
     enabled: true
   });
 
