@@ -34,6 +34,9 @@ interface MediaAlbum {
 
 // Gallery grid for the media items
 function GalleryGrid({ items }: { items: MediaItem[] }) {
+  // Limit to max 9 items
+  const limitedItems = items.slice(0, 9);
+  
   return (
     <div className="grid grid-cols-3 gap-2">
       {items.length === 0 ? (
@@ -42,7 +45,7 @@ function GalleryGrid({ items }: { items: MediaItem[] }) {
           <p className="text-sm">No media items found</p>
         </div>
       ) : (
-        items.map((item) => (
+        limitedItems.map((item) => (
           <div 
             key={item.id} 
             className="aspect-square rounded-md overflow-hidden relative group"
@@ -176,6 +179,13 @@ export function MediaWidget() {
             <>
               <GalleryGrid items={mediaItems?.mediaItems || emptyItems} />
               <div className="mt-3 flex justify-center">
+                {(mediaItems?.mediaItems?.length || 0) > 9 && (
+                  <div className="text-xs text-muted-foreground mb-2">
+                    +{(mediaItems?.mediaItems?.length || 0) - 9} more items
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-center">
                 <Button 
                   variant="ghost" 
                   size="sm"
@@ -215,14 +225,23 @@ export function MediaWidget() {
         <TabsContent value="favorites">
           {isLoadingItems ? (
             <div className="grid grid-cols-3 gap-2">
-              {[1,.2, 3].map((i) => (
+              {[1, 2, 3].map((i) => (
                 <Skeleton key={i} className="aspect-square rounded-md" />
               ))}
             </div>
           ) : (
-            <GalleryGrid 
-              items={(mediaItems?.mediaItems || emptyItems).filter((item: MediaItem) => item.isFavorite)} 
-            />
+            <>
+              <GalleryGrid 
+                items={(mediaItems?.mediaItems || emptyItems).filter((item: MediaItem) => item.isFavorite)} 
+              />
+              {(mediaItems?.mediaItems?.filter(item => item.isFavorite).length || 0) > 9 && (
+                <div className="mt-3 flex justify-center">
+                  <div className="text-xs text-muted-foreground">
+                    +{(mediaItems?.mediaItems?.filter(item => item.isFavorite).length || 0) - 9} more favorites
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
       </Tabs>
