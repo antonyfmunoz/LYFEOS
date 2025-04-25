@@ -451,9 +451,28 @@ export default function MediaLibraryPage() {
                     e.currentTarget.classList.remove('border-primary');
                     
                     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                      console.log('Files dropped:', e.dataTransfer.files);
-                      // Handle the dropped files here
-                      // You would typically upload them to your server
+                      // Convert FileList to Array for better processing
+                      const filesArray = Array.from(e.dataTransfer.files);
+                      console.log('Files dropped:', filesArray);
+                      
+                      // Here we would typically handle the file upload to the server
+                      // For demonstration purposes, we'll create and log preview information
+                      filesArray.forEach(file => {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          if (event.target?.result) {
+                            console.log(`Preview for ${file.name}:`, {
+                              name: file.name,
+                              type: file.type,
+                              size: file.size,
+                              lastModified: file.lastModified,
+                              // The file data/URL would be available here
+                              // data: event.target.result
+                            });
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      });
                     }
                   }}
                   onClick={() => fileInputRef.current?.click()}
@@ -472,9 +491,28 @@ export default function MediaLibraryPage() {
                     onChange={(e) => {
                       // Handle file upload logic here
                       if (e.target.files && e.target.files.length > 0) {
-                        console.log('Files selected:', e.target.files);
-                        // You would typically upload these files to your server
-                        // For now we're just logging them
+                        // Convert FileList to Array for better processing
+                        const filesArray = Array.from(e.target.files);
+                        console.log('Files selected:', filesArray);
+                        
+                        // Here we would typically handle the file upload to the server
+                        // For demonstration purposes, we'll create and log preview information
+                        filesArray.forEach(file => {
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            if (event.target?.result) {
+                              console.log(`Preview for ${file.name}:`, {
+                                name: file.name,
+                                type: file.type,
+                                size: file.size,
+                                lastModified: file.lastModified,
+                                // The file data/URL would be available here
+                                // data: event.target.result
+                              });
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        });
                       }
                     }}
                   />
