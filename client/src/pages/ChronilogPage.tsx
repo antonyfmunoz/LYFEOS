@@ -8,6 +8,7 @@ import { useState, useCallback, useRef } from 'react';
 import update from 'immutability-helper';
 import { cn } from '@/lib/utils';
 import { DropTargetMonitor } from 'react-dnd';
+import TimelineWidget from '@/components/chronilog/TimelineWidget';
 
 // Define DraggableCategoryItem component
 interface CategoryItem {
@@ -255,6 +256,11 @@ export default function ChronilogPage() {
             navigate={navigate}
           />
         ))}
+      </div>
+      
+      {/* Timeline widget */}
+      <div className="mt-8">
+        <TimelineWidget />
       </div>
     </DndProvider>
   );
