@@ -16,7 +16,9 @@ import {
   kanbanBoards, type KanbanBoard, type InsertKanbanBoard,
   kanbanColumns, type KanbanColumn, type InsertKanbanColumn,
   kanbanTasks, type KanbanTask, type InsertKanbanTask,
-  progressTrackers, type ProgressTracker, type InsertProgressTracker
+  progressTrackers, type ProgressTracker, type InsertProgressTracker,
+  mediaItems, type MediaItem, type InsertMediaItem,
+  mediaAlbums, type MediaAlbum, type InsertMediaAlbum
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -157,6 +159,23 @@ export interface IStorage {
   createProgressTracker(tracker: InsertProgressTracker): Promise<ProgressTracker>;
   updateProgressTracker(id: number, tracker: Partial<InsertProgressTracker>): Promise<ProgressTracker>;
   deleteProgressTracker(id: number): Promise<void>;
+  
+  // Media methods
+  getMediaItemsByUserId(userId: number): Promise<MediaItem[]>;
+  getMediaItemsByAlbum(albumId: number): Promise<MediaItem[]>;
+  getMediaItem(id: number): Promise<MediaItem | undefined>;
+  createMediaItem(item: InsertMediaItem): Promise<MediaItem>;
+  updateMediaItem(id: number, item: Partial<InsertMediaItem>): Promise<MediaItem>;
+  deleteMediaItem(id: number): Promise<void>;
+  toggleFavoriteMediaItem(id: number): Promise<MediaItem>;
+  
+  // Media Album methods
+  getMediaAlbumsByUserId(userId: number): Promise<MediaAlbum[]>;
+  getMediaAlbum(id: number): Promise<MediaAlbum | undefined>;
+  createMediaAlbum(album: InsertMediaAlbum): Promise<MediaAlbum>;
+  updateMediaAlbum(id: number, album: Partial<InsertMediaAlbum>): Promise<MediaAlbum>;
+  deleteMediaAlbum(id: number): Promise<void>;
+  setAlbumCoverImage(albumId: number, mediaItemId: number): Promise<MediaAlbum>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -996,6 +1015,122 @@ export class DatabaseStorage implements IStorage {
   
   async deleteProgressTracker(id: number): Promise<void> {
     await db.delete(progressTrackers).where(eq(progressTrackers.id, id));
+  }
+  
+  // Media methods
+  async getMediaItemsByUserId(userId: number): Promise<MediaItem[]> {
+    return db.select().from(mediaItems).where(eq(mediaItems.userId, userId));
+  }
+  
+  async getMediaItemsByAlbum(albumId: number): Promise<MediaItem[]> {
+    return db.select().from(mediaItems).where(eq(mediaItems.albumId, albumId));
+  }
+  
+  async getMediaItem(id: number): Promise<MediaItem | undefined> {
+    const [item] = await db.select().from(mediaItems).where(eq(mediaItems.id, id));
+    return item;
+  }
+  
+  async createMediaItem(item: InsertMediaItem): Promise<MediaItem> {
+    const [newItem] = await db
+      .insert(mediaItems)
+      .values(item)
+      .returning();
+    return newItem;
+  }
+  
+  async updateMediaItem(id: number, itemUpdate: Partial<InsertMediaItem>): Promise<MediaItem> {
+    const [updatedItem] = await db
+      .update(mediaItems)
+      .set({ ...itemUpdate, updatedAt: new Date() })
+      .where(eq(mediaItems.id, id))
+      .returning();
+    return updatedItem;
+  }
+  
+  async deleteMediaItem(id: number): Promise<void> {
+    await db.delete(mediaItems).where(eq(mediaItems.id, id));
+  }
+  
+  async toggleFavoriteMediaItem(id: number): Promise<MediaItem> {
+    const item = await this.getMediaItem(id);
+    if (!item) throw new Error("Media item not found");
+    
+    const [updatedItem] = await db
+      .update(mediaItems)
+      .set({ 
+        isFavorite: !item.isFavorite,
+        updatedAt: new Date()
+      })
+      .where(eq(mediaItems.id, id))
+      .returning();
+    
+    return updatedItem;
+  }
+  
+  // Media Album methods
+  async getMediaAlbumsByUserId(userId: number): Promise<MediaAlbum[]> {
+    return db.select().from(mediaAlbums).where(eq(mediaAlbums.userId, userId));
+  }
+  
+  async getMediaAlbum(id: number): Promise<MediaAlbum | undefined> {
+    const [album] = await db.select().from(mediaAlbums).where(eq(mediaAlbums.id, id));
+    return album;
+  }
+  
+  async createMediaAlbum(album: InsertMediaAlbum): Promise<MediaAlbum> {
+    const [newAlbum] = await db
+      .insert(mediaAlbums)
+      .values(album)
+      .returning();
+    return newAlbum;
+  }
+  
+  async updateMediaAlbum(id: number, albumUpdate: Partial<InsertMediaAlbum>): Promise<MediaAlbum> {
+    const [updatedAlbum] = await db
+      .update(mediaAlbums)
+      .set({ ...albumUpdate, updatedAt: new Date() })
+      .where(eq(mediaAlbums.id, id))
+      .returning();
+    return updatedAlbum;
+  }
+  
+  async deleteMediaAlbum(id: number): Promise<void> {
+    // First check if there are media items in this album
+    const itemsInAlbum = await this.getMediaItemsByAlbum(id);
+    
+    // If there are items, update them to have null albumId
+    if (itemsInAlbum.length > 0) {
+      await db
+        .update(mediaItems)
+        .set({ albumId: null })
+        .where(eq(mediaItems.albumId, id));
+    }
+    
+    // Then delete the album
+    await db.delete(mediaAlbums).where(eq(mediaAlbums.id, id));
+  }
+  
+  async setAlbumCoverImage(albumId: number, mediaItemId: number): Promise<MediaAlbum> {
+    // Check if album exists
+    const album = await this.getMediaAlbum(albumId);
+    if (!album) throw new Error("Album not found");
+    
+    // Check if media item exists
+    const mediaItem = await this.getMediaItem(mediaItemId);
+    if (!mediaItem) throw new Error("Media item not found");
+    
+    // Update the album
+    const [updatedAlbum] = await db
+      .update(mediaAlbums)
+      .set({ 
+        coverImageId: mediaItemId,
+        updatedAt: new Date()
+      })
+      .where(eq(mediaAlbums.id, albumId))
+      .returning();
+    
+    return updatedAlbum;
   }
 }
 
