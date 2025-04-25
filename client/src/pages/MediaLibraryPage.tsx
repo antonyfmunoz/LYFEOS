@@ -837,17 +837,25 @@ export default function MediaLibraryPage() {
                   <SlidersHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem className="text-xs cursor-pointer">
+              <DropdownMenuContent align="end" className="border-primary/20">
+                <DropdownMenuItem 
+                  className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all focus:bg-primary focus:text-background"
+                >
                   Date (Newest)
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-xs cursor-pointer">
+                <DropdownMenuItem 
+                  className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all focus:bg-primary focus:text-background"
+                >
                   Date (Oldest)
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-xs cursor-pointer">
+                <DropdownMenuItem 
+                  className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all focus:bg-primary focus:text-background"
+                >
                   Name (A-Z)
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-xs cursor-pointer">
+                <DropdownMenuItem 
+                  className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all focus:bg-primary focus:text-background"
+                >
                   Name (Z-A)
                 </DropdownMenuItem>
               </DropdownMenuContent>
