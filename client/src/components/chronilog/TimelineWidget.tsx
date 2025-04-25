@@ -1,6 +1,7 @@
 import React from 'react';
 import { CalendarClock, ArrowUpRight } from 'lucide-react';
 import { useLYFEOS } from '@/lib/context';
+import { MissionPage } from '@/lib/types';
 
 interface TimelineItem {
   id: string;
@@ -11,21 +12,121 @@ interface TimelineItem {
   color: string;
 }
 
+// Helper function to get color based on category
+function getCategoryColor(category: string): string {
+  switch(category.toLowerCase()) {
+    case 'missions':
+      return 'cyan-400';
+    case 'journal':
+      return 'primary';
+    case 'rituals':
+      return 'secondary';
+    case 'knowledge':
+      return 'accent';
+    case 'goals':
+      return 'emerald-400';
+    default:
+      return 'primary';
+  }
+}
+
+// Helper function to get actual color values
+function getNodeColor(category: string): string {
+  switch(category.toLowerCase()) {
+    case 'missions':
+      return '#22d3ee'; // cyan-400
+    case 'journal':
+      return 'var(--primary)';
+    case 'rituals':
+      return 'var(--secondary)';
+    case 'knowledge':
+      return 'var(--accent)';
+    case 'goals':
+      return '#34d399'; // emerald-400
+    default:
+      return 'var(--primary)';
+  }
+}
+
+// Extract a short description from the markdown content
+function getDescriptionFromContent(content: string): string {
+  // Remove markdown formatting
+  const cleanContent = content
+    .replace(/#{1,6}\s+/g, '') // Remove headings
+    .replace(/\*\*|__/g, '')   // Remove bold
+    .replace(/\*|_/g, '')     // Remove italic
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Replace links with just their text
+    .replace(/^\s*[\-\*]\s+/gm, '') // Remove list markers
+    .replace(/`{1,3}[^`]*`{1,3}/g, ''); // Remove code blocks and inline code
+
+  // Get the first two sentences or up to 150 characters
+  const sentences = cleanContent.split(/[.!?]+/);
+  const firstSentences = sentences.slice(0, 2).join('. ');
+  
+  if (firstSentences.length <= 150) {
+    return firstSentences.trim();
+  }
+  
+  return firstSentences.substring(0, 147).trim() + '...';
+}
+
+// Derive a category from tags
+function getCategoryFromTags(tags: string[]): string {
+  if (!tags || tags.length === 0) {
+    return 'missions';
+  }
+  
+  const tagMap: Record<string, string> = {
+    journal: 'journal',
+    diary: 'journal',
+    reflection: 'journal',
+    routine: 'rituals',
+    ritual: 'rituals',
+    habit: 'rituals',
+    knowledge: 'knowledge',
+    learning: 'knowledge',
+    book: 'knowledge',
+    course: 'knowledge',
+    goal: 'goals',
+    vision: 'goals',
+    aspiration: 'goals',
+    objective: 'goals',
+    mission: 'missions',
+    task: 'missions',
+    project: 'missions'
+  };
+  
+  // Check if any tags match our categories
+  for (const tag of tags) {
+    const lowerTag = tag.toLowerCase();
+    if (tagMap[lowerTag]) {
+      return tagMap[lowerTag];
+    }
+  }
+  
+  return 'missions'; // Default category
+}
+
 const TimelineWidget = () => {
   const { missionPages } = useLYFEOS();
   
-  // Convert missionPages to timeline items
-  const timelineItems: TimelineItem[] = missionPages.map(page => ({
-    id: page.id.toString(),
-    date: new Date(page.createdAt).toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric'
-    }),
-    title: page.title,
-    description: page.description || 'No description',
-    category: page.category,
-    color: getCategoryColor(page.category)
-  }));
+  // Convert missionPages to timeline items with derived categories based on tags
+  const timelineItems: TimelineItem[] = missionPages.map(page => {
+    // Derive category from tags if available
+    const category = getCategoryFromTags(page.tags);
+    
+    return {
+      id: page.id,
+      date: new Date(page.createdAt).toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric'
+      }),
+      title: page.title,
+      description: getDescriptionFromContent(page.content),
+      category,
+      color: getCategoryColor(category)
+    };
+  });
 
   // Sort items by date (most recent first)
   const sortedItems = [...timelineItems].sort((a, b) => {
@@ -90,41 +191,5 @@ const TimelineWidget = () => {
     </div>
   );
 };
-
-// Helper function to get color based on category
-function getCategoryColor(category: string): string {
-  switch(category.toLowerCase()) {
-    case 'missions':
-      return 'cyan-400';
-    case 'journal':
-      return 'primary';
-    case 'rituals':
-      return 'secondary';
-    case 'knowledge':
-      return 'accent';
-    case 'goals':
-      return 'emerald-400';
-    default:
-      return 'primary';
-  }
-}
-
-// Helper function to get actual color values
-function getNodeColor(category: string): string {
-  switch(category.toLowerCase()) {
-    case 'missions':
-      return '#22d3ee'; // cyan-400
-    case 'journal':
-      return 'var(--primary)';
-    case 'rituals':
-      return 'var(--secondary)';
-    case 'knowledge':
-      return 'var(--accent)';
-    case 'goals':
-      return '#34d399'; // emerald-400
-    default:
-      return 'var(--primary)';
-  }
-}
 
 export default TimelineWidget;
