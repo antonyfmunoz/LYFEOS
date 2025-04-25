@@ -363,19 +363,19 @@ export default function MediaLibraryPage() {
           
           <div className="flex items-center space-x-2">
             {/* View toggle */}
-            <div className="bg-background border rounded-md flex">
+            <div className="bg-background rounded-md flex">
               <Button 
-                variant="ghost" 
+                variant="outline" 
                 size="sm" 
-                className={`h-9 px-2.5 rounded-r-none hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow hover:bg-primary hover:text-background ${activeView === 'grid' ? 'bg-primary/10' : ''}`}
+                className={`flex items-center rounded-r-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow ${activeView === 'grid' ? 'bg-primary/10' : ''}`}
                 onClick={() => setActiveView("grid")}
               >
                 <Grid className="h-4 w-4" />
               </Button>
               <Button 
-                variant="ghost" 
+                variant="outline" 
                 size="sm" 
-                className={`h-9 px-2.5 rounded-l-none hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow hover:bg-primary hover:text-background ${activeView === 'list' ? 'bg-primary/10' : ''}`}
+                className={`flex items-center rounded-l-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow ${activeView === 'list' ? 'bg-primary/10' : ''}`}
                 onClick={() => setActiveView("list")}
               >
                 <List className="h-4 w-4" />
@@ -383,7 +383,7 @@ export default function MediaLibraryPage() {
             </div>
             
             {/* Filter button */}
-            <Button variant="outline" size="sm" className="h-9 flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+            <Button variant="outline" size="sm" className="flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
               <Filter className="h-4 w-4 mr-1" />
               <span>Filter</span>
             </Button>
@@ -391,7 +391,7 @@ export default function MediaLibraryPage() {
             {/* Sort dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+                <Button variant="outline" size="sm" className="flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
                   <SlidersHorizontal className="h-4 w-4 mr-1" />
                   <span>Sort</span>
                 </Button>
@@ -417,11 +417,11 @@ export default function MediaLibraryPage() {
             <Dialog>
               <DialogTrigger asChild>
                 <Button 
-                  variant="outline" 
+                  variant="ghost" 
                   size="sm"
-                  className="h-9 flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+                  className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50 flex items-center"
                 >
-                  <Upload className="h-4 w-4 mr-1" />
+                  <Upload className="h-3.5 w-3.5 mr-1" />
                   Upload
                 </Button>
               </DialogTrigger>
@@ -440,11 +440,11 @@ export default function MediaLibraryPage() {
                 <DialogFooter className="sm:justify-start">
                   <Button 
                     type="button" 
-                    variant="outline" 
+                    variant="ghost" 
                     size="sm"
-                    className="h-9 flex items-center mt-2 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+                    className="h-7 text-xs mt-2 bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
                   >
-                    <Upload className="h-4 w-4 mr-1" />
+                    <Upload className="h-3.5 w-3.5 mr-1" />
                     Select Files
                   </Button>
                 </DialogFooter>
@@ -458,12 +458,12 @@ export default function MediaLibraryPage() {
           <div className="bg-background border rounded-md p-2 flex items-center justify-between">
             <div className="flex items-center">
               <Button 
-                variant="outline" 
+                variant="ghost" 
                 size="sm" 
                 onClick={clearSelection}
-                className="h-9 flex items-center hover:bg-muted hover:shadow-[0_0_5px_rgba(0,0,0,0.2)] transition-shadow"
+                className="h-7 text-xs bg-muted/50 hover:bg-muted text-muted-foreground hover:shadow-[0_0_5px_rgba(0,0,0,0.2)] transition-shadow"
               >
-                <X className="h-4 w-4 mr-1" />
+                <X className="h-3.5 w-3.5 mr-1" />
                 Cancel
               </Button>
               <Separator orientation="vertical" className="h-5 mx-2" />
@@ -471,27 +471,27 @@ export default function MediaLibraryPage() {
             </div>
             <div className="flex gap-2">
               <Button 
-                variant="outline" 
+                variant="ghost" 
                 size="sm"
-                className="h-9 flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+                className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
               >
-                <Star className="h-4 w-4 mr-1" />
+                <Star className="h-3.5 w-3.5 mr-1" />
                 Add to Favorites
               </Button>
               <Button 
-                variant="outline" 
+                variant="ghost" 
                 size="sm"
-                className="h-9 flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+                className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
               >
-                <FolderIcon className="h-4 w-4 mr-1" />
+                <FolderIcon className="h-3.5 w-3.5 mr-1" />
                 Add to Album
               </Button>
               <Button 
-                variant="outline" 
+                variant="ghost" 
                 size="sm"
-                className="h-9 flex items-center hover:bg-destructive hover:text-destructive-foreground hover:shadow-[0_0_5px_rgba(239,68,68,0.5)] transition-shadow"
+                className="h-7 text-xs bg-destructive/10 hover:bg-destructive hover:text-destructive-foreground hover:shadow-[0_0_5px_rgba(239,68,68,0.5)] transition-shadow text-destructive border border-destructive/50"
               >
-                <Trash2 className="h-4 w-4 mr-1" />
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
                 Delete
               </Button>
             </div>
@@ -556,11 +556,11 @@ export default function MediaLibraryPage() {
                     <p className="text-lg font-medium mb-1">No media found</p>
                     <p className="text-sm mb-4">Upload some photos or videos to get started</p>
                     <Button 
-                      variant="outline" 
+                      variant="ghost" 
                       size="sm"
-                      className="h-9 flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+                      className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
                     >
-                      <Upload className="h-4 w-4 mr-1" />
+                      <Upload className="h-3.5 w-3.5 mr-1" />
                       Upload Media
                     </Button>
                   </>
@@ -635,11 +635,11 @@ export default function MediaLibraryPage() {
                     <DialogFooter>
                       <Button 
                         type="submit" 
-                        variant="outline" 
+                        variant="ghost" 
                         size="sm"
-                        className="h-9 flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+                        className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
                       >
-                        <Plus className="h-4 w-4 mr-1" />
+                        <Plus className="h-3.5 w-3.5 mr-1" />
                         Create Album
                       </Button>
                     </DialogFooter>
