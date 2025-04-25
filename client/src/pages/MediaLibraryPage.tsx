@@ -46,19 +46,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 
-// Function to format file size
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return bytes + ' B';
-  const units = ['KB', 'MB', 'GB'];
-  let size = bytes / 1024;
-  let unitIndex = 0;
-  while (size >= 1024 && unitIndex < units.length - 1) {
-    size /= 1024;
-    unitIndex++;
-  }
-  return size.toFixed(1) + ' ' + units[unitIndex];
-}
-
 // Media Item component
 // Define interfaces for media items and albums
 interface MediaItem {
@@ -111,38 +98,61 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
         >
           {item.fileType === 'video' && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <Video className="h-8 w-8 text-white/80" />
+              <Video className="h-8 w-8 text-white/50" />
             </div>
           )}
-          
-          {/* Checkbox overlay that appears on hover or when selected */}
-          <div 
-            className={`absolute top-2 left-2 ${
-              isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-            } transition-opacity`}
-          >
-            <div 
-              className={`h-5 w-5 rounded-full ${
-                isSelected ? 'bg-primary' : 'bg-black/50'
-              } flex items-center justify-center`}
-            >
-              {isSelected && <span className="text-white text-xs">✓</span>}
-            </div>
+        </div>
+        
+        {/* Hover overlay */}
+        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2">
+          <div className="flex justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-7 w-7 text-white hover:bg-white/20 rounded-full"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem className="text-xs cursor-pointer">
+                  <Pencil className="h-3 w-3 mr-2" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem className="text-xs cursor-pointer">
+                  <Star className="h-3 w-3 mr-2" />
+                  {item.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-xs cursor-pointer text-destructive focus:text-destructive">
+                  <Trash2 className="h-3 w-3 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-          
-          {/* Favorite star indicator */}
-          {item.isFavorite && (
-            <div className="absolute top-2 right-2">
-              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-            </div>
-          )}
+          <div className="text-white text-xs">
+            {item.title || item.fileName}
+          </div>
         </div>
-        <div className="p-2 bg-card">
-          <p className="text-xs font-medium truncate">{item.title || item.fileName}</p>
-          <p className="text-xs text-muted-foreground">
-            {new Date(item.createdAt || new Date()).toLocaleDateString()}
-          </p>
-        </div>
+        
+        {/* Favorite indicator */}
+        {item.isFavorite && (
+          <div className="absolute top-1 right-1">
+            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+          </div>
+        )}
+        
+        {/* Selection indicator */}
+        {isSelected && (
+          <div className="absolute top-2 left-2 h-5 w-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M11.4669 3.72684C11.7558 3.91574 11.8369 4.30308 11.648 4.59198L7.39799 11.092C7.29783 11.2452 7.13556 11.3467 6.95402 11.3699C6.77247 11.3931 6.58989 11.3355 6.45446 11.2124L3.70446 8.71241C3.44905 8.48022 3.43023 8.08494 3.66242 7.82953C3.89461 7.57412 4.28989 7.55529 4.5453 7.78749L6.75292 9.79441L10.6018 3.90792C10.7907 3.61902 11.178 3.53795 11.4669 3.72684Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
+            </svg>
+          </div>
+        )}
       </div>
     );
   }
@@ -150,29 +160,24 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
   // List view
   return (
     <div 
-      className={`flex items-center p-3 hover:bg-secondary/10 cursor-pointer ${
-        isSelected ? 'bg-secondary/20' : ''
-      }`}
+      className={`flex items-center p-2 hover:bg-primary/5 rounded-md cursor-pointer
+        ${isSelected ? 'bg-primary/10' : ''}`}
       onClick={() => onSelect(item)}
     >
-      <div className="mr-3 relative">
-        <div 
-          className={`h-10 w-10 rounded bg-cover bg-center relative ${
-            isSelected ? 'ring-2 ring-primary' : ''
-          }`}
-          style={{ 
-            backgroundImage: item.fileType === 'image' 
-              ? `url(${item.thumbnailUrl || ''})` 
-              : 'none',
-            backgroundColor: '#1a1a1a'
-          }}
-        >
-          {item.fileType === 'video' && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Video className="h-5 w-5 text-white/50" />
-            </div>
-          )}
-        </div>
+      <div className="w-10 h-10 mr-3 rounded-md overflow-hidden flex-shrink-0">
+        {item.fileType === 'image' ? (
+          <div 
+            className="w-full h-full bg-cover bg-center"
+            style={{ 
+              backgroundImage: `url(${item.fileUrl || item.thumbnailUrl || ''})`,
+              backgroundColor: '#1a1a1a'
+            }}
+          />
+        ) : (
+          <div className="w-full h-full bg-[#1a1a1a] flex items-center justify-center">
+            <Video className="h-5 w-5 text-white/50" />
+          </div>
+        )}
       </div>
       <div className="flex-grow min-w-0">
         <p className="text-sm font-medium truncate">{item.title || item.fileName}</p>
@@ -218,62 +223,71 @@ function AlbumItem({ album, onSelect }: { album: MediaAlbum, onSelect: (album: M
       onClick={() => onSelect(album)}
     >
       <div 
-        className="aspect-video bg-muted bg-cover bg-center"
-        style={{ backgroundImage: `url(${album.coverImageUrl || ''})` }}
+        className="aspect-video bg-cover bg-center"
+        style={{ 
+          backgroundImage: album.coverImageUrl ? `url(${album.coverImageUrl})` : 'none',
+          backgroundColor: '#1a1a1a'
+        }}
       >
         {!album.coverImageUrl && (
-          <div className="h-full w-full flex items-center justify-center">
-            <FolderIcon className="h-10 w-10 text-muted-foreground/50" />
+          <div className="w-full h-full flex items-center justify-center">
+            <FolderIcon className="h-12 w-12 text-white/20" />
           </div>
         )}
       </div>
       <div className="p-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium">{album.title}</h3>
-          <span className="text-xs text-muted-foreground">{album.itemCount} items</span>
+        <div className="flex justify-between items-center">
+          <h3 className="text-sm font-medium truncate">{album.title}</h3>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem className="text-xs cursor-pointer">
+                <Pencil className="h-3 w-3 mr-2" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-xs cursor-pointer text-destructive focus:text-destructive">
+                <Trash2 className="h-3 w-3 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        {album.description && (
-          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{album.description}</p>
-        )}
+        <p className="text-xs text-muted-foreground">
+          {album.itemCount || 0} items • {new Date(album.createdAt || new Date()).toLocaleDateString()}
+        </p>
       </div>
     </div>
   );
 }
 
+// Format file size helper
+function formatFileSize(bytes?: number): string {
+  if (!bytes) return '0 B';
+  
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+}
+
+// Main Media Library Page
 export default function MediaLibraryPage() {
-  // Search query state
+  const [activeView, setActiveView] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
-  
-  // Selected items state
   const [selectedItems, setSelectedItems] = useState<MediaItem[]>([]);
-  
-  // Active album state (for viewing album contents)
   const [activeAlbum, setActiveAlbum] = useState<MediaAlbum | null>(null);
-  
-  // Upload progress state
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
-  
-  // File input ref
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  // View type state (grid or list)
-  const [activeView, setActiveView] = useState<"grid" | "list">("grid");
-  
-  // Grid size state
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [gridSize, setGridSize] = useState<"small" | "medium" | "large">("medium");
-  
-  // Function to get grid classes based on grid size
-  const getGridClasses = (size: "small" | "medium" | "large") => {
-    switch(size) {
-      case "small":
-        return "grid-cols-3 md:grid-cols-4 lg:grid-cols-6"; // Many smaller thumbnails
-      case "medium":
-        return "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"; // Medium size
-      case "large":
-        return "grid-cols-1 md:grid-cols-1 lg:grid-cols-2"; // Just 1-2 large photos per row
-    }
-  };
   
   // Empty default arrays for when no data is available
   const emptyItems: MediaItem[] = [];
@@ -319,135 +333,156 @@ export default function MediaLibraryPage() {
     ? filteredItems.filter((item: MediaItem) => item.albumId === activeAlbum.id)
     : filteredItems;
   
-  // Get favorite items
+  // Favorites tab items
   const favoriteItems = filteredItems.filter((item: MediaItem) => item.isFavorite);
   
-  // Handle file upload
-  const mediaUploadMutation = useMutation({
+  // Media upload mutation
+  const uploadMediaMutation = useMutation({
     mutationFn: async (files: File[]) => {
-      const formData = new FormData();
-      files.forEach(file => formData.append('files', file));
+      setIsUploading(true);
+      setUploadProgress(0);
       
-      return apiRequest('/api/media-items', {
-        method: 'POST',
-        body: formData
+      const formData = new FormData();
+      
+      // Append all files to the form data
+      files.forEach(file => {
+        formData.append('files', file);
+      });
+      
+      // If there's an active album, append the albumId
+      if (activeAlbum) {
+        formData.append('albumId', activeAlbum.id.toString());
+      }
+      
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        
+        // Track upload progress
+        xhr.upload.addEventListener('progress', (event) => {
+          if (event.lengthComputable) {
+            const progressPercent = Math.round((event.loaded / event.total) * 100);
+            setUploadProgress(progressPercent);
+            console.log(`Upload progress: ${progressPercent}%`);
+          }
+        });
+        
+        // Handle response when complete
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const response = JSON.parse(xhr.responseText);
+              console.log('Upload completed successfully:', response);
+              
+              // Manually invalidate queries to ensure the UI updates
+              queryClient.invalidateQueries({ queryKey: ['/api/users/2/media-items'] });
+              
+              // If there's an active album, invalidate the album's media items query
+              if (activeAlbum) {
+                queryClient.invalidateQueries({ 
+                  queryKey: ['/api/media-items/album', activeAlbum.id] 
+                });
+              }
+              
+              setUploadModalOpen(false);
+              resolve(response);
+            } catch (error) {
+              console.error('Error parsing response:', error);
+              reject(new Error('Invalid response format'));
+            }
+          } else {
+            console.error('Upload failed with status:', xhr.status);
+            reject(new Error(`Upload failed: ${xhr.status} ${xhr.statusText}`));
+          }
+        };
+        
+        // Handle network/connection errors
+        xhr.onerror = () => {
+          console.error('Network error during upload');
+          reject(new Error('Network error during upload'));
+        };
+        
+        // Handle completion (successful or not)
+        xhr.onloadend = () => {
+          setIsUploading(false);
+          // Reset progress after a delay to show 100% briefly
+          setTimeout(() => setUploadProgress(0), 500);
+        };
+        
+        // Set up and send the request
+        xhr.open('POST', '/api/media-items', true);
+        xhr.send(formData);
       });
     },
     onSuccess: () => {
-      // Reset upload state
-      setIsUploading(false);
-      setUploadProgress(0);
-      
-      // Invalidate queries to refresh the media items
-      queryClient.invalidateQueries({queryKey: ['/api/users/2/media-items']});
+      // Query invalidation now handled in XHR onload handler
+      console.log('Upload mutation completed successfully');
     }
   });
   
+  // Handle file upload
   const handleFileUpload = (files: File[]) => {
-    // Filter out invalid files (not images or videos)
-    const validFiles = files.filter(file => 
-      file.type.startsWith('image/') || file.type.startsWith('video/')
-    );
-    
-    // Filter out files that are too large (100MB limit)
-    const sizeLimit = 100 * 1024 * 1024; // 100MB in bytes
-    const validSizeFiles = validFiles.filter(file => file.size <= sizeLimit);
-    
-    if (validSizeFiles.length === 0) {
-      console.error('No valid files to upload');
-      return;
+    if (files.length > 0) {
+      uploadMediaMutation.mutate(files);
     }
-    
-    // Start upload
-    setIsUploading(true);
-    
-    // Simulate progress for better UX
-    const progressInterval = setInterval(() => {
-      setUploadProgress(prev => {
-        const next = prev + (100 - prev) * 0.1;
-        return next > 95 ? 95 : next;
-      });
-    }, 300);
-    
-    // Upload files
-    mediaUploadMutation.mutate(validSizeFiles, {
-      onSuccess: () => {
-        clearInterval(progressInterval);
-        setUploadProgress(100);
-        
-        // Reset upload state after a short delay to show 100% completion
-        setTimeout(() => {
-          setIsUploading(false);
-          setUploadProgress(0);
-        }, 500);
-      },
-      onError: (error) => {
-        clearInterval(progressInterval);
-        console.error('Upload failed:', error);
-        setIsUploading(false);
-        setUploadProgress(0);
-      }
-    });
   };
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-7xl">
-      <div className="space-y-6">
-        {/* Page header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <Link to="/">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="mr-2 hover:bg-transparent hover:text-primary hover:shadow-[0_0_10px_rgba(255,255,0,0.5)] transition-shadow"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
-            </Link>
-            <h1 className="text-2xl font-bold">Media Library</h1>
-          </div>
+    <div className="pb-8">
+      <div className="mb-6">
+        <div className="flex items-center w-full">
+          <Link to="/systems">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow" 
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <h1 className="text-2xl font-orbitron mx-auto pr-8">Media Library</h1>
         </div>
-        
-        {/* Search and filters bar */}
-        <div className="flex flex-wrap justify-between items-center gap-3">
-          <div className="flex-1 min-w-[200px] max-w-md relative">
-            <Input
-              type="text"
-              placeholder="Search media..."
+        <p className="text-[#7DAAB2] mt-1">Organize and manage your photos and videos</p>
+      </div>
+      
+      <div className="flex flex-col space-y-4">
+        {/* Search and controls */}
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="relative flex-grow max-w-md">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input 
+              type="search" 
+              placeholder="Search media..." 
+              className="pl-9 bg-background"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
             />
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           </div>
           
-          <div className="flex flex-wrap items-center gap-2">
-            {/* View type controls */}
+          <div className="flex items-center space-x-2">
+            {/* View toggle */}
             <div className="bg-background rounded-md flex">
               <Button 
                 variant="outline" 
                 size="sm" 
-                className={`flex items-center h-8 px-2 rounded-r-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow ${activeView === 'grid' ? 'bg-primary/10' : ''}`}
+                className={`flex items-center rounded-r-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow ${activeView === 'grid' ? 'bg-primary/10' : ''}`}
                 onClick={() => setActiveView("grid")}
-                title="Grid view"
               >
-                <div className="flex items-center">
-                  <Grid className="h-4 w-4" />
-                </div>
+                <Grid className="h-4 w-4" />
               </Button>
               <Button 
                 variant="outline" 
                 size="sm" 
-                className={`flex items-center h-8 px-2 rounded-l-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow ${activeView === 'list' ? 'bg-primary/10' : ''}`}
+                className={`flex items-center rounded-l-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow ${activeView === 'list' ? 'bg-primary/10' : ''}`}
                 onClick={() => setActiveView("list")}
-                title="List view"
               >
-                <div className="flex items-center">
-                  <List className="h-4 w-4" />
-                </div>
+                <List className="h-4 w-4" />
               </Button>
             </div>
+            
+            {/* Filter button */}
+            <Button variant="outline" size="icon" className="h-8 w-8 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow" title="Filter">
+              <Filter className="h-4 w-4" />
+            </Button>
             
             {/* Zoom controls - only show in grid view */}
             {activeView === "grid" && (
@@ -455,12 +490,12 @@ export default function MediaLibraryPage() {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className={`flex items-center h-8 px-2 rounded-r-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow ${gridSize === 'large' ? 'bg-primary/10' : ''}`}
-                  onClick={() => setGridSize("large")}
-                  title="Very large thumbnails (1-2 per row)"
+                  className={`flex items-center h-8 px-2 rounded-r-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow ${gridSize === 'small' ? 'bg-primary/10' : ''}`}
+                  onClick={() => setGridSize("small")}
+                  title="Small thumbnails"
                 >
                   <div className="flex items-center">
-                    <Grid className="h-5 w-5" />
+                    <Grid className="h-3 w-3" />
                   </div>
                 </Button>
                 <Button 
@@ -477,12 +512,12 @@ export default function MediaLibraryPage() {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className={`flex items-center h-8 px-2 rounded-l-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow ${gridSize === 'small' ? 'bg-primary/10' : ''}`}
-                  onClick={() => setGridSize("small")}
-                  title="Small thumbnails (more items)"
+                  className={`flex items-center h-8 px-2 rounded-l-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow ${gridSize === 'large' ? 'bg-primary/10' : ''}`}
+                  onClick={() => setGridSize("large")}
+                  title="Large thumbnails"
                 >
                   <div className="flex items-center">
-                    <Grid className="h-3 w-3" />
+                    <Grid className="h-5 w-5" />
                   </div>
                 </Button>
               </div>
@@ -706,8 +741,12 @@ export default function MediaLibraryPage() {
           <TabsContent value="all" className="mt-4">
             {isLoadingItems ? (
               activeView === "grid" ? (
-                <div className={`grid gap-4 ${getGridClasses(gridSize)}`}>
-                  {Array.from({ length: gridSize === "large" ? 6 : gridSize === "small" ? 12 : 8 }).map((_, i) => (
+                <div className={`grid gap-4 ${
+                  gridSize === "small" ? "grid-cols-3 md:grid-cols-4 lg:grid-cols-6" : 
+                  gridSize === "large" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : 
+                  "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+                }`}>
+                  {Array.from({ length: gridSize === "small" ? 12 : gridSize === "large" ? 6 : 8 }).map((_, i) => (
                     <Skeleton key={i} className="aspect-square rounded-md" />
                   ))}
                 </div>
@@ -745,7 +784,11 @@ export default function MediaLibraryPage() {
             ) : (
               <>
                 {activeView === "grid" ? (
-                  <div className={`grid gap-4 ${getGridClasses(gridSize)}`}>
+                  <div className={`grid gap-4 ${
+                    gridSize === "small" ? "grid-cols-3 md:grid-cols-4 lg:grid-cols-6" : 
+                    gridSize === "large" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : 
+                    "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+                  }`}>
                     {displayItems.map((item) => (
                       <MediaItem 
                         key={item.id} 
@@ -838,8 +881,12 @@ export default function MediaLibraryPage() {
           <TabsContent value="favorites" className="mt-4">
             {isLoadingItems ? (
               activeView === "grid" ? (
-                <div className={`grid gap-4 ${getGridClasses(gridSize)}`}>
-                  {Array.from({ length: gridSize === "large" ? 6 : gridSize === "small" ? 12 : 8 }).map((_, i) => (
+                <div className={`grid gap-4 ${
+                  gridSize === "small" ? "grid-cols-3 md:grid-cols-4 lg:grid-cols-6" : 
+                  gridSize === "large" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : 
+                  "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+                }`}>
+                  {Array.from({ length: gridSize === "small" ? 12 : gridSize === "large" ? 6 : 8 }).map((_, i) => (
                     <Skeleton key={i} className="aspect-square rounded-md" />
                   ))}
                 </div>
@@ -859,7 +906,11 @@ export default function MediaLibraryPage() {
             ) : (
               <>
                 {activeView === "grid" ? (
-                  <div className={`grid gap-4 ${getGridClasses(gridSize)}`}>
+                  <div className={`grid gap-4 ${
+                    gridSize === "small" ? "grid-cols-3 md:grid-cols-4 lg:grid-cols-6" : 
+                    gridSize === "large" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : 
+                    "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+                  }`}>
                     {favoriteItems.map((item: MediaItem) => (
                       <MediaItem 
                         key={item.id} 
