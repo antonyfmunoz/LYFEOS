@@ -145,19 +145,7 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
         
         {/* Hover overlay */}
         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2">
-          <div className="flex justify-between">
-            {/* Select button */}
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-7 w-7 text-white hover:bg-white/20 rounded-full"
-              onClick={handleSelect}
-            >
-              <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4">
-                <path d="M12 2H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1V3a1 1 0 00-1-1zm-1.5 6.5h-6a.5.5 0 010-1h6a.5.5 0 010 1z" stroke="currentColor" strokeWidth="1" fill="none"></path>
-              </svg>
-            </Button>
-            
+          <div className="flex justify-end">
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={handleMenuClick}>
                 <Button 
@@ -169,6 +157,12 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem className="text-xs cursor-pointer" onClick={(e) => { e.stopPropagation(); handleSelect(e); }}>
+                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-2">
+                    <path d="M12 2H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1V3a1 1 0 00-1-1zm-1.5 6.5h-6a.5.5 0 010-1h6a.5.5 0 010 1z" stroke="currentColor" strokeWidth="1" fill="none"></path>
+                  </svg>
+                  {isSelected ? 'Deselect' : 'Select'}
+                </DropdownMenuItem>
                 <DropdownMenuItem className="text-xs cursor-pointer">
                   <Pencil className="h-3 w-3 mr-2" />
                   Edit
@@ -241,17 +235,6 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
       {item.isFavorite && (
         <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 mr-2" />
       )}
-      {/* Selection button */}
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        className="h-8 w-8"
-        onClick={handleSelect}
-      >
-        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4">
-          <path d="M12 2H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1V3a1 1 0 00-1-1zm-1.5 6.5h-6a.5.5 0 010-1h6a.5.5 0 010 1z" stroke="currentColor" strokeWidth="1" fill="none"></path>
-        </svg>
-      </Button>
       
       <DropdownMenu>
         <DropdownMenuTrigger asChild onClick={handleMenuClick}>
@@ -260,6 +243,12 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem className="text-xs cursor-pointer" onClick={(e) => { e.stopPropagation(); handleSelect(e); }}>
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-2">
+              <path d="M12 2H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1V3a1 1 0 00-1-1zm-1.5 6.5h-6a.5.5 0 010-1h6a.5.5 0 010 1z" stroke="currentColor" strokeWidth="1" fill="none"></path>
+            </svg>
+            {isSelected ? 'Deselect' : 'Select'}
+          </DropdownMenuItem>
           <DropdownMenuItem className="text-xs cursor-pointer">
             <Pencil className="h-3 w-3 mr-2" />
             Edit
