@@ -51,6 +51,8 @@ import TemplatesPage from "./pages/TemplatesPage";
 import TemplateDetail from "./pages/TemplateDetail";
 import DocumentsPage from "./pages/DocumentsPage";
 import DocumentDetailPage from "./pages/DocumentDetailPage";
+import ProgressTrackersPage from "./pages/ProgressTrackersPage";
+import ProgressTrackerFormPage from "./pages/ProgressTrackerFormPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -433,6 +435,31 @@ function Router() {
         <ProtectedRoute>
           <RootLayout>
             <DocumentDetailPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      {/* Progress Trackers routes */}
+      <Route path="/progress-trackers">
+        <ProtectedRoute>
+          <RootLayout>
+            <ProgressTrackersPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/progress-trackers/new">
+        <ProtectedRoute>
+          <RootLayout>
+            <ProgressTrackerFormPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/progress-trackers/:id">
+        <ProtectedRoute>
+          <RootLayout>
+            <ProgressTrackerFormPage />
           </RootLayout>
         </ProtectedRoute>
       </Route>
