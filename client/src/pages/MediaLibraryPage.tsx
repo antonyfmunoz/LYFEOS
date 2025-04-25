@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
@@ -57,6 +57,7 @@ interface MediaItem {
   fileType: string;
   thumbnailUrl: string;
   fileUrl?: string;
+  fileData?: string; // Base64 data URL from server
   fileSize?: number;
   width?: number;
   height?: number;
@@ -82,18 +83,19 @@ interface MediaItemProps {
 }
 
 function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
-  // Safely extract media URL without causing memory leaks
-  const getImageUrl = () => {
-    // For server-rendered images (not blob URLs), use directly
-    const url = item.fileUrl || item.thumbnailUrl || '';
-    if (!url.startsWith('blob:')) {
-      return url;
+  // We don't want to use blob URLs directly in the component, as they can cause memory leaks
+  // Instead, we'll use a data URL if available, or a direct URL
+  
+  // The thumbnail should always be displayed immediately without relying on blob URLs
+  const thumbnailSource = useMemo(() => {
+    // Use fileData from server if available (which is a data URL)
+    if (item.fileData) {
+      return item.fileData;
     }
     
-    // For blob URLs, we want to avoid re-rendering issues
-    // by not directly using the URL in the style attribute
-    return '';
-  };
+    // Otherwise fallback to thumbnailUrl
+    return item.thumbnailUrl || '';
+  }, [item.fileData, item.thumbnailUrl]);
   
   if (view === "grid") {
     return (
@@ -103,23 +105,13 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
         onClick={() => onSelect(item)}
       >
         {item.fileType === 'image' ? (
-          item.thumbnailUrl?.startsWith('blob:') ? (
-            // For blob URLs, use an img tag instead of background-image
-            <img 
-              src={item.thumbnailUrl} 
-              alt={item.title} 
-              className="aspect-square object-cover w-full h-full"
-            />
-          ) : (
-            // For data URLs and regular URLs, use background-image for better performance
-            <div 
-              className="aspect-square bg-cover bg-center"
-              style={{ 
-                backgroundImage: `url(${getImageUrl()})`,
-                backgroundColor: '#1a1a1a'
-              }}
-            />
-          )
+          // Always use img tags with strong memoization to prevent re-renders
+          <img 
+            src={thumbnailSource}
+            alt={item.title || item.fileName} 
+            className="aspect-square object-cover w-full h-full"
+            loading="lazy"
+          />
         ) : (
           // For videos
           <div 
@@ -195,23 +187,13 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
     >
       <div className="w-10 h-10 mr-3 rounded-md overflow-hidden flex-shrink-0">
         {item.fileType === 'image' ? (
-          item.thumbnailUrl?.startsWith('blob:') ? (
-            // For blob URLs, use img tag
-            <img 
-              src={item.thumbnailUrl} 
-              alt={item.title} 
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            // For data URLs and regular URLs
-            <div 
-              className="w-full h-full bg-cover bg-center"
-              style={{ 
-                backgroundImage: `url(${getImageUrl()})`,
-                backgroundColor: '#1a1a1a'
-              }}
-            />
-          )
+          // Same image strategy as grid view, reusing the thumbnailSource
+          <img 
+            src={thumbnailSource}
+            alt={item.title || item.fileName} 
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
         ) : (
           <div className="w-full h-full bg-[#1a1a1a] flex items-center justify-center">
             <Video className="h-5 w-5 text-white/50" />
@@ -256,24 +238,30 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
 
 // Album Item component
 function AlbumItem({ album, onSelect }: { album: MediaAlbum, onSelect: (album: MediaAlbum) => void }) {
+  // Same pattern as MediaItem - safely handle thumbnail images
+  const coverImage = useMemo(() => {
+    return album.coverImageUrl || '';
+  }, [album.coverImageUrl]);
+  
   return (
     <div 
       className="rounded-lg overflow-hidden border border-border hover:border-primary/50 cursor-pointer"
       onClick={() => onSelect(album)}
     >
-      <div 
-        className="aspect-video bg-cover bg-center"
-        style={{ 
-          backgroundImage: album.coverImageUrl ? `url(${album.coverImageUrl})` : 'none',
-          backgroundColor: '#1a1a1a'
-        }}
-      >
-        {!album.coverImageUrl && (
-          <div className="w-full h-full flex items-center justify-center">
-            <FolderIcon className="h-12 w-12 text-white/20" />
-          </div>
-        )}
-      </div>
+      {album.coverImageUrl ? (
+        <div className="aspect-video relative">
+          <img 
+            src={coverImage}
+            alt={album.title} 
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        </div>
+      ) : (
+        <div className="aspect-video bg-[#1a1a1a] flex items-center justify-center">
+          <FolderIcon className="h-12 w-12 text-white/20" />
+        </div>
+      )}
       <div className="p-3">
         <div className="flex justify-between items-center">
           <h3 className="text-sm font-medium truncate">{album.title}</h3>
