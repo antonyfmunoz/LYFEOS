@@ -352,25 +352,53 @@ export default function MediaLibraryPage() {
         formData.append('albumId', activeAlbum.id.toString());
       }
       
-      try {
-        // Upload the files and get the response
-        const response = await fetch('/api/media-items', {
-          method: 'POST',
-          body: formData,
-          // Don't set Content-Type header, let the browser set it for FormData
-        }).then(res => res.json());
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
         
-        // Close the upload modal
-        setUploadModalOpen(false);
+        // Track upload progress
+        xhr.upload.addEventListener('progress', (event) => {
+          if (event.lengthComputable) {
+            const progressPercent = Math.round((event.loaded / event.total) * 100);
+            setUploadProgress(progressPercent);
+            console.log(`Upload progress: ${progressPercent}%`);
+          }
+        });
         
-        return response;
-      } catch (error) {
-        console.error('Error uploading files:', error);
-        throw error;
-      } finally {
-        setIsUploading(false);
-        setUploadProgress(100);
-      }
+        // Handle response when complete
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const response = JSON.parse(xhr.responseText);
+              console.log('Upload completed successfully:', response);
+              setUploadModalOpen(false);
+              resolve(response);
+            } catch (error) {
+              console.error('Error parsing response:', error);
+              reject(new Error('Invalid response format'));
+            }
+          } else {
+            console.error('Upload failed with status:', xhr.status);
+            reject(new Error(`Upload failed: ${xhr.status} ${xhr.statusText}`));
+          }
+        };
+        
+        // Handle network/connection errors
+        xhr.onerror = () => {
+          console.error('Network error during upload');
+          reject(new Error('Network error during upload'));
+        };
+        
+        // Handle completion (successful or not)
+        xhr.onloadend = () => {
+          setIsUploading(false);
+          // Reset progress after a delay to show 100% briefly
+          setTimeout(() => setUploadProgress(0), 500);
+        };
+        
+        // Set up and send the request
+        xhr.open('POST', '/api/media-items', true);
+        xhr.send(formData);
+      });
     },
     onSuccess: () => {
       // Invalidate the media items query to refetch the data
@@ -495,38 +523,58 @@ export default function MediaLibraryPage() {
                     Add photos and videos to your library
                   </DialogDescription>
                 </DialogHeader>
-                <div 
-                  className="flex flex-col items-center justify-center border-2 border-dashed border-primary/20 rounded-lg p-12 mt-2"
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.currentTarget.classList.add('border-primary');
-                  }}
-                  onDragLeave={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.currentTarget.classList.remove('border-primary');
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.currentTarget.classList.remove('border-primary');
-                    
-                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                      // Convert FileList to Array for better processing
-                      const filesArray = Array.from(e.dataTransfer.files);
-                      console.log('Files dropped:', filesArray);
+                {isUploading ? (
+                  <div className="flex flex-col items-center justify-center border-2 border-primary/20 rounded-lg p-12 mt-2">
+                    <div className="w-full max-w-md">
+                      <div className="flex justify-between mb-2">
+                        <span className="text-sm font-medium">Uploading files...</span>
+                        <span className="text-sm text-muted-foreground">{uploadProgress}%</span>
+                      </div>
+                      <div className="w-full h-2 bg-primary/10 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-primary transition-all duration-300 rounded-full"
+                          style={{ width: `${uploadProgress}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-xs text-center text-muted-foreground mt-4">
+                        Please wait while your files are being uploaded
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div 
+                    className="flex flex-col items-center justify-center border-2 border-dashed border-primary/20 rounded-lg p-12 mt-2"
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.currentTarget.classList.add('border-primary');
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.currentTarget.classList.remove('border-primary');
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.currentTarget.classList.remove('border-primary');
                       
-                      // Upload the files
-                      handleFileUpload(filesArray);
-                    }
-                  }}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="h-10 w-10 text-muted-foreground mb-4" />
-                  <p className="text-sm text-center text-muted-foreground mb-2">Drag and drop files here or click to browse</p>
-                  <p className="text-xs text-center text-muted-foreground">Supports JPG, PNG, GIF, MP4, MOV up to 100MB</p>
-                </div>
+                      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                        // Convert FileList to Array for better processing
+                        const filesArray = Array.from(e.dataTransfer.files);
+                        console.log('Files dropped:', filesArray);
+                        
+                        // Upload the files
+                        handleFileUpload(filesArray);
+                      }
+                    }}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="h-10 w-10 text-muted-foreground mb-4" />
+                    <p className="text-sm text-center text-muted-foreground mb-2">Drag and drop files here or click to browse</p>
+                    <p className="text-xs text-center text-muted-foreground">Supports JPG, PNG, GIF, MP4, MOV up to 100MB</p>
+                  </div>
+                )}
                 <DialogFooter className="sm:justify-start">
                   <input
                     type="file"
@@ -545,16 +593,28 @@ export default function MediaLibraryPage() {
                         handleFileUpload(filesArray);
                       }
                     }}
+                    disabled={isUploading}
                   />
                   <Button 
                     type="button" 
                     variant="ghost" 
                     size="sm"
-                    className="h-7 text-xs mt-2 bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
-                    onClick={() => fileInputRef.current?.click()}
+                    className={`h-7 text-xs mt-2 ${
+                      isUploading 
+                        ? 'bg-muted text-muted-foreground cursor-not-allowed' 
+                        : 'bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50'
+                    }`}
+                    onClick={() => !isUploading && fileInputRef.current?.click()}
+                    disabled={isUploading}
                   >
-                    <Upload className="h-3.5 w-3.5 mr-1" />
-                    Select Files
+                    {isUploading ? (
+                      <>Processing...</>
+                    ) : (
+                      <>
+                        <Upload className="h-3.5 w-3.5 mr-1" />
+                        Select Files
+                      </>
+                    )}
                   </Button>
                 </DialogFooter>
               </DialogContent>
