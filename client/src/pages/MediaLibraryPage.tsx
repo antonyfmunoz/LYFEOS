@@ -363,19 +363,19 @@ export default function MediaLibraryPage() {
           
           <div className="flex items-center space-x-2">
             {/* View toggle */}
-            <div className="bg-background rounded-md flex">
+            <div className="bg-background border rounded-md flex">
               <Button 
-                variant="outline" 
+                variant="ghost" 
                 size="sm" 
-                className={`flex items-center rounded-r-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow ${activeView === 'grid' ? 'bg-primary/10' : ''}`}
+                className={`h-9 px-2.5 rounded-r-none hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow hover:bg-primary hover:text-background ${activeView === 'grid' ? 'bg-primary/10' : ''}`}
                 onClick={() => setActiveView("grid")}
               >
                 <Grid className="h-4 w-4" />
               </Button>
               <Button 
-                variant="outline" 
+                variant="ghost" 
                 size="sm" 
-                className={`flex items-center rounded-l-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow ${activeView === 'list' ? 'bg-primary/10' : ''}`}
+                className={`h-9 px-2.5 rounded-l-none hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow hover:bg-primary hover:text-background ${activeView === 'list' ? 'bg-primary/10' : ''}`}
                 onClick={() => setActiveView("list")}
               >
                 <List className="h-4 w-4" />
@@ -383,7 +383,7 @@ export default function MediaLibraryPage() {
             </div>
             
             {/* Filter button */}
-            <Button variant="outline" size="sm" className="flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+            <Button variant="outline" size="sm" className="h-9 flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
               <Filter className="h-4 w-4 mr-1" />
               <span>Filter</span>
             </Button>
@@ -391,7 +391,7 @@ export default function MediaLibraryPage() {
             {/* Sort dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+                <Button variant="outline" size="sm" className="h-9 flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
                   <SlidersHorizontal className="h-4 w-4 mr-1" />
                   <span>Sort</span>
                 </Button>
@@ -419,7 +419,7 @@ export default function MediaLibraryPage() {
                 <Button 
                   variant="outline" 
                   size="sm"
-                  className="flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+                  className="h-9 flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
                 >
                   <Upload className="h-4 w-4 mr-1" />
                   Upload
@@ -442,7 +442,7 @@ export default function MediaLibraryPage() {
                     type="button" 
                     variant="outline" 
                     size="sm"
-                    className="flex items-center mt-2 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+                    className="h-9 flex items-center mt-2 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
                   >
                     <Upload className="h-4 w-4 mr-1" />
                     Select Files
@@ -461,7 +461,7 @@ export default function MediaLibraryPage() {
                 variant="outline" 
                 size="sm" 
                 onClick={clearSelection}
-                className="flex items-center hover:bg-muted hover:shadow-[0_0_5px_rgba(0,0,0,0.2)] transition-shadow"
+                className="h-9 flex items-center hover:bg-muted hover:shadow-[0_0_5px_rgba(0,0,0,0.2)] transition-shadow"
               >
                 <X className="h-4 w-4 mr-1" />
                 Cancel
@@ -473,7 +473,7 @@ export default function MediaLibraryPage() {
               <Button 
                 variant="outline" 
                 size="sm"
-                className="flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+                className="h-9 flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
               >
                 <Star className="h-4 w-4 mr-1" />
                 Add to Favorites
@@ -481,7 +481,7 @@ export default function MediaLibraryPage() {
               <Button 
                 variant="outline" 
                 size="sm"
-                className="flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+                className="h-9 flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
               >
                 <FolderIcon className="h-4 w-4 mr-1" />
                 Add to Album
@@ -489,7 +489,7 @@ export default function MediaLibraryPage() {
               <Button 
                 variant="outline" 
                 size="sm"
-                className="flex items-center hover:bg-destructive hover:text-destructive-foreground hover:shadow-[0_0_5px_rgba(239,68,68,0.5)] transition-shadow"
+                className="h-9 flex items-center hover:bg-destructive hover:text-destructive-foreground hover:shadow-[0_0_5px_rgba(239,68,68,0.5)] transition-shadow"
               >
                 <Trash2 className="h-4 w-4 mr-1" />
                 Delete
@@ -558,7 +558,7 @@ export default function MediaLibraryPage() {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      className="flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+                      className="h-9 flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
                     >
                       <Upload className="h-4 w-4 mr-1" />
                       Upload Media
@@ -637,7 +637,7 @@ export default function MediaLibraryPage() {
                         type="submit" 
                         variant="outline" 
                         size="sm"
-                        className="flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+                        className="h-9 flex items-center hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
                       >
                         <Plus className="h-4 w-4 mr-1" />
                         Create Album
