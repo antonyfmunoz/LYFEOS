@@ -26,7 +26,7 @@ const TimelineWidget = () => {
           <span className="material-icons text-2xl text-primary">history</span>
         </div>
         <div>
-          <h3 className="text-lg font-orbitron text-[#D6F4FF]">Life Timeline</h3>
+          <h3 className="text-lg font-orbitron text-[#D6F4FF]">Timeline</h3>
           <p className="text-xs text-[#7DAAB2]">Your journey through time</p>
         </div>
       </div>
