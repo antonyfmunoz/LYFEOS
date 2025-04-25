@@ -243,17 +243,24 @@ export default function MediaDetailPage() {
                 </svg>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem className="text-xs cursor-pointer" onClick={() => setIsEditMode(true)}>
+            <DropdownMenuContent align="end" className="border-primary/20">
+              <DropdownMenuItem 
+                className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all focus:bg-primary focus:text-background" 
+                onClick={() => setIsEditMode(true)}
+              >
                 <Pencil className="h-3 w-3 mr-2" />
                 Edit
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-xs cursor-pointer">
+              <DropdownMenuItem 
+                className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all focus:bg-primary focus:text-background"
+              >
                 <Star className="h-3 w-3 mr-2" />
                 {mediaItem.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-xs cursor-pointer text-destructive focus:text-destructive">
+              <DropdownMenuSeparator className="bg-primary/20" />
+              <DropdownMenuItem 
+                className="text-xs cursor-pointer text-destructive hover:bg-destructive hover:text-destructive-foreground hover:shadow-[0_0_5px_rgba(255,0,0,0.3)] transition-all"
+              >
                 <Trash2 className="h-3 w-3 mr-2" />
                 Delete
               </DropdownMenuItem>

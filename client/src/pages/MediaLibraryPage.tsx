@@ -156,23 +156,32 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem className="text-xs cursor-pointer" onClick={(e) => { e.stopPropagation(); handleSelect(e); }}>
+              <DropdownMenuContent align="end" className="border-primary/20">
+                <DropdownMenuItem 
+                  className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all focus:bg-primary focus:text-background"
+                  onClick={(e) => { e.stopPropagation(); handleSelect(e); }}
+                >
                   <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-2">
                     <path d="M12 2H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1V3a1 1 0 00-1-1zm-1.5 6.5h-6a.5.5 0 010-1h6a.5.5 0 010 1z" stroke="currentColor" strokeWidth="1" fill="none"></path>
                   </svg>
                   {isSelected ? 'Deselect' : 'Select'}
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-xs cursor-pointer">
+                <DropdownMenuItem 
+                  className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all focus:bg-primary focus:text-background"
+                >
                   <Pencil className="h-3 w-3 mr-2" />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-xs cursor-pointer">
+                <DropdownMenuItem 
+                  className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all focus:bg-primary focus:text-background"
+                >
                   <Star className="h-3 w-3 mr-2" />
                   {item.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-xs cursor-pointer text-destructive focus:text-destructive">
+                <DropdownMenuSeparator className="bg-primary/20" />
+                <DropdownMenuItem 
+                  className="text-xs cursor-pointer text-destructive hover:bg-destructive hover:text-destructive-foreground hover:shadow-[0_0_5px_rgba(255,0,0,0.3)] transition-all"
+                >
                   <Trash2 className="h-3 w-3 mr-2" />
                   Delete
                 </DropdownMenuItem>
@@ -242,23 +251,32 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem className="text-xs cursor-pointer" onClick={(e) => { e.stopPropagation(); handleSelect(e); }}>
+        <DropdownMenuContent align="end" className="border-primary/20">
+          <DropdownMenuItem 
+            className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all focus:bg-primary focus:text-background"
+            onClick={(e) => { e.stopPropagation(); handleSelect(e); }}
+          >
             <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-2">
               <path d="M12 2H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1V3a1 1 0 00-1-1zm-1.5 6.5h-6a.5.5 0 010-1h6a.5.5 0 010 1z" stroke="currentColor" strokeWidth="1" fill="none"></path>
             </svg>
             {isSelected ? 'Deselect' : 'Select'}
           </DropdownMenuItem>
-          <DropdownMenuItem className="text-xs cursor-pointer">
+          <DropdownMenuItem 
+            className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all focus:bg-primary focus:text-background"
+          >
             <Pencil className="h-3 w-3 mr-2" />
             Edit
           </DropdownMenuItem>
-          <DropdownMenuItem className="text-xs cursor-pointer">
+          <DropdownMenuItem 
+            className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all focus:bg-primary focus:text-background"
+          >
             <Star className="h-3 w-3 mr-2" />
             {item.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-xs cursor-pointer text-destructive focus:text-destructive">
+          <DropdownMenuSeparator className="bg-primary/20" />
+          <DropdownMenuItem 
+            className="text-xs cursor-pointer text-destructive hover:bg-destructive hover:text-destructive-foreground hover:shadow-[0_0_5px_rgba(255,0,0,0.3)] transition-all"
+          >
             <Trash2 className="h-3 w-3 mr-2" />
             Delete
           </DropdownMenuItem>
@@ -300,17 +318,25 @@ function AlbumItem({ album, onSelect }: { album: MediaAlbum, onSelect: (album: M
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-7 w-7 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+              >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem className="text-xs cursor-pointer">
+            <DropdownMenuContent align="end" className="border-primary/20">
+              <DropdownMenuItem 
+                className="text-xs cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all focus:bg-primary focus:text-background"
+              >
                 <Pencil className="h-3 w-3 mr-2" />
                 Edit
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-xs cursor-pointer text-destructive focus:text-destructive">
+              <DropdownMenuSeparator className="bg-primary/20" />
+              <DropdownMenuItem 
+                className="text-xs cursor-pointer text-destructive hover:bg-destructive hover:text-destructive-foreground hover:shadow-[0_0_5px_rgba(255,0,0,0.3)] transition-all"
+              >
                 <Trash2 className="h-3 w-3 mr-2" />
                 Delete
               </DropdownMenuItem>
