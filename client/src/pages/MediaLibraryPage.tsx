@@ -6,6 +6,7 @@ import {
   ChevronLeft, 
   ChevronRight,
   Plus, 
+  Minus,
   Search, 
   Filter, 
   Image as ImageIcon, 
@@ -287,7 +288,7 @@ export default function MediaLibraryPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const [gridSize, setGridSize] = useState<"small" | "medium" | "large">("medium");
+  const [zoomLevel, setZoomLevel] = useState<number>(2); // 1=small, 2=medium, 3=large
   
   // Empty default arrays for when no data is available
   const emptyItems: MediaItem[] = [];
@@ -489,36 +490,23 @@ export default function MediaLibraryPage() {
               <div className="bg-background rounded-md flex">
                 <Button 
                   variant="outline" 
-                  size="sm" 
-                  className={`flex items-center h-8 px-2 rounded-r-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow ${gridSize === 'small' ? 'bg-primary/10' : ''}`}
-                  onClick={() => setGridSize("small")}
-                  title="Small thumbnails"
+                  size="icon" 
+                  className="h-8 w-8 rounded-r-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+                  onClick={() => setZoomLevel(Math.max(1, zoomLevel - 1))}
+                  title="Zoom Out"
+                  disabled={zoomLevel <= 1}
                 >
-                  <div className="flex items-center">
-                    <Grid className="h-3 w-3" />
-                  </div>
+                  <Minus className="h-4 w-4" />
                 </Button>
                 <Button 
                   variant="outline" 
-                  size="sm" 
-                  className={`flex items-center h-8 px-2 rounded-l-none rounded-r-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow ${gridSize === 'medium' ? 'bg-primary/10' : ''}`}
-                  onClick={() => setGridSize("medium")}
-                  title="Medium thumbnails"
+                  size="icon" 
+                  className="h-8 w-8 rounded-l-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+                  onClick={() => setZoomLevel(Math.min(3, zoomLevel + 1))}
+                  title="Zoom In"
+                  disabled={zoomLevel >= 3}
                 >
-                  <div className="flex items-center">
-                    <Grid className="h-4 w-4" />
-                  </div>
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className={`flex items-center h-8 px-2 rounded-l-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow ${gridSize === 'large' ? 'bg-primary/10' : ''}`}
-                  onClick={() => setGridSize("large")}
-                  title="Large thumbnails"
-                >
-                  <div className="flex items-center">
-                    <Grid className="h-5 w-5" />
-                  </div>
+                  <Plus className="h-4 w-4" />
                 </Button>
               </div>
             )}
