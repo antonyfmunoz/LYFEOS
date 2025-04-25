@@ -177,11 +177,11 @@ export function MediaWidget() {
               <GalleryGrid items={mediaItems?.mediaItems || emptyItems} />
               <div className="mt-3 flex justify-center">
                 <Button 
-                  variant="outline"
+                  variant="ghost" 
                   size="sm"
-                  className="text-xs h-7 border-primary/30 hover:border-primary hover:bg-primary/5"
+                  className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50"
                 >
-                  <Plus className="h-3 w-3 mr-1" />
+                  <Plus className="h-3.5 w-3.5 mr-1" />
                   Add Media
                 </Button>
               </div>
@@ -200,11 +200,11 @@ export function MediaWidget() {
               <AlbumGrid albums={mediaAlbums?.mediaAlbums || emptyAlbums} />
               <div className="mt-3 flex justify-center">
                 <Button 
-                  variant="outline"
+                  variant="ghost" 
                   size="sm"
-                  className="text-xs h-7 border-primary/30 hover:border-primary hover:bg-primary/5"
+                  className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50"
                 >
-                  <Plus className="h-3 w-3 mr-1" />
+                  <Plus className="h-3.5 w-3.5 mr-1" />
                   Create Album
                 </Button>
               </div>
