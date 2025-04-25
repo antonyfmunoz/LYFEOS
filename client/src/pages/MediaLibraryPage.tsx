@@ -287,7 +287,22 @@ export default function MediaLibraryPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  // Small = fewer large thumbnails, Large = more small thumbnails
   const [gridSize, setGridSize] = useState<"small" | "medium" | "large">("medium");
+  
+  // Helper function to get grid classes based on size
+  const getGridClasses = (size: "small" | "medium" | "large") => {
+    switch(size) {
+      case "small":
+        return "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"; // Fewer but larger thumbnails
+      case "medium":
+        return "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"; // Medium density/size
+      case "large":
+        return "grid-cols-3 md:grid-cols-4 lg:grid-cols-6"; // More but smaller thumbnails
+      default:
+        return "grid-cols-2 md:grid-cols-3 lg:grid-cols-4";
+    }
+  };
   
   // Empty default arrays for when no data is available
   const emptyItems: MediaItem[] = [];
