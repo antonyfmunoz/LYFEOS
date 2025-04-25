@@ -262,18 +262,18 @@ const TimelineWidget = () => {
   }).slice(0, 10); // Limit to 10 most recent items
 
   return (
-    <div className="glassmorphic rounded-xl p-6 neon-border">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center">
-          <CalendarClock className="h-5 w-5 text-primary mr-2" />
-          <h3 className="text-lg font-orbitron text-[#D6F4FF]">Life Timeline</h3>
+    <div className="glassmorphic rounded-xl p-6 neon-border hover:shadow-[0_0_10px_var(--primary-glow-medium)] hover:border-primary/60 transition-all duration-300">
+      <div className="flex items-center mb-3">
+        <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mr-4">
+          <CalendarClock className="h-6 w-6 text-primary" />
         </div>
-        <div className="text-xs text-muted-foreground">
-          Your journey through time
+        <div>
+          <h3 className="text-lg font-orbitron text-[#D6F4FF]">Life Timeline</h3>
+          <p className="text-xs text-[#7DAAB2]">Your journey through time</p>
         </div>
       </div>
       
-      <div className="space-y-6 relative">
+      <div className="space-y-6 relative mt-6">
         {/* Vertical timeline line */}
         <div className="absolute left-4 top-2 bottom-2 w-px bg-primary/30" />
         
@@ -320,10 +320,12 @@ const TimelineWidget = () => {
           </div>
         )}
         
-        {/* View more link */}
-        <div className="flex justify-center mt-4">
-          <button className="text-xs text-primary flex items-center hover:underline">
-            <span>View complete timeline</span>
+        {/* View more button */}
+        <div className="flex justify-end mt-4">
+          <button 
+            className="text-xs font-medium px-3 py-1 rounded-md bg-primary/10 text-primary hover:bg-opacity-20 transition flex items-center"
+          >
+            <span>VIEW ALL</span>
             <ArrowUpRight className="h-3 w-3 ml-1" />
           </button>
         </div>
