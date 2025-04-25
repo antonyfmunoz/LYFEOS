@@ -363,19 +363,19 @@ export default function MediaLibraryPage() {
           
           <div className="flex items-center space-x-2">
             {/* View toggle */}
-            <div className="bg-background border rounded-md flex">
+            <div className="bg-background rounded-md flex">
               <Button 
-                variant="ghost" 
+                variant="outline" 
                 size="sm" 
-                className={`h-9 px-2.5 rounded-r-none hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow hover:bg-primary hover:text-background ${activeView === 'grid' ? 'bg-primary/10' : ''}`}
+                className={`flex items-center rounded-r-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow ${activeView === 'grid' ? 'bg-primary/10' : ''}`}
                 onClick={() => setActiveView("grid")}
               >
                 <Grid className="h-4 w-4" />
               </Button>
               <Button 
-                variant="ghost" 
+                variant="outline" 
                 size="sm" 
-                className={`h-9 px-2.5 rounded-l-none hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow hover:bg-primary hover:text-background ${activeView === 'list' ? 'bg-primary/10' : ''}`}
+                className={`flex items-center rounded-l-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow ${activeView === 'list' ? 'bg-primary/10' : ''}`}
                 onClick={() => setActiveView("list")}
               >
                 <List className="h-4 w-4" />
