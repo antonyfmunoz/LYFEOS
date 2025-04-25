@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/authContext";
 import { useTheme } from "@/lib/themeContext";
 import { usePageTitle } from "@/hooks/use-page-title";
 import IntegrationsManager from "@/components/profile/IntegrationsManager";
+import CompactStatsWidget from "@/components/dashboard/CompactStatsWidget";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +34,8 @@ import {
   ArrowLeft,
   Link as LinkIcon,
   Globe,
-  Plus
+  Plus,
+  BarChart4
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -462,6 +464,16 @@ export default function ProfilePage() {
             )}
           </div>
 
+          {/* Stats Card */}
+          <div className="bg-background border border-primary/20 backdrop-blur-md rounded-lg p-6 shadow-lg mb-6"
+              style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
+            <h2 className="text-lg font-orbitron text-foreground flex items-center mb-4">
+              <BarChart4 className="mr-2 h-5 w-5 text-primary" />
+              Performance Stats
+            </h2>
+            <CompactStatsWidget stats={stats} />
+          </div>
+          
           {/* Settings Card */}
           <div className="bg-background border border-primary/20 backdrop-blur-md rounded-lg p-6 shadow-lg"
               style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
