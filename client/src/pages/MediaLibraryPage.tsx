@@ -44,10 +44,35 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 
 // Media Item component
+// Define interfaces for media items and albums
+interface MediaItem {
+  id: number;
+  fileName: string;
+  title: string;
+  fileType: string;
+  thumbnailUrl: string;
+  fileUrl?: string;
+  fileSize?: number;
+  width?: number;
+  height?: number;
+  albumId?: number;
+  isFavorite: boolean;
+  createdAt?: string;
+}
+
+interface MediaAlbum {
+  id: number;
+  title: string;
+  coverImageUrl: string;
+  itemCount: number;
+  description?: string;
+  createdAt?: string;
+}
+
 interface MediaItemProps {
-  item: any;
+  item: MediaItem;
   view: "grid" | "list";
-  onSelect: (item: any) => void;
+  onSelect: (item: MediaItem) => void;
   isSelected: boolean;
 }
 
@@ -353,22 +378,14 @@ export default function MediaLibraryPage() {
 
   const { data: mediaItems, isLoading: isLoadingItems } = useQuery({
     queryKey: ['/api/users/:userId/media-items'],
-    queryFn: async () => {
-      // This would fetch from actual API
-      // Mocking for now
-      return { mediaItems: mockMediaItems };
-    },
-    enabled: false // Disable auto-fetch while developing UI
+    // Enable actual API fetching
+    enabled: true
   });
 
   const { data: mediaAlbums, isLoading: isLoadingAlbums } = useQuery({
     queryKey: ['/api/users/:userId/media-albums'],
-    queryFn: async () => {
-      // This would fetch from actual API
-      // Mocking for now
-      return { mediaAlbums: mockAlbums };
-    },
-    enabled: false // Disable auto-fetch while developing UI
+    // Enable actual API fetching
+    enabled: true
   });
 
   // Handle item selection

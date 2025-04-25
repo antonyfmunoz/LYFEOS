@@ -14,8 +14,26 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 
+// Define types for media items and albums
+interface MediaItem {
+  id: number;
+  fileName: string;
+  title: string;
+  fileType: string;
+  thumbnailUrl: string;
+  fileUrl?: string;
+  isFavorite: boolean;
+}
+
+interface MediaAlbum {
+  id: number;
+  title: string;
+  coverImageUrl: string;
+  itemCount: number;
+}
+
 // Gallery grid for the media items
-function GalleryGrid({ items }: { items: any[] }) {
+function GalleryGrid({ items }: { items: MediaItem[] }) {
   return (
     <div className="grid grid-cols-3 gap-2">
       {items.length === 0 ? (
@@ -64,7 +82,7 @@ function GalleryGrid({ items }: { items: any[] }) {
 }
 
 // Album grid for albums
-function AlbumGrid({ albums }: { albums: any[] }) {
+function AlbumGrid({ albums }: { albums: MediaAlbum[] }) {
   return (
     <div className="grid grid-cols-2 gap-3 mt-2">
       {albums.length === 0 ? (
@@ -148,24 +166,16 @@ export function MediaWidget() {
     }
   ];
 
-  const { data: mediaItems, isLoading: isLoadingItems } = useQuery({
+  const { data: mediaItems, isLoading: isLoadingItems } = useQuery<{ mediaItems: MediaItem[] }>({
     queryKey: ['/api/users/:userId/media-items'],
-    queryFn: async () => {
-      // This would fetch from actual API
-      // Mocking for now
-      return { mediaItems: mockRecentItems };
-    },
-    enabled: false // Disable auto-fetch while developing UI
+    // Enable actual API fetching
+    enabled: true
   });
 
-  const { data: mediaAlbums, isLoading: isLoadingAlbums } = useQuery({
+  const { data: mediaAlbums, isLoading: isLoadingAlbums } = useQuery<{ mediaAlbums: MediaAlbum[] }>({
     queryKey: ['/api/users/:userId/media-albums'],
-    queryFn: async () => {
-      // This would fetch from actual API
-      // Mocking for now
-      return { mediaAlbums: mockAlbums };
-    },
-    enabled: false // Disable auto-fetch while developing UI
+    // Enable actual API fetching
+    enabled: true
   });
 
   return (
@@ -252,7 +262,7 @@ export function MediaWidget() {
             </div>
           ) : (
             <GalleryGrid 
-              items={(mediaItems?.mediaItems || mockRecentItems).filter(item => item.isFavorite)} 
+              items={(mediaItems?.mediaItems || mockRecentItems).filter((item: MediaItem) => item.isFavorite)} 
             />
           )}
         </TabsContent>
