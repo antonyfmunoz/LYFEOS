@@ -370,6 +370,17 @@ export default function MediaLibraryPage() {
             try {
               const response = JSON.parse(xhr.responseText);
               console.log('Upload completed successfully:', response);
+              
+              // Manually invalidate queries to ensure the UI updates
+              queryClient.invalidateQueries({ queryKey: ['/api/users/2/media-items'] });
+              
+              // If there's an active album, invalidate the album's media items query
+              if (activeAlbum) {
+                queryClient.invalidateQueries({ 
+                  queryKey: ['/api/media-items/album', activeAlbum.id] 
+                });
+              }
+              
               setUploadModalOpen(false);
               resolve(response);
             } catch (error) {
@@ -401,15 +412,8 @@ export default function MediaLibraryPage() {
       });
     },
     onSuccess: () => {
-      // Invalidate the media items query to refetch the data
-      queryClient.invalidateQueries({ queryKey: ['/api/users/2/media-items'] });
-      
-      // If there's an active album, invalidate the album's media items query
-      if (activeAlbum) {
-        queryClient.invalidateQueries({ 
-          queryKey: ['/api/media-items/album', activeAlbum.id] 
-        });
-      }
+      // Query invalidation now handled in XHR onload handler
+      console.log('Upload mutation completed successfully');
     }
   });
   
