@@ -1,0 +1,748 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
+import { 
+  ChevronLeft, 
+  Plus, 
+  Search, 
+  Filter, 
+  Image as ImageIcon, 
+  FolderIcon, 
+  Star, 
+  Grid, 
+  List, 
+  SlidersHorizontal, 
+  MoreHorizontal, 
+  Video, 
+  Upload, 
+  Pencil, 
+  Trash2
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
+
+// Media Item component
+interface MediaItemProps {
+  item: any;
+  view: "grid" | "list";
+  onSelect: (item: any) => void;
+  isSelected: boolean;
+}
+
+function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
+  if (view === "grid") {
+    return (
+      <div 
+        className={`relative rounded-md overflow-hidden group cursor-pointer 
+          ${isSelected ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-primary/50'}`}
+        onClick={() => onSelect(item)}
+      >
+        <div 
+          className="aspect-square bg-cover bg-center"
+          style={{ 
+            backgroundImage: item.fileType === 'image' 
+              ? `url(${item.fileUrl || item.thumbnailUrl || ''})` 
+              : 'none',
+            backgroundColor: '#1a1a1a'
+          }}
+        >
+          {item.fileType === 'video' && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Video className="h-8 w-8 text-white/50" />
+            </div>
+          )}
+        </div>
+        
+        {/* Hover overlay */}
+        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2">
+          <div className="flex justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-7 w-7 text-white hover:bg-white/20 rounded-full"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem className="text-xs cursor-pointer">
+                  <Pencil className="h-3 w-3 mr-2" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem className="text-xs cursor-pointer">
+                  <Star className="h-3 w-3 mr-2" />
+                  {item.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-xs cursor-pointer text-destructive focus:text-destructive">
+                  <Trash2 className="h-3 w-3 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <div className="text-white text-xs">
+            {item.title || item.fileName}
+          </div>
+        </div>
+        
+        {/* Favorite indicator */}
+        {item.isFavorite && (
+          <div className="absolute top-1 right-1">
+            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+          </div>
+        )}
+        
+        {/* Selection indicator */}
+        {isSelected && (
+          <div className="absolute top-2 left-2 h-5 w-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M11.4669 3.72684C11.7558 3.91574 11.8369 4.30308 11.648 4.59198L7.39799 11.092C7.29783 11.2452 7.13556 11.3467 6.95402 11.3699C6.77247 11.3931 6.58989 11.3355 6.45446 11.2124L3.70446 8.71241C3.44905 8.48022 3.43023 8.08494 3.66242 7.82953C3.89461 7.57412 4.28989 7.55529 4.5453 7.78749L6.75292 9.79441L10.6018 3.90792C10.7907 3.61902 11.178 3.53795 11.4669 3.72684Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
+            </svg>
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  // List view
+  return (
+    <div 
+      className={`flex items-center p-2 hover:bg-primary/5 rounded-md cursor-pointer
+        ${isSelected ? 'bg-primary/10' : ''}`}
+      onClick={() => onSelect(item)}
+    >
+      <div className="w-10 h-10 mr-3 rounded-md overflow-hidden flex-shrink-0">
+        {item.fileType === 'image' ? (
+          <div 
+            className="w-full h-full bg-cover bg-center"
+            style={{ 
+              backgroundImage: `url(${item.fileUrl || item.thumbnailUrl || ''})`,
+              backgroundColor: '#1a1a1a'
+            }}
+          />
+        ) : (
+          <div className="w-full h-full bg-[#1a1a1a] flex items-center justify-center">
+            <Video className="h-5 w-5 text-white/50" />
+          </div>
+        )}
+      </div>
+      <div className="flex-grow min-w-0">
+        <p className="text-sm font-medium truncate">{item.title || item.fileName}</p>
+        <p className="text-xs text-muted-foreground">
+          {new Date(item.createdAt || new Date()).toLocaleDateString()}
+          {item.fileSize && ` • ${formatFileSize(item.fileSize)}`}
+        </p>
+      </div>
+      {item.isFavorite && (
+        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 mr-2" />
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem className="text-xs cursor-pointer">
+            <Pencil className="h-3 w-3 mr-2" />
+            Edit
+          </DropdownMenuItem>
+          <DropdownMenuItem className="text-xs cursor-pointer">
+            <Star className="h-3 w-3 mr-2" />
+            {item.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem className="text-xs cursor-pointer text-destructive focus:text-destructive">
+            <Trash2 className="h-3 w-3 mr-2" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
+// Album Item component
+function AlbumItem({ album, onSelect }: { album: any, onSelect: (album: any) => void }) {
+  return (
+    <div 
+      className="rounded-lg overflow-hidden border border-border hover:border-primary/50 cursor-pointer"
+      onClick={() => onSelect(album)}
+    >
+      <div 
+        className="aspect-video bg-cover bg-center"
+        style={{ 
+          backgroundImage: album.coverImageUrl ? `url(${album.coverImageUrl})` : 'none',
+          backgroundColor: '#1a1a1a'
+        }}
+      >
+        {!album.coverImageUrl && (
+          <div className="w-full h-full flex items-center justify-center">
+            <FolderIcon className="h-12 w-12 text-white/20" />
+          </div>
+        )}
+      </div>
+      <div className="p-3">
+        <div className="flex justify-between items-center">
+          <h3 className="text-sm font-medium truncate">{album.title}</h3>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem className="text-xs cursor-pointer">
+                <Pencil className="h-3 w-3 mr-2" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-xs cursor-pointer text-destructive focus:text-destructive">
+                <Trash2 className="h-3 w-3 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {album.itemCount || 0} items • {new Date(album.createdAt || new Date()).toLocaleDateString()}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Format file size helper
+function formatFileSize(bytes?: number): string {
+  if (!bytes) return '0 B';
+  
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+}
+
+// Main Media Library Page
+export default function MediaLibraryPage() {
+  const [activeView, setActiveView] = useState<"grid" | "list">("grid");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedItems, setSelectedItems] = useState<any[]>([]);
+  const [activeAlbum, setActiveAlbum] = useState<any | null>(null);
+  
+  // Mock data for quick UI development - will be replaced with actual API calls
+  const mockMediaItems = [
+    { 
+      id: 1, 
+      fileName: 'beach.jpg', 
+      title: 'Beach Sunset', 
+      fileType: 'image', 
+      thumbnailUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YmVhY2h8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60',
+      isFavorite: true,
+      createdAt: '2025-04-10T12:00:00Z',
+      fileSize: 1253000
+    },
+    {
+      id: 2,
+      fileName: 'mountains.jpg',
+      title: 'Mountain View',
+      fileType: 'image',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8bW91bnRhaW5zfGVufDB8fDB8fHww&auto=format&fit=crop&w=800&q=60',
+      isFavorite: false,
+      createdAt: '2025-04-15T14:30:00Z',
+      fileSize: 982400
+    },
+    {
+      id: 3,
+      fileName: 'drone_video.mp4',
+      title: 'Drone Footage',
+      fileType: 'video',
+      thumbnailUrl: '',
+      isFavorite: false,
+      createdAt: '2025-04-18T09:45:00Z',
+      fileSize: 24128300
+    },
+    {
+      id: 4,
+      fileName: 'forest.jpg',
+      title: 'Forest Path',
+      fileType: 'image',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1448375240586-882707db888b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8Zm9yZXN0fGVufDB8fDB8fHww&auto=format&fit=crop&w=800&q=60',
+      isFavorite: true,
+      createdAt: '2025-04-20T16:20:00Z',
+      fileSize: 1867000
+    },
+    {
+      id: 5,
+      fileName: 'cityscape.jpg',
+      title: 'City at Night',
+      fileType: 'image',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Y2l0eXxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=800&q=60',
+      isFavorite: false,
+      createdAt: '2025-04-22T21:15:00Z',
+      fileSize: 2134000
+    },
+    {
+      id: 6,
+      fileName: 'presentation.mp4',
+      title: 'Project Presentation',
+      fileType: 'video',
+      thumbnailUrl: '',
+      isFavorite: false,
+      createdAt: '2025-04-23T10:30:00Z',
+      fileSize: 46230000
+    }
+  ];
+
+  const mockAlbums = [
+    {
+      id: 1,
+      title: 'Vacations',
+      coverImageUrl: 'https://images.unsplash.com/photo-1607705703571-c5a8695f18f6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fGJlYWNoJTIwdmFjYXRpb258ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60',
+      itemCount: 32,
+      createdAt: '2025-03-15T08:30:00Z'
+    },
+    {
+      id: 2,
+      title: 'Work Projects',
+      coverImageUrl: '',
+      itemCount: 15,
+      createdAt: '2025-04-01T14:45:00Z'
+    },
+    {
+      id: 3,
+      title: 'Family Photos',
+      coverImageUrl: 'https://images.unsplash.com/photo-1581952976147-5a2d15560349?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8ZmFtaWx5fGVufDB8fDB8fHww&auto=format&fit=crop&w=800&q=60',
+      itemCount: 48,
+      createdAt: '2025-01-10T12:00:00Z'
+    },
+    {
+      id: 4,
+      title: 'Design Inspiration',
+      coverImageUrl: 'https://images.unsplash.com/photo-1561211394-1811fbda85c5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8ZGVzaWduJTIwaW5zcGlyYXRpb258ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60',
+      itemCount: 22,
+      createdAt: '2025-02-22T09:15:00Z'
+    }
+  ];
+
+  const { data: mediaItems, isLoading: isLoadingItems } = useQuery({
+    queryKey: ['/api/users/:userId/media-items'],
+    queryFn: async () => {
+      // This would fetch from actual API
+      // Mocking for now
+      return { mediaItems: mockMediaItems };
+    },
+    enabled: false // Disable auto-fetch while developing UI
+  });
+
+  const { data: mediaAlbums, isLoading: isLoadingAlbums } = useQuery({
+    queryKey: ['/api/users/:userId/media-albums'],
+    queryFn: async () => {
+      // This would fetch from actual API
+      // Mocking for now
+      return { mediaAlbums: mockAlbums };
+    },
+    enabled: false // Disable auto-fetch while developing UI
+  });
+
+  // Handle item selection
+  const handleItemSelect = (item: any) => {
+    if (selectedItems.some(i => i.id === item.id)) {
+      setSelectedItems(selectedItems.filter(i => i.id !== item.id));
+    } else {
+      setSelectedItems([...selectedItems, item]);
+    }
+  };
+
+  // Clear all selections
+  const clearSelection = () => {
+    setSelectedItems([]);
+  };
+
+  // Handle album selection
+  const handleAlbumSelect = (album: any) => {
+    setActiveAlbum(album);
+  };
+  
+  // Filter items based on search query
+  const filteredItems = (mediaItems?.mediaItems || mockMediaItems).filter(
+    item => item.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+           item.fileName?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  // Determine which items to display based on current state
+  const displayItems = activeAlbum 
+    ? filteredItems.filter(item => item.albumId === activeAlbum.id)
+    : filteredItems;
+  
+  // Favorites tab items
+  const favoriteItems = filteredItems.filter(item => item.isFavorite);
+
+  return (
+    <div className="pb-8">
+      <div className="mb-6">
+        <div className="flex items-center">
+          <Link to="/systems">
+            <Button variant="ghost" className="p-0 mr-2 h-auto">
+              <ChevronLeft className="h-5 w-5 mr-1" />
+              <span>Back</span>
+            </Button>
+          </Link>
+          <h1 className="text-2xl font-orbitron">Media Library</h1>
+        </div>
+        <p className="text-[#7DAAB2] mt-1">Organize and manage your photos and videos</p>
+      </div>
+      
+      <div className="flex flex-col space-y-4">
+        {/* Search and controls */}
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="relative flex-grow max-w-md">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input 
+              type="search" 
+              placeholder="Search media..." 
+              className="pl-9 bg-background"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            {/* View toggle */}
+            <div className="bg-background border rounded-md flex">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className={`rounded-r-none ${activeView === 'grid' ? 'bg-primary/10' : ''}`}
+                onClick={() => setActiveView("grid")}
+              >
+                <Grid className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className={`rounded-l-none ${activeView === 'list' ? 'bg-primary/10' : ''}`}
+                onClick={() => setActiveView("list")}
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            {/* Filter button */}
+            <Button variant="outline" size="sm" className="flex items-center">
+              <Filter className="h-4 w-4 mr-1" />
+              <span>Filter</span>
+            </Button>
+            
+            {/* Sort dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="flex items-center">
+                  <SlidersHorizontal className="h-4 w-4 mr-1" />
+                  <span>Sort</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem className="text-xs cursor-pointer">
+                  Date (Newest)
+                </DropdownMenuItem>
+                <DropdownMenuItem className="text-xs cursor-pointer">
+                  Date (Oldest)
+                </DropdownMenuItem>
+                <DropdownMenuItem className="text-xs cursor-pointer">
+                  Name (A-Z)
+                </DropdownMenuItem>
+                <DropdownMenuItem className="text-xs cursor-pointer">
+                  Name (Z-A)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          
+          <div className="flex-shrink-0 ml-auto">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button className="flex items-center">
+                  <Upload className="h-4 w-4 mr-1" />
+                  <span>Upload</span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Upload Media</DialogTitle>
+                  <DialogDescription>
+                    Add photos and videos to your library
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex flex-col items-center justify-center border-2 border-dashed border-primary/20 rounded-lg p-12 mt-2">
+                  <Upload className="h-10 w-10 text-muted-foreground mb-4" />
+                  <p className="text-sm text-center text-muted-foreground mb-2">Drag and drop files here or click to browse</p>
+                  <p className="text-xs text-center text-muted-foreground">Supports JPG, PNG, GIF, MP4, MOV up to 100MB</p>
+                </div>
+                <DialogFooter className="sm:justify-start">
+                  <Button type="button" className="mt-2">
+                    Select Files
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+        
+        {/* Selected items toolbar */}
+        {selectedItems.length > 0 && (
+          <div className="bg-background border rounded-md p-2 flex items-center justify-between">
+            <div className="flex items-center">
+              <Button variant="ghost" size="sm" onClick={clearSelection}>
+                Cancel
+              </Button>
+              <Separator orientation="vertical" className="h-5 mx-2" />
+              <span className="text-sm">{selectedItems.length} selected</span>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm">
+                <Star className="h-3 w-3 mr-1" />
+                Add to Favorites
+              </Button>
+              <Button variant="outline" size="sm">
+                <FolderIcon className="h-3 w-3 mr-1" />
+                Add to Album
+              </Button>
+              <Button variant="destructive" size="sm">
+                <Trash2 className="h-3 w-3 mr-1" />
+                Delete
+              </Button>
+            </div>
+          </div>
+        )}
+        
+        {/* Album breadcrumb */}
+        {activeAlbum && (
+          <div className="flex items-center">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-sm p-0 h-auto hover:bg-transparent hover:text-primary"
+              onClick={() => setActiveAlbum(null)}
+            >
+              All Media
+            </Button>
+            <ChevronRight className="h-4 w-4 mx-1 text-muted-foreground" />
+            <span className="text-sm font-medium">{activeAlbum.title}</span>
+          </div>
+        )}
+        
+        {/* Content tabs */}
+        <Tabs defaultValue="all" className="w-full">
+          <TabsList>
+            <TabsTrigger value="all">All Media</TabsTrigger>
+            <TabsTrigger value="albums">Albums</TabsTrigger>
+            <TabsTrigger value="favorites">
+              <div className="flex items-center">
+                <Star className="h-3 w-3 mr-1 fill-current" />
+                Favorites
+              </div>
+            </TabsTrigger>
+          </TabsList>
+          
+          {/* All Media Content */}
+          <TabsContent value="all" className="mt-4">
+            {isLoadingItems ? (
+              activeView === "grid" ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <Skeleton key={i} className="aspect-square rounded-md" />
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <Skeleton key={i} className="h-14 w-full rounded-md" />
+                  ))}
+                </div>
+              )
+            ) : displayItems.length === 0 ? (
+              <div className="py-12 flex flex-col items-center justify-center text-muted-foreground">
+                <ImageIcon className="h-16 w-16 mb-4 opacity-30" />
+                {searchQuery ? (
+                  <>
+                    <p className="text-lg font-medium mb-1">No results found</p>
+                    <p className="text-sm">Try different search terms</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-lg font-medium mb-1">No media found</p>
+                    <p className="text-sm mb-4">Upload some photos or videos to get started</p>
+                    <Button>
+                      <Upload className="h-4 w-4 mr-1" />
+                      Upload Media
+                    </Button>
+                  </>
+                )}
+              </div>
+            ) : (
+              <>
+                {activeView === "grid" ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {displayItems.map((item) => (
+                      <MediaItem 
+                        key={item.id} 
+                        item={item} 
+                        view="grid" 
+                        onSelect={handleItemSelect}
+                        isSelected={selectedItems.some(i => i.id === item.id)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-1 border rounded-md overflow-hidden">
+                    {displayItems.map((item) => (
+                      <MediaItem 
+                        key={item.id} 
+                        item={item} 
+                        view="list" 
+                        onSelect={handleItemSelect}
+                        isSelected={selectedItems.some(i => i.id === item.id)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </TabsContent>
+          
+          {/* Albums Content */}
+          <TabsContent value="albums" className="mt-4">
+            {isLoadingAlbums ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <Skeleton key={i} className="aspect-video rounded-md" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Create album card */}
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <div className="rounded-lg overflow-hidden border border-dashed border-primary/30 hover:border-primary/60 cursor-pointer flex flex-col items-center justify-center min-h-[180px] bg-background/50">
+                      <Plus className="h-10 w-10 text-primary/40 mb-2" />
+                      <p className="text-sm font-medium">Create New Album</p>
+                    </div>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Create New Album</DialogTitle>
+                      <DialogDescription>
+                        Create a new album to organize your media
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="album-name">Album Name</Label>
+                        <Input id="album-name" placeholder="Enter album name..." />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="album-description">Description (optional)</Label>
+                        <Input id="album-description" placeholder="Add a description..." />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="submit">Create Album</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+                
+                {/* Album cards */}
+                {(mediaAlbums?.mediaAlbums || mockAlbums).map((album) => (
+                  <AlbumItem 
+                    key={album.id} 
+                    album={album} 
+                    onSelect={handleAlbumSelect} 
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+          
+          {/* Favorites Content */}
+          <TabsContent value="favorites" className="mt-4">
+            {isLoadingItems ? (
+              activeView === "grid" ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <Skeleton key={i} className="aspect-square rounded-md" />
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {[1, 2, 3, 4].map((i) => (
+                    <Skeleton key={i} className="h-14 w-full rounded-md" />
+                  ))}
+                </div>
+              )
+            ) : favoriteItems.length === 0 ? (
+              <div className="py-12 flex flex-col items-center justify-center text-muted-foreground">
+                <Star className="h-16 w-16 mb-4 opacity-30" />
+                <p className="text-lg font-medium mb-1">No favorites found</p>
+                <p className="text-sm">Mark items as favorites to see them here</p>
+              </div>
+            ) : (
+              <>
+                {activeView === "grid" ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {favoriteItems.map((item) => (
+                      <MediaItem 
+                        key={item.id} 
+                        item={item} 
+                        view="grid" 
+                        onSelect={handleItemSelect}
+                        isSelected={selectedItems.some(i => i.id === item.id)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-1 border rounded-md overflow-hidden">
+                    {favoriteItems.map((item) => (
+                      <MediaItem 
+                        key={item.id} 
+                        item={item} 
+                        view="list" 
+                        onSelect={handleItemSelect}
+                        isSelected={selectedItems.some(i => i.id === item.id)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+}
