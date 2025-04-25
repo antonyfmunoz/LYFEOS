@@ -337,7 +337,7 @@ export default function MediaLibraryPage() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 hover:bg-primary hover:text-background" 
+              className="h-8 w-8 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow" 
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -367,7 +367,7 @@ export default function MediaLibraryPage() {
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className={`rounded-r-none ${activeView === 'grid' ? 'bg-primary/10' : ''}`}
+                className={`rounded-r-none hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow hover:bg-primary hover:text-background ${activeView === 'grid' ? 'bg-primary/10' : ''}`}
                 onClick={() => setActiveView("grid")}
               >
                 <Grid className="h-4 w-4" />
@@ -375,7 +375,7 @@ export default function MediaLibraryPage() {
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className={`rounded-l-none ${activeView === 'list' ? 'bg-primary/10' : ''}`}
+                className={`rounded-l-none hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow hover:bg-primary hover:text-background ${activeView === 'list' ? 'bg-primary/10' : ''}`}
                 onClick={() => setActiveView("list")}
               >
                 <List className="h-4 w-4" />
@@ -419,7 +419,7 @@ export default function MediaLibraryPage() {
                 <Button 
                   variant="ghost" 
                   size="sm"
-                  className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50 flex items-center"
+                  className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50 flex items-center"
                 >
                   <Upload className="h-3.5 w-3.5 mr-1" />
                   Upload
@@ -442,7 +442,7 @@ export default function MediaLibraryPage() {
                     type="button" 
                     variant="ghost" 
                     size="sm"
-                    className="h-7 text-xs mt-2 bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50"
+                    className="h-7 text-xs mt-2 bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
                   >
                     <Upload className="h-3.5 w-3.5 mr-1" />
                     Select Files
@@ -473,7 +473,7 @@ export default function MediaLibraryPage() {
               <Button 
                 variant="ghost" 
                 size="sm"
-                className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50"
+                className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
               >
                 <Star className="h-3.5 w-3.5 mr-1" />
                 Add to Favorites
@@ -481,7 +481,7 @@ export default function MediaLibraryPage() {
               <Button 
                 variant="ghost" 
                 size="sm"
-                className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50"
+                className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
               >
                 <FolderIcon className="h-3.5 w-3.5 mr-1" />
                 Add to Album
@@ -558,7 +558,7 @@ export default function MediaLibraryPage() {
                     <Button 
                       variant="ghost" 
                       size="sm"
-                      className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50"
+                      className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
                     >
                       <Upload className="h-3.5 w-3.5 mr-1" />
                       Upload Media
@@ -637,7 +637,7 @@ export default function MediaLibraryPage() {
                         type="submit" 
                         variant="ghost" 
                         size="sm"
-                        className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50"
+                        className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
                       >
                         <Plus className="h-3.5 w-3.5 mr-1" />
                         Create Album
