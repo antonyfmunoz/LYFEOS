@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
 import bcrypt from "bcrypt";
+import multer from "multer";
 import { 
   insertUserSchema, 
   insertQuestSchema, 
@@ -17,7 +18,9 @@ import {
   insertDocumentSchema,
   insertTemplateSchema,
   insertMediaItemSchema,
-  insertMediaAlbumSchema
+  insertMediaAlbumSchema,
+  MediaItem,
+  InsertMediaItem
 } from "@shared/schema";
 
 // Extend Request type to include session
@@ -2414,22 +2417,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/media-items", isAuthenticated, async (req: Request, res: Response) => {
+  // Configure multer for file upload
+  const multerStorage = multer.memoryStorage();
+  const upload = multer({ 
+    storage: multerStorage,
+    limits: {
+      fileSize: 100 * 1024 * 1024, // 100MB limit
+    },
+    fileFilter: (req, file, cb) => {
+      // Only allow images and videos
+      if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only image and video files are allowed'));
+      }
+    }
+  });
+
+  // Handle media item upload with multer middleware
+  app.post("/api/media-items", isAuthenticated, upload.array('files'), async (req: Request, res: Response) => {
     try {
       // Ensure userId is a number
       const userId = req.session.userId as number;
+      const files = req.files as Express.Multer.File[];
+      const albumId = req.body.albumId ? parseInt(req.body.albumId) : undefined;
       
-      // Handle file upload data which could be base64 encoded
-      const itemData = {
-        ...req.body,
-        userId
-      };
+      if (!files || files.length === 0) {
+        return res.status(400).json({ error: "No files uploaded" });
+      }
+
+      console.log(`Processing ${files.length} uploaded files`);
       
-      // Validate with schema
-      const validatedData = insertMediaItemSchema.parse(itemData);
+      // Process each uploaded file
+      const mediaItems: MediaItem[] = [];
       
-      const mediaItem = await storage.createMediaItem(validatedData);
-      res.status(201).json({ mediaItem });
+      for (const file of files) {
+        const fileType = file.mimetype.startsWith('image/') ? 'image' : 'video';
+        
+        // Convert file buffer to base64 for storage
+        const fileData = file.buffer.toString('base64');
+        
+        // Prepare media item data
+        const itemData: InsertMediaItem = {
+          userId,
+          albumId,
+          fileName: file.originalname,
+          fileType,
+          mimeType: file.mimetype,
+          fileData: `data:${file.mimetype};base64,${fileData}`,
+          thumbnailUrl: `data:${file.mimetype};base64,${fileData}`, // Use same data for thumbnail for now
+          title: file.originalname,
+          size: file.size,
+          isFavorite: false,
+          tags: []
+        };
+        
+        // Create the media item
+        const mediaItem = await storage.createMediaItem(itemData);
+        mediaItems.push(mediaItem);
+      }
+      
+      res.status(201).json({ mediaItems });
     } catch (error) {
       console.error("Failed to create media item:", error);
       if (error instanceof z.ZodError) {
