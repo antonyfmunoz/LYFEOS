@@ -237,7 +237,6 @@ export default function ProfilePage() {
                 <div className="flex flex-col items-center space-y-2 mb-6">
                   <div className="h-5 bg-primary/20 rounded w-40"></div>
                   <div className="h-3 bg-primary/20 rounded w-32"></div>
-                  <div className="h-6 bg-primary/20 rounded w-full max-w-xs mt-2"></div>
                 </div>
                 
                 <div className="space-y-6">
@@ -387,22 +386,6 @@ export default function ProfilePage() {
               {profileData.title && (
                 <p className="text-primary text-sm mb-3 font-medium">{profileData.title}</p>
               )}
-              
-              <div className="mb-2 flex items-center gap-2">
-                <span className="px-3 py-1 rounded-full text-xs bg-primary/10 text-primary border border-primary/30">
-                  Level {stats.experience.level}
-                </span>
-                <span className="text-muted-foreground text-sm">
-                  {stats.experience.current}/{stats.experience.max} XP
-                </span>
-              </div>
-              
-              <div className="h-2 w-full max-w-xs mb-2 bg-primary/20 rounded-full">
-                <div 
-                  className="h-full bg-primary rounded-full transition-all duration-500" 
-                  style={{ width: `${(stats.experience.current / stats.experience.max) * 100}%` }}
-                ></div>
-              </div>
             </div>
             
             {isEditing ? (
