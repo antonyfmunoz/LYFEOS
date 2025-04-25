@@ -287,6 +287,7 @@ export default function MediaLibraryPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [gridSize, setGridSize] = useState<"small" | "medium" | "large">("medium");
   
   // Empty default arrays for when no data is available
   const emptyItems: MediaItem[] = [];
@@ -482,6 +483,45 @@ export default function MediaLibraryPage() {
             <Button variant="outline" size="icon" className="h-8 w-8 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow" title="Filter">
               <Filter className="h-4 w-4" />
             </Button>
+            
+            {/* Zoom controls - only show in grid view */}
+            {activeView === "grid" && (
+              <div className="bg-background rounded-md flex">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className={`flex items-center h-8 px-2 rounded-r-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow ${gridSize === 'small' ? 'bg-primary/10' : ''}`}
+                  onClick={() => setGridSize("small")}
+                  title="Small thumbnails"
+                >
+                  <div className="flex items-center">
+                    <Grid className="h-3 w-3" />
+                  </div>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className={`flex items-center h-8 px-2 rounded-l-none rounded-r-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow ${gridSize === 'medium' ? 'bg-primary/10' : ''}`}
+                  onClick={() => setGridSize("medium")}
+                  title="Medium thumbnails"
+                >
+                  <div className="flex items-center">
+                    <Grid className="h-4 w-4" />
+                  </div>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className={`flex items-center h-8 px-2 rounded-l-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow ${gridSize === 'large' ? 'bg-primary/10' : ''}`}
+                  onClick={() => setGridSize("large")}
+                  title="Large thumbnails"
+                >
+                  <div className="flex items-center">
+                    <Grid className="h-5 w-5" />
+                  </div>
+                </Button>
+              </div>
+            )}
             
             {/* Sort dropdown */}
             <DropdownMenu>
@@ -701,8 +741,12 @@ export default function MediaLibraryPage() {
           <TabsContent value="all" className="mt-4">
             {isLoadingItems ? (
               activeView === "grid" ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div className={`grid gap-4 ${
+                  gridSize === "small" ? "grid-cols-3 md:grid-cols-4 lg:grid-cols-6" : 
+                  gridSize === "large" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : 
+                  "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+                }`}>
+                  {Array.from({ length: gridSize === "small" ? 12 : gridSize === "large" ? 6 : 8 }).map((_, i) => (
                     <Skeleton key={i} className="aspect-square rounded-md" />
                   ))}
                 </div>
@@ -740,7 +784,11 @@ export default function MediaLibraryPage() {
             ) : (
               <>
                 {activeView === "grid" ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  <div className={`grid gap-4 ${
+                    gridSize === "small" ? "grid-cols-3 md:grid-cols-4 lg:grid-cols-6" : 
+                    gridSize === "large" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : 
+                    "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+                  }`}>
                     {displayItems.map((item) => (
                       <MediaItem 
                         key={item.id} 
@@ -833,8 +881,12 @@ export default function MediaLibraryPage() {
           <TabsContent value="favorites" className="mt-4">
             {isLoadingItems ? (
               activeView === "grid" ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {[1, 2, 3, 4].map((i) => (
+                <div className={`grid gap-4 ${
+                  gridSize === "small" ? "grid-cols-3 md:grid-cols-4 lg:grid-cols-6" : 
+                  gridSize === "large" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : 
+                  "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+                }`}>
+                  {Array.from({ length: gridSize === "small" ? 12 : gridSize === "large" ? 6 : 8 }).map((_, i) => (
                     <Skeleton key={i} className="aspect-square rounded-md" />
                   ))}
                 </div>
@@ -854,7 +906,11 @@ export default function MediaLibraryPage() {
             ) : (
               <>
                 {activeView === "grid" ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  <div className={`grid gap-4 ${
+                    gridSize === "small" ? "grid-cols-3 md:grid-cols-4 lg:grid-cols-6" : 
+                    gridSize === "large" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : 
+                    "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+                  }`}>
                     {favoriteItems.map((item: MediaItem) => (
                       <MediaItem 
                         key={item.id} 
