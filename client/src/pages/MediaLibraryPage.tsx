@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { 
   ChevronLeft, 
   ChevronRight,
@@ -83,6 +83,8 @@ interface MediaItemProps {
 }
 
 function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
+  const [, navigate] = useLocation();
+  
   // We don't want to use blob URLs directly in the component, as they can cause memory leaks
   // Instead, we'll use a data URL if available, or a direct URL
   
@@ -97,12 +99,29 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
     return item.thumbnailUrl || '';
   }, [item.fileData, item.thumbnailUrl]);
   
+  // Handler to open the media detail page
+  const handleOpenDetail = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent event bubbling
+    navigate(`/media/${item.id}`);
+  };
+  
+  // Handler for dropdown menu click
+  const handleMenuClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent navigation when menu is clicked
+  };
+
+  // Handler for selection (now separate from clicking the item)
+  const handleSelect = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent navigation
+    onSelect(item);
+  };
+  
   if (view === "grid") {
     return (
       <div 
         className={`relative rounded-md overflow-hidden group cursor-pointer 
           ${isSelected ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-primary/50'}`}
-        onClick={() => onSelect(item)}
+        onClick={handleOpenDetail}
       >
         {item.fileType === 'image' ? (
           // Always use img tags with strong memoization to prevent re-renders
@@ -126,9 +145,21 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
         
         {/* Hover overlay */}
         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2">
-          <div className="flex justify-end">
+          <div className="flex justify-between">
+            {/* Select button */}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-7 w-7 text-white hover:bg-white/20 rounded-full"
+              onClick={handleSelect}
+            >
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4">
+                <path d="M12 2H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1V3a1 1 0 00-1-1zm-1.5 6.5h-6a.5.5 0 010-1h6a.5.5 0 010 1z" stroke="currentColor" strokeWidth="1" fill="none"></path>
+              </svg>
+            </Button>
+            
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+              <DropdownMenuTrigger asChild onClick={handleMenuClick}>
                 <Button 
                   variant="ghost" 
                   size="icon" 
@@ -183,7 +214,7 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
     <div 
       className={`flex items-center p-2 hover:bg-primary/5 rounded-md cursor-pointer
         ${isSelected ? 'bg-primary/10' : ''}`}
-      onClick={() => onSelect(item)}
+      onClick={handleOpenDetail}
     >
       <div className="w-10 h-10 mr-3 rounded-md overflow-hidden flex-shrink-0">
         {item.fileType === 'image' ? (
@@ -210,8 +241,20 @@ function MediaItem({ item, view, onSelect, isSelected }: MediaItemProps) {
       {item.isFavorite && (
         <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 mr-2" />
       )}
+      {/* Selection button */}
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="h-8 w-8"
+        onClick={handleSelect}
+      >
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4">
+          <path d="M12 2H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1V3a1 1 0 00-1-1zm-1.5 6.5h-6a.5.5 0 010-1h6a.5.5 0 010 1z" stroke="currentColor" strokeWidth="1" fill="none"></path>
+        </svg>
+      </Button>
+      
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+        <DropdownMenuTrigger asChild onClick={handleMenuClick}>
           <Button variant="ghost" size="icon" className="h-8 w-8">
             <MoreHorizontal className="h-4 w-4" />
           </Button>
