@@ -409,23 +409,19 @@ export default function MediaLibraryPage() {
     }
   };
   
-  // Cleanup blob URLs on component unmount
-  useEffect(() => {
-    return () => {
-      console.log('Component unmounting - cleaning up blob registry');
-      
-      // Use the registry to clean up all blob URLs at once
-      cleanupAllBlobUrls();
-    };
-  }, []);
-  
-  // Track blob URLs to make sure we can clean them up properly
+  // Keep track of all blob URLs to ensure they don't cause memory leaks
   const [blobRegistry, setBlobRegistry] = useState<{[key: string]: boolean}>({});
   
   // Register a blob URL for tracking and future cleanup
   const registerBlobUrl = (url: string) => {
     if (url && url.startsWith('blob:')) {
-      setBlobRegistry(prev => ({...prev, [url]: true}));
+      // Add to registry
+      setBlobRegistry(prev => {
+        if (prev[url]) return prev; // Already registered
+        return {...prev, [url]: true};
+      });
+      
+      console.log('Registered blob URL:', url);
     }
   };
   
@@ -453,18 +449,55 @@ export default function MediaLibraryPage() {
   
   // Clean up all registered blob URLs
   const cleanupAllBlobUrls = () => {
-    Object.keys(blobRegistry).forEach(url => {
-      try {
-        URL.revokeObjectURL(url);
-        console.log('Cleanup: revoked blob URL:', url);
-      } catch (e) {
-        console.error('Error in cleanup of blob URL:', e);
-      }
-    });
+    // Make a copy of the keys to avoid mutation issues
+    const urlsToCleanup = Object.keys(blobRegistry);
     
-    // Reset registry
-    setBlobRegistry({});
+    if (urlsToCleanup.length === 0) {
+      console.log('No blob URLs to clean up');
+      return;
+    }
+    
+    console.log(`Cleaning up ${urlsToCleanup.length} blob URLs`);
+    
+    // Process URLs in small batches to avoid UI freezing
+    const processBatch = (startIndex: number, batchSize: number) => {
+      const endIndex = Math.min(startIndex + batchSize, urlsToCleanup.length);
+      
+      for (let i = startIndex; i < endIndex; i++) {
+        const url = urlsToCleanup[i];
+        try {
+          URL.revokeObjectURL(url);
+          console.log('Cleanup: revoked blob URL:', url);
+        } catch (e) {
+          console.error('Error in cleanup of blob URL:', e);
+        }
+      }
+      
+      // Process next batch if there are more URLs
+      if (endIndex < urlsToCleanup.length) {
+        setTimeout(() => {
+          processBatch(endIndex, batchSize);
+        }, 10);
+      } else {
+        // All URLs processed, reset registry
+        setBlobRegistry({});
+      }
+    };
+    
+    // Start processing in batches of 5
+    processBatch(0, 5);
   };
+  
+  // Cleanup blob URLs on component unmount
+  useEffect(() => {
+    return () => {
+      console.log('Component unmounting - cleaning up blob registry');
+      // Add a small delay to avoid race conditions with react unmounting
+      setTimeout(() => {
+        cleanupAllBlobUrls();
+      }, 50);
+    };
+  }, []);
   
   // Handle zoom in
   const zoomIn = () => {
@@ -476,7 +509,7 @@ export default function MediaLibraryPage() {
     setZoomLevel(Math.max(1, zoomLevel - 1));
   };
   
-  // Media upload mutation
+  // Media upload mutation with improved stability
   const uploadMediaMutation = useMutation({
     mutationFn: async (files: File[]) => {
       setIsUploading(true);
@@ -488,7 +521,7 @@ export default function MediaLibraryPage() {
         // Create a temporary object URL for the file
         const tempUrl = URL.createObjectURL(file);
         
-        // Register this blob URL for cleanup
+        // Register this blob URL for tracking and cleanup
         registerBlobUrl(tempUrl);
         
         // Create a proper media item with correct types
@@ -552,33 +585,44 @@ export default function MediaLibraryPage() {
               const response = JSON.parse(xhr.responseText);
               console.log('Upload completed successfully:', response);
               
-              // Manually invalidate queries to ensure the UI updates - force a full refetch
-              queryClient.invalidateQueries({ 
-                queryKey: ['/api/users/2/media-items'],
-                refetchType: 'all'
-              });
-              
-              // If there's an active album, invalidate the album's media items query
-              if (activeAlbum) {
-                queryClient.invalidateQueries({ 
-                  queryKey: ['/api/media-items/album', activeAlbum.id],
-                  refetchType: 'all'
-                });
-              }
-              
-              // Clean up all blobs from these optimistic items
-              optimisticItems.forEach(item => {
-                if (item.thumbnailUrl) revokeBlobUrl(item.thumbnailUrl);
-                if (item.fileUrl && item.fileUrl !== item.thumbnailUrl) revokeBlobUrl(item.fileUrl);
-              });
-              
-              // Clear optimistic items now that we have real server items
-              setOptimisticMedia(prev => 
-                prev.filter(item => !optimisticItems.some(oi => oi.id === item.id))
-              );
-              
-              // Close upload modal
+              // Safely close the upload modal first
               setUploadModalOpen(false);
+              
+              // Handle updates in a safe way that won't cause navigation issues
+              setTimeout(() => {
+                // Manipulate cache directly first for immediate feedback
+                // instead of using invalidation which can trigger unwanted navigation
+                try {
+                  const serverItems = response.mediaItems || [];
+                  const existingItems = queryClient.getQueryData<{mediaItems: MediaItem[]}>(['/api/users/2/media-items']);
+                  
+                  if (existingItems) {
+                    // Filter out any optimistic items that match our uploaded items
+                    const filteredItems = existingItems.mediaItems.filter(item => 
+                      // Keep all items that aren't optimistic (positive IDs)
+                      item.id > 0 || 
+                      // Or optimistic items that don't match our uploads
+                      !optimisticItems.some(oi => oi.id === item.id)
+                    );
+                    
+                    // Update the cache with the server items plus remaining optimistic items
+                    queryClient.setQueryData<{mediaItems: MediaItem[]}>(['/api/users/2/media-items'], {
+                      mediaItems: [...serverItems, ...filteredItems]
+                    });
+                  }
+                } catch (e) {
+                  console.error('Error updating media items cache:', e);
+                }
+                
+                // Now schedule a refresh after the cache update
+                setTimeout(() => {
+                  refetchMediaItems();
+                }, 500);
+                
+                // Don't clean up blobs immediately - let the img tags handle them naturally
+                // This prevents premature cleanup that can cause flicker/loading issues
+              }, 500);
+              
               resolve(response);
             } catch (error) {
               console.error('Error parsing response:', error);
@@ -593,13 +637,6 @@ export default function MediaLibraryPage() {
         // Handle network/connection errors
         xhr.onerror = () => {
           console.error('Network error during upload');
-          
-          // Clean up blob URLs even on network error
-          optimisticItems.forEach(item => {
-            if (item.thumbnailUrl) revokeBlobUrl(item.thumbnailUrl);
-            if (item.fileUrl && item.fileUrl !== item.thumbnailUrl) revokeBlobUrl(item.fileUrl);
-          });
-          
           reject(new Error('Network error during upload'));
         };
         
@@ -616,25 +653,23 @@ export default function MediaLibraryPage() {
       });
     },
     onSuccess: (data) => {
-      // Query invalidation now handled in XHR onload handler
+      // Log success
       console.log('Upload mutation completed successfully');
       
-      // Already cleaned up in xhr.onload
-      
-      // Directly trigger a refetch
-      refetchMediaItems();
-      
-      // Extra safety - refetch after a short delay too
+      // Clean optimistic media in a safe, deferred way
       setTimeout(() => {
-        refetchMediaItems();
-      }, 1000);
+        setOptimisticMedia(prev => {
+          // Now it's safe to cleanup blob URLs since they've had time to load in the UI
+          prev.forEach(item => {
+            if (item.thumbnailUrl) revokeBlobUrl(item.thumbnailUrl);
+            if (item.fileUrl && item.fileUrl !== item.thumbnailUrl) revokeBlobUrl(item.fileUrl);
+          });
+          return [];
+        });
+      }, 2000);
     },
     onError: (error) => {
       console.error('Upload error:', error);
-      
-      // Clean up all blob URLs - already handled in xhr.onerror
-      
-      // Reset optimistic media
       setOptimisticMedia([]);
     }
   });
