@@ -367,7 +367,7 @@ export default function MediaLibraryPage() {
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className={`rounded-r-none hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow hover:bg-primary hover:text-background ${activeView === 'grid' ? 'bg-primary/10' : ''}`}
+                className={`rounded-r-none border hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow hover:bg-primary hover:text-background ${activeView === 'grid' ? 'bg-primary/10 text-primary border-primary/50' : 'border-muted/50'}`}
                 onClick={() => setActiveView("grid")}
               >
                 <Grid className="h-4 w-4" />
@@ -383,7 +383,11 @@ export default function MediaLibraryPage() {
             </div>
             
             {/* Filter button */}
-            <Button variant="outline" size="sm" className="flex items-center">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-7 text-xs border border-primary/50 bg-primary/10 text-primary hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow flex items-center"
+            >
               <Filter className="h-4 w-4 mr-1" />
               <span>Filter</span>
             </Button>
@@ -391,7 +395,11 @@ export default function MediaLibraryPage() {
             {/* Sort dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="flex items-center">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-7 text-xs border border-primary/50 bg-primary/10 text-primary hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow flex items-center"
+                >
                   <SlidersHorizontal className="h-4 w-4 mr-1" />
                   <span>Sort</span>
                 </Button>
@@ -461,7 +469,7 @@ export default function MediaLibraryPage() {
                 variant="ghost" 
                 size="sm" 
                 onClick={clearSelection}
-                className="h-7 text-xs bg-muted/50 hover:bg-muted text-muted-foreground"
+                className="h-7 text-xs bg-muted/50 hover:bg-muted hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-muted-foreground border border-muted/50"
               >
                 <X className="h-3.5 w-3.5 mr-1" />
                 Cancel
@@ -504,7 +512,7 @@ export default function MediaLibraryPage() {
             <Button 
               variant="ghost" 
               size="sm" 
-              className="text-sm p-0 h-auto hover:bg-transparent hover:text-primary"
+              className="text-sm p-0 h-auto hover:bg-transparent hover:text-primary hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
               onClick={() => setActiveAlbum(null)}
             >
               All Media
