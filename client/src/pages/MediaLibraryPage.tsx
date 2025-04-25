@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { 
@@ -281,6 +281,7 @@ export default function MediaLibraryPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedItems, setSelectedItems] = useState<MediaItem[]>([]);
   const [activeAlbum, setActiveAlbum] = useState<MediaAlbum | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Empty default arrays for when no data is available
   const emptyItems: MediaItem[] = [];
@@ -432,17 +433,57 @@ export default function MediaLibraryPage() {
                     Add photos and videos to your library
                   </DialogDescription>
                 </DialogHeader>
-                <div className="flex flex-col items-center justify-center border-2 border-dashed border-primary/20 rounded-lg p-12 mt-2">
+                <div 
+                  className="flex flex-col items-center justify-center border-2 border-dashed border-primary/20 rounded-lg p-12 mt-2"
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.currentTarget.classList.add('border-primary');
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.currentTarget.classList.remove('border-primary');
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.currentTarget.classList.remove('border-primary');
+                    
+                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                      console.log('Files dropped:', e.dataTransfer.files);
+                      // Handle the dropped files here
+                      // You would typically upload them to your server
+                    }
+                  }}
+                  onClick={() => fileInputRef.current?.click()}
+                >
                   <Upload className="h-10 w-10 text-muted-foreground mb-4" />
                   <p className="text-sm text-center text-muted-foreground mb-2">Drag and drop files here or click to browse</p>
                   <p className="text-xs text-center text-muted-foreground">Supports JPG, PNG, GIF, MP4, MOV up to 100MB</p>
                 </div>
                 <DialogFooter className="sm:justify-start">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    multiple
+                    accept="image/*, video/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      // Handle file upload logic here
+                      if (e.target.files && e.target.files.length > 0) {
+                        console.log('Files selected:', e.target.files);
+                        // You would typically upload these files to your server
+                        // For now we're just logging them
+                      }
+                    }}
+                  />
                   <Button 
                     type="button" 
                     variant="ghost" 
                     size="sm"
                     className="h-7 text-xs mt-2 bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
+                    onClick={() => fileInputRef.current?.click()}
                   >
                     <Upload className="h-3.5 w-3.5 mr-1" />
                     Select Files
@@ -559,6 +600,7 @@ export default function MediaLibraryPage() {
                       variant="ghost" 
                       size="sm"
                       className="text-xs bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50 flex items-center"
+                      onClick={() => fileInputRef.current?.click()}
                     >
                       <Upload className="h-3.5 w-3.5 mr-1" />
                       Upload Media
