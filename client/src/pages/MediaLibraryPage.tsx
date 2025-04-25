@@ -288,7 +288,7 @@ export default function MediaLibraryPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const [zoomLevel, setZoomLevel] = useState<number>(2); // 1=small, 2=medium, 3=large
+  const [zoomLevel, setZoomLevel] = useState<number>(2); // 1=extra small, 2=small, 3=medium, 4=large
   
   // Empty default arrays for when no data is available
   const emptyItems: MediaItem[] = [];
@@ -340,11 +340,13 @@ export default function MediaLibraryPage() {
   // Get appropriate grid layout based on zoom level
   const getGridClass = () => {
     switch(zoomLevel) {
-      case 1: // Small thumbnails
+      case 1: // Extra small thumbnails
+        return "grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10";
+      case 2: // Small thumbnails
         return "grid-cols-3 md:grid-cols-4 lg:grid-cols-6";
-      case 3: // Large thumbnails
+      case 4: // Large thumbnails
         return "grid-cols-1 md:grid-cols-2 lg:grid-cols-3";
-      case 2: // Medium thumbnails (default)
+      case 3: // Medium thumbnails (default)
       default:
         return "grid-cols-2 md:grid-cols-3 lg:grid-cols-4";
     }
@@ -353,9 +355,10 @@ export default function MediaLibraryPage() {
   // Get appropriate skeleton count based on zoom level
   const getSkeletonCount = () => {
     switch(zoomLevel) {
-      case 1: return 12; // Small thumbnails
-      case 3: return 6;  // Large thumbnails
-      case 2: // Medium thumbnails (default)
+      case 1: return 20; // Extra small thumbnails
+      case 2: return 12; // Small thumbnails
+      case 4: return 6;  // Large thumbnails
+      case 3: // Medium thumbnails (default)
       default:
         return 8;
     }
@@ -363,7 +366,7 @@ export default function MediaLibraryPage() {
   
   // Handle zoom in
   const zoomIn = () => {
-    setZoomLevel(Math.min(3, zoomLevel + 1));
+    setZoomLevel(Math.min(4, zoomLevel + 1));
   };
   
   // Handle zoom out
@@ -543,7 +546,7 @@ export default function MediaLibraryPage() {
                   className="h-8 w-8 rounded-l-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
                   onClick={zoomIn}
                   title="Zoom In"
-                  disabled={zoomLevel >= 3}
+                  disabled={zoomLevel >= 4}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
