@@ -138,6 +138,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   templates: many(templates),
   kanbanBoards: many(kanbanBoards),
   integrations: many(integrations),
+  progressTrackers: many(progressTrackers),
 }));
 
 export const userStatsRelations = relations(userStats, ({ one }) => ({
@@ -513,6 +514,42 @@ export const insertIntegrationSchema = createInsertSchema(integrations).omit({
 
 export type Integration = typeof integrations.$inferSelect;
 export type InsertIntegration = z.infer<typeof insertIntegrationSchema>;
+
+// Progress Trackers table
+export const progressTrackers = pgTable("progress_trackers", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  category: text("category").default("general").notNull(),
+  currentValue: integer("current_value").notNull().default(0),
+  targetValue: integer("target_value").notNull(),
+  unit: text("unit").default(""), // e.g., "kg", "steps", "hours", etc.
+  startDate: timestamp("start_date").defaultNow().notNull(),
+  endDate: timestamp("end_date"),
+  color: text("color").default("#00e0ff"),
+  favorite: boolean("favorite").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Progress Trackers relations
+export const progressTrackerRelations = relations(progressTrackers, ({ one }) => ({
+  user: one(users, {
+    fields: [progressTrackers.userId],
+    references: [users.id],
+  }),
+}));
+
+// Insert schema for Progress Tracker
+export const insertProgressTrackerSchema = createInsertSchema(progressTrackers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type ProgressTracker = typeof progressTrackers.$inferSelect;
+export type InsertProgressTracker = z.infer<typeof insertProgressTrackerSchema>;
 
 // Kanban Board table
 export const kanbanBoards = pgTable("kanban_boards", {
