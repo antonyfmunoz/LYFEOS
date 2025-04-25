@@ -255,13 +255,8 @@ export default function SystemsPage() {
             <div className="border-t border-primary/20 pt-3">
               <p className="text-xs text-muted-foreground mb-2">UPCOMING</p>
               <div className="space-y-2">
-                <div className="flex items-center">
-                  <div className="w-1 h-6 bg-primary rounded-full mr-2"></div>
-                  <p className="text-sm">Strategy Meeting <span className="text-xs text-muted-foreground">• Today, 9:00 AM</span></p>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-1 h-6 bg-secondary rounded-full mr-2"></div>
-                  <p className="text-sm">Project Review <span className="text-xs text-muted-foreground">• Today, 11:30 AM</span></p>
+                <div className="flex items-center justify-center p-4">
+                  <p className="text-sm text-muted-foreground">No upcoming events</p>
                 </div>
               </div>
             </div>
