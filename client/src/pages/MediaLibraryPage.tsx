@@ -376,18 +376,28 @@ export default function MediaLibraryPage() {
   useEffect(() => {
     return () => {
       // Clean up any blob URLs when component unmounts
-      optimisticMedia.forEach(item => {
+      const itemsToCleanup = [...optimisticMedia];
+      console.log('Component unmounting - cleaning up blob URLs for', itemsToCleanup.length, 'items');
+      
+      itemsToCleanup.forEach(item => {
         try {
           if (item.thumbnailUrl && item.thumbnailUrl.startsWith('blob:')) {
             URL.revokeObjectURL(item.thumbnailUrl);
+            console.log('Revoked blob URL on unmount:', item.thumbnailUrl);
           }
-          if (item.fileUrl && item.fileUrl.startsWith('blob:')) {
+          
+          // Only revoke fileUrl if it's different from thumbnailUrl to avoid double revocation
+          if (item.fileUrl && item.fileUrl.startsWith('blob:') && item.fileUrl !== item.thumbnailUrl) {
             URL.revokeObjectURL(item.fileUrl);
+            console.log('Revoked blob URL on unmount:', item.fileUrl);
           }
         } catch (e) {
           console.error('Error cleaning up blob URLs on unmount:', e);
         }
       });
+      
+      // Help with garbage collection
+      itemsToCleanup.length = 0;
     };
   }, [optimisticMedia]);
   
@@ -516,19 +526,29 @@ export default function MediaLibraryPage() {
           // Reset progress after a delay to show 100% briefly
           setTimeout(() => setUploadProgress(0), 500);
           
+          // Store a reference to items for cleanup
+          const itemsToCleanup = [...optimisticItems];
+          
           // Clean up any blob URLs we created to prevent memory leaks
-          optimisticItems.forEach(item => {
+          itemsToCleanup.forEach(item => {
             try {
               if (item.thumbnailUrl && item.thumbnailUrl.startsWith('blob:')) {
                 URL.revokeObjectURL(item.thumbnailUrl);
+                console.log('Revoked blob URL in onloadend:', item.thumbnailUrl);
               }
-              if (item.fileUrl && item.fileUrl.startsWith('blob:')) {
+              
+              // Only revoke fileUrl if it's different from thumbnailUrl to avoid double revocation
+              if (item.fileUrl && item.fileUrl.startsWith('blob:') && item.fileUrl !== item.thumbnailUrl) {
                 URL.revokeObjectURL(item.fileUrl);
+                console.log('Revoked blob URL in onloadend:', item.fileUrl);
               }
             } catch (e) {
               console.error('Error cleaning up blob URLs:', e);
             }
           });
+          
+          // Help with garbage collection
+          itemsToCleanup.length = 0;
         };
         
         // Set up and send the request
@@ -540,22 +560,30 @@ export default function MediaLibraryPage() {
       // Query invalidation now handled in XHR onload handler
       console.log('Upload mutation completed successfully');
       
-      // Clean up the blob URLs before clearing optimistic media
-      optimisticMedia.forEach(item => {
+      // Create a copy of the current optimistic media before clearing it
+      const itemsToCleanup = [...optimisticMedia];
+      
+      // Clear optimistic media immediately
+      setOptimisticMedia([]);
+      
+      // Now clean up all blob URLs from the copied array to avoid memory leaks
+      itemsToCleanup.forEach(item => {
         try {
           if (item.thumbnailUrl && item.thumbnailUrl.startsWith('blob:')) {
             URL.revokeObjectURL(item.thumbnailUrl);
+            console.log('Revoked blob URL:', item.thumbnailUrl);
           }
-          if (item.fileUrl && item.fileUrl.startsWith('blob:')) {
+          if (item.fileUrl && item.fileUrl.startsWith('blob:') && item.fileUrl !== item.thumbnailUrl) {
             URL.revokeObjectURL(item.fileUrl);
+            console.log('Revoked blob URL:', item.fileUrl);
           }
         } catch (e) {
           console.error('Error cleaning up blob URLs in onSuccess:', e);
         }
       });
       
-      // Clear optimistic media when server response is received
-      setOptimisticMedia([]);
+      // Clear the copied array to help with garbage collection
+      itemsToCleanup.length = 0;
       
       // Directly trigger a refetch
       refetchMediaItems();
@@ -564,40 +592,81 @@ export default function MediaLibraryPage() {
       setTimeout(() => {
         refetchMediaItems();
       }, 1000);
+    },
+    onError: (error) => {
+      console.error('Upload error:', error);
+      
+      // Also clean up blob URLs on error
+      optimisticMedia.forEach(item => {
+        try {
+          if (item.thumbnailUrl && item.thumbnailUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(item.thumbnailUrl);
+          }
+          if (item.fileUrl && item.fileUrl.startsWith('blob:') && item.fileUrl !== item.thumbnailUrl) {
+            URL.revokeObjectURL(item.fileUrl);
+          }
+        } catch (e) {
+          console.error('Error cleaning up blob URLs on error:', e);
+        }
+      });
+      
+      // Clear optimistic media on error too
+      setOptimisticMedia([]);
     }
   });
   
   // Handle file upload
   const handleFileUpload = (files: File[]) => {
     if (files.length > 0) {
-      // Close dialog instantly
-      setUploadModalOpen(false);
-      
-      // Create immediate optimistic updates
-      const optimisticItems = files.map((file, index) => {
-        const tempUrl = URL.createObjectURL(file);
-        return {
-          id: -(Date.now() + index),
-          userId: 2,
-          albumId: activeAlbum?.id || null,
-          fileName: file.name,
-          title: file.name,
-          fileType: file.type.startsWith('image/') ? 'image' : 'video',
-          thumbnailUrl: tempUrl,
-          fileUrl: tempUrl,
-          fileSize: file.size,
-          isFavorite: false,
-          createdAt: new Date().toISOString()
-        } as MediaItem;
-      });
-      
-      // Add to both local state and update query cache
-      setOptimisticMedia([...optimisticItems, ...optimisticMedia]);
-      
-      console.log("Adding optimistic items locally:", optimisticItems);
-      
-      // Trigger the upload in the background
-      uploadMediaMutation.mutate(files);
+      try {
+        // Close dialog instantly
+        setUploadModalOpen(false);
+        
+        // Clean up any existing blob URLs before creating new ones
+        // This helps prevent memory leaks from abandoned blobs
+        optimisticMedia.forEach(item => {
+          try {
+            if (item.thumbnailUrl && item.thumbnailUrl.startsWith('blob:')) {
+              URL.revokeObjectURL(item.thumbnailUrl);
+            }
+            if (item.fileUrl && item.fileUrl.startsWith('blob:')) {
+              URL.revokeObjectURL(item.fileUrl);
+            }
+          } catch (e) {
+            console.error('Error cleaning up existing blob URLs:', e);
+          }
+        });
+        
+        // Create immediate optimistic updates with timestamp in the ID to ensure uniqueness
+        const timestamp = Date.now();
+        const optimisticItems = files.map((file, index) => {
+          // Create a new blob URL for this file
+          const tempUrl = URL.createObjectURL(file);
+          return {
+            id: -(timestamp + index), // Use negative IDs for optimistic items
+            userId: 2,
+            albumId: activeAlbum?.id || null,
+            fileName: file.name,
+            title: file.name,
+            fileType: file.type.startsWith('image/') ? 'image' : 'video',
+            thumbnailUrl: tempUrl,
+            fileUrl: tempUrl,
+            fileSize: file.size,
+            isFavorite: false,
+            createdAt: new Date().toISOString()
+          } as MediaItem;
+        });
+        
+        // Store a reference to these blob URLs for cleanup
+        setOptimisticMedia(prevItems => [...optimisticItems, ...prevItems]);
+        
+        console.log("Adding optimistic items locally:", optimisticItems);
+        
+        // Trigger the upload in the background
+        uploadMediaMutation.mutate(files);
+      } catch (error) {
+        console.error("Error during file upload preparation:", error);
+      }
     }
   };
 
