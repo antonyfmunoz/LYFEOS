@@ -51,6 +51,7 @@ import { Separator } from "@/components/ui/separator";
 // Define interfaces for media items and albums
 interface MediaItem {
   id: number;
+  userId?: number;
   fileName: string;
   title: string;
   fileType: string;
@@ -59,7 +60,7 @@ interface MediaItem {
   fileSize?: number;
   width?: number;
   height?: number;
-  albumId?: number;
+  albumId?: number | null;
   isFavorite: boolean;
   createdAt?: string;
 }
@@ -383,6 +384,32 @@ export default function MediaLibraryPage() {
       setIsUploading(true);
       setUploadProgress(0);
       
+      // Create optimistic placeholders for each file to display instantly
+      const optimisticItems: MediaItem[] = files.map((file, index) => {
+        // Create a temporary object URL for the file
+        const tempUrl = URL.createObjectURL(file);
+        
+        return {
+          id: -(Date.now() + index), // Use negative IDs for optimistic items
+          userId: 2, // Assuming current user ID is 2
+          albumId: activeAlbum?.id || null,
+          fileName: file.name,
+          title: file.name,
+          fileType: file.type.startsWith('image/') ? 'image' : 'video',
+          thumbnailUrl: tempUrl,
+          fileUrl: tempUrl,
+          fileSize: file.size,
+          isFavorite: false,
+          createdAt: new Date().toISOString()
+        };
+      });
+      
+      // Immediately update the UI with optimistic items
+      const currentItems = mediaItems?.mediaItems || [];
+      queryClient.setQueryData(['/api/users/2/media-items'], { 
+        mediaItems: [...optimisticItems, ...currentItems] 
+      });
+      
       const formData = new FormData();
       
       // Append all files to the form data
@@ -480,6 +507,10 @@ export default function MediaLibraryPage() {
   // Handle file upload
   const handleFileUpload = (files: File[]) => {
     if (files.length > 0) {
+      // Close dialog instantly
+      setUploadModalOpen(false);
+      
+      // Trigger the upload in the background
       uploadMediaMutation.mutate(files);
     }
   };
@@ -603,13 +634,14 @@ export default function MediaLibraryPage() {
           </div>
           
           <div className="flex-shrink-0 ml-auto">
-            <Dialog>
+            <Dialog open={uploadModalOpen} onOpenChange={setUploadModalOpen}>
               <DialogTrigger asChild>
                 <Button 
                   variant="ghost" 
                   size="icon"
                   className="h-8 w-8 bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
                   title="Upload Media"
+                  onClick={() => setUploadModalOpen(true)}
                 >
                   <Upload className="h-4 w-4" />
                 </Button>
