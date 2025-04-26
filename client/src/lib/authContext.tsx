@@ -4,7 +4,7 @@ import { toast } from "@/hooks/use-toast";
 import { apiRequest } from "./queryClient";
 import { auth } from "./firebase";
 import { signInWithGoogle, handleRedirectResult } from "./firebaseAuth";
-import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
+import { User as FirebaseUser, onAuthStateChanged, Auth } from "firebase/auth";
 
 interface User {
   id: number;
@@ -213,7 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("lyfeos_user");
       
       // Sign out from Firebase
-      auth.signOut().catch(error => {
+      auth.signOut().catch((error: Error) => {
         console.error("Firebase sign out error:", error);
       });
       

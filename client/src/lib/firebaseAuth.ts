@@ -1,5 +1,6 @@
-import { GoogleAuthProvider, signInWithRedirect, getRedirectResult } from "firebase/auth";
+import { GoogleAuthProvider, signInWithRedirect, getRedirectResult, UserCredential, AuthError } from "firebase/auth";
 import { auth } from "./firebase";
+import { Auth } from "firebase/auth";
 import { toast } from "@/hooks/use-toast";
 
 // Initialize Google provider
