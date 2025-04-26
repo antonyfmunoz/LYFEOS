@@ -316,27 +316,34 @@ export default function TimelinePage() {
     const itemType = idParts[0];
     const itemId = idParts.slice(1).join('-');
     
+    console.log("Viewing item:", item);
+
     // For demo purpose, let's handle all navigation paths, including simulated items
-    switch(itemType) {
+    if (item.id === 'life-1') {
+      // The simulated knowledge item (Atomic Habits)
+      navigate('/knowledge-archive');
+      return;
+    }
+    
+    if (item.id === 'achievement-1') {
+      // The simulated achievement item (Meditation Streak)
+      navigate('/streak');
+      return;
+    }
+    
+    // Handle regular items by type
+    switch(item.type) {
       case 'mission':
-        // Check if it's a real mission page with a slug
-        const missionPage = missionPages.find(p => p.id === itemId);
-        if (missionPage && missionPage.slug) {
-          navigate(`/mission-page/${missionPage.slug}`);
-        } else {
-          // If no slug, navigate by ID
-          navigate(`/mission/${itemId}`);
-        }
+        // If it's a mission page item
+        navigate(`/mission-archive`); // Go to mission archive as we don't have actual mission slugs
         break;
       case 'event':
-        navigate(`/calendar?event=${itemId}`);
+        navigate(`/calendar`);
         break;
       case 'quest':
-        navigate(`/quests?highlight=${itemId}`);
+        navigate(`/quests`);
         break;
-      // For demo items (journal, ritual, knowledge, etc), navigate to appropriate archive pages
       case 'journal':
-      case 'life-1': // Our simulated journal entry
         navigate('/journal-archive');
         break;
       case 'knowledge':
@@ -346,17 +353,15 @@ export default function TimelinePage() {
         navigate('/rituals-archive');
         break;
       case 'achievement':
-      case 'achievement-1': // Our simulated achievement
-        // Achievements could be represented as a specific stat detail page
-        navigate('/streak'); // For demo, navigate to streak detail as an example achievement
+        navigate('/streak');
         break;
       case 'goal':
         navigate('/goals-archive');
         break;
       default:
-        // If we have no specific place to go, navigate to the dashboard
-        navigate('/dashboard');
-        console.log(`Navigation for ${item.type} item: ${item.id} - redirected to dashboard`);
+        // If we have no specific place to go, send to chronolog
+        navigate('/chronolog');
+        console.log(`No specific navigation for ${item.type} item: ${item.id} - redirected to chronolog`);
         break;
     }
   };
