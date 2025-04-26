@@ -373,7 +373,7 @@ export default function TimelinePage() {
             {/* Filter Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center px-3 py-1 text-xs rounded-md bg-primary/10 text-primary hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+                <button className="flex items-center px-3 py-1 text-xs rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition">
                   <Filter className="h-3 w-3 mr-1" />
                   Filter {activeFilters.length > 0 && `(${activeFilters.length})`}
                 </button>
@@ -383,7 +383,7 @@ export default function TimelinePage() {
                 <DropdownMenuSeparator className="bg-primary/20" />
                 <DropdownMenuGroup>
                   <DropdownMenuItem 
-                    className="flex items-center justify-between text-xs py-1.5 cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all"
+                    className="flex items-center justify-between text-xs py-1.5 cursor-pointer"
                     onClick={() => toggleFilter('mission')}
                   >
                     <div className="flex items-center">
@@ -397,7 +397,7 @@ export default function TimelinePage() {
                   </DropdownMenuItem>
                   
                   <DropdownMenuItem 
-                    className="flex items-center justify-between text-xs py-1.5 cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all"
+                    className="flex items-center justify-between text-xs py-1.5 cursor-pointer"
                     onClick={() => toggleFilter('quest')}
                   >
                     <div className="flex items-center">
@@ -411,7 +411,7 @@ export default function TimelinePage() {
                   </DropdownMenuItem>
                   
                   <DropdownMenuItem 
-                    className="flex items-center justify-between text-xs py-1.5 cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all"
+                    className="flex items-center justify-between text-xs py-1.5 cursor-pointer"
                     onClick={() => toggleFilter('event')}
                   >
                     <div className="flex items-center">
@@ -425,7 +425,7 @@ export default function TimelinePage() {
                   </DropdownMenuItem>
                   
                   <DropdownMenuItem 
-                    className="flex items-center justify-between text-xs py-1.5 cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all"
+                    className="flex items-center justify-between text-xs py-1.5 cursor-pointer"
                     onClick={() => toggleFilter('achievement')}
                   >
                     <div className="flex items-center">
@@ -439,7 +439,7 @@ export default function TimelinePage() {
                   </DropdownMenuItem>
                   
                   <DropdownMenuItem 
-                    className="flex items-center justify-between text-xs py-1.5 cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all"
+                    className="flex items-center justify-between text-xs py-1.5 cursor-pointer"
                     onClick={() => toggleFilter('knowledge')}
                   >
                     <div className="flex items-center">
@@ -455,7 +455,7 @@ export default function TimelinePage() {
                 
                 <DropdownMenuSeparator className="bg-primary/20" />
                 <DropdownMenuItem 
-                  className="flex items-center justify-center text-xs py-1.5 text-primary cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all"
+                  className="flex items-center justify-center text-xs py-1.5 text-primary cursor-pointer hover:bg-background/40"
                   onClick={resetFilters}
                 >
                   Clear All Filters
@@ -466,7 +466,7 @@ export default function TimelinePage() {
             {/* Sort Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center px-3 py-1 text-xs rounded-md bg-primary/10 text-primary hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow">
+                <button className="flex items-center px-3 py-1 text-xs rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition">
                   <ArrowUpDown className="h-3 w-3 mr-1" />
                   Sort
                 </button>
@@ -475,7 +475,7 @@ export default function TimelinePage() {
                 <DropdownMenuLabel className="text-xs text-primary">Sort By Date</DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-primary/20" />
                 <DropdownMenuItem 
-                  className="flex items-center justify-between text-xs py-1.5 cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all"
+                  className="flex items-center justify-between text-xs py-1.5 cursor-pointer"
                   onClick={() => setSortOrder('newest')}
                 >
                   <div className="flex items-center">
@@ -485,7 +485,7 @@ export default function TimelinePage() {
                 </DropdownMenuItem>
                 
                 <DropdownMenuItem 
-                  className="flex items-center justify-between text-xs py-1.5 cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all"
+                  className="flex items-center justify-between text-xs py-1.5 cursor-pointer"
                   onClick={() => setSortOrder('oldest')}
                 >
                   <div className="flex items-center">
@@ -531,7 +531,7 @@ export default function TimelinePage() {
                   
                   <div className="flex justify-end mt-2">
                     <button 
-                      className="text-xs font-medium px-3 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+                      className="text-xs font-medium px-3 py-1 rounded-md bg-primary/10 text-primary hover:bg-opacity-20 transition"
                       onClick={(e) => {
                         e.stopPropagation();
                         viewItemDetails(item);
