@@ -1,59 +1,71 @@
-import { 
-  GoogleAuthProvider, 
-  signInWithRedirect, 
-  getRedirectResult, 
-  signOut,
-  UserCredential
-} from "firebase/auth";
+import { GoogleAuthProvider, signInWithRedirect, getRedirectResult } from "firebase/auth";
 import { auth } from "./firebase";
+import { toast } from "@/hooks/use-toast";
 
-// Google Provider
+// Initialize Google provider
 const googleProvider = new GoogleAuthProvider();
 
-/**
- * Initiates Google Sign In with Redirect
- * Call this function when the user clicks on the "Login with Google" button
- */
-export function signInWithGoogle() {
-  return signInWithRedirect(auth, googleProvider);
-}
+// Google sign-in
+export const signInWithGoogle = async () => {
+  try {
+    if (!import.meta.env.VITE_FIREBASE_API_KEY) {
+      toast({
+        title: "Firebase Configuration Missing",
+        description: "Firebase API keys are not set. Please configure Firebase to use Google Sign-in.",
+        variant: "destructive"
+      });
+      return null;
+    }
+    
+    // Add custom parameters
+    googleProvider.setCustomParameters({
+      prompt: "select_account" // Force account selection even if only one account is available
+    });
+    
+    await signInWithRedirect(auth, googleProvider);
+    return true;
+  } catch (error) {
+    console.error("Google sign-in error:", error);
+    throw error;
+  }
+};
 
-/**
- * Handles the redirect result after returning from the OAuth provider
- * Call this function on page load when the user is redirected back to your site
- */
-export async function handleRedirectResult(): Promise<UserCredential | null> {
+// Handle redirect result
+export const handleRedirectResult = async () => {
   try {
     const result = await getRedirectResult(auth);
-    if (!result) return null;
     
-    // This gives you a Google Access Token, which you can use to access Google APIs
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    const token = credential?.accessToken;
+    if (result) {
+      // This gives you a Google Access Token, which can be used to access Google APIs
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      const token = credential?.accessToken;
+      
+      // The signed-in user info
+      const user = result.user;
+      
+      return { user, token };
+    }
     
-    // The signed-in user info
-    const user = result.user;
-    console.log("Successfully authenticated with Google", { user });
-    
-    return result;
+    return null;
   } catch (error: any) {
-    // Handle Errors here
+    console.error("Redirect result error:", error);
+    
+    // Handle errors
     const errorCode = error.code;
     const errorMessage = error.message;
-    console.error("Error during authentication redirect", { errorCode, errorMessage });
     
     // The email of the user's account used
     const email = error.customData?.email;
+    
     // The AuthCredential type that was used
     const credential = GoogleAuthProvider.credentialFromError(error);
     
+    toast({
+      title: "Authentication Error",
+      description: errorMessage || "Error authenticating with Google. Please try again.",
+      variant: "destructive"
+    });
+    
     throw error;
   }
-}
-
-/**
- * Sign out the currently authenticated user
- */
-export async function logOut() {
-  return signOut(auth);
-}
+};

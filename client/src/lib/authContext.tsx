@@ -2,6 +2,9 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useLocation } from "wouter";
 import { toast } from "@/hooks/use-toast";
 import { apiRequest } from "./queryClient";
+import { auth } from "./firebase";
+import { signInWithGoogle, handleRedirectResult } from "./firebaseAuth";
+import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
 
 interface User {
   id: number;
@@ -18,21 +21,39 @@ interface AuthResponse {
 
 interface AuthContextType {
   user: User | null;
+  firebaseUser: FirebaseUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, password: string) => Promise<void>;
   logout: () => void;
+  loginWithGoogle: () => Promise<void>;
+  handleOAuthRedirect: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [, navigate] = useLocation();
 
-  // Check if the user is logged in on initial load
+  // Firebase auth state listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUserData) => {
+      console.log("Firebase auth state changed:", firebaseUserData);
+      setFirebaseUser(firebaseUserData);
+      
+      // If Firebase user exists but we don't have a server-side user yet,
+      // we'll handle that later with loginWithGoogle
+    });
+    
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, []);
+
+  // Check if the user is logged in on initial load (server-side auth)
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -188,7 +209,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // First clear local state
       setUser(null);
+      setFirebaseUser(null);
       localStorage.removeItem("lyfeos_user");
+      
+      // Sign out from Firebase
+      auth.signOut().catch(error => {
+        console.error("Firebase sign out error:", error);
+      });
       
       // API call to server to logout
       fetch("/api/auth/logout", {
@@ -215,16 +242,79 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       navigate("/login");
     }
   };
+  
+  // Handle Google login
+  const loginWithGoogle = async () => {
+    try {
+      setIsLoading(true);
+      await signInWithGoogle();
+      // The redirect happens automatically, and the result will be handled in handleOAuthRedirect
+    } catch (error) {
+      console.error("Google login error:", error);
+      toast({
+        title: "Login Error",
+        description: "Could not sign in with Google. Please try again.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+    }
+  };
+  
+  // Handle redirect result from OAuth providers
+  const handleOAuthRedirect = async () => {
+    try {
+      setIsLoading(true);
+      const result = await handleRedirectResult();
+      
+      if (result && result.user) {
+        // Get user info from Firebase auth
+        const { displayName, email, uid, photoURL } = result.user;
+        
+        // We would normally register this user with our backend here
+        console.log("Successfully signed in with Google:", { displayName, email, uid });
+        
+        toast({
+          title: "Google Sign-in Successful",
+          description: `Welcome${displayName ? `, ${displayName}` : ''}!`,
+        });
+        
+        // TODO: In a full implementation, we would create/fetch the user on our backend
+        // For now, we'll simulate that by creating a temporary user object
+        const tempUser = {
+          id: parseInt(uid.substring(0, 8), 16) || 999,
+          username: displayName || email?.split('@')[0] || 'user'
+        };
+        
+        setUser(tempUser);
+        localStorage.setItem("lyfeos_user", JSON.stringify(tempUser));
+        
+        // Go to onboarding for new users
+        navigate("/onboarding");
+      }
+    } catch (error) {
+      console.error("Error handling OAuth redirect:", error);
+      toast({
+        title: "Authentication Error",
+        description: "There was a problem completing the authentication. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        firebaseUser,
         isAuthenticated: !!user,
         isLoading,
         login,
         register,
         logout,
+        loginWithGoogle,
+        handleOAuthRedirect,
       }}
     >
       {children}
