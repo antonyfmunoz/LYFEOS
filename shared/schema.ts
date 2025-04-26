@@ -34,6 +34,16 @@ export const userStats = pgTable("user_stats", {
   streakDays: integer("streak_days").notNull().default(0),
   efficiencyScore: integer("efficiency_score").notNull().default(0),
   aiAssistantName: text("ai_assistant_name").default("NOVA").notNull(),
+  // Onboarding fields
+  lifeStage: text("life_stage"), // Awakening, Building, Mastering, Leading
+  archetype: text("archetype"), // Leader, Creator, Athlete, etc.
+  workPace: integer("work_pace"), // 1-5 scale slider
+  environment: integer("environment"), // 1-5 scale slider
+  riskTolerance: integer("risk_tolerance"), // 1-5 scale slider
+  learningStyle: integer("learning_style"), // 1-5 scale slider
+  energyManagement: integer("energy_management"), // 1-5 scale slider
+  coreMotivation: text("core_motivation"), // Achievement, Freedom, etc.
+  onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
   // System settings
   notificationsEnabled: boolean("notifications_enabled").default(false).notNull(),
   darkThemeEnabled: boolean("dark_theme_enabled").default(true).notNull(),
