@@ -873,32 +873,6 @@ export default function MediaLibraryPage() {
               </DropdownMenuContent>
             </DropdownMenu>
             
-            {/* Zoom controls - only show in grid view */}
-            {activeView === "grid" && (
-              <div className="bg-background rounded-md flex">
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  className="h-8 w-8 rounded-r-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
-                  onClick={zoomOut}
-                  title="Zoom Out"
-                  disabled={zoomLevel <= 1}
-                >
-                  <Minus className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  className="h-8 w-8 rounded-l-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
-                  onClick={zoomIn}
-                  title="Zoom In"
-                  disabled={zoomLevel >= 4}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-            
             {/* Sort dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -934,6 +908,32 @@ export default function MediaLibraryPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            
+            {/* Zoom controls - only show in grid view */}
+            {activeView === "grid" && (
+              <div className="bg-background rounded-md flex ml-2">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  className="h-8 w-8 rounded-r-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+                  onClick={zoomOut}
+                  title="Zoom Out"
+                  disabled={zoomLevel <= 1}
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  className="h-8 w-8 rounded-l-none hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
+                  onClick={zoomIn}
+                  title="Zoom In"
+                  disabled={zoomLevel >= 4}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
           
           <div className="flex-shrink-0 ml-auto">
