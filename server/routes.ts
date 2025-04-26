@@ -153,7 +153,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         username: userData.username,
         password: hashedPassword,
         displayName: userData.displayName,
-        title: userData.title
+        title: userData.title,
+        email: userData.email || null,
+        authProvider: userData.authProvider || 'email',
+        termsAccepted: userData.termsAccepted || false
       });
       
       console.log("User created successfully with ID:", user.id);
@@ -219,6 +222,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           password: hashedPassword,
           displayName: username,
           title: 'COMMANDER',
+          email: username, // Using username as default email for auto-registration
+          authProvider: 'email',
+          termsAccepted: true
         });
         
         // Create initial user stats
