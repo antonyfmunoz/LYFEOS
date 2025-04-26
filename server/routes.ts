@@ -624,10 +624,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Not authorized to toggle this quest" });
       }
       
+      // Toggle completion and reward XP if completed
       const updatedQuest = await storage.toggleQuestCompletion(questId);
       
-      return res.status(200).json({ quest: updatedQuest });
+      // Get updated user stats to return to the client
+      const userStats = await storage.getUserStats(quest.userId);
+      
+      return res.status(200).json({ 
+        quest: updatedQuest,
+        stats: userStats ? {
+          experience: {
+            current: userStats.experienceCurrent,
+            max: userStats.experienceMax,
+            level: userStats.level
+          }
+        } : undefined
+      });
     } catch (error) {
+      console.error("Error toggling quest completion:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });
@@ -823,6 +837,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const page = await storage.createMissionPage(pageData);
+      
+      // Award XP for creating a mission page
+      try {
+        const userStats = await storage.getUserStats(pageData.userId);
+        if (userStats) {
+          // Add 15 XP for creating a mission page
+          let newExperience = userStats.experienceCurrent + 15;
+          let newLevel = userStats.level;
+          let newExperienceMax = userStats.experienceMax;
+          
+          // Level up if necessary
+          while (newExperience >= userStats.experienceMax) {
+            newExperience -= userStats.experienceMax;
+            newLevel += 1;
+            newExperienceMax = Math.floor(userStats.experienceMax * 1.2); // 20% increase per level
+          }
+          
+          // Update user stats
+          await storage.updateUserStats(pageData.userId, {
+            experienceCurrent: newExperience,
+            level: newLevel,
+            experienceMax: newExperienceMax
+          });
+          
+          // Get updated stats
+          const updatedStats = await storage.getUserStats(pageData.userId);
+          
+          return res.status(201).json({ 
+            page,
+            stats: updatedStats ? {
+              experience: {
+                current: updatedStats.experienceCurrent,
+                max: updatedStats.experienceMax,
+                level: updatedStats.level
+              }
+            } : undefined
+          });
+        }
+      } catch (xpError) {
+        console.error("Error awarding XP for mission page creation:", xpError);
+        // Continue without failing the request if XP award fails
+      }
+      
       return res.status(201).json({ page });
     } catch (error) {
       if (error instanceof z.ZodError) {
