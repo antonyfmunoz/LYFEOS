@@ -181,6 +181,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aiAssistantName: "NOVA"
       });
       
+      // Create user profile
+      console.log("Creating user profile for new user:", user.id);
+      await storage.createUserProfile({
+        userId: user.id,
+        startStage: "beginner",
+        targetArchetype: "architect",
+        flowStyle: "hyperfocus",
+        coreMotivation: "growth",
+        setupMissionStatus: "not_started",
+        primaryThemeColor: "#ecc94b",
+        onboardingCompleted: false
+      });
+      
+      // Create user integrations
+      console.log("Creating user integrations for new user:", user.id);
+      await storage.createUserIntegration({
+        userId: user.id,
+        appleHealthConnected: false,
+        googleCalendarConnected: false,
+        notionConnected: false
+      });
+      
+      // Create user daily logs
+      console.log("Creating initial daily logs for new user:", user.id);
+      const today = new Date().toISOString().split('T')[0];
+      await storage.createUserDailyLog({
+        userId: user.id,
+        date: today,
+        yesterdayXp: 0,
+        todayPrimaryMission: "Get started with LYFEOS",
+        optionalBoostsShown: false
+      });
+      
       // Create session
       req.session.userId = user.id;
       req.session.username = user.username;
@@ -245,6 +278,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
           streakDays: 0,
           efficiencyScore: 0,
           aiAssistantName: "NOVA"
+        });
+        
+        // Create user profile
+        console.log("Creating user profile for new user:", newUser.id);
+        await storage.createUserProfile({
+          userId: newUser.id,
+          startStage: "beginner",
+          targetArchetype: "architect",
+          flowStyle: "hyperfocus",
+          coreMotivation: "growth",
+          setupMissionStatus: "not_started",
+          primaryThemeColor: "#ecc94b",
+          onboardingCompleted: false
+        });
+        
+        // Create user integrations
+        console.log("Creating user integrations for new user:", newUser.id);
+        await storage.createUserIntegration({
+          userId: newUser.id,
+          appleHealthConnected: false,
+          googleCalendarConnected: false,
+          notionConnected: false
+        });
+        
+        // Create user daily logs
+        console.log("Creating initial daily logs for new user:", newUser.id);
+        const today = new Date().toISOString().split('T')[0];
+        await storage.createUserDailyLog({
+          userId: newUser.id,
+          date: today,
+          yesterdayXp: 0,
+          todayPrimaryMission: "Get started with LYFEOS",
+          optionalBoostsShown: false
         });
         
         // Create session

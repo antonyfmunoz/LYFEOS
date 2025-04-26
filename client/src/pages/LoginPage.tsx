@@ -139,9 +139,13 @@ export default function LoginPage() {
     }
     
     try {
+      // Pass the username and password to the login function
+      console.log("Submitting login form with username:", username);
       await login(username, password);
+      // Login function will handle navigation to dashboard if successful
     } catch (err: any) {
       console.error("Login error:", err);
+      // Display the error message from the caught error, or a default message
       setError(err?.message || "Login failed. Please check your credentials and try again.");
     }
   };
