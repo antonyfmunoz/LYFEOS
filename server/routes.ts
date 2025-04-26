@@ -345,6 +345,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Firebase authentication handler
+  app.post("/api/auth/firebase", async (req: Request, res: Response) => {
+    try {
+      const { uid, email, displayName, photoURL } = req.body;
+      console.log("Firebase auth attempt:", { uid, email, displayName });
+      
+      if (!uid || !email) {
+        console.log("Firebase auth failed: Missing uid or email");
+        return res.status(400).json({ error: "Firebase user ID and email are required" });
+      }
+      
+      // Check if user exists by email
+      let user = await storage.getUserByEmail(email);
+      
+      if (!user) {
+        // User doesn't exist, create a new one
+        console.log("Creating new user from Firebase auth:", email);
+        
+        // Generate a username from email
+        const username = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '') + 
+                       Math.floor(Math.random() * 1000).toString();
+        
+        // Create the user with Firebase credentials
+        user = await storage.createUser({
+          username: username,
+          password: '', // No password for Firebase users
+          displayName: displayName || username,
+          title: 'COMMANDER',
+          email: email,
+          authProvider: 'firebase',
+          firebaseUid: uid,
+          termsAccepted: true
+        });
+        
+        // Create initial user stats
+        console.log("Creating initial stats for new Firebase user:", user.id);
+        await storage.createUserStats({
+          userId: user.id,
+          experienceCurrent: 0,
+          experienceMax: 100,
+          level: 1,
+          timeTokensCurrent: 10,
+          timeTokensMax: 10,
+          energyPointsCurrent: 10,
+          energyPointsMax: 10,
+          healthPointsCurrent: 10,
+          healthPointsMax: 10,
+          attentionTokensCurrent: 10,
+          attentionTokensMax: 10,
+          streakDays: 0,
+          efficiencyScore: 0,
+          aiAssistantName: "NOVA"
+        });
+        
+        // Create user profile
+        console.log("Creating user profile for new Firebase user:", user.id);
+        await storage.createUserProfile({
+          userId: user.id,
+          startStage: "beginner",
+          targetArchetype: "architect",
+          flowStyle: "hyperfocus",
+          coreMotivation: "growth",
+          setupMissionStatus: "not_started",
+          primaryThemeColor: "#00e0ff", // Default teal color
+          onboardingCompleted: false
+        });
+        
+        // Create user integrations
+        console.log("Creating user integrations for new Firebase user:", user.id);
+        await storage.createUserIntegrations({
+          userId: user.id,
+          calendar: false,
+          fitness: false,
+          music: false,
+          tasks: false,
+          weather: false,
+          email: false
+        });
+      } else {
+        // User exists, update Firebase UID if needed
+        if (!user.firebaseUid) {
+          await storage.updateUserFirebaseUid(user.id, uid);
+        }
+      }
+      
+      // Set session
+      req.session.userId = user.id;
+      req.session.username = user.username;
+      
+      console.log("Firebase login successful for user:", user.username);
+      return res.status(200).json({ 
+        user: { 
+          id: user.id, 
+          username: user.username,
+          displayName: user.displayName 
+        } 
+      });
+    } catch (error) {
+      console.error("Firebase auth error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.post("/api/auth/logout", (req: Request, res: Response) => {
     try {
       // If no session exists, just respond successfully

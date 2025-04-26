@@ -296,26 +296,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Get user info from Firebase auth
         const { displayName, email, uid, photoURL } = result.user;
         
-        // We would normally register this user with our backend here
         console.log("Successfully signed in with Google:", { displayName, email, uid });
+        
+        // Register or login this Firebase user with our backend
+        const response = await fetch("/api/auth/firebase", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ 
+            uid, 
+            email, 
+            displayName, 
+            photoURL 
+          }),
+          credentials: "include" // Important for session cookie handling
+        });
+        
+        if (!response.ok) {
+          throw new Error("Failed to authenticate with server");
+        }
+        
+        const userData = await response.json();
         
         toast({
           title: "Google Sign-in Successful",
           description: `Welcome${displayName ? `, ${displayName}` : ''}!`,
         });
         
-        // TODO: In a full implementation, we would create/fetch the user on our backend
-        // For now, we'll simulate that by creating a temporary user object
-        const tempUser = {
-          id: parseInt(uid.substring(0, 8), 16) || 999,
-          username: displayName || email?.split('@')[0] || 'user'
-        };
+        setUser(userData.user);
+        localStorage.setItem("lyfeos_user", JSON.stringify(userData.user));
         
-        setUser(tempUser);
-        localStorage.setItem("lyfeos_user", JSON.stringify(tempUser));
-        
-        // Go to onboarding for new users
-        navigate("/onboarding");
+        // Go to dashboard or onboarding depending on if the user is new
+        navigate("/dashboard");
       }
     } catch (error) {
       console.error("Error handling OAuth redirect:", error);
