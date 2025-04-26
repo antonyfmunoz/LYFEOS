@@ -98,8 +98,15 @@ function Router() {
       }
       
       // Also redirect protected paths to login if not authenticated
+      // Note: We don't include /onboarding in protected paths because we need to reach it after login
       const protectedPaths = ['/dashboard', '/profile', '/systems', '/chronilog', '/kanban'];
       const currentPath = window.location.pathname;
+      // Skip this check for /onboarding path - needed for new users
+      if (currentPath.startsWith('/onboarding')) {
+        console.log('Allowing access to onboarding path for authentication flow');
+        return;
+      }
+      
       const isProtectedPath = protectedPaths.some(path => currentPath.startsWith(path));
       
       if (isProtectedPath && !isAuthenticated) {

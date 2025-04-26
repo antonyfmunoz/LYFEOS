@@ -116,12 +116,18 @@ export function DailyInitModal() {
 
   // Check if we should show this modal (based on last login date and onboarding status)
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      console.log("No user data available, skipping daily init check");
+      return;
+    }
+    
+    console.log("Starting daily init check for user:", user.username);
     
     // Check if user has completed onboarding first
     const checkOnboardingStatus = async () => {
       try {
         // Get profile data to check if onboarding is completed
+        console.log("Fetching profile data for user ID:", user.id);
         const profileResponse = await fetch(`/api/users/${user.id}/profile`, {
           credentials: 'include'
         });
@@ -131,18 +137,24 @@ export function DailyInitModal() {
           console.log("Profile data for onboarding check:", profileData);
           
           // If onboarding is not completed, don't show daily init
-          if (!profileData.onboardingCompleted) {
+          if (!profileData || !profileData.onboardingCompleted) {
             console.log("Onboarding not completed, skipping daily init modal");
             return;
           }
+          
+          console.log("Onboarding completed, proceeding with daily init check");
           
           // Only proceed with daily init if onboarding is complete
           // Get the last login date from localStorage (or set today as default)
           const lastLogin = localStorage.getItem('lyfeos-last-login-date');
           const today = new Date().toDateString();
           
+          console.log("Last login date:", lastLogin, "Today:", today);
+          
           // If no last login or last login was before today, show the modal
           if (!lastLogin || lastLogin !== today) {
+            console.log("Showing daily init modal - new day detected");
+            
             // Small delay to let the dashboard load first
             const timer = setTimeout(() => {
               setOpen(true);
@@ -154,6 +166,7 @@ export function DailyInitModal() {
                 try {
                   // Format date as YYYY-MM-DD for the API
                   const formattedDate = new Date().toISOString().split('T')[0];
+                  console.log("Logging daily init for date:", formattedDate);
                   
                   // Create or update daily log entry
                   apiRequest(`/api/users/${user.id}/daily-logs`, {
@@ -163,7 +176,9 @@ export function DailyInitModal() {
                       yesterdayXp: stats?.stats?.experience?.current || 0,
                       optionalBoostsShown: true
                     })
-                  }).catch(err => console.error("Error logging daily init:", err));
+                  })
+                  .then(response => console.log("Daily init log response:", response))
+                  .catch(err => console.error("Error logging daily init:", err));
                 } catch (error) {
                   console.error("Failed to log daily initialization:", error);
                 }
@@ -171,9 +186,18 @@ export function DailyInitModal() {
             }, 1000);
             
             return () => clearTimeout(timer);
+          } else {
+            console.log("User already logged in today, skipping daily init modal");
           }
         } else {
-          console.error("Failed to fetch profile data for onboarding check:", profileResponse.status);
+          console.error("Failed to fetch profile data for onboarding check. Status:", profileResponse.status);
+          // Try to read error message from response
+          try {
+            const errorText = await profileResponse.text();
+            console.error("Error response:", errorText);
+          } catch (e) {
+            console.error("Could not read error response text");
+          }
         }
       } catch (error) {
         console.error("Error checking onboarding status:", error);
