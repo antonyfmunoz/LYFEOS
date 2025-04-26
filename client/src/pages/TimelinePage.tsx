@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useLocation, Link } from 'wouter';
 import { ArrowLeft, CalendarClock, BookOpen, Sparkles, Milestone, CalendarDays, Trophy, MessageCircle, CheckCircle2, XCircle, Filter, ArrowUpDown } from 'lucide-react';
 import { ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { useLYFEOS } from '@/lib/context';
 import { usePageTitle } from '@/hooks/use-page-title';
 import {
@@ -344,10 +345,14 @@ export default function TimelinePage() {
   return (
     <div>
       <div className="mb-4">
-        <Link href="/chronilog" className="text-primary flex items-center hover:underline">
-          <ChevronRight className="h-4 w-4 mr-1" />
-          Back to Chronilog
-        </Link>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-8 w-8 hover:bg-primary hover:text-background" 
+          onClick={goBack}
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
       </div>
         
       <div className="flex items-center mb-6">
