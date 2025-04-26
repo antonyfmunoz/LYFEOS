@@ -167,7 +167,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: `Welcome to LYFEOS, ${data.user.username}!`,
           variant: "default",
         });
-        navigate("/dashboard");
+        // After registration, go to onboarding instead of dashboard
+        navigate("/onboarding");
       }
     } catch (error) {
       console.error("Registration error:", error);

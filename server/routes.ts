@@ -439,6 +439,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log("Updating primary color to:", frontendStats.primaryColor);
       }
       
+      // Handle onboarding fields
+      if (frontendStats.lifeStage !== undefined) {
+        dbStatsUpdate.lifeStage = frontendStats.lifeStage;
+        console.log("Updating life stage to:", frontendStats.lifeStage);
+      }
+      
+      if (frontendStats.archetype !== undefined) {
+        dbStatsUpdate.archetype = frontendStats.archetype;
+        console.log("Updating archetype to:", frontendStats.archetype);
+      }
+      
+      if (frontendStats.workPace !== undefined) {
+        dbStatsUpdate.workPace = frontendStats.workPace;
+        console.log("Updating work pace to:", frontendStats.workPace);
+      }
+      
+      if (frontendStats.environment !== undefined) {
+        dbStatsUpdate.environment = frontendStats.environment;
+        console.log("Updating environment to:", frontendStats.environment);
+      }
+      
+      if (frontendStats.riskTolerance !== undefined) {
+        dbStatsUpdate.riskTolerance = frontendStats.riskTolerance;
+        console.log("Updating risk tolerance to:", frontendStats.riskTolerance);
+      }
+      
+      if (frontendStats.onboardingCompleted !== undefined) {
+        dbStatsUpdate.onboardingCompleted = frontendStats.onboardingCompleted;
+        console.log("Updating onboarding completed to:", frontendStats.onboardingCompleted);
+      }
+      
       const dbUpdatedStats = await storage.updateUserStats(userId, dbStatsUpdate);
       
       // Transform the response back to the frontend model
