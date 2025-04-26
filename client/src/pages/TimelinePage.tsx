@@ -310,60 +310,12 @@ export default function TimelinePage() {
     setActiveFilters([]);
   };
   
-  // Navigate to detail view based on item type
+  // Navigate to detail view for the item
   const viewItemDetails = (item: TimelineItem) => {
-    const idParts = item.id.split('-');
-    const itemType = idParts[0];
-    const itemId = idParts.slice(1).join('-');
-    
     console.log("Viewing item:", item);
-
-    // For demo purpose, let's handle all navigation paths, including simulated items
-    if (item.id === 'life-1') {
-      // The simulated knowledge item (Atomic Habits)
-      navigate('/knowledge-archive');
-      return;
-    }
     
-    if (item.id === 'achievement-1') {
-      // The simulated achievement item (Meditation Streak)
-      navigate('/streak');
-      return;
-    }
-    
-    // Handle regular items by type
-    switch(item.type) {
-      case 'mission':
-        // If it's a mission page item
-        navigate(`/mission-archive`); // Go to mission archive as we don't have actual mission slugs
-        break;
-      case 'event':
-        navigate(`/calendar`);
-        break;
-      case 'quest':
-        navigate(`/quests`);
-        break;
-      case 'journal':
-        navigate('/journal-archive');
-        break;
-      case 'knowledge':
-        navigate('/knowledge-archive');
-        break;
-      case 'ritual':
-        navigate('/rituals-archive');
-        break;
-      case 'achievement':
-        navigate('/streak');
-        break;
-      case 'goal':
-        navigate('/goals-archive');
-        break;
-      default:
-        // If we have no specific place to go, send to chronolog
-        navigate('/chronolog');
-        console.log(`No specific navigation for ${item.type} item: ${item.id} - redirected to chronolog`);
-        break;
-    }
+    // Navigate to the detail page for this item
+    navigate(`/chronolog/timeline/${item.id}`);
   };
 
   const goBack = () => {
