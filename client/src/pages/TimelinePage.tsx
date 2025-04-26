@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { ArrowLeft, CalendarClock, BookOpen, Sparkles, Milestone, CalendarDays, Trophy, MessageCircle, CheckCircle2, XCircle, Filter, ArrowUpDown } from 'lucide-react';
 import { useLYFEOS } from '@/lib/context';
