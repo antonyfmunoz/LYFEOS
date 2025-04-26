@@ -11,7 +11,7 @@ import { usePageTitle } from "@/hooks/use-page-title";
 import { CalendarEvent } from "@/lib/types";
 import { format } from "date-fns";
 import { Plus, Edit, Trash, Clock, ArrowLeft, Info, ExternalLink } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 
 export default function CalendarPage() {
@@ -19,6 +19,7 @@ export default function CalendarPage() {
   usePageTitle('Calendar');
   
   const { events, addEvent, updateEvent, deleteEvent } = useLYFEOS();
+  const [, navigate] = useLocation();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
   const [isEditEventOpen, setIsEditEventOpen] = useState(false);
@@ -123,9 +124,14 @@ export default function CalendarPage() {
     <div className="container mx-auto p-4">
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center">
-          <Link href="/dashboard" className="mr-3 flex items-center text-[#7DAAB2] hover:text-primary transition">
-            <ArrowLeft size={20} />
-          </Link>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 mr-3 hover:bg-primary hover:text-background" 
+            onClick={() => navigate('/dashboard')}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
           <h1 className="text-2xl font-orbitron">Calendar</h1>
         </div>
         <Button 
@@ -177,15 +183,17 @@ export default function CalendarPage() {
                       <div className="flex items-center space-x-2">
                         <Clock className="h-3.5 w-3.5 text-[#7DAAB2]" />
                         <span className="text-xs text-[#7DAAB2]">{event.duration}</span>
-                        <Link href={`/mission/${event.id}`} onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-5 w-5 rounded-full text-[#7DAAB2] hover:bg-primary hover:text-background"
-                          >
-                            <Info className="h-3.5 w-3.5" />
-                          </Button>
-                        </Link>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 rounded-full text-[#7DAAB2] hover:bg-primary hover:text-background"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/mission/${event.id}`);
+                          }}
+                        >
+                          <Info className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     </div>
                     <p className="text-sm text-[#7DAAB2] mt-1">{event.description}</p>
@@ -454,15 +462,17 @@ export default function CalendarPage() {
                   {selectedEvent.category.charAt(0).toUpperCase() + selectedEvent.category.slice(1)}
                 </span>
                 
-                <Link href={`/mission/${selectedEvent.id}`}>
-                  <Button 
-                    variant="outline"
-                    size="sm"
-                    className="text-primary border-primary/30 hover:bg-primary hover:text-background"
-                  >
-                    View Mission <ExternalLink className="ml-2 h-3.5 w-3.5" />
-                  </Button>
-                </Link>
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  className="text-primary border-primary/30 hover:bg-primary hover:text-background"
+                  onClick={() => {
+                    setIsInfoEventOpen(false);
+                    navigate(`/mission/${selectedEvent.id}`);
+                  }}
+                >
+                  View Mission <ExternalLink className="ml-2 h-3.5 w-3.5" />
+                </Button>
               </div>
             </div>
           )}
