@@ -229,6 +229,22 @@ export class DatabaseStorage implements IStorage {
       level: 1
     });
     
+    // Create default user profile
+    await db.insert(userProfile).values({
+      userId: user.id,
+      primaryThemeColor: '#00e0ff',
+      onboardingCompleted: false,
+      setupMissionStatus: 'not_started'
+    });
+    
+    // Create default user integrations
+    await db.insert(userIntegrations).values({
+      userId: user.id,
+      appleHealthConnected: false,
+      googleCalendarConnected: false,
+      notionConnected: false
+    });
+    
     return user;
   }
   
@@ -262,6 +278,85 @@ export class DatabaseStorage implements IStorage {
       .where(eq(userStats.userId, userId))
       .returning();
     return updatedStats;
+  }
+  
+  // User Profile methods
+  async getUserProfile(userId: number): Promise<UserProfile | undefined> {
+    const [profile] = await db.select().from(userProfile).where(eq(userProfile.userId, userId));
+    return profile;
+  }
+  
+  async createUserProfile(profile: InsertUserProfile): Promise<UserProfile> {
+    const [newProfile] = await db
+      .insert(userProfile)
+      .values(profile)
+      .returning();
+    return newProfile;
+  }
+  
+  async updateUserProfile(userId: number, profileUpdate: Partial<InsertUserProfile>): Promise<UserProfile> {
+    const [updatedProfile] = await db
+      .update(userProfile)
+      .set({ ...profileUpdate })
+      .where(eq(userProfile.userId, userId))
+      .returning();
+    return updatedProfile;
+  }
+  
+  // User Daily Logs methods
+  async getUserDailyLogs(userId: number): Promise<UserDailyLog[]> {
+    return db.select().from(userDailyLogs).where(eq(userDailyLogs.userId, userId));
+  }
+  
+  async getUserDailyLogByDate(userId: number, date: Date): Promise<UserDailyLog | undefined> {
+    const formattedDate = date.toISOString().split('T')[0]; // Convert to YYYY-MM-DD format
+    const [log] = await db.select()
+      .from(userDailyLogs)
+      .where(and(
+        eq(userDailyLogs.userId, userId),
+        eq(userDailyLogs.date, formattedDate)
+      ));
+    return log;
+  }
+  
+  async createUserDailyLog(log: InsertUserDailyLog): Promise<UserDailyLog> {
+    const [newLog] = await db
+      .insert(userDailyLogs)
+      .values(log)
+      .returning();
+    return newLog;
+  }
+  
+  async updateUserDailyLog(id: number, logUpdate: Partial<InsertUserDailyLog>): Promise<UserDailyLog> {
+    const [updatedLog] = await db
+      .update(userDailyLogs)
+      .set({ ...logUpdate })
+      .where(eq(userDailyLogs.id, id))
+      .returning();
+    return updatedLog;
+  }
+  
+  // User Integration methods
+  async getUserIntegration(userId: number): Promise<UserIntegration | undefined> {
+    const [integration] = await db.select().from(userIntegrations).where(eq(userIntegrations.userId, userId));
+    return integration;
+  }
+  
+  async createUserIntegration(integration: InsertUserIntegration): Promise<UserIntegration> {
+    const [newIntegration] = await db
+      .insert(userIntegrations)
+      .values(integration)
+      .returning();
+    return newIntegration;
+  }
+  
+  async updateUserIntegration(userId: number, integrationUpdate: Partial<InsertUserIntegration>): Promise<UserIntegration> {
+    const [updatedIntegration] = await db
+      .update(userIntegrations)
+      .set({ ...integrationUpdate })
+      .where(eq(userIntegrations.userId, userId))
+      .returning();
+    return updatedIntegration;
   }
   
   // Quest methods
