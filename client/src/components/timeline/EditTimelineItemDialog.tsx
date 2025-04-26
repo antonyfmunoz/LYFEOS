@@ -94,17 +94,17 @@ const EditTimelineItemDialog: React.FC<EditTimelineItemDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] max-w-[95vw] h-[95vh] max-h-[95vh] overflow-y-auto bg-background text-foreground border-primary/40 shadow-[0_0_30px_rgba(0,0,0,0.3)]">
-        <DialogHeader className="border-b border-primary/20 pb-4 mb-6">
-          <DialogTitle className="font-orbitron text-2xl">Edit Timeline Item</DialogTitle>
-          <DialogDescription className="text-lg">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto bg-background text-foreground border-primary/40 shadow-[0_0_30px_rgba(0,0,0,0.3)]">
+        <DialogHeader>
+          <DialogTitle className="font-orbitron">Edit Timeline Item</DialogTitle>
+          <DialogDescription>
             Make changes to the timeline item details below.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="grid gap-6 py-4">
-          <div className="grid grid-cols-6 items-center gap-6">
-            <Label htmlFor="title" className="text-right text-lg col-span-1">
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="title" className="text-right">
               Title
             </Label>
             <Input
@@ -112,12 +112,12 @@ const EditTimelineItemDialog: React.FC<EditTimelineItemDialogProps> = ({
               name="title"
               value={formData.title}
               onChange={handleChange}
-              className="col-span-5 bg-background/50 border-primary/30 focus:border-primary/60 focus-visible:ring-1 focus-visible:ring-primary/30 text-lg h-12"
+              className="col-span-3 bg-background/50 border-primary/30 focus:border-primary/60 focus-visible:ring-1 focus-visible:ring-primary/30"
             />
           </div>
           
-          <div className="grid grid-cols-6 items-center gap-6">
-            <Label htmlFor="date" className="text-right text-lg col-span-1">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="date" className="text-right">
               Date
             </Label>
             <Input
@@ -125,12 +125,12 @@ const EditTimelineItemDialog: React.FC<EditTimelineItemDialogProps> = ({
               name="date"
               value={formData.date}
               onChange={handleChange}
-              className="col-span-5 bg-background/50 border-primary/30 focus:border-primary/60 focus-visible:ring-1 focus-visible:ring-primary/30 text-lg h-12"
+              className="col-span-3 bg-background/50 border-primary/30 focus:border-primary/60 focus-visible:ring-1 focus-visible:ring-primary/30"
             />
           </div>
           
-          <div className="grid grid-cols-6 items-start gap-6">
-            <Label htmlFor="description" className="text-right text-lg col-span-1 mt-2">
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label htmlFor="description" className="text-right mt-2">
               Description
             </Label>
             <Textarea
@@ -138,13 +138,13 @@ const EditTimelineItemDialog: React.FC<EditTimelineItemDialogProps> = ({
               name="description"
               value={formData.description}
               onChange={handleChange}
-              className="col-span-5 min-h-[120px] bg-background/50 border-primary/30 focus:border-primary/60 focus-visible:ring-1 focus-visible:ring-primary/30 text-lg"
+              className="col-span-3 min-h-[80px] bg-background/50 border-primary/30 focus:border-primary/60 focus-visible:ring-1 focus-visible:ring-primary/30"
             />
           </div>
           
           {item.content !== undefined && (
-            <div className="grid grid-cols-6 items-start gap-6">
-              <Label htmlFor="content" className="text-right text-lg col-span-1 mt-2">
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label htmlFor="content" className="text-right mt-2">
                 Content
               </Label>
               <Textarea
@@ -152,23 +152,23 @@ const EditTimelineItemDialog: React.FC<EditTimelineItemDialogProps> = ({
                 name="content"
                 value={formData.content}
                 onChange={handleChange}
-                className="col-span-5 min-h-[300px] bg-background/50 border-primary/30 focus:border-primary/60 focus-visible:ring-1 focus-visible:ring-primary/30 text-lg"
+                className="col-span-3 min-h-[120px] bg-background/50 border-primary/30 focus:border-primary/60 focus-visible:ring-1 focus-visible:ring-primary/30"
               />
             </div>
           )}
         </div>
         
-        <DialogFooter className="border-t border-primary/20 pt-6 mt-6 flex gap-4">
+        <DialogFooter>
           <Button
             variant="outline"
             onClick={onClose}
-            className="bg-muted/20 hover:text-destructive hover:shadow-[0_0_10px_rgba(255,0,0,0.3)] hover:bg-muted/30 text-base px-6 py-2 h-12"
+            className="bg-muted/20 hover:text-destructive hover:shadow-[0_0_10px_rgba(255,0,0,0.3)] hover:bg-muted/30"
           >
             Cancel
           </Button>
           <Button 
             onClick={handleSubmit}
-            className="bg-primary/20 text-primary hover:bg-primary/30 hover:shadow-[0_0_10px_rgba(255,255,0,0.5)] text-base px-6 py-2 h-12"
+            className="bg-primary/20 text-primary hover:bg-primary/30 hover:shadow-[0_0_10px_rgba(255,255,0,0.5)]"
           >
             Save Changes
           </Button>
