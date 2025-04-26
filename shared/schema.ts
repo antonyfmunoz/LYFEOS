@@ -287,6 +287,10 @@ export const insertUserSchema = createInsertSchema(users).pick({
   avatarColor: true,
   title: true,
   profilePicture: true,
+  email: true,
+  authProvider: true,
+  termsAccepted: true,
+  lastLoginAt: true,
 });
 
 export const insertUserStatsSchema = createInsertSchema(userStats).pick({
