@@ -3060,7 +3060,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             yesterdayXp: yesterdayXp !== undefined ? yesterdayXp : existingLog[0].yesterdayXp,
             todayPrimaryMission: todayPrimaryMission || existingLog[0].todayPrimaryMission,
             optionalBoostsShown: optionalBoostsShown !== undefined ? optionalBoostsShown : existingLog[0].optionalBoostsShown,
-            bootsData: bootsData || existingLog[0].bootsData
+            boostsData: boostsData || existingLog[0].boostsData
           })
           .where(eq(userDailyLogs.id, existingLog[0].id));
           
@@ -3073,7 +3073,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           yesterdayXp: yesterdayXp || 0,
           todayPrimaryMission,
           optionalBoostsShown,
-          bootsData: bootsData || {}
+          boostsData: boostsData || {}
         }).returning();
         
         return res.status(201).json({ log: newLog[0] });
@@ -3092,7 +3092,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid user ID" });
       }
       
-      const { date, bootsData } = req.body;
+      const { date, boostsData } = req.body;
       
       if (!date) {
         return res.status(400).json({ error: "Date is required" });
@@ -3107,7 +3107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Update the existing log
         await db.update(userDailyLogs)
           .set({
-            bootsData: bootsData || existingLog[0].bootsData
+            boostsData: boostsData || existingLog[0].boostsData
           })
           .where(eq(userDailyLogs.id, existingLog[0].id));
           
@@ -3117,7 +3117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const newLog = await db.insert(userDailyLogs).values({
           userId: userId,
           date,
-          bootsData: bootsData || {}
+          boostsData: boostsData || {}
         }).returning();
         
         return res.status(201).json({ log: newLog[0] });
