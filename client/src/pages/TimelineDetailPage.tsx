@@ -188,6 +188,9 @@ export default function TimelineDetailPage() {
   const { missionPages, events, quests, messages } = useLYFEOS();
   const [item, setItem] = useState<TimelineItem | null>(null);
   
+  // Set page title when item changes
+  usePageTitle(item?.title || 'Timeline Item');
+  
   useEffect(() => {
     if (!match || !params) {
       navigate('/chronolog/timeline');
@@ -276,8 +279,7 @@ export default function TimelineDetailPage() {
     const foundItem = allItems.find(item => item.id === itemId);
     
     if (foundItem) {
-      // Set page title
-      usePageTitle(foundItem.title);
+      // Set item state
       setItem(foundItem);
     } else {
       // If item not found, redirect back to timeline
