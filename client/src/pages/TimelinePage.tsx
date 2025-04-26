@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useLocation } from 'wouter';
+import { useLocation, Link } from 'wouter';
 import { ArrowLeft, CalendarClock, BookOpen, Sparkles, Milestone, CalendarDays, Trophy, MessageCircle, CheckCircle2, XCircle, Filter, ArrowUpDown } from 'lucide-react';
 import { useLYFEOS } from '@/lib/context';
 import { usePageTitle } from '@/hooks/use-page-title';
@@ -325,10 +325,10 @@ export default function TimelinePage() {
     navigate(`/chronolog/timeline/${item.id}`);
   };
 
+  // Using window navigation is replaced with Link component for the back button
+  // We'll keep this function for the onClick handler but modify the JSX
   const goBack = () => {
-    // Directly navigate to the chronolog module (with an 'o')
-    // This ensures consistent behavior regardless of how the user reached this page
-    window.location.href = '/chronolog';
+    navigate('/chronolog');
   };
   
   // Handle coming to timeline page - record where we came from
@@ -343,12 +343,11 @@ export default function TimelinePage() {
   return (
     <div>
       <div className="flex items-center mb-6">
-        <button 
-          onClick={goBack}
+        <Link href="/chronolog" 
           className="flex items-center justify-center rounded-md h-9 w-9 mr-3 bg-background/10 hover:bg-background/20 hover:shadow-[0_0_10px_rgba(255,255,0,0.5)] transition-all"
         >
           <ArrowLeft className="h-5 w-5 text-foreground" />
-        </button>
+        </Link>
         <div>
           <h1 className="text-2xl font-orbitron mb-1">Timeline</h1>
           <p className="text-[#7DAAB2]">Your complete journey through time</p>
