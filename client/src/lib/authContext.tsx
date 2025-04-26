@@ -16,6 +16,7 @@ interface AuthResponse {
     id: number;
     username: string;
   };
+  isNewUser?: boolean;
   error?: string;
 }
 
@@ -203,8 +204,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: `Welcome to LYFEOS, ${data.user.username}!`,
           variant: "default",
         });
-        // After registration, go to onboarding instead of dashboard
-        navigate("/onboarding");
+        // If isNewUser is true, go to onboarding, otherwise dashboard
+        if (data.isNewUser) {
+          console.log("New user detected, redirecting to onboarding");
+          navigate("/onboarding");
+        } else {
+          navigate("/dashboard");
+        }
       } else {
         const error = new Error("Invalid user data received from server");
         toast({

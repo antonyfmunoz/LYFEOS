@@ -32,7 +32,7 @@ export default function RegisterPage() {
   // Set the page title
   usePageTitle('Register');
   
-  const { register, isLoading, loginWithGoogle } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
   const { primaryColor } = useTheme();
   const [, navigate] = useLocation();
   
@@ -43,6 +43,7 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [selectedColor, setSelectedColor] = useState("#00e0ff");
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   
   // Force apply theme when component mounts
   useEffect(() => {
@@ -146,26 +147,27 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
     
     if (!username.trim()) {
       setError("Username is required");
+      setIsLoading(false);
       return;
     }
     
     if (password !== confirmPassword) {
       setError("Passwords do not match");
+      setIsLoading(false);
       return;
     }
     
     if (!termsAccepted) {
       setError("You must accept the Terms of Service and Privacy Policy");
+      setIsLoading(false);
       return;
     }
     
     try {
-      // Register with username and password
-      await register(username, password);
-      
       // Store additional registration data for onboarding
       localStorage.setItem("onboarding_data", JSON.stringify({
         displayName: displayName || username,
@@ -173,9 +175,14 @@ export default function RegisterPage() {
         step: 1 // Indicates to start with step 1 of onboarding
       }));
       
-      // Navigate to onboarding (this will happen automatically through auth context after successful registration)
+      // Register with username and password
+      await register(username, password);
+      
+      // Navigation to onboarding happens in the authContext after successful registration
     } catch (err) {
+      console.error("Registration error:", err);
       setError("Registration failed. Please try again.");
+      setIsLoading(false);
     }
   };
 
