@@ -1,17 +1,19 @@
 import { initializeApp, FirebaseApp } from "firebase/app";
-import { getAuth, Auth, Unsubscribe, NextOrObserver, User } from "firebase/auth";
+import { getAuth, Auth, Unsubscribe, NextOrObserver, User, connectAuthEmulator } from "firebase/auth";
+import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 
 // Firebase configuration using environment variables
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com`,
+  storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebasestorage.googleapis.com`,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 // Initialize Firebase only if keys are available
 let app: FirebaseApp | undefined;
+let db: any;
 // Initialize with a mock Auth object to prevent errors when Firebase is not available
 let auth: Auth = {
   // This is a minimal mock of the Firebase auth object to prevent errors
@@ -31,13 +33,24 @@ try {
   if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "undefined") {
     console.warn("Firebase API key not found. Firebase authentication will not be available.");
   } else {
-    // Initialize Firebase
+    // Initialize Firebase with persistence options
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
+    
+    // Initialize Firestore
+    db = getFirestore(app);
+    
+    // Use emulator settings if in development
+    if (import.meta.env.DEV) {
+      // These lines can be uncommented if using Firebase emulators for local development
+      // connectAuthEmulator(auth, 'http://localhost:9099');
+      // connectFirestoreEmulator(db, 'localhost', 8080);
+    }
+    
     console.log("Firebase initialized successfully!");
   }
 } catch (error) {
   console.error("Error initializing Firebase:", error);
 }
 
-export { app, auth };
+export { app, auth, db };
