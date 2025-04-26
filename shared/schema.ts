@@ -1,11 +1,12 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, varchar, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
 
-// Users table
+// Users table (Core Account Information)
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
+  // Original fields
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   displayName: text("display_name"),
@@ -13,7 +14,13 @@ export const users = pgTable("users", {
   avatarColor: text("avatar_color").default("#00e0ff"), // Default primary cyan color
   title: text("title").default("COMMANDER"),
   profilePicture: text("profile_picture"), // Base64 encoded image or URL
+  
+  // New V2 fields
+  email: text("email"), // Email (or blank if using OAuth)
+  authProvider: text("auth_provider").default("email"), // ("email", "google", "apple", "facebook")
+  termsAccepted: boolean("terms_accepted").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastLoginAt: timestamp("last_login_at"),
 });
 
 // User Stats table
@@ -34,16 +41,6 @@ export const userStats = pgTable("user_stats", {
   streakDays: integer("streak_days").notNull().default(0),
   efficiencyScore: integer("efficiency_score").notNull().default(0),
   aiAssistantName: text("ai_assistant_name").default("NOVA").notNull(),
-  // Onboarding fields
-  lifeStage: text("life_stage"), // Awakening, Building, Mastering, Leading
-  archetype: text("archetype"), // Leader, Creator, Athlete, etc.
-  workPace: integer("work_pace"), // 1-5 scale slider
-  environment: integer("environment"), // 1-5 scale slider
-  riskTolerance: integer("risk_tolerance"), // 1-5 scale slider
-  learningStyle: integer("learning_style"), // 1-5 scale slider
-  energyManagement: integer("energy_management"), // 1-5 scale slider
-  coreMotivation: text("core_motivation"), // Achievement, Freedom, etc.
-  onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
   // System settings
   notificationsEnabled: boolean("notifications_enabled").default(false).notNull(),
   darkThemeEnabled: boolean("dark_theme_enabled").default(true).notNull(),
@@ -53,16 +50,54 @@ export const userStats = pgTable("user_stats", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// Quests table
+// User Profile Table (All Onboarding Answers)
+export const userProfile = pgTable("user_profile", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  startStage: text("start_stage"), // ("Awakening", "Building", "Mastering", "Leading")
+  targetArchetype: text("target_archetype"), // ("Leader", "Creator", "Athlete", "Healer", etc.)
+  flowStyle: jsonb("flow_style").default({}), // Object of 5 slider answers: { pace: X, environment: X, risk: X, learning: X, energy: X }
+  coreMotivation: text("core_motivation"), // preset or custom typed by user
+  setupMissionStatus: jsonb("setup_mission_status").default({
+    archetype: "incomplete", 
+    integrations: "incomplete", 
+    future_self: "incomplete", 
+    rituals: "incomplete", 
+    pillars: "incomplete"
+  }), // Tracks Setup Mission progress
+  primaryThemeColor: text("primary_theme_color").default("#00e0ff"), // Chosen theme color
+  futureSelfSummary: text("future_self_summary"), // optional, filled after Future Self Design mission
+  aiPersonalityProfile: jsonb("ai_personality_profile").default({}), // To store later 12Types results after full archetype mission
+  onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// User Daily Logs Table (Daily Initialization)
+export const userDailyLogs = pgTable("user_daily_logs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  date: date("date").notNull(),
+  yesterdayXp: integer("yesterday_xp").default(0),
+  todayPrimaryMission: text("today_primary_mission"),
+  optionalBoostsShown: boolean("optional_boosts_shown").default(false),
+  bootsData: jsonb("boosts_data").default({}), // Store daily boosts data
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Quests table (Missions Management)
 export const quests = pgTable("quests", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
   title: text("title").notNull(),
   description: text("description").notNull(),
+  category: text("category").default("general"), // "setup", "rituals", "life pillars", etc.
   completed: boolean("completed").notNull().default(false),
   energyCost: integer("energy_cost").notNull().default(1),
   experienceReward: integer("experience_reward").notNull().default(10),
+  autoUnlockConditions: jsonb("auto_unlock_conditions").default({}), // e.g., { "setup_complete": true }
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // AI Messages table
@@ -492,6 +527,19 @@ export type Template = typeof templates.$inferSelect;
 export type InsertTemplate = z.infer<typeof insertTemplateSchema>;
 
 // User Integrations table
+// User Integrations Table (Connected Apps)
+export const userIntegrations = pgTable("user_integrations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  appleHealthConnected: boolean("apple_health_connected").default(false),
+  googleCalendarConnected: boolean("google_calendar_connected").default(false),
+  notionConnected: boolean("notion_connected").default(false),
+  otherIntegrations: jsonb("other_integrations").default({}), // Future-proof for more apps
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Keep original integrations table for backward compatibility with detailed provider info
 export const integrations = pgTable("integrations", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),

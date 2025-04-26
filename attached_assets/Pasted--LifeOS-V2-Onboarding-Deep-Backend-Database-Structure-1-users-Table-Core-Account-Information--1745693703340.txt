@@ -1,0 +1,73 @@
+ LifeOS V2 Onboarding — Deep Backend Database Structure
+🗂 1. users Table (Core Account Information)
+
+Field	Type	Purpose
+user_id	UUID	Unique identifier
+email	String	Email (or blank if using OAuth)
+auth_provider	String	("email", "google", "apple", "facebook")
+username	String	Player Tag chosen
+avatar_url	String	Avatar image URL (optional)
+created_at	Timestamp	Account creation date
+last_login_at	Timestamp	Most recent login
+terms_accepted	Boolean	TOS acceptance
+🗂 2. user_profile Table (All Onboarding Answers)
+
+Field	Type	Purpose
+user_id	UUID (FK)	Linked to users.user_id
+start_stage	Enum	("Awakening", "Building", "Mastering", "Leading")
+target_archetype	Enum	("Leader", "Creator", "Athlete", "Healer", etc.)
+flow_style	JSON	Object of 5 slider answers: { pace: X, environment: X, risk: X, learning: X, energy: X }
+core_motivation	String	(preset or custom typed by user)
+setup_mission_status	JSON	Tracks Setup Mission progress {archetype: complete/incomplete, integrations: complete/incomplete, future_self: complete/incomplete, rituals: complete/incomplete, pillars: complete/incomplete}
+primary_theme_color	String	Chosen theme color (optional later)
+future_self_summary	Text	(optional, filled after Future Self Design mission)
+ai_personality_profile	JSON	To store later 12Types results after full archetype mission
+🗂 3. user_integrations Table (Connected Apps)
+
+Field	Type	Purpose
+user_id	UUID (FK)	Linked to users.user_id
+apple_health_connected	Boolean	
+google_calendar_connected	Boolean	
+notion_connected	Boolean	
+other_integrations	JSON	Future-proof for more apps
+🗂 4. user_daily_logs Table (Daily Initialization)
+
+Field	Type	Purpose
+user_id	UUID (FK)	Linked to users.user_id
+date	Date	Which day it is
+yesterday_xp	Integer	Total XP earned yesterday
+today_primary_mission	String	Today's core mission
+optional_boosts_shown	Boolean	Were boosts suggested?
+🗂 5. quests Table (Missions Management)
+
+Field	Type	Purpose
+quest_id	UUID	Unique quest ID
+title	String	(e.g., "Design Your Future Self")
+description	Text	Full mission instructions
+category	Enum	("setup", "rituals", "life pillars", etc.)
+xp_reward	Integer	XP awarded
+auto_unlock_conditions	JSON	(e.g., { "setup_complete": true })
+⚡ Backend Design Insights
+The user_profile table is the single source of truth for onboarding → AI can instantly reference this for customizations.
+
+setup_mission_status inside user_profile allows you to track optional Setup Missions without needing bloated tables.
+
+user_integrations will allow AI cross-validation later by pulling external life data (ex: real workouts, sleep from Apple Health).
+
+quests system is modular: all missions are managed here (even Setup Missions).
+
+🤖 How AI Will Use This Clean Data
+
+Phase	AI Action
+After onboarding	AI generates custom Skill Tree + first Missions based on start_stage and target_archetype.
+After integrations	AI cross-validates habits/tasks from connected apps to auto-populate Rituals and Tasks.
+After future self design	AI creates meditation scripts, daily affirmations, and motivational visuals.
+Ongoing	AI recommends Missions dynamically based on life pillar gaps, archetype fit, energy state from integrations.
+✅ Summary
+
+✅	🔥
+Modular tables	Faster dev
+Realistic self-progression	Matches real human development
+Setup Missions optional	No barrier, gamified incentive
+Clean backend	Easier to scale AI personalization
+Matches V2 style	Seamless UX
