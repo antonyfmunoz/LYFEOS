@@ -323,19 +323,19 @@ export default function TimelinePage() {
     );
     
     // Navigate to the detail page for this item
-    navigate(`/chronolog/timeline/${item.id}`);
+    navigate(`/chronilog/timeline/${item.id}`);
   };
 
   // Using window navigation is replaced with Link component for the back button
   // We'll keep this function for the onClick handler but modify the JSX
   const goBack = () => {
-    navigate('/chronolog');
+    navigate('/chronilog'); // Fixed spelling to match other pages
   };
   
   // Handle coming to timeline page - record where we came from
   useEffect(() => {
     window.history.replaceState(
-      { from: 'chronolog' }, 
+      { from: 'chronilog' }, 
       '', 
       window.location.pathname
     );
@@ -344,7 +344,7 @@ export default function TimelinePage() {
   return (
     <div>
       <div className="mb-4">
-        <Link href="/chronolog" className="text-primary flex items-center hover:underline">
+        <Link href="/chronilog" className="text-primary flex items-center hover:underline">
           <ChevronRight className="h-4 w-4 mr-1" />
           Back to Chronilog
         </Link>
