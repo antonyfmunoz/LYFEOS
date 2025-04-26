@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useTheme } from "@/lib/themeContext";
 import { useAuth } from "@/lib/authContext";
@@ -250,6 +250,33 @@ export default function OnboardingPage() {
   
   // Parallax effect for background
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  
+  // Handle browser back button
+  const handleBackButtonEvent = useCallback((event: PopStateEvent) => {
+    // Prevent default behavior only if we're in the onboarding flow
+    event.preventDefault();
+    
+    // Instead use our controlled navigation
+    if (currentStep > 1) {
+      goToPreviousStep();
+      
+      // Push a new state to replace the one that was popped
+      window.history.pushState(null, '', window.location.pathname);
+    }
+  }, [currentStep]);
+  
+  // Set up back button prevention
+  useEffect(() => {
+    // Push initial state to history stack
+    window.history.pushState(null, '', window.location.pathname);
+    
+    // Listen for back button clicks
+    window.addEventListener('popstate', handleBackButtonEvent);
+    
+    return () => {
+      window.removeEventListener('popstate', handleBackButtonEvent);
+    };
+  }, [handleBackButtonEvent]);
   
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {

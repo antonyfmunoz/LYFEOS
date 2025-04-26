@@ -310,17 +310,38 @@ export default function TimelinePage() {
     setActiveFilters([]);
   };
   
-  // Navigate to detail view for the item
+  // Navigate to detail view for the item with improved history handling
   const viewItemDetails = (item: TimelineItem) => {
     console.log("Viewing item:", item);
+    
+    // Save current state to history before navigating away
+    window.history.pushState(
+      { from: 'timeline', itemId: item.id }, 
+      '', 
+      window.location.pathname
+    );
     
     // Navigate to the detail page for this item
     navigate(`/chronolog/timeline/${item.id}`);
   };
 
   const goBack = () => {
-    navigate('/chronolog');
+    // Check if there's a state in history to determine if we need special handling
+    if (window.history.state && window.history.state.from === 'chronolog') {
+      window.history.back();
+    } else {
+      navigate('/chronolog');
+    }
   };
+  
+  // Handle coming to timeline page - record where we came from
+  useEffect(() => {
+    window.history.replaceState(
+      { from: 'chronolog' }, 
+      '', 
+      window.location.pathname
+    );
+  }, []);
 
   return (
     <div>

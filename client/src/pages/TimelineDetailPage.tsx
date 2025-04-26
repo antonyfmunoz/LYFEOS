@@ -289,9 +289,30 @@ export default function TimelineDetailPage() {
     }
   }, [match, params, navigate, missionPages, events, quests, messages]);
   
+  // Improved back navigation with history state handling
   const goBack = () => {
-    navigate('/chronolog/timeline');
+    // Check if there's an entry in the history to go back to
+    if (window.history.state && window.history.state.previous === '/chronolog/timeline') {
+      window.history.back();
+    } else {
+      // Otherwise navigate directly to ensure consistent behavior
+      navigate('/chronolog/timeline');
+    }
   };
+  
+  // Set up history state when component mounts
+  useEffect(() => {
+    // Update the history state to track where we came from
+    window.history.replaceState(
+      { previous: '/chronolog/timeline' }, 
+      '', 
+      window.location.pathname
+    );
+    
+    return () => {
+      // Clean up approach: no action needed as we're leaving the component
+    };
+  }, []);
   
   const openEditDialog = () => {
     setIsDialogOpen(true);
