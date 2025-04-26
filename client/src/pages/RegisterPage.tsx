@@ -168,6 +168,7 @@ export default function RegisterPage() {
     }
     
     try {
+      console.log("Saving onboarding data to localStorage");
       // Store additional registration data for onboarding
       localStorage.setItem("onboarding_data", JSON.stringify({
         displayName: displayName || username,
@@ -175,8 +176,15 @@ export default function RegisterPage() {
         step: 1 // Indicates to start with step 1 of onboarding
       }));
       
+      console.log("Registering user with username:", username);
       // Register with username and password
       await register(username, password);
+      
+      console.log("Registration successful, redirecting to onboarding");
+      // The redirection should happen in the authContext, but as a fallback:
+      setTimeout(() => {
+        navigate("/onboarding");
+      }, 500);
       
       // Navigation to onboarding happens in the authContext after successful registration
     } catch (err) {
