@@ -169,8 +169,40 @@ export default function OnboardingPage() {
   // Handle completion and save to database
   const completeOnboarding = async () => {
     try {
-      // TODO: Save to database through API
+      // Save to database through API
       console.log("Onboarding completed with data:", formData);
+      
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+      
+      // Prepare the data for API
+      const onboardingData = {
+        lifeStage: formData.lifeStage,
+        archetype: formData.archetype,
+        workPace: formData.workPace,
+        environment: formData.environment,
+        riskTolerance: formData.riskTolerance,
+        learningStyle: formData.learningStyle,
+        energyManagement: formData.energyManagement,
+        coreMotivation: formData.coreMotivation || formData.customMotivation,
+        onboardingCompleted: true
+      };
+      
+      // Update user stats with onboarding data
+      const response = await fetch(`/api/users/${user.id}/stats`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(onboardingData),
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to save onboarding data");
+      }
       
       // Clear temporary onboarding data
       localStorage.removeItem("onboarding_data");

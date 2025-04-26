@@ -505,6 +505,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aiAssistantEnabled: dbUpdatedStats.aiAssistantEnabled,
         // Include primary color
         primaryColor: dbUpdatedStats.primaryColor,
+        // Include onboarding fields
+        lifeStage: dbUpdatedStats.lifeStage,
+        archetype: dbUpdatedStats.archetype,
+        workPace: dbUpdatedStats.workPace,
+        environment: dbUpdatedStats.environment,
+        riskTolerance: dbUpdatedStats.riskTolerance,
+        onboardingCompleted: dbUpdatedStats.onboardingCompleted,
       };
       
       return res.status(200).json({ stats: transformedStats });
