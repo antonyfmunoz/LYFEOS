@@ -180,7 +180,7 @@ export const spreadsheets = pgTable("spreadsheets", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// Relationships
+// Relationships - Note: some tables are declared later but referenced here
 export const usersRelations = relations(users, ({ one, many }) => ({
   stats: one(userStats, {
     fields: [users.id],
@@ -197,14 +197,10 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   missionPages: many(missionPages),
   contacts: many(contacts),
   spreadsheets: many(spreadsheets),
-  templates: many(templates),
-  kanbanBoards: many(kanbanBoards),
-  integrations: many(integrations),
   userIntegrations: one(userIntegrations, {
     fields: [users.id],
     references: [userIntegrations.userId],
   }),
-  progressTrackers: many(progressTrackers),
 }));
 
 export const userStatsRelations = relations(userStats, ({ one }) => ({
