@@ -149,13 +149,37 @@ export default function RegisterPage() {
     setError("");
     setIsLoading(true);
     
-    if (!username.trim()) {
+    // Enhanced validation with trimmed values
+    const trimmedUsername = username.trim();
+    const trimmedPassword = password.trim();
+    const trimmedConfirmPassword = confirmPassword.trim();
+    const trimmedDisplayName = displayName.trim();
+    
+    if (!trimmedUsername) {
       setError("Username is required");
       setIsLoading(false);
       return;
     }
     
-    if (password !== confirmPassword) {
+    if (trimmedUsername.length < 3) {
+      setError("Username must be at least 3 characters");
+      setIsLoading(false);
+      return;
+    }
+    
+    if (!trimmedPassword) {
+      setError("Password is required");
+      setIsLoading(false);
+      return;
+    }
+    
+    if (trimmedPassword.length < 6) {
+      setError("Password must be at least 6 characters");
+      setIsLoading(false);
+      return;
+    }
+    
+    if (trimmedPassword !== trimmedConfirmPassword) {
       setError("Passwords do not match");
       setIsLoading(false);
       return;
@@ -171,14 +195,14 @@ export default function RegisterPage() {
       console.log("Saving onboarding data to localStorage");
       // Store additional registration data for onboarding
       localStorage.setItem("onboarding_data", JSON.stringify({
-        displayName: displayName || username,
+        displayName: trimmedDisplayName || trimmedUsername,
         avatarColor: selectedColor,
         step: 1 // Indicates to start with step 1 of onboarding
       }));
       
-      console.log("Registering user with username:", username);
+      console.log("Registering user with username:", trimmedUsername);
       // Register with username and password
-      await register(username, password);
+      await register(trimmedUsername, trimmedPassword);
       
       console.log("Registration successful, redirecting to onboarding");
       // The redirection should happen in the authContext, but as a fallback:
@@ -187,9 +211,16 @@ export default function RegisterPage() {
       }, 500);
       
       // Navigation to onboarding happens in the authContext after successful registration
-    } catch (err) {
+    } catch (err: any) {
       console.error("Registration error:", err);
-      setError("Registration failed. Please try again.");
+      
+      // Ensure we display a meaningful error message
+      if (!err?.message) {
+        setError("Registration failed. Please try again with a different username.");
+      } else {
+        setError(err.message);
+      }
+      
       setIsLoading(false);
     }
   };

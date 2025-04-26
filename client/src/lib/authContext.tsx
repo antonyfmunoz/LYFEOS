@@ -195,18 +195,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       console.log("Attempting to register with:", username);
       
+      // Ensure username and password are properly trimmed
+      const trimmedUsername = username.trim();
+      const trimmedPassword = password.trim();
+      
+      if (!trimmedUsername || !trimmedPassword) {
+        const error = new Error("Username and password are required");
+        toast({
+          title: "Registration Error",
+          description: error.message,
+          variant: "destructive",
+        });
+        throw error;
+      }
+      
+      // Make the registration request
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ username, password }),
-        credentials: "include"
+        body: JSON.stringify({ 
+          username: trimmedUsername, 
+          password: trimmedPassword,
+          termsAccepted: true // This is required by the backend
+        }),
+        credentials: "include" // Important for maintaining session cookies
       });
       
-      const responseText = await response.text();
       console.log("Register response status:", response.status);
       
+      // Get the response text first to handle JSON parsing errors
+      const responseText = await response.text();
+      
+      // Log full response for debugging
+      console.log("Register response body:", responseText);
+      
+      // Attempt to parse the JSON response
       let data;
       try {
         data = JSON.parse(responseText) as AuthResponse;
@@ -218,37 +243,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: error.message,
           variant: "destructive",
         });
-        setIsLoading(false);
         throw error;
       }
       
       if (!response.ok) {
-        const error = new Error(data.error || "Username may already be taken");
+        const errorMessage = data?.error || "Username may already be taken";
+        const error = new Error(errorMessage);
         toast({
           title: "Registration Failed",
-          description: error.message,
+          description: errorMessage,
           variant: "destructive",
         });
-        setIsLoading(false);
         throw error;
       }
       
-      if (data && data.user) {
-        setUser(data.user);
-        localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
-        toast({
-          title: "Registration Successful",
-          description: `Welcome to LYFEOS, ${data.user.username}!`,
-          variant: "default",
-        });
-        // If isNewUser is true, go to onboarding, otherwise dashboard
-        if (data.isNewUser) {
-          console.log("New user detected, redirecting to onboarding");
-          navigate("/onboarding");
-        } else {
-          navigate("/dashboard");
-        }
-      } else {
+      if (!data || !data.user || !data.user.id) {
         const error = new Error("Invalid user data received from server");
         toast({
           title: "Registration Error",
@@ -257,8 +266,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         throw error;
       }
+      
+      // Success path
+      console.log("Registration successful, user data:", data.user);
+      
+      // Update application state
+      setUser(data.user);
+      localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
+      
+      // Show success message
+      toast({
+        title: "Registration Successful",
+        description: `Welcome to LYFEOS, ${data.user.username}!`,
+        variant: "default",
+      });
+      
+      // Handle redirection based on isNewUser flag (should always be true for registration)
+      if (data.isNewUser) {
+        console.log("New user detected, redirecting to onboarding");
+        navigate("/onboarding");
+      } else {
+        // Fallback if for some reason isNewUser is false (shouldn't happen)
+        navigate("/dashboard");
+      }
     } catch (error: any) {
       console.error("Registration error:", error);
+      // If the error doesn't have a message property, show a generic error
       if (!error.message) {
         toast({
           title: "Registration Error",
