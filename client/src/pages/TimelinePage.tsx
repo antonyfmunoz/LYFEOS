@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useLocation, Link } from 'wouter';
 import { ArrowLeft, CalendarClock, BookOpen, Sparkles, Milestone, CalendarDays, Trophy, MessageCircle, CheckCircle2, XCircle, Filter, ArrowUpDown } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { useLYFEOS } from '@/lib/context';
 import { usePageTitle } from '@/hooks/use-page-title';
 import {
@@ -342,12 +343,14 @@ export default function TimelinePage() {
 
   return (
     <div>
-      <div className="flex items-center mb-6">
-        <Link href="/chronolog" 
-          className="flex items-center justify-center rounded-md h-9 w-9 mr-3 bg-background/10 hover:bg-background/20 hover:shadow-[0_0_10px_rgba(255,255,0,0.5)] transition-all"
-        >
-          <ArrowLeft className="h-5 w-5 text-foreground" />
+      <div className="mb-4">
+        <Link href="/chronolog" className="text-primary flex items-center hover:underline">
+          <ChevronRight className="h-4 w-4 mr-1" />
+          Back to Chronilog
         </Link>
+      </div>
+        
+      <div className="flex items-center mb-6">
         <div>
           <h1 className="text-2xl font-orbitron mb-1">Timeline</h1>
           <p className="text-[#7DAAB2]">Your complete journey through time</p>
