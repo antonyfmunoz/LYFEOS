@@ -326,9 +326,9 @@ export default function TimelinePage() {
   };
 
   const goBack = () => {
-    // Directly navigate to the chronolog page
+    // Directly navigate to the chronolog module
     // This ensures consistent behavior regardless of how the user reached this page
-    navigate('/chronolog');
+    window.location.href = '/chronolog';
   };
   
   // Handle coming to timeline page - record where we came from

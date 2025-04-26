@@ -293,7 +293,7 @@ export default function TimelineDetailPage() {
   const goBack = () => {
     // Always navigate directly to the timeline page
     // This ensures consistent behavior regardless of how user reached this page
-    navigate('/chronolog/timeline');
+    window.location.href = '/chronolog/timeline';
   };
   
   // Set up history state when component mounts
