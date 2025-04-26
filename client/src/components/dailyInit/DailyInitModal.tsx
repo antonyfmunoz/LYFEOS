@@ -128,11 +128,28 @@ export function DailyInitModal() {
         setOpen(true);
         // Update the last login date
         localStorage.setItem('lyfeos-last-login-date', today);
+        
+        // Track this daily init session in the database if we have API access
+        if (user.id) {
+          try {
+            // Create or update daily log entry
+            apiRequest(`/api/users/${user.id}/daily-logs`, {
+              method: 'POST',
+              body: JSON.stringify({
+                date: today,
+                yesterdayXp: stats?.stats?.experience?.current || 0,
+                optionalBoostsShown: true
+              })
+            }).catch(err => console.error("Error logging daily init:", err));
+          } catch (error) {
+            console.error("Failed to log daily initialization:", error);
+          }
+        }
       }, 1000);
       
       return () => clearTimeout(timer);
     }
-  }, [user]);
+  }, [user, stats]);
 
   // Save boosts to localStorage whenever they change
   useEffect(() => {
@@ -194,23 +211,47 @@ export function DailyInitModal() {
 
   // Begin the day (close modal and award XP for selected boosts)
   const handleBeginDay = async () => {
-    if (selectedBoosts.length > 0 && user) {
+    if (user) {
       try {
-        // Calculate XP to award based on selected boosts
-        const xpToAward = selectedBoosts.reduce((sum, boostId) => {
+        // Save the boosts data to the database
+        const today = new Date().toDateString();
+        const selectedBoostsData = selectedBoosts.map(boostId => {
           const boost = dailyBoosts.find(b => b.id === boostId);
-          return sum + (boost?.xpReward || 0);
-        }, 0);
+          return boost;
+        }).filter(Boolean);
         
-        // Award XP for selecting daily boosts
-        if (xpToAward > 0) {
-          await apiRequest(`/api/users/${user.id}/award-xp`, {
-            method: 'POST',
-            body: JSON.stringify({ amount: xpToAward, reason: 'Daily boost selection' })
-          });
+        // Update daily logs with the selected boosts
+        await apiRequest(`/api/users/${user.id}/daily-logs/update`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            date: today,
+            bootsData: {
+              selectedBoosts: selectedBoostsData,
+              allBoosts: dailyBoosts
+            }
+          })
+        });
+        
+        // Calculate XP to award based on selected boosts
+        if (selectedBoosts.length > 0) {
+          const xpToAward = selectedBoosts.reduce((sum, boostId) => {
+            const boost = dailyBoosts.find(b => b.id === boostId);
+            return sum + (boost?.xpReward || 0);
+          }, 0);
+          
+          // Award XP for selecting daily boosts
+          if (xpToAward > 0) {
+            await apiRequest(`/api/users/${user.id}/award-xp`, {
+              method: 'POST',
+              body: JSON.stringify({ 
+                amount: xpToAward, 
+                reason: 'Daily boost selection' 
+              })
+            });
+          }
         }
       } catch (error) {
-        console.error("Error awarding XP for daily boosts:", error);
+        console.error("Error processing daily initialization:", error);
       }
     }
     
@@ -233,10 +274,10 @@ export function DailyInitModal() {
                     style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
         <DialogHeader>
           <DialogTitle className="text-2xl text-center font-orbitron text-primary">
-            Good to see you, {username}
+            Good to see you, Commander {username}
           </DialogTitle>
           <DialogDescription className="text-center text-muted-foreground">
-            Ready for another day of progress?
+            Your mission control is activated for another day of progress
           </DialogDescription>
         </DialogHeader>
         

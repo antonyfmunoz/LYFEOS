@@ -3001,6 +3001,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ error: "Internal server error" });
     }
   });
+  
+  // Daily Log APIs
+  
+  // Get user's daily logs
+  app.get("/api/users/:userId/daily-logs", isOwner, async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+      
+      const { date } = req.query;
+      
+      let query = db.select().from(userDailyLogs).where(eq(userDailyLogs.userId, userId));
+      
+      if (date) {
+        query = query.where(eq(userDailyLogs.date, date as string));
+      }
+      
+      // Order by most recent first
+      query = query.orderBy(desc(userDailyLogs.date));
+      
+      const logs = await query;
+      return res.status(200).json({ logs });
+    } catch (error) {
+      console.error("Error fetching daily logs:", error);
+      return res.status(500).json({ error: "Failed to fetch daily logs" });
+    }
+  });
+  
+  // Create a new daily log entry
+  app.post("/api/users/:userId/daily-logs", isOwner, async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+      
+      const { date, yesterdayXp, todayPrimaryMission, optionalBoostsShown, bootsData } = req.body;
+      
+      if (!date) {
+        return res.status(400).json({ error: "Date is required" });
+      }
+      
+      // Check if a log already exists for this date
+      const existingLog = await db.select().from(userDailyLogs)
+        .where(eq(userDailyLogs.userId, userId))
+        .where(eq(userDailyLogs.date, date));
+      
+      if (existingLog.length > 0) {
+        // Update the existing log
+        await db.update(userDailyLogs)
+          .set({
+            yesterdayXp: yesterdayXp !== undefined ? yesterdayXp : existingLog[0].yesterdayXp,
+            todayPrimaryMission: todayPrimaryMission || existingLog[0].todayPrimaryMission,
+            optionalBoostsShown: optionalBoostsShown !== undefined ? optionalBoostsShown : existingLog[0].optionalBoostsShown,
+            bootsData: bootsData || existingLog[0].bootsData
+          })
+          .where(eq(userDailyLogs.id, existingLog[0].id));
+          
+        return res.status(200).json({ message: "Daily log updated successfully" });
+      } else {
+        // Create a new log
+        const newLog = await db.insert(userDailyLogs).values({
+          userId: userId,
+          date,
+          yesterdayXp: yesterdayXp || 0,
+          todayPrimaryMission,
+          optionalBoostsShown,
+          bootsData: bootsData || {}
+        }).returning();
+        
+        return res.status(201).json({ log: newLog[0] });
+      }
+    } catch (error) {
+      console.error("Error creating daily log:", error);
+      return res.status(500).json({ error: "Failed to create daily log" });
+    }
+  });
+  
+  // Update existing daily log
+  app.patch("/api/users/:userId/daily-logs/update", isOwner, async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+      
+      const { date, bootsData } = req.body;
+      
+      if (!date) {
+        return res.status(400).json({ error: "Date is required" });
+      }
+      
+      // Check if a log exists for this date
+      const existingLog = await db.select().from(userDailyLogs)
+        .where(eq(userDailyLogs.userId, userId))
+        .where(eq(userDailyLogs.date, date));
+      
+      if (existingLog.length > 0) {
+        // Update the existing log
+        await db.update(userDailyLogs)
+          .set({
+            bootsData: bootsData || existingLog[0].bootsData
+          })
+          .where(eq(userDailyLogs.id, existingLog[0].id));
+          
+        return res.status(200).json({ message: "Daily log updated successfully" });
+      } else {
+        // Create a new log if it doesn't exist
+        const newLog = await db.insert(userDailyLogs).values({
+          userId: userId,
+          date,
+          bootsData: bootsData || {}
+        }).returning();
+        
+        return res.status(201).json({ log: newLog[0] });
+      }
+    } catch (error) {
+      console.error("Error updating daily log:", error);
+      return res.status(500).json({ error: "Failed to update daily log" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
