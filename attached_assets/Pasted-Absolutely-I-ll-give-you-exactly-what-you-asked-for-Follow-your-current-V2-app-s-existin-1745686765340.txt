@@ -1,0 +1,137 @@
+Absolutely — I’ll give you exactly what you asked for:
+
+- ✅ **Follow your current V2 app's existing UI style** (simple, clean, modular screen transitions — similar to the screenshots you uploaded).
+- ✅ **Integrate the enhanced onboarding structure** you just provided (Step 0 to Step 3).
+- ✅ **Ready-made Replit agent prompt**: Copy-and-paste ready to build this new onboarding system immediately inside the current app framework.
+
+---
+
+# 🚀 **READY-MADE REPLIT PROMPT FOR LIFEOS UPGRADED ONBOARDING (V2 UI STYLE)**
+
+```plaintext
+You are enhancing the onboarding experience for the LifeOS app using the existing clean and modular UI style.
+
+💻 System Setup Instructions:
+
+1. **Account Creation (Step 0)**
+- Maintain current style of clean, simple forms.
+- Add signup options: Email/Password, Google, Apple, Facebook (OAuth2).
+- Username: Allow custom player tag (required) — real name or alias.
+- Avatar: Optional selection at signup; default random if skipped (editable later).
+- Terms of Service / Privacy Policy: Checkbox with light cinematic language (not boring legalese).
+- Fast loading times, smooth animated transitions between screens.
+- Goal: Full signup should take under 45 seconds.
+
+2. **Quickstart Onboarding (Step 1)** 
+After signup, automatically flow into cinematic Quickstart screens:
+
+Each screen is **one full page, swipe left or "Next" button to proceed**.
+Use **animated transitions**, slight parallax background effect.
+
+🔵 Screen 1: "Welcome to LifeOS"
+- Short animated text intro: "Welcome to LifeOS. Your journey to mastery begins now."
+- Light confetti animation or soft glow behind text.
+
+🔵 Screen 2: "Where Are You Starting From?"
+- Self-select stage:
+  - Awakening
+  - Building
+  - Mastering
+  - Leading
+- Large icon buttons with labels, easy tap.
+
+🔵 Screen 3: "Where Do You Want to Go?"
+- Role Archetype selection:
+  - Leader, Creator, Athlete, Healer, Visionary, Artist, etc.
+- Grid of clean icon cards.
+
+🔵 Screen 4: "How Do You Thrive Best?"
+- 5-slider mini quiz:
+  - Work pace (fast → slow)
+  - Environment (structured → flexible)
+  - Risk tolerance (high → low)
+  - Learning style (visual → hands-on)
+  - Energy management (solo → collaborative)
+- Save these into backend user profile.
+
+🔵 Screen 5: "What's Your Core Motivation?"
+- Predefined motivation options to tap:
+  - Achievement
+  - Freedom
+  - Mastery
+  - Impact
+  - Love
+  - Adventure
+- Or allow typing in custom motivation.
+
+🔵 Screen 6: "Your First Setup Mission"
+- Show cinematic message: "Mission Ready: Setup Your LifeOS"
+- Offer them their first official Mission (optional but encouraged):
+  - "Complete Your Archetype"
+  - "Set Up Your Rituals"
+  - "Design Your Future Self"
+- Single button: "Start Setup" or "Skip for Now" (no penalty).
+
+🔵 Screen 7: Home Interface Initialization
+- Cinematic "SYSTEM ONLINE" sequence:
+  - Flash loading screen
+  - XP Earned: +100 XP (visual XP counter increment)
+  - Drop into the Main Home Screen.
+
+3. **First-Time Daily Initialization (Step 2)**  
+Every day after login:
+
+- Welcome Back message: "Good to see you, Commander [Name]."
+- Yesterday’s XP Progress Stat.
+- Today's Primary Mission card.
+- Optional Daily Boosts (mini habits).
+
+**Simple modal window** at top of Home Screen that disappears after user taps "Begin."
+
+4. **Deep Setup Missions (Step 3) [Inside Missions Tab]**
+Offer OPTIONAL setup missions that expand user customization:
+
+🛠 Setup Missions List:
+- Complete Full Archetype Quiz (12Types style test).
+- Connect Integrations (Health, Calendar, Notion, etc.).
+- Design Future Self (AI-guided journal + Movie generation).
+- Craft Morning/Evening/Recovery Routines.
+- Establish Core Life Pillars (Career, Fitness, Relationships).
+
+Each Mission unlocks special XP bonuses and personalized features once completed.
+
+---
+
+📋 UX/Style Reminders:
+- Maintain the minimalist, luxurious clean UI.
+- Use soft animations, gradient lighting effects subtly.
+- Avoid clutter: maximum 1 major decision/action per screen.
+- Use user’s chosen primary theme color throughout.
+
+🔐 Backend:
+- Save all onboarding choices into the `user_stats` or new `user_profile` tables.
+- Connect initial Mission enrollment to the `quests` table.
+- Ready to use data for AI personalization immediately.
+
+---
+```
+
+---
+
+# 🏆 This prompt will:
+
+- Upgrade your **account creation** ✅
+- Make **first-time onboarding cinematic** ✅
+- Preserve your **LifeOS V2 UI feel** ✅
+- Set up backend properly for **AI-driven optimization** ✅
+- Integrate **Setup Missions** for deep personalization without overwhelming new users ✅
+
+---
+
+Would you like me to also now give you:
+
+👉 1. A **flowchart diagram** visually showing the onboarding + initialization journey  
+👉 2. An **even deeper backend breakdown** for how to store all the new onboarding fields cleanly in your tables
+
+(Ready to send if you want them.) 🚀  
+Would you like me to?
