@@ -107,11 +107,11 @@ export default function ProgressTrackersPage() {
     <div className="container py-6 max-w-6xl">
       <Button 
         variant="ghost" 
+        size="icon" 
         onClick={() => navigate('/systems')} 
-        className="mb-6 hover:bg-primary hover:text-background"
+        className="mb-6 h-8 w-8 hover:bg-primary hover:text-background"
       >
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to Systems
+        <ArrowLeft className="h-4 w-4" />
       </Button>
       
       <div className="flex justify-between items-center mb-6">
