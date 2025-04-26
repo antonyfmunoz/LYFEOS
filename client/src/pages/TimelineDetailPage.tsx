@@ -3,6 +3,7 @@ import { useLocation, useRoute } from 'wouter';
 import { ArrowLeft, CalendarClock, BookOpen, Sparkles, Milestone, CalendarDays, Trophy, MessageCircle, Pencil } from 'lucide-react';
 import { useLYFEOS } from '@/lib/context';
 import { usePageTitle } from '@/hooks/use-page-title';
+import { Button } from "@/components/ui/button";
 import EditTimelineItemDialog from '@/components/timeline/EditTimelineItemDialog';
 
 // Define all the different types of timeline items
@@ -293,7 +294,7 @@ export default function TimelineDetailPage() {
   const goBack = () => {
     // Always navigate directly to the timeline page
     // This ensures consistent behavior regardless of how user reached this page
-    window.location.href = '/chronilog/timeline';
+    navigate('/chronilog/timeline');
   };
   
   // Set up history state when component mounts
@@ -328,12 +329,14 @@ export default function TimelineDetailPage() {
   return (
     <div>
       <div className="flex items-center mb-6">
-        <button 
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-8 w-8 hover:bg-primary hover:text-background mr-3" 
           onClick={goBack}
-          className="flex items-center justify-center rounded-md h-9 w-9 mr-3 bg-background/10 hover:bg-background/20 hover:shadow-[0_0_10px_rgba(255,255,0,0.5)] transition-all"
         >
-          <ArrowLeft className="h-5 w-5 text-foreground" />
-        </button>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
         <div>
           <h1 className="text-2xl font-orbitron mb-1">{item.title}</h1>
           <p className="text-[#7DAAB2]">Timeline item details</p>
@@ -431,12 +434,14 @@ export default function TimelineDetailPage() {
         </div>
         
         <div className="flex justify-end mt-8">
-          <button 
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 hover:bg-primary hover:text-background mr-2" 
             onClick={goBack}
-            className="flex items-center px-3 py-1 text-xs font-medium rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition mr-2"
           >
-            Back to Timeline
-          </button>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
           <button 
             onClick={openEditDialog}
             className="flex items-center px-3 py-1 text-xs font-medium rounded-md bg-primary/10 text-primary hover:bg-primary/20 hover:shadow-[0_0_10px_rgba(255,255,0,0.5)] transition"
