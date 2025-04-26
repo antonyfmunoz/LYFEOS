@@ -130,8 +130,9 @@ export default function LoginPage() {
     
     try {
       await login(username, password);
-    } catch (err) {
-      setError("Login failed. Please check your credentials and try again.");
+    } catch (err: any) {
+      console.error("Login error:", err);
+      setError(err?.message || "Login failed. Please check your credentials and try again.");
     }
   };
 
