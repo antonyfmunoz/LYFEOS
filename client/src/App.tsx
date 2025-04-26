@@ -10,6 +10,7 @@ import DashboardPage from "./pages/DashboardPage";
 import QuestsPage from "./pages/QuestsPage";
 import AIPage from "./pages/AIPage";
 import ChronilogPage from "./pages/ChronilogPage";
+import TimelinePage from "./pages/TimelinePage";
 import SystemsPage from "./pages/SystemsPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -148,6 +149,14 @@ function Router() {
         <ProtectedRoute>
           <RootLayout>
             <ChronilogPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/chronolog/timeline">
+        <ProtectedRoute>
+          <RootLayout>
+            <TimelinePage />
           </RootLayout>
         </ProtectedRoute>
       </Route>
