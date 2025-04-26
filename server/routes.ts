@@ -3042,7 +3042,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid user ID" });
       }
       
-      const { date, yesterdayXp, todayPrimaryMission, optionalBoostsShown, bootsData } = req.body;
+      const { date, yesterdayXp, todayPrimaryMission, optionalBoostsShown, boostsData } = req.body;
       
       if (!date) {
         return res.status(400).json({ error: "Date is required" });

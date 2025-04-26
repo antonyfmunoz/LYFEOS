@@ -225,7 +225,7 @@ export function DailyInitModal() {
           method: 'PATCH',
           body: JSON.stringify({
             date: today,
-            bootsData: {
+            boostsData: {
               selectedBoosts: selectedBoostsData,
               allBoosts: dailyBoosts
             }

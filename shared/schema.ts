@@ -81,7 +81,7 @@ export const userDailyLogs = pgTable("user_daily_logs", {
   yesterdayXp: integer("yesterday_xp").default(0),
   todayPrimaryMission: text("today_primary_mission"),
   optionalBoostsShown: boolean("optional_boosts_shown").default(false),
-  bootsData: jsonb("boosts_data").default({}), // Store daily boosts data
+  boostsData: jsonb("boosts_data").default({}), // Store daily boosts data
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -395,7 +395,7 @@ export const insertUserDailyLogsSchema = createInsertSchema(userDailyLogs).pick(
   yesterdayXp: true,
   todayPrimaryMission: true,
   optionalBoostsShown: true,
-  bootsData: true,
+  boostsData: true,
 });
 
 export const insertUserIntegrationsSchema = createInsertSchema(userIntegrations).pick({
