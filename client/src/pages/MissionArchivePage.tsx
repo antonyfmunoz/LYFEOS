@@ -5,6 +5,7 @@ import { useLYFEOS } from "@/lib/context";
 import { Archive, Calendar, Clock, Tag, ChevronDown, ChevronRight, FilePlus2, FileEdit, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
+import SetupMissionsSection from "@/components/missions/SetupMissionsSection";
 
 interface MissionFolder {
   status: string; // "active" or "completed"
@@ -133,6 +134,9 @@ export default function MissionArchivePage() {
           <span>New Mission</span>
         </Button>
       </div>
+      
+      {/* Deep Setup Missions Section */}
+      <SetupMissionsSection />
       
       {missionFolders.some(folder => folder.entries.length > 0) ? (
         <div className="space-y-4">
