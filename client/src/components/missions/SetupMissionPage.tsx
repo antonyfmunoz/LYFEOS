@@ -17,7 +17,8 @@ import { cn } from '@/lib/utils';
 import MarkdownEditor from '@/components/markdown/MarkdownEditor';
 
 export default function SetupMissionPage() {
-  const { slug } = useParams();
+  const params = useParams();
+  const slug = params.slug || '';
   const { toast } = useToast();
   const { missionPages, updateMissionPage, getMissionPageBySlug } = useLYFEOS();
   

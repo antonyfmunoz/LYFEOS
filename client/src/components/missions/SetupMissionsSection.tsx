@@ -122,8 +122,8 @@ export default function SetupMissionsSection() {
     );
     
     if (existingMission) {
-      // Navigate to existing mission
-      navigate(`/mission-page/${existingMission.slug}`);
+      // Navigate to existing mission using setup mission route
+      navigate(`/setup-mission/${existingMission.slug}`);
       return;
     }
     
@@ -182,8 +182,8 @@ export default function SetupMissionsSection() {
       )
     );
     
-    // Navigate to the new mission page
-    navigate(`/mission-page/${newMission.slug}`);
+    // Navigate to the new mission page using setup mission route
+    navigate(`/setup-mission/${newMission.slug}`);
   };
   
   return (
