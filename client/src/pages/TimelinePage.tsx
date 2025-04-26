@@ -485,7 +485,7 @@ export default function TimelinePage() {
                 </DropdownMenuItem>
                 
                 <DropdownMenuItem 
-                  className="flex items-center justify-between text-xs py-1.5 cursor-pointer"
+                  className="flex items-center justify-between text-xs py-1.5 cursor-pointer hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-all"
                   onClick={() => setSortOrder('oldest')}
                 >
                   <div className="flex items-center">
