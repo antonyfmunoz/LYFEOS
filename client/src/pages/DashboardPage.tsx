@@ -11,6 +11,7 @@ import { MarkdownEditor } from '@/components/ui/markdown-editor';
 import { CustomTimePicker } from '@/components/ui/custom-time-picker';
 import CompactStatsWidget from '@/components/dashboard/CompactStatsWidget';
 import EnhancedMissionWidget from '@/components/dashboard/EnhancedMissionWidget';
+import { DailyInitModal } from '@/components/dailyInit/DailyInitModal';
 import { AIAgentFAB } from '@/components/ui/ai-agent-fab';
 import { useToast } from '@/hooks/use-toast';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -401,6 +402,7 @@ export default function DashboardPage() {
   return (
       <div className="dashboard-container">
         <AIAgentFAB />
+        <DailyInitModal />
         
         {/* Daily Dashboard Header */}
         <div className="mb-4 flex items-center">
