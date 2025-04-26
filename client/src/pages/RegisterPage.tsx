@@ -32,7 +32,7 @@ export default function RegisterPage() {
   // Set the page title
   usePageTitle('Register');
   
-  const { register, isLoading } = useAuth();
+  const { register, isLoading, loginWithGoogle } = useAuth();
   const { primaryColor } = useTheme();
   const [, navigate] = useLocation();
   
@@ -116,24 +116,17 @@ export default function RegisterPage() {
   }, [primaryColor]);
   
   // Handle OAuth signin with Firebase
-  const handleOAuthSignin = (provider: string) => {
+  const handleOAuthSignin = async (provider: string) => {
     try {
       if (provider === "Google") {
-        // We'll implement this as soon as the secrets are available
         toast({
           title: "Google Sign Up",
           description: "Redirecting to Google authentication...",
         });
         
-        // This will be replaced with actual Firebase Google auth
-        // For now, we'll just show a toast message
-        setTimeout(() => {
-          toast({
-            title: "Firebase configuration needed",
-            description: "Please provide Firebase API keys to enable Google authentication.",
-            variant: "destructive"
-          });
-        }, 1000);
+        // Use our Firebase Google auth integration
+        await loginWithGoogle();
+        // The redirect and result handling will be managed by Firebase auth
       } else {
         toast({
           title: `${provider} Sign Up`,

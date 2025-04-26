@@ -6,15 +6,23 @@ import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/lib/themeContext";
+import { Separator } from "@/components/ui/separator";
+import { 
+  SiGoogle, 
+  SiApple, 
+  SiFacebook 
+} from "react-icons/si";
+import { toast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
   // Set the page title
   usePageTitle('Login');
   
-  const { login, isLoading } = useAuth();
+  const { login, isLoading, loginWithGoogle } = useAuth();
   const { primaryColor } = useTheme();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   
   // Force apply theme when component mounts
   useEffect(() => {
@@ -87,9 +95,44 @@ export default function LoginPage() {
     }
   }, [primaryColor]);
 
+  // Handle OAuth signin with Firebase
+  const handleOAuthSignin = async (provider: string) => {
+    try {
+      if (provider === "Google") {
+        toast({
+          title: "Google Sign In",
+          description: "Redirecting to Google authentication...",
+        });
+        
+        // Use our Firebase Google auth integration
+        await loginWithGoogle();
+        // The redirect and result handling will be managed by Firebase auth
+      } else {
+        toast({
+          title: `${provider} Sign In`,
+          description: `${provider} authentication will be available soon. Please use email login or Google for now.`,
+        });
+      }
+    } catch (error) {
+      console.error(`${provider} sign-in error:`, error);
+      setError(`An error occurred during ${provider} authentication. Please try again.`);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await login(username, password);
+    setError("");
+    
+    if (!username.trim() || !password.trim()) {
+      setError("Username and password are required");
+      return;
+    }
+    
+    try {
+      await login(username, password);
+    } catch (err) {
+      setError("Login failed. Please check your credentials and try again.");
+    }
   };
 
   return (
@@ -102,6 +145,44 @@ export default function LoginPage() {
       <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-primary/40"
            style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
         <h2 className="text-xl font-orbitron text-center mb-6 text-foreground">Login to LYFEOS</h2>
+        
+        {/* OAuth Sign-in Buttons */}
+        <div className="grid grid-cols-3 gap-2 mb-6">
+          <Button 
+            variant="outline" 
+            className="flex items-center justify-center space-x-2 py-5 border-primary/30 hover:bg-primary/10"
+            onClick={() => handleOAuthSignin("Google")}
+          >
+            <SiGoogle className="h-5 w-5" />
+          </Button>
+          <Button 
+            variant="outline" 
+            className="flex items-center justify-center space-x-2 py-5 border-primary/30 hover:bg-primary/10"
+            onClick={() => handleOAuthSignin("Apple")}
+          >
+            <SiApple className="h-5 w-5" />
+          </Button>
+          <Button 
+            variant="outline" 
+            className="flex items-center justify-center space-x-2 py-5 border-primary/30 hover:bg-primary/10"
+            onClick={() => handleOAuthSignin("Facebook")}
+          >
+            <SiFacebook className="h-5 w-5" />
+          </Button>
+        </div>
+        
+        <div className="relative mb-6">
+          <Separator className="my-2" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="bg-background px-2 text-xs text-muted-foreground">OR</span>
+          </div>
+        </div>
+        
+        {error && (
+          <div className="px-3 py-2 rounded bg-red-500/10 border border-red-500/30 text-red-500 text-sm mb-4">
+            {error}
+          </div>
+        )}
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">

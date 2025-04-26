@@ -519,16 +519,38 @@ function Router() {
 function App() {
   return (
     <AuthProvider>
-      <LYFEOSProvider>
-        <ThemeProvider>
-          <DndProvider backend={HTML5Backend}>
-            <Router />
-            <Toaster />
-          </DndProvider>
-        </ThemeProvider>
-      </LYFEOSProvider>
+      <FirebaseOAuthHandler>
+        <LYFEOSProvider>
+          <ThemeProvider>
+            <DndProvider backend={HTML5Backend}>
+              <Router />
+              <Toaster />
+            </DndProvider>
+          </ThemeProvider>
+        </LYFEOSProvider>
+      </FirebaseOAuthHandler>
     </AuthProvider>
   );
+}
+
+// Component to handle Firebase OAuth redirects
+function FirebaseOAuthHandler({ children }: { children: React.ReactNode }) {
+  const { handleOAuthRedirect } = useAuth();
+  
+  // Check for redirect result when component mounts
+  useEffect(() => {
+    const checkRedirect = async () => {
+      try {
+        await handleOAuthRedirect();
+      } catch (error) {
+        console.error("Error handling OAuth redirect:", error);
+      }
+    };
+    
+    checkRedirect();
+  }, [handleOAuthRedirect]);
+  
+  return <>{children}</>;
 }
 
 export default App;
