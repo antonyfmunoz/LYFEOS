@@ -82,18 +82,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       console.log("Attempting to login with:", username);
       
+      // Ensure username and password are properly trimmed
+      const trimmedUsername = username.trim();
+      const trimmedPassword = password.trim();
+      
+      if (!trimmedUsername || !trimmedPassword) {
+        const error = new Error("Username and password are required");
+        toast({
+          title: "Login Error",
+          description: error.message,
+          variant: "destructive",
+        });
+        throw error;
+      }
+      
+      // Make the login request
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ 
+          username: trimmedUsername, 
+          password: trimmedPassword 
+        }),
         credentials: "include" // Important for maintaining session cookies
       });
       
-      const responseText = await response.text();
       console.log("Login response status:", response.status);
       
+      // Get the response text first to handle JSON parsing errors
+      const responseText = await response.text();
+      
+      // Log full response for debugging
+      console.log("Login response body:", responseText);
+      
+      // Attempt to parse the JSON response
       let data;
       try {
         data = JSON.parse(responseText) as AuthResponse;
@@ -105,31 +129,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: error.message,
           variant: "destructive",
         });
-        setIsLoading(false);
         throw error;
       }
       
       if (!response.ok) {
-        const error = new Error(data.error || "Check your username and password");
+        const errorMessage = data?.error || "Check your username and password";
+        const error = new Error(errorMessage);
         toast({
           title: "Login Failed",
-          description: error.message,
+          description: errorMessage,
           variant: "destructive",
         });
-        setIsLoading(false);
         throw error;
       }
       
-      if (data && data.user) {
-        setUser(data.user);
-        localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
-        toast({
-          title: "Login Successful",
-          description: `Welcome back, ${data.user.username}!`,
-          variant: "default",
-        });
-        navigate("/dashboard");
-      } else {
+      if (!data || !data.user || !data.user.id) {
         const error = new Error("Invalid user data received from server");
         toast({
           title: "Login Error",
@@ -138,8 +152,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         throw error;
       }
+      
+      // Success path
+      console.log("Login successful, user data:", data.user);
+      
+      // Update application state
+      setUser(data.user);
+      localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
+      
+      // Show success message
+      toast({
+        title: "Login Successful",
+        description: `Welcome back, ${data.user.username}!`,
+        variant: "default",
+      });
+      
+      // Handle redirection based on isNewUser flag
+      if (data.isNewUser) {
+        console.log("New user detected, redirecting to onboarding");
+        navigate("/onboarding");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (error: any) {
       console.error("Login error:", error);
+      // If the error doesn't have a message property, show a generic error
       if (!error.message) {
         toast({
           title: "Login Error",

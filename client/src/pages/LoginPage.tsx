@@ -133,20 +133,32 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     
+    // Client-side validation
     if (!username.trim() || !password.trim()) {
       setError("Username and password are required");
       return;
     }
     
     try {
+      // Show the loading state immediately
+      // isLoading will be set to true in the login function but we can provide visual feedback sooner
+      
       // Pass the username and password to the login function
       console.log("Submitting login form with username:", username);
       await login(username, password);
+      
       // Login function will handle navigation to dashboard if successful
+      // We don't need to do anything else here since login() handles everything
     } catch (err: any) {
       console.error("Login error:", err);
-      // Display the error message from the caught error, or a default message
-      setError(err?.message || "Login failed. Please check your credentials and try again.");
+      
+      // If err is defined but doesn't have a message property or the message is empty
+      if (!err?.message) {
+        setError("Login failed. Please check your credentials and try again.");
+      } else {
+        // Display the error message from the caught error
+        setError(err.message);
+      }
     }
   };
 
