@@ -176,7 +176,32 @@ export default function OnboardingPage() {
         throw new Error("User not authenticated");
       }
       
-      // Prepare the data for API
+      // First, update profile to set onboarding completed
+      try {
+        const profileResponse = await fetch(`/api/users/${user.id}/profile`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            onboardingCompleted: true,
+            startStage: formData.lifeStage,
+            targetArchetype: formData.archetype,
+            coreMotivation: formData.coreMotivation || formData.customMotivation
+          }),
+          credentials: 'include'
+        });
+        
+        if (!profileResponse.ok) {
+          console.error("Failed to update profile onboarding status", await profileResponse.text());
+        } else {
+          console.log("Successfully marked onboarding as completed in profile");
+        }
+      } catch (error) {
+        console.error("Error updating profile onboarding status:", error);
+      }
+      
+      // Prepare the data for stats API
       const onboardingData = {
         lifeStage: formData.lifeStage,
         archetype: formData.archetype,

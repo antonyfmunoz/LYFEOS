@@ -114,45 +114,73 @@ export function DailyInitModal() {
           completed: false
         };
 
-  // Check if we should show this modal (based on last login date)
+  // Check if we should show this modal (based on last login date and onboarding status)
   useEffect(() => {
     if (!user) return;
     
-    // Get the last login date from localStorage (or set today as default)
-    const lastLogin = localStorage.getItem('lyfeos-last-login-date');
-    const today = new Date().toDateString();
-    
-    // If no last login or last login was before today, show the modal
-    if (!lastLogin || lastLogin !== today) {
-      // Small delay to let the dashboard load first
-      const timer = setTimeout(() => {
-        setOpen(true);
-        // Update the last login date
-        localStorage.setItem('lyfeos-last-login-date', today);
+    // Check if user has completed onboarding first
+    const checkOnboardingStatus = async () => {
+      try {
+        // Get profile data to check if onboarding is completed
+        const profileResponse = await fetch(`/api/users/${user.id}/profile`, {
+          credentials: 'include'
+        });
         
-        // Track this daily init session in the database if we have API access
-        if (user && user.id) {
-          try {
-            // Format date as YYYY-MM-DD for the API
-            const formattedDate = new Date().toISOString().split('T')[0];
-            
-            // Create or update daily log entry
-            apiRequest(`/api/users/${user.id}/daily-logs`, {
-              method: 'POST',
-              body: JSON.stringify({
-                date: formattedDate,
-                yesterdayXp: stats?.stats?.experience?.current || 0,
-                optionalBoostsShown: true
-              })
-            }).catch(err => console.error("Error logging daily init:", err));
-          } catch (error) {
-            console.error("Failed to log daily initialization:", error);
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          console.log("Profile data for onboarding check:", profileData);
+          
+          // If onboarding is not completed, don't show daily init
+          if (!profileData.onboardingCompleted) {
+            console.log("Onboarding not completed, skipping daily init modal");
+            return;
           }
+          
+          // Only proceed with daily init if onboarding is complete
+          // Get the last login date from localStorage (or set today as default)
+          const lastLogin = localStorage.getItem('lyfeos-last-login-date');
+          const today = new Date().toDateString();
+          
+          // If no last login or last login was before today, show the modal
+          if (!lastLogin || lastLogin !== today) {
+            // Small delay to let the dashboard load first
+            const timer = setTimeout(() => {
+              setOpen(true);
+              // Update the last login date
+              localStorage.setItem('lyfeos-last-login-date', today);
+              
+              // Track this daily init session in the database if we have API access
+              if (user && user.id) {
+                try {
+                  // Format date as YYYY-MM-DD for the API
+                  const formattedDate = new Date().toISOString().split('T')[0];
+                  
+                  // Create or update daily log entry
+                  apiRequest(`/api/users/${user.id}/daily-logs`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                      date: formattedDate,
+                      yesterdayXp: stats?.stats?.experience?.current || 0,
+                      optionalBoostsShown: true
+                    })
+                  }).catch(err => console.error("Error logging daily init:", err));
+                } catch (error) {
+                  console.error("Failed to log daily initialization:", error);
+                }
+              }
+            }, 1000);
+            
+            return () => clearTimeout(timer);
+          }
+        } else {
+          console.error("Failed to fetch profile data for onboarding check:", profileResponse.status);
         }
-      }, 1000);
-      
-      return () => clearTimeout(timer);
-    }
+      } catch (error) {
+        console.error("Error checking onboarding status:", error);
+      }
+    };
+    
+    checkOnboardingStatus();
   }, [user, stats]);
 
   // Save boosts to localStorage whenever they change
