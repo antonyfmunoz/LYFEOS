@@ -39,6 +39,66 @@ const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
   return res.status(401).json({ error: "Authentication required" });
 };
 
+// Helper function to award XP
+async function awardExperiencePoints(
+  userId: number, 
+  amount: number
+): Promise<{ 
+  success: boolean; 
+  newStats?: { 
+    experience: { 
+      current: number; 
+      max: number; 
+      level: number; 
+    } 
+  }; 
+  levelUp: boolean;
+}> {
+  try {
+    // Get current user stats
+    const userStats = await storage.getUserStats(userId);
+    if (!userStats) {
+      return { success: false, levelUp: false };
+    }
+    
+    // Calculate new XP level
+    let newExperience = userStats.experienceCurrent + amount;
+    let newLevel = userStats.level;
+    let newExperienceMax = userStats.experienceMax;
+    let didLevelUp = false;
+    
+    // Level up if necessary
+    while (newExperience >= userStats.experienceMax) {
+      newExperience -= userStats.experienceMax;
+      newLevel += 1;
+      newExperienceMax = Math.floor(userStats.experienceMax * 1.2); // 20% increase per level
+      didLevelUp = true;
+    }
+    
+    // Update user stats
+    const updatedStats = await storage.updateUserStats(userId, {
+      experienceCurrent: newExperience,
+      level: newLevel,
+      experienceMax: newExperienceMax
+    });
+    
+    return { 
+      success: true,
+      newStats: {
+        experience: {
+          current: updatedStats.experienceCurrent,
+          max: updatedStats.experienceMax,
+          level: updatedStats.level
+        }
+      },
+      levelUp: didLevelUp
+    };
+  } catch (error) {
+    console.error("Error awarding XP:", error);
+    return { success: false, levelUp: false };
+  }
+}
+
 // Middleware to check if user is accessing their own data
 const isOwner = (req: Request, res: Response, next: NextFunction) => {
   if (!req.session.userId) {
@@ -727,6 +787,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const event = await storage.createEvent(eventData);
+      
+      // Award XP for creating a calendar event
+      try {
+        // Add 5 XP for creating a calendar event
+        const xpResult = await awardExperiencePoints(eventData.userId, 5);
+        if (xpResult.success) {
+          return res.status(201).json({ 
+            event,
+            stats: xpResult.newStats,
+            levelUp: xpResult.levelUp
+          });
+        }
+      } catch (xpError) {
+        console.error("Error awarding XP for event creation:", xpError);
+        // Continue without failing the request if XP award fails
+      }
+      
       return res.status(201).json({ event });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -840,39 +917,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Award XP for creating a mission page
       try {
-        const userStats = await storage.getUserStats(pageData.userId);
-        if (userStats) {
-          // Add 15 XP for creating a mission page
-          let newExperience = userStats.experienceCurrent + 15;
-          let newLevel = userStats.level;
-          let newExperienceMax = userStats.experienceMax;
-          
-          // Level up if necessary
-          while (newExperience >= userStats.experienceMax) {
-            newExperience -= userStats.experienceMax;
-            newLevel += 1;
-            newExperienceMax = Math.floor(userStats.experienceMax * 1.2); // 20% increase per level
-          }
-          
-          // Update user stats
-          await storage.updateUserStats(pageData.userId, {
-            experienceCurrent: newExperience,
-            level: newLevel,
-            experienceMax: newExperienceMax
-          });
-          
-          // Get updated stats
-          const updatedStats = await storage.getUserStats(pageData.userId);
-          
+        // Add 15 XP for creating a mission page
+        const xpResult = await awardExperiencePoints(pageData.userId, 15);
+        if (xpResult.success) {
           return res.status(201).json({ 
             page,
-            stats: updatedStats ? {
-              experience: {
-                current: updatedStats.experienceCurrent,
-                max: updatedStats.experienceMax,
-                level: updatedStats.level
-              }
-            } : undefined
+            stats: xpResult.newStats,
+            levelUp: xpResult.levelUp
           });
         }
       } catch (xpError) {
@@ -2803,6 +2854,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Failed to set album cover image:", error);
       res.status(500).json({ error: "Failed to set album cover image" });
+    }
+  });
+
+
+  // Experience points endpoint to award XP for various actions
+  app.post("/api/users/:userId/award-xp", isOwner, async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+      
+      const { amount, action } = req.body;
+      
+      // Validate XP amount
+      const xpAmount = parseInt(amount);
+      if (isNaN(xpAmount) || xpAmount <= 0) {
+        return res.status(400).json({ error: "XP amount must be a positive number" });
+      }
+      
+      // Use helper function to award XP
+      const xpResult = await awardExperiencePoints(userId, xpAmount);
+      if (!xpResult.success) {
+        return res.status(404).json({ error: "Failed to award XP" });
+      }
+      
+      return res.status(200).json({ 
+        success: true,
+        action,
+        xpAwarded: xpAmount,
+        levelUp: xpResult.levelUp,
+        stats: xpResult.newStats
+      });
+    } catch (error) {
+      console.error("Error awarding XP:", error);
+      return res.status(500).json({ error: "Internal server error" });
     }
   });
 
