@@ -506,11 +506,7 @@ export default function TimelinePage() {
                       <h4 className="text-base font-medium text-foreground">{item.title}</h4>
                     </div>
                     <span 
-                      className="text-xs px-2 py-0.5 rounded flex items-center"
-                      style={{ 
-                        backgroundColor: `${getNodeColor(item.category)}20`,
-                        color: getNodeColor(item.category)
-                      }}
+                      className="text-xs px-2 py-0.5 rounded flex items-center bg-primary/10 text-primary"
                     >
                       {item.type}
                     </span>

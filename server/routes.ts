@@ -687,11 +687,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Toggle completion and reward XP if completed
       const updatedQuest = await storage.toggleQuestCompletion(questId);
       
+      // Award XP if the quest is now completed
+      let xpResult = { success: false, levelUp: false };
+      if (updatedQuest.completed) {
+        // Award 10 XP for completing a quest
+        xpResult = await awardExperiencePoints(quest.userId, 10);
+      }
+      
       // Get updated user stats to return to the client
       const userStats = await storage.getUserStats(quest.userId);
       
       return res.status(200).json({ 
         quest: updatedQuest,
+        xpAwarded: updatedQuest.completed ? 10 : 0,
+        levelUp: xpResult.levelUp,
         stats: userStats ? {
           experience: {
             current: userStats.experienceCurrent,
@@ -1067,6 +1076,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create contact
       const contact = await storage.createContact(validatedData);
       
+      // Award XP for creating a contact
+      try {
+        // Add 3 XP for creating a contact
+        const xpResult = await awardExperiencePoints(contact.userId, 3);
+        if (xpResult.success) {
+          return res.status(201).json({
+            contact,
+            stats: xpResult.newStats,
+            xpAwarded: 3,
+            levelUp: xpResult.levelUp
+          });
+        }
+      } catch (xpError) {
+        console.error("Error awarding XP for contact creation:", xpError);
+        // Continue without failing the request if XP award fails
+      }
+      
       return res.status(201).json({ contact });
     } catch (error) {
       console.error("Error creating contact:", error);
@@ -1234,6 +1260,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create spreadsheet
       const spreadsheet = await storage.createSpreadsheet(validateData);
+      
+      // Award XP for creating a spreadsheet
+      try {
+        // Add 8 XP for creating a spreadsheet
+        const xpResult = await awardExperiencePoints(spreadsheet.userId, 8);
+        if (xpResult.success) {
+          return res.status(201).json({
+            spreadsheet,
+            stats: xpResult.newStats,
+            xpAwarded: 8,
+            levelUp: xpResult.levelUp
+          });
+        }
+      } catch (xpError) {
+        console.error("Error awarding XP for spreadsheet creation:", xpError);
+        // Continue without failing the request if XP award fails
+      }
       
       return res.status(201).json({ spreadsheet });
     } catch (error) {
