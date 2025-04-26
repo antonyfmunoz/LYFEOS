@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Link, useLocation } from "wouter";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useLYFEOS } from "@/lib/context";
-import { Archive, Calendar, Clock, Tag, ChevronDown, ChevronRight, FilePlus2, Target, Rocket } from "lucide-react";
+import { Archive, Calendar, Clock, Tag, ChevronDown, ChevronRight, FilePlus2, Target, Rocket, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 
@@ -171,10 +171,14 @@ export default function GoalsArchivePage() {
   return (
     <>
       <div className="mb-4">
-        <Link href="/chronilog" className="text-primary flex items-center hover:underline">
-          <ChevronRight className="h-4 w-4 mr-1" />
-          Back to Chronilog
-        </Link>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-8 w-8 hover:bg-primary hover:text-background" 
+          onClick={() => navigate('/chronilog')}
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
       </div>
       
       <div className="mb-6 flex justify-between items-center">
