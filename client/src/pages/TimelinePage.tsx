@@ -322,19 +322,19 @@ export default function TimelinePage() {
     );
     
     // Navigate to the detail page for this item
-    navigate(`/chronilog/timeline/${item.id}`);
+    navigate(`/chronolog/timeline/${item.id}`);
   };
 
   const goBack = () => {
-    // Directly navigate to the chronilog module (with an 'i')
+    // Directly navigate to the chronolog module (with an 'o')
     // This ensures consistent behavior regardless of how the user reached this page
-    window.location.href = '/chronilog';
+    window.location.href = '/chronolog';
   };
   
   // Handle coming to timeline page - record where we came from
   useEffect(() => {
     window.history.replaceState(
-      { from: 'chronilog' }, 
+      { from: 'chronolog' }, 
       '', 
       window.location.pathname
     );
