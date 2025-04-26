@@ -84,6 +84,7 @@ export function DailyInitModal() {
   
   // Extract username from user object with type safety
   const username = user ? (
+    // Check both Firebase-specific fields and regular fields
     (user as any).displayName || (user as any).username || "Commander"
   ) : "Commander";
   
