@@ -98,7 +98,17 @@ export default function LoginPage() {
   // Handle OAuth signin with Firebase
   const handleOAuthSignin = async (provider: string) => {
     try {
+      setError("");
+      // We don't need to manually set isLoading since loginWithGoogle handles loading state
+      
       if (provider === "Google") {
+        // Check if Firebase is properly configured
+        if (!import.meta.env.VITE_FIREBASE_API_KEY || 
+            !import.meta.env.VITE_FIREBASE_PROJECT_ID ||
+            !import.meta.env.VITE_FIREBASE_APP_ID) {
+          throw new Error("Firebase configuration is incomplete. Please check your environment variables.");
+        }
+        
         toast({
           title: "Google Sign In",
           description: "Redirecting to Google authentication...",
@@ -113,9 +123,9 @@ export default function LoginPage() {
           description: `${provider} authentication will be available soon. Please use email login or Google for now.`,
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(`${provider} sign-in error:`, error);
-      setError(`An error occurred during ${provider} authentication. Please try again.`);
+      setError(error?.message || `An error occurred during ${provider} authentication. Please try again.`);
     }
   };
 

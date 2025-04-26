@@ -98,23 +98,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data = JSON.parse(responseText) as AuthResponse;
       } catch (e) {
         console.error("Failed to parse JSON response:", e);
+        const error = new Error("Invalid server response. Please try again.");
         toast({
           title: "Login Error",
-          description: "Invalid server response. Please try again.",
+          description: error.message,
           variant: "destructive",
         });
         setIsLoading(false);
-        return;
+        throw error;
       }
       
       if (!response.ok) {
+        const error = new Error(data.error || "Check your username and password");
         toast({
           title: "Login Failed",
-          description: data.error || "Check your username and password",
+          description: error.message,
           variant: "destructive",
         });
         setIsLoading(false);
-        return;
+        throw error;
       }
       
       if (data && data.user) {
@@ -126,14 +128,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           variant: "default",
         });
         navigate("/dashboard");
+      } else {
+        const error = new Error("Invalid user data received from server");
+        toast({
+          title: "Login Error",
+          description: error.message,
+          variant: "destructive",
+        });
+        throw error;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login error:", error);
-      toast({
-        title: "Login Error",
-        description: "Could not connect to server. Please try again.",
-        variant: "destructive",
-      });
+      if (!error.message) {
+        toast({
+          title: "Login Error",
+          description: "Could not connect to server. Please try again.",
+          variant: "destructive",
+        });
+      }
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -161,23 +174,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data = JSON.parse(responseText) as AuthResponse;
       } catch (e) {
         console.error("Failed to parse JSON response:", e);
+        const error = new Error("Invalid server response. Please try again.");
         toast({
           title: "Registration Error",
-          description: "Invalid server response. Please try again.",
+          description: error.message,
           variant: "destructive",
         });
         setIsLoading(false);
-        return;
+        throw error;
       }
       
       if (!response.ok) {
+        const error = new Error(data.error || "Username may already be taken");
         toast({
           title: "Registration Failed",
-          description: data.error || "Username may already be taken",
+          description: error.message,
           variant: "destructive",
         });
         setIsLoading(false);
-        return;
+        throw error;
       }
       
       if (data && data.user) {
@@ -190,14 +205,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         // After registration, go to onboarding instead of dashboard
         navigate("/onboarding");
+      } else {
+        const error = new Error("Invalid user data received from server");
+        toast({
+          title: "Registration Error",
+          description: error.message,
+          variant: "destructive",
+        });
+        throw error;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Registration error:", error);
-      toast({
-        title: "Registration Error",
-        description: "Could not connect to server. Please try again.",
-        variant: "destructive",
-      });
+      if (!error.message) {
+        toast({
+          title: "Registration Error",
+          description: "Could not connect to server. Please try again.",
+          variant: "destructive",
+        });
+      }
+      throw error;
     } finally {
       setIsLoading(false);
     }
