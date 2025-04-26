@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { userDailyLogs } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcrypt";
@@ -3145,14 +3145,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { date } = req.query;
       
-      let query = db.select().from(userDailyLogs).where(eq(userDailyLogs.userId, userId));
+      // Build the query step by step to avoid type errors
+      const baseQuery = db.select().from(userDailyLogs);
       
-      if (date) {
-        query = query.where(eq(userDailyLogs.date, date as string));
-      }
-      
-      // Order by most recent first
-      query = query.orderBy(desc(userDailyLogs.date));
+      // Apply filters
+      const filteredQuery = date 
+        ? baseQuery.where(and(eq(userDailyLogs.userId, userId), eq(userDailyLogs.date, date as string)))
+        : baseQuery.where(eq(userDailyLogs.userId, userId));
+        
+      // Apply ordering
+      const query = filteredQuery.orderBy(desc(userDailyLogs.date));
       
       const logs = await query;
       return res.status(200).json({ logs });
@@ -3177,9 +3179,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if a log already exists for this date
-      const existingLog = await db.select().from(userDailyLogs)
-        .where(eq(userDailyLogs.userId, userId))
-        .where(eq(userDailyLogs.date, date));
+      const existingLog = await db.select()
+        .from(userDailyLogs)
+        .where(and(
+          eq(userDailyLogs.userId, userId),
+          eq(userDailyLogs.date, date)
+        ));
       
       if (existingLog.length > 0) {
         // Update the existing log
@@ -3227,9 +3232,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if a log exists for this date
-      const existingLog = await db.select().from(userDailyLogs)
-        .where(eq(userDailyLogs.userId, userId))
-        .where(eq(userDailyLogs.date, date));
+      const existingLog = await db.select()
+        .from(userDailyLogs)
+        .where(and(
+          eq(userDailyLogs.userId, userId),
+          eq(userDailyLogs.date, date)
+        ));
       
       if (existingLog.length > 0) {
         // Update the existing log

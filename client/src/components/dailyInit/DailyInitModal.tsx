@@ -131,13 +131,16 @@ export function DailyInitModal() {
         localStorage.setItem('lyfeos-last-login-date', today);
         
         // Track this daily init session in the database if we have API access
-        if (user.id) {
+        if (user && user.id) {
           try {
+            // Format date as YYYY-MM-DD for the API
+            const formattedDate = new Date().toISOString().split('T')[0];
+            
             // Create or update daily log entry
             apiRequest(`/api/users/${user.id}/daily-logs`, {
               method: 'POST',
               body: JSON.stringify({
-                date: today,
+                date: formattedDate,
                 yesterdayXp: stats?.stats?.experience?.current || 0,
                 optionalBoostsShown: true
               })
@@ -212,26 +215,32 @@ export function DailyInitModal() {
 
   // Begin the day (close modal and award XP for selected boosts)
   const handleBeginDay = async () => {
-    if (user) {
+    if (user && user.id) {
       try {
-        // Save the boosts data to the database
-        const today = new Date().toDateString();
+        // Format date as YYYY-MM-DD for the API
+        const formattedDate = new Date().toISOString().split('T')[0];
+        
+        // Map selected boosts to data objects
         const selectedBoostsData = selectedBoosts.map(boostId => {
           const boost = dailyBoosts.find(b => b.id === boostId);
           return boost;
         }).filter(Boolean);
         
         // Update daily logs with the selected boosts
-        await apiRequest(`/api/users/${user.id}/daily-logs/update`, {
+        console.log("Updating daily logs with boosts for date:", formattedDate);
+        
+        const updateResponse = await apiRequest(`/api/users/${user.id}/daily-logs/update`, {
           method: 'PATCH',
           body: JSON.stringify({
-            date: today,
+            date: formattedDate,
             boostsData: {
               selectedBoosts: selectedBoostsData,
               allBoosts: dailyBoosts
             }
           })
         });
+        
+        console.log("Daily logs update response:", updateResponse);
         
         // Calculate XP to award based on selected boosts
         if (selectedBoosts.length > 0) {
@@ -242,13 +251,17 @@ export function DailyInitModal() {
           
           // Award XP for selecting daily boosts
           if (xpToAward > 0) {
-            await apiRequest(`/api/users/${user.id}/award-xp`, {
+            console.log("Awarding XP for daily boosts:", xpToAward);
+            
+            const xpResponse = await apiRequest(`/api/users/${user.id}/award-xp`, {
               method: 'POST',
               body: JSON.stringify({ 
                 amount: xpToAward, 
                 reason: 'Daily boost selection' 
               })
             });
+            
+            console.log("XP award response:", xpResponse);
           }
         }
       } catch (error) {
