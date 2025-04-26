@@ -326,12 +326,9 @@ export default function TimelinePage() {
   };
 
   const goBack = () => {
-    // Check if there's a state in history to determine if we need special handling
-    if (window.history.state && window.history.state.from === 'chronolog') {
-      window.history.back();
-    } else {
-      navigate('/chronolog');
-    }
+    // Directly navigate to the chronolog page
+    // This ensures consistent behavior regardless of how the user reached this page
+    navigate('/chronolog');
   };
   
   // Handle coming to timeline page - record where we came from
@@ -348,10 +345,9 @@ export default function TimelinePage() {
       <div className="flex items-center mb-6">
         <button 
           onClick={goBack}
-          className="flex items-center justify-center px-3 py-1.5 rounded-md mr-3 bg-primary/10 hover:bg-primary/20 text-primary hover:shadow-[0_0_10px_rgba(var(--primary-rgb),0.3)] transition-all"
+          className="flex items-center justify-center rounded-md h-9 w-9 mr-3 bg-background/10 hover:bg-background/20 hover:shadow-[0_0_10px_rgba(255,255,0,0.5)] transition-all"
         >
-          <ArrowLeft className="h-4 w-4 mr-1.5" />
-          <span className="text-xs font-medium">Back</span>
+          <ArrowLeft className="h-5 w-5 text-foreground" />
         </button>
         <div>
           <h1 className="text-2xl font-orbitron mb-1">Timeline</h1>
