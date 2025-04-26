@@ -1,6 +1,9 @@
 import { 
   users, type User, type InsertUser, 
   userStats, type UserStats, type InsertUserStats,
+  userProfile, type UserProfile, type InsertUserProfile,
+  userDailyLogs, type UserDailyLog, type InsertUserDailyLog,
+  userIntegrations, type UserIntegration, type InsertUserIntegration,
   quests, type Quest, type InsertQuest,
   aiMessages, type AIMessage, type InsertAIMessage,
   calendarEvents, type CalendarEvent, type InsertCalendarEvent,
@@ -34,6 +37,22 @@ export interface IStorage {
   getUserStats(userId: number): Promise<UserStats | undefined>;
   createUserStats(stats: InsertUserStats): Promise<UserStats>;
   updateUserStats(userId: number, stats: Partial<InsertUserStats>): Promise<UserStats>;
+  
+  // User Profile methods
+  getUserProfile(userId: number): Promise<UserProfile | undefined>;
+  createUserProfile(profile: InsertUserProfile): Promise<UserProfile>;
+  updateUserProfile(userId: number, profile: Partial<InsertUserProfile>): Promise<UserProfile>;
+  
+  // User Daily Logs methods
+  getUserDailyLogs(userId: number): Promise<UserDailyLog[]>;
+  getUserDailyLogByDate(userId: number, date: Date): Promise<UserDailyLog | undefined>;
+  createUserDailyLog(log: InsertUserDailyLog): Promise<UserDailyLog>;
+  updateUserDailyLog(id: number, log: Partial<InsertUserDailyLog>): Promise<UserDailyLog>;
+  
+  // User Integration methods
+  getUserIntegration(userId: number): Promise<UserIntegration | undefined>;
+  createUserIntegration(integration: InsertUserIntegration): Promise<UserIntegration>;
+  updateUserIntegration(userId: number, integration: Partial<InsertUserIntegration>): Promise<UserIntegration>;
   
   // Quest methods
   getQuests(userId: number): Promise<Quest[]>;
