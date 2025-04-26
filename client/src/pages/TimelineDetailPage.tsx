@@ -475,7 +475,7 @@ export default function TimelineDetailPage() {
           </button>
           
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogContent className="sm:max-w-[425px] bg-background text-foreground">
+            <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto bg-background text-foreground border-primary/40 shadow-[0_0_30px_rgba(0,0,0,0.3)]">
               <DialogHeader>
                 <DialogTitle className="font-orbitron">Edit Timeline Item</DialogTitle>
                 <DialogDescription>
@@ -491,9 +491,12 @@ export default function TimelineDetailPage() {
                     </Label>
                     <Input
                       id="title"
-                      value={editedItem.title}
-                      onChange={(e) => setEditedItem({...editedItem, title: e.target.value})}
-                      className="col-span-3"
+                      defaultValue={editedItem.title}
+                      onChange={(e) => {
+                        const newValue = e.target.value;
+                        setEditedItem(prev => prev ? {...prev, title: newValue} : null);
+                      }}
+                      className="col-span-3 bg-background/50 border-primary/30 focus:border-primary/60 focus-visible:ring-1 focus-visible:ring-primary/30"
                     />
                   </div>
                   
@@ -503,9 +506,12 @@ export default function TimelineDetailPage() {
                     </Label>
                     <Input
                       id="date"
-                      value={editedItem.date}
-                      onChange={(e) => setEditedItem({...editedItem, date: e.target.value})}
-                      className="col-span-3"
+                      defaultValue={editedItem.date}
+                      onChange={(e) => {
+                        const newValue = e.target.value;
+                        setEditedItem(prev => prev ? {...prev, date: newValue} : null);
+                      }}
+                      className="col-span-3 bg-background/50 border-primary/30 focus:border-primary/60 focus-visible:ring-1 focus-visible:ring-primary/30"
                     />
                   </div>
                   
@@ -515,9 +521,12 @@ export default function TimelineDetailPage() {
                     </Label>
                     <Textarea
                       id="description"
-                      value={editedItem.description}
-                      onChange={(e) => setEditedItem({...editedItem, description: e.target.value})}
-                      className="col-span-3 min-h-[80px]"
+                      defaultValue={editedItem.description}
+                      onChange={(e) => {
+                        const newValue = e.target.value;
+                        setEditedItem(prev => prev ? {...prev, description: newValue} : null);
+                      }}
+                      className="col-span-3 min-h-[80px] bg-background/50 border-primary/30 focus:border-primary/60 focus-visible:ring-1 focus-visible:ring-primary/30"
                     />
                   </div>
                   
@@ -528,9 +537,12 @@ export default function TimelineDetailPage() {
                       </Label>
                       <Textarea
                         id="content"
-                        value={editedItem.content}
-                        onChange={(e) => setEditedItem({...editedItem, content: e.target.value})}
-                        className="col-span-3 min-h-[120px]"
+                        defaultValue={editedItem.content}
+                        onChange={(e) => {
+                          const newValue = e.target.value;
+                          setEditedItem(prev => prev ? {...prev, content: newValue} : null);
+                        }}
+                        className="col-span-3 min-h-[120px] bg-background/50 border-primary/30 focus:border-primary/60 focus-visible:ring-1 focus-visible:ring-primary/30"
                       />
                     </div>
                   )}
