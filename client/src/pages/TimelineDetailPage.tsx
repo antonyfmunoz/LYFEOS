@@ -185,7 +185,7 @@ This item represents an important entry in your life timeline. Each item in your
 
 export default function TimelineDetailPage() {
   const [, navigate] = useLocation();
-  const [match, params] = useRoute("/chronolog/timeline/:id");
+  const [match, params] = useRoute("/chronilog/timeline/:id");
   const { missionPages, events, quests, messages } = useLYFEOS();
   const [item, setItem] = useState<TimelineItem | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -195,7 +195,7 @@ export default function TimelineDetailPage() {
   
   useEffect(() => {
     if (!match || !params) {
-      navigate('/chronolog/timeline');
+      navigate('/chronilog/timeline');
       return;
     }
     
@@ -293,14 +293,14 @@ export default function TimelineDetailPage() {
   const goBack = () => {
     // Always navigate directly to the timeline page
     // This ensures consistent behavior regardless of how user reached this page
-    window.location.href = '/chronolog/timeline';
+    window.location.href = '/chronilog/timeline';
   };
   
   // Set up history state when component mounts
   useEffect(() => {
     // Update the history state to track where we came from
     window.history.replaceState(
-      { previous: '/chronolog/timeline' }, 
+      { previous: '/chronilog/timeline' }, 
       '', 
       window.location.pathname
     );

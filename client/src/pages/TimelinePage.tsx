@@ -322,13 +322,13 @@ export default function TimelinePage() {
     );
     
     // Navigate to the detail page for this item
-    navigate(`/chronolog/timeline/${item.id}`);
+    navigate(`/chronilog/timeline/${item.id}`);
   };
 
   const goBack = () => {
-    // Directly navigate to the chronolog module
+    // Directly navigate to the chronilog module (with an 'i')
     // This ensures consistent behavior regardless of how the user reached this page
-    window.location.href = '/chronolog';
+    window.location.href = '/chronilog';
   };
   
   // Handle coming to timeline page - record where we came from
