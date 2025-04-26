@@ -188,7 +188,6 @@ export default function TimelineDetailPage() {
   const [match, params] = useRoute("/chronolog/timeline/:id");
   const { missionPages, events, quests, messages } = useLYFEOS();
   const [item, setItem] = useState<TimelineItem | null>(null);
-  const [editedItem, setEditedItem] = useState<TimelineItem | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   
   // Set page title when item changes

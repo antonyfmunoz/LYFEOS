@@ -1155,15 +1155,6 @@ export default function MediaLibraryPage() {
                   <>
                     <p className="text-lg font-medium mb-1">No media found</p>
                     <p className="text-sm mb-4">Upload some photos or videos to get started</p>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className="h-8 w-8 bg-primary/10 hover:bg-primary hover:text-background hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow text-primary border border-primary/50"
-                      onClick={() => fileInputRef.current?.click()}
-                      title="Upload Media"
-                    >
-                      <Upload className="h-4 w-4" />
-                    </Button>
                   </>
                 )}
               </div>

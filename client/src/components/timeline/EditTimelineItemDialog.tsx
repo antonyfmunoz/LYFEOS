@@ -53,9 +53,9 @@ const EditTimelineItemDialog: React.FC<EditTimelineItemDialogProps> = ({
     content: '',
   });
 
-  // Update form data when item changes
+  // Update form data when item or open state changes
   useEffect(() => {
-    if (item) {
+    if (item && isOpen) {
       setFormData({
         title: item.title || '',
         date: item.date || '',
@@ -63,7 +63,7 @@ const EditTimelineItemDialog: React.FC<EditTimelineItemDialogProps> = ({
         content: item.content || '',
       });
     }
-  }, [item]);
+  }, [item, isOpen]);
 
   // Handle form input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -92,8 +92,13 @@ const EditTimelineItemDialog: React.FC<EditTimelineItemDialogProps> = ({
 
   if (!item) return null;
 
+  // Custom handler for open state changes
+  const handleOpenChange = (open: boolean) => {
+    if (!open) onClose();
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto bg-background text-foreground border-primary/40 shadow-[0_0_30px_rgba(0,0,0,0.3)]">
         <DialogHeader>
           <DialogTitle className="font-orbitron">Edit Timeline Item</DialogTitle>
