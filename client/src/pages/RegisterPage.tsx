@@ -11,7 +11,10 @@ import { Separator } from "@/components/ui/separator";
 import { 
   SiGoogle, 
   SiApple, 
-  SiFacebook 
+  SiFacebook,
+  SiX,
+  SiGithub,
+  SiLinkedin
 } from "react-icons/si";
 import { toast } from "@/hooks/use-toast";
 
@@ -171,7 +174,7 @@ export default function RegisterPage() {
         <h2 className="text-xl font-orbitron text-center mb-6 text-foreground">Create Your LYFEOS Account</h2>
         
         {/* OAuth Sign-in Buttons */}
-        <div className="grid grid-cols-3 gap-2 mb-6">
+        <div className="grid grid-cols-3 gap-2 mb-4">
           <Button 
             variant="outline" 
             className="flex items-center justify-center space-x-2 py-5 border-primary/30 hover:bg-primary/10"
@@ -192,6 +195,31 @@ export default function RegisterPage() {
             onClick={() => handleOAuthSignin("Facebook")}
           >
             <SiFacebook className="h-5 w-5" />
+          </Button>
+        </div>
+        
+        {/* Additional OAuth options */}
+        <div className="grid grid-cols-3 gap-2 mb-6">
+          <Button 
+            variant="outline" 
+            className="flex items-center justify-center space-x-2 py-5 border-primary/30 hover:bg-primary/10"
+            onClick={() => handleOAuthSignin("X")}
+          >
+            <SiX className="h-5 w-5" />
+          </Button>
+          <Button 
+            variant="outline" 
+            className="flex items-center justify-center space-x-2 py-5 border-primary/30 hover:bg-primary/10"
+            onClick={() => handleOAuthSignin("Github")}
+          >
+            <SiGithub className="h-5 w-5" />
+          </Button>
+          <Button 
+            variant="outline" 
+            className="flex items-center justify-center space-x-2 py-5 border-primary/30 hover:bg-primary/10"
+            onClick={() => handleOAuthSignin("LinkedIn")}
+          >
+            <SiLinkedin className="h-5 w-5" />
           </Button>
         </div>
         
