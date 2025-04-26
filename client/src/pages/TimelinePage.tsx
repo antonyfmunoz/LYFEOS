@@ -487,13 +487,9 @@ export default function TimelinePage() {
               <div key={item.id} className="flex items-start ml-2 group">
                 {/* Timeline node */}
                 <div 
-                  className={`w-8 h-8 rounded-full border-2 mt-0.5 z-10 flex items-center justify-center mr-3 transition-all group-hover:scale-110`}
-                  style={{ 
-                    borderColor: getNodeColor(item.category),
-                    backgroundColor: `${getNodeColor(item.category)}30`
-                  }}
+                  className={`w-8 h-8 rounded-full border-2 border-primary mt-0.5 z-10 flex items-center justify-center mr-3 transition-all group-hover:scale-110 bg-primary/20`}
                 >
-                  <div className="flex items-center justify-center w-full h-full" style={{ color: getNodeColor(item.category) }}>
+                  <div className="flex items-center justify-center w-full h-full text-primary">
                     {item.icon}
                   </div>
                 </div>
