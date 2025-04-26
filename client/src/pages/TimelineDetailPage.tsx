@@ -1,8 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useRoute } from 'wouter';
-import { ArrowLeft, CalendarClock, BookOpen, Sparkles, Milestone, CalendarDays, Trophy, MessageCircle } from 'lucide-react';
+import { ArrowLeft, CalendarClock, BookOpen, Sparkles, Milestone, CalendarDays, Trophy, MessageCircle, Pencil } from 'lucide-react';
 import { useLYFEOS } from '@/lib/context';
 import { usePageTitle } from '@/hooks/use-page-title';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 // Define all the different types of timeline items
 type TimelineItemType = 'mission' | 'quest' | 'event' | 'achievement' | 'chat' | 'life' | 'journal' | 'ritual' | 'knowledge' | 'goal';
@@ -187,6 +200,8 @@ export default function TimelineDetailPage() {
   const [match, params] = useRoute("/chronolog/timeline/:id");
   const { missionPages, events, quests, messages } = useLYFEOS();
   const [item, setItem] = useState<TimelineItem | null>(null);
+  const [editedItem, setEditedItem] = useState<TimelineItem | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   
   // Set page title when item changes
   usePageTitle(item?.title || 'Timeline Item');
@@ -287,8 +302,46 @@ export default function TimelineDetailPage() {
     }
   }, [match, params, navigate, missionPages, events, quests, messages]);
   
+  // We need to set editedItem whenever item changes
+  useEffect(() => {
+    if (item) {
+      setEditedItem(null); // Reset first to avoid type errors
+    }
+  }, [item]);
+  
   const goBack = () => {
     navigate('/chronolog/timeline');
+  };
+  
+  const openEditDialog = () => {
+    if (item) {
+      // Create a fresh copy with all required properties
+      const copy: TimelineItem = {
+        id: item.id,
+        date: item.date,
+        title: item.title,
+        description: item.description,
+        content: item.content,
+        category: item.category,
+        color: item.color,
+        type: item.type,
+        icon: item.icon
+      };
+      setEditedItem(copy);
+      setIsDialogOpen(true);
+    }
+  };
+  
+  const saveChanges = () => {
+    if (editedItem) {
+      // In a real app, we would persist these changes to the database
+      // For now, we'll just update the local state
+      setItem({...editedItem}); // Create a new copy to trigger re-renders
+      setIsDialogOpen(false);
+      
+      // Add a notification or message here about successful update
+      console.log('Timeline item updated:', editedItem.title);
+    }
   };
   
   if (!item) {
@@ -415,10 +468,92 @@ export default function TimelineDetailPage() {
             Back to Timeline
           </button>
           <button 
-            className="flex items-center px-3 py-1 text-xs font-medium rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition"
+            onClick={openEditDialog}
+            className="flex items-center px-3 py-1 text-xs font-medium rounded-md bg-primary/10 text-primary hover:bg-primary/20 hover:shadow-[0_0_10px_rgba(255,255,0,0.5)] transition"
           >
-            Edit Details
+            <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit Details
           </button>
+          
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent className="sm:max-w-[425px] bg-background text-foreground">
+              <DialogHeader>
+                <DialogTitle className="font-orbitron">Edit Timeline Item</DialogTitle>
+                <DialogDescription>
+                  Make changes to the timeline item details below.
+                </DialogDescription>
+              </DialogHeader>
+              
+              {editedItem && (
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="title" className="text-right">
+                      Title
+                    </Label>
+                    <Input
+                      id="title"
+                      value={editedItem.title}
+                      onChange={(e) => setEditedItem({...editedItem, title: e.target.value})}
+                      className="col-span-3"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="date" className="text-right">
+                      Date
+                    </Label>
+                    <Input
+                      id="date"
+                      value={editedItem.date}
+                      onChange={(e) => setEditedItem({...editedItem, date: e.target.value})}
+                      className="col-span-3"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-4 items-start gap-4">
+                    <Label htmlFor="description" className="text-right mt-2">
+                      Description
+                    </Label>
+                    <Textarea
+                      id="description"
+                      value={editedItem.description}
+                      onChange={(e) => setEditedItem({...editedItem, description: e.target.value})}
+                      className="col-span-3 min-h-[80px]"
+                    />
+                  </div>
+                  
+                  {editedItem.content && (
+                    <div className="grid grid-cols-4 items-start gap-4">
+                      <Label htmlFor="content" className="text-right mt-2">
+                        Content
+                      </Label>
+                      <Textarea
+                        id="content"
+                        value={editedItem.content}
+                        onChange={(e) => setEditedItem({...editedItem, content: e.target.value})}
+                        className="col-span-3 min-h-[120px]"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                  className="bg-muted/20 hover:text-destructive hover:shadow-[0_0_10px_rgba(255,0,0,0.3)] hover:bg-muted/30"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={saveChanges}
+                  className="bg-primary/20 text-primary hover:bg-primary/30 hover:shadow-[0_0_10px_rgba(255,255,0,0.5)]"
+                >
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </div>
