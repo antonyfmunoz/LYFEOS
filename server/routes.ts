@@ -370,7 +370,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create the user with Firebase credentials
         user = await storage.createUser({
           username: username,
-          password: '', // No password for Firebase users
+          password: 'firebase-auth', // Placeholder password for Firebase users
           displayName: displayName || username,
           title: 'COMMANDER',
           email: email,
@@ -414,14 +414,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Create user integrations
         console.log("Creating user integrations for new Firebase user:", user.id);
-        await storage.createUserIntegrations({
+        await storage.createUserIntegration({
           userId: user.id,
-          calendar: false,
-          fitness: false,
-          music: false,
-          tasks: false,
-          weather: false,
-          email: false
+          appleHealthConnected: false,
+          googleCalendarConnected: false,
+          notionConnected: false,
+          otherIntegrations: {}
         });
       } else {
         // User exists, update Firebase UID if needed
