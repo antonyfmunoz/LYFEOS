@@ -53,21 +53,24 @@ const EditTimelineItemDialog: React.FC<EditTimelineItemDialogProps> = ({
     content: '',
   });
 
-  // Update form data when item changes
+  // Update form data when item or dialog open state changes
   useEffect(() => {
-    if (item) {
+    if (item && isOpen) {
+      // Reset the form with fresh data when dialog opens
       setFormData({
         title: item.title || '',
         date: item.date || '',
         description: item.description || '',
         content: item.content || '',
       });
+      console.log("Form data initialized with:", item.title);
     }
-  }, [item]);
+  }, [item, isOpen]);
 
   // Handle form input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    console.log(`Updating ${name} field to:`, value);
     setFormData(prev => ({
       ...prev,
       [name]: value,
