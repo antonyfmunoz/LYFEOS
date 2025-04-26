@@ -1,8 +1,17 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { useLocation } from 'wouter';
-import { ArrowLeft, CalendarClock, BookOpen, Sparkles, Milestone, CalendarDays, Trophy, MessageCircle } from 'lucide-react';
+import { ArrowLeft, CalendarClock, BookOpen, Sparkles, Milestone, CalendarDays, Trophy, MessageCircle, CheckCircle2, XCircle, Filter, ArrowUpDown } from 'lucide-react';
 import { useLYFEOS } from '@/lib/context';
 import { usePageTitle } from '@/hooks/use-page-title';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // Define all the different types of timeline items
 type TimelineItemType = 'mission' | 'quest' | 'event' | 'achievement' | 'chat' | 'life' | 'journal' | 'ritual' | 'knowledge' | 'goal';
@@ -184,6 +193,10 @@ export default function TimelinePage() {
   
   const [, navigate] = useLocation();
   const { missionPages, events, quests, messages } = useLYFEOS();
+
+  // State for filtering and sorting
+  const [activeFilters, setActiveFilters] = useState<TimelineItemType[]>([]);
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   
   // Combine different data sources into timeline items
   const timelineItems: TimelineItem[] = [
@@ -246,7 +259,7 @@ export default function TimelinePage() {
       description: 'Began reading James Clear\'s book on habit formation and improvement',
       category: 'knowledge',
       color: getCategoryColor('knowledge'),
-      type: 'life' as TimelineItemType,
+      type: 'knowledge' as TimelineItemType,
       icon: <BookOpen className="h-4 w-4" />
     },
     {
@@ -261,10 +274,64 @@ export default function TimelinePage() {
     }
   ];
 
-  // Sort items by date (most recent first)
-  const sortedItems = [...timelineItems].sort((a, b) => {
-    return new Date(b.date).getTime() - new Date(a.date).getTime();
-  });
+  // Filter and sort items
+  const filteredAndSortedItems = useMemo(() => {
+    // First apply filters
+    let result = timelineItems;
+    
+    if (activeFilters.length > 0) {
+      result = result.filter(item => activeFilters.includes(item.type));
+    }
+    
+    // Then sort
+    return [...result].sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      
+      return sortOrder === 'newest' 
+        ? dateB - dateA  // newest first
+        : dateA - dateB; // oldest first
+    });
+  }, [timelineItems, activeFilters, sortOrder]);
+  
+  // Toggle a filter
+  const toggleFilter = (type: TimelineItemType) => {
+    setActiveFilters(prev => {
+      if (prev.includes(type)) {
+        return prev.filter(t => t !== type);
+      } else {
+        return [...prev, type];
+      }
+    });
+  };
+  
+  // Reset all filters
+  const resetFilters = () => {
+    setActiveFilters([]);
+  };
+  
+  // Navigate to detail view based on item type
+  const viewItemDetails = (item: TimelineItem) => {
+    const idParts = item.id.split('-');
+    const itemType = idParts[0];
+    const itemId = idParts.slice(1).join('-');
+    
+    switch(itemType) {
+      case 'mission':
+        navigate(`/mission-page/${itemId}`);
+        break;
+      case 'event':
+        navigate(`/calendar?event=${itemId}`);
+        break;
+      case 'quest':
+        navigate(`/quests?highlight=${itemId}`);
+        break;
+      default:
+        // For simulated items or ones without detail pages
+        console.log(`View details for ${item.type} item: ${item.id}`);
+        break;
+    }
+  };
 
   const goBack = () => {
     navigate('/chronolog');
@@ -298,14 +365,131 @@ export default function TimelinePage() {
         
         <div className="flex justify-end mb-6">
           <div className="flex items-center space-x-2">
-            <button className="flex items-center px-3 py-1 text-xs rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition">
-              <span className="material-icons text-xs mr-1">filter_list</span>
-              Filter
-            </button>
-            <button className="flex items-center px-3 py-1 text-xs rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition">
-              <span className="material-icons text-xs mr-1">sort</span>
-              Sort
-            </button>
+            {/* Filter Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center px-3 py-1 text-xs rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition">
+                  <Filter className="h-3 w-3 mr-1" />
+                  Filter {activeFilters.length > 0 && `(${activeFilters.length})`}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56 bg-background/80 backdrop-blur-xl border border-primary/30">
+                <DropdownMenuLabel className="text-xs text-primary">Filter by Type</DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-primary/20" />
+                <DropdownMenuGroup>
+                  <DropdownMenuItem 
+                    className="flex items-center justify-between text-xs py-1.5 cursor-pointer"
+                    onClick={() => toggleFilter('mission')}
+                  >
+                    <div className="flex items-center">
+                      <Milestone className="h-3 w-3 mr-2" />
+                      <span>Missions</span>
+                    </div>
+                    {activeFilters.includes('mission') ? 
+                      <CheckCircle2 className="h-3 w-3 text-primary" /> : 
+                      <div className="h-3 w-3" />
+                    }
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem 
+                    className="flex items-center justify-between text-xs py-1.5 cursor-pointer"
+                    onClick={() => toggleFilter('quest')}
+                  >
+                    <div className="flex items-center">
+                      <Sparkles className="h-3 w-3 mr-2" />
+                      <span>Quests</span>
+                    </div>
+                    {activeFilters.includes('quest') ? 
+                      <CheckCircle2 className="h-3 w-3 text-primary" /> : 
+                      <div className="h-3 w-3" />
+                    }
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem 
+                    className="flex items-center justify-between text-xs py-1.5 cursor-pointer"
+                    onClick={() => toggleFilter('event')}
+                  >
+                    <div className="flex items-center">
+                      <CalendarDays className="h-3 w-3 mr-2" />
+                      <span>Events</span>
+                    </div>
+                    {activeFilters.includes('event') ? 
+                      <CheckCircle2 className="h-3 w-3 text-primary" /> : 
+                      <div className="h-3 w-3" />
+                    }
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem 
+                    className="flex items-center justify-between text-xs py-1.5 cursor-pointer"
+                    onClick={() => toggleFilter('achievement')}
+                  >
+                    <div className="flex items-center">
+                      <Trophy className="h-3 w-3 mr-2" />
+                      <span>Achievements</span>
+                    </div>
+                    {activeFilters.includes('achievement') ? 
+                      <CheckCircle2 className="h-3 w-3 text-primary" /> : 
+                      <div className="h-3 w-3" />
+                    }
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem 
+                    className="flex items-center justify-between text-xs py-1.5 cursor-pointer"
+                    onClick={() => toggleFilter('knowledge')}
+                  >
+                    <div className="flex items-center">
+                      <BookOpen className="h-3 w-3 mr-2" />
+                      <span>Knowledge</span>
+                    </div>
+                    {activeFilters.includes('knowledge') ? 
+                      <CheckCircle2 className="h-3 w-3 text-primary" /> : 
+                      <div className="h-3 w-3" />
+                    }
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                
+                <DropdownMenuSeparator className="bg-primary/20" />
+                <DropdownMenuItem 
+                  className="flex items-center justify-center text-xs py-1.5 text-primary cursor-pointer hover:bg-background/40"
+                  onClick={resetFilters}
+                >
+                  Clear All Filters
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Sort Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center px-3 py-1 text-xs rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition">
+                  <ArrowUpDown className="h-3 w-3 mr-1" />
+                  Sort
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-40 bg-background/80 backdrop-blur-xl border border-primary/30">
+                <DropdownMenuLabel className="text-xs text-primary">Sort By Date</DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-primary/20" />
+                <DropdownMenuItem 
+                  className="flex items-center justify-between text-xs py-1.5 cursor-pointer"
+                  onClick={() => setSortOrder('newest')}
+                >
+                  <div className="flex items-center">
+                    <span>Newest First</span>
+                  </div>
+                  {sortOrder === 'newest' && <CheckCircle2 className="h-3 w-3 text-primary" />}
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem 
+                  className="flex items-center justify-between text-xs py-1.5 cursor-pointer"
+                  onClick={() => setSortOrder('oldest')}
+                >
+                  <div className="flex items-center">
+                    <span>Oldest First</span>
+                  </div>
+                  {sortOrder === 'oldest' && <CheckCircle2 className="h-3 w-3 text-primary" />}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
         
@@ -313,8 +497,8 @@ export default function TimelinePage() {
           {/* Vertical timeline line */}
           <div className="absolute left-4 top-0 bottom-0 w-px bg-primary/30" />
           
-          {sortedItems.length > 0 ? (
-            sortedItems.map((item, index) => (
+          {filteredAndSortedItems.length > 0 ? (
+            filteredAndSortedItems.map((item, index) => (
               <div key={item.id} className="flex items-start ml-2 group">
                 {/* Timeline node */}
                 <div 
@@ -351,6 +535,10 @@ export default function TimelinePage() {
                   <div className="flex justify-end mt-2">
                     <button 
                       className="text-xs font-medium px-3 py-1 rounded-md bg-primary/10 text-primary hover:bg-opacity-20 transition"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        viewItemDetails(item);
+                      }}
                     >
                       VIEW DETAILS
                     </button>
