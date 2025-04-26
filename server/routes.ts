@@ -322,7 +322,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         console.log("New user created, session created for user:", newUser.username);
         
-        return res.status(200).json({ user: { id: newUser.id, username: newUser.username } });
+        return res.status(201).json({ 
+          user: { id: newUser.id, username: newUser.username },
+          isNewUser: true 
+        });
       }
       
       // Verify password
@@ -338,7 +341,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.session.userId = user.id;
       req.session.username = user.username;
       
-      return res.status(200).json({ user: { id: user.id, username: user.username } });
+      // Check if user has completed onboarding
+      const userProfile = await storage.getUserProfile(user.id);
+      const isNewUser = !userProfile || !userProfile.onboardingCompleted;
+      
+      return res.status(200).json({ 
+        user: { id: user.id, username: user.username },
+        isNewUser: isNewUser
+      });
     } catch (error) {
       console.error("Login error:", error);
       return res.status(500).json({ error: "Internal server error" });
@@ -444,13 +454,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.session.userId = user.id;
       req.session.username = user.username;
       
-      console.log("Firebase login successful for user:", user.username);
+      // Fetch user profile to check if onboarding is completed
+      const userProfile = await storage.getUserProfile(user.id);
+      const isNewUser = !userProfile || !userProfile.onboardingCompleted;
+      
+      console.log("Firebase login successful for user:", user.username, "isNewUser:", isNewUser);
       return res.status(200).json({ 
         user: { 
           id: user.id, 
           username: user.username,
           displayName: user.displayName 
-        } 
+        },
+        isNewUser: isNewUser
       });
     } catch (error) {
       console.error("Firebase auth error:", error);

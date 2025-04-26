@@ -8,6 +8,7 @@ const firebaseConfig = {
   authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebasestorage.googleapis.com`,
+  messagingSenderId: "128451234567", // Generic sender ID (will be replaced by actual value from Project settings)
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 

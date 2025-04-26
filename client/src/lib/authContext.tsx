@@ -327,8 +327,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(userData.user);
         localStorage.setItem("lyfeos_user", JSON.stringify(userData.user));
         
-        // Go to dashboard or onboarding depending on if the user is new
-        navigate("/dashboard");
+        // Check if this is a new user (just created) and direct to onboarding
+        // or dashboard based on profile status
+        if (userData.isNewUser) {
+          console.log("New user detected, redirecting to onboarding");
+          navigate("/onboarding");
+        } else {
+          navigate("/dashboard");
+        }
       }
     } catch (error) {
       console.error("Error handling OAuth redirect:", error);
