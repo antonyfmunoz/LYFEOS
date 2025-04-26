@@ -1,11 +1,32 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/authContext";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
+import { Loader2, Mail, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/lib/themeContext";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
+import { 
+  SiGoogle, 
+  SiApple, 
+  SiFacebook 
+} from "react-icons/si";
+import { toast } from "@/hooks/use-toast";
+
+// Avatar color options
+const avatarColors = [
+  "#00e0ff", // Default cyan
+  "#f59e0b", // Amber
+  "#10b981", // Emerald
+  "#8b5cf6", // Violet
+  "#ec4899", // Pink
+  "#ef4444", // Red
+  "#06b6d4", // Cyan
+  "#ecc94b", // Yellow
+  "#14b8a6"  // Teal
+];
 
 export default function RegisterPage() {
   // Set the page title
@@ -13,10 +34,15 @@ export default function RegisterPage() {
   
   const { register, isLoading } = useAuth();
   const { primaryColor } = useTheme();
+  const [, navigate] = useLocation();
+  
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
+  const [selectedColor, setSelectedColor] = useState("#00e0ff");
+  const [termsAccepted, setTermsAccepted] = useState(false);
   
   // Force apply theme when component mounts
   useEffect(() => {
@@ -88,17 +114,49 @@ export default function RegisterPage() {
       }
     }
   }, [primaryColor]);
+  
+  // Handle OAuth signin (demo version)
+  const handleOAuthSignin = (provider: string) => {
+    toast({
+      title: `${provider} Sign Up`,
+      description: "OAuth integration will be implemented with Firebase. Proceeding with email signup for now.",
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    
+    if (!username.trim()) {
+      setError("Username is required");
+      return;
+    }
     
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
     }
     
-    await register(username, password);
+    if (!termsAccepted) {
+      setError("You must accept the Terms of Service and Privacy Policy");
+      return;
+    }
+    
+    try {
+      // Register with username and password
+      await register(username, password);
+      
+      // Store additional registration data for onboarding
+      localStorage.setItem("onboarding_data", JSON.stringify({
+        displayName: displayName || username,
+        avatarColor: selectedColor,
+        step: 1 // Indicates to start with step 1 of onboarding
+      }));
+      
+      // Navigate to onboarding (this will happen automatically through auth context after successful registration)
+    } catch (err) {
+      setError("Registration failed. Please try again.");
+    }
   };
 
   return (
@@ -108,9 +166,41 @@ export default function RegisterPage() {
         <p className="text-muted-foreground">Your personal life operating system</p>
       </div>
       
-      <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-primary/40"
+      <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-primary/40 animate-fadeIn"
            style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
         <h2 className="text-xl font-orbitron text-center mb-6 text-foreground">Create Your LYFEOS Account</h2>
+        
+        {/* OAuth Sign-in Buttons */}
+        <div className="grid grid-cols-3 gap-2 mb-6">
+          <Button 
+            variant="outline" 
+            className="flex items-center justify-center space-x-2 py-5 border-primary/30 hover:bg-primary/10"
+            onClick={() => handleOAuthSignin("Google")}
+          >
+            <SiGoogle className="h-5 w-5" />
+          </Button>
+          <Button 
+            variant="outline" 
+            className="flex items-center justify-center space-x-2 py-5 border-primary/30 hover:bg-primary/10"
+            onClick={() => handleOAuthSignin("Apple")}
+          >
+            <SiApple className="h-5 w-5" />
+          </Button>
+          <Button 
+            variant="outline" 
+            className="flex items-center justify-center space-x-2 py-5 border-primary/30 hover:bg-primary/10"
+            onClick={() => handleOAuthSignin("Facebook")}
+          >
+            <SiFacebook className="h-5 w-5" />
+          </Button>
+        </div>
+        
+        <div className="relative mb-6">
+          <Separator className="my-2" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="bg-background px-2 text-xs text-muted-foreground">OR</span>
+          </div>
+        </div>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -123,6 +213,18 @@ export default function RegisterPage() {
               className="w-full bg-transparent border-primary/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-primary/30"
               placeholder="Choose a username"
               required
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="displayName" className="block text-sm text-muted-foreground">DISPLAY NAME (OPTIONAL)</label>
+            <Input 
+              type="text" 
+              id="displayName"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              className="w-full bg-transparent border-primary/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-primary/30"
+              placeholder="Your name or alias"
             />
           </div>
           
@@ -152,6 +254,38 @@ export default function RegisterPage() {
             />
           </div>
           
+          {/* Avatar Color Selection */}
+          <div className="space-y-2">
+            <label className="block text-sm text-muted-foreground">CHOOSE YOUR COLOR</label>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {avatarColors.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform ${selectedColor === color ? 'ring-2 ring-foreground scale-110' : ''}`}
+                  style={{ backgroundColor: color }}
+                  onClick={() => setSelectedColor(color)}
+                >
+                  {selectedColor === color && <Check className="h-4 w-4 text-white" />}
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          {/* Terms and Privacy Policy */}
+          <div className="flex items-start space-x-2 mt-4">
+            <Checkbox 
+              id="terms" 
+              checked={termsAccepted}
+              onCheckedChange={(checked) => setTermsAccepted(checked === true)}
+              className="mt-1 border-primary/50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+            />
+            <label htmlFor="terms" className="text-sm text-muted-foreground cursor-pointer">
+              I agree to the <Link href="/terms" className="text-primary hover:text-primary/80">Terms of Service</Link> and <Link href="/privacy" className="text-primary hover:text-primary/80">Privacy Policy</Link>. 
+              Your journey is protected, and your data remains under your control.
+            </label>
+          </div>
+          
           {error && (
             <div className="px-3 py-2 rounded bg-red-500/10 border border-red-500/30 text-red-500 text-sm">
               {error}
@@ -160,13 +294,13 @@ export default function RegisterPage() {
           
           <Button 
             type="submit"
-            className="w-full mt-4"
+            className="w-full mt-4 transition-all hover:shadow-glow"
             disabled={isLoading}
           >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Registering...
+                Initializing...
               </>
             ) : (
               "Create Account"

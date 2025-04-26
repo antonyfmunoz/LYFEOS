@@ -1,211 +1,697 @@
-import { useState } from "react";
-import { useLYFEOS } from "../lib/context";
+import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useTheme } from "@/lib/themeContext";
+import { useAuth } from "@/lib/authContext";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { usePageTitle } from "@/hooks/use-page-title";
+import { toast } from "@/hooks/use-toast";
+import { ArrowRight, ArrowLeft, ChevronRight, Check, Sparkles, Zap } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+
+// Animation variants
+const fadeInUp = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+  exit: { opacity: 0, y: -20, transition: { duration: 0.3 } }
+};
+
+const slideIn = {
+  initial: { opacity: 0, x: 100 },
+  animate: { opacity: 1, x: 0, transition: { duration: 0.7, ease: "easeOut" } },
+  exit: { opacity: 0, x: -100, transition: { duration: 0.3 } }
+};
+
+// Life stage options - step 2
+const lifeStages = [
+  { id: "awakening", label: "Awakening", icon: "✨" },
+  { id: "building", label: "Building", icon: "🏗️" },
+  { id: "mastering", label: "Mastering", icon: "🏆" },
+  { id: "leading", label: "Leading", icon: "🚀" }
+];
+
+// Role archetypes - step 3
+const archetypes = [
+  { id: "leader", label: "Leader", icon: "👑" },
+  { id: "creator", label: "Creator", icon: "🎨" },
+  { id: "athlete", label: "Athlete", icon: "🏃" },
+  { id: "healer", label: "Healer", icon: "🌿" },
+  { id: "visionary", label: "Visionary", icon: "🔭" },
+  { id: "artist", label: "Artist", icon: "🎭" },
+  { id: "teacher", label: "Teacher", icon: "📚" },
+  { id: "builder", label: "Builder", icon: "🛠️" }
+];
+
+// Core motivations - step 5
+const motivations = [
+  { id: "achievement", label: "Achievement" },
+  { id: "freedom", label: "Freedom" },
+  { id: "mastery", label: "Mastery" },
+  { id: "impact", label: "Impact" },
+  { id: "love", label: "Love" },
+  { id: "adventure", label: "Adventure" }
+];
+
+// First missions - step 6
+const firstMissions = [
+  { id: "archetype", label: "Complete Your Archetype", description: "Dive deeper into your chosen path" },
+  { id: "rituals", label: "Set Up Your Rituals", description: "Create daily routines for success" },
+  { id: "future_self", label: "Design Your Future Self", description: "Visualize who you're becoming" }
+];
 
 export default function OnboardingPage() {
-  const { setUsername } = useLYFEOS();
+  // Set the page title
+  usePageTitle('Onboarding');
+  
+  const { user } = useAuth();
+  const { primaryColor, setPrimaryColor } = useTheme();
   const [, navigate] = useLocation();
   
-  const [step, setStep] = useState(1);
+  // Get onboarding data from localStorage if present
+  useEffect(() => {
+    const storedData = localStorage.getItem("onboarding_data");
+    if (storedData) {
+      try {
+        const data = JSON.parse(storedData);
+        if (data.displayName) {
+          setFormData(prev => ({
+            ...prev,
+            displayName: data.displayName
+          }));
+        }
+        if (data.avatarColor) {
+          setPrimaryColor(data.avatarColor);
+        }
+      } catch (error) {
+        console.error("Error parsing onboarding data:", error);
+      }
+    }
+  }, []);
+  
+  // Store current step (1-7)
+  const [currentStep, setCurrentStep] = useState(1);
+  const [direction, setDirection] = useState(1); // 1 for forward, -1 for backward
+  
+  // Store all form data
   const [formData, setFormData] = useState({
-    username: "",
-    lifeSeason: "",
-    intentions: [] as string[],
+    displayName: "",
+    lifeStage: "",
+    archetype: "",
+    workPace: 3,
+    environment: 3,
+    riskTolerance: 3,
+    learningStyle: 3,
+    energyManagement: 3,
+    coreMotivation: "",
+    customMotivation: "",
+    selectedMission: "",
+    skipSetup: false
   });
   
-  const lifeSeasons = [
-    "New Beginnings",
-    "Growth & Exploration",
-    "Stability & Focus",
-    "Leadership & Legacy",
-    "Wisdom & Reflection"
-  ];
+  // Track animation status
+  const [isAnimating, setIsAnimating] = useState(false);
   
-  const intentions = [
-    "Clarity",
-    "Creation",
-    "Healing",
-    "Connection",
-    "Growth",
-    "Balance"
-  ];
-  
-  const handleNext = () => {
-    if (step < 3) {
-      setStep(step + 1);
-    } else {
-      // Submit and redirect to dashboard
-      setUsername(formData.username);
-      navigate("/dashboard");
-    }
-  };
-  
-  const handleBack = () => {
-    if (step > 1) {
-      setStep(step - 1);
-    }
-  };
-  
-  const toggleIntention = (intention: string) => {
-    setFormData(prev => {
-      const currentIntentions = [...prev.intentions];
-      
-      if (currentIntentions.includes(intention)) {
-        // Remove intention if already selected
-        return {
-          ...prev,
-          intentions: currentIntentions.filter(i => i !== intention)
-        };
-      } else if (currentIntentions.length < 2) {
-        // Add intention if less than 2 are selected
-        return {
-          ...prev,
-          intentions: [...currentIntentions, intention]
-        };
+  // Handle step navigation
+  const goToNextStep = () => {
+    if (isAnimating) return;
+    
+    setIsAnimating(true);
+    setDirection(1);
+    
+    // Stagger the animation slightly
+    setTimeout(() => {
+      if (currentStep < 7) {
+        setCurrentStep(currentStep + 1);
+      } else {
+        completeOnboarding();
       }
-      
-      return prev;
-    });
+      setTimeout(() => setIsAnimating(false), 500);
+    }, 200);
   };
+  
+  const goToPreviousStep = () => {
+    if (isAnimating || currentStep === 1) return;
+    
+    setIsAnimating(true);
+    setDirection(-1);
+    
+    // Stagger the animation slightly
+    setTimeout(() => {
+      setCurrentStep(currentStep - 1);
+      setTimeout(() => setIsAnimating(false), 500);
+    }, 200);
+  };
+  
+  // Check if current step is complete
+  const isStepComplete = () => {
+    switch (currentStep) {
+      case 1: // Welcome
+        return true;
+      case 2: // Life Stage
+        return !!formData.lifeStage;
+      case 3: // Archetype
+        return !!formData.archetype;
+      case 4: // Thriving style (sliders)
+        return true; // All sliders have default values
+      case 5: // Core motivation
+        return !!formData.coreMotivation || !!formData.customMotivation;
+      case 6: // First mission
+        return !!formData.selectedMission || formData.skipSetup;
+      case 7: // Completion
+        return true;
+      default:
+        return false;
+    }
+  };
+  
+  // Handle completion and save to database
+  const completeOnboarding = async () => {
+    try {
+      // TODO: Save to database through API
+      console.log("Onboarding completed with data:", formData);
+      
+      // Clear temporary onboarding data
+      localStorage.removeItem("onboarding_data");
+      
+      // Show success message
+      toast({
+        title: "Onboarding complete!",
+        description: "Welcome to LYFEOS. Your journey begins now.",
+      });
+      
+      // Navigate to dashboard
+      navigate("/dashboard");
+    } catch (error) {
+      console.error("Error completing onboarding:", error);
+      toast({
+        title: "Error",
+        description: "Failed to complete onboarding. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  // Skip the setup mission and go to completion
+  const handleSkipSetup = () => {
+    setFormData(prev => ({
+      ...prev,
+      skipSetup: true
+    }));
+    goToNextStep();
+  };
+  
+  // Update a slider value
+  const updateSlider = (name: string, value: number[]) => {
+    setFormData(prev => ({
+      ...prev,
+      [name]: value[0]
+    }));
+  };
+  
+  // Handle UI for finishing all steps
+  const handleSystemInitialization = () => {
+    // Simulate system coming online
+    completeOnboarding();
+  };
+  
+  // Parallax effect for background
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePosition({
+        x: e.clientX / window.innerWidth - 0.5,
+        y: e.clientY / window.innerHeight - 0.5
+      });
+    };
+    
+    window.addEventListener('mousemove', handleMouseMove);
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, []);
   
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl text-primary font-orbitron mb-2">LYFE<span className="text-white">OS</span></h1>
-        <p className="text-[#7DAAB2]">Your personal life operating system</p>
-      </div>
+    <div className="min-h-screen flex flex-col items-center justify-center overflow-hidden bg-background relative">
+      {/* Subtle parallax background */}
+      <div 
+        className="absolute inset-0 opacity-30 pointer-events-none"
+        style={{
+          backgroundImage: 'radial-gradient(circle at 50% 50%, var(--primary-bg-subtle), transparent 80%)',
+          transform: `translateX(${mousePosition.x * 20}px) translateY(${mousePosition.y * 20}px)`
+        }}
+      />
       
-      <div className="w-full max-w-md glassmorphic rounded-xl p-6 neon-border">
-        {/* Progress indicator */}
-        <div className="flex justify-between mb-8">
-          {[1, 2, 3].map((i) => (
-            <div 
-              key={i}
-              className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                i === step ? 'bg-primary text-background' : 
-                i < step ? 'bg-primary/20 text-primary border border-primary' : 
-                'bg-card/50 text-[#7DAAB2] border border-[#7DAAB2]/30'
-              }`}
-            >
-              {i}
-            </div>
-          ))}
+      <div className="z-10 max-w-4xl w-full px-4 py-8 flex flex-col items-center justify-center min-h-screen">
+        {/* Header - constant across all steps */}
+        <div className="text-center mb-10 relative">
+          <motion.h1 
+            initial={{ opacity: 0, y: -20 }} 
+            animate={{ opacity: 1, y: 0 }}
+            className="text-5xl text-primary font-orbitron mb-2"
+          >
+            LYFE<span className="text-foreground">OS</span>
+          </motion.h1>
+          <motion.p 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1, transition: { delay: 0.3 } }}
+            className="text-muted-foreground"
+          >
+            Your personal life operating system
+          </motion.p>
         </div>
         
-        {/* Step 1: Username */}
-        {step === 1 && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-orbitron text-center mb-4">Who is entering the simulation?</h2>
-            
-            <div className="space-y-2">
-              <label htmlFor="username" className="block text-sm text-[#7DAAB2]">USERNAME</label>
-              <input 
-                type="text" 
-                id="username"
-                value={formData.username}
-                onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
-                className="w-full bg-transparent border border-primary/30 rounded-lg p-3 outline-none text-[#D6F4FF] focus:border-primary/70 transition"
-                placeholder="Enter your name"
-              />
-            </div>
-          </div>
-        )}
-        
-        {/* Step 2: Life Season */}
-        {step === 2 && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-orbitron text-center mb-4">Which season of life are you in?</h2>
-            
-            <div className="space-y-3">
-              {lifeSeasons.map((season) => (
-                <div 
-                  key={season}
-                  onClick={() => setFormData(prev => ({ ...prev, lifeSeason: season }))}
-                  className={`p-3 rounded-lg cursor-pointer transition ${
-                    formData.lifeSeason === season 
-                      ? 'bg-primary/20 border border-primary/70 shadow-[0_0_8px_rgba(0,224,255,0.3)]' 
-                      : 'bg-card/30 border border-primary/20 hover:bg-card/50'
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <div className={`w-5 h-5 rounded-full flex-shrink-0 mr-3 border ${
-                      formData.lifeSeason === season 
-                        ? 'border-primary bg-primary/20' 
-                        : 'border-[#7DAAB2]/30 bg-transparent'
-                    }`}>
-                      {formData.lifeSeason === season && (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <div className="w-2 h-2 rounded-full bg-primary"></div>
-                        </div>
-                      )}
-                    </div>
-                    <span>{season}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        
-        {/* Step 3: Intentions */}
-        {step === 3 && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-orbitron text-center mb-4">
-              Select 1-2 intentions for your journey
-            </h2>
-            
-            <div className="grid grid-cols-2 gap-3">
-              {intentions.map((intention) => (
-                <div 
-                  key={intention}
-                  onClick={() => toggleIntention(intention)}
-                  className={`p-3 rounded-lg cursor-pointer transition text-center ${
-                    formData.intentions.includes(intention) 
-                      ? 'bg-primary/20 border border-primary/70 shadow-[0_0_8px_rgba(0,224,255,0.3)]' 
-                      : 'bg-card/30 border border-primary/20 hover:bg-card/50'
-                  }`}
-                >
-                  {intention}
-                </div>
-              ))}
-            </div>
-            
-            <p className="text-xs text-[#7DAAB2] text-center">
-              Selected: {formData.intentions.length}/2
-            </p>
-          </div>
-        )}
-        
-        {/* Navigation buttons */}
-        <div className="flex justify-between mt-8">
-          {step > 1 ? (
-            <button 
-              onClick={handleBack}
-              className="px-5 py-2 border border-primary/50 rounded-lg text-primary hover:bg-primary/10 transition"
+        {/* Main content area with animations */}
+        <div className="w-full max-w-2xl relative">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentStep}
+              initial={direction > 0 ? "initial" : { opacity: 0, x: -100 }}
+              animate="animate"
+              exit="exit"
+              variants={slideIn}
+              className="w-full glassmorphic rounded-xl p-8 border border-primary/20"
+              style={{ boxShadow: "0 0 30px var(--primary-glow-light)" }}
             >
-              Back
-            </button>
-          ) : (
-            <div></div> // Empty div for spacing
-          )}
-          
-          <button 
-            onClick={handleNext}
-            disabled={
-              (step === 1 && !formData.username) || 
-              (step === 2 && !formData.lifeSeason) ||
-              (step === 3 && formData.intentions.length === 0)
-            }
-            className={`px-5 py-2 bg-primary rounded-lg text-background hover:bg-opacity-80 transition ${
-              ((step === 1 && !formData.username) || 
-              (step === 2 && !formData.lifeSeason) ||
-              (step === 3 && formData.intentions.length === 0))
-                ? 'opacity-50 cursor-not-allowed'
-                : ''
-            }`}
-          >
-            {step === 3 ? 'Start Journey' : 'Next'}
-          </button>
+              {/* Step 1: Welcome */}
+              {currentStep === 1 && (
+                <motion.div className="space-y-6 text-center">
+                  <motion.h2 
+                    variants={fadeInUp}
+                    className="text-3xl font-orbitron text-foreground"
+                  >
+                    Welcome to LYFEOS
+                  </motion.h2>
+                  
+                  <motion.p 
+                    variants={fadeInUp}
+                    className="text-xl text-muted-foreground"
+                  >
+                    Your journey to mastery begins now.
+                  </motion.p>
+                  
+                  <motion.div 
+                    variants={fadeInUp}
+                    className="py-8"
+                  >
+                    <Sparkles className="w-16 h-16 text-primary mx-auto animate-pulse" />
+                  </motion.div>
+                  
+                  <motion.p 
+                    variants={fadeInUp}
+                    className="text-muted-foreground"
+                  >
+                    Hello, {formData.displayName || user?.username || "Commander"}. Let's set up your operating system.
+                  </motion.p>
+                </motion.div>
+              )}
+              
+              {/* Step 2: Life Stage */}
+              {currentStep === 2 && (
+                <motion.div className="space-y-6">
+                  <motion.h2 
+                    variants={fadeInUp}
+                    className="text-2xl font-orbitron text-center mb-6 text-foreground"
+                  >
+                    Where Are You Starting From?
+                  </motion.h2>
+                  
+                  <motion.div 
+                    variants={fadeInUp}
+                    className="grid grid-cols-2 gap-4"
+                  >
+                    {lifeStages.map((stage) => (
+                      <button
+                        key={stage.id}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, lifeStage: stage.id })}
+                        className={`p-6 rounded-xl transition-all flex flex-col items-center justify-center space-y-2 h-32
+                          ${formData.lifeStage === stage.id 
+                            ? 'bg-primary/20 border-2 border-primary shadow-[0_0_15px_rgba(var(--primary-rgb),0.3)]' 
+                            : 'bg-card/30 border border-primary/10 hover:bg-primary/10 hover:border-primary/30'
+                          }`}
+                      >
+                        <span className="text-2xl">{stage.icon}</span>
+                        <span className={`${formData.lifeStage === stage.id ? 'text-primary font-medium' : 'text-foreground'}`}>
+                          {stage.label}
+                        </span>
+                      </button>
+                    ))}
+                  </motion.div>
+                  
+                  <motion.p 
+                    variants={fadeInUp}
+                    className="text-sm text-muted-foreground text-center mt-4"
+                  >
+                    Select the stage that best describes your current life phase
+                  </motion.p>
+                </motion.div>
+              )}
+              
+              {/* Step 3: Role Archetype */}
+              {currentStep === 3 && (
+                <motion.div className="space-y-6">
+                  <motion.h2 
+                    variants={fadeInUp}
+                    className="text-2xl font-orbitron text-center mb-6 text-foreground"
+                  >
+                    Where Do You Want to Go?
+                  </motion.h2>
+                  
+                  <motion.div 
+                    variants={fadeInUp}
+                    className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+                  >
+                    {archetypes.map((archetype) => (
+                      <button
+                        key={archetype.id}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, archetype: archetype.id })}
+                        className={`p-3 rounded-lg transition-all flex flex-col items-center justify-center space-y-2
+                          ${formData.archetype === archetype.id 
+                            ? 'bg-primary/20 border border-primary shadow-[0_0_10px_rgba(var(--primary-rgb),0.3)]' 
+                            : 'bg-card/30 border border-primary/10 hover:bg-primary/10'
+                          }`}
+                      >
+                        <span className="text-2xl">{archetype.icon}</span>
+                        <span className={`text-sm ${formData.archetype === archetype.id ? 'text-primary' : 'text-foreground'}`}>
+                          {archetype.label}
+                        </span>
+                      </button>
+                    ))}
+                  </motion.div>
+                  
+                  <motion.p 
+                    variants={fadeInUp}
+                    className="text-sm text-muted-foreground text-center mt-4"
+                  >
+                    Choose the role archetype that resonates with your aspirations
+                  </motion.p>
+                </motion.div>
+              )}
+              
+              {/* Step 4: How do you thrive */}
+              {currentStep === 4 && (
+                <motion.div className="space-y-8">
+                  <motion.h2 
+                    variants={fadeInUp}
+                    className="text-2xl font-orbitron text-center mb-6 text-foreground"
+                  >
+                    How Do You Thrive Best?
+                  </motion.h2>
+                  
+                  <motion.div variants={fadeInUp} className="space-y-6">
+                    {/* Work Pace Slider */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>Fast-Paced</span>
+                        <span>Methodical</span>
+                      </div>
+                      <Slider 
+                        value={[formData.workPace]} 
+                        min={1} 
+                        max={5} 
+                        step={1} 
+                        onValueChange={(value) => updateSlider('workPace', value)} 
+                        className="py-4"
+                      />
+                    </div>
+                    
+                    {/* Environment Slider */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>Structured</span>
+                        <span>Flexible</span>
+                      </div>
+                      <Slider 
+                        value={[formData.environment]} 
+                        min={1} 
+                        max={5} 
+                        step={1} 
+                        onValueChange={(value) => updateSlider('environment', value)} 
+                        className="py-4"
+                      />
+                    </div>
+                    
+                    {/* Risk Tolerance Slider */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>Risk-Averse</span>
+                        <span>Risk-Seeking</span>
+                      </div>
+                      <Slider 
+                        value={[formData.riskTolerance]} 
+                        min={1} 
+                        max={5} 
+                        step={1} 
+                        onValueChange={(value) => updateSlider('riskTolerance', value)} 
+                        className="py-4"
+                      />
+                    </div>
+                    
+                    {/* Learning Style Slider */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>Visual Learner</span>
+                        <span>Hands-on Learner</span>
+                      </div>
+                      <Slider 
+                        value={[formData.learningStyle]} 
+                        min={1} 
+                        max={5} 
+                        step={1} 
+                        onValueChange={(value) => updateSlider('learningStyle', value)} 
+                        className="py-4"
+                      />
+                    </div>
+                    
+                    {/* Energy Management Slider */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>Solo Worker</span>
+                        <span>Collaborative</span>
+                      </div>
+                      <Slider 
+                        value={[formData.energyManagement]} 
+                        min={1} 
+                        max={5} 
+                        step={1} 
+                        onValueChange={(value) => updateSlider('energyManagement', value)} 
+                        className="py-4"
+                      />
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+              
+              {/* Step 5: Core Motivation */}
+              {currentStep === 5 && (
+                <motion.div className="space-y-6">
+                  <motion.h2 
+                    variants={fadeInUp}
+                    className="text-2xl font-orbitron text-center mb-6 text-foreground"
+                  >
+                    What's Your Core Motivation?
+                  </motion.h2>
+                  
+                  <motion.div 
+                    variants={fadeInUp}
+                    className="grid grid-cols-2 gap-3"
+                  >
+                    {motivations.map((motivation) => (
+                      <button
+                        key={motivation.id}
+                        type="button"
+                        onClick={() => setFormData({ 
+                          ...formData, 
+                          coreMotivation: motivation.id,
+                          customMotivation: ""
+                        })}
+                        className={`p-5 rounded-lg transition-all
+                          ${formData.coreMotivation === motivation.id 
+                            ? 'bg-primary/20 border border-primary shadow-[0_0_10px_rgba(var(--primary-rgb),0.3)]' 
+                            : 'bg-card/30 border border-primary/10 hover:bg-primary/10'
+                          }`}
+                      >
+                        <span className={`${formData.coreMotivation === motivation.id ? 'text-primary font-medium' : 'text-foreground'}`}>
+                          {motivation.label}
+                        </span>
+                      </button>
+                    ))}
+                  </motion.div>
+                  
+                  <motion.div variants={fadeInUp} className="mt-4">
+                    <p className="text-sm text-muted-foreground mb-2">Or define your own motivation:</p>
+                    <Input
+                      placeholder="Enter custom motivation..."
+                      value={formData.customMotivation}
+                      onChange={(e) => setFormData({ 
+                        ...formData, 
+                        customMotivation: e.target.value,
+                        coreMotivation: "" // Clear selected motivation
+                      })}
+                      className="w-full bg-transparent border-primary/30"
+                    />
+                  </motion.div>
+                </motion.div>
+              )}
+              
+              {/* Step 6: First Setup Mission */}
+              {currentStep === 6 && (
+                <motion.div className="space-y-6">
+                  <motion.h2 
+                    variants={fadeInUp}
+                    className="text-2xl font-orbitron text-center mb-4 text-foreground flex items-center justify-center"
+                  >
+                    <Zap className="w-6 h-6 mr-2 text-primary" />
+                    Your First Setup Mission
+                  </motion.h2>
+                  
+                  <motion.p
+                    variants={fadeInUp}
+                    className="text-muted-foreground text-center mb-6"
+                  >
+                    Choose one initial mission to kickstart your journey:
+                  </motion.p>
+                  
+                  <motion.div 
+                    variants={fadeInUp}
+                    className="space-y-3"
+                  >
+                    {firstMissions.map((mission) => (
+                      <button
+                        key={mission.id}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, selectedMission: mission.id })}
+                        className={`p-4 rounded-lg transition-all w-full text-left
+                          ${formData.selectedMission === mission.id 
+                            ? 'bg-primary/20 border border-primary shadow-[0_0_10px_rgba(var(--primary-rgb),0.3)]' 
+                            : 'bg-card/30 border border-primary/10 hover:bg-primary/10'
+                          }`}
+                      >
+                        <div className={`flex items-center justify-between`}>
+                          <div>
+                            <div className={`font-medium ${formData.selectedMission === mission.id ? 'text-primary' : 'text-foreground'}`}>
+                              {mission.label}
+                            </div>
+                            <div className="text-sm text-muted-foreground mt-1">
+                              {mission.description}
+                            </div>
+                          </div>
+                          
+                          {formData.selectedMission === mission.id && (
+                            <Check className="w-5 h-5 text-primary" />
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </motion.div>
+                  
+                  <motion.div variants={fadeInUp} className="text-center mt-4">
+                    <Button 
+                      variant="link" 
+                      onClick={handleSkipSetup}
+                      className="text-muted-foreground hover:text-primary"
+                    >
+                      Skip for now
+                    </Button>
+                  </motion.div>
+                </motion.div>
+              )}
+              
+              {/* Step 7: Home Interface Initialization */}
+              {currentStep === 7 && (
+                <motion.div className="space-y-6 text-center">
+                  <motion.h2 
+                    variants={fadeInUp}
+                    className="text-2xl font-orbitron text-foreground"
+                  >
+                    SYSTEM ONLINE
+                  </motion.h2>
+                  
+                  <motion.div variants={fadeInUp} className="py-8 space-y-6">
+                    <div className="w-24 h-24 rounded-full bg-primary/20 border-4 border-primary/30 mx-auto flex items-center justify-center shadow-glow animate-pulse">
+                      <Sparkles className="w-12 h-12 text-primary" />
+                    </div>
+                    
+                    <div className="text-2xl font-mono text-primary font-bold animate-counting">
+                      +100 XP
+                    </div>
+                  </motion.div>
+                  
+                  <motion.p 
+                    variants={fadeInUp}
+                    className="text-muted-foreground"
+                  >
+                    Your personal growth operating system is now initialized and ready.
+                  </motion.p>
+                  
+                  <motion.p 
+                    variants={fadeInUp} 
+                    className="text-muted-foreground"
+                  >
+                    Command center access granted.
+                  </motion.p>
+                </motion.div>
+              )}
+              
+              {/* Navigation buttons - shown on all steps */}
+              <div className={`flex ${currentStep === 1 ? 'justify-end' : 'justify-between'} mt-8`}>
+                {currentStep > 1 && (
+                  <Button
+                    variant="outline"
+                    onClick={goToPreviousStep}
+                    className="flex items-center space-x-2 border-primary/30 hover:bg-primary/10"
+                    disabled={isAnimating}
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Back
+                  </Button>
+                )}
+                
+                {currentStep < 7 ? (
+                  <Button
+                    onClick={goToNextStep}
+                    className="flex items-center space-x-2"
+                    disabled={!isStepComplete() || isAnimating}
+                  >
+                    {currentStep === 6 ? 'Initialize System' : 'Next'}
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleSystemInitialization}
+                    className="flex items-center space-x-2"
+                    disabled={isAnimating}
+                  >
+                    Enter LYFEOS
+                    <ChevronRight className="w-4 h-4 ml-2" />
+                  </Button>
+                )}
+              </div>
+              
+              {/* Progress indicators */}
+              {currentStep < 7 && (
+                <div className="flex justify-center mt-6">
+                  {Array.from({ length: 7 }).map((_, i) => (
+                    <div 
+                      key={i}
+                      className={`w-2 h-2 rounded-full mx-1 transition-all ${
+                        i + 1 === currentStep 
+                          ? 'bg-primary w-4' 
+                          : i + 1 < currentStep 
+                            ? 'bg-primary/50' 
+                            : 'bg-muted'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
     </div>
