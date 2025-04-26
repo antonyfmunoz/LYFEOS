@@ -7,8 +7,8 @@ const TimelineWidget = () => {
   const [, navigate] = useLocation();
   
   const navigateToFullTimeline = () => {
-    // This would navigate to a full timeline view page when implemented
-    navigate('/chronolog/timeline');
+    // Navigate to the timeline view page with correct path (with an 'i')
+    navigate('/chronilog/timeline');
   };
 
   return (
