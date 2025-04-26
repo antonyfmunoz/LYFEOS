@@ -85,6 +85,18 @@ export const userDailyLogs = pgTable("user_daily_logs", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// User Integrations Table (Connected Apps)
+export const userIntegrations = pgTable("user_integrations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  appleHealthConnected: boolean("apple_health_connected").default(false),
+  googleCalendarConnected: boolean("google_calendar_connected").default(false),
+  notionConnected: boolean("notion_connected").default(false),
+  otherIntegrations: jsonb("other_integrations").default({}), // Future-proof for more apps
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Quests table (Missions Management)
 export const quests = pgTable("quests", {
   id: serial("id").primaryKey(),
@@ -174,6 +186,11 @@ export const usersRelations = relations(users, ({ one, many }) => ({
     fields: [users.id],
     references: [userStats.userId],
   }),
+  profile: one(userProfile, {
+    fields: [users.id],
+    references: [userProfile.userId],
+  }),
+  dailyLogs: many(userDailyLogs),
   quests: many(quests),
   messages: many(aiMessages),
   events: many(calendarEvents),
@@ -183,12 +200,37 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   templates: many(templates),
   kanbanBoards: many(kanbanBoards),
   integrations: many(integrations),
+  userIntegrations: one(userIntegrations, {
+    fields: [users.id],
+    references: [userIntegrations.userId],
+  }),
   progressTrackers: many(progressTrackers),
 }));
 
 export const userStatsRelations = relations(userStats, ({ one }) => ({
   user: one(users, {
     fields: [userStats.userId],
+    references: [users.id],
+  }),
+}));
+
+export const userProfileRelations = relations(userProfile, ({ one }) => ({
+  user: one(users, {
+    fields: [userProfile.userId],
+    references: [users.id],
+  }),
+}));
+
+export const userDailyLogsRelations = relations(userDailyLogs, ({ one }) => ({
+  user: one(users, {
+    fields: [userDailyLogs.userId],
+    references: [users.id],
+  }),
+}));
+
+export const userIntegrationsRelations = relations(userIntegrations, ({ one }) => ({
+  user: one(users, {
+    fields: [userIntegrations.userId],
     references: [users.id],
   }),
 }));
@@ -333,12 +375,52 @@ export const insertSpreadsheetSchema = createInsertSchema(spreadsheets).pick({
   category: true,
 });
 
+// Insert schemas for new V2 tables
+export const insertUserProfileSchema = createInsertSchema(userProfile).pick({
+  userId: true,
+  startStage: true,
+  targetArchetype: true,
+  flowStyle: true,
+  coreMotivation: true,
+  setupMissionStatus: true,
+  primaryThemeColor: true,
+  futureSelfSummary: true,
+  aiPersonalityProfile: true,
+  onboardingCompleted: true,
+});
+
+export const insertUserDailyLogsSchema = createInsertSchema(userDailyLogs).pick({
+  userId: true,
+  date: true,
+  yesterdayXp: true,
+  todayPrimaryMission: true,
+  optionalBoostsShown: true,
+  bootsData: true,
+});
+
+export const insertUserIntegrationsSchema = createInsertSchema(userIntegrations).pick({
+  userId: true,
+  appleHealthConnected: true,
+  googleCalendarConnected: true,
+  notionConnected: true,
+  otherIntegrations: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
 export type UserStats = typeof userStats.$inferSelect;
 export type InsertUserStats = z.infer<typeof insertUserStatsSchema>;
+
+export type UserProfile = typeof userProfile.$inferSelect;
+export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
+
+export type UserDailyLog = typeof userDailyLogs.$inferSelect;
+export type InsertUserDailyLog = z.infer<typeof insertUserDailyLogsSchema>;
+
+export type UserIntegration = typeof userIntegrations.$inferSelect;
+export type InsertUserIntegration = z.infer<typeof insertUserIntegrationsSchema>;
 
 export type Quest = typeof quests.$inferSelect;
 export type InsertQuest = z.infer<typeof insertQuestSchema>;
@@ -526,18 +608,7 @@ export const insertTemplateSchema = createInsertSchema(templates).omit({
 export type Template = typeof templates.$inferSelect;
 export type InsertTemplate = z.infer<typeof insertTemplateSchema>;
 
-// User Integrations table
-// User Integrations Table (Connected Apps)
-export const userIntegrations = pgTable("user_integrations", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  appleHealthConnected: boolean("apple_health_connected").default(false),
-  googleCalendarConnected: boolean("google_calendar_connected").default(false),
-  notionConnected: boolean("notion_connected").default(false),
-  otherIntegrations: jsonb("other_integrations").default({}), // Future-proof for more apps
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+
 
 // Keep original integrations table for backward compatibility with detailed provider info
 export const integrations = pgTable("integrations", {
