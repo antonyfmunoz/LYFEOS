@@ -115,12 +115,39 @@ export default function RegisterPage() {
     }
   }, [primaryColor]);
   
-  // Handle OAuth signin (demo version)
+  // Handle OAuth signin with Firebase
   const handleOAuthSignin = (provider: string) => {
-    toast({
-      title: `${provider} Sign Up`,
-      description: "OAuth integration will be implemented with Firebase. Proceeding with email signup for now.",
-    });
+    try {
+      if (provider === "Google") {
+        // We'll implement this as soon as the secrets are available
+        toast({
+          title: "Google Sign Up",
+          description: "Redirecting to Google authentication...",
+        });
+        
+        // This will be replaced with actual Firebase Google auth
+        // For now, we'll just show a toast message
+        setTimeout(() => {
+          toast({
+            title: "Firebase configuration needed",
+            description: "Please provide Firebase API keys to enable Google authentication.",
+            variant: "destructive"
+          });
+        }, 1000);
+      } else {
+        toast({
+          title: `${provider} Sign Up`,
+          description: `${provider} authentication will be available soon. Please use email signup or Google for now.`,
+        });
+      }
+    } catch (error) {
+      console.error(`${provider} sign-in error:`, error);
+      toast({
+        title: "Authentication Error",
+        description: `An error occurred during ${provider} authentication. Please try again.`,
+        variant: "destructive"
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

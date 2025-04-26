@@ -285,7 +285,7 @@ export default function TimelineDetailPage() {
       setItem(foundItem);
     } else {
       // If item not found, redirect back to timeline
-      navigate('/chronolog/timeline');
+      navigate('/chronilog/timeline');
     }
   }, [match, params, navigate, missionPages, events, quests, messages]);
   

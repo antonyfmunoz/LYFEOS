@@ -334,7 +334,7 @@ export default function TimelinePage() {
   // Handle coming to timeline page - record where we came from
   useEffect(() => {
     window.history.replaceState(
-      { from: 'chronolog' }, 
+      { from: 'chronilog' }, 
       '', 
       window.location.pathname
     );

@@ -154,7 +154,7 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
-      <Route path="/chronolog/timeline">
+      <Route path="/chronilog/timeline">
         <ProtectedRoute>
           <RootLayout>
             <TimelinePage />
@@ -162,7 +162,7 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
-      <Route path="/chronolog/timeline/:id">
+      <Route path="/chronilog/timeline/:id">
         <ProtectedRoute>
           <RootLayout>
             <TimelineDetailPage />
