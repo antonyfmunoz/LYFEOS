@@ -99,7 +99,7 @@ export default function LoginPage() {
   const handleOAuthSignin = async (provider: string) => {
     try {
       setError("");
-      // We don't need to manually set isLoading since loginWithGoogle handles loading state
+      // The isLoading state is managed by the auth context
       
       if (provider === "Google") {
         // Check if Firebase is properly configured
