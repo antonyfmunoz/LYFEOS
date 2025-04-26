@@ -403,11 +403,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log("Creating user profile for new Firebase user:", user.id);
         await storage.createUserProfile({
           userId: user.id,
-          startStage: "beginner",
-          targetArchetype: "architect",
-          flowStyle: "hyperfocus",
-          coreMotivation: "growth",
-          setupMissionStatus: "not_started",
+          startStage: "Awakening",
+          targetArchetype: "Creator",
+          flowStyle: {
+            pace: 3, 
+            environment: 3, 
+            risk: 3, 
+            learning: 3, 
+            energy: 3
+          },
+          coreMotivation: "Growth",
+          setupMissionStatus: {
+            archetype: "incomplete", 
+            integrations: "incomplete", 
+            future_self: "incomplete", 
+            rituals: "incomplete", 
+            pillars: "incomplete"
+          },
           primaryThemeColor: "#00e0ff", // Default teal color
           onboardingCompleted: false
         });
