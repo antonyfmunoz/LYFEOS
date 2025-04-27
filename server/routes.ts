@@ -54,18 +54,18 @@ function calculateXPForLevel(level: number): number {
   
   // Calculate based on which tier the level falls into
   if (level <= 10) {
-    // Tier 1 (Levels 1-10): Lighter growth rate - ~5% per level
-    return Math.floor(1000 * Math.pow(1.05, level - 1));
+    // Tier 1 (Levels 1-10): Lighter growth rate - ~3.72% per level
+    return Math.floor(1000 * Math.pow(1.0372, level - 1));
   } else if (level <= 50) {
-    // Tier 2 (Levels 11-50): Moderate growth rate - ~7% per level
+    // Tier 2 (Levels 11-50): Moderate growth rate - ~5.72% per level
     // Get the XP at level 10, then apply multiplier from there
     const level10XP = calculateXPForLevel(10);
-    return Math.floor(level10XP * Math.pow(1.07, level - 10));
+    return Math.floor(level10XP * Math.pow(1.0572, level - 10));
   } else {
-    // Tier 3 (Levels 51-100): Steep growth rate - ~9% per level
+    // Tier 3 (Levels 51-100): Steep growth rate - ~8.72% per level
     // Get the XP at level 50, then apply multiplier from there
     const level50XP = calculateXPForLevel(50);
-    return Math.floor(level50XP * Math.pow(1.09, level - 50));
+    return Math.floor(level50XP * Math.pow(1.0872, level - 50));
   }
 }
 
