@@ -18,6 +18,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { DndProvider } from 'react-dnd';
 import { DraggableWidget } from '@/components/ui/draggable-widget';
 import update from 'immutability-helper';
+import { LevelUpModal } from '@/components/dashboard/LevelUpModal';
 
 interface TimeBlock {
   id: string;
@@ -63,6 +64,9 @@ export default function DashboardPage() {
   
   const { stats, username, events } = useLYFEOS();
   const { toast } = useToast();
+  
+  // Level-up modal state
+  const [isLevelUpModalOpen, setIsLevelUpModalOpen] = useState(false);
   
   // Dashboard state
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -111,6 +115,14 @@ export default function DashboardPage() {
     
     return () => clearInterval(interval);
   }, []);
+  
+  // Watch for level-up changes
+  useEffect(() => {
+    // If showLevelUp is true, display the LevelUpModal
+    if (stats?.experience?.showLevelUp) {
+      setIsLevelUpModalOpen(true);
+    }
+  }, [stats?.experience?.showLevelUp]);
   
   // Update reflection
   const updateReflection = (field: keyof DailyReflection, value: any) => {
