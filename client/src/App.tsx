@@ -59,6 +59,7 @@ import ProgressTrackersPage from "./pages/ProgressTrackersPage";
 import ProgressTrackerFormPage from "./pages/ProgressTrackerFormPage";
 import MediaLibraryPage from "./pages/MediaLibraryPage";
 import MediaDetailPage from "./pages/MediaDetailPage";
+import TaskTest from "./pages/TaskTest";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -515,6 +516,15 @@ function Router() {
         <ProtectedRoute>
           <RootLayout>
             <MediaDetailPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      {/* Task List Test Page - Demonstrates clickable checkboxes */}
+      <Route path="/tasks-test">
+        <ProtectedRoute>
+          <RootLayout>
+            <TaskTest />
           </RootLayout>
         </ProtectedRoute>
       </Route>

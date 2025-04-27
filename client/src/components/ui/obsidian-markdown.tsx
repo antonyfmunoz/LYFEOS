@@ -100,39 +100,48 @@ const obsidianComponents = {
   li: ({ node, children, checked, className, ...props }: any) => {
     // If this is a task item with a checkbox (ReactMarkdown passes the 'checked' prop)
     if (checked !== undefined) {
+      // Create a clickable task with accessibility support
       return (
-        <li className="task-list-item" style={{ listStyleType: 'none', display: 'flex', alignItems: 'flex-start' }}>
-          <input
-            type="checkbox"
-            checked={checked}
-            readOnly
+        <li className="obsidian-task-list-item" style={{ listStyleType: 'none', display: 'flex', alignItems: 'flex-start' }}>
+          <span
+            role="checkbox"
+            aria-checked={checked}
+            tabIndex={0}
+            data-task-item="true"
+            className={`obsidian-checkbox ${checked ? 'checked' : ''}`}
+            onClick={(e) => {
+              // This click handler is more for visual effect - the actual toggle happens in MarkdownEditor
+              e.stopPropagation();
+              // The styling will be changed via CSS, but no content change happens here
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.currentTarget.click();
+              }
+            }}
             style={{
-              appearance: 'none',
               display: 'inline-flex',
               justifyContent: 'center',
               alignItems: 'center',
               width: '1.2em',
               height: '1.2em',
-              border: '1px solid #00E0FF',
+              border: '1px solid var(--primary-color, #00E0FF)',
               borderRadius: '0.2em',
               marginRight: '0.5em',
-              color: '#00E0FF',
-              backgroundColor: checked ? 'rgba(0, 224, 255, 0.2)' : 'transparent',
+              color: 'var(--primary-color, #00E0FF)',
+              backgroundColor: checked ? 'rgba(var(--primary-rgb, 0, 224, 255), 0.2)' : 'transparent',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
               position: 'relative'
             }}
-          />
-          {checked && (
-            <span style={{ 
-              position: 'absolute', 
-              color: '#00E0FF',
-              fontSize: '0.8em',
-              marginLeft: '0.25em',
-              marginTop: '0.15em'
-            }}>
-              ✓
-            </span>
-          )}
-          <span className={checked ? 'line-through opacity-70' : ''}>
+          >
+            {checked && "✓"}
+          </span>
+          <span 
+            className={checked ? 'line-through opacity-70' : ''}
+            style={{ cursor: 'default' }}
+          >
             {children}
           </span>
         </li>

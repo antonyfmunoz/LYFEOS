@@ -14,18 +14,26 @@
   align-items: center;
   width: 1.2em;
   height: 1.2em;
-  border: 1px solid rgba(139, 190, 232, 0.4);
+  border: 1px solid var(--primary-color, rgba(139, 190, 232, 0.4));
   border-radius: 3px;
   margin-right: 0.5em;
   background-color: rgba(24, 36, 50, 0.3);
   cursor: pointer;
   user-select: none;
+  position: relative;
+  transition: all 0.15s ease-in-out;
+}
+
+.task-checkbox:hover {
+  transform: scale(1.1);
+  background-color: rgba(var(--primary-rgb, 0, 224, 255), 0.1);
+  box-shadow: 0 0 5px rgba(var(--primary-rgb, 0, 224, 255), 0.3);
 }
 
 .task-checkbox.checked {
-  background-color: rgba(72, 191, 161, 0.2);
-  border-color: rgba(72, 191, 161, 0.4);
-  color: #48bfa1;
+  background-color: rgba(var(--primary-rgb, 0, 224, 255), 0.2);
+  border-color: var(--primary-color, rgba(0, 224, 255, 0.6));
+  color: var(--primary-color, #00e0ff);
 }
 
 .task-text.completed {
