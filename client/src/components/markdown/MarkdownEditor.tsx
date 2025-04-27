@@ -6,6 +6,7 @@ import rehypeKatex from 'rehype-katex';
 import { Button } from '@/components/ui/button';
 import { PenLine, Eye, Save, CheckSquare } from 'lucide-react';
 import { useLocation } from 'wouter';
+import TaskCheckbox from './TaskCheckbox';
 import './markdown-styles.css';
 
 interface MarkdownEditorProps {
@@ -19,23 +20,29 @@ interface MarkdownEditorProps {
   autoBullets?: boolean; // Enable automatic bullet points
 }
 
-// Create a custom renderer for task lists to match Obsidian style
-const TaskListRenderer = ({ checked, children }: { checked: boolean; children: React.ReactNode }) => {
-  // When clicked, the handleTaskToggle function will find this element and toggle it
+// Create a custom TaskListItem component with the task checkbox
+const TaskListItem = ({ 
+  checked, 
+  children, 
+  onToggle 
+}: { 
+  checked: boolean; 
+  children: React.ReactNode;
+  onToggle: (checked: boolean) => void;
+}) => {
   return (
-    <li className="obsidian-task-list-item" style={{ listStyleType: 'none' }}>
+    <li className="obsidian-task-list-item" style={{ listStyleType: 'none', marginBottom: '0.5em' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+        <TaskCheckbox checked={checked} onChange={onToggle} />
         <span 
-          className={`task-checkbox ${checked ? 'checked' : ''}`}
-          role="checkbox"
-          aria-checked={checked}
-          tabIndex={0}
-          data-task-item="true"
-          style={{ cursor: 'pointer' }}
+          className={`task-text ${checked ? 'completed' : ''}`}
+          style={{ 
+            textDecoration: checked ? 'line-through' : 'none',
+            opacity: checked ? 0.7 : 1
+          }}
         >
-          {checked ? '✓' : ' '}
+          {children}
         </span>
-        <span className={`task-text ${checked ? 'completed' : ''}`}>{children}</span>
       </div>
     </li>
   );
@@ -261,123 +268,12 @@ export default function MarkdownEditor({
     }
   };
   
-  // Convert task list items format on click (toggle between [ ] and [x])
-  const handleTaskToggle = useCallback((e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    
-    // Check if the clicked element is a task checkbox or has the data-task-item attribute
-    if (target.classList.contains('task-checkbox') || 
-        target.getAttribute('data-task-item') === 'true' ||
-        target.closest('.obsidian-task-list-item')) {
-      
-      if (isEditing || readOnly) return; // Only toggle in view mode and when not readOnly
-      
-      // Find the closest task list item 
-      const taskElement = target.closest('.obsidian-task-list-item') || 
-                         (target.classList.contains('task-checkbox') ? target.parentElement?.parentElement : null);
-      
-      if (!taskElement) return; // Guard clause if we couldn't find the task element
-          
-      const isChecked = taskElement.querySelector('.task-checkbox')?.classList.contains('checked');
-      
-      console.log('Task clicked:', { isChecked, taskElement });
-      
-      // Find the task item in the content and toggle it
-      const lines = editableContent.split('\n');
-      let updatedContent = '';
-      let found = false;
-      let taskIndex = 0; // Track which task item we're processing
-      let clickedTaskIndex = -1; // Will be set when we find the clicked task
-      
-      // First, find the index of the clicked task
-      if (taskElement) {
-        // Get all task list items in the document
-        const allTaskItems = document.querySelectorAll('.obsidian-task-list-item');
-        
-        // Find the index of the clicked task
-        for (let i = 0; i < allTaskItems.length; i++) {
-          if (allTaskItems[i] === taskElement) {
-            clickedTaskIndex = i;
-            console.log('Found clicked task at index:', clickedTaskIndex);
-            break;
-          }
-        }
-      }
-      
-      // Now update the content with the toggled task
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        
-        // Check if this line is a task item
-        if (line.match(/^- \[[ x]\]/)) {
-          // If this is the task that was clicked
-          if (taskIndex === clickedTaskIndex && !found) {
-            // Toggle the checkbox state
-            const newLine = isChecked 
-              ? line.replace(/^- \[x\]/, '- [ ]') 
-              : line.replace(/^- \[ \]/, '- [x]');
-            
-            updatedContent += newLine + (i < lines.length - 1 ? '\n' : '');
-            found = true;
-          } else {
-            updatedContent += line + (i < lines.length - 1 ? '\n' : '');
-          }
-          taskIndex++;
-        } else {
-          updatedContent += line + (i < lines.length - 1 ? '\n' : '');
-        }
-      }
-      
-      // If we couldn't find the task by index (fallback to the old method)
-      if (!found) {
-        // Reset the updatedContent
-        updatedContent = '';
-        
-        // Try a more generic approach: toggle the first matching task
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i];
-          
-          if (!found && 
-              ((isChecked && line.match(/^- \[x\]/)) || 
-               (!isChecked && line.match(/^- \[ \]/)))) {
-            // Toggle the checkbox state
-            const newLine = isChecked 
-              ? line.replace(/^- \[x\]/, '- [ ]') 
-              : line.replace(/^- \[ \]/, '- [x]');
-            
-            updatedContent += newLine + (i < lines.length - 1 ? '\n' : '');
-            found = true;
-            console.log('Toggled task using fallback method');
-          } else {
-            updatedContent += line + (i < lines.length - 1 ? '\n' : '');
-          }
-        }
-      }
-      
-      if (found) {
-        setEditableContent(updatedContent);
-        onChange(updatedContent);
-        setIsDirty(true);
-        
-        // Auto-save on task toggle
-        if (onSave) {
-          onSave();
-          lastSavedContentRef.current = updatedContent;
-          setIsDirty(false);
-        }
-      }
-    }
-  }, [editableContent, isEditing, onChange, onSave, readOnly]);
-  
   // Process the content for display
   const processedContent = processWikiLinks(editableContent);
   
   // Allow clicking wiki links in view mode
   const handleMarkdownClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
-    
-    // Handle task toggles
-    handleTaskToggle(e);
     
     // Handle wiki link clicks
     if (target.tagName === 'A' && target.getAttribute('href')?.startsWith('/mission-page/')) {
@@ -455,7 +351,63 @@ export default function MarkdownEditor({
                 components={{
                   li: ({ node, className, children, ...props }: any) => {
                     if (props.checked !== undefined) {
-                      return <TaskListRenderer checked={props.checked}>{children}</TaskListRenderer>;
+                      // Handle toggling task item
+                      const handleToggle = (newChecked: boolean) => {
+                        console.log("Task toggled:", newChecked);
+                        
+                        // Find and update the task in the content
+                        const lines = editableContent.split('\n');
+                        let updatedContent = '';
+                        let taskIndex = 0;
+                        let found = false;
+                        
+                        for (let i = 0; i < lines.length; i++) {
+                          const line = lines[i];
+                          
+                          // Check if this line is a task item
+                          if (line.match(/^- \[[ x]\]/)) {
+                            // If this is the task that matches the current checkbox state
+                            if (!found && 
+                                ((props.checked && line.match(/^- \[x\]/)) || 
+                                 (!props.checked && line.match(/^- \[ \]/)))) {
+                              // Toggle the checkbox state
+                              const newLine = newChecked 
+                                ? line.replace(/^- \[ \]/, '- [x]') 
+                                : line.replace(/^- \[x\]/, '- [ ]');
+                              
+                              updatedContent += newLine + (i < lines.length - 1 ? '\n' : '');
+                              found = true;
+                            } else {
+                              updatedContent += line + (i < lines.length - 1 ? '\n' : '');
+                            }
+                            taskIndex++;
+                          } else {
+                            updatedContent += line + (i < lines.length - 1 ? '\n' : '');
+                          }
+                        }
+                        
+                        if (found) {
+                          setEditableContent(updatedContent);
+                          onChange(updatedContent);
+                          setIsDirty(true);
+                          
+                          // Auto-save on task toggle
+                          if (onSave) {
+                            onSave();
+                            lastSavedContentRef.current = updatedContent;
+                            setIsDirty(false);
+                          }
+                        }
+                      };
+                      
+                      return (
+                        <TaskListItem 
+                          checked={props.checked} 
+                          onToggle={handleToggle}
+                        >
+                          {children}
+                        </TaskListItem>
+                      );
                     }
                     return <li className={className} {...props}>{children}</li>;
                   }
