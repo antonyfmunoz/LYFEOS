@@ -60,24 +60,65 @@ import MediaLibraryPage from "./pages/MediaLibraryPage";
 import MediaDetailPage from "./pages/MediaDetailPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const [, navigate] = useLocation();
   const hasAttemptedRedirect = React.useRef(false);
+  const [sessionRetryCount, setSessionRetryCount] = React.useState(0);
+  const [isRedirecting, setIsRedirecting] = React.useState(false);
+  
+  // Check if we have a user in localStorage but server doesn't recognize it
+  // This indicates a session cookie issue
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      const lsUser = localStorage.getItem("lyfeos_user");
+      if (lsUser && sessionRetryCount < 2) {
+        console.log("Found user in localStorage but session is invalid, retrying auth check...");
+        
+        // Attempt to verify session again after a delay
+        const timer = setTimeout(() => {
+          console.log(`Auth retry attempt ${sessionRetryCount + 1}`);
+          fetch("/api/auth/me", { 
+            credentials: "include"
+          }).then(resp => {
+            if (resp.ok) {
+              console.log("Session verified on retry");
+              window.location.reload(); // Force a full page reload to refresh auth state
+            } else {
+              console.log("Session still invalid after retry");
+              setSessionRetryCount(prev => prev + 1);
+            }
+          }).catch(err => {
+            console.error("Error checking session:", err);
+            setSessionRetryCount(prev => prev + 1);
+          });
+        }, 500);
+        
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [isAuthenticated, isLoading, sessionRetryCount]);
   
   // Redirect to login if user is not authenticated and not loading
   useEffect(() => {
-    // Only redirect once if not authenticated after loading completes
-    if (!isAuthenticated && !isLoading && !hasAttemptedRedirect.current) {
+    // Skip if we're in the middle of a redirect already
+    if (isRedirecting) return;
+    
+    // Only redirect once if not authenticated after loading completes and retry attempts
+    if (!isAuthenticated && !isLoading && !hasAttemptedRedirect.current && sessionRetryCount >= 2) {
+      setIsRedirecting(true);
       console.log("Not authenticated, redirecting to login from protected route");
       hasAttemptedRedirect.current = true;
       navigate("/login", { replace: true });
     }
-  }, [isAuthenticated, isLoading, navigate]);
+  }, [isAuthenticated, isLoading, navigate, sessionRetryCount, isRedirecting]);
   
   // Show loading spinner while checking authentication
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+  if (isLoading || sessionRetryCount < 2) {
+    return <div className="min-h-screen flex flex-col items-center justify-center bg-background">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
+      <div className="text-muted-foreground text-sm">
+        {sessionRetryCount > 0 ? "Verifying your session..." : "Loading..."}
+      </div>
     </div>;
   }
   
@@ -93,10 +134,40 @@ function Router() {
   // Track if we've already attempted a redirect for the current route
   const routeRedirectRef = React.useRef<string | null>(null);
   
+  // Track the authentication state to detect changes
+  const wasAuthenticated = React.useRef<boolean | null>(null);
+  
+  // Track if we are in the process of logging in
+  const isLoginTransition = React.useRef<boolean>(false);
+  
+  // Check if we're in a login transition (the period right after login before session is fully established)
+  useEffect(() => {
+    if (wasAuthenticated.current === false && isAuthenticated === true) {
+      console.log("Login detected - entering transition state");
+      isLoginTransition.current = true;
+      
+      // After a delay, exit the transition state
+      const timer = setTimeout(() => {
+        isLoginTransition.current = false;
+        console.log("Login transition complete");
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+    
+    wasAuthenticated.current = isAuthenticated;
+  }, [isAuthenticated]);
+  
   // Redirect from root to dashboard if authenticated, or to login if not
   useEffect(() => {
     if (isLoading) {
       return; // Wait until auth state is determined
+    }
+    
+    // Skip route protection during login transition
+    if (isLoginTransition.current) {
+      console.log("In login transition - skipping route protection");
+      return;
     }
     
     const currentPath = window.location.pathname;
@@ -133,6 +204,12 @@ function Router() {
     // Public paths that don't require auth
     const publicPaths = ['/login', '/register'];
     if (publicPaths.some(path => currentPath.startsWith(path))) {
+      return;
+    }
+    
+    // If we're already at dashboard after login, don't redirect again
+    if (isAuthenticated && currentPath === '/dashboard') {
+      console.log('Already at dashboard, skipping redirect');
       return;
     }
     

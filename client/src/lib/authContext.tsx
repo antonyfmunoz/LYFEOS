@@ -194,12 +194,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         variant: "default",
       });
       
+      // CRITICAL FIX: Wait a moment to ensure the session cookie is properly set
+      // This prevents the immediate redirect that's happening after login
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Verify the session is properly established
+      try {
+        const verifyResponse = await fetch("/api/auth/me", {
+          credentials: "include"
+        });
+        
+        if (verifyResponse.ok) {
+          console.log("Session verified successfully with server");
+        } else {
+          console.warn("Session verification failed - proceeding anyway");
+        }
+      } catch (verifyError) {
+        console.error("Error verifying session:", verifyError);
+        // Continue despite error - user is already authenticated client-side
+      }
+      
       // Handle redirection based on isNewUser flag
       if (data.isNewUser) {
         console.log("New user detected, redirecting to onboarding");
-        navigate("/onboarding");
+        navigate("/onboarding", { replace: true });
       } else {
-        navigate("/dashboard");
+        console.log("Redirecting to dashboard...");
+        navigate("/dashboard", { replace: true });
       }
     } catch (error: any) {
       console.error("Login error:", error);
@@ -308,13 +329,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         variant: "default",
       });
       
+      // CRITICAL FIX: Wait a moment to ensure the session cookie is properly set
+      // This prevents the immediate redirect that's happening after registration
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Verify the session is properly established
+      try {
+        const verifyResponse = await fetch("/api/auth/me", {
+          credentials: "include"
+        });
+        
+        if (verifyResponse.ok) {
+          console.log("Session verified successfully after registration");
+        } else {
+          console.warn("Session verification failed after registration - proceeding anyway");
+        }
+      } catch (verifyError) {
+        console.error("Error verifying session after registration:", verifyError);
+        // Continue despite error - user is already authenticated client-side
+      }
+      
       // Handle redirection based on isNewUser flag (should always be true for registration)
       if (data.isNewUser) {
         console.log("New user detected, redirecting to onboarding");
-        navigate("/onboarding");
+        navigate("/onboarding", { replace: true });
       } else {
         // Fallback if for some reason isNewUser is false (shouldn't happen)
-        navigate("/dashboard");
+        console.log("Redirecting to dashboard after registration...");
+        navigate("/dashboard", { replace: true });
       }
     } catch (error: any) {
       console.error("Registration error:", error);
@@ -332,7 +374,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
     try {
       console.log("Logging out user...");
       
@@ -342,33 +384,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("lyfeos_user");
       
       // Sign out from Firebase
-      auth.signOut().catch((error: Error) => {
+      try {
+        await auth.signOut();
+      } catch (error) {
         console.error("Firebase sign out error:", error);
-      });
+        // Continue with logout process even if Firebase fails
+      }
       
-      // API call to server to logout
-      fetch("/api/auth/logout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include" // Important for session cookie handling
-      }).then(response => {
+      // API call to server to logout - using await for better error handling
+      try {
+        const response = await fetch("/api/auth/logout", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include" // Important for session cookie handling
+        });
+        
         if (!response.ok) {
           console.error("Logout request failed with status:", response.status);
+        } else {
+          console.log("Server logout successful");
         }
-        
-        // Navigate to login page using wouter's navigate
-        navigate("/login");
-      }).catch(error => {
-        console.error("Logout error:", error);
-        
-        // Navigate even on error
-        navigate("/login");
-      });
+      } catch (error) {
+        console.error("Logout server request error:", error);
+        // Continue with client-side logout even if server request fails
+      }
+      
+      // Small delay to let the logout process complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Always navigate to login page
+      console.log("Redirecting to login page after logout");
+      navigate("/login", { replace: true });
+      
     } catch (error) {
       console.error("Unexpected logout error:", error);
-      navigate("/login");
+      // Always navigate to login as a fallback
+      navigate("/login", { replace: true });
     }
   };
   
