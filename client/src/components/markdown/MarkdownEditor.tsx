@@ -1,12 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { PenLine, Eye, Save, CheckSquare } from 'lucide-react';
+import { PenLine, Eye, Save } from 'lucide-react';
 import { useLocation } from 'wouter';
-import TaskCheckbox from './TaskCheckbox';
+import MarkdownWithTasks from './MarkdownWithTasks';
 import './markdown-styles.css';
 
 interface MarkdownEditorProps {
@@ -19,34 +15,6 @@ interface MarkdownEditorProps {
   autoSaveInterval?: number; // in milliseconds
   autoBullets?: boolean; // Enable automatic bullet points
 }
-
-// Create a custom TaskListItem component with the task checkbox
-const TaskListItem = ({ 
-  checked, 
-  children, 
-  onToggle 
-}: { 
-  checked: boolean; 
-  children: React.ReactNode;
-  onToggle: (checked: boolean) => void;
-}) => {
-  return (
-    <li className="obsidian-task-list-item" style={{ listStyleType: 'none', marginBottom: '0.5em' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-        <TaskCheckbox checked={checked} onChange={onToggle} />
-        <span 
-          className={`task-text ${checked ? 'completed' : ''}`}
-          style={{ 
-            textDecoration: checked ? 'line-through' : 'none',
-            opacity: checked ? 0.7 : 1
-          }}
-        >
-          {children}
-        </span>
-      </div>
-    </li>
-  );
-};
 
 export default function MarkdownEditor({
   content,
@@ -345,76 +313,23 @@ export default function MarkdownEditor({
               style={{ maxHeight: '500px' }}
               onClick={handleMarkdownClick}
             >
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm, remarkMath]}
-                rehypePlugins={[rehypeKatex]}
-                components={{
-                  li: ({ node, className, children, ...props }: any) => {
-                    if (props.checked !== undefined) {
-                      // Handle toggling task item
-                      const handleToggle = (newChecked: boolean) => {
-                        console.log("Task toggled:", newChecked);
-                        
-                        // Find and update the task in the content
-                        const lines = editableContent.split('\n');
-                        let updatedContent = '';
-                        let taskIndex = 0;
-                        let found = false;
-                        
-                        for (let i = 0; i < lines.length; i++) {
-                          const line = lines[i];
-                          
-                          // Check if this line is a task item
-                          if (line.match(/^- \[[ x]\]/)) {
-                            // If this is the task that matches the current checkbox state
-                            if (!found && 
-                                ((props.checked && line.match(/^- \[x\]/)) || 
-                                 (!props.checked && line.match(/^- \[ \]/)))) {
-                              // Toggle the checkbox state
-                              const newLine = newChecked 
-                                ? line.replace(/^- \[ \]/, '- [x]') 
-                                : line.replace(/^- \[x\]/, '- [ ]');
-                              
-                              updatedContent += newLine + (i < lines.length - 1 ? '\n' : '');
-                              found = true;
-                            } else {
-                              updatedContent += line + (i < lines.length - 1 ? '\n' : '');
-                            }
-                            taskIndex++;
-                          } else {
-                            updatedContent += line + (i < lines.length - 1 ? '\n' : '');
-                          }
-                        }
-                        
-                        if (found) {
-                          setEditableContent(updatedContent);
-                          onChange(updatedContent);
-                          setIsDirty(true);
-                          
-                          // Auto-save on task toggle
-                          if (onSave) {
-                            onSave();
-                            lastSavedContentRef.current = updatedContent;
-                            setIsDirty(false);
-                          }
-                        }
-                      };
-                      
-                      return (
-                        <TaskListItem 
-                          checked={props.checked} 
-                          onToggle={handleToggle}
-                        >
-                          {children}
-                        </TaskListItem>
-                      );
-                    }
-                    return <li className={className} {...props}>{children}</li>;
+              <MarkdownWithTasks
+                content={processedContent}
+                onChange={(newContent) => {
+                  setEditableContent(newContent);
+                  onChange(newContent);
+                  setIsDirty(true);
+                  
+                  // Auto-save on task toggle
+                  if (onSave) {
+                    onSave();
+                    lastSavedContentRef.current = newContent;
+                    setIsDirty(false);
                   }
                 }}
-              >
-                {processedContent || placeholder}
-              </ReactMarkdown>
+                onSave={onSave}
+                readOnly={readOnly}
+              />
             </div>
           )}
         </div>
