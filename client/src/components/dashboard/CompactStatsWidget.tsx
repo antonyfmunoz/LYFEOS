@@ -31,7 +31,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <StatInfoDialog
             trigger={
               <button 
-                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#8B5CF6]"
+                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
                 onClick={(e) => {
                   e.stopPropagation();
                   setLocation("/experience");
@@ -41,7 +41,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
               </button>
             }
             title="Experience Points (XP)"
-            titleColor="text-[#8B5CF6]"
+            titleColor="text-primary"
             description="XP tracks your overall progress and achievements in LYFEOS."
             additionalInfo="Higher levels unlock premium features and special abilities."
             statType="experience"
