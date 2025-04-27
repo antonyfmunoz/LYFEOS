@@ -113,7 +113,7 @@ const XpProgressBar: React.FC<{
 };
 
 // Custom hook to use XP context
-export const useXp = () => {
+export function useXp() {
   const context = useContext(XpContext);
   
   if (context === undefined) {
@@ -121,4 +121,4 @@ export const useXp = () => {
   }
   
   return context;
-};
+}

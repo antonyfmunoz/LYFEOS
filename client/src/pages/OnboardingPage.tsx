@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { toast } from "@/hooks/use-toast";
+import { useXp } from "@/lib/xpContext";
 import { ArrowRight, ArrowLeft, ChevronRight, Check, Sparkles, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -68,6 +69,7 @@ export default function OnboardingPage() {
   const { user } = useAuth();
   const { primaryColor, setPrimaryColor } = useTheme();
   const [, navigate] = useLocation();
+  const { awardXp } = useXp();
   
   // Debug log to show current user data
   useEffect(() => {
@@ -261,6 +263,26 @@ export default function OnboardingPage() {
           console.error("Failed to award XP for onboarding", await xpResponse.text());
         } else {
           console.log("Successfully awarded 100 XP for completing onboarding");
+          
+          // Get user stats to show XP animation
+          const statsResponse = await fetch(`/api/users/${user.id}/stats`, {
+            method: 'GET',
+            credentials: 'include'
+          });
+          
+          if (statsResponse.ok) {
+            const stats = await statsResponse.json();
+            
+            // Show XP animation toast
+            awardXp({
+              amount: 100,
+              fromValue: stats.experiencePoints - 100, // Show animation from previous value
+              toValue: stats.experiencePoints,
+              maxValue: stats.nextLevelXp,
+              levelUp: false,
+              reason: 'Onboarding completed'
+            });
+          }
         }
       } catch (error) {
         console.error("Error awarding XP for onboarding:", error);
