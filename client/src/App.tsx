@@ -66,34 +66,25 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [sessionRetryCount, setSessionRetryCount] = React.useState(0);
   const [isRedirecting, setIsRedirecting] = React.useState(false);
   
-  // Check if we have a user in localStorage but server doesn't recognize it
-  // This indicates a session cookie issue
+  // Simplified session recovery - only attempt once if needed
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       const lsUser = localStorage.getItem("lyfeos_user");
-      if (lsUser && sessionRetryCount < 2) {
-        console.log("Found user in localStorage but session is invalid, retrying auth check...");
+      if (lsUser && sessionRetryCount === 0) {
+        setSessionRetryCount(1); // Mark that we've tried recovery
+        console.log("Found user in localStorage but session is invalid, attempting silent re-auth");
         
-        // Attempt to verify session again after a delay
-        const timer = setTimeout(() => {
-          console.log(`Auth retry attempt ${sessionRetryCount + 1}`);
-          fetch("/api/auth/me", { 
-            credentials: "include"
-          }).then(resp => {
+        // Quietly try to restore the session without page reload
+        fetch("/api/auth/me", { credentials: "include" })
+          .then(resp => {
             if (resp.ok) {
-              console.log("Session verified on retry");
-              window.location.reload(); // Force a full page reload to refresh auth state
-            } else {
-              console.log("Session still invalid after retry");
-              setSessionRetryCount(prev => prev + 1);
+              console.log("Session restored silently");
+              // The next auth state update will handle rendering
             }
-          }).catch(err => {
-            console.error("Error checking session:", err);
-            setSessionRetryCount(prev => prev + 1);
+          })
+          .catch(() => {
+            // Do nothing on error, the redirect logic will handle it
           });
-        }, 500);
-        
-        return () => clearTimeout(timer);
       }
     }
   }, [isAuthenticated, isLoading, sessionRetryCount]);
@@ -103,8 +94,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     // Skip if we're in the middle of a redirect already
     if (isRedirecting) return;
     
-    // Only redirect once if not authenticated after loading completes and retry attempts
-    if (!isAuthenticated && !isLoading && !hasAttemptedRedirect.current && sessionRetryCount >= 2) {
+    // Only redirect once if not authenticated after loading completes
+    // Wait for session retry if needed (sessionRetryCount > 0)
+    const shouldAttemptRedirect = !isAuthenticated && 
+                               !isLoading && 
+                               !hasAttemptedRedirect.current &&
+                               (sessionRetryCount === 0 || sessionRetryCount > 0);
+    
+    if (shouldAttemptRedirect) {
       setIsRedirecting(true);
       console.log("Not authenticated, redirecting to login from protected route");
       hasAttemptedRedirect.current = true;
@@ -112,14 +109,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, isLoading, navigate, sessionRetryCount, isRedirecting]);
   
-  // Show loading spinner while checking authentication
-  if (isLoading || sessionRetryCount < 2) {
-    return <div className="min-h-screen flex flex-col items-center justify-center bg-background">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
-      <div className="text-muted-foreground text-sm">
-        {sessionRetryCount > 0 ? "Verifying your session..." : "Loading..."}
-      </div>
-    </div>;
+  // Show minimal spinner during initial loading only
+  if (isLoading && !localStorage.getItem("lyfeos_user")) {
+    return <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary fixed top-4 right-4 opacity-70"></div>;
   }
   
   // If authenticated, render the children, otherwise show nothing
