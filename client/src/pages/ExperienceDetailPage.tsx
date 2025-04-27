@@ -80,9 +80,9 @@ export default function ExperienceDetailPage() {
       </div>
       
       {/* Experience Sources */}
-      <div className="glassmorphic rounded-xl p-6 mb-6 border border-[#8B5CF6]/30"> {/* Violet (Crown) */}
+      <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="font-orbitron text-xl text-[#8B5CF6]">Experience Sources</h2> {/* Violet (Crown) */}
+          <h2 className="font-orbitron text-xl text-primary">Experience Sources</h2>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -91,18 +91,18 @@ export default function ExperienceDetailPage() {
               <div key={source.source} className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <source.icon className="h-5 w-5 mr-2 text-[#8B5CF6]" /> {/* Violet (Crown) */}
+                    <source.icon className="h-5 w-5 mr-2 text-primary" />
                     <h3 className="text-white">{source.source}</h3>
                   </div>
                   <div>
-                    <span className="px-3 py-1 rounded-md text-sm bg-[#8B5CF6]/20 text-[#8B5CF6]">
+                    <span className="px-3 py-1 rounded-md text-sm bg-primary/20 text-primary">
                       {source.percentage}%
                     </span>
                   </div>
                 </div>
                 <div className="w-full bg-[#060F13] h-1.5 rounded-full overflow-hidden">
                   <div 
-                    className="h-full rounded-full bg-[#8B5CF6]" /* Violet (Crown) */
+                    className="h-full rounded-full bg-primary"
                     style={{ width: `${source.percentage}%` }}
                   ></div>
                 </div>
@@ -110,11 +110,11 @@ export default function ExperienceDetailPage() {
             ))}
           </div>
           
-          <div className="bg-[#001E26] border border-[#8B5CF6]/20 rounded-xl p-4">
-            <h3 className="text-[#8B5CF6] font-orbitron mb-3">Level Up Forecast</h3> {/* Violet (Crown) */}
+          <div className="bg-[#001E26] border border-primary/20 rounded-xl p-4">
+            <h3 className="text-primary font-orbitron mb-3">Level Up Forecast</h3>
             <div className="space-y-4">
               <p className="text-[#7DAAB2] text-sm">
-                You need approximately <span className="text-[#8B5CF6] font-semibold">{estimatedMissions} missions</span> to reach Level {currentLevel + 1}.
+                You need approximately <span className="text-primary font-semibold">{estimatedMissions} missions</span> to reach Level {currentLevel + 1}.
               </p>
               <p className="text-[#7DAAB2] text-sm">
                 Maintaining a daily streak provides a 15% XP bonus to all completed activities.
@@ -128,23 +128,23 @@ export default function ExperienceDetailPage() {
       </div>
       
       {/* XP Growth Tips */}
-      <div className="glassmorphic rounded-xl p-6 border border-[#8B5CF6]/30"> {/* Violet (Crown) */}
-        <h2 className="font-orbitron text-xl mb-4 text-[#8B5CF6]">XP Growth Strategies</h2> {/* Violet (Crown) */}
+      <div className="glassmorphic rounded-xl p-6 border border-primary/30">
+        <h2 className="font-orbitron text-xl mb-4 text-primary">XP Growth Strategies</h2>
         <ul className="space-y-3">
           <li className="flex">
-            <ArrowUpRight className="h-5 w-5 mr-2 text-[#8B5CF6] flex-shrink-0" /> {/* Violet (Crown) */}
+            <ArrowUpRight className="h-5 w-5 mr-2 text-primary flex-shrink-0" />
             <span className="text-[#7DAAB2]">Complete at least 3 missions per day for optimal XP accumulation.</span>
           </li>
           <li className="flex">
-            <ArrowUpRight className="h-5 w-5 mr-2 text-[#8B5CF6] flex-shrink-0" /> {/* Violet (Crown) */}
+            <ArrowUpRight className="h-5 w-5 mr-2 text-primary flex-shrink-0" />
             <span className="text-[#7DAAB2]">Maintain a streak of at least 7 days to increase the XP bonus multiplier.</span>
           </li>
           <li className="flex">
-            <ArrowUpRight className="h-5 w-5 mr-2 text-[#8B5CF6] flex-shrink-0" /> {/* Violet (Crown) */}
+            <ArrowUpRight className="h-5 w-5 mr-2 text-primary flex-shrink-0" />
             <span className="text-[#7DAAB2]">Create detailed Chronilog entries to earn additional experience points.</span>
           </li>
           <li className="flex">
-            <ArrowUpRight className="h-5 w-5 mr-2 text-[#8B5CF6] flex-shrink-0" /> {/* Violet (Crown) */}
+            <ArrowUpRight className="h-5 w-5 mr-2 text-primary flex-shrink-0" />
             <span className="text-[#7DAAB2]">Log your daily activities consistently to maintain a steady XP growth rate.</span>
           </li>
         </ul>
