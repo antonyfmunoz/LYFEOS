@@ -730,6 +730,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User stats not found" });
       }
       
+      // Get user profile to access totalXP
+      const userProfile = await storage.getUserProfile(userId);
+      const totalXP = userProfile?.totalXP || 0;
+      
       // Transform database stats into the nested object structure expected by the frontend
       const transformedStats = {
         attentionTokens: {
@@ -752,6 +756,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           current: dbStats.experienceCurrent,
           max: dbStats.experienceMax,
           level: dbStats.level,
+          totalXP: totalXP,
+          showLevelUp: false // Default to false, will be set to true when needed
         },
         streakDays: dbStats.streakDays || 0,
         efficiencyScore: dbStats.efficiencyScore || 0,
@@ -894,6 +900,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const dbUpdatedStats = await storage.updateUserStats(userId, dbStatsUpdate);
       
+      // Get updated user profile to access totalXP
+      const userProfile = await storage.getUserProfile(userId);
+      const totalXP = userProfile?.totalXP || 0;
+      
       // Transform the response back to the frontend model
       const transformedStats = {
         attentionTokens: {
@@ -916,6 +926,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           current: dbUpdatedStats.experienceCurrent,
           max: dbUpdatedStats.experienceMax,
           level: dbUpdatedStats.level,
+          totalXP: totalXP,
+          showLevelUp: false
         },
         streakDays: dbUpdatedStats.streakDays || 0,
         efficiencyScore: dbUpdatedStats.efficiencyScore || 0,
@@ -1050,8 +1062,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         xpResult = await awardExperiencePoints(quest.userId, 10);
       }
       
-      // Get updated user stats to return to the client
+      // Get updated user stats and profile to return to the client
       const userStats = await storage.getUserStats(quest.userId);
+      const userProfile = await storage.getUserProfile(quest.userId);
+      const totalXP = userProfile?.totalXP || 0;
       
       return res.status(200).json({ 
         quest: updatedQuest,
@@ -1061,7 +1075,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           experience: {
             current: userStats.experienceCurrent,
             max: userStats.experienceMax,
-            level: userStats.level
+            level: userStats.level,
+            totalXP: totalXP,
+            showLevelUp: xpResult.levelUp // Set this to true when level up occurs
           }
         } : undefined
       });
@@ -1160,7 +1176,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (xpResult.success) {
           return res.status(201).json({ 
             event,
-            stats: xpResult.newStats,
+            stats: {
+              ...xpResult.newStats,
+              experience: {
+                ...xpResult.newStats?.experience,
+                totalXP: xpResult.totalXP,
+                showLevelUp: xpResult.levelUp
+              }
+            },
             levelUp: xpResult.levelUp
           });
         }
@@ -1287,7 +1310,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (xpResult.success) {
           return res.status(201).json({ 
             page,
-            stats: xpResult.newStats,
+            stats: {
+              ...xpResult.newStats,
+              experience: {
+                ...xpResult.newStats?.experience,
+                totalXP: xpResult.totalXP,
+                showLevelUp: xpResult.levelUp
+              }
+            },
             levelUp: xpResult.levelUp
           });
         }
@@ -1439,7 +1469,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (xpResult.success) {
           return res.status(201).json({
             contact,
-            stats: xpResult.newStats,
+            stats: {
+              ...xpResult.newStats,
+              experience: {
+                ...xpResult.newStats?.experience,
+                totalXP: xpResult.totalXP,
+                showLevelUp: xpResult.levelUp
+              }
+            },
             xpAwarded: 3,
             levelUp: xpResult.levelUp
           });
@@ -1624,7 +1661,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (xpResult.success) {
           return res.status(201).json({
             spreadsheet,
-            stats: xpResult.newStats,
+            stats: {
+              ...xpResult.newStats,
+              experience: {
+                ...xpResult.newStats?.experience,
+                totalXP: xpResult.totalXP,
+                showLevelUp: xpResult.levelUp
+              }
+            },
             xpAwarded: 8,
             levelUp: xpResult.levelUp
           });
@@ -3289,7 +3333,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reason,
         xpAwarded: xpAmount,
         levelUp: xpResult.levelUp,
-        stats: xpResult.newStats
+        stats: {
+          ...xpResult.newStats,
+          experience: {
+            ...xpResult.newStats?.experience,
+            totalXP: xpResult.totalXP,
+            showLevelUp: xpResult.levelUp
+          }
+        }
       });
     } catch (error) {
       console.error("Error awarding XP:", error);
