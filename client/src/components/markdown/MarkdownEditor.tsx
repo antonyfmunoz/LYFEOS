@@ -22,7 +22,13 @@ interface MarkdownEditorProps {
 // Create a custom renderer for task lists to match Obsidian style
 const TaskListRenderer = ({ checked, children }: { checked: boolean; children: React.ReactNode }) => (
   <div className="obsidian-task-list-item">
-    <span className={`task-checkbox ${checked ? 'checked' : ''}`}>
+    <span 
+      className={`task-checkbox ${checked ? 'checked' : ''}`}
+      role="checkbox"
+      aria-checked={checked}
+      tabIndex={0}
+      data-task-item="true"
+    >
       {checked ? '✓' : ' '}
     </span>
     <span className={`task-text ${checked ? 'completed' : ''}`}>{children}</span>
@@ -253,15 +259,16 @@ export default function MarkdownEditor({
   const handleTaskToggle = useCallback((e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     
-    // Check if the clicked element is a task checkbox
+    // Check if the clicked element is a task checkbox or has the data-task-item attribute
     if (target.classList.contains('task-checkbox') || 
+        target.getAttribute('data-task-item') === 'true' ||
         target.parentElement?.classList.contains('obsidian-task-list-item')) {
       
       if (isEditing || readOnly) return; // Only toggle in view mode and when not readOnly
       
       const taskElement = 
-        target.classList.contains('task-checkbox') 
-          ? target.parentElement 
+        target.classList.contains('task-checkbox') || target.getAttribute('data-task-item') === 'true'
+          ? target.closest('.obsidian-task-list-item') || target.parentElement 
           : target;
           
       const isChecked = taskElement?.querySelector('.task-checkbox')?.classList.contains('checked');
@@ -270,20 +277,42 @@ export default function MarkdownEditor({
       const lines = editableContent.split('\n');
       let updatedContent = '';
       let found = false;
+      let taskIndex = 0; // Track which task item we're processing
+      let clickedTaskIndex = -1; // Will be set when we find the clicked task
       
+      // First, find the index of the clicked task
+      if (taskElement) {
+        // Get all task list items in the document
+        const allTaskItems = document.querySelectorAll('.obsidian-task-list-item');
+        
+        // Find the index of the clicked task
+        for (let i = 0; i < allTaskItems.length; i++) {
+          if (allTaskItems[i] === taskElement) {
+            clickedTaskIndex = i;
+            break;
+          }
+        }
+      }
+      
+      // Now update the content with the toggled task
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         
-        if (!found && 
-            ((isChecked && line.match(/^- \[x\]/)) || 
-             (!isChecked && line.match(/^- \[ \]/)))) {
-          // Toggle the checkbox state
-          const newLine = isChecked 
-            ? line.replace(/^- \[x\]/, '- [ ]') 
-            : line.replace(/^- \[ \]/, '- [x]');
-          
-          updatedContent += newLine + '\n';
-          found = true;
+        // Check if this line is a task item
+        if (line.match(/^- \[[ x]\]/)) {
+          // If this is the task that was clicked
+          if (taskIndex === clickedTaskIndex && !found) {
+            // Toggle the checkbox state
+            const newLine = isChecked 
+              ? line.replace(/^- \[x\]/, '- [ ]') 
+              : line.replace(/^- \[ \]/, '- [x]');
+            
+            updatedContent += newLine + (i < lines.length - 1 ? '\n' : '');
+            found = true;
+          } else {
+            updatedContent += line + (i < lines.length - 1 ? '\n' : '');
+          }
+          taskIndex++;
         } else {
           updatedContent += line + (i < lines.length - 1 ? '\n' : '');
         }
