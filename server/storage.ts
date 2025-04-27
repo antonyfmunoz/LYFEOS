@@ -257,7 +257,7 @@ export class DatabaseStorage implements IStorage {
       healthPointsCurrent: 10,
       healthPointsMax: 10,
       experienceCurrent: 0,
-      experienceMax: 100,
+      experienceMax: 1000, // Level 1 threshold is 1000 XP
       level: 1
     });
     
@@ -451,7 +451,7 @@ export class DatabaseStorage implements IStorage {
         while (newExperience >= userStats.experienceMax) {
           newExperience -= userStats.experienceMax;
           newLevel += 1;
-          newExperienceMax = Math.floor(userStats.experienceMax * 1.2); // 20% increase per level
+          newExperienceMax = Math.floor(userStats.experienceMax * 1.0372); // Precise scaling to reach 1M XP at level 100
         }
         
         // Update user stats

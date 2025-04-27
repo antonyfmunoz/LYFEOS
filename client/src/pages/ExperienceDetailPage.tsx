@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { ArrowLeft, Award, ArrowUpRight, Star, Target, BookMarked, FileText } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { cn } from "@/lib/utils";
 
 export default function ExperienceDetailPage() {
   // Set page title
@@ -10,6 +11,9 @@ export default function ExperienceDetailPage() {
   
   // Get stats from context
   const { stats } = useLYFEOS();
+  
+  // Get primary color from settings
+  const primaryColor = stats.primaryColor || "#00e0ff";
   
   // Experience sources
   const experienceSources = [
@@ -39,13 +43,13 @@ export default function ExperienceDetailPage() {
       </div>
       
       <div className="mb-8 flex items-center">
-        <Award className="h-8 w-8 mr-3 text-[#8B5CF6]" /> {/* Violet (Crown) */}
+        <Award className="h-8 w-8 mr-3 text-primary" />
         <h1 className="text-3xl font-orbitron">Experience</h1>
       </div>
       
       {/* Current Experience Status */}
-      <div className="glassmorphic rounded-xl p-6 mb-6 border border-[#8B5CF6]/30"> {/* Violet (Crown) */}
-        <h2 className="font-orbitron text-xl mb-4 text-[#8B5CF6]">Current Level Progress</h2> {/* Violet (Crown) */}
+      <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30">
+        <h2 className="font-orbitron text-xl mb-4 text-primary">Current Level Progress</h2>
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[#7DAAB2] mb-1">Level {currentLevel} progression</p>
@@ -54,18 +58,18 @@ export default function ExperienceDetailPage() {
               <span className="text-[#7DAAB2] ml-3 text-lg">/ {maxXP} XP</span>
             </div>
           </div>
-          <div className="bg-[#001E26] border border-[#8B5CF6]/20 rounded-md p-4">
+          <div className="bg-[#001E26] border border-primary/20 rounded-md p-4">
             <p className="text-[#7DAAB2] text-sm mb-1">Next level</p>
             <div className="flex items-center">
-              <Star className="h-5 w-5 mr-2 text-[#8B5CF6]" /> {/* Violet (Crown) */}
+              <Star className="h-5 w-5 mr-2 text-primary" />
               <span className="text-white">Level {currentLevel + 1}</span>
             </div>
-            <p className="text-[#8B5CF6] text-xs mt-1">{xpToNextLevel} XP needed</p> {/* Violet (Crown) */}
+            <p className="text-primary text-xs mt-1">{xpToNextLevel} XP needed</p>
           </div>
         </div>
         <div className="mt-4 w-full bg-[#060F13] h-2 rounded-full overflow-hidden">
           <div 
-            className="bg-gradient-to-r from-[#8B5CF6]/50 to-[#8B5CF6] h-full rounded-full"
+            className="bg-gradient-to-r from-primary/50 to-primary h-full rounded-full"
             style={{ width: `${xpProgress}%` }}
           ></div>
         </div>
