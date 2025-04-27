@@ -1,5 +1,5 @@
 import { useContext, useEffect, useState } from "react";
-import { StatsContext } from "@/lib/context";
+import { LYFEOSContext } from "@/lib/context";
 import { motion, AnimatePresence } from "framer-motion";
 import { Award } from "lucide-react";
 import confetti from "canvas-confetti";
@@ -19,7 +19,11 @@ export default function ExperienceBar({
   totalXP,
   showLevelUp = false
 }: ExperienceBarProps) {
-  const { stats } = useContext(StatsContext);
+  const context = useContext(LYFEOSContext);
+  if (!context) {
+    throw new Error("ExperienceBar must be used within a LYFEOSProvider");
+  }
+  const { stats } = context;
   const primaryColor = stats?.primaryColor || "#00e0ff";
   
   // Calculate percentage for progress bar

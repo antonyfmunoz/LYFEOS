@@ -64,6 +64,11 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
               {stats.experience.current.toLocaleString()}/{stats.experience.max.toLocaleString()} XP
             </span>
           </div>
+          {stats.experience.totalXP !== undefined && (
+            <div className="text-xs text-right mt-1 text-primary/70">
+              Total: {stats.experience.totalXP.toLocaleString()} XP
+            </div>
+          )}
         </div>
       </div>
       

@@ -189,7 +189,7 @@ interface LYFEOSContextType {
 }
 
 // Create the context
-const LYFEOSContext = createContext<LYFEOSContextType | undefined>(undefined);
+export const LYFEOSContext = createContext<LYFEOSContextType | undefined>(undefined);
 
 // Provider component
 // Helper to generate slugs for mission pages

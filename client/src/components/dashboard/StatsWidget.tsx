@@ -61,6 +61,11 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <span className="text-[#7DAAB2]">{stats.experience.current.toLocaleString()} XP</span>
             <span className="text-[#7DAAB2]">{stats.experience.max.toLocaleString()} XP</span>
           </div>
+          {stats.experience.totalXP !== undefined && (
+            <div className="text-xs text-right mt-1 text-primary/70">
+              Total Career XP: {stats.experience.totalXP.toLocaleString()} XP
+            </div>
+          )}
         </div>
       </Link>
       
