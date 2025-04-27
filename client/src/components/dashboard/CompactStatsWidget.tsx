@@ -60,6 +60,9 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             <span className="text-[#D6F4FF] font-mono text-sm">
               {stats.experience.level}
             </span>
+            <span className="text-[#D6F4FF] font-mono text-xs">
+              {stats.experience.current}/{stats.experience.max} XP
+            </span>
           </div>
         </div>
       </div>

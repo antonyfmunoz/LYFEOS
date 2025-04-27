@@ -59,10 +59,18 @@ async function awardExperiencePoints(
 }> {
   try {
     // Get current user stats
+    console.log(`[awardExperiencePoints] Getting stats for user ${userId}`);
     const userStats = await storage.getUserStats(userId);
     if (!userStats) {
+      console.error(`[awardExperiencePoints] No stats found for user ${userId}`);
       return { success: false, levelUp: false };
     }
+    
+    console.log(`[awardExperiencePoints] Current stats for user ${userId}:`, {
+      current: userStats.experienceCurrent,
+      max: userStats.experienceMax,
+      level: userStats.level
+    });
     
     // Calculate new XP level
     let newExperience = userStats.experienceCurrent + amount;
@@ -78,11 +86,24 @@ async function awardExperiencePoints(
       didLevelUp = true;
     }
     
+    console.log(`[awardExperiencePoints] Calculated new stats for user ${userId}:`, {
+      experienceCurrent: newExperience,
+      level: newLevel,
+      experienceMax: newExperienceMax,
+      didLevelUp
+    });
+    
     // Update user stats
     const updatedStats = await storage.updateUserStats(userId, {
       experienceCurrent: newExperience,
       level: newLevel,
       experienceMax: newExperienceMax
+    });
+    
+    console.log(`[awardExperiencePoints] Updated stats for user ${userId}:`, {
+      current: updatedStats.experienceCurrent,
+      max: updatedStats.experienceMax,
+      level: updatedStats.level
     });
     
     return { 
@@ -3125,23 +3146,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid user ID" });
       }
       
-      const { amount, action } = req.body;
+      const { amount, reason } = req.body;
+      console.log(`Awarding ${amount} XP to user ${userId} for ${reason || 'unknown action'}`);
       
       // Validate XP amount
       const xpAmount = parseInt(amount);
       if (isNaN(xpAmount) || xpAmount <= 0) {
+        console.error(`Invalid XP amount: ${amount}`);
         return res.status(400).json({ error: "XP amount must be a positive number" });
       }
       
       // Use helper function to award XP
       const xpResult = await awardExperiencePoints(userId, xpAmount);
+      console.log(`XP award result:`, xpResult);
+      
       if (!xpResult.success) {
+        console.error(`Failed to award XP to user ${userId}`);
         return res.status(404).json({ error: "Failed to award XP" });
       }
       
       return res.status(200).json({ 
         success: true,
-        action,
+        reason,
         xpAwarded: xpAmount,
         levelUp: xpResult.levelUp,
         stats: xpResult.newStats
