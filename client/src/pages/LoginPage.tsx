@@ -240,8 +240,9 @@ export default function LoginPage() {
           
           <Button 
             type="submit"
-            className="w-full mt-4"
+            className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90 font-medium py-2"
             disabled={isLoading}
+            variant="default"
           >
             {isLoading ? (
               <>

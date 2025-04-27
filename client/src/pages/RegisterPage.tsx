@@ -360,8 +360,9 @@ export default function RegisterPage() {
           
           <Button 
             type="submit"
-            className="w-full mt-4 transition-all hover:shadow-glow"
+            className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90 font-medium py-2 transition-all hover:shadow-glow"
             disabled={isLoading}
+            variant="default"
           >
             {isLoading ? (
               <>
