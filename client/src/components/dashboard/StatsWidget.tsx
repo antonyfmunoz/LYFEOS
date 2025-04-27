@@ -28,7 +28,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
           <StatInfoDialog
             trigger={
               <button 
-                className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#8B5CF6]"
+                className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
                 onClick={(e) => e.stopPropagation()} // Prevent navigation when clicking info button
               >
                 <Info className="h-4 w-4" />
@@ -36,7 +36,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             }
             title="Experience Points (XP)"
             // Violet (Crown)
-            titleColor="text-[#8B5CF6]"
+            titleColor="text-primary"
             description="XP tracks your overall progress and achievements in LYFEOS. Complete quests, log activities, and maintain streaks to increase your level."
             additionalInfo="Higher levels unlock premium features and special abilities within the LYFEOS system."
             statType="experience"
