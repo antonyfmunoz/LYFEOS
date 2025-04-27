@@ -78,12 +78,16 @@ async function awardExperiencePoints(
     let newExperienceMax = userStats.experienceMax;
     let didLevelUp = false;
     
+    // Level 1 threshold is 1000 XP
+    // XP thresholds increase by 20% per level
+    
     // Level up if necessary
-    while (newExperience >= userStats.experienceMax) {
-      newExperience -= userStats.experienceMax;
+    while (newExperience >= newExperienceMax) {
+      newExperience -= newExperienceMax;
       newLevel += 1;
-      newExperienceMax = Math.floor(userStats.experienceMax * 1.2); // 20% increase per level
+      newExperienceMax = Math.floor(newExperienceMax * 1.2); // 20% increase per level
       didLevelUp = true;
+      console.log(`[awardExperiencePoints] User ${userId} leveled up to ${newLevel}!`);
     }
     
     console.log(`[awardExperiencePoints] Calculated new stats for user ${userId}:`, {
@@ -190,7 +194,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createUserStats({
         userId: user.id,
         experienceCurrent: 0,
-        experienceMax: 100,
+        experienceMax: 1000, // Level 1 threshold is 1000 XP
         level: 1,
         timeTokensCurrent: 10,
         timeTokensMax: 10,
@@ -289,7 +293,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.createUserStats({
           userId: newUser.id,
           experienceCurrent: 0,
-          experienceMax: 100,
+          experienceMax: 1000, // Level 1 threshold is 1000 XP
           level: 1,
           timeTokensCurrent: 10,
           timeTokensMax: 10,
@@ -415,7 +419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.createUserStats({
           userId: user.id,
           experienceCurrent: 0,
-          experienceMax: 100,
+          experienceMax: 1000, // Level 1 threshold is 1000 XP
           level: 1,
           timeTokensCurrent: 10,
           timeTokensMax: 10,
