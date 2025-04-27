@@ -82,10 +82,11 @@ async function awardExperiencePoints(
     // XP thresholds increase by 20% per level
     
     // Level up if necessary
+    // Using 1.0372 multiplier to reach ~1,000,000 XP at level 100
     while (newExperience >= newExperienceMax) {
       newExperience -= newExperienceMax;
       newLevel += 1;
-      newExperienceMax = Math.floor(newExperienceMax * 1.2); // 20% increase per level
+      newExperienceMax = Math.floor(newExperienceMax * 1.0372); // Precise scaling to reach 1M XP at level 100
       didLevelUp = true;
       console.log(`[awardExperiencePoints] User ${userId} leveled up to ${newLevel}!`);
     }
@@ -194,7 +195,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createUserStats({
         userId: user.id,
         experienceCurrent: 0,
-        experienceMax: 1000, // Level 1 threshold is 1000 XP
+        experienceMax: 1000, // Level 1 threshold is 1000 XP, scaling to ~1M at level 100
         level: 1,
         timeTokensCurrent: 10,
         timeTokensMax: 10,
@@ -293,7 +294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.createUserStats({
           userId: newUser.id,
           experienceCurrent: 0,
-          experienceMax: 1000, // Level 1 threshold is 1000 XP
+          experienceMax: 1000, // Level 1 threshold is 1000 XP, scaling to ~1M at level 100
           level: 1,
           timeTokensCurrent: 10,
           timeTokensMax: 10,
@@ -419,7 +420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.createUserStats({
           userId: user.id,
           experienceCurrent: 0,
-          experienceMax: 1000, // Level 1 threshold is 1000 XP
+          experienceMax: 1000, // Level 1 threshold is 1000 XP, scaling to ~1M at level 100
           level: 1,
           timeTokensCurrent: 10,
           timeTokensMax: 10,
