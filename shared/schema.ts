@@ -37,7 +37,7 @@ export const userStats = pgTable("user_stats", {
   attentionTokensCurrent: integer("attention_tokens_current").notNull().default(10),
   attentionTokensMax: integer("attention_tokens_max").notNull().default(100),
   experienceCurrent: integer("experience_current").notNull().default(0),
-  experienceMax: integer("experience_max").notNull().default(100),
+  experienceMax: integer("experience_max").notNull().default(1000), // Level 1 threshold is 1000 XP
   level: integer("level").notNull().default(1),
   streakDays: integer("streak_days").notNull().default(0),
   efficiencyScore: integer("efficiency_score").notNull().default(0),

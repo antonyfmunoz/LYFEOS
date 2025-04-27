@@ -24,7 +24,7 @@ const initialStats: UserStats = {
   },
   experience: {
     current: 0,
-    max: 100,
+    max: 1000, // Level 1 threshold is 1000 XP
     level: 1,
   },
   streakDays: 0,
@@ -434,6 +434,9 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
               newExperience = newExperience - prevStats.experience.max;
               newLevel += 1;
               
+              // Calculate new max XP with 1.0372 multiplier for level N+1
+              const newMaxXP = Math.floor(prevStats.experience.max * 1.0372);
+              
               // Show level up toast
               toast({
                 title: "Level Up!",
@@ -442,6 +445,20 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
                 className: "bg-background/80 border border-primary text-foreground",
                 duration: 5000,
               });
+              
+              // Update the client side stats with the new max XP
+              return {
+                ...prevStats,
+                energyPoints: {
+                  ...prevStats.energyPoints,
+                  current: newEnergy,
+                },
+                experience: {
+                  current: newExperience,
+                  max: newMaxXP, // Use the new max XP value
+                  level: newLevel,
+                },
+              };
             }
             
             return {
@@ -482,8 +499,24 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             
             // Level down if experience goes negative
             if (newExperience < 0 && newLevel > 1) {
-              newExperience = prevStats.experience.max + newExperience;
+              // Calculate previous level max XP using the inverse of our multiplier
+              const prevLevelMaxXP = Math.floor(prevStats.experience.max / 1.0372);
+              newExperience = prevLevelMaxXP + newExperience;
               newLevel -= 1;
+              
+              // Return with updated max XP for the previous level
+              return {
+                ...prevStats,
+                energyPoints: {
+                  ...prevStats.energyPoints,
+                  current: newEnergy,
+                },
+                experience: {
+                  current: newExperience,
+                  max: prevLevelMaxXP,
+                  level: newLevel,
+                },
+              };
             } else if (newExperience < 0) {
               newExperience = 0;
             }
