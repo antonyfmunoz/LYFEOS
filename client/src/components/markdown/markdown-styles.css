@@ -1,141 +1,143 @@
-/* Markdown editor styling */
-.markdown-preview {
-  color: #d6f4ff;
-  font-size: 0.95rem;
-  line-height: 1.6;
+/* Styles for Obsidian-like markdown rendering */
+
+/* Task lists */
+.obsidian-task-list-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 0.5em;
+  list-style-type: none;
+}
+
+.task-checkbox {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 1.2em;
+  height: 1.2em;
+  border: 1px solid rgba(139, 190, 232, 0.4);
+  border-radius: 3px;
+  margin-right: 0.5em;
+  background-color: rgba(24, 36, 50, 0.3);
+  cursor: pointer;
+  user-select: none;
+}
+
+.task-checkbox.checked {
+  background-color: rgba(72, 191, 161, 0.2);
+  border-color: rgba(72, 191, 161, 0.4);
+  color: #48bfa1;
+}
+
+.task-text.completed {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+/* Wiki links */
+a[href^="/mission-page/"] {
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(72, 191, 161, 0.5);
+  color: #48bfa1;
+  transition: all 0.2s ease;
+}
+
+a[href^="/mission-page/"]:hover {
+  background-color: rgba(72, 191, 161, 0.1);
+  border-bottom: 1px solid rgba(72, 191, 161, 0.8);
+}
+
+/* Code blocks */
+pre {
+  background-color: rgba(0, 10, 20, 0.6) !important;
+  border: 1px solid rgba(100, 130, 150, 0.2) !important;
+  border-radius: 4px !important;
+}
+
+code {
+  font-family: 'Fira Code', monospace !important;
+  font-size: 0.85em !important;
+}
+
+/* Headings */
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3,
+.markdown-preview h4,
+.markdown-preview h5,
+.markdown-preview h6 {
+  font-family: 'Orbitron', sans-serif;
+  margin-top: 1.5em;
+  margin-bottom: 0.75em;
+  color: #D6F4FF;
 }
 
 .markdown-preview h1 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-top: 1.5rem;
-  margin-bottom: 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid rgba(var(--primary-color-rgb, 0, 224, 255), 0.2);
-  color: rgba(var(--primary-color-rgb, 0, 224, 255), 1);
+  font-size: 1.8em;
+  border-bottom: 1px solid rgba(72, 191, 161, 0.3);
+  padding-bottom: 0.3em;
 }
 
 .markdown-preview h2 {
-  font-size: 1.3rem;
-  font-weight: 600;
-  margin-top: 1.3rem;
-  margin-bottom: 0.8rem;
-  color: rgba(var(--primary-color-rgb, 0, 224, 255), 0.9);
+  font-size: 1.5em;
+  border-bottom: 1px solid rgba(100, 130, 150, 0.2);
+  padding-bottom: 0.2em;
 }
 
-.markdown-preview h3 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-top: 1.1rem;
-  margin-bottom: 0.7rem;
-  color: rgba(var(--primary-color-rgb, 0, 224, 255), 0.8);
-}
-
-.markdown-preview a {
-  color: rgba(var(--primary-color-rgb, 0, 224, 255), 1);
-  text-decoration: none;
-  border-bottom: 1px dotted rgba(var(--primary-color-rgb, 0, 224, 255), 0.5);
-  transition: border-bottom 0.2s ease, color 0.2s ease;
-}
-
-.markdown-preview a:hover {
-  color: rgba(var(--primary-color-rgb, 0, 224, 255), 1);
-  border-bottom: 1px solid rgba(var(--primary-color-rgb, 0, 224, 255), 1);
-}
-
+/* Blockquotes */
 .markdown-preview blockquote {
-  border-left: 3px solid rgba(var(--primary-color-rgb, 0, 224, 255), 0.5);
-  padding-left: 1rem;
-  margin-left: 0;
-  color: #a9c3d2;
-  font-style: italic;
+  border-left: 3px solid rgba(72, 191, 161, 0.5);
+  background-color: rgba(24, 36, 50, 0.3);
+  padding: 0.5em 1em;
+  margin: 1em 0;
 }
 
-.markdown-preview code {
-  font-family: monospace;
-  background-color: rgba(var(--primary-color-rgb, 0, 224, 255), 0.1);
-  padding: 0.2rem 0.4rem;
-  border-radius: 3px;
-  font-size: 0.85em;
-}
-
-.markdown-preview pre {
-  background-color: rgba(0, 0, 0, 0.2);
-  padding: 1rem;
-  border-radius: 5px;
-  overflow-x: auto;
-}
-
-.markdown-preview pre code {
-  background-color: transparent;
-  padding: 0;
-  font-size: 0.9em;
-  color: #d6f4ff;
-}
-
-.markdown-preview ul, .markdown-preview ol {
-  padding-left: 1.5rem;
-  margin-bottom: 1rem;
-}
-
-.markdown-preview li {
-  margin-bottom: 0.5rem;
-}
-
+/* Tables */
 .markdown-preview table {
   border-collapse: collapse;
   width: 100%;
-  margin-bottom: 1rem;
+  margin: 1em 0;
 }
 
-.markdown-preview table th, .markdown-preview table td {
-  border: 1px solid rgba(var(--primary-color-rgb, 0, 224, 255), 0.2);
-  padding: 0.5rem;
+.markdown-preview th,
+.markdown-preview td {
+  border: 1px solid rgba(100, 130, 150, 0.2);
+  padding: 0.5em 0.8em;
 }
 
-.markdown-preview table th {
-  background-color: rgba(var(--primary-color-rgb, 0, 224, 255), 0.1);
-  font-weight: 600;
+.markdown-preview th {
+  background-color: rgba(24, 36, 50, 0.5);
+  font-weight: bold;
 }
 
+.markdown-preview tr:nth-child(even) {
+  background-color: rgba(24, 36, 50, 0.2);
+}
+
+/* Links */
+.markdown-preview a {
+  color: #36F1CD;
+  text-decoration: none;
+}
+
+.markdown-preview a:hover {
+  text-decoration: underline;
+}
+
+/* Lists */
+.markdown-preview ul,
+.markdown-preview ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+/* Horizontal rules */
 .markdown-preview hr {
   border: none;
   height: 1px;
-  background: linear-gradient(
-    to right,
-    transparent,
-    rgba(var(--primary-color-rgb, 0, 224, 255), 0.3),
-    transparent
+  background: linear-gradient(90deg, 
+    rgba(24, 36, 50, 0), 
+    rgba(72, 191, 161, 0.5),
+    rgba(24, 36, 50, 0)
   );
-  margin: 1.5rem 0;
-}
-
-/* Obsidian checkbox styling */
-.obsidian-checkbox {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.2em;
-  height: 1.2em;
-  border-radius: 3px;
-  border: 1px solid var(--primary-color, #00E0FF);
-  margin-right: 8px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  color: var(--primary-color, #00E0FF);
-  background-color: transparent;
-}
-
-.obsidian-checkbox.checked {
-  background-color: rgba(var(--primary-color-rgb, 0, 224, 255), 0.2);
-}
-
-.obsidian-checkbox:hover {
-  background-color: rgba(var(--primary-color-rgb, 0, 224, 255), 0.1);
-  transform: scale(1.05);
-}
-
-.obsidian-task-list-item {
-  list-style-type: none;
-  margin-bottom: 8px;
+  margin: 1.5em 0;
 }

@@ -11,7 +11,6 @@ import { Sparkles, CheckCircle2, Star, Edit2, X, Save, Plus, Trash2 } from "luci
 import { useAuth } from "@/lib/authContext";
 import { useTheme } from "@/lib/themeContext";
 import { apiRequest } from "@/lib/queryClient";
-import { useXp } from "@/lib/xpContext";
 
 // Define interfaces for better type checking
 interface Mission {
@@ -73,7 +72,6 @@ const DEFAULT_BOOSTS: DailyBoost[] = [
 export function DailyInitModal() {
   const { user } = useAuth();
   const { primaryColor } = useTheme();
-  const { awardXp } = useXp();
   const [open, setOpen] = useState(false);
   const [selectedBoosts, setSelectedBoosts] = useState<number[]>([]);
   const [dailyBoosts, setDailyBoosts] = useState<DailyBoost[]>(() => {
@@ -316,28 +314,6 @@ export function DailyInitModal() {
             });
             
             console.log("XP award response:", xpResponse);
-            
-            // Get updated user stats to show XP animation
-            const statsResponse = await fetch(`/api/users/${user.id}/stats`, {
-              credentials: 'include'
-            });
-            
-            if (statsResponse.ok) {
-              const updatedStats = await statsResponse.json();
-              
-              // Was there a level up?
-              const wasLevelUp = updatedStats.experiencePoints >= updatedStats.nextLevelXp;
-              
-              // Show XP animation toast
-              awardXp({
-                amount: xpToAward,
-                fromValue: updatedStats.experiencePoints - xpToAward,
-                toValue: updatedStats.experiencePoints,
-                maxValue: updatedStats.nextLevelXp,
-                levelUp: wasLevelUp,
-                reason: 'Daily boost selection'
-              });
-            }
           }
         }
       } catch (error) {
@@ -421,12 +397,6 @@ export function DailyInitModal() {
                     ? "border-primary/50 bg-primary/10"
                     : "border-border hover:border-primary/30 hover:bg-background/80"
                 }`}
-                onClick={(e) => {
-                  if (!boost.isEditing) {
-                    e.preventDefault();
-                    toggleBoost(boost.id);
-                  }
-                }}
               >
                 {boost.isEditing ? (
                   // Editing mode

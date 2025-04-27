@@ -597,28 +597,10 @@
   margin-right: 0.5em;
   color: var(--primary-color, #00E0FF);
   font-size: 0.8em;
-  cursor: pointer;
-  position: relative;
-  transition: all 0.15s ease-in-out;
-}
-
-.obsidian-checkbox:hover {
-  transform: scale(1.1);
-  background-color: rgba(var(--primary-rgb, 0, 224, 255), 0.1);
-  box-shadow: 0 0 5px rgba(var(--primary-rgb, 0, 224, 255), 0.3);
-}
-
-.obsidian-checkbox:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(var(--primary-rgb, 0, 224, 255), 0.4);
 }
 
 .obsidian-checkbox.checked {
   background-color: var(--primary-bg-subtle, rgba(0, 224, 255, 0.2));
-}
-
-.obsidian-checkbox.checked:hover {
-  background-color: var(--primary-bg-subtle, rgba(0, 224, 255, 0.3));
 }
 
 /* In-editor Markdown styling */

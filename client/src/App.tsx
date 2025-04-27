@@ -4,7 +4,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { LYFEOSProvider } from "./lib/context";
 import { AuthProvider, useAuth } from "./lib/authContext";
 import { ThemeProvider } from "./lib/themeContext";
-import { XpProvider } from "./lib/xpContext";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import DashboardPage from "./pages/DashboardPage";
@@ -59,7 +58,6 @@ import ProgressTrackersPage from "./pages/ProgressTrackersPage";
 import ProgressTrackerFormPage from "./pages/ProgressTrackerFormPage";
 import MediaLibraryPage from "./pages/MediaLibraryPage";
 import MediaDetailPage from "./pages/MediaDetailPage";
-import TaskTest from "./pages/TaskTest";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -520,15 +518,6 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
-      {/* Task List Test Page - Demonstrates clickable checkboxes */}
-      <Route path="/tasks-test">
-        <ProtectedRoute>
-          <RootLayout>
-            <TaskTest />
-          </RootLayout>
-        </ProtectedRoute>
-      </Route>
-      
       {/* Redirect to dashboard if authenticated, or login if not */}
       <Route path="/">
         {isAuthenticated ? (
@@ -550,12 +539,10 @@ function App() {
       <FirebaseOAuthHandler>
         <LYFEOSProvider>
           <ThemeProvider>
-            <XpProvider>
-              <DndProvider backend={HTML5Backend}>
-                <Router />
-                <Toaster />
-              </DndProvider>
-            </XpProvider>
+            <DndProvider backend={HTML5Backend}>
+              <Router />
+              <Toaster />
+            </DndProvider>
           </ThemeProvider>
         </LYFEOSProvider>
       </FirebaseOAuthHandler>
