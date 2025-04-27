@@ -42,6 +42,80 @@ const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
   return res.status(401).json({ error: "Authentication required" });
 };
 
+// Helper functions for XP calculations
+/**
+ * Calculate the XP required for a given level based on the exponential growth curve
+ * @param level The level to calculate XP for
+ * @returns The XP required for this level
+ */
+function calculateXPForLevel(level: number): number {
+  // Base XP for level 1 is 1000
+  if (level <= 1) return 1000;
+  
+  // Calculate based on which tier the level falls into
+  if (level <= 10) {
+    // Tier 1 (Levels 1-10): Lighter growth rate - ~5% per level
+    return Math.floor(1000 * Math.pow(1.05, level - 1));
+  } else if (level <= 50) {
+    // Tier 2 (Levels 11-50): Moderate growth rate - ~7% per level
+    // Get the XP at level 10, then apply multiplier from there
+    const level10XP = calculateXPForLevel(10);
+    return Math.floor(level10XP * Math.pow(1.07, level - 10));
+  } else {
+    // Tier 3 (Levels 51-100): Steep growth rate - ~9% per level
+    // Get the XP at level 50, then apply multiplier from there
+    const level50XP = calculateXPForLevel(50);
+    return Math.floor(level50XP * Math.pow(1.09, level - 50));
+  }
+}
+
+/**
+ * Calculate the total XP required to reach a given level
+ * @param level The level to calculate total XP for
+ * @returns The cumulative XP required to reach this level
+ */
+function calculateTotalXPForLevel(level: number): number {
+  if (level <= 1) return 0; // No XP needed for level 1
+  
+  let totalXP = 0;
+  // Sum up the XP required for each level
+  for (let i = 1; i < level; i++) {
+    totalXP += calculateXPForLevel(i);
+  }
+  
+  return totalXP;
+}
+
+/**
+ * Calculate level and progress based on total XP
+ * @param totalXP The user's total XP
+ * @returns Object with level, current and max XP
+ */
+function calculateLevelFromTotalXP(totalXP: number): { 
+  level: number; 
+  current: number; 
+  max: number; 
+} {
+  // Start at level 1
+  let level = 1;
+  
+  // Keep incrementing level until we find the right one
+  while (calculateTotalXPForLevel(level + 1) <= totalXP) {
+    level++;
+    
+    // Prevent infinite loops by stopping at level 100
+    if (level >= 100) break;
+  }
+  
+  // Calculate current XP within this level
+  const xpForThisLevel = calculateTotalXPForLevel(level);
+  const xpForNextLevel = calculateTotalXPForLevel(level + 1);
+  const current = totalXP - xpForThisLevel;
+  const max = xpForNextLevel - xpForThisLevel;
+  
+  return { level, current, max };
+}
+
 // Helper function to award XP
 async function awardExperiencePoints(
   userId: number, 
@@ -56,59 +130,53 @@ async function awardExperiencePoints(
     } 
   }; 
   levelUp: boolean;
+  totalXP?: number;
 }> {
   try {
-    // Get current user stats
+    // Get current user stats and profile
     console.log(`[awardExperiencePoints] Getting stats for user ${userId}`);
     const userStats = await storage.getUserStats(userId);
-    if (!userStats) {
-      console.error(`[awardExperiencePoints] No stats found for user ${userId}`);
+    const userProfile = await storage.getUserProfile(userId);
+    
+    if (!userStats || !userProfile) {
+      console.error(`[awardExperiencePoints] No stats or profile found for user ${userId}`);
       return { success: false, levelUp: false };
     }
     
-    console.log(`[awardExperiencePoints] Current stats for user ${userId}:`, {
-      current: userStats.experienceCurrent,
-      max: userStats.experienceMax,
-      level: userStats.level
-    });
+    // Calculate new total XP
+    const oldTotalXP = userProfile.totalXP || 0;
+    const newTotalXP = oldTotalXP + amount;
     
-    // Calculate new XP level
-    let newExperience = userStats.experienceCurrent + amount;
-    let newLevel = userStats.level;
-    let newExperienceMax = userStats.experienceMax;
-    let didLevelUp = false;
+    // Get old level info
+    const oldLevelInfo = calculateLevelFromTotalXP(oldTotalXP);
     
-    // Level 1 threshold is 1000 XP
-    // XP thresholds increase by 20% per level
+    // Get new level info
+    const newLevelInfo = calculateLevelFromTotalXP(newTotalXP);
     
-    // Level up if necessary
-    // Using 1.0372 multiplier to reach ~1,000,000 XP at level 100
-    while (newExperience >= newExperienceMax) {
-      newExperience -= newExperienceMax;
-      newLevel += 1;
-      newExperienceMax = Math.floor(newExperienceMax * 1.0372); // Precise scaling to reach 1M XP at level 100
-      didLevelUp = true;
-      console.log(`[awardExperiencePoints] User ${userId} leveled up to ${newLevel}!`);
+    // Determine if user leveled up
+    const didLevelUp = newLevelInfo.level > oldLevelInfo.level;
+    
+    if (didLevelUp) {
+      console.log(`[awardExperiencePoints] User ${userId} leveled up from ${oldLevelInfo.level} to ${newLevelInfo.level}!`);
     }
     
-    console.log(`[awardExperiencePoints] Calculated new stats for user ${userId}:`, {
-      experienceCurrent: newExperience,
-      level: newLevel,
-      experienceMax: newExperienceMax,
-      didLevelUp
+    console.log(`[awardExperiencePoints] New stats for user ${userId}:`, {
+      totalXP: newTotalXP,
+      level: newLevelInfo.level,
+      current: newLevelInfo.current,
+      max: newLevelInfo.max
     });
     
-    // Update user stats
+    // Update user profile with new total XP
+    await storage.updateUserProfile(userId, {
+      totalXP: newTotalXP
+    });
+    
+    // Update user stats with new level info
     const updatedStats = await storage.updateUserStats(userId, {
-      experienceCurrent: newExperience,
-      level: newLevel,
-      experienceMax: newExperienceMax
-    });
-    
-    console.log(`[awardExperiencePoints] Updated stats for user ${userId}:`, {
-      current: updatedStats.experienceCurrent,
-      max: updatedStats.experienceMax,
-      level: updatedStats.level
+      experienceCurrent: newLevelInfo.current,
+      experienceMax: newLevelInfo.max,
+      level: newLevelInfo.level
     });
     
     return { 
@@ -120,7 +188,8 @@ async function awardExperiencePoints(
           level: updatedStats.level
         }
       },
-      levelUp: didLevelUp
+      levelUp: didLevelUp,
+      totalXP: newTotalXP
     };
   } catch (error) {
     console.error("Error awarding XP:", error);

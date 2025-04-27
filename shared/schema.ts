@@ -69,6 +69,7 @@ export const userProfile = pgTable("user_profile", {
   primaryThemeColor: text("primary_theme_color").default("#00e0ff"), // Chosen theme color
   futureSelfSummary: text("future_self_summary"), // optional, filled after Future Self Design mission
   aiPersonalityProfile: jsonb("ai_personality_profile").default({}), // To store later 12Types results after full archetype mission
+  totalXP: integer("total_xp").notNull().default(0), // Total accumulated XP (New XP system)
   onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -388,6 +389,7 @@ export const insertUserProfileSchema = createInsertSchema(userProfile).pick({
   primaryThemeColor: true,
   futureSelfSummary: true,
   aiPersonalityProfile: true,
+  totalXP: true,
   onboardingCompleted: true,
 });
 
