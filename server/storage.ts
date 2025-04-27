@@ -281,6 +281,14 @@ export class DatabaseStorage implements IStorage {
   }
   
   async updateUser(id: number, userData: Partial<Omit<InsertUser, 'password'>>): Promise<User> {
+    // Check if there's anything to update
+    if (Object.keys(userData).length === 0) {
+      // If no updates, just return the current user data
+      const [user] = await db.select().from(users).where(eq(users.id, id));
+      return user;
+    }
+    
+    // Otherwise perform the update
     const [updatedUser] = await db
       .update(users)
       .set(userData)

@@ -565,11 +565,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         bio, 
         avatarColor, 
         title, 
-        profilePicture, 
-        onboardingCompleted,
-        startStage,
-        targetArchetype,
-        coreMotivation
+        profilePicture
       } = req.body;
       
       // Create update object with only specified fields
@@ -579,19 +575,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (avatarColor !== undefined) updateData.avatarColor = avatarColor;
       if (title !== undefined) updateData.title = title;
       if (profilePicture !== undefined) updateData.profilePicture = profilePicture;
-      if (onboardingCompleted !== undefined) updateData.onboardingCompleted = onboardingCompleted;
-      if (startStage !== undefined) updateData.startStage = startStage;
-      if (targetArchetype !== undefined) updateData.targetArchetype = targetArchetype;
-      if (coreMotivation !== undefined) updateData.coreMotivation = coreMotivation;
       
       // Log the update data for debugging
-      console.log("Profile update data:", updateData);
+      console.log("User profile update data:", updateData);
       
       const updatedUser = await storage.updateUser(userId, updateData);
       
       // Return user data without the password
       const { password, ...userData } = updatedUser;
       res.json(userData);
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Specific endpoint for UserProfile schema (not user)
+  app.patch("/api/users/:userId/user-profile", isOwner, async (req: Request, res: Response) => {
+    const userId = parseInt(req.params.userId);
+    try {
+      // Parse the update data
+      const { 
+        onboardingCompleted,
+        startStage,
+        targetArchetype, 
+        coreMotivation,
+        flowStyle,
+        setupMissionStatus,
+        primaryThemeColor,
+        futureSelfSummary,
+        aiPersonalityProfile
+      } = req.body;
+      
+      // Create update object with only specified fields
+      const updateData: any = {};
+      if (onboardingCompleted !== undefined) updateData.onboardingCompleted = onboardingCompleted;
+      if (startStage !== undefined) updateData.startStage = startStage;
+      if (targetArchetype !== undefined) updateData.targetArchetype = targetArchetype;
+      if (coreMotivation !== undefined) updateData.coreMotivation = coreMotivation;
+      if (flowStyle !== undefined) updateData.flowStyle = flowStyle;
+      if (setupMissionStatus !== undefined) updateData.setupMissionStatus = setupMissionStatus;
+      if (primaryThemeColor !== undefined) updateData.primaryThemeColor = primaryThemeColor;
+      if (futureSelfSummary !== undefined) updateData.futureSelfSummary = futureSelfSummary;
+      if (aiPersonalityProfile !== undefined) updateData.aiPersonalityProfile = aiPersonalityProfile;
+      
+      // Log for debugging
+      console.log("Updating user_profile with data:", updateData);
+      
+      // Check if profile exists and create or update accordingly
+      const existingProfile = await storage.getUserProfile(userId);
+      
+      let updatedProfile;
+      if (existingProfile) {
+        updatedProfile = await storage.updateUserProfile(userId, updateData);
+        console.log("Updated existing profile for user:", userId);
+      } else {
+        // Create a new profile if none exists
+        updateData.userId = userId; // Required for creation
+        updatedProfile = await storage.createUserProfile(updateData);
+        console.log("Created new profile for user:", userId);
+      }
+      
+      res.json(updatedProfile);
     } catch (error) {
       console.error("Error updating user profile:", error);
       res.status(500).json({ error: "Internal server error" });
