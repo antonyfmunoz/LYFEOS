@@ -26,6 +26,8 @@ const initialStats: UserStats = {
     current: 0,
     max: 1000, // Level 1 threshold is 1000 XP
     level: 1,
+    totalXP: 0,
+    showLevelUp: false,
   },
   streakDays: 0,
   efficiencyScore: 0,

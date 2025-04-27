@@ -19,6 +19,8 @@ export interface UserStats {
     current: number;
     max: number;
     level: number;
+    totalXP?: number; // Total accumulated XP for the new system
+    showLevelUp?: boolean; // Flag to trigger level-up animation
   };
   streakDays: number;
   efficiencyScore: number;
