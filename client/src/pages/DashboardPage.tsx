@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useLYFEOS } from '@/lib/context';
 import { usePageTitle } from '@/hooks/use-page-title';
+import { UserStats } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { MarkdownEditor } from '@/components/ui/markdown-editor';
 import { CustomTimePicker } from '@/components/ui/custom-time-picker';
@@ -62,7 +63,7 @@ export default function DashboardPage() {
   // Set the page title
   usePageTitle('Dashboard');
   
-  const { stats, username, events } = useLYFEOS();
+  const { stats, username, events, updateUserStats } = useLYFEOS();
   const { toast } = useToast();
   
   // Level-up modal state
@@ -415,6 +416,30 @@ export default function DashboardPage() {
       <div className="dashboard-container">
         <AIAgentFAB />
         <DailyInitModal />
+        
+        {/* Level-up modal - shows when user levels up */}
+        <LevelUpModal 
+          level={stats.experience.level} 
+          primaryColor={stats.primaryColor}
+          isOpen={isLevelUpModalOpen}
+          onClose={() => {
+            // Reset the level-up modal state
+            setIsLevelUpModalOpen(false);
+            
+            // Update stats to turn off the showLevelUp flag so it doesn't show again
+            if (stats?.experience?.showLevelUp) {
+              // Create an updated copy of stats with showLevelUp set to false
+              const updatedStats = {
+                ...stats,
+                experience: {
+                  ...stats.experience,
+                  showLevelUp: false
+                }
+              };
+              updateUserStats(updatedStats);
+            }
+          }}
+        />
         
         {/* Daily Dashboard Header */}
         <div className="mb-4 flex items-center">
