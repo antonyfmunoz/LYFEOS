@@ -49,19 +49,19 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center">
-              <Award className="h-3 w-3 text-[#8B5CF6] mr-1" />
+              <Award className="h-3 w-3 text-primary mr-1" />
               <h3 className="font-orbitron text-[#D6F4FF] text-xs">LEVEL</h3>
             </div>
           </div>
           <div className="progress-bar progress-xp h-1.5 mb-1">
-            <div className="progress-fill" style={{ width: `${xpPercentage}%`, backgroundColor: "#8B5CF6" }}></div>
+            <div className="progress-fill" style={{ width: `${xpPercentage}%`, backgroundColor: "var(--primary)" }}></div>
           </div>
           <div className="flex justify-between">
             <span className="text-[#D6F4FF] font-mono text-sm">
               {stats.experience.level}
             </span>
             <span className="text-[#D6F4FF] font-mono text-xs">
-              {stats.experience.current}/{stats.experience.max} XP
+              {stats.experience.current.toLocaleString()}/{stats.experience.max.toLocaleString()} XP
             </span>
           </div>
         </div>
