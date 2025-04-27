@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import { Button } from '@/components/ui/button';
 import { PenLine, Eye, Save } from 'lucide-react';
 import { useLocation } from 'wouter';
-import MarkdownWithTasks from './MarkdownWithTasks';
+import ObsidianTaskList from './ObsidianTaskList';
 import './markdown-styles.css';
 
 interface MarkdownEditorProps {
@@ -89,98 +93,7 @@ export default function MarkdownEditor({
     );
   };
 
-  // Insert auto bullet on Enter
-  const insertAutoBullet = (textarea: HTMLTextAreaElement) => {
-    if (!textarea) return;
-    
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    
-    // Get the current line
-    const textBeforeCursor = editableContent.substring(0, start);
-    const textAfterCursor = editableContent.substring(end);
-    
-    // Find the start of the current line
-    const lastNewlineBeforeCursor = textBeforeCursor.lastIndexOf('\n');
-    const currentLineStart = lastNewlineBeforeCursor === -1 ? 0 : lastNewlineBeforeCursor + 1;
-    const currentLine = textBeforeCursor.substring(currentLineStart);
-    
-    // Check if current line starts with a bullet
-    const bulletMatch = currentLine.match(/^(\s*)([-*+•]|(\d+)\.)(\s+)(.*)/);
-    
-    if (bulletMatch) {
-      // Extract the components of the bullet point
-      const [, leadingSpace, bulletType, numberPart, bulletSpace, content] = bulletMatch;
-      
-      // If the content is empty and it's not the first bullet, remove the bullet
-      if (content.trim() === '') {
-        const newValue = textBeforeCursor.substring(0, currentLineStart) + textAfterCursor;
-        setEditableContent(newValue);
-        onChange(newValue);
-        setIsDirty(true);
-        
-        // Set cursor position after removal
-        const newCursorPos = currentLineStart;
-        setTimeout(() => {
-          textarea.setSelectionRange(newCursorPos, newCursorPos);
-        }, 0);
-        return;
-      }
-      
-      // Generate the next bullet
-      let nextBullet: string;
-      if (bulletType === '-' || bulletType === '*' || bulletType === '+' || bulletType === '•') {
-        // For standard bullets, just repeat the same type
-        nextBullet = `${leadingSpace}${bulletType}${bulletSpace}`;
-      } else if (numberPart) {
-        // For numbered lists, increment the number
-        const nextNumber = parseInt(numberPart) + 1;
-        nextBullet = `${leadingSpace}${nextNumber}.${bulletSpace}`;
-      } else {
-        // Fallback to a standard bullet
-        nextBullet = `${leadingSpace}- `;
-      }
-      
-      const newValue = textBeforeCursor + '\n' + nextBullet + textAfterCursor;
-      setEditableContent(newValue);
-      onChange(newValue);
-      setIsDirty(true);
-      
-      // Position cursor after the new bullet
-      const newCursorPos = start + 1 + nextBullet.length;
-      setTimeout(() => {
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
-      }, 0);
-    } else {
-      // Never add bullets automatically
-      if (false) {
-        const newValue = textBeforeCursor + '\n- ' + textAfterCursor;
-        setEditableContent(newValue);
-        onChange(newValue);
-        setIsDirty(true);
-        
-        // Position cursor after the new bullet
-        const newCursorPos = start + 3;
-        setTimeout(() => {
-          textarea.setSelectionRange(newCursorPos, newCursorPos);
-        }, 0);
-      } else {
-        // Just add a normal newline
-        const newValue = textBeforeCursor + '\n' + textAfterCursor;
-        setEditableContent(newValue);
-        onChange(newValue);
-        setIsDirty(true);
-        
-        // Position cursor after the newline
-        const newCursorPos = start + 1;
-        setTimeout(() => {
-          textarea.setSelectionRange(newCursorPos, newCursorPos);
-        }, 0);
-      }
-    }
-  };
-
-  // Handle keyboard shortcuts and navigation in the textarea
+  // Handle keyboard shortcuts in the textarea
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Handle tab key for indentation
     if (e.key === 'Tab') {
@@ -207,13 +120,7 @@ export default function MarkdownEditor({
       }, 0);
     }
     
-    // Auto-generate bullet points disabled
-    if (false) {
-      e.preventDefault();
-      insertAutoBullet(e.currentTarget);
-    }
-    
-    // Handle Markdown shortcuts
+    // Handle Markdown shortcuts (Ctrl+B for bold)
     if (e.key === 'b' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       const textarea = e.currentTarget;
@@ -239,11 +146,45 @@ export default function MarkdownEditor({
   // Process the content for display
   const processedContent = processWikiLinks(editableContent);
   
-  // Allow clicking wiki links in view mode
-  const handleMarkdownClick = (e: React.MouseEvent) => {
+  // Toggle a task checkbox in the markdown content
+  const handleTaskToggle = (index: number, checked: boolean) => {
+    if (readOnly) return;
+    
+    const lines = editableContent.split('\n');
+    let taskCount = 0;
+    
+    const newLines = lines.map(line => {
+      // Check if this line is a task
+      if (line.match(/^- \[[ x]\]/)) {
+        // If this is the task we're toggling
+        if (taskCount === index) {
+          // Toggle the checkbox
+          return checked 
+            ? line.replace(/^- \[ \]/, '- [x]') 
+            : line.replace(/^- \[x\]/, '- [ ]');
+        }
+        taskCount++;
+      }
+      return line;
+    });
+    
+    const newContent = newLines.join('\n');
+    setEditableContent(newContent);
+    onChange(newContent);
+    setIsDirty(true);
+    
+    // Auto-save on task toggle
+    if (onSave) {
+      onSave();
+      lastSavedContentRef.current = newContent;
+      setIsDirty(false);
+    }
+  };
+
+  // Handle wiki link clicks
+  const handleWikiLinkClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     
-    // Handle wiki link clicks
     if (target.tagName === 'A' && target.getAttribute('href')?.startsWith('/mission-page/')) {
       e.preventDefault();
       navigate(target.getAttribute('href') || '');
@@ -311,25 +252,55 @@ export default function MarkdownEditor({
             <div 
               className="markdown-preview p-4 prose prose-invert prose-sm max-w-none overflow-auto"
               style={{ maxHeight: '500px' }}
-              onClick={handleMarkdownClick}
+              onClick={handleWikiLinkClick}
             >
-              <MarkdownWithTasks
-                content={processedContent}
-                onChange={(newContent) => {
-                  setEditableContent(newContent);
-                  onChange(newContent);
-                  setIsDirty(true);
-                  
-                  // Auto-save on task toggle
-                  if (onSave) {
-                    onSave();
-                    lastSavedContentRef.current = newContent;
-                    setIsDirty(false);
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm, remarkMath]}
+                rehypePlugins={[rehypeKatex]}
+                components={{
+                  li: ({ node, className, children, ...props }: any) => {
+                    // Handle task list items
+                    if (props.checked !== undefined) {
+                      // Find the task index by counting preceding task items
+                      let taskIndex = 0;
+                      const lines = editableContent.split('\n');
+                      let lineIndex = 0;
+                      
+                      // Search for this task in the content
+                      for (let i = 0; i < lines.length; i++) {
+                        const line = lines[i];
+                        if (line.match(/^- \[[ x]\]/)) {
+                          // If we found a task that matches our current state
+                          const isCurrentChecked = line.includes('[x]');
+                          if (isCurrentChecked === props.checked) {
+                            // If we've found enough matching tasks to reach our index
+                            if (lineIndex === taskIndex) {
+                              taskIndex = lineIndex;
+                              break;
+                            }
+                            taskIndex++;
+                          }
+                          lineIndex++;
+                        }
+                      }
+                      
+                      return (
+                        <ObsidianTaskList
+                          checked={props.checked}
+                          onChange={(newChecked) => handleTaskToggle(taskIndex, newChecked)}
+                          readOnly={readOnly}
+                        >
+                          {children}
+                        </ObsidianTaskList>
+                      );
+                    }
+                    // Regular list items
+                    return <li className={className} {...props}>{children}</li>;
                   }
                 }}
-                onSave={onSave}
-                readOnly={readOnly}
-              />
+              >
+                {processedContent || placeholder}
+              </ReactMarkdown>
             </div>
           )}
         </div>
