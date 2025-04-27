@@ -62,22 +62,27 @@ import MediaDetailPage from "./pages/MediaDetailPage";
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const [, navigate] = useLocation();
+  const hasAttemptedRedirect = React.useRef(false);
   
   // Redirect to login if user is not authenticated and not loading
   useEffect(() => {
-    if (!isAuthenticated && !isLoading) {
-      navigate("/login");
+    // Only redirect once if not authenticated after loading completes
+    if (!isAuthenticated && !isLoading && !hasAttemptedRedirect.current) {
+      console.log("Not authenticated, redirecting to login from protected route");
+      hasAttemptedRedirect.current = true;
+      navigate("/login", { replace: true });
     }
   }, [isAuthenticated, isLoading, navigate]);
   
-  // Show empty div while checking authentication
+  // Show loading spinner while checking authentication
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
     </div>;
   }
   
-  // If authenticated, render the children
+  // If authenticated, render the children, otherwise show nothing
+  // (redirect happens via useEffect)
   return isAuthenticated ? <>{children}</> : null;
 }
 
@@ -85,34 +90,57 @@ function Router() {
   const { isAuthenticated, isLoading } = useAuth();
   const [, navigate] = useLocation();
   
+  // Track if we've already attempted a redirect for the current route
+  const routeRedirectRef = React.useRef<string | null>(null);
+  
   // Redirect from root to dashboard if authenticated, or to login if not
   useEffect(() => {
-    if (!isLoading) {
-      // Handle root path redirects
-      if (window.location.pathname === '/') {
-        if (isAuthenticated) {
-          navigate('/dashboard');
-        } else {
-          navigate('/login');
-        }
+    if (isLoading) {
+      return; // Wait until auth state is determined
+    }
+    
+    const currentPath = window.location.pathname;
+    
+    // Skip if we've already redirected for this path
+    if (routeRedirectRef.current === currentPath) {
+      return;
+    }
+    
+    // Handle root path redirects
+    if (currentPath === '/') {
+      routeRedirectRef.current = currentPath;
+      if (isAuthenticated) {
+        console.log('Authenticated at root, redirecting to dashboard');
+        navigate('/dashboard', { replace: true });
+      } else {
+        console.log('Not authenticated at root, redirecting to login');
+        navigate('/login', { replace: true });
       }
-      
-      // Also redirect protected paths to login if not authenticated
-      // Note: We don't include /onboarding in protected paths because we need to reach it after login
-      const protectedPaths = ['/dashboard', '/profile', '/systems', '/chronilog', '/kanban'];
-      const currentPath = window.location.pathname;
-      // Skip this check for /onboarding path - needed for new users
-      if (currentPath.startsWith('/onboarding')) {
-        console.log('Allowing access to onboarding path for authentication flow');
-        return;
-      }
-      
-      const isProtectedPath = protectedPaths.some(path => currentPath.startsWith(path));
-      
-      if (isProtectedPath && !isAuthenticated) {
-        console.log('Unauthorized access attempt to protected path:', currentPath);
-        navigate('/login');
-      }
+      return;
+    }
+    
+    // Skip onboarding path protection - needed for new users
+    if (currentPath.startsWith('/onboarding')) {
+      console.log('Allowing access to onboarding path for authentication flow');
+      return;
+    }
+    
+    // Skip login/register page protection
+    if (currentPath === '/login' || currentPath === '/register') {
+      return;
+    }
+    
+    // Public paths that don't require auth
+    const publicPaths = ['/login', '/register'];
+    if (publicPaths.some(path => currentPath.startsWith(path))) {
+      return;
+    }
+    
+    // All other paths are considered protected
+    if (!isAuthenticated) {
+      console.log('Unauthorized access attempt to protected path:', currentPath);
+      routeRedirectRef.current = currentPath;
+      navigate('/login', { replace: true });
     }
   }, [isAuthenticated, isLoading, navigate]);
 

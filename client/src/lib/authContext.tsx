@@ -58,17 +58,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await fetch("/api/auth/me");
+        // First try to get cached user from localStorage for immediate UI update
+        const cachedUser = localStorage.getItem("lyfeos_user");
+        if (cachedUser) {
+          try {
+            const parsedUser = JSON.parse(cachedUser);
+            if (parsedUser && parsedUser.id) {
+              console.log("Using cached user data from localStorage:", parsedUser);
+              setUser(parsedUser);
+              // Don't set isLoading to false yet - still verify with server
+            }
+          } catch (e) {
+            console.error("Failed to parse cached user data:", e);
+          }
+        }
+        
+        // Then verify with server
+        const response = await fetch("/api/auth/me", {
+          credentials: "include" // Ensure cookies are sent with the request
+        });
         
         if (response.ok) {
           const data = await response.json();
+          console.log("Server auth check successful, user data:", data.user);
           setUser(data.user);
+          // Update localStorage with latest data
+          localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
         } else {
+          console.log("Not authenticated with server, clearing local user data");
           // Clear any stored user data if not authenticated
+          setUser(null);
           localStorage.removeItem("lyfeos_user");
         }
       } catch (error) {
         console.error("Failed to check authentication status:", error);
+        // On error, keep the cached user if we have one, otherwise clear
+        if (!user) {
+          localStorage.removeItem("lyfeos_user");
+        }
       } finally {
         setIsLoading(false);
       }
