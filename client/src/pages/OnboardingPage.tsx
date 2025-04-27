@@ -69,6 +69,11 @@ export default function OnboardingPage() {
   const { primaryColor, setPrimaryColor } = useTheme();
   const [, navigate] = useLocation();
   
+  // Debug log to show current user data
+  useEffect(() => {
+    console.log("OnboardingPage - Current user data:", user);
+  }, [user]);
+  
   // Get onboarding data from localStorage if present
   useEffect(() => {
     const storedData = localStorage.getItem("onboarding_data");
@@ -388,7 +393,7 @@ export default function OnboardingPage() {
                     variants={fadeInUp}
                     className="text-muted-foreground"
                   >
-                    Hello, {formData.displayName || user?.username || "Commander"}. Let's set up your operating system.
+                    Hello, {user?.username || formData.displayName || "Commander"}. Let's set up your operating system.
                   </motion.p>
                 </motion.div>
               )}
