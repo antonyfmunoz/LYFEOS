@@ -539,15 +539,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const userId = parseInt(req.params.userId);
     try {
       // Ensure the password cannot be updated through this endpoint
-      const { displayName, bio, avatarColor, title, profilePicture } = req.body;
+      const { 
+        displayName, 
+        bio, 
+        avatarColor, 
+        title, 
+        profilePicture, 
+        onboardingCompleted,
+        startStage,
+        targetArchetype,
+        coreMotivation
+      } = req.body;
       
-      const updatedUser = await storage.updateUser(userId, {
-        displayName,
-        bio,
-        avatarColor,
-        title,
-        profilePicture
-      });
+      // Create update object with only specified fields
+      const updateData: any = {};
+      if (displayName !== undefined) updateData.displayName = displayName;
+      if (bio !== undefined) updateData.bio = bio;
+      if (avatarColor !== undefined) updateData.avatarColor = avatarColor;
+      if (title !== undefined) updateData.title = title;
+      if (profilePicture !== undefined) updateData.profilePicture = profilePicture;
+      if (onboardingCompleted !== undefined) updateData.onboardingCompleted = onboardingCompleted;
+      if (startStage !== undefined) updateData.startStage = startStage;
+      if (targetArchetype !== undefined) updateData.targetArchetype = targetArchetype;
+      if (coreMotivation !== undefined) updateData.coreMotivation = coreMotivation;
+      
+      // Log the update data for debugging
+      console.log("Profile update data:", updateData);
+      
+      const updatedUser = await storage.updateUser(userId, updateData);
       
       // Return user data without the password
       const { password, ...userData } = updatedUser;

@@ -234,6 +234,30 @@ export default function OnboardingPage() {
         throw new Error(errorData.error || "Failed to save onboarding data");
       }
       
+      // Award XP for completing onboarding (100 XP)
+      try {
+        console.log("Awarding 100 XP for completing onboarding");
+        const xpResponse = await fetch(`/api/users/${user.id}/award-xp`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            amount: 100,
+            reason: 'Onboarding completed'
+          }),
+          credentials: 'include'
+        });
+        
+        if (!xpResponse.ok) {
+          console.error("Failed to award XP for onboarding", await xpResponse.text());
+        } else {
+          console.log("Successfully awarded 100 XP for completing onboarding");
+        }
+      } catch (error) {
+        console.error("Error awarding XP for onboarding:", error);
+      }
+      
       // Clear temporary onboarding data
       localStorage.removeItem("onboarding_data");
       
