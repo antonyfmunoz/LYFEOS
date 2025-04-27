@@ -20,20 +20,26 @@ interface MarkdownEditorProps {
 }
 
 // Create a custom renderer for task lists to match Obsidian style
-const TaskListRenderer = ({ checked, children }: { checked: boolean; children: React.ReactNode }) => (
-  <div className="obsidian-task-list-item">
-    <span 
-      className={`task-checkbox ${checked ? 'checked' : ''}`}
-      role="checkbox"
-      aria-checked={checked}
-      tabIndex={0}
-      data-task-item="true"
-    >
-      {checked ? '✓' : ' '}
-    </span>
-    <span className={`task-text ${checked ? 'completed' : ''}`}>{children}</span>
-  </div>
-);
+const TaskListRenderer = ({ checked, children }: { checked: boolean; children: React.ReactNode }) => {
+  // When clicked, the handleTaskToggle function will find this element and toggle it
+  return (
+    <li className="obsidian-task-list-item" style={{ listStyleType: 'none' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+        <span 
+          className={`task-checkbox ${checked ? 'checked' : ''}`}
+          role="checkbox"
+          aria-checked={checked}
+          tabIndex={0}
+          data-task-item="true"
+          style={{ cursor: 'pointer' }}
+        >
+          {checked ? '✓' : ' '}
+        </span>
+        <span className={`task-text ${checked ? 'completed' : ''}`}>{children}</span>
+      </div>
+    </li>
+  );
+};
 
 export default function MarkdownEditor({
   content,
@@ -262,16 +268,19 @@ export default function MarkdownEditor({
     // Check if the clicked element is a task checkbox or has the data-task-item attribute
     if (target.classList.contains('task-checkbox') || 
         target.getAttribute('data-task-item') === 'true' ||
-        target.parentElement?.classList.contains('obsidian-task-list-item')) {
+        target.closest('.obsidian-task-list-item')) {
       
       if (isEditing || readOnly) return; // Only toggle in view mode and when not readOnly
       
-      const taskElement = 
-        target.classList.contains('task-checkbox') || target.getAttribute('data-task-item') === 'true'
-          ? target.closest('.obsidian-task-list-item') || target.parentElement 
-          : target;
+      // Find the closest task list item 
+      const taskElement = target.closest('.obsidian-task-list-item') || 
+                         (target.classList.contains('task-checkbox') ? target.parentElement?.parentElement : null);
+      
+      if (!taskElement) return; // Guard clause if we couldn't find the task element
           
-      const isChecked = taskElement?.querySelector('.task-checkbox')?.classList.contains('checked');
+      const isChecked = taskElement.querySelector('.task-checkbox')?.classList.contains('checked');
+      
+      console.log('Task clicked:', { isChecked, taskElement });
       
       // Find the task item in the content and toggle it
       const lines = editableContent.split('\n');
@@ -289,6 +298,7 @@ export default function MarkdownEditor({
         for (let i = 0; i < allTaskItems.length; i++) {
           if (allTaskItems[i] === taskElement) {
             clickedTaskIndex = i;
+            console.log('Found clicked task at index:', clickedTaskIndex);
             break;
           }
         }
@@ -315,6 +325,32 @@ export default function MarkdownEditor({
           taskIndex++;
         } else {
           updatedContent += line + (i < lines.length - 1 ? '\n' : '');
+        }
+      }
+      
+      // If we couldn't find the task by index (fallback to the old method)
+      if (!found) {
+        // Reset the updatedContent
+        updatedContent = '';
+        
+        // Try a more generic approach: toggle the first matching task
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          
+          if (!found && 
+              ((isChecked && line.match(/^- \[x\]/)) || 
+               (!isChecked && line.match(/^- \[ \]/)))) {
+            // Toggle the checkbox state
+            const newLine = isChecked 
+              ? line.replace(/^- \[x\]/, '- [ ]') 
+              : line.replace(/^- \[ \]/, '- [x]');
+            
+            updatedContent += newLine + (i < lines.length - 1 ? '\n' : '');
+            found = true;
+            console.log('Toggled task using fallback method');
+          } else {
+            updatedContent += line + (i < lines.length - 1 ? '\n' : '');
+          }
         }
       }
       
