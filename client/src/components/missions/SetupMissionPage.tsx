@@ -20,7 +20,7 @@ export default function SetupMissionPage() {
   const params = useParams();
   const slug = params.slug || '';
   const { toast } = useToast();
-  const { missionPages, updateMissionPage, getMissionPageBySlug } = useLYFEOS();
+  const { missionPages, updateMissionPage, getMissionPageBySlug, user } = useLYFEOS();
   
   // Load mission page by slug
   const missionPage = getMissionPageBySlug(slug);
@@ -90,20 +90,42 @@ export default function SetupMissionPage() {
   
   // Handle saving content
   const handleSave = () => {
-    if (missionPage) {
-      updateMissionPage(missionPage.id, {
-        content,
-        updatedAt: new Date().toISOString()
-      });
-      
-      toast({
-        title: "Mission Progress Saved",
-        description: "Your progress has been saved successfully",
-        variant: "default",
-        className: "bg-background/80 border border-primary text-foreground",
-        duration: 3000,
-      });
+    if (missionPage && content !== missionPage.content) {
+      try {
+        // Update mission page content
+        updateMissionPage(missionPage.id, {
+          content,
+          updatedAt: new Date().toISOString()
+        });
+        
+        // Show success toast
+        toast({
+          title: "Mission Progress Saved",
+          description: "Your progress has been saved successfully",
+          variant: "default",
+          className: "bg-background/80 border border-primary text-foreground",
+          duration: 3000,
+        });
+        
+        // Log success for debugging
+        console.log("Mission progress saved successfully");
+        
+        return true; // Return success status for when called from other functions
+      } catch (error) {
+        console.error("Error saving mission progress:", error);
+        
+        // Show error toast
+        toast({
+          title: "Error Saving Progress",
+          description: "There was a problem saving your progress. Please try again.",
+          variant: "destructive",
+          duration: 5000,
+        });
+        
+        return false; // Return failure status
+      }
     }
+    return false; // No changes to save
   };
   
   // Calculate progress percentage
@@ -112,9 +134,14 @@ export default function SetupMissionPage() {
     : 0;
   
   // Mark mission as completed
-  const completeMission = () => {
-    if (missionPage) {
-      // First save current content
+  const completeMission = async () => {
+    if (!missionPage) return;
+    
+    // Set submitting state to show loading state
+    setIsSubmitting(true);
+    
+    try {
+      // Save current content first
       handleSave();
       
       // Add reflection to content
@@ -129,6 +156,39 @@ export default function SetupMissionPage() {
         updatedAt: new Date().toISOString()
       });
       
+      // Award XP to the user using the API endpoint
+      if (missionPage.xpValue && missionPage.xpValue > 0 && user && user.id) {
+        try {
+          console.log(`Awarding ${missionPage.xpValue} XP to user ${user.id} for completing mission`);
+          
+          // Using the API to award XP
+          const response = await fetch(`/api/users/${user.id}/award-xp`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              amount: missionPage.xpValue,
+              reason: `Completed setup mission: ${missionPage.title}`
+            })
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log("XP award response:", data);
+            
+            // Check if user leveled up
+            if (data.levelUp) {
+              console.log("User leveled up!");
+            }
+          } else {
+            console.error("Error awarding XP:", await response.text());
+          }
+        } catch (xpError) {
+          console.error("Error awarding XP:", xpError);
+        }
+      }
+      
       // Show success toast
       toast({
         title: "Mission Completed! 🎉",
@@ -137,8 +197,17 @@ export default function SetupMissionPage() {
         className: "bg-background/80 border border-emerald-500 text-foreground",
         duration: 5000,
       });
+    } catch (error) {
+      console.error("Error completing mission:", error);
       
-      // Close dialog
+      toast({
+        title: "Error",
+        description: "Failed to complete mission. Please try again.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      // Close dialog and reset submitting state
       setSubmitDialogOpen(false);
       setIsSubmitting(false);
     }
