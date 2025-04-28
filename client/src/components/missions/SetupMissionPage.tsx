@@ -188,7 +188,29 @@ export default function SetupMissionPage() {
             
             // Check if user leveled up
             if (data.levelUp) {
-              console.log("User leveled up!");
+              console.log("User leveled up to level:", data.newLevel);
+              
+              // Dispatch a global level-up event for the Dashboard to handle
+              const levelUpEvent = new CustomEvent('lyfe-level-up', { 
+                detail: { 
+                  oldLevel: data.oldLevel,
+                  newLevel: data.newLevel,
+                  totalXP: data.totalXP
+                } 
+              });
+              window.dispatchEvent(levelUpEvent);
+              
+              // Also update the toast notification with level-up details
+              setTimeout(() => {
+                const levelToastDetails = document.getElementById('mission-level-toast-details');
+                if (levelToastDetails) {
+                  levelToastDetails.innerHTML = `
+                    <div class="text-emerald-300 font-semibold pt-1">
+                      LEVEL UP! 🌟 You've advanced to Level ${data.newLevel}!
+                    </div>
+                  `;
+                }
+              }, 300); // Small delay to ensure toast is rendered
             }
           } else {
             console.error("Error awarding XP:", await response.text());
@@ -198,13 +220,22 @@ export default function SetupMissionPage() {
         }
       }
       
-      // Show success toast
+      // Show success toast with XP details
       toast({
         title: "Mission Completed! 🎉",
-        description: `You've earned +${missionPage.xpValue} XP by completing this setup mission`,
+        description: (
+          <div className="flex flex-col space-y-1">
+            <span>
+              You've earned <b>+{missionPage.xpValue} XP</b> by completing this setup mission.
+            </span>
+            {/* The following will be populated if a level-up occurred */}
+            <div id="mission-level-toast-details" className="text-xs">
+            </div>
+          </div>
+        ),
         variant: "default",
         className: "bg-background/80 border border-emerald-500 text-foreground",
-        duration: 5000,
+        duration: 7000, // Longer duration for level-up notifications
       });
     } catch (error) {
       console.error("Error completing mission:", error);

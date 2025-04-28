@@ -162,7 +162,7 @@ interface LYFEOSContextType {
   updateEvent: (id: string, eventData: Partial<CalendarEvent>) => void;
   deleteEvent: (id: string) => void;
   createMissionPage: (mission: Omit<MissionPage, "id">) => MissionPage;
-  updateMissionPage: (id: string, pageData: Partial<MissionPage>) => void;
+  updateMissionPage: (id: string, pageData: Partial<MissionPage>) => Promise<void>;
   deleteMissionPage: (id: string) => void;
   getMissionPageBySlug: (slug: string) => MissionPage | undefined;
   getMissionPageById: (id: string) => MissionPage | undefined;
