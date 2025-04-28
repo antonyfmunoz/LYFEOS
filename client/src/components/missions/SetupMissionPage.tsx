@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogDescription, DialogTitle, Di
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useLYFEOS } from '@/lib/context';
+import { useAuth } from '@/lib/authContext';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { cn } from '@/lib/utils';
 import MarkdownEditor from '@/components/markdown/MarkdownEditor';
@@ -20,7 +21,8 @@ export default function SetupMissionPage() {
   const params = useParams();
   const slug = params.slug || '';
   const { toast } = useToast();
-  const { missionPages, updateMissionPage, getMissionPageBySlug, user } = useLYFEOS();
+  const { missionPages, updateMissionPage, getMissionPageBySlug } = useLYFEOS();
+  const { user } = useAuth(); // Get user from auth context
   
   // Load mission page by slug
   const missionPage = getMissionPageBySlug(slug);
