@@ -36,6 +36,7 @@ export default function SetupMissionPage() {
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [reflectionText, setReflectionText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
   // Initialize content
   useEffect(() => {
@@ -91,11 +92,14 @@ export default function SetupMissionPage() {
   };
   
   // Handle saving content
-  const handleSave = () => {
+  const handleSave = async () => {
     if (missionPage && content !== missionPage.content) {
+      // Set saving state to show loading indicator
+      setIsSaving(true);
+      
       try {
         // Update mission page content
-        updateMissionPage(missionPage.id, {
+        await updateMissionPage(missionPage.id, {
           content,
           updatedAt: new Date().toISOString()
         });
@@ -125,6 +129,9 @@ export default function SetupMissionPage() {
         });
         
         return false; // Return failure status
+      } finally {
+        // Reset saving state
+        setIsSaving(false);
       }
     }
     return false; // No changes to save
@@ -359,15 +366,24 @@ export default function SetupMissionPage() {
                   
                   <Button 
                     className="w-full bg-emerald-500 hover:bg-emerald-600"
-                    disabled={taskCount.completed < taskCount.total}
+                    disabled={taskCount.completed < taskCount.total || isSubmitting}
                     onClick={() => {
                       if (taskCount.completed >= taskCount.total) {
                         setSubmitDialogOpen(true);
                       }
                     }}
                   >
-                    <ThumbsUp className="h-4 w-4 mr-2" />
-                    Complete Mission
+                    {isSubmitting ? (
+                      <>
+                        <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <ThumbsUp className="h-4 w-4 mr-2" />
+                        Complete Mission
+                      </>
+                    )}
                   </Button>
                 </>
               )}
@@ -454,10 +470,19 @@ export default function SetupMissionPage() {
             <Button
               onClick={completeMission}
               disabled={isSubmitting}
-              className="bg-primary hover:bg-primary/80"
+              className="bg-emerald-500 hover:bg-emerald-600"
             >
-              <Send className="h-4 w-4 mr-2" />
-              Complete Mission
+              {isSubmitting ? (
+                <>
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Complete Mission
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
