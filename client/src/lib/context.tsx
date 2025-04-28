@@ -691,20 +691,21 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   };
   
   // Update an existing mission page
-  const updateMissionPage = (id: string, pageData: Partial<MissionPage>) => {
-    setMissionPages((prev) => 
-      prev.map((page) => 
-        page.id === id ? { ...page, ...pageData, updatedAt: new Date().toISOString() } : page
-      )
-    );
-    
-    // Show mission page updated toast
-    toast({
-      title: "Mission Page Updated",
-      description: "Your mission page has been updated",
-      variant: "default",
-      className: "bg-background/80 border border-primary text-foreground",
-      duration: 3000,
+  const updateMissionPage = async (id: string, pageData: Partial<MissionPage>) => {
+    // Return a promise that resolves when the mission page is updated
+    return new Promise<void>((resolve) => {
+      setMissionPages((prev) => {
+        const updated = prev.map((page) => 
+          page.id === id ? { ...page, ...pageData, updatedAt: new Date().toISOString() } : page
+        );
+        
+        // Wait for state update to complete
+        setTimeout(() => resolve(), 0);
+        
+        return updated;
+      });
+      
+      // Don't show toast here as SetupMissionPage handles its own toast notifications
     });
   };
   

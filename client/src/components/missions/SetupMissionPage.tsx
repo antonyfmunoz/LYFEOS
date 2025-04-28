@@ -151,7 +151,7 @@ export default function SetupMissionPage() {
     
     try {
       // Save current content first
-      handleSave();
+      await handleSave();
       
       // Add reflection to content
       const updatedContent = reflectionText 
@@ -159,7 +159,7 @@ export default function SetupMissionPage() {
         : content;
       
       // Update mission as completed
-      updateMissionPage(missionPage.id, {
+      await updateMissionPage(missionPage.id, {
         content: updatedContent,
         completed: true,
         updatedAt: new Date().toISOString()
@@ -358,10 +358,19 @@ export default function SetupMissionPage() {
                   <Button 
                     className="w-full"
                     onClick={handleSave}
-                    disabled={content === missionPage.content}
+                    disabled={content === missionPage.content || isSaving}
                   >
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Progress
+                    {isSaving ? (
+                      <>
+                        <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Progress
+                      </>
+                    )}
                   </Button>
                   
                   <Button 
