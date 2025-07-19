@@ -219,12 +219,8 @@ function Router() {
       <Route path="/login" component={LoginPage} />
       <Route path="/register" component={RegisterPage} />
       
-      {/* Protected routes with authentication */}
-      <Route path="/onboarding">
-        <ProtectedRoute>
-          <OnboardingPage />
-        </ProtectedRoute>
-      </Route>
+      {/* Onboarding route - requires auth but has special handling */}
+      <Route path="/onboarding" component={OnboardingPage} />
       
       {/* Wrap main app routes in the layout component */}
       <Route path="/dashboard">

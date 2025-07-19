@@ -69,10 +69,17 @@ export default function OnboardingPage() {
   const { primaryColor, setPrimaryColor } = useTheme();
   const [, navigate] = useLocation();
   
-  // Debug log to show current user data
+  // Authentication protection and redirect logic
   useEffect(() => {
     console.log("OnboardingPage - Current user data:", user);
-  }, [user]);
+    
+    // If user is not authenticated, redirect to login
+    if (!user) {
+      console.log("No user found in onboarding, redirecting to login");
+      navigate('/login', { replace: true });
+      return;
+    }
+  }, [user, navigate]);
   
   // Get onboarding data from localStorage if present
   useEffect(() => {
