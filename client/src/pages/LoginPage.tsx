@@ -18,7 +18,7 @@ export default function LoginPage() {
   // Set the page title
   usePageTitle('Login');
   
-  const { login, isLoading, loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const { primaryColor } = useTheme();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -243,10 +243,10 @@ export default function LoginPage() {
           <Button 
             type="submit"
             className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90 font-medium py-2"
-            disabled={isSubmitting || isLoading}
+            disabled={isSubmitting}
             variant="default"
           >
-            {isSubmitting || isLoading ? (
+            {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Logging in...
