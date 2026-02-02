@@ -48,17 +48,41 @@ export default function EnhancedMissionWidget({
     return `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
   };
   
-  // Filter and sort upcoming events
+  // Get today's date in YYYY-MM-DD format (local time, not UTC)
+  const getTodayDateString = (): string => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  
+  // Filter and sort upcoming events for today
   const getUpcomingEvents = (limit: number = 3) => {
     const currentTimeString = getCurrentTimeString();
+    const todayDateString = getTodayDateString();
     
     return events
       .filter(event => {
         const isEventCompleted = completedMissions[event.id] || false;
-        return !isEventCompleted && event.startTime >= currentTimeString;
+        // Filter by today's date and upcoming time, or show if no date (for backwards compatibility)
+        const isToday = !event.date || event.date === todayDateString;
+        return !isEventCompleted && isToday && event.startTime >= currentTimeString;
       })
       .sort((a, b) => a.startTime.localeCompare(b.startTime))
       .slice(0, limit);
+  };
+  
+  // Get all events for today (including past events)
+  const getAllTodayEvents = () => {
+    const todayDateString = getTodayDateString();
+    
+    return events
+      .filter(event => {
+        // Filter by today's date, or show if no date (for backwards compatibility)
+        return !event.date || event.date === todayDateString;
+      })
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
   };
   
   const toggleMission = (id: string) => {
@@ -163,6 +187,7 @@ export default function EnhancedMissionWidget({
   
   // Render mission widget
   const upcomingEvents = getUpcomingEvents(3);
+  const todayEvents = getAllTodayEvents();
   
   return (
     <div className={`quest-log-box ${className}`}>
@@ -184,7 +209,7 @@ export default function EnhancedMissionWidget({
       )}
       
       <div className={`py-2 max-h-${maxHeight} overflow-y-auto`}>
-        {events.length === 0 ? (
+        {todayEvents.length === 0 ? (
           renderEmptyState()
         ) : upcomingEvents.length === 0 ? (
           renderAllCompletedState()

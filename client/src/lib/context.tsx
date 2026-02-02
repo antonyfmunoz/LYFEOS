@@ -709,6 +709,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         .then((data) => {
           const savedEvent = data?.event;
           if (savedEvent && savedEvent.id) {
+            // Update the event with the real ID from the database
             setEvents((prev) => 
               prev.map((e) => 
                 e.id === tempId ? { 
@@ -718,6 +719,22 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
               )
             );
             console.log("Calendar event saved to database:", savedEvent.id);
+            
+            // Also create a corresponding mission page for syncing
+            const missionSlug = `mission-${event.title.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-')}-${savedEvent.id}`;
+            const missionContent = `# ${event.title}\n\n**Scheduled:** ${event.date} at ${event.startTime}\n**Duration:** ${event.duration}\n**Category:** ${event.category}\n\n## Description\n\n${event.description || 'No description provided.'}\n\n## Tasks\n\n- [ ] Complete this mission\n\n## Notes\n\nAdd any notes here...`;
+            
+            createMissionPage({
+              title: event.title,
+              slug: missionSlug,
+              content: missionContent,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              completed: false,
+              xpValue: 15,
+              tags: ['Mission', event.category],
+              eventId: savedEvent.id.toString(),
+            });
           }
         })
         .catch((error) => {
@@ -817,6 +834,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
           completed: mission.completed || false,
           xpValue: mission.xpValue || 5,
           tags: mission.tags || [],
+          eventId: mission.eventId ? parseInt(mission.eventId) : null,
         })
       })
         .then((response) => response.json())
