@@ -10,7 +10,6 @@ import { UserStats } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { MarkdownEditor } from '@/components/ui/markdown-editor';
 import { CustomTimePicker } from '@/components/ui/custom-time-picker';
-import CompactStatsWidget from '@/components/dashboard/CompactStatsWidget';
 import EnhancedMissionWidget from '@/components/dashboard/EnhancedMissionWidget';
 import { DailyInitModal } from '@/components/dailyInit/DailyInitModal';
 import { AIAgentFAB } from '@/components/ui/ai-agent-fab';
@@ -171,13 +170,6 @@ export default function DashboardPage() {
   
   // Define widgets for drag and drop functionality  
   const [widgets, setWidgets] = useState<WidgetData[]>([
-    {
-      id: 'stats-log',
-      title: "Stats Log",
-      icon: <BarChart className="h-5 w-5 text-primary" />,
-      content: <CompactStatsWidget stats={stats} />,
-      defaultOpen: true
-    },
     {
       id: 'mission-log',
       title: "Mission Log",
