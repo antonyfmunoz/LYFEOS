@@ -61,17 +61,16 @@ export default function EnhancedMissionWidget({
     return `${year}-${month}-${day}`;
   };
   
-  // Filter and sort upcoming events for today
+  // Filter and sort events for today (including past events that aren't completed)
   const getUpcomingEvents = (limit: number = 3) => {
-    const currentTimeString = getCurrentTimeString();
     const todayDateString = getTodayDateString();
     
     return events
       .filter(event => {
         const isEventCompleted = completedMissions[event.id] || false;
-        // Filter by today's date and upcoming time, or show if no date (for backwards compatibility)
+        // Filter by today's date, or show if no date (for backwards compatibility)
         const isToday = !event.date || event.date === todayDateString;
-        return !isEventCompleted && isToday && event.startTime >= currentTimeString;
+        return !isEventCompleted && isToday;
       })
       .sort((a, b) => a.startTime.localeCompare(b.startTime))
       .slice(0, limit);
