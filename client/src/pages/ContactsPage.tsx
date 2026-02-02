@@ -203,7 +203,7 @@ export function ContactsPage() {
             variant="ghost" 
             size="icon" 
             className="h-8 w-8 hover:bg-primary hover:text-background" 
-            onClick={() => navigate('/systems')}
+            onClick={() => navigate('/dashboard')}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>

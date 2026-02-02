@@ -259,8 +259,8 @@ export default function SpreadsheetsPage() {
           variant="ghost" 
           size="icon" 
           className="h-8 w-8 mr-1 hover:bg-primary hover:text-background" 
-          onClick={() => navigate('/systems')}
-          aria-label="Back to systems"
+          onClick={() => navigate('/dashboard')}
+          aria-label="Back to dashboard"
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>

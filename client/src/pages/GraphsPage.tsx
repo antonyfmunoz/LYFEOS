@@ -150,7 +150,7 @@ export default function GraphsPage() {
           variant="ghost" 
           size="icon" 
           className="mr-2 hover:bg-primary hover:text-background" 
-          onClick={() => navigate("/systems")}
+          onClick={() => navigate("/dashboard")}
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>

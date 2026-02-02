@@ -108,7 +108,7 @@ export default function ProgressTrackersPage() {
       <Button 
         variant="ghost" 
         size="icon" 
-        onClick={() => navigate('/systems')} 
+        onClick={() => navigate('/dashboard')} 
         className="mb-6 h-8 w-8 hover:bg-primary hover:text-background"
       >
         <ArrowLeft className="h-4 w-4" />

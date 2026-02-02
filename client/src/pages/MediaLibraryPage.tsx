@@ -774,7 +774,7 @@ export default function MediaLibraryPage() {
     <div className="pb-8">
       <div className="mb-6">
         <div className="flex items-center w-full">
-          <Link to="/systems">
+          <Link to="/dashboard">
             <Button
               variant="ghost"
               size="icon"
