@@ -79,7 +79,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <StatInfoDialog
             trigger={
               <button 
-                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#10B981]"
+                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
                 onClick={(e) => {
                   e.stopPropagation();
                   setLocation("/streak");
@@ -89,7 +89,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
               </button>
             }
             title="Usage Streak"
-            titleColor="text-[#10B981]"
+            titleColor="text-primary"
             description="Days you've used LYFEOS consecutively."
             additionalInfo="Longer streaks unlock special rewards."
             statType="streak"
@@ -97,12 +97,12 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center">
-              <Calendar className="h-3 w-3 text-[#10B981] mr-1" />
+              <Calendar className="h-3 w-3 text-primary mr-1" />
               <h3 className="text-xs font-orbitron text-[#D6F4FF]">STREAK</h3>
             </div>
           </div>
           <div className="progress-bar progress-streak h-1.5 mb-1">
-            <div className="progress-fill" style={{ width: `${streakPercentage}%`, backgroundColor: "#10B981" }}></div>
+            <div className="progress-fill" style={{ width: `${streakPercentage}%`, backgroundColor: "var(--primary)" }}></div>
           </div>
           <div className="flex justify-between">
             <span className="text-[#D6F4FF] font-mono text-xs">
@@ -116,7 +116,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <StatInfoDialog
             trigger={
               <button 
-                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#FBBF24]"
+                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
                 onClick={(e) => {
                   e.stopPropagation();
                   setLocation("/efficiency");
@@ -126,7 +126,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
               </button>
             }
             title="System Efficiency"
-            titleColor="text-[#FBBF24]"
+            titleColor="text-primary"
             description="How effectively you're using LYFEOS."
             additionalInfo="Higher efficiency scores correlate with improved productivity."
             statType="efficiency"
@@ -134,12 +134,12 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center">
-              <BarChart className="h-3 w-3 text-[#FBBF24] mr-1" />
+              <BarChart className="h-3 w-3 text-primary mr-1" />
               <h3 className="text-xs font-orbitron text-[#D6F4FF]">EFFICIENCY</h3>
             </div>
           </div>
           <div className="progress-bar progress-efficiency h-1.5 mb-1">
-            <div className="progress-fill" style={{ width: `${efficiencyPercentage}%`, backgroundColor: "#FBBF24" }}></div>
+            <div className="progress-fill" style={{ width: `${efficiencyPercentage}%`, backgroundColor: "var(--primary)" }}></div>
           </div>
           <div className="flex justify-between">
             <span className="text-[#D6F4FF] font-mono text-xs">
@@ -153,7 +153,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <StatInfoDialog
             trigger={
               <button 
-                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#6366F1]"
+                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
                 onClick={(e) => {
                   e.stopPropagation();
                   setLocation("/attention");
@@ -163,7 +163,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
               </button>
             }
             title="Attention Tokens (AT)"
-            titleColor="text-[#6366F1]"
+            titleColor="text-primary"
             description="AT represent your focus, concentration and mental clarity."
             additionalInfo="Higher attention tokens enable deeper focus on complex tasks."
             statType="attention"
@@ -171,12 +171,12 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center">
-              <BrainCircuit className="h-3 w-3 text-[#6366F1] mr-1" />
+              <BrainCircuit className="h-3 w-3 text-primary mr-1" />
               <h3 className="text-xs font-orbitron text-[#D6F4FF]">ATTENTION</h3>
             </div>
           </div>
           <div className="progress-bar progress-at h-1.5 mb-1">
-            <div className="progress-fill" style={{ width: `100%`, backgroundColor: "#6366F1" }}></div>
+            <div className="progress-fill" style={{ width: `100%`, backgroundColor: "var(--primary)" }}></div>
           </div>
           <div className="flex justify-between">
             <span className="text-[#D6F4FF] font-mono text-xs">
@@ -190,7 +190,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <StatInfoDialog
             trigger={
               <button 
-                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#22D3EE]"
+                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
                 onClick={(e) => {
                   e.stopPropagation();
                   setLocation("/time");
@@ -200,7 +200,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
               </button>
             }
             title="Time Tokens (TT)"
-            titleColor="text-[#22D3EE]"
+            titleColor="text-primary"
             description="TT represent your time allocation and management resources."
             additionalInfo="Spend tokens wisely to manage your schedule effectively."
             statType="time"
@@ -208,12 +208,12 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center">
-              <Clock className="h-3 w-3 text-[#22D3EE] mr-1" />
+              <Clock className="h-3 w-3 text-primary mr-1" />
               <h3 className="text-xs font-orbitron text-[#D6F4FF]">TIME</h3>
             </div>
           </div>
           <div className="progress-bar progress-tt h-1.5 mb-1">
-            <div className="progress-fill" style={{ width: `100%`, backgroundColor: "#22D3EE" }}></div>
+            <div className="progress-fill" style={{ width: `100%`, backgroundColor: "var(--primary)" }}></div>
           </div>
           <div className="flex justify-between">
             <span className="text-[#D6F4FF] font-mono text-xs">
@@ -227,7 +227,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <StatInfoDialog
             trigger={
               <button 
-                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#F97316]"
+                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
                 onClick={(e) => {
                   e.stopPropagation();
                   setLocation("/energy");
@@ -237,7 +237,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
               </button>
             }
             title="Energy Points (EP)"
-            titleColor="text-[#F97316]"
+            titleColor="text-primary"
             description="EP represents your creative energy and vitality resources."
             additionalInfo="Use EP to power creative tasks and maintain high productivity."
             statType="energy"
@@ -245,12 +245,12 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center">
-              <Zap className="h-3 w-3 text-[#F97316] mr-1" />
+              <Zap className="h-3 w-3 text-primary mr-1" />
               <h3 className="text-xs font-orbitron text-[#D6F4FF]">ENERGY</h3>
             </div>
           </div>
           <div className="progress-bar progress-ep h-1.5 mb-1">
-            <div className="progress-fill" style={{ width: `100%`, backgroundColor: "#F97316" }}></div>
+            <div className="progress-fill" style={{ width: `100%`, backgroundColor: "var(--primary)" }}></div>
           </div>
           <div className="flex justify-between">
             <span className="text-[#D6F4FF] font-mono text-xs">
@@ -264,7 +264,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <StatInfoDialog
             trigger={
               <button 
-                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#EF4444]"
+                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
                 onClick={(e) => {
                   e.stopPropagation();
                   setLocation("/health");
@@ -274,7 +274,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
               </button>
             }
             title="Health Points (HP)"
-            titleColor="text-[#EF4444]"
+            titleColor="text-primary"
             description="HP represents your physical well-being and resilience."
             additionalInfo="Maintain high HP to perform at your best and recover quickly."
             statType="health"
@@ -282,12 +282,12 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center">
-              <Heart className="h-3 w-3 text-[#EF4444] mr-1" />
+              <Heart className="h-3 w-3 text-primary mr-1" />
               <h3 className="text-xs font-orbitron text-[#D6F4FF]">HEALTH</h3>
             </div>
           </div>
           <div className="progress-bar progress-hp h-1.5 mb-1">
-            <div className="progress-fill" style={{ width: `100%`, backgroundColor: "#EF4444" }}></div>
+            <div className="progress-fill" style={{ width: `100%`, backgroundColor: "var(--primary)" }}></div>
           </div>
           <div className="flex justify-between">
             <span className="text-[#D6F4FF] font-mono text-xs">
