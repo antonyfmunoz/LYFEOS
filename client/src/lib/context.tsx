@@ -375,6 +375,31 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     }
   }, [isAuthenticated, user]);
   
+  // Load mission pages when user logs in
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const fetchMissionPages = async () => {
+        try {
+          console.log("Fetching mission pages for user:", user.id);
+          const response = await fetch(`/api/users/${user.id}/mission-pages`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.missionPages && Array.isArray(data.missionPages)) {
+              console.log("Mission pages loaded successfully:", data.missionPages.length, "pages");
+              setMissionPages(data.missionPages);
+            }
+          } else {
+            console.error("Failed to fetch mission pages, status:", response.status);
+          }
+        } catch (error) {
+          console.error("Failed to fetch mission pages:", error);
+        }
+      };
+      
+      fetchMissionPages();
+    }
+  }, [isAuthenticated, user]);
+  
   // Function to update AI assistant name in the database
   const setAICompanionName = (name: string) => {
     setAICompanionNameState(name);
@@ -671,12 +696,54 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   
   // Create a new mission page
   const createMissionPage = (mission: Omit<MissionPage, "id">): MissionPage => {
+    // Generate temporary ID for optimistic update
+    const tempId = `mission-${Date.now()}`;
     const newMissionPage: MissionPage = {
       ...mission,
-      id: `mission-${Date.now()}`,
+      id: tempId,
     };
     
+    // Optimistic update - add to local state immediately
     setMissionPages((prev) => [...prev, newMissionPage]);
+    
+    // Save to database if authenticated
+    if (isAuthenticated && user) {
+      apiRequest('/api/mission-pages', {
+        method: 'POST',
+        body: JSON.stringify({
+          userId: user.id,
+          title: mission.title,
+          slug: mission.slug,
+          content: mission.content,
+          completed: mission.completed || false,
+          xpValue: mission.xpValue || 5,
+          tags: mission.tags || [],
+        })
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          // Update the mission page with the real ID from the database
+          // Server returns { page: { id, ... } } format
+          const savedPage = data?.page;
+          if (savedPage && savedPage.id) {
+            setMissionPages((prev) => 
+              prev.map((page) => 
+                page.id === tempId ? { 
+                  ...page, 
+                  id: String(savedPage.id),
+                  createdAt: savedPage.createdAt || page.createdAt,
+                  updatedAt: savedPage.updatedAt || page.updatedAt,
+                } : page
+              )
+            );
+            console.log("Mission page saved to database:", savedPage.id);
+          }
+        })
+        .catch((error) => {
+          console.error("Error saving mission page to database:", error);
+          // Keep the local version even if save fails
+        });
+    }
     
     // Show mission page created toast
     toast({
@@ -693,17 +760,33 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   // Update an existing mission page
   const updateMissionPage = async (id: string, pageData: Partial<MissionPage>) => {
     // Return a promise that resolves when the mission page is updated
-    return new Promise<void>((resolve) => {
+    return new Promise<void>((resolve, reject) => {
       setMissionPages((prev) => {
         const updated = prev.map((page) => 
           page.id === id ? { ...page, ...pageData, updatedAt: new Date().toISOString() } : page
         );
         
-        // Wait for state update to complete
-        setTimeout(() => resolve(), 0);
-        
         return updated;
       });
+      
+      // Save to database if authenticated (don't wait for state update to call API)
+      if (isAuthenticated && user) {
+        apiRequest(`/api/mission-pages/${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify(pageData)
+        })
+          .then(() => {
+            console.log("Mission page updated in database:", id);
+            resolve();
+          })
+          .catch((error) => {
+            console.error("Error updating mission page in database:", error);
+            resolve(); // Still resolve since local state is updated
+          });
+      } else {
+        // Wait for state update to complete if not authenticated
+        setTimeout(() => resolve(), 0);
+      }
       
       // Don't show toast here as SetupMissionPage handles its own toast notifications
     });
@@ -714,8 +797,21 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     // Find the page to show in toast
     const pageToDelete = missionPages.find(page => page.id === id);
     
-    // Remove the page
+    // Remove the page from local state
     setMissionPages((prev) => prev.filter(page => page.id !== id));
+    
+    // Delete from database if authenticated
+    if (isAuthenticated && user) {
+      apiRequest(`/api/mission-pages/${id}`, {
+        method: 'DELETE'
+      })
+        .then(() => {
+          console.log("Mission page deleted from database:", id);
+        })
+        .catch((error) => {
+          console.error("Error deleting mission page from database:", error);
+        });
+    }
     
     // Show mission page deleted toast
     if (pageToDelete) {
