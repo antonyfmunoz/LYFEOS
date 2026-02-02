@@ -446,12 +446,6 @@ export default function DashboardPage() {
           }}
         />
         
-        {/* Daily Dashboard Header */}
-        <div className="mb-4 flex items-center">
-          <h1 className="text-3xl font-orbitron text-primary mr-2">Daily Dashboard</h1>
-          <div className="flex-grow h-0.5 bg-gradient-to-r from-primary/80 to-transparent"></div>
-        </div>
-        
         {/* Date Header - Cinematic HUD Style */}
         <section className="mb-6">
           <div className="glassmorphic rounded-xl p-3 neon-border">
