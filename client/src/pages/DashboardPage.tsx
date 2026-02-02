@@ -249,36 +249,6 @@ export default function DashboardPage() {
       defaultOpen: true
     },
     {
-      id: 'intention-setter',
-      title: "Intention Setter",
-      icon: <TargetIcon className="h-5 w-5 text-primary" />,
-      content: (
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Set your daily intention to stay focused and aligned with your goals.
-          </p>
-          <div className="space-y-2">
-            <label className="text-sm flex items-center text-[#7DAAB2]">
-              <TargetIcon className="h-4 w-4 text-primary" />
-              <span className="ml-2">Today's Intention</span>
-            </label>
-            <MarkdownEditor
-              placeholder="What is your main focus for today?"
-              value={reflection.tomorrowGoals}
-              onChange={(value) => updateReflection("tomorrowGoals", value)}
-              minHeight="60px"
-            />
-          </div>
-          <div className="p-4 bg-card/50 rounded-lg border border-primary/20">
-            <p className="text-center text-foreground italic text-sm">
-              "Focus on progress, not perfection."
-            </p>
-          </div>
-        </div>
-      ),
-      defaultOpen: true
-    },
-    {
       id: 'energy-log',
       title: "Energy Log",
       icon: <Brain className="h-5 w-5 text-primary" />,
