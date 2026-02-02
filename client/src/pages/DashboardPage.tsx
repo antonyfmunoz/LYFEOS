@@ -185,7 +185,7 @@ export default function DashboardPage() {
     },
     {
       id: 'data-entry-log',
-      title: "Data Entry Log",
+      title: "Data Log",
       icon: <BookOpen className="h-5 w-5 text-primary" />,
       content: (
         <div className="space-y-4">
@@ -250,7 +250,7 @@ export default function DashboardPage() {
     },
     {
       id: 'intention-setter',
-      title: "Intention Setter",
+      title: "Intention Log",
       icon: <TargetIcon className="h-5 w-5 text-primary" />,
       content: (
         <div className="space-y-4">
