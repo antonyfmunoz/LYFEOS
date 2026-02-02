@@ -74,6 +74,7 @@ export interface IStorage {
   getEvent(id: number): Promise<CalendarEvent | undefined>;
   createEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
   updateEvent(id: number, event: Partial<InsertCalendarEvent>): Promise<CalendarEvent>;
+  deleteEvent(id: number): Promise<void>;
   
   // Mission Page methods
   getMissionPages(userId: number): Promise<MissionPage[]>;
@@ -504,6 +505,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(calendarEvents.id, id))
       .returning();
     return updatedEvent;
+  }
+  
+  async deleteEvent(id: number): Promise<void> {
+    await db.delete(calendarEvents).where(eq(calendarEvents.id, id));
   }
   
   // Mission Page methods

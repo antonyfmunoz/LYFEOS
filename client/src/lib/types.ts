@@ -65,6 +65,7 @@ export interface CalendarEvent {
   startTime: string; // format: "HH:MM"
   duration: string;
   category: "work" | "personal" | "health";
+  date: string; // format: "YYYY-MM-DD"
 }
 
 export interface MissionPage {

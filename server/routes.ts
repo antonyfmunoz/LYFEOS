@@ -1400,6 +1400,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // CALENDAR EVENT ROUTES
+  app.get("/api/users/:userId/calendar-events", isOwner, async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+      
+      const events = await storage.getEvents(userId);
+      return res.status(200).json({ events });
+    } catch (error) {
+      console.error("Error getting calendar events:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/calendar-events/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const eventId = parseInt(req.params.id);
+      if (isNaN(eventId)) {
+        return res.status(400).json({ error: "Invalid event ID" });
+      }
+      
+      const event = await storage.getEvent(eventId);
+      if (!event) {
+        return res.status(404).json({ error: "Calendar event not found" });
+      }
+      
+      if (event.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to access this event" });
+      }
+      
+      return res.status(200).json({ event });
+    } catch (error) {
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/calendar-events", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const eventData = insertCalendarEventSchema.parse(req.body);
+      
+      if (eventData.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to create events for this user" });
+      }
+      
+      const event = await storage.createEvent(eventData);
+      
+      return res.status(201).json({ event });
+    } catch (error) {
+      console.error("Error creating calendar event:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid event data", details: error.errors });
+      }
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/calendar-events/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const eventId = parseInt(req.params.id);
+      if (isNaN(eventId)) {
+        return res.status(400).json({ error: "Invalid event ID" });
+      }
+      
+      const event = await storage.getEvent(eventId);
+      if (!event) {
+        return res.status(404).json({ error: "Calendar event not found" });
+      }
+      
+      if (event.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to update this event" });
+      }
+      
+      const eventUpdate = req.body;
+      const updatedEvent = await storage.updateEvent(eventId, eventUpdate);
+      
+      return res.status(200).json({ event: updatedEvent });
+    } catch (error) {
+      console.error("Error updating calendar event:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/calendar-events/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const eventId = parseInt(req.params.id);
+      if (isNaN(eventId)) {
+        return res.status(400).json({ error: "Invalid event ID" });
+      }
+      
+      const event = await storage.getEvent(eventId);
+      if (!event) {
+        return res.status(404).json({ error: "Calendar event not found" });
+      }
+      
+      if (event.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to delete this event" });
+      }
+      
+      await storage.deleteEvent(eventId);
+      
+      return res.status(200).json({ message: "Calendar event deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting calendar event:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // CONTACT ROUTES
   app.get("/api/users/:userId/contacts", isOwner, async (req: Request, res: Response) => {
     try {

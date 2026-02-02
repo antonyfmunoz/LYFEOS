@@ -37,9 +37,11 @@ export default function CalendarPage() {
   const getEventsForDate = () => {
     if (!date) return [];
     
-    // In a real app, we would filter based on the actual date
-    // For now, we'll just return all events as a simplification
-    return events;
+    // Format selected date as YYYY-MM-DD to match event date format
+    const selectedDateStr = date.toISOString().split('T')[0];
+    
+    // Filter events by the selected date
+    return events.filter(event => event.date === selectedDateStr);
   };
   
   const currentDateEvents = getEventsForDate();
@@ -61,7 +63,10 @@ export default function CalendarPage() {
   
   // Handle saving a new event
   const handleSaveEvent = () => {
-    if (!eventTitle.trim() || !eventStartTime) return;
+    if (!eventTitle.trim() || !eventStartTime || !date) return;
+    
+    // Format date as YYYY-MM-DD
+    const eventDate = date.toISOString().split('T')[0];
     
     const newEvent = {
       title: eventTitle,
@@ -69,6 +74,7 @@ export default function CalendarPage() {
       startTime: eventStartTime,
       duration: eventDuration,
       category: eventCategory,
+      date: eventDate,
     };
     
     addEvent(newEvent);

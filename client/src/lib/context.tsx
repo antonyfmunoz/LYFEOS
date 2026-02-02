@@ -400,6 +400,41 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     }
   }, [isAuthenticated, user]);
   
+  // Load calendar events when user logs in
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const fetchCalendarEvents = async () => {
+        try {
+          console.log("Fetching calendar events for user:", user.id);
+          const response = await fetch(`/api/users/${user.id}/calendar-events`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.events && Array.isArray(data.events)) {
+              console.log("Calendar events loaded successfully:", data.events.length, "events");
+              // Transform database events to frontend format (id as string)
+              const transformedEvents = data.events.map((event: any) => ({
+                id: String(event.id),
+                title: event.title,
+                description: event.description || "",
+                startTime: event.startTime,
+                duration: event.duration,
+                category: event.category,
+                date: event.date,
+              }));
+              setEvents(transformedEvents);
+            }
+          } else {
+            console.error("Failed to fetch calendar events, status:", response.status);
+          }
+        } catch (error) {
+          console.error("Failed to fetch calendar events:", error);
+        }
+      };
+      
+      fetchCalendarEvents();
+    }
+  }, [isAuthenticated, user]);
+  
   // Function to update AI assistant name in the database
   const setAICompanionName = (name: string) => {
     setAICompanionNameState(name);
@@ -637,11 +672,14 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   
   // Add a new calendar event
   const addEvent = (event: Omit<CalendarEvent, "id">) => {
+    // Generate temporary ID for optimistic update
+    const tempId = `event-${Date.now()}`;
     const newEvent: CalendarEvent = {
       ...event,
-      id: `event-${Date.now()}`,
+      id: tempId,
     };
     
+    // Optimistic update
     setEvents((prev) => [...prev, newEvent]);
     
     // Show event added toast
@@ -652,6 +690,40 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       className: "bg-background/80 border border-primary text-foreground",
       duration: 3000,
     });
+    
+    // Save to database if authenticated
+    if (isAuthenticated && user) {
+      apiRequest('/api/calendar-events', {
+        method: 'POST',
+        body: JSON.stringify({
+          userId: user.id,
+          title: event.title,
+          description: event.description || "",
+          startTime: event.startTime,
+          duration: event.duration,
+          category: event.category,
+          date: event.date,
+        })
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          const savedEvent = data?.event;
+          if (savedEvent && savedEvent.id) {
+            setEvents((prev) => 
+              prev.map((e) => 
+                e.id === tempId ? { 
+                  ...e, 
+                  id: String(savedEvent.id),
+                } : e
+              )
+            );
+            console.log("Calendar event saved to database:", savedEvent.id);
+          }
+        })
+        .catch((error) => {
+          console.error("Error saving calendar event to database:", error);
+        });
+    }
   };
   
   // Update an existing calendar event
@@ -670,6 +742,20 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       className: "bg-background/80 border border-primary text-foreground",
       duration: 3000,
     });
+    
+    // Update in database if authenticated and id is a real database ID
+    if (isAuthenticated && user && !id.startsWith('event-')) {
+      const numericId = parseInt(id);
+      if (!isNaN(numericId)) {
+        apiRequest(`/api/calendar-events/${numericId}`, {
+          method: 'PATCH',
+          body: JSON.stringify(eventData)
+        })
+          .catch((error) => {
+            console.error("Error updating calendar event in database:", error);
+          });
+      }
+    }
   };
   
   // Delete a calendar event
@@ -689,6 +775,19 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         className: "bg-background/80 border border-destructive text-foreground",
         duration: 3000,
       });
+    }
+    
+    // Delete from database if authenticated and id is a real database ID
+    if (isAuthenticated && user && !id.startsWith('event-')) {
+      const numericId = parseInt(id);
+      if (!isNaN(numericId)) {
+        apiRequest(`/api/calendar-events/${numericId}`, {
+          method: 'DELETE',
+        })
+          .catch((error) => {
+            console.error("Error deleting calendar event from database:", error);
+          });
+      }
     }
   };
   

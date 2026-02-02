@@ -132,6 +132,7 @@ export const calendarEvents = pgTable("calendar_events", {
   startTime: text("start_time").notNull(), // format: "HH:MM"
   duration: text("duration").notNull(),
   category: text("category").notNull(), // 'work', 'personal', or 'health'
+  date: text("date").notNull(), // format: "YYYY-MM-DD"
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -341,6 +342,7 @@ export const insertCalendarEventSchema = createInsertSchema(calendarEvents).pick
   startTime: true,
   duration: true,
   category: true,
+  date: true,
 });
 
 export const insertMissionPageSchema = createInsertSchema(missionPages).pick({
