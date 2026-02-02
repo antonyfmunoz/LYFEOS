@@ -23,6 +23,7 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Force apply theme when component mounts
   useEffect(() => {
@@ -140,15 +141,14 @@ export default function LoginPage() {
     }
     
     try {
-      // Show the loading state immediately
-      // isLoading will be set to true in the login function but we can provide visual feedback sooner
+      // Show loading state immediately
+      setIsSubmitting(true);
       
       // Pass the username and password to the login function
       console.log("Submitting login form with username:", username);
       await login(username, password);
       
       // Login function will handle navigation to dashboard if successful
-      // We don't need to do anything else here since login() handles everything
     } catch (err: any) {
       console.error("Login error:", err);
       
@@ -159,6 +159,8 @@ export default function LoginPage() {
         // Display the error message from the caught error
         setError(err.message);
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -241,10 +243,10 @@ export default function LoginPage() {
           <Button 
             type="submit"
             className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90 font-medium py-2"
-            disabled={isLoading}
+            disabled={isSubmitting || isLoading}
             variant="default"
           >
-            {isLoading ? (
+            {isSubmitting || isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Logging in...
