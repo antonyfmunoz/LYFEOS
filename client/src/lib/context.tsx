@@ -386,7 +386,6 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             const data = await response.json();
             if (data.missionPages && Array.isArray(data.missionPages)) {
               console.log("Mission pages loaded successfully:", data.missionPages.length, "pages");
-              console.log("Raw mission pages data:", JSON.stringify(data.missionPages));
               
               // Transform mission pages to ensure correct types
               const transformedPages = data.missionPages.map((page: any) => ({
@@ -403,7 +402,6 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
                 date: page.date
               }));
               
-              console.log("Transformed mission pages:", JSON.stringify(transformedPages));
               setMissionPages(transformedPages);
             }
           } else {
@@ -440,6 +438,28 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
                 date: event.date,
               }));
               setEvents(transformedEvents);
+              
+              // Sync calendar events to quests for the Missions page
+              const today = new Date().toISOString().split('T')[0];
+              const calendarQuests: Quest[] = transformedEvents
+                .filter((event: CalendarEvent) => event.date === today)
+                .map((event: CalendarEvent) => ({
+                  id: `quest-calendar-${event.id}`,
+                  title: event.title,
+                  description: `${event.description || event.category} - ${event.date} at ${event.startTime}`,
+                  completed: false,
+                  energyCost: 1,
+                  experienceReward: 15,
+                }));
+              
+              if (calendarQuests.length > 0) {
+                console.log("Syncing calendar events to quests:", calendarQuests.length, "quests");
+                setQuests((prev) => {
+                  // Remove old calendar quests and add new ones
+                  const nonCalendarQuests = prev.filter(q => !q.id.startsWith('quest-calendar-'));
+                  return [...nonCalendarQuests, ...calendarQuests];
+                });
+              }
             }
           } else {
             console.error("Failed to fetch calendar events, status:", response.status);
@@ -738,24 +758,19 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             );
             console.log("Calendar event saved to database:", savedEvent.id);
             
-            // Also create a corresponding mission page for syncing
-            const missionSlug = `mission-${event.title.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-')}-${savedEvent.id}`;
-            const missionContent = `# ${event.title}\n\n**Scheduled:** ${event.date} at ${event.startTime}\n**Duration:** ${event.duration}\n**Category:** ${event.category}\n\n## Description\n\n${event.description || 'No description provided.'}\n\n## Tasks\n\n- [ ] Complete this mission\n\n## Notes\n\nAdd any notes here...`;
-            
-            console.log("Creating mission page for calendar event:", savedEvent.id, "with slug:", missionSlug);
-            
-            createMissionPage({
+            // Create a corresponding quest for the Missions page
+            const questId = `quest-calendar-${savedEvent.id}`;
+            const newQuest: Quest = {
+              id: questId,
               title: event.title,
-              slug: missionSlug,
-              content: missionContent,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
+              description: `${event.description || event.category} - ${event.date} at ${event.startTime}`,
               completed: false,
-              xpValue: 15,
-              tags: ['Mission', event.category],
-              eventId: savedEvent.id.toString(),
-              date: event.date,
-            });
+              energyCost: 1,
+              experienceReward: 15,
+            };
+            
+            console.log("Creating quest for calendar event:", savedEvent.id);
+            setQuests((prev) => [...prev, newQuest]);
           }
         })
         .catch((error) => {

@@ -44,19 +44,10 @@ export default function MissionArchivePage() {
 
   // Filter and organize mission pages by status
   const missionFolders = useMemo(() => {
-    // Debug logging
-    console.log("MissionArchivePage - All mission pages:", missionPages);
-    console.log("MissionArchivePage - Mission pages count:", missionPages.length);
-    missionPages.forEach((page, index) => {
-      console.log(`Page ${index}:`, page.title, "tags:", page.tags, "type:", typeof page.tags, "completed:", page.completed);
-    });
-    
     // Filter for mission entries
     const missionEntries = missionPages.filter(page => 
       page.tags.includes('Mission') || page.tags.includes('Document')
     );
-    
-    console.log("MissionArchivePage - Filtered mission entries:", missionEntries.length);
     
     // Group by status
     const activeMissions = missionEntries.filter(entry => !entry.completed);
