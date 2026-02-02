@@ -279,47 +279,16 @@
     @apply shadow-[0_0_10px_rgba(251,191,36,0.7)]; /* Yellow glow */
   }
 
-  /* Using chakra colors */
-  /* Throat Chakra (Vishuddha): Blue/Cyan - Time Tokens */
-  .progress-tt .progress-fill {
-    @apply bg-gradient-to-r from-cyan-400/70 to-cyan-400;
-    background-color: #22D3EE;
-  }
-
-  /* Sacral Chakra (Svadhisthana): Orange - Energy Points */
-  .progress-ep .progress-fill {
-    @apply bg-gradient-to-r from-orange-500/70 to-orange-500;
-    background-color: #F97316;
-  }
-
-  /* Root Chakra (Muladhara): Red - Health Points */
-  .progress-hp .progress-fill {
-    @apply bg-gradient-to-r from-red-500/70 to-red-500;
-    background-color: #EF4444;
-  }
-
-  /* Crown Chakra (Sahasrara): Violet - Experience Level */
-  .progress-xp .progress-fill {
-    @apply bg-gradient-to-r from-violet-500/70 to-violet-500;
-    background-color: #8B5CF6;
-  }
-  
-  /* Third Eye Chakra (Ajna): Indigo - Attention Tokens */
-  .progress-at .progress-fill {
-    @apply bg-gradient-to-r from-indigo-500/70 to-indigo-500;
-    background-color: #6366F1;
-  }
-  
-  /* Heart Chakra (Anahata): Green - Streak */
-  .progress-streak .progress-fill {
-    @apply bg-gradient-to-r from-emerald-500/70 to-emerald-500;
-    background-color: #10B981;
-  }
-  
-  /* Solar Plexus Chakra (Manipura): Yellow - Efficiency */
+  /* All progress bars use theme primary color */
+  .progress-tt .progress-fill,
+  .progress-ep .progress-fill,
+  .progress-hp .progress-fill,
+  .progress-xp .progress-fill,
+  .progress-at .progress-fill,
+  .progress-streak .progress-fill,
   .progress-efficiency .progress-fill {
-    @apply bg-gradient-to-r from-yellow-400/70 to-yellow-400;
-    background-color: #FBBF24;
+    background: linear-gradient(to right, hsl(var(--primary) / 0.7), hsl(var(--primary)));
+    background-color: hsl(var(--primary));
   }
 
   /* Custom checkbox */

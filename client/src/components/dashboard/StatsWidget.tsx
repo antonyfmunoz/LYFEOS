@@ -77,15 +77,14 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#10B981]"
-                  onClick={(e) => e.stopPropagation()} // Prevent navigation when clicking info button
+                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <Info className="h-4 w-4" />
                 </button>
               }
               title="Usage Streak"
-              // Green (Heart)
-              titleColor="text-[#10B981]"
+              titleColor="text-primary"
               description="Tracks the number of consecutive days you've used LYFEOS. Login daily to maintain and increase your streak."
               additionalInfo="Longer streaks contribute to your overall consistency score and unlock special rewards."
               statType="streak"
@@ -93,7 +92,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
-                <Calendar className="h-4 w-4 text-[#10B981] mr-2" /> {/* Green (Heart) */}
+                <Calendar className="h-4 w-4 text-primary mr-2" />
                 <h3 className="text-sm font-orbitron text-[#D6F4FF]">STREAK</h3>
               </div>
               <div className="mr-6">
@@ -103,7 +102,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <div className="progress-bar progress-streak mb-2">
               <div 
                 className="progress-fill" 
-                style={{ width: `${streakPercentage}%`, background: 'linear-gradient(to right, rgba(16,185,129,0.7), #10B981)' }}
+                style={{ width: `${streakPercentage}%` }}
               ></div>
             </div>
             <div className="flex justify-between">
@@ -121,15 +120,14 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#FBBF24]"
-                  onClick={(e) => e.stopPropagation()} // Prevent navigation when clicking info button
+                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <Info className="h-4 w-4" />
                 </button>
               }
               title="System Efficiency"
-              // Yellow (Solar Plexus)
-              titleColor="text-[#FBBF24]"
+              titleColor="text-primary"
               description="Measures how optimally you're using LYFEOS features. Balanced task completion, regular reflections, and consistent data entry improve your score."
               additionalInfo="Higher efficiency scores indicate better life operating system utilization and typically correlate with improved productivity and wellbeing."
               statType="efficiency"
@@ -137,7 +135,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
-                <BarChart className="h-4 w-4 text-[#FBBF24] mr-2" /> {/* Yellow (Solar Plexus) */}
+                <BarChart className="h-4 w-4 text-primary mr-2" />
                 <h3 className="text-sm font-orbitron text-[#D6F4FF]">EFFICIENCY</h3>
               </div>
               <div className="mr-6">
@@ -147,7 +145,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <div className="progress-bar progress-efficiency mb-2">
               <div 
                 className="progress-fill" 
-                style={{ width: `${efficiencyPercentage}%`, background: 'linear-gradient(to right, rgba(251,191,36,0.7), #FBBF24)' }}
+                style={{ width: `${efficiencyPercentage}%` }}
               ></div>
             </div>
             <div className="flex justify-between">
@@ -171,15 +169,14 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#6366F1]"
-                  onClick={(e) => e.stopPropagation()} // Prevent navigation when clicking info button
+                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <Info className="h-4 w-4" />
                 </button>
               }
               title="Attention Tokens"
-              // Indigo (Third Eye)
-              titleColor="text-[#6366F1]"
+              titleColor="text-primary"
               description="Measures your focus capacity and attention allocation. High-quality focus time and mental clarity increase your Attention Tokens."
               additionalInfo="Managing your Attention Tokens helps maintain deep focus on important tasks and prevent mental fatigue."
               statType="attention"
@@ -187,7 +184,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
-                <BrainCircuit className="h-4 w-4 text-[#6366F1] mr-2" /> {/* Indigo (Third Eye) */}
+                <BrainCircuit className="h-4 w-4 text-primary mr-2" />
                 <h3 className="text-sm font-orbitron text-[#D6F4FF]">ATTENTION TOKENS</h3>
               </div>
               <div className="mr-6">
@@ -195,7 +192,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               </div>
             </div>
             <div className="progress-bar progress-at mb-2">
-              <div className="progress-fill" style={{ width: `${atPercentage}%`, background: 'linear-gradient(to right, rgba(99,102,241,0.7), #6366F1)' }}></div>
+              <div className="progress-fill" style={{ width: `${atPercentage}%` }}></div>
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-base">
@@ -212,15 +209,14 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#22D3EE]"
-                  onClick={(e) => e.stopPropagation()} // Prevent navigation when clicking info button
+                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <Info className="h-4 w-4" />
                 </button>
               }
               title="Time Tokens"
-              // Cyan (Throat)
-              titleColor="text-[#22D3EE]"
+              titleColor="text-primary"
               description="Represents your available productive time for the day. Completing tasks consumes tokens, which replenish daily."
               additionalInfo="Managing your Time Tokens helps balance productivity and prevents burnout by encouraging appropriate work limits."
               statType="time"
@@ -228,7 +224,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
-                <Clock className="h-4 w-4 text-[#22D3EE] mr-2" /> {/* Cyan (Throat) */}
+                <Clock className="h-4 w-4 text-primary mr-2" />
                 <h3 className="text-sm font-orbitron text-[#D6F4FF]">TIME TOKENS</h3>
               </div>
               <div className="mr-6">
@@ -236,7 +232,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               </div>
             </div>
             <div className="progress-bar progress-tt mb-2">
-              <div className="progress-fill" style={{ width: `${ttPercentage}%`, background: 'linear-gradient(to right, rgba(34,211,238,0.7), #22D3EE)' }}></div>
+              <div className="progress-fill" style={{ width: `${ttPercentage}%` }}></div>
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-base">
@@ -253,15 +249,14 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#F97316]"
-                  onClick={(e) => e.stopPropagation()} // Prevent navigation when clicking info button
+                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <Info className="h-4 w-4" />
                 </button>
               }
               title="Energy Points"
-              // Orange (Sacral)
-              titleColor="text-[#F97316]"
+              titleColor="text-primary"
               description="Measures your mental and physical energy levels. Rest, nutrition, and wellness activities increase your Energy Points."
               additionalInfo="Higher energy enables you to tackle more challenging tasks effectively and sustain focus throughout the day."
               statType="energy"
@@ -269,7 +264,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
-                <Zap className="h-4 w-4 text-[#F97316] mr-2" /> {/* Orange (Sacral) */}
+                <Zap className="h-4 w-4 text-primary mr-2" />
                 <h3 className="text-sm font-orbitron text-[#D6F4FF]">ENERGY POINTS</h3>
               </div>
               <div className="mr-6">
@@ -277,7 +272,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               </div>
             </div>
             <div className="progress-bar progress-ep mb-2">
-              <div className="progress-fill" style={{ width: `${epPercentage}%`, background: 'linear-gradient(to right, rgba(249,115,22,0.7), #F97316)' }}></div>
+              <div className="progress-fill" style={{ width: `${epPercentage}%` }}></div>
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-base">
@@ -294,15 +289,14 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-[#EF4444]"
-                  onClick={(e) => e.stopPropagation()} // Prevent navigation when clicking info button
+                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <Info className="h-4 w-4" />
                 </button>
               }
               title="Health Points"
-              // Red (Root)
-              titleColor="text-[#EF4444]"
+              titleColor="text-primary"
               description="Indicates your overall physical wellbeing. Exercise, sleep, and self-care activities contribute to higher Health Points."
               additionalInfo="Maintaining high Health Points improves resilience, prevents illness, and enhances long-term performance."
               statType="health"
@@ -310,7 +304,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
-                <Heart className="h-4 w-4 text-[#EF4444] mr-2" /> {/* Red (Root) */}
+                <Heart className="h-4 w-4 text-primary mr-2" />
                 <h3 className="text-sm font-orbitron text-[#D6F4FF]">HEALTH POINTS</h3>
               </div>
               <div className="mr-6">
@@ -318,7 +312,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               </div>
             </div>
             <div className="progress-bar progress-hp mb-2">
-              <div className="progress-fill" style={{ width: `${hpPercentage}%`, background: 'linear-gradient(to right, rgba(239,68,68,0.7), #EF4444)' }}></div>
+              <div className="progress-fill" style={{ width: `${hpPercentage}%` }}></div>
             </div>
             <div className="flex justify-between">
               <span className="text-[#D6F4FF] font-mono text-base">
