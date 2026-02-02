@@ -533,13 +533,12 @@ export default function ProfilePage() {
 
         {/* Profile Card */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-background border border-primary/20 backdrop-blur-md rounded-lg p-6 shadow-lg"
-              style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-orbitron text-foreground flex items-center">
+          <div className="glassmorphic rounded-xl neon-border overflow-hidden mb-4">
+            <div className="p-3 flex items-center justify-between border-b border-primary/20">
+              <div className="flex items-center">
                 <User className="mr-2 h-5 w-5 text-primary" />
-                Profile
-              </h2>
+                <h2 className="text-lg font-orbitron text-foreground">Profile</h2>
+              </div>
               {isEditing ? (
                 <div className="flex gap-2">
                   <Button 
@@ -574,6 +573,8 @@ export default function ProfilePage() {
                 </Button>
               )}
             </div>
+            
+            <div className="p-4">
             
             {/* Profile Image - Centered at the top */}
             <div className="flex justify-center mb-4">
@@ -686,6 +687,7 @@ export default function ProfilePage() {
                 )}
               </>
             )}
+            </div>
           </div>
 
           {/* Draggable Widgets - Stats Log and Settings */}
