@@ -445,14 +445,15 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* Stats Card */}
-          <div className="bg-background border border-primary/20 backdrop-blur-md rounded-lg p-6 shadow-lg mb-6"
-              style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
-            <h2 className="text-lg font-orbitron text-foreground flex items-center mb-4">
+          {/* Stats Card - matching Dashboard Stats Log widget style */}
+          <div className="glassmorphic rounded-xl neon-border overflow-hidden mb-6">
+            <div className="p-3 flex items-center border-b border-primary/20">
               <BarChart4 className="mr-2 h-5 w-5 text-primary" />
-              Performance Stats
-            </h2>
-            <CompactStatsWidget stats={stats} />
+              <h2 className="text-lg font-orbitron text-foreground">Stats Log</h2>
+            </div>
+            <div className="p-4">
+              <CompactStatsWidget stats={stats} />
+            </div>
           </div>
           
           {/* Settings Card */}
