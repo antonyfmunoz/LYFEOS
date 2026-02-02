@@ -386,7 +386,25 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             const data = await response.json();
             if (data.missionPages && Array.isArray(data.missionPages)) {
               console.log("Mission pages loaded successfully:", data.missionPages.length, "pages");
-              setMissionPages(data.missionPages);
+              console.log("Raw mission pages data:", JSON.stringify(data.missionPages));
+              
+              // Transform mission pages to ensure correct types
+              const transformedPages = data.missionPages.map((page: any) => ({
+                id: String(page.id),
+                title: page.title,
+                slug: page.slug,
+                content: page.content,
+                createdAt: page.createdAt || page.created_at,
+                updatedAt: page.updatedAt || page.updated_at,
+                completed: page.completed,
+                xpValue: page.xpValue || page.xp_value || 5,
+                tags: Array.isArray(page.tags) ? page.tags : [],
+                eventId: page.eventId ? String(page.eventId) : (page.event_id ? String(page.event_id) : undefined),
+                date: page.date
+              }));
+              
+              console.log("Transformed mission pages:", JSON.stringify(transformedPages));
+              setMissionPages(transformedPages);
             }
           } else {
             console.error("Failed to fetch mission pages, status:", response.status);
