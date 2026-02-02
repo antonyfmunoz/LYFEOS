@@ -12,7 +12,6 @@ import AIPage from "./pages/AIPage";
 import ChronilogPage from "./pages/ChronilogPage";
 import TimelinePage from "./pages/TimelinePage";
 import TimelineDetailPage from "./pages/TimelineDetailPage";
-import SystemsPage from "./pages/SystemsPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ProfilePage from "./pages/ProfilePage";
 import StatDetailPage from "./pages/StatDetailPage";
@@ -280,13 +279,6 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
-      <Route path="/systems">
-        <ProtectedRoute>
-          <RootLayout>
-            <SystemsPage />
-          </RootLayout>
-        </ProtectedRoute>
-      </Route>
       
       <Route path="/calendar">
         <ProtectedRoute>
