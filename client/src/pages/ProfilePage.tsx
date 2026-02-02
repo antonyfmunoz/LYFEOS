@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import RootLayout from "../components/layout/RootLayout";
 import { useLYFEOS } from "../lib/context";
 import { useAuth } from "@/lib/authContext";
@@ -38,6 +38,10 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import { DraggableWidget } from '@/components/ui/draggable-widget';
+import update from 'immutability-helper';
 
 
 
@@ -140,6 +144,198 @@ export default function ProfilePage() {
     }));
   };
 
+  // Widget data interface
+  interface WidgetData {
+    id: string;
+    title: string;
+    icon: React.ReactNode;
+    defaultOpen?: boolean;
+  }
+
+  // Define widgets for drag and drop functionality
+  const [widgets, setWidgets] = useState<WidgetData[]>([
+    {
+      id: 'stats-log',
+      title: "Stats Log",
+      icon: <BarChart4 className="h-5 w-5 text-primary" />,
+      defaultOpen: true
+    },
+    {
+      id: 'settings',
+      title: "Settings",
+      icon: <Settings className="h-5 w-5 text-primary" />,
+      defaultOpen: true
+    }
+  ]);
+
+  // Move widget handler for drag and drop
+  const moveWidget = useCallback((dragIndex: number, hoverIndex: number) => {
+    setWidgets((prevWidgets) =>
+      update(prevWidgets, {
+        $splice: [
+          [dragIndex, 1],
+          [hoverIndex, 0, prevWidgets[dragIndex]],
+        ],
+      })
+    );
+  }, []);
+
+  // Render widget content based on id
+  const renderWidgetContent = (widgetId: string) => {
+    switch (widgetId) {
+      case 'stats-log':
+        return <CompactStatsWidget stats={stats} />;
+      case 'settings':
+        return (
+          <>
+            {/* Dark Theme toggle */}
+            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="material-icons text-primary text-sm">dark_mode</span>
+                <Label className="text-sm text-foreground">Dark Theme</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Toggle between light and dark interface mode.
+              </p>
+              <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
+                <div className="flex items-center">
+                  <span className="material-icons text-primary text-sm mr-2">dark_mode</span>
+                  <span className="text-sm">Dark Theme</span>
+                </div>
+                <button 
+                  onClick={() => {
+                    toggleDarkMode();
+                    toast({
+                      title: "Theme Updated",
+                      description: `Dark Theme has been ${!stats.darkThemeEnabled ? 'enabled' : 'disabled'}.`,
+                      variant: "default",
+                      className: "bg-background/80 border border-primary text-foreground",
+                      duration: 2000,
+                    });
+                  }}
+                  className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
+                    stats.darkThemeEnabled ? 'bg-primary/30' : 'bg-card'
+                  }`}
+                  aria-pressed={stats.darkThemeEnabled}
+                  role="switch"
+                >
+                  <div 
+                    className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
+                      stats.darkThemeEnabled ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
+                    }`}
+                  ></div>
+                </button>
+              </div>
+            </div>
+            
+            {/* Notifications toggle */}
+            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="material-icons text-primary text-sm">notifications</span>
+                <Label className="text-sm text-foreground">Notifications</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Enable or disable system notifications.
+              </p>
+              <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
+                <div className="flex items-center">
+                  <span className="material-icons text-primary text-sm mr-2">notifications</span>
+                  <span className="text-sm">Notifications</span>
+                </div>
+                <button 
+                  onClick={async () => {
+                    if (!user?.id) return;
+                    
+                    const newValue = !stats.notificationsEnabled;
+                    
+                    try {
+                      const response = await fetch(`/api/users/${user.id}/stats`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ notificationsEnabled: newValue }),
+                        credentials: "include"
+                      });
+                      
+                      if (!response.ok) throw new Error("Failed to update setting");
+                      
+                      const updatedStats = await response.json();
+                      updateUserStats(updatedStats.stats);
+                      
+                      toast({
+                        title: "Setting Updated",
+                        description: `Notifications have been ${newValue ? 'enabled' : 'disabled'}.`,
+                        variant: "default",
+                        className: "bg-background/80 border border-primary text-foreground",
+                        duration: 2000,
+                      });
+                    } catch (error) {
+                      toast({
+                        title: "Error",
+                        description: "Failed to update notification settings.",
+                        variant: "destructive",
+                      });
+                      console.error("Error updating notification settings:", error);
+                    }
+                  }}
+                  className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
+                    stats.notificationsEnabled ? 'bg-primary/30' : 'bg-card'
+                  }`}
+                  aria-pressed={stats.notificationsEnabled}
+                  role="switch"
+                >
+                  <div 
+                    className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
+                      stats.notificationsEnabled ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
+                    }`}
+                  ></div>
+                </button>
+              </div>
+            </div>
+            
+            {/* Primary Theme Color Selector */}
+            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Paintbrush className="h-4 w-4 text-primary" />
+                <Label className="text-sm text-foreground">UI Theme Color</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Select your preferred interface color.
+              </p>
+              <div className="grid grid-cols-4 gap-2">
+                {STAT_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    className={`w-8 h-8 rounded-md transition-all ${
+                      stats.primaryColor === color 
+                        ? 'ring-2 ring-offset-2 ring-offset-background ring-primary scale-110' 
+                        : 'ring-1 ring-primary/20 hover:scale-105'
+                    }`}
+                    style={{ backgroundColor: color }}
+                    onClick={() => handlePrimaryColorChange(color)}
+                    aria-label={`Select theme color ${color}`}
+                  >
+                    {stats.primaryColor === color && (
+                      <span className="flex items-center justify-center text-background text-xs">
+                        <span className="material-icons" style={{ fontSize: '16px' }}>check</span>
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center mt-3 gap-2">
+                <span className="block w-3 h-3 rounded-full animate-pulse" style={{ backgroundColor: stats.primaryColor || "#00e0ff" }}></span>
+                <p className="text-xs text-muted-foreground">
+                  Current color: {stats.primaryColor || "#00e0ff"}
+                </p>
+              </div>
+            </div>
+          </>
+        );
+      default:
+        return null;
+    }
+  };
 
   
   // Function to handle theme color changes
@@ -445,172 +641,22 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* Stats Card - matching Dashboard Stats Log widget style */}
-          <div className="glassmorphic rounded-xl neon-border overflow-hidden mb-6">
-            <div className="p-3 flex items-center border-b border-primary/20">
-              <BarChart4 className="mr-2 h-5 w-5 text-primary" />
-              <h2 className="text-lg font-orbitron text-foreground">Stats Log</h2>
-            </div>
-            <div className="p-4">
-              <CompactStatsWidget stats={stats} />
-            </div>
-          </div>
-          
-          {/* Settings Card */}
-          <div className="bg-background border border-primary/20 backdrop-blur-md rounded-lg p-6 shadow-lg"
-              style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
-            <h2 className="text-lg font-orbitron text-foreground flex items-center mb-4">
-              <Settings className="mr-2 h-5 w-5 text-primary" />
-              Settings
-            </h2>
-            
-            {/* Dark Theme toggle */}
-            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="material-icons text-primary text-sm">dark_mode</span>
-                <Label className="text-sm text-foreground">Dark Theme</Label>
-              </div>
-              <p className="text-xs text-muted-foreground mb-3">
-                Toggle between light and dark interface mode.
-              </p>
-              <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
-                <div className="flex items-center">
-                  <span className="material-icons text-primary text-sm mr-2">dark_mode</span>
-                  <span className="text-sm">Dark Theme</span>
-                </div>
-                <button 
-                  onClick={() => {
-                    toggleDarkMode();
-                    toast({
-                      title: "Theme Updated",
-                      description: `Dark Theme has been ${!stats.darkThemeEnabled ? 'enabled' : 'disabled'}.`,
-                      variant: "default",
-                      className: "bg-background/80 border border-primary text-foreground",
-                      duration: 2000,
-                    });
-                  }}
-                  className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
-                    stats.darkThemeEnabled ? 'bg-primary/30' : 'bg-card'
-                  }`}
-                  aria-pressed={stats.darkThemeEnabled}
-                  role="switch"
-                >
-                  <div 
-                    className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
-                      stats.darkThemeEnabled ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
-                    }`}
-                  ></div>
-                </button>
-              </div>
-            </div>
-            
-            {/* Notifications toggle */}
-            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="material-icons text-primary text-sm">notifications</span>
-                <Label className="text-sm text-foreground">Notifications</Label>
-              </div>
-              <p className="text-xs text-muted-foreground mb-3">
-                Enable or disable system notifications.
-              </p>
-              <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
-                <div className="flex items-center">
-                  <span className="material-icons text-primary text-sm mr-2">notifications</span>
-                  <span className="text-sm">Notifications</span>
-                </div>
-                <button 
-                  onClick={async () => {
-                    if (!user?.id) return;
-                    
-                    const newValue = !stats.notificationsEnabled;
-                    
-                    try {
-                      // Make API call to update setting
-                      const response = await fetch(`/api/users/${user.id}/stats`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ notificationsEnabled: newValue }),
-                        credentials: "include"
-                      });
-                      
-                      if (!response.ok) throw new Error("Failed to update setting");
-                      
-                      const updatedStats = await response.json();
-                      updateUserStats(updatedStats.stats);
-                      
-                      toast({
-                        title: "Setting Updated",
-                        description: `Notifications have been ${newValue ? 'enabled' : 'disabled'}.`,
-                        variant: "default",
-                        className: "bg-background/80 border border-primary text-foreground",
-                        duration: 2000,
-                      });
-                    } catch (error) {
-                      toast({
-                        title: "Error",
-                        description: "Failed to update notification settings.",
-                        variant: "destructive",
-                      });
-                      console.error("Error updating notification settings:", error);
-                    }
-                  }}
-                  className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
-                    stats.notificationsEnabled ? 'bg-primary/30' : 'bg-card'
-                  }`}
-                  aria-pressed={stats.notificationsEnabled}
-                  role="switch"
-                >
-                  <div 
-                    className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
-                      stats.notificationsEnabled ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
-                    }`}
-                  ></div>
-                </button>
-              </div>
-            </div>
-            
-            {/* Primary Theme Color Selector */}
-            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Paintbrush className="h-4 w-4 text-primary" />
-                <Label className="text-sm text-foreground">UI Theme Color</Label>
-              </div>
-              <p className="text-xs text-muted-foreground mb-3">
-                Select your preferred interface color.
-              </p>
-              <div className="grid grid-cols-4 gap-2">
-                {STAT_COLORS.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    className={`w-8 h-8 rounded-md transition-all ${
-                      stats.primaryColor === color 
-                        ? 'ring-2 ring-offset-2 ring-offset-background ring-primary scale-110' 
-                        : 'ring-1 ring-primary/20 hover:scale-105'
-                    }`}
-                    style={{ backgroundColor: color }}
-                    onClick={() => handlePrimaryColorChange(color)}
-                    aria-label={`Select theme color ${color}`}
-                  >
-                    {stats.primaryColor === color && (
-                      <span className="flex items-center justify-center text-background text-xs">
-                        <span className="material-icons" style={{ fontSize: '16px' }}>check</span>
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-              <div className="flex items-center mt-3 gap-2">
-                <span className="block w-3 h-3 rounded-full animate-pulse" style={{ backgroundColor: stats.primaryColor || "#00e0ff" }}></span>
-                <p className="text-xs text-muted-foreground">
-                  Current color: {stats.primaryColor || "#00e0ff"}
-                </p>
-              </div>
-            </div>
-            
-            
-
-          </div>
+          {/* Draggable Widgets - Stats Log and Settings */}
+          <DndProvider backend={HTML5Backend}>
+            {widgets.map((widget, index) => (
+              <DraggableWidget
+                key={widget.id}
+                id={widget.id}
+                index={index}
+                title={widget.title}
+                icon={widget.icon}
+                moveWidget={moveWidget}
+                defaultOpen={widget.defaultOpen}
+              >
+                {renderWidgetContent(widget.id)}
+              </DraggableWidget>
+            ))}
+          </DndProvider>
         </div>
       </div>
     </RootLayout>
