@@ -155,9 +155,21 @@ export default function ProfilePage() {
   // Define widgets for drag and drop functionality
   const [widgets, setWidgets] = useState<WidgetData[]>([
     {
-      id: 'stats-log',
-      title: "Stats Log",
+      id: 'stats',
+      title: "Stats",
       icon: <BarChart4 className="h-5 w-5 text-primary" />,
+      defaultOpen: true
+    },
+    {
+      id: 'player-record',
+      title: "Player Record",
+      icon: <FileText className="h-5 w-5 text-primary" />,
+      defaultOpen: true
+    },
+    {
+      id: 'player-affirmation',
+      title: "Player Affirmation",
+      icon: <Terminal className="h-5 w-5 text-primary" />,
       defaultOpen: true
     },
     {
@@ -183,8 +195,43 @@ export default function ProfilePage() {
   // Render widget content based on id
   const renderWidgetContent = (widgetId: string) => {
     switch (widgetId) {
-      case 'stats-log':
+      case 'stats':
         return <CompactStatsWidget stats={stats} />;
+      case 'player-record':
+        return (
+          <div className="p-4 border border-primary/10 rounded-lg bg-background/40">
+            <p className="text-sm text-muted-foreground mb-3">
+              Track your achievements, milestones, and personal records.
+            </p>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg">
+                <span className="text-sm text-foreground">Total XP Earned</span>
+                <span className="text-sm font-medium text-primary">{stats.experience?.totalXP || 0} XP</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg">
+                <span className="text-sm text-foreground">Current Level</span>
+                <span className="text-sm font-medium text-primary">Level {stats.experience?.level || 1}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg">
+                <span className="text-sm text-foreground">Longest Streak</span>
+                <span className="text-sm font-medium text-primary">{stats.streakDays || 0} days</span>
+              </div>
+            </div>
+          </div>
+        );
+      case 'player-affirmation':
+        return (
+          <div className="p-4 border border-primary/10 rounded-lg bg-background/40">
+            <p className="text-sm text-muted-foreground mb-3">
+              Your personal affirmation to stay motivated.
+            </p>
+            <div className="p-4 bg-card/50 rounded-lg border border-primary/20">
+              <p className="text-center text-foreground italic">
+                "I am capable of achieving my goals and becoming the best version of myself."
+              </p>
+            </div>
+          </div>
+        );
       case 'settings':
         return (
           <>
