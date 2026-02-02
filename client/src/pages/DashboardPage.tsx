@@ -249,6 +249,63 @@ export default function DashboardPage() {
       defaultOpen: true
     },
     {
+      id: 'intention-setter',
+      title: "Intention Setter",
+      icon: <TargetIcon className="h-5 w-5 text-primary" />,
+      content: (
+        <div className="space-y-4">
+          {/* Gratitude */}
+          <div className="space-y-2">
+            <label className="text-sm flex items-center text-[#7DAAB2]">
+              <Smile className="h-4 w-4 text-primary" />
+              <span className="ml-2">Gratitude</span>
+            </label>
+            <div className="flex flex-col space-y-2">
+              <MarkdownEditor
+                placeholder="What three things are you most grateful for today?"
+                value={reflection.gratitude}
+                onChange={(value) => updateReflection("gratitude", value)}
+                minHeight="80px"
+              />
+            </div>
+          </div>
+          
+          {/* Tomorrow's Goals */}
+          <div className="space-y-2">
+            <label className="text-sm flex items-center text-[#7DAAB2]">
+              <ListChecks className="h-4 w-4 text-primary" />
+              <span className="ml-2">Tomorrow's Goals</span>
+            </label>
+            <div className="flex flex-col space-y-2">
+              <MarkdownEditor
+                placeholder="What three things do you want to accomplish tomorrow?"
+                value={reflection.tomorrowGoals}
+                onChange={(value) => updateReflection("tomorrowGoals", value)}
+                minHeight="60px"
+              />
+            </div>
+          </div>
+          
+          {/* Annual Goals */}
+          <div className="space-y-2">
+            <label className="text-sm flex items-center text-[#7DAAB2]">
+              <TargetIcon className="h-4 w-4 text-primary" />
+              <span className="ml-2">Annual Goals</span>
+            </label>
+            <div className="flex flex-col space-y-2">
+              <MarkdownEditor
+                placeholder="What are your three big targets for the year?"
+                value={reflection.annualGoals}
+                onChange={(value) => updateReflection("annualGoals", value)}
+                minHeight="80px"
+              />
+            </div>
+          </div>
+        </div>
+      ),
+      defaultOpen: true
+    },
+    {
       id: 'energy-log',
       title: "Energy Log",
       icon: <Brain className="h-5 w-5 text-primary" />,
@@ -327,63 +384,6 @@ export default function DashboardPage() {
                 "Emotional State",
                 <Smile className="h-4 w-4 text-primary" />
               )}
-            </div>
-          </div>
-        </div>
-      ),
-      defaultOpen: true
-    },
-    {
-      id: 'intention-setter',
-      title: "Intention Setter",
-      icon: <TargetIcon className="h-5 w-5 text-primary" />,
-      content: (
-        <div className="space-y-4">
-          {/* Gratitude */}
-          <div className="space-y-2">
-            <label className="text-sm flex items-center text-[#7DAAB2]">
-              <Smile className="h-4 w-4 text-primary" />
-              <span className="ml-2">Gratitude</span>
-            </label>
-            <div className="flex flex-col space-y-2">
-              <MarkdownEditor
-                placeholder="What three things are you most grateful for today?"
-                value={reflection.gratitude}
-                onChange={(value) => updateReflection("gratitude", value)}
-                minHeight="80px"
-              />
-            </div>
-          </div>
-          
-          {/* Tomorrow's Goals */}
-          <div className="space-y-2">
-            <label className="text-sm flex items-center text-[#7DAAB2]">
-              <ListChecks className="h-4 w-4 text-primary" />
-              <span className="ml-2">Tomorrow's Goals</span>
-            </label>
-            <div className="flex flex-col space-y-2">
-              <MarkdownEditor
-                placeholder="What three things do you want to accomplish tomorrow?"
-                value={reflection.tomorrowGoals}
-                onChange={(value) => updateReflection("tomorrowGoals", value)}
-                minHeight="60px"
-              />
-            </div>
-          </div>
-          
-          {/* Annual Goals */}
-          <div className="space-y-2">
-            <label className="text-sm flex items-center text-[#7DAAB2]">
-              <TargetIcon className="h-4 w-4 text-primary" />
-              <span className="ml-2">Annual Goals</span>
-            </label>
-            <div className="flex flex-col space-y-2">
-              <MarkdownEditor
-                placeholder="What are your three big targets for the year?"
-                value={reflection.annualGoals}
-                onChange={(value) => updateReflection("annualGoals", value)}
-                minHeight="80px"
-              />
             </div>
           </div>
         </div>
