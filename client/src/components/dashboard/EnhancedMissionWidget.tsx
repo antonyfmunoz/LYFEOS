@@ -3,9 +3,10 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar, Clock, Award, Zap, Info } from "lucide-react";
-import { CalendarEvent } from "@/lib/types";
+import { CalendarEvent, MissionPage } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
+import { useLYFEOS } from "@/lib/context";
 
 
 interface EnhancedMissionWidgetProps {
@@ -21,6 +22,9 @@ export default function EnhancedMissionWidget({
   maxHeight = "96",
   hideHeader = false,
 }: EnhancedMissionWidgetProps) {
+  // Get mission pages from context
+  const { missionPages, updateMissionPage } = useLYFEOS();
+  
   // Load completed missions from localStorage
   const loadCompletedMissions = (): Record<string, boolean> => {
     try {
@@ -83,6 +87,16 @@ export default function EnhancedMissionWidget({
         return !event.date || event.date === todayDateString;
       })
       .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  };
+  
+  // Get all mission pages for today
+  const getTodayMissionPages = () => {
+    const todayDateString = getTodayDateString();
+    
+    return missionPages.filter(mission => {
+      // Filter by today's date
+      return mission.date === todayDateString;
+    });
   };
   
   const toggleMission = (id: string) => {
@@ -185,9 +199,44 @@ export default function EnhancedMissionWidget({
     }
   };
   
+  // Handle toggling mission pages
+  const toggleMissionPage = (missionId: string) => {
+    const mission = missionPages.find(m => m.id === missionId);
+    if (mission) {
+      const newCompleted = !mission.completed;
+      updateMissionPage(missionId, { completed: newCompleted });
+      
+      if (newCompleted) {
+        toast({
+          title: "Mission Completed!",
+          description: (
+            <div className="flex flex-col space-y-2">
+              <div className="text-sm opacity-90">{mission.title}</div>
+              <div className="flex space-x-4 text-sm mt-2">
+                <div className="flex items-center text-red-400">
+                  <Zap className="h-4 w-4 mr-1" />
+                  <span>-5 Energy Points</span>
+                </div>
+                <div className="flex items-center text-primary">
+                  <Award className="h-4 w-4 mr-1" />
+                  <span>+{mission.xpValue} Experience</span>
+                </div>
+              </div>
+            </div>
+          ),
+        });
+      }
+    }
+  };
+
   // Render mission widget
   const upcomingEvents = getUpcomingEvents(3);
   const todayEvents = getAllTodayEvents();
+  const todayMissions = getTodayMissionPages();
+  
+  // Check if there are any items to show
+  const hasTodayItems = todayEvents.length > 0 || todayMissions.length > 0;
+  const hasUpcomingItems = upcomingEvents.length > 0 || todayMissions.filter(m => !m.completed).length > 0;
   
   return (
     <div className={`quest-log-box ${className}`}>
@@ -209,12 +258,52 @@ export default function EnhancedMissionWidget({
       )}
       
       <div className={`py-2 max-h-${maxHeight} overflow-y-auto`}>
-        {todayEvents.length === 0 ? (
+        {!hasTodayItems ? (
           renderEmptyState()
-        ) : upcomingEvents.length === 0 ? (
+        ) : !hasUpcomingItems ? (
           renderAllCompletedState()
         ) : (
           <div className="space-y-3">
+            {/* Show mission pages for today first */}
+            {todayMissions.filter(m => !m.completed).map((mission) => (
+              <div 
+                key={`mission-${mission.id}`}
+                className={`p-4 rounded-lg transition-all duration-200 relative 
+                  ${mission.completed ? 
+                    'bg-green-400/5 border border-green-400/20' : 
+                    'bg-primary/5 border border-primary/20 hover:border-primary/40'}`}
+              >
+                <Link href={`/mission/${mission.slug}`}>
+                  <button className="absolute top-4 right-4 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary">
+                    <Info className="h-4 w-4" />
+                  </button>
+                </Link>
+                
+                <div className="flex items-start">
+                  <Checkbox
+                    className="mt-1 rounded border transition-all duration-200 border-primary/50 data-[state=checked]:bg-primary/20 data-[state=checked]:text-primary"
+                    checked={mission.completed}
+                    onCheckedChange={() => toggleMissionPage(mission.id)}
+                  />
+                  <div className="ml-3 flex-grow">
+                    <div className="flex justify-between">
+                      <h3 className={`font-orbitron text-base ${mission.completed ? 'line-through text-[#7DAAB2]' : 'text-[#D6F4FF]'}`}>
+                        {mission.title}
+                      </h3>
+                      <div className="flex items-center mr-8">
+                        <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
+                        <span className="text-primary text-xs font-mono mr-2">+{mission.xpValue} XP</span>
+                      </div>
+                    </div>
+                    <p className={`text-xs text-[#7DAAB2] mt-0.5 ${mission.completed ? 'line-through' : ''}`}>
+                      {mission.tags?.join(', ') || 'Mission'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            {/* Show upcoming calendar events */}
             {upcomingEvents.map((event) => {
               const isCompleted = completedMissions[event.id] || false;
               const categoryColor = getCategoryColor(event.category);

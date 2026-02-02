@@ -79,6 +79,7 @@ export interface MissionPage {
   xpValue: number;
   tags: string[];
   eventId?: string; // Reference to the original calendar event if applicable
+  date?: string; // format: "YYYY-MM-DD" - used for filtering by day
 }
 
 export type StatType = "attention" | "time" | "energy" | "health" | "experience" | "streak" | "efficiency";

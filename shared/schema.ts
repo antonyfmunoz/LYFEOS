@@ -147,6 +147,7 @@ export const missionPages = pgTable("mission_pages", {
   xpValue: integer("xp_value").notNull().default(5),
   tags: text("tags").array(),
   eventId: integer("event_id").references(() => calendarEvents.id),
+  date: text("date"), // format: "YYYY-MM-DD" - used for filtering by day
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -354,6 +355,7 @@ export const insertMissionPageSchema = createInsertSchema(missionPages).pick({
   xpValue: true,
   tags: true,
   eventId: true,
+  date: true,
 });
 
 export const insertContactSchema = createInsertSchema(contacts).pick({

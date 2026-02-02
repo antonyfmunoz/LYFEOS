@@ -724,6 +724,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             const missionSlug = `mission-${event.title.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-')}-${savedEvent.id}`;
             const missionContent = `# ${event.title}\n\n**Scheduled:** ${event.date} at ${event.startTime}\n**Duration:** ${event.duration}\n**Category:** ${event.category}\n\n## Description\n\n${event.description || 'No description provided.'}\n\n## Tasks\n\n- [ ] Complete this mission\n\n## Notes\n\nAdd any notes here...`;
             
+            console.log("Creating mission page for calendar event:", savedEvent.id, "with slug:", missionSlug);
+            
             createMissionPage({
               title: event.title,
               slug: missionSlug,
@@ -734,6 +736,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
               xpValue: 15,
               tags: ['Mission', event.category],
               eventId: savedEvent.id.toString(),
+              date: event.date,
             });
           }
         })
@@ -835,6 +838,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
           xpValue: mission.xpValue || 5,
           tags: mission.tags || [],
           eventId: mission.eventId ? parseInt(mission.eventId) : null,
+          date: mission.date || null,
         })
       })
         .then((response) => response.json())
