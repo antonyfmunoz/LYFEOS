@@ -168,229 +168,242 @@ export default function DashboardPage() {
     </div>
   );
   
-  // Define widgets for drag and drop functionality  
-  const [widgets, setWidgets] = useState<WidgetData[]>([
+  // Widget metadata interface (without content - content is rendered dynamically)
+  interface WidgetMeta {
+    id: string;
+    title: string;
+    icon: React.ReactNode;
+    defaultOpen?: boolean;
+  }
+
+  // Define widgets for drag and drop functionality (metadata only)
+  const [widgets, setWidgets] = useState<WidgetMeta[]>([
     {
       id: 'mission-log',
       title: "Mission Log",
       icon: <Calendar className="h-5 w-5 text-primary" />,
-      content: (
-        <EnhancedMissionWidget 
-          events={events} 
-          maxHeight="96"
-          hideHeader={true}
-        />
-      ),
       defaultOpen: true
     },
     {
       id: 'data-entry-log',
       title: "Data Log",
       icon: <BookOpen className="h-5 w-5 text-primary" />,
-      content: (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Today's Thoughts */}
-            <div className="space-y-2">
-              <label className="text-sm flex items-center text-[#7DAAB2]">
-                <Brain className="h-4 w-4 text-primary" />
-                <span className="ml-2">Today's Thoughts</span>
-              </label>
-              <MarkdownEditor
-                placeholder="Capture your thoughts, ideas and discoveries here..."
-                value={reflection.thoughts}
-                onChange={(value) => updateReflection("thoughts", value)}
-                minHeight="80px"
-              />
-            </div>
-            
-            {/* Content Consumed */}
-            <div className="space-y-2">
-              <label className="text-sm flex items-center text-[#7DAAB2]">
-                <Book className="h-4 w-4 text-primary" />
-                <span className="ml-2">Content Consumed</span>
-              </label>
-              <MarkdownEditor
-                placeholder="Articles, books, or videos you consumed today..."
-                value={reflection.contentConsumed}
-                onChange={(value) => updateReflection("contentConsumed", value)}
-                minHeight="80px"
-              />
-            </div>
-          </div>
-          
-          <div className="space-y-2">
-            <label className="text-sm flex items-center text-[#7DAAB2]">
-              <Zap className="h-4 w-4 text-primary" />
-              <span className="ml-2">Research & Discoveries</span>
-            </label>
-            <MarkdownEditor
-              placeholder="Interesting facts or discoveries you made..."
-              value={reflection.research}
-              onChange={(value) => updateReflection("research", value)}
-              minHeight="60px"
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <label className="text-sm flex items-center text-[#7DAAB2]">
-              <ListChecks className="h-4 w-4 text-primary" />
-              <span className="ml-2">To-Do Ideas</span>
-            </label>
-            <MarkdownEditor
-              placeholder="Things you want to remember to do later..."
-              value={reflection.todoIdeas}
-              onChange={(value) => updateReflection("todoIdeas", value)}
-              minHeight="60px"
-            />
-          </div>
-        </div>
-      ),
       defaultOpen: true
     },
     {
       id: 'intention-setter',
       title: "Intention Log",
       icon: <TargetIcon className="h-5 w-5 text-primary" />,
-      content: (
-        <div className="space-y-4">
-          {/* Gratitude */}
-          <div className="space-y-2">
-            <label className="text-sm flex items-center text-[#7DAAB2]">
-              <Smile className="h-4 w-4 text-primary" />
-              <span className="ml-2">Gratitude</span>
-            </label>
-            <div className="flex flex-col space-y-2">
-              <MarkdownEditor
-                placeholder="What three things are you most grateful for today?"
-                value={reflection.gratitude}
-                onChange={(value) => updateReflection("gratitude", value)}
-                minHeight="80px"
-              />
-            </div>
-          </div>
-          
-          {/* Tomorrow's Goals */}
-          <div className="space-y-2">
-            <label className="text-sm flex items-center text-[#7DAAB2]">
-              <ListChecks className="h-4 w-4 text-primary" />
-              <span className="ml-2">Tomorrow's Goals</span>
-            </label>
-            <div className="flex flex-col space-y-2">
-              <MarkdownEditor
-                placeholder="What three things do you want to accomplish tomorrow?"
-                value={reflection.tomorrowGoals}
-                onChange={(value) => updateReflection("tomorrowGoals", value)}
-                minHeight="60px"
-              />
-            </div>
-          </div>
-          
-          {/* Annual Goals */}
-          <div className="space-y-2">
-            <label className="text-sm flex items-center text-[#7DAAB2]">
-              <TargetIcon className="h-4 w-4 text-primary" />
-              <span className="ml-2">Annual Goals</span>
-            </label>
-            <div className="flex flex-col space-y-2">
-              <MarkdownEditor
-                placeholder="What are your three big targets for the year?"
-                value={reflection.annualGoals}
-                onChange={(value) => updateReflection("annualGoals", value)}
-                minHeight="80px"
-              />
-            </div>
-          </div>
-        </div>
-      ),
       defaultOpen: true
     },
     {
       id: 'energy-log',
       title: "Energy Log",
       icon: <Brain className="h-5 w-5 text-primary" />,
-      content: (
-        <div className="space-y-4">
-          {/* Wake/Sleep Time Setup */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm flex items-center text-[#7DAAB2]">
-                <AlarmClock className="h-4 w-4 text-primary" />
-                <span className="ml-2">Wake Time</span>
-              </label>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 w-full">
-                  <AlarmClock className="h-4 w-4 text-primary/70" />
-                  <CustomTimePicker
-                    value={reflection.wakeTime}
-                    onChange={(value) => updateReflection("wakeTime", value)}
-                    className="flex-grow"
-                  />
-                </div>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm flex items-center text-[#7DAAB2]">
-                <MoonStar className="h-4 w-4 text-primary" />
-                <span className="ml-2">Sleep Time</span>
-              </label>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 w-full">
-                  <MoonStar className="h-4 w-4 text-primary/70" />
-                  <CustomTimePicker
-                    value={reflection.sleepTime}
-                    onChange={(value) => updateReflection("sleepTime", value)}
-                    className="flex-grow"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* State ratings - in a row for desktop, stacked for mobile */}
-          <div className="border-t border-primary/10 pt-4 mb-2">
-            <div className="flex items-center justify-between text-sm mb-3">
-              <label className="flex items-center text-[#7DAAB2] font-bold">
-                <Brain className="h-4 w-4 text-primary" />
-                <span className="ml-2">Energy Recap</span>
-              </label>
-              <div className="flex items-center">
-                <span className="text-[#7DAAB2] mr-2">Daily Total:</span>
-                <span className="text-[#D6F4FF] font-mono">
-                  {Math.round(((reflection.mentalState + reflection.physicalState + reflection.emotionalState) / 30) * 100)}%
-                </span>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {renderStateSelector(
-                reflection.mentalState,
-                (value) => updateReflection("mentalState", value),
-                "Mental State",
-                <Brain className="h-4 w-4 text-primary" />
-              )}
-              
-              {renderStateSelector(
-                reflection.physicalState,
-                (value) => updateReflection("physicalState", value),
-                "Physical State",
-                <HeartPulse className="h-4 w-4 text-primary" />
-              )}
-              
-              {renderStateSelector(
-                reflection.emotionalState,
-                (value) => updateReflection("emotionalState", value),
-                "Emotional State",
-                <Smile className="h-4 w-4 text-primary" />
-              )}
-            </div>
-          </div>
-        </div>
-      ),
       defaultOpen: true
     }
   ]);
+
+  // Render widget content dynamically based on id
+  const renderWidgetContent = (widgetId: string) => {
+    switch (widgetId) {
+      case 'mission-log':
+        return (
+          <EnhancedMissionWidget 
+            events={events} 
+            maxHeight="96"
+            hideHeader={true}
+          />
+        );
+      case 'data-entry-log':
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm flex items-center text-[#7DAAB2]">
+                  <Brain className="h-4 w-4 text-primary" />
+                  <span className="ml-2">Today's Thoughts</span>
+                </label>
+                <MarkdownEditor
+                  placeholder="Capture your thoughts, ideas and discoveries here..."
+                  value={reflection.thoughts}
+                  onChange={(value) => updateReflection("thoughts", value)}
+                  minHeight="80px"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm flex items-center text-[#7DAAB2]">
+                  <Book className="h-4 w-4 text-primary" />
+                  <span className="ml-2">Content Consumed</span>
+                </label>
+                <MarkdownEditor
+                  placeholder="Articles, books, or videos you consumed today..."
+                  value={reflection.contentConsumed}
+                  onChange={(value) => updateReflection("contentConsumed", value)}
+                  minHeight="80px"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm flex items-center text-[#7DAAB2]">
+                <Zap className="h-4 w-4 text-primary" />
+                <span className="ml-2">Research & Discoveries</span>
+              </label>
+              <MarkdownEditor
+                placeholder="Interesting facts or discoveries you made..."
+                value={reflection.research}
+                onChange={(value) => updateReflection("research", value)}
+                minHeight="60px"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm flex items-center text-[#7DAAB2]">
+                <ListChecks className="h-4 w-4 text-primary" />
+                <span className="ml-2">To-Do Ideas</span>
+              </label>
+              <MarkdownEditor
+                placeholder="Things you want to remember to do later..."
+                value={reflection.todoIdeas}
+                onChange={(value) => updateReflection("todoIdeas", value)}
+                minHeight="60px"
+              />
+            </div>
+          </div>
+        );
+      case 'intention-setter':
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm flex items-center text-[#7DAAB2]">
+                <Smile className="h-4 w-4 text-primary" />
+                <span className="ml-2">Gratitude</span>
+              </label>
+              <div className="flex flex-col space-y-2">
+                <MarkdownEditor
+                  placeholder="What three things are you most grateful for today?"
+                  value={reflection.gratitude}
+                  onChange={(value) => updateReflection("gratitude", value)}
+                  minHeight="80px"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm flex items-center text-[#7DAAB2]">
+                <ListChecks className="h-4 w-4 text-primary" />
+                <span className="ml-2">Tomorrow's Goals</span>
+              </label>
+              <div className="flex flex-col space-y-2">
+                <MarkdownEditor
+                  placeholder="What three things do you want to accomplish tomorrow?"
+                  value={reflection.tomorrowGoals}
+                  onChange={(value) => updateReflection("tomorrowGoals", value)}
+                  minHeight="60px"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm flex items-center text-[#7DAAB2]">
+                <TargetIcon className="h-4 w-4 text-primary" />
+                <span className="ml-2">Annual Goals</span>
+              </label>
+              <div className="flex flex-col space-y-2">
+                <MarkdownEditor
+                  placeholder="What are your three big targets for the year?"
+                  value={reflection.annualGoals}
+                  onChange={(value) => updateReflection("annualGoals", value)}
+                  minHeight="80px"
+                />
+              </div>
+            </div>
+          </div>
+        );
+      case 'energy-log':
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm flex items-center text-[#7DAAB2]">
+                  <AlarmClock className="h-4 w-4 text-primary" />
+                  <span className="ml-2">Wake Time</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 w-full">
+                    <AlarmClock className="h-4 w-4 text-primary/70" />
+                    <CustomTimePicker
+                      value={reflection.wakeTime}
+                      onChange={(value) => updateReflection("wakeTime", value)}
+                      className="flex-grow"
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm flex items-center text-[#7DAAB2]">
+                  <MoonStar className="h-4 w-4 text-primary" />
+                  <span className="ml-2">Sleep Time</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 w-full">
+                    <MoonStar className="h-4 w-4 text-primary/70" />
+                    <CustomTimePicker
+                      value={reflection.sleepTime}
+                      onChange={(value) => updateReflection("sleepTime", value)}
+                      className="flex-grow"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="border-t border-primary/10 pt-4 mb-2">
+              <div className="flex items-center justify-between text-sm mb-3">
+                <label className="flex items-center text-[#7DAAB2] font-bold">
+                  <Brain className="h-4 w-4 text-primary" />
+                  <span className="ml-2">Energy Recap</span>
+                </label>
+                <div className="flex items-center">
+                  <span className="text-[#7DAAB2] mr-2">Daily Total:</span>
+                  <span className="text-[#D6F4FF] font-mono">
+                    {Math.round(((reflection.mentalState + reflection.physicalState + reflection.emotionalState) / 30) * 100)}%
+                  </span>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {renderStateSelector(
+                  reflection.mentalState,
+                  (value) => updateReflection("mentalState", value),
+                  "Mental State",
+                  <Brain className="h-4 w-4 text-primary" />
+                )}
+                
+                {renderStateSelector(
+                  reflection.physicalState,
+                  (value) => updateReflection("physicalState", value),
+                  "Physical State",
+                  <HeartPulse className="h-4 w-4 text-primary" />
+                )}
+                
+                {renderStateSelector(
+                  reflection.emotionalState,
+                  (value) => updateReflection("emotionalState", value),
+                  "Emotional State",
+                  <Smile className="h-4 w-4 text-primary" />
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
   
   // Callback for widget drag and drop reordering
   const moveWidget = useCallback((dragIndex: number, hoverIndex: number) => {
@@ -495,7 +508,7 @@ export default function DashboardPage() {
             moveWidget={moveWidget}
             defaultOpen={widget.defaultOpen}
           >
-            {widget.content}
+            {renderWidgetContent(widget.id)}
           </DraggableWidget>
         ))}
       </div>
