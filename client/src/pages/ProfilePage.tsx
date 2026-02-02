@@ -4,7 +4,6 @@ import { useLYFEOS } from "../lib/context";
 import { useAuth } from "@/lib/authContext";
 import { useTheme } from "@/lib/themeContext";
 import { usePageTitle } from "@/hooks/use-page-title";
-import IntegrationsManager from "@/components/profile/IntegrationsManager";
 import CompactStatsWidget from "@/components/dashboard/CompactStatsWidget";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -32,7 +31,6 @@ import {
   Paintbrush,
   Settings,
   ArrowLeft,
-  Link as LinkIcon,
   Globe,
   Plus,
   BarChart4
@@ -609,27 +607,6 @@ export default function ProfilePage() {
               </div>
             </div>
             
-            {/* Integrations Section */}
-            <Collapsible className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 mb-2">
-                  <LinkIcon className="h-4 w-4 text-primary" />
-                  <Label className="text-sm text-foreground">Integrations</Label>
-                </div>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-9 h-8 p-0">
-                    <ChevronDown className="h-4 w-4 text-primary transition-transform ui-open:rotate-180" />
-                  </Button>
-                </CollapsibleTrigger>
-              </div>
-              <p className="text-xs text-muted-foreground mb-3">
-                Connect external services to enhance your LYFEOS experience.
-              </p>
-              
-              <CollapsibleContent>
-                <IntegrationsManager userId={user?.id} />
-              </CollapsibleContent>
-            </Collapsible>
             
 
           </div>
