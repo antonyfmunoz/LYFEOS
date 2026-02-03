@@ -708,14 +708,6 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             };
           });
           
-          // Show quest unmarked toast
-          toast({
-            title: "Quest Unmarked",
-            description: `${quest.title} has been marked as incomplete`,
-            variant: "destructive",
-            className: "bg-background/80 border border-destructive text-foreground",
-            duration: 3000,
-          });
         }
         
         return { ...quest, completed };

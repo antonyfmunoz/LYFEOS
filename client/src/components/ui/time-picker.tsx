@@ -169,39 +169,26 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
               ))}
             </div>
 
-            <div className="flex flex-col justify-center gap-2 ml-2">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setSelectedPeriod("AM");
-                }}
-                className={cn(
-                  "py-2 px-4 rounded-lg transition-all font-medium",
-                  selectedPeriod === "AM"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-primary/10"
-                )}
-              >
-                AM
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setSelectedPeriod("PM");
-                }}
-                className={cn(
-                  "py-2 px-4 rounded-lg transition-all font-medium",
-                  selectedPeriod === "PM"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-primary/10"
-                )}
-              >
-                PM
-              </button>
+            <div className="flex flex-col overflow-y-auto scrollbar-thin scrollbar-thumb-primary/30 w-14 snap-y ml-2">
+              {(["AM", "PM"] as const).map((period) => (
+                <button
+                  key={period}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSelectedPeriod(period);
+                  }}
+                  className={cn(
+                    "py-2 px-3 text-center rounded-lg transition-all snap-center font-medium",
+                    selectedPeriod === period
+                      ? "bg-primary/20 text-primary"
+                      : "text-muted-foreground hover:bg-primary/10"
+                  )}
+                >
+                  {period}
+                </button>
+              ))}
             </div>
           </div>
 
