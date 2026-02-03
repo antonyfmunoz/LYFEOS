@@ -214,7 +214,7 @@ export default function ChronilogPage() {
           <p className="text-[#7DAAB2]">Your personal timeline of knowledge, reflections, and growth logs.</p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           {categories.map((category, index) => (
             <DraggableCategoryCard
               key={category.id}
@@ -228,9 +228,7 @@ export default function ChronilogPage() {
         </div>
         
         {/* Timeline widget */}
-        <div className="mt-8">
-          <TimelineWidget />
-        </div>
+        <TimelineWidget />
       </div>
     </DndProvider>
   );
