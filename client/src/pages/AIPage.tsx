@@ -259,19 +259,20 @@ export default function AIPage() {
         {/* Backdrop overlay for mobile - only visible when sidebar is open */}
         {sidebarOpen && (
           <div 
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-10 sm:hidden"
+            className="fixed left-0 right-0 top-[57px] bottom-[70px] bg-black/50 backdrop-blur-sm z-10 sm:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
         
         {/* Left Sidebar - Chat Sessions & Quick Prompts - Collapsible */}
         <div className={`
-          fixed sm:static inset-y-0 left-0 z-20
+          fixed sm:static left-0 z-20
+          top-[57px] bottom-[70px] sm:top-0 sm:bottom-0
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full sm:translate-x-0'} 
           transition-transform duration-200 ease-in-out
-          flex flex-col w-[280px] sm:w-72 h-[calc(100vh-140px)]
+          flex flex-col w-[280px] sm:w-72 sm:h-auto
           bg-background sm:bg-transparent border-r border-primary/20 
-          pt-12 sm:pt-0 px-4 sm:px-1 sm:mr-4
+          pt-4 sm:pt-0 px-4 sm:px-1 sm:mr-4
           overflow-y-auto
         `}>
           {/* Chat Sessions */}
