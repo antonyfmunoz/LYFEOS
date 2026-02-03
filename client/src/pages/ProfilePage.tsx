@@ -176,12 +176,6 @@ export default function ProfilePage() {
   // Define widgets for drag and drop functionality
   const [widgets, setWidgets] = useState<WidgetData[]>([
     {
-      id: 'stats',
-      title: "Stats",
-      icon: <BarChart4 className="h-5 w-5 text-primary" />,
-      defaultOpen: true
-    },
-    {
       id: 'player-record',
       title: "Player Record",
       icon: <FileText className="h-5 w-5 text-primary" />,
@@ -191,6 +185,12 @@ export default function ProfilePage() {
       id: 'player-affirmation',
       title: "Player Affirmation",
       icon: <Terminal className="h-5 w-5 text-primary" />,
+      defaultOpen: true
+    },
+    {
+      id: 'stats',
+      title: "Player Stats",
+      icon: <BarChart4 className="h-5 w-5 text-primary" />,
       defaultOpen: true
     },
     {
