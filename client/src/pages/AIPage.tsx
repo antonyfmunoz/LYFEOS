@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useLYFEOS } from "../lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { 
-  Bot, Send, ChevronRight, Edit2, Check, X,
+  Send, ChevronRight, Edit2, Check, X,
   PlusCircle, Trash2, MessageSquare, MoreVertical, Menu
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -210,7 +210,7 @@ export default function AIPage() {
           </Button>
 
           <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mr-3">
-            <Bot className="h-5 w-5 text-primary" />
+            <span className="material-icons text-primary text-xl">smart_toy</span>
           </div>
           
           <div>
@@ -413,7 +413,7 @@ export default function AIPage() {
                     <div className={`flex max-w-[90%] lg:max-w-[70%]`}>
                       {message.sender === 'ai' && (
                         <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-1">
-                          <Bot className="h-5 w-5 text-primary" />
+                          <span className="material-icons text-primary text-xl">smart_toy</span>
                         </div>
                       )}
                       
@@ -452,7 +452,7 @@ export default function AIPage() {
                   <div className="flex justify-start">
                     <div className="flex max-w-[70%]">
                       <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-1">
-                        <Bot className="h-5 w-5 text-primary" />
+                        <span className="material-icons text-primary text-xl">smart_toy</span>
                       </div>
                       
                       <div className="ml-3 bg-card/70 border border-primary/30 rounded-2xl rounded-tl-sm p-4 shadow-sm">
