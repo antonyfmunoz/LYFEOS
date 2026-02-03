@@ -33,7 +33,18 @@ import {
   ArrowLeft,
   Globe,
   Plus,
-  BarChart4
+  BarChart4,
+  RefreshCw,
+  Sparkles,
+  Brain,
+  Target,
+  BookOpen,
+  FolderKanban,
+  Heart,
+  Wallet,
+  Zap,
+  Palette as PaletteIcon,
+  Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -42,6 +53,7 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { DraggableWidget } from '@/components/ui/draggable-widget';
 import update from 'immutability-helper';
+import type { UserProfile as UserProfileSchema } from "@shared/schema";
 
 
 
@@ -95,6 +107,15 @@ export default function ProfilePage() {
     },
     enabled: !!user?.id,
   });
+  
+  // Fetch user profile schema data (onboarding/archetype data)
+  const { data: userProfileData, isLoading: isProfileSchemaLoading } = useQuery({
+    queryKey: ["/api/profile"],
+    enabled: !!user?.id,
+  });
+  
+  // State for affirmation regeneration
+  const [isGeneratingAffirmation, setIsGeneratingAffirmation] = useState(false);
 
   // Update profile mutation
   const updateProfileMutation = useMutation({
@@ -191,6 +212,311 @@ export default function ProfilePage() {
       })
     );
   }, []);
+  
+  // Helper to format array or object values for display
+  const formatValue = (val: any): string => {
+    if (!val) return "—";
+    if (Array.isArray(val)) {
+      return val.length > 0 ? val.join(", ") : "—";
+    }
+    if (typeof val === "object") {
+      return Object.values(val).filter(Boolean).join(", ") || "—";
+    }
+    return String(val) || "—";
+  };
+
+  // Generate Character Affirmation
+  const handleGenerateAffirmation = async () => {
+    if (!userProfileData || isGeneratingAffirmation) return;
+    
+    setIsGeneratingAffirmation(true);
+    try {
+      const response = await fetch("/api/profile/generate-affirmation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          displayName: profileData.displayName || username,
+          archetypePrimary: (userProfileData as any).archetypePrimary,
+          archetypeSecondary: (userProfileData as any).archetypeSecondary,
+          coreValues: (userProfileData as any).primaryValues,
+          vision5Year: (userProfileData as any).vision5Year,
+          primaryCraft: (userProfileData as any).primaryCraft,
+          desiredEmotion: (userProfileData as any).desiredEmotion,
+        }),
+      });
+      
+      if (!response.ok) throw new Error("Failed to generate affirmation");
+      
+      const { affirmation } = await response.json();
+      
+      // Save the affirmation to the profile
+      await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ characterAffirmation: affirmation }),
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      
+      toast({
+        title: "Affirmation Generated",
+        description: "Your character affirmation has been created.",
+        variant: "default",
+        className: "bg-background/80 border border-primary text-foreground",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error("Error generating affirmation:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate affirmation. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingAffirmation(false);
+    }
+  };
+
+  // Render Player Record with 9 sections
+  const renderPlayerRecord = () => {
+    const profile = userProfileData as any;
+    
+    if (isProfileSchemaLoading) {
+      return (
+        <div className="p-4 text-center text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+          Loading profile data...
+        </div>
+      );
+    }
+    
+    if (!profile) {
+      return (
+        <div className="p-4 border border-primary/10 rounded-lg bg-background/40 text-center">
+          <p className="text-muted-foreground mb-3">Complete onboarding to populate your Player Record.</p>
+          <Link href="/onboarding">
+            <Button variant="outline" size="sm" className="hover:bg-primary hover:text-background">
+              Start Onboarding
+            </Button>
+          </Link>
+        </div>
+      );
+    }
+
+    const sections = [
+      {
+        id: "identity",
+        title: "Identity",
+        icon: <User className="h-4 w-4 text-primary" />,
+        items: [
+          { label: "Primary Archetype", value: profile.archetypePrimary },
+          { label: "Secondary Archetype", value: profile.archetypeSecondary },
+          { label: "Shadow Archetype", value: profile.archetypeShadow },
+          { label: "Primary Instincts", value: formatValue(profile.primaryInstincts) },
+          { label: "Key Drivers", value: formatValue(profile.keyDrivers) },
+        ]
+      },
+      {
+        id: "personality",
+        title: "Personality",
+        icon: <Brain className="h-4 w-4 text-primary" />,
+        items: [
+          { label: "Core Belief", value: profile.coreBelief },
+          { label: "Primary Values", value: formatValue(profile.primaryValues) },
+          { label: "Strengths", value: formatValue(profile.strengths) },
+          { label: "Weaknesses", value: formatValue(profile.weaknesses) },
+          { label: "Trait to Develop", value: profile.desiredTrait },
+        ]
+      },
+      {
+        id: "vision",
+        title: "Vision & Goals",
+        icon: <Target className="h-4 w-4 text-primary" />,
+        items: [
+          { label: "Life Stage", value: profile.lifeStage },
+          { label: "Desired Emotion", value: profile.desiredEmotion },
+          { label: "90-Day Vision", value: profile.vision90Day },
+          { label: "5-Year Vision", value: profile.vision5Year },
+          { label: "Legacy Vision", value: profile.vision10YearLegacy },
+        ]
+      },
+      {
+        id: "learning",
+        title: "Learning & Skills",
+        icon: <BookOpen className="h-4 w-4 text-primary" />,
+        items: [
+          { label: "Domains of Competence", value: formatValue(profile.domainsOfCompetence) },
+          { label: "Skills to Acquire", value: formatValue(profile.skillsToAcquire) },
+          { label: "Knowledge Areas", value: formatValue(profile.knowledgeAreas) },
+          { label: "Integration Method", value: profile.integrationMethod },
+        ]
+      },
+      {
+        id: "projects",
+        title: "Projects & Craft",
+        icon: <FolderKanban className="h-4 w-4 text-primary" />,
+        items: [
+          { label: "Primary Craft", value: profile.primaryCraft },
+          { label: "Why This Craft", value: profile.primaryCraftWhy },
+          { label: "Active Phase", value: profile.activePhase },
+          { label: "Current Projects", value: formatValue(profile.currentProjects?.map?.((p: any) => p.name)) },
+        ]
+      },
+      {
+        id: "health",
+        title: "Health & Body",
+        icon: <Heart className="h-4 w-4 text-primary" />,
+        items: [
+          { label: "Training Style", value: profile.fitnessMovement?.trainingStyle },
+          { label: "Nutritional Approach", value: profile.nutritionRecovery?.nutritionalApproach },
+          { label: "Energy Patterns", value: profile.healthVitality?.energyPatterns },
+          { label: "Longevity Focus", value: formatValue(profile.healthVitality?.longevityFocus) },
+        ]
+      },
+      {
+        id: "wealth",
+        title: "Wealth & Work",
+        icon: <Wallet className="h-4 w-4 text-primary" />,
+        items: [
+          { label: "Career/Vocation", value: profile.careerVocation },
+          { label: "Active Ventures", value: formatValue(profile.activeVentures) },
+          { label: "Weekly Capacity", value: profile.weeklyCapacity?.hours ? `${profile.weeklyCapacity.hours} hours` : "—" },
+          { label: "Physical Environment", value: profile.physicalEnvironment },
+        ]
+      },
+      {
+        id: "performance",
+        title: "Performance",
+        icon: <Zap className="h-4 w-4 text-primary" />,
+        items: [
+          { label: "Collaboration Style", value: profile.collaborationStyle },
+          { label: "Role Orientation", value: profile.roleOrientation },
+          { label: "Decision Style", value: profile.decisionOrientation },
+          { label: "Optimal Environment", value: profile.optimalEnvironment },
+          { label: "Greatest Contribution", value: profile.greatestContribution },
+        ]
+      },
+      {
+        id: "style",
+        title: "Style & Expression",
+        icon: <PaletteIcon className="h-4 w-4 text-primary" />,
+        items: [
+          { label: "Aesthetic", value: profile.aesthetic },
+          { label: "Signature Expression", value: profile.signatureExpression },
+          { label: "Creative Outlets", value: formatValue(profile.creativeOutlets) },
+        ]
+      },
+    ];
+
+    return (
+      <div className="space-y-3">
+        {sections.map((section) => (
+          <Collapsible key={section.id} defaultOpen={false}>
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors group">
+              <div className="flex items-center gap-2">
+                {section.icon}
+                <span className="text-sm font-medium text-foreground">{section.title}</span>
+              </div>
+              <ChevronDown className="h-4 w-4 text-muted-foreground group-data-[state=open]:rotate-180 transition-transform" />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="p-3 pt-2 space-y-2">
+                {section.items.map((item, idx) => (
+                  <div key={idx} className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-3 py-1 border-b border-primary/5 last:border-0">
+                    <span className="text-xs text-muted-foreground min-w-[120px]">{item.label}</span>
+                    <span className="text-sm text-foreground flex-1">{item.value || "—"}</span>
+                  </div>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        ))}
+      </div>
+    );
+  };
+
+  // Render Player Affirmation
+  const renderPlayerAffirmation = () => {
+    const profile = userProfileData as any;
+    const affirmation = profile?.characterAffirmation;
+    
+    if (isProfileSchemaLoading) {
+      return (
+        <div className="p-4 text-center text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+          Loading...
+        </div>
+      );
+    }
+
+    return (
+      <div className="p-4 border border-primary/10 rounded-lg bg-background/40">
+        {affirmation ? (
+          <>
+            <div className="p-4 bg-card/50 rounded-lg border border-primary/20 mb-4">
+              <p className="text-foreground italic leading-relaxed whitespace-pre-wrap">
+                {affirmation}
+              </p>
+            </div>
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGenerateAffirmation}
+                disabled={isGeneratingAffirmation}
+                className="hover:bg-primary hover:text-background"
+              >
+                {isGeneratingAffirmation ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Regenerating...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Regenerate
+                  </>
+                )}
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="text-center">
+            <Sparkles className="h-8 w-8 text-primary/50 mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground mb-4">
+              Generate a personalized character affirmation based on your profile data.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleGenerateAffirmation}
+              disabled={isGeneratingAffirmation || !profile}
+              className="hover:bg-primary hover:text-background"
+            >
+              {isGeneratingAffirmation ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Generate Affirmation
+                </>
+              )}
+            </Button>
+            {!profile && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Complete onboarding first to enable this feature.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Render widget content based on id
   const renderWidgetContent = (widgetId: string) => {
@@ -198,40 +524,9 @@ export default function ProfilePage() {
       case 'stats':
         return <CompactStatsWidget stats={stats} />;
       case 'player-record':
-        return (
-          <div className="p-4 border border-primary/10 rounded-lg bg-background/40">
-            <p className="text-sm text-muted-foreground mb-3">
-              Track your achievements, milestones, and personal records.
-            </p>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg">
-                <span className="text-sm text-foreground">Total XP Earned</span>
-                <span className="text-sm font-medium text-primary">{stats.experience?.totalXP || 0} XP</span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg">
-                <span className="text-sm text-foreground">Current Level</span>
-                <span className="text-sm font-medium text-primary">Level {stats.experience?.level || 1}</span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg">
-                <span className="text-sm text-foreground">Longest Streak</span>
-                <span className="text-sm font-medium text-primary">{stats.streakDays || 0} days</span>
-              </div>
-            </div>
-          </div>
-        );
+        return renderPlayerRecord();
       case 'player-affirmation':
-        return (
-          <div className="p-4 border border-primary/10 rounded-lg bg-background/40">
-            <p className="text-sm text-muted-foreground mb-3">
-              Your personal affirmation to stay motivated.
-            </p>
-            <div className="p-4 bg-card/50 rounded-lg border border-primary/20">
-              <p className="text-center text-foreground italic">
-                "I am capable of achieving my goals and becoming the best version of myself."
-              </p>
-            </div>
-          </div>
-        );
+        return renderPlayerAffirmation();
       case 'settings':
         return (
           <>
