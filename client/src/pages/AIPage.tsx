@@ -209,9 +209,7 @@ export default function AIPage() {
             {sidebarOpen ? <X className="h-5 w-5 text-primary" /> : <Menu className="h-5 w-5 text-primary" />}
           </Button>
 
-          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mr-3">
-            <span className="material-icons text-primary text-xl">smart_toy</span>
-          </div>
+          <span className="material-icons text-primary text-2xl mr-3">smart_toy</span>
           
           <div>
             <h1 className="text-xl font-orbitron text-foreground mb-1">AI Assistant</h1>
@@ -412,9 +410,7 @@ export default function AIPage() {
                   <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`flex max-w-[90%] lg:max-w-[70%]`}>
                       {message.sender === 'ai' && (
-                        <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-1">
-                          <span className="material-icons text-primary text-xl">smart_toy</span>
-                        </div>
+                        <span className="material-icons text-primary text-2xl flex-shrink-0 mt-1">smart_toy</span>
                       )}
                       
                       <div className={`${message.sender === 'ai' 
@@ -437,12 +433,7 @@ export default function AIPage() {
                       </div>
                       
                       {message.sender === 'user' && (
-                        <div className="h-10 w-10 rounded-full bg-card/60 ml-3 flex items-center justify-center flex-shrink-0 mt-1 overflow-hidden">
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-primary">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="12" cy="7" r="4"></circle>
-                          </svg>
-                        </div>
+                        <span className="material-icons text-primary text-2xl ml-3 flex-shrink-0 mt-1">person</span>
                       )}
                     </div>
                   </div>
@@ -451,9 +442,7 @@ export default function AIPage() {
                 {isLoading && (
                   <div className="flex justify-start">
                     <div className="flex max-w-[70%]">
-                      <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-1">
-                        <span className="material-icons text-primary text-xl">smart_toy</span>
-                      </div>
+                      <span className="material-icons text-primary text-2xl flex-shrink-0 mt-1">smart_toy</span>
                       
                       <div className="ml-3 bg-card/70 border border-primary/30 rounded-2xl rounded-tl-sm p-4 shadow-sm">
                         <div className="text-xs text-primary mb-1 font-semibold">{aiCompanionName}</div>
