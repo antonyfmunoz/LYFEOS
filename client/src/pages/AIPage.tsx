@@ -116,13 +116,6 @@ export default function AIPage() {
     if (isMobile) {
       setSidebarOpen(false);
     }
-    // Focus on message input field after creating a new chat
-    setTimeout(() => {
-      const inputField = document.getElementById('messageInput');
-      if (inputField) {
-        inputField.focus();
-      }
-    }, 100);
   };
   
   const handleUpdateChatTitle = () => {
