@@ -1315,6 +1315,50 @@ Generate the complete affirmation now:`;
     }
   });
 
+  // Update quest (PATCH)
+  const updateQuestSchema = insertQuestSchema.pick({
+    title: true,
+    description: true,
+    category: true,
+    energyCost: true,
+    experienceReward: true,
+    startDate: true,
+    startTime: true,
+    endDate: true,
+    endTime: true,
+    dueDate: true,
+    notificationEnabled: true,
+    notificationTime: true,
+  }).partial();
+
+  app.patch("/api/quests/:questId", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const questId = parseInt(req.params.questId);
+      if (isNaN(questId)) {
+        return res.status(400).json({ error: "Invalid quest ID" });
+      }
+      
+      const quest = await storage.getQuest(questId);
+      if (!quest) {
+        return res.status(404).json({ error: "Quest not found" });
+      }
+      
+      if (quest.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to update this quest" });
+      }
+      
+      const validatedData = updateQuestSchema.parse(req.body);
+      const updatedQuest = await storage.updateQuest(questId, validatedData);
+      return res.status(200).json({ quest: updatedQuest });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid quest data", details: error.errors });
+      }
+      console.error("Error updating quest:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // AI MESSAGE ROUTES
   app.get("/api/users/:userId/messages", isOwner, async (req: Request, res: Response) => {
     try {

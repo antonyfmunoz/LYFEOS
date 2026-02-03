@@ -153,6 +153,7 @@ interface LYFEOSContextType {
   activeChatSessionId: string;
   toggleQuestCompletion: (id: string) => void;
   createQuest: (quest: Omit<Quest, "id" | "completed">) => Promise<Quest>;
+  updateQuest: (id: string, quest: Partial<Quest>) => Promise<Quest>;
   deleteQuest: (id: string) => Promise<void>;
   sendMessage: (content: string) => void;
   sendMessageInSession: (sessionId: string, content: string) => void;
@@ -742,7 +743,13 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         category: questData.category || "general",
         energyCost: questData.energyCost,
         experienceReward: questData.experienceReward,
+        startDate: questData.startDate || null,
+        startTime: questData.startTime || null,
+        endDate: questData.endDate || null,
+        endTime: questData.endTime || null,
         dueDate: questData.dueDate || null,
+        notificationEnabled: questData.notificationEnabled || false,
+        notificationTime: questData.notificationTime || null,
         completed: false,
       }),
     });
@@ -760,19 +767,54 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       completed: quest.completed,
       energyCost: quest.energyCost,
       experienceReward: quest.experienceReward,
+      startDate: quest.startDate,
+      startTime: quest.startTime,
+      endDate: quest.endDate,
+      endTime: quest.endTime,
       dueDate: quest.dueDate,
+      notificationEnabled: quest.notificationEnabled,
+      notificationTime: quest.notificationTime,
     };
     
     setQuests((prev) => [...prev, newQuest]);
     
-    toast({
-      title: "Mission Created",
-      description: `${newQuest.title} has been added to your missions`,
-      variant: "default",
-      duration: 2000,
+    return newQuest;
+  };
+
+  // Update a quest/mission
+  const updateQuest = async (id: string, questData: Partial<Quest>): Promise<Quest> => {
+    const response = await fetch(`/api/quests/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(questData),
     });
     
-    return newQuest;
+    if (!response.ok) {
+      throw new Error("Failed to update quest");
+    }
+    
+    const { quest } = await response.json();
+    const updatedQuest: Quest = {
+      id: String(quest.id),
+      title: quest.title,
+      description: quest.description,
+      category: quest.category,
+      completed: quest.completed,
+      energyCost: quest.energyCost,
+      experienceReward: quest.experienceReward,
+      startDate: quest.startDate,
+      startTime: quest.startTime,
+      endDate: quest.endDate,
+      endTime: quest.endTime,
+      dueDate: quest.dueDate,
+      notificationEnabled: quest.notificationEnabled,
+      notificationTime: quest.notificationTime,
+    };
+    
+    setQuests((prev) => prev.map((q) => (q.id === id ? updatedQuest : q)));
+    
+    return updatedQuest;
   };
 
   // Delete a quest/mission
@@ -793,13 +835,6 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     }
     
     setQuests((prev) => prev.filter((q) => q.id !== id));
-    
-    toast({
-      title: "Mission Deleted",
-      description: "The mission has been removed",
-      variant: "default",
-      duration: 2000,
-    });
   };
 
   // Send a message to AI companion
@@ -1816,6 +1851,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         activeChatSessionId,
         toggleQuestCompletion,
         createQuest,
+        updateQuest,
         deleteQuest,
         sendMessage,
         sendMessageInSession,

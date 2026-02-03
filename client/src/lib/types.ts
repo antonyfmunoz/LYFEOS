@@ -42,7 +42,13 @@ export interface Quest {
   completed: boolean;
   energyCost: number;
   experienceReward: number;
+  startDate?: string | null;
+  startTime?: string | null;
+  endDate?: string | null;
+  endTime?: string | null;
   dueDate?: string | null;
+  notificationEnabled?: boolean;
+  notificationTime?: string | null;
 }
 
 export interface AIMessage {
