@@ -690,7 +690,10 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Draggable Widgets - Stats Log and Settings */}
+          </div>
+
+        {/* Draggable Widgets - Stats Log and Settings */}
+        <div className="mt-6">
           <DndProvider backend={HTML5Backend}>
             {widgets.map((widget, index) => (
               <DraggableWidget
