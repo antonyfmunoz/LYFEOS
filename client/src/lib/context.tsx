@@ -214,6 +214,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const [username, setUsername] = useState<string>("Alex Chen");
   const [aiCompanionName, setAICompanionNameState] = useState<string>("Lyfe");
   const [chatSessions, setChatSessions] = useState<ChatSession[]>(initialChatSessions);
+  // Mapping from local chat session IDs to database conversation IDs
+  const [sessionToDbIdMap, setSessionToDbIdMap] = useState<Record<string, number>>({});
   const [activeChatSessionId, setActiveChatSessionId] = useState<string>(initialChatSessions[0].id);
   
   // Function to update user stats
@@ -991,9 +993,36 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   
   // Chat Sessions Functions
   
+  // Helper to get or create a database conversation for a session
+  const getOrCreateDbConversation = async (sessionId: string, title: string): Promise<number> => {
+    // Check if we already have a database ID for this session
+    if (sessionToDbIdMap[sessionId]) {
+      return sessionToDbIdMap[sessionId];
+    }
+    
+    // Create a new database conversation
+    const response = await fetch('/api/conversations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title }),
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to create conversation');
+    }
+    
+    const conversation = await response.json();
+    const dbId = conversation.id;
+    
+    // Store the mapping
+    setSessionToDbIdMap(prev => ({ ...prev, [sessionId]: dbId }));
+    
+    return dbId;
+  };
+  
   // Send a message in a specific chat session
-  const sendMessageInSession = (sessionId: string, content: string) => {
-    // Add user message
+  const sendMessageInSession = async (sessionId: string, content: string) => {
+    // Add user message immediately to UI
     const userMessage: AIMessage = {
       id: `msg-user-${Date.now()}`,
       sender: "user",
@@ -1021,85 +1050,140 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       setMessages((prev) => [...prev, userMessage]);
     }
     
-    // Make API call to get AI response
-    fetch('/api/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        userId: 1, // This will be replaced with the actual user ID from session
-        sender: 'user',
-        content,
+    try {
+      // Get the session title for creating a new conversation if needed
+      const session = chatSessions.find(s => s.id === sessionId);
+      const title = session?.title || 'New Chat';
+      
+      // Get or create the database conversation
+      const dbConversationId = await getOrCreateDbConversation(sessionId, title);
+      
+      // Create a placeholder AI message that will be updated with streaming content
+      const aiMessageId = `msg-ai-${Date.now()}`;
+      const aiMessage: AIMessage = {
+        id: aiMessageId,
+        sender: 'ai',
+        content: '',
         timestamp: new Date(),
-      })
-    })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        return response.json();
-      })
-      .then(data => {
-        if (data.aiResponse) {
-          const aiMessage: AIMessage = {
-            id: data.aiResponse.id || `msg-ai-${Date.now()}`,
-            sender: 'ai',
-            content: data.aiResponse.content,
-            timestamp: new Date(data.aiResponse.timestamp) || new Date(),
-          };
+      };
+      
+      // Add empty AI message to chat session (will be updated as content streams in)
+      setChatSessions((prev) => 
+        prev.map((session) => {
+          if (session.id === sessionId) {
+            return {
+              ...session, 
+              messages: [...session.messages, aiMessage],
+              updatedAt: new Date()
+            };
+          }
+          return session;
+        })
+      );
+      
+      if (sessionId === activeChatSessionId) {
+        setMessages((prev) => [...prev, aiMessage]);
+      }
+      
+      // Make streaming API call to get AI response
+      const response = await fetch(`/api/conversations/${dbConversationId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = '';
+      
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
           
-          // Update chat session with AI response
-          setChatSessions((prev) => 
-            prev.map((session) => {
-              if (session.id === sessionId) {
-                const updatedMessages = [...session.messages, aiMessage];
-                return {
-                  ...session, 
-                  messages: updatedMessages,
-                  updatedAt: new Date()
-                };
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.content) {
+                  fullContent += data.content;
+                  
+                  // Update the AI message content in real-time
+                  setChatSessions((prev) => 
+                    prev.map((session) => {
+                      if (session.id === sessionId) {
+                        return {
+                          ...session,
+                          messages: session.messages.map(msg => 
+                            msg.id === aiMessageId 
+                              ? { ...msg, content: fullContent }
+                              : msg
+                          ),
+                          updatedAt: new Date()
+                        };
+                      }
+                      return session;
+                    })
+                  );
+                  
+                  if (sessionId === activeChatSessionId) {
+                    setMessages((prev) => 
+                      prev.map(msg => 
+                        msg.id === aiMessageId 
+                          ? { ...msg, content: fullContent }
+                          : msg
+                      )
+                    );
+                  }
+                }
+              } catch {
+                // Ignore parse errors for incomplete chunks
               }
-              return session;
-            })
-          );
-          
-          // Update legacy messages if this is the active session
-          if (sessionId === activeChatSessionId) {
-            setMessages((prev) => [...prev, aiMessage]);
+            }
           }
         }
-      })
-      .catch(error => {
-        console.error('Error:', error);
-        // Add fallback message on error
-        const aiMessage: AIMessage = {
-          id: `msg-ai-error-${Date.now()}`,
-          sender: 'ai',
-          content: "I apologize, but I'm having trouble connecting right now. Please try again later.",
-          timestamp: new Date(),
-        };
-        
-        // Update chat session with error message
-        setChatSessions((prev) => 
-          prev.map((session) => {
-            if (session.id === sessionId) {
-              const updatedMessages = [...session.messages, aiMessage];
-              return {
-                ...session, 
-                messages: updatedMessages,
-                updatedAt: new Date()
-              };
-            }
-            return session;
-          })
-        );
-        
-        // Update legacy messages if this is the active session
-        if (sessionId === activeChatSessionId) {
-          setMessages((prev) => [...prev, aiMessage]);
-        }
-      });
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      // Add fallback message on error
+      const errorMessage: AIMessage = {
+        id: `msg-ai-error-${Date.now()}`,
+        sender: 'ai',
+        content: "I apologize, but I'm having trouble connecting right now. Please try again later.",
+        timestamp: new Date(),
+      };
+      
+      // Update chat session with error message
+      setChatSessions((prev) => 
+        prev.map((session) => {
+          if (session.id === sessionId) {
+            // Replace the empty AI message or add error message
+            const messagesWithoutEmpty = session.messages.filter(m => m.content !== '');
+            return {
+              ...session, 
+              messages: [...messagesWithoutEmpty, errorMessage],
+              updatedAt: new Date()
+            };
+          }
+          return session;
+        })
+      );
+      
+      // Update legacy messages if this is the active session
+      if (sessionId === activeChatSessionId) {
+        setMessages((prev) => {
+          const filtered = prev.filter(m => m.content !== '');
+          return [...filtered, errorMessage];
+        });
+      }
+    }
   };
   
   // Create a new chat session
