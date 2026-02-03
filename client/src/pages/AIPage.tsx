@@ -182,7 +182,7 @@ export default function AIPage() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)]">
+    <div className="flex flex-col h-[calc(100vh-80px)] pb-10">
       {/* AI Assistant Header with integrated hamburger menu */}
       <div className="flex items-center justify-between mb-4 pb-4 border-b border-primary/20">
         <div className="flex items-center">
