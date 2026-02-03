@@ -206,7 +206,7 @@ export default function AIPage() {
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="sm:hidden mr-2 p-0 h-9 w-9 text-primary hover:bg-primary/10"
           >
-            {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {sidebarOpen ? <X className="h-5 w-5 text-primary" /> : <Menu className="h-5 w-5 text-primary" />}
           </Button>
 
           <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mr-3">
@@ -234,7 +234,7 @@ export default function AIPage() {
                   onClick={handleSaveName}
                   className="h-7 w-7 p-0 text-primary hover:bg-primary/20"
                 >
-                  <Check className="h-4 w-4" />
+                  <Check className="h-4 w-4 text-primary" />
                 </Button>
                 <Button
                   type="button"
@@ -257,9 +257,9 @@ export default function AIPage() {
                   size="sm"
                   variant="ghost"
                   onClick={() => setIsEditingName(true)}
-                  className="h-6 w-6 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                  className="h-6 w-6 p-0 text-primary hover:bg-primary/10"
                 >
-                  <Edit2 className="h-3 w-3" />
+                  <Edit2 className="h-3 w-3 text-primary" />
                 </Button>
               </div>
             )}
@@ -294,10 +294,10 @@ export default function AIPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-7 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full"
+                className="h-7 w-7 p-0 text-primary hover:bg-primary/10 rounded-full"
                 onClick={handleCreateChat}
               >
-                <PlusCircle className="h-4 w-4" />
+                <PlusCircle className="h-4 w-4 text-primary" />
               </Button>
             </div>
             
@@ -330,7 +330,7 @@ export default function AIPage() {
                         onClick={handleUpdateChatTitle}
                         className="h-7 w-7 p-0 text-primary hover:bg-primary/20"
                       >
-                        <Check className="h-4 w-4" />
+                        <Check className="h-4 w-4 text-primary" />
                       </Button>
                       <Button
                         type="button"
@@ -363,10 +363,10 @@ export default function AIPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground hover:bg-card/50 rounded-full"
+                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-primary hover:bg-primary/10 rounded-full"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <MoreVertical className="h-3 w-3" />
+                            <MoreVertical className="h-3 w-3 text-primary" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-background border border-primary/20">
