@@ -179,8 +179,8 @@ export default function DashboardPage() {
   // Define widgets for drag and drop functionality (metadata only)
   const [widgets, setWidgets] = useState<WidgetMeta[]>([
     {
-      id: 'mission-log',
-      title: "Mission Log",
+      id: 'reflection-log',
+      title: "Reflection Log",
       icon: <Calendar className="h-5 w-5 text-primary" />,
       defaultOpen: true
     },
@@ -207,7 +207,7 @@ export default function DashboardPage() {
   // Render widget content dynamically based on id
   const renderWidgetContent = (widgetId: string) => {
     switch (widgetId) {
-      case 'mission-log':
+      case 'reflection-log':
         return (
           <EnhancedMissionWidget 
             events={events} 
