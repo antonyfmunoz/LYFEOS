@@ -1309,7 +1309,7 @@ export default function ProfilePage() {
                     <Mail className="h-4 w-4 text-primary" />
                     <div>
                       <div className="text-xs text-muted-foreground">Email</div>
-                      <div className="text-sm">{accountData?.email || "Not set"}</div>
+                      <div className="text-sm">{accountData?.email ? "••••••••" : "Not set"}</div>
                     </div>
                   </div>
                   
@@ -1317,7 +1317,7 @@ export default function ProfilePage() {
                     <Phone className="h-4 w-4 text-primary" />
                     <div>
                       <div className="text-xs text-muted-foreground">Phone</div>
-                      <div className="text-sm">{accountData?.phoneNumber || "Not set"}</div>
+                      <div className="text-sm">{accountData?.phoneNumber ? "••••••••" : "Not set"}</div>
                     </div>
                   </div>
                   
