@@ -185,15 +185,15 @@ export default function DashboardPage() {
   // Define widgets for drag and drop functionality (metadata only)
   const [widgets, setWidgets] = useState<WidgetMeta[]>([
     {
-      id: 'reflection-log',
-      title: "Reflection Log",
-      icon: <Calendar className="h-5 w-5 text-primary" />,
-      defaultOpen: true
-    },
-    {
       id: 'data-entry-log',
       title: "Data Log",
       icon: <BookOpen className="h-5 w-5 text-primary" />,
+      defaultOpen: true
+    },
+    {
+      id: 'reflection-log',
+      title: "Reflection Log",
+      icon: <Calendar className="h-5 w-5 text-primary" />,
       defaultOpen: true
     },
     {
