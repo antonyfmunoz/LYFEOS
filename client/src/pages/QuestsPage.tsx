@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -16,7 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Zap, Star, Bell, Edit3, X } from "lucide-react";
+import { Plus, Zap, Star, Bell, Edit3, X, ChevronDown, ChevronRight, Target, Calendar, CheckCircle2 } from "lucide-react";
 import { Quest, QuestNotification } from "@/lib/types";
 
 interface MissionFormData {
@@ -55,6 +56,10 @@ export default function QuestsPage() {
   
   const [createFormData, setCreateFormData] = useState<MissionFormData>(defaultFormData);
   const [editFormData, setEditFormData] = useState<MissionFormData>(defaultFormData);
+  
+  const [todayExpanded, setTodayExpanded] = useState(true);
+  const [upcomingExpanded, setUpcomingExpanded] = useState(true);
+  const [completedExpanded, setCompletedExpanded] = useState(true);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -489,74 +494,128 @@ export default function QuestsPage() {
       </Dialog>
       
       {/* Today's Missions */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-orbitron">Today's Missions</h2>
-          <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
-            {todayMissions.length} ACTIVE
-          </div>
+      <Collapsible open={todayExpanded} onOpenChange={setTodayExpanded} className="mb-6">
+        <div className="glassmorphic rounded-xl overflow-hidden border border-primary/20">
+          <CollapsibleTrigger asChild>
+            <div className="p-4 cursor-pointer hover:bg-primary/5 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {todayExpanded ? (
+                    <ChevronDown className="h-5 w-5 text-primary" />
+                  ) : (
+                    <ChevronRight className="h-5 w-5 text-primary" />
+                  )}
+                  <Target className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-orbitron">Today's Missions</h2>
+                </div>
+                <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
+                  {todayMissions.length} ACTIVE
+                </div>
+              </div>
+            </div>
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent>
+            <div className="px-4 pb-4 space-y-3">
+              {todayMissions.length > 0 ? (
+                todayMissions.map((quest) => (
+                  <QuestItem 
+                    key={quest.id}
+                    quest={quest}
+                    onToggle={() => toggleQuestCompletion(quest.id)}
+                    onDelete={() => deleteQuest(quest.id)}
+                    onEdit={() => openEditDialog(quest)}
+                  />
+                ))
+              ) : (
+                <div className="glassmorphic rounded-xl p-6 text-center neon-border">
+                  <span className="material-icons text-3xl text-muted-foreground mb-2">task_alt</span>
+                  <p className="text-muted-foreground">No missions for today. Create one to get started!</p>
+                </div>
+              )}
+            </div>
+          </CollapsibleContent>
         </div>
-        
-        {todayMissions.length > 0 ? (
-          todayMissions.map((quest) => (
-            <QuestItem 
-              key={quest.id}
-              quest={quest}
-              onToggle={() => toggleQuestCompletion(quest.id)}
-              onDelete={() => deleteQuest(quest.id)}
-              onEdit={() => openEditDialog(quest)}
-            />
-          ))
-        ) : (
-          <div className="glassmorphic rounded-xl p-6 text-center neon-border mb-4">
-            <span className="material-icons text-3xl text-muted-foreground mb-2">task_alt</span>
-            <p className="text-muted-foreground">No missions for today. Create one to get started!</p>
-          </div>
-        )}
-      </div>
+      </Collapsible>
       
       {/* Upcoming Missions */}
       {upcomingMissions.length > 0 && (
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-orbitron">Upcoming Missions</h2>
-            <div className="text-xs bg-transparent border border-blue-500/30 text-blue-400 px-2 py-1 rounded-md">
-              {upcomingMissions.length} SCHEDULED
-            </div>
+        <Collapsible open={upcomingExpanded} onOpenChange={setUpcomingExpanded} className="mb-6">
+          <div className="glassmorphic rounded-xl overflow-hidden border border-blue-500/20">
+            <CollapsibleTrigger asChild>
+              <div className="p-4 cursor-pointer hover:bg-blue-500/5 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {upcomingExpanded ? (
+                      <ChevronDown className="h-5 w-5 text-blue-400" />
+                    ) : (
+                      <ChevronRight className="h-5 w-5 text-blue-400" />
+                    )}
+                    <Calendar className="h-5 w-5 text-blue-400" />
+                    <h2 className="text-lg font-orbitron">Upcoming Missions</h2>
+                  </div>
+                  <div className="text-xs bg-transparent border border-blue-500/30 text-blue-400 px-2 py-1 rounded-md">
+                    {upcomingMissions.length} SCHEDULED
+                  </div>
+                </div>
+              </div>
+            </CollapsibleTrigger>
+            
+            <CollapsibleContent>
+              <div className="px-4 pb-4 space-y-3">
+                {upcomingMissions.map((quest) => (
+                  <QuestItem 
+                    key={quest.id}
+                    quest={quest}
+                    onToggle={() => toggleQuestCompletion(quest.id)}
+                    onDelete={() => deleteQuest(quest.id)}
+                    onEdit={() => openEditDialog(quest)}
+                  />
+                ))}
+              </div>
+            </CollapsibleContent>
           </div>
-          
-          {upcomingMissions.map((quest) => (
-            <QuestItem 
-              key={quest.id}
-              quest={quest}
-              onToggle={() => toggleQuestCompletion(quest.id)}
-              onDelete={() => deleteQuest(quest.id)}
-              onEdit={() => openEditDialog(quest)}
-            />
-          ))}
-        </div>
+        </Collapsible>
       )}
       
       {/* Completed Missions */}
       {completedMissions.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-orbitron">Completed</h2>
-            <div className="text-xs bg-transparent border border-[#36F1CD]/30 text-[#36F1CD] px-2 py-1 rounded-md">
-              {completedMissions.length} COMPLETED
-            </div>
+        <Collapsible open={completedExpanded} onOpenChange={setCompletedExpanded} className="mb-6">
+          <div className="glassmorphic rounded-xl overflow-hidden border border-[#36F1CD]/20">
+            <CollapsibleTrigger asChild>
+              <div className="p-4 cursor-pointer hover:bg-[#36F1CD]/5 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {completedExpanded ? (
+                      <ChevronDown className="h-5 w-5 text-[#36F1CD]" />
+                    ) : (
+                      <ChevronRight className="h-5 w-5 text-[#36F1CD]" />
+                    )}
+                    <CheckCircle2 className="h-5 w-5 text-[#36F1CD]" />
+                    <h2 className="text-lg font-orbitron">Completed</h2>
+                  </div>
+                  <div className="text-xs bg-transparent border border-[#36F1CD]/30 text-[#36F1CD] px-2 py-1 rounded-md">
+                    {completedMissions.length} COMPLETED
+                  </div>
+                </div>
+              </div>
+            </CollapsibleTrigger>
+            
+            <CollapsibleContent>
+              <div className="px-4 pb-4 space-y-3">
+                {completedMissions.map((quest) => (
+                  <QuestItem 
+                    key={quest.id}
+                    quest={quest}
+                    onToggle={() => toggleQuestCompletion(quest.id)}
+                    onDelete={() => deleteQuest(quest.id)}
+                    onEdit={() => openEditDialog(quest)}
+                  />
+                ))}
+              </div>
+            </CollapsibleContent>
           </div>
-          
-          {completedMissions.map((quest) => (
-            <QuestItem 
-              key={quest.id}
-              quest={quest}
-              onToggle={() => toggleQuestCompletion(quest.id)}
-              onDelete={() => deleteQuest(quest.id)}
-              onEdit={() => openEditDialog(quest)}
-            />
-          ))}
-        </div>
+        </Collapsible>
       )}
     </>
   );
