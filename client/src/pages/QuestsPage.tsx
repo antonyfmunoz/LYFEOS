@@ -232,7 +232,7 @@ export default function QuestsPage() {
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>End Date</Label>
+                  <Label>Date Due</Label>
                   <DatePicker
                     value={createFormData.endDate}
                     onChange={(date) => setCreateFormData(prev => ({ ...prev, endDate: date }))}
@@ -241,7 +241,7 @@ export default function QuestsPage() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label>End Time</Label>
+                  <Label>Time Due</Label>
                   <TimePicker
                     value={createFormData.endTime}
                     onChange={(time) => setCreateFormData(prev => ({ ...prev, endTime: time }))}
@@ -427,7 +427,7 @@ export default function QuestsPage() {
             
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>End Date</Label>
+                <Label>Date Due</Label>
                 <DatePicker
                   value={editFormData.endDate}
                   onChange={(date) => setEditFormData(prev => ({ ...prev, endDate: date }))}
@@ -436,7 +436,7 @@ export default function QuestsPage() {
               </div>
               
               <div className="space-y-2">
-                <Label>End Time</Label>
+                <Label>Time Due</Label>
                 <TimePicker
                   value={editFormData.endTime}
                   onChange={(time) => setEditFormData(prev => ({ ...prev, endTime: time }))}
