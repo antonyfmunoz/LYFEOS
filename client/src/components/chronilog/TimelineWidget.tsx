@@ -13,7 +13,7 @@ const TimelineWidget = () => {
   return (
     <div 
       className={cn(
-        "glassmorphic rounded-xl neon-border hover:shadow-[0_0_10px_var(--primary-glow-medium)] hover:border-primary/60 transition-all duration-300 cursor-pointer"
+        "glassmorphic rounded-xl neon-border hover:shadow-[0_0_10px_var(--primary-glow-medium)] hover:border-primary/60 transition-all duration-300 cursor-pointer mb-6"
       )}
       onClick={navigateToFullTimeline}
     >
