@@ -1360,15 +1360,6 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         session.id === id ? { ...session, title, updatedAt: new Date() } : session
       )
     );
-    
-    // Show title updated toast
-    toast({
-      title: "Chat Updated",
-      description: "Chat title has been updated",
-      variant: "default",
-      className: "bg-background/80 border border-primary text-foreground",
-      duration: 3000,
-    });
   };
 
   // Reset time tokens daily (simulation)
