@@ -230,6 +230,7 @@ export const quests = pgTable("quests", {
   description: text("description").notNull(),
   category: text("category").default("general"), // "setup", "rituals", "life pillars", etc.
   completed: boolean("completed").notNull().default(false),
+  completedAt: timestamp("completed_at"), // Timestamp when quest was completed
   energyCost: integer("energy_cost").notNull().default(1),
   experienceReward: integer("experience_reward").notNull().default(10),
   autoUnlockConditions: jsonb("auto_unlock_conditions").default({}), // e.g., { "setup_complete": true }
