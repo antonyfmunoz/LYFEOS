@@ -54,10 +54,10 @@ export default function MissionArchivePage() {
       
             
       {completedMissions.length > 0 ? (
-        <div className="glassmorphic rounded-xl overflow-hidden border border-slate-700/50">
-          <div className="p-4 flex items-center justify-between border-b border-slate-700/50">
+        <div className="glassmorphic rounded-xl overflow-hidden border border-primary/20">
+          <div className="p-4 flex items-center justify-between border-b border-primary/20">
             <div className="flex items-center">
-              <CheckCircle2 className="h-5 w-5 text-emerald-400 mr-3" />
+              <CheckCircle2 className="h-5 w-5 text-primary mr-3" />
               <h2 className="text-lg font-medium">Completed Missions</h2>
             </div>
             <span className="text-xs text-[#7DAAB2] px-2 py-1 bg-slate-800/50 rounded-full">
@@ -74,7 +74,7 @@ export default function MissionArchivePage() {
               >
                 <div className="flex justify-between items-center mb-2">
                   <div className="flex items-center">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-400 mr-2" />
+                    <CheckCircle2 className="h-4 w-4 text-primary mr-2" />
                     <h3 className="font-medium">{entry.title}</h3>
                   </div>
                   <div className="flex items-center">
