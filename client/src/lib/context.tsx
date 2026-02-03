@@ -1285,30 +1285,37 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     // Find the chat to show in toast
     const chatToDelete = chatSessions.find(chat => chat.id === id);
     
-    // Don't allow deleting the last chat
-    if (chatSessions.length <= 1) {
-      toast({
-        title: "Cannot Delete",
-        description: "You need to have at least one chat session",
-        variant: "destructive",
-        className: "bg-background/80 border border-destructive text-foreground",
-        duration: 3000,
-      });
-      return;
-    }
+    // Check if this is the last chat - if so, we'll create a new one
+    const isLastChat = chatSessions.length <= 1;
     
     // Check if this is the active session
     if (id === activeChatSessionId) {
-      // Find another session to make active
-      const remainingChats = chatSessions.filter(chat => chat.id !== id);
-      setActiveChatSessionId(remainingChats[0].id);
-      
-      // Update legacy messages array for backward compatibility
-      setMessages(remainingChats[0].messages);
+      if (isLastChat) {
+        // Create a new empty chat before deleting the last one
+        const newChatSession: ChatSession = {
+          id: `chat-${Date.now()}`,
+          title: "New Chat",
+          messages: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        setChatSessions([newChatSession]);
+        setActiveChatSessionId(newChatSession.id);
+        setMessages([]);
+      } else {
+        // Find another session to make active
+        const remainingChats = chatSessions.filter(chat => chat.id !== id);
+        setActiveChatSessionId(remainingChats[0].id);
+        
+        // Update legacy messages array for backward compatibility
+        setMessages(remainingChats[0].messages);
+      }
     }
     
-    // Remove the chat session from local state
-    setChatSessions((prev) => prev.filter((chat) => chat.id !== id));
+    // Remove the chat session from local state (skip if we already replaced the array for last chat)
+    if (!isLastChat) {
+      setChatSessions((prev) => prev.filter((chat) => chat.id !== id));
+    }
     
     // Delete from database if we have a database ID
     const dbId = sessionToDbIdMap[id];

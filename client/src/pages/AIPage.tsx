@@ -39,8 +39,6 @@ export default function AIPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(aiCompanionName);
-  const [isCreatingChat, setIsCreatingChat] = useState(false);
-  const [newChatTitle, setNewChatTitle] = useState("");
   const [isEditingChatTitle, setIsEditingChatTitle] = useState(false);
   const [chatTitleInput, setChatTitleInput] = useState("");
   const [editingChatId, setEditingChatId] = useState("");
@@ -48,7 +46,6 @@ export default function AIPage() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
-  const newChatInputRef = useRef<HTMLInputElement>(null);
   const editChatInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -73,13 +70,10 @@ export default function AIPage() {
     if (isEditingName && nameInputRef.current) {
       nameInputRef.current.focus();
     }
-    if (isCreatingChat && newChatInputRef.current) {
-      newChatInputRef.current.focus();
-    }
     if (isEditingChatTitle && editChatInputRef.current) {
       editChatInputRef.current.focus();
     }
-  }, [isEditingName, isCreatingChat, isEditingChatTitle]);
+  }, [isEditingName, isEditingChatTitle]);
   
   // Prevent background scrolling when sidebar is open on mobile
   useEffect(() => {
@@ -114,14 +108,10 @@ export default function AIPage() {
     }
   };
 
-  // Create a new chat with a temporary name and automatically open it
+  // Create a new chat instantly without requiring a name (auto-named from first message)
   const handleCreateChat = () => {
-    // If a title is provided, use it, otherwise use a default title that will be updated later
-    const title = newChatTitle.trim() ? newChatTitle : "New Chat";
-    const newChat = createChatSession(title);
+    const newChat = createChatSession("New Chat");
     setActiveChatSession(newChat.id);
-    setNewChatTitle("");
-    setIsCreatingChat(false);
     // Auto-close sidebar on mobile after selection
     if (isMobile) {
       setSidebarOpen(false);
@@ -232,7 +222,7 @@ export default function AIPage() {
           </div>
           
           <div>
-            <h1 className="text-xl font-sans text-foreground mb-1">AI Assistant</h1>
+            <h1 className="text-xl font-orbitron text-foreground mb-1">AI Assistant</h1>
             
             {/* AI Name Editor */}
             {isEditingName ? (
@@ -304,65 +294,22 @@ export default function AIPage() {
           flex flex-col w-[280px] sm:w-72 sm:h-auto
           bg-background sm:bg-transparent border-r border-primary/20 
           pt-4 sm:pt-0 px-4 sm:px-1 sm:mr-4
-          overflow-y-auto
         `}>
           {/* Chat Sessions */}
-          <div className="mb-6">
+          <div className="flex-1 flex flex-col min-h-0 pb-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-foreground">Chats</h3>
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-7 w-7 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full"
-                onClick={() => setIsCreatingChat(true)}
+                onClick={handleCreateChat}
               >
                 <PlusCircle className="h-4 w-4" />
               </Button>
             </div>
             
-            {isCreatingChat ? (
-              <div className="flex items-center mb-2">
-                <Input
-                  ref={newChatInputRef}
-                  value={newChatTitle}
-                  onChange={(e) => setNewChatTitle(e.target.value)}
-                  className="h-8 text-sm bg-card/30 border-primary/30 focus-visible:ring-primary/30 mr-2"
-                  placeholder="New chat name"
-                  maxLength={30}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleCreateChat();
-                    } else if (e.key === 'Escape') {
-                      setIsCreatingChat(false);
-                      setNewChatTitle("");
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleCreateChat}
-                  className="h-7 w-7 p-0 text-primary hover:bg-primary/20"
-                >
-                  <Check className="h-4 w-4" />
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setIsCreatingChat(false);
-                    setNewChatTitle("");
-                  }}
-                  className="h-7 w-7 p-0 text-muted-foreground hover:bg-red-500/20 ml-1"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : null}
-            
-            <div className="space-y-1 max-h-[200px] overflow-y-auto custom-scrollbar">
+            <div className="flex-1 space-y-1 overflow-y-auto custom-scrollbar">
               {chatSessions.map((chat) => (
                 <div key={chat.id} className="relative group">
                   {isEditingChatTitle && editingChatId === chat.id ? (
