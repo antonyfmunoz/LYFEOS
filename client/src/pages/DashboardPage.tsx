@@ -12,7 +12,6 @@ import { MarkdownEditor } from '@/components/ui/markdown-editor';
 import { CustomTimePicker } from '@/components/ui/custom-time-picker';
 import EnhancedMissionWidget from '@/components/dashboard/EnhancedMissionWidget';
 import { DailyInitModal } from '@/components/dailyInit/DailyInitModal';
-import { AIAgentFAB } from '@/components/ui/ai-agent-fab';
 import { useToast } from '@/hooks/use-toast';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { DndProvider } from 'react-dnd';
@@ -460,7 +459,6 @@ export default function DashboardPage() {
 
   return (
       <div className="dashboard-container pb-20">
-        <AIAgentFAB />
         <DailyInitModal />
         
         {/* Level-up modal - shows when user levels up */}
