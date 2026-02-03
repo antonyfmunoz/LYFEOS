@@ -18,24 +18,18 @@ const TimelineWidget = () => {
       )}
       onClick={navigateToFullTimeline}
     >
-      <div className="flex items-center mb-3">
+      <div className="flex items-center">
         <div className="cursor-move mr-2">
           <GripVertical className="h-4 w-4 text-muted-foreground" />
         </div>
         <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mr-4">
           <span className="material-icons text-2xl text-primary">history</span>
         </div>
-        <div>
-          <h3 className="text-lg font-orbitron text-[#D6F4FF]">Timeline</h3>
-          <p className="text-xs text-[#7DAAB2]">Your journey through time</p>
-        </div>
-      </div>
-      
-      <div className="flex justify-end mt-4">
+        <h3 className="text-lg font-orbitron text-[#D6F4FF]">Timeline</h3>
         <button 
-          className="text-xs font-medium px-3 py-1 rounded-md bg-primary/10 text-primary hover:bg-opacity-20 transition"
+          className="ml-auto text-xs font-medium px-3 py-1 rounded-md bg-primary/10 text-primary hover:bg-opacity-20 transition"
           onClick={(e) => {
-            e.stopPropagation(); // Prevent the parent div's onClick from firing
+            e.stopPropagation();
             navigateToFullTimeline();
           }}
         >
