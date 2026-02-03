@@ -862,6 +862,7 @@ export type InsertMediaAlbum = z.infer<typeof insertMediaAlbumSchema>;
 
 export const conversations = pgTable("conversations", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

@@ -24,7 +24,7 @@ Preferred communication style: Simple, everyday language.
 - **API Design**: RESTful JSON API with session-based authentication
 - **Session Management**: express-session with secure cookie configuration
 - **Password Hashing**: bcrypt for secure password storage
-- **AI Integration**: OpenAI GPT-4o for AI assistant (NOVA) functionality
+- **AI Integration**: Anthropic Claude Sonnet 4.5 via Replit AI Integrations (no API key required, billed to credits)
 - **File Uploads**: Multer for handling media uploads
 
 ### Data Storage
