@@ -541,20 +541,20 @@ export default function QuestsPage() {
       {/* Upcoming Missions */}
       {upcomingMissions.length > 0 && (
         <Collapsible open={upcomingExpanded} onOpenChange={setUpcomingExpanded} className="mb-6">
-          <div className="glassmorphic rounded-xl overflow-hidden border border-blue-500/20">
+          <div className="glassmorphic rounded-xl overflow-hidden border border-primary/20">
             <CollapsibleTrigger asChild>
-              <div className="p-4 cursor-pointer hover:bg-blue-500/5 transition-colors">
+              <div className="p-4 cursor-pointer hover:bg-primary/5 transition-colors">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {upcomingExpanded ? (
-                      <ChevronDown className="h-5 w-5 text-blue-400" />
+                      <ChevronDown className="h-5 w-5 text-primary" />
                     ) : (
-                      <ChevronRight className="h-5 w-5 text-blue-400" />
+                      <ChevronRight className="h-5 w-5 text-primary" />
                     )}
-                    <Calendar className="h-5 w-5 text-blue-400" />
+                    <Calendar className="h-5 w-5 text-primary" />
                     <h2 className="text-lg font-orbitron">Upcoming Missions</h2>
                   </div>
-                  <div className="text-xs bg-transparent border border-blue-500/30 text-blue-400 px-2 py-1 rounded-md">
+                  <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
                     {upcomingMissions.length} SCHEDULED
                   </div>
                 </div>
@@ -581,20 +581,20 @@ export default function QuestsPage() {
       {/* Completed Missions */}
       {completedMissions.length > 0 && (
         <Collapsible open={completedExpanded} onOpenChange={setCompletedExpanded} className="mb-6">
-          <div className="glassmorphic rounded-xl overflow-hidden border border-[#36F1CD]/20">
+          <div className="glassmorphic rounded-xl overflow-hidden border border-primary/20">
             <CollapsibleTrigger asChild>
-              <div className="p-4 cursor-pointer hover:bg-[#36F1CD]/5 transition-colors">
+              <div className="p-4 cursor-pointer hover:bg-primary/5 transition-colors">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {completedExpanded ? (
-                      <ChevronDown className="h-5 w-5 text-[#36F1CD]" />
+                      <ChevronDown className="h-5 w-5 text-primary" />
                     ) : (
-                      <ChevronRight className="h-5 w-5 text-[#36F1CD]" />
+                      <ChevronRight className="h-5 w-5 text-primary" />
                     )}
-                    <CheckCircle2 className="h-5 w-5 text-[#36F1CD]" />
-                    <h2 className="text-lg font-orbitron">Completed</h2>
+                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                    <h2 className="text-lg font-orbitron">Completed Missions</h2>
                   </div>
-                  <div className="text-xs bg-transparent border border-[#36F1CD]/30 text-[#36F1CD] px-2 py-1 rounded-md">
+                  <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
                     {completedMissions.length} COMPLETED
                   </div>
                 </div>
