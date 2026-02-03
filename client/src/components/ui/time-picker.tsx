@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Clock } from "lucide-react";
+import { Clock, ChevronUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TimePickerProps {
@@ -27,9 +27,6 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
   const [selectedMinute, setSelectedMinute] = useState(initialMinute);
   const [selectedPeriod, setSelectedPeriod] = useState<"AM" | "PM">(initialPeriod);
 
-  const hourRef = useRef<HTMLDivElement>(null);
-  const minuteRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     if (value) {
       const { hour, minute, period } = parseTime(value);
@@ -38,25 +35,6 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
       setSelectedPeriod(period);
     }
   }, [value]);
-
-  useEffect(() => {
-    if (open) {
-      setTimeout(() => {
-        if (hourRef.current) {
-          const hourElement = hourRef.current.querySelector(`[data-hour="${selectedHour}"]`);
-          if (hourElement) {
-            hourElement.scrollIntoView({ block: "center", behavior: "auto" });
-          }
-        }
-        if (minuteRef.current) {
-          const minuteElement = minuteRef.current.querySelector(`[data-minute="${selectedMinute}"]`);
-          if (minuteElement) {
-            minuteElement.scrollIntoView({ block: "center", behavior: "auto" });
-          }
-        }
-      }, 100);
-    }
-  }, [open, selectedHour, selectedMinute]);
 
   const formatTime24 = (hour: number, minute: number, period: "AM" | "PM") => {
     let hour24 = hour;
@@ -88,8 +66,55 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
     setOpen(false);
   };
 
-  const hours = Array.from({ length: 12 }, (_, i) => i + 1);
-  const minutes = Array.from({ length: 60 }, (_, i) => i);
+  const incrementHours = () => {
+    setSelectedHour((prev) => {
+      const newHour = prev + 1;
+      if (newHour === 12) {
+        setSelectedPeriod(selectedPeriod === 'AM' ? 'PM' : 'AM');
+      } else if (newHour > 12) {
+        return 1;
+      }
+      return newHour;
+    });
+  };
+
+  const decrementHours = () => {
+    setSelectedHour((prev) => {
+      if (prev === 1) {
+        return 12;
+      } else if (prev === 12) {
+        setSelectedPeriod(selectedPeriod === 'AM' ? 'PM' : 'AM');
+        return 11;
+      }
+      return prev - 1;
+    });
+  };
+
+  const incrementMinutes = () => {
+    setSelectedMinute((prev) => {
+      const newMinutes = prev + 5;
+      if (newMinutes >= 60) {
+        incrementHours();
+        return 0;
+      }
+      return newMinutes;
+    });
+  };
+
+  const decrementMinutes = () => {
+    setSelectedMinute((prev) => {
+      const newMinutes = prev - 5;
+      if (newMinutes < 0) {
+        decrementHours();
+        return 55;
+      }
+      return newMinutes;
+    });
+  };
+
+  const togglePeriod = () => {
+    setSelectedPeriod(selectedPeriod === 'AM' ? 'PM' : 'AM');
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -114,71 +139,86 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
         onInteractOutside={(e) => e.preventDefault()}
       >
         <div className="space-y-4">
-          <div className="flex gap-2 h-48">
-            <div 
-              ref={hourRef}
-              className="flex flex-col overflow-y-auto overscroll-contain w-14"
-              style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
-            >
-              {hours.map((hour) => (
-                <div
-                  key={hour}
-                  data-hour={hour}
-                  onClick={() => setSelectedHour(hour)}
-                  className={cn(
-                    "py-2 px-3 text-center rounded-lg transition-all flex-shrink-0 cursor-pointer select-none",
-                    selectedHour === hour
-                      ? "bg-primary/20 text-primary font-medium"
-                      : "text-muted-foreground hover:bg-primary/10"
-                  )}
-                >
-                  {hour}
-                </div>
-              ))}
+          <div className="flex justify-between items-center mb-2">
+            <div className="text-xs font-medium text-muted-foreground text-center w-16">Hours</div>
+            <div className="w-4"></div>
+            <div className="text-xs font-medium text-muted-foreground text-center w-16">Minutes</div>
+            <div className="text-xs font-medium text-muted-foreground text-center w-14 ml-2">AM/PM</div>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col items-center w-16">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={incrementHours}
+                className="h-10 w-10 hover:bg-primary/10 hover:text-primary"
+              >
+                <ChevronUp className="h-5 w-5" />
+              </Button>
+              <div className="font-mono text-2xl py-2 text-primary font-medium">
+                {selectedHour.toString().padStart(2, "0")}
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={decrementHours}
+                className="h-10 w-10 hover:bg-primary/10 hover:text-primary"
+              >
+                <ChevronDown className="h-5 w-5" />
+              </Button>
             </div>
-
-            <div className="text-2xl font-light text-muted-foreground flex items-center">:</div>
-
-            <div 
-              ref={minuteRef}
-              className="flex flex-col overflow-y-auto overscroll-contain w-14"
-              style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
-            >
-              {minutes.map((minute) => (
-                <div
-                  key={minute}
-                  data-minute={minute}
-                  onClick={() => setSelectedMinute(minute)}
-                  className={cn(
-                    "py-2 px-3 text-center rounded-lg transition-all flex-shrink-0 cursor-pointer select-none",
-                    selectedMinute === minute
-                      ? "bg-primary/20 text-primary font-medium"
-                      : "text-muted-foreground hover:bg-primary/10"
-                  )}
-                >
-                  {minute.toString().padStart(2, "0")}
-                </div>
-              ))}
+            
+            <div className="text-2xl font-light text-muted-foreground">:</div>
+            
+            <div className="flex flex-col items-center w-16">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={incrementMinutes}
+                className="h-10 w-10 hover:bg-primary/10 hover:text-primary"
+              >
+                <ChevronUp className="h-5 w-5" />
+              </Button>
+              <div className="font-mono text-2xl py-2 text-primary font-medium">
+                {selectedMinute.toString().padStart(2, "0")}
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={decrementMinutes}
+                className="h-10 w-10 hover:bg-primary/10 hover:text-primary"
+              >
+                <ChevronDown className="h-5 w-5" />
+              </Button>
             </div>
-
-            <div 
-              className="flex flex-col overflow-y-auto overscroll-contain w-14 ml-2"
-              style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
-            >
-              {(["AM", "PM"] as const).map((period) => (
-                <div
-                  key={period}
-                  onClick={() => setSelectedPeriod(period)}
-                  className={cn(
-                    "py-2 px-3 text-center rounded-lg transition-all flex-shrink-0 cursor-pointer select-none font-medium",
-                    selectedPeriod === period
-                      ? "bg-primary/20 text-primary"
-                      : "text-muted-foreground hover:bg-primary/10"
-                  )}
-                >
-                  {period}
-                </div>
-              ))}
+            
+            <div className="flex flex-col items-center w-14 ml-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={togglePeriod}
+                className="h-10 w-10 hover:bg-primary/10 hover:text-primary"
+              >
+                <ChevronUp className="h-5 w-5" />
+              </Button>
+              <div className="font-mono text-2xl py-2 text-primary font-medium">
+                {selectedPeriod}
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={togglePeriod}
+                className="h-10 w-10 hover:bg-primary/10 hover:text-primary"
+              >
+                <ChevronDown className="h-5 w-5" />
+              </Button>
             </div>
           </div>
 
