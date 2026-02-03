@@ -141,7 +141,7 @@ const DraggableCategoryCard = ({ id, index, item, moveCategory, navigate }: Drag
       onClick={navigateToArchive}
       data-handler-id={handlerId}
     >
-      <div className="flex items-center mb-3">
+      <div className="flex items-center">
         <div ref={dragHandleRef} className="cursor-move mr-2" onClick={(e) => e.stopPropagation()}>
           <GripVertical className="h-4 w-4 text-muted-foreground" />
         </div>
@@ -158,13 +158,9 @@ const DraggableCategoryCard = ({ id, index, item, moveCategory, navigate }: Drag
             'text-emerald-400'
           }`}>{item.icon}</span>
         </div>
-        <div>
-          <h3 className="text-lg font-orbitron text-[#D6F4FF]">{item.title}</h3>
-        </div>
-      </div>
-      <div className="flex justify-end">
+        <h3 className="text-lg font-orbitron text-[#D6F4FF]">{item.title}</h3>
         <button 
-          className={`text-xs font-medium px-3 py-1 rounded-md ${
+          className={`ml-auto text-xs font-medium px-3 py-1 rounded-md ${
             item.color === 'primary' ? 'bg-primary/10 text-primary' : 
             item.color === 'secondary' ? 'bg-secondary/10 text-secondary' : 
             item.color === 'accent' ? 'bg-accent/10 text-accent' : 
