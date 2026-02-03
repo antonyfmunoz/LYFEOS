@@ -163,7 +163,7 @@ export default function DashboardPage() {
             className={`p-0 w-7 h-7 rounded-md hover:bg-primary/15 hover:text-primary active:bg-primary/20 focus:bg-primary/15 focus-visible:ring-primary/30 ${
               num === state
                 ? "bg-primary/15 text-primary border border-primary/50"
-                : "text-primary/60"
+                : "text-foreground"
             }`}
             onClick={() => onChange(num)}
           >
