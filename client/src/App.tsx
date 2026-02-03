@@ -30,7 +30,6 @@ import ExperienceDetailPage from "./pages/ExperienceDetailPage";
 import NotFound from "./pages/not-found";
 import EnhancedMissionPage from "./pages/EnhancedMissionPage";
 import MissionPage from "./components/markdown/MissionPage";
-import SetupMissionPage from "./components/missions/SetupMissionPage";
 import RootLayout from "./components/layout/RootLayout";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -368,15 +367,7 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
-      {/* Setup Mission Page route */}
-      <Route path="/setup-mission/:slug">
-        <ProtectedRoute>
-          <RootLayout>
-            <SetupMissionPage />
-          </RootLayout>
-        </ProtectedRoute>
-      </Route>
-      
+            
       {/* Archive Pages */}
       <Route path="/journal-archive">
         <ProtectedRoute>

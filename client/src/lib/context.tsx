@@ -944,7 +944,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         setTimeout(() => resolve(), 0);
       }
       
-      // Don't show toast here as SetupMissionPage handles its own toast notifications
+      // Toast notification is optional here
     });
   };
   
