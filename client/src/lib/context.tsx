@@ -151,7 +151,7 @@ interface LYFEOSContextType {
   kanbanTasks: KanbanTask[];
   kanbanBoards: KanbanBoard[];
   activeChatSessionId: string;
-  toggleQuestCompletion: (id: string) => void;
+  toggleQuestCompletion: (id: string) => Promise<void> | void;
   createQuest: (quest: Omit<Quest, "id" | "completed">) => Promise<Quest>;
   updateQuest: (id: string, quest: Partial<Quest>) => Promise<Quest>;
   deleteQuest: (id: string) => Promise<void>;
@@ -627,133 +627,15 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   };
 
   // Toggle quest completion
-  const toggleQuestCompletion = (id: string) => {
+  const toggleQuestCompletion = async (id: string) => {
     const currentQuest = quests.find(quest => quest.id === id);
     if (!currentQuest) return;
     
     const completed = !currentQuest.completed;
     
+    // Optimistically update local state
     const updatedQuests = quests.map((quest) => {
       if (quest.id === id) {
-        // Update stats based on quest completion
-        if (completed) {
-          // Deduct energy and add XP
-          setStats((prevStats) => {
-            const energyCost = quest.energyCost;
-            const experienceReward = quest.experienceReward;
-            
-            const newEnergy = Math.max(0, prevStats.energyPoints.current - energyCost);
-            let newExperience = prevStats.experience.current + experienceReward;
-            let newLevel = prevStats.experience.level;
-            
-            // Level up if experience exceeds max
-            if (newExperience >= prevStats.experience.max) {
-              newExperience = newExperience - prevStats.experience.max;
-              newLevel += 1;
-              
-              // Calculate new max XP with 1.0372 multiplier for level N+1
-              const newMaxXP = Math.floor(prevStats.experience.max * 1.0372);
-              
-              // Show level up toast
-              toast({
-                title: "Level Up!",
-                description: `You've reached level ${newLevel}! Keep up the good work!`,
-                variant: "default",
-                className: "bg-background/80 border border-primary text-foreground",
-                duration: 5000,
-              });
-              
-              // Update the client side stats with the new max XP
-              return {
-                ...prevStats,
-                energyPoints: {
-                  ...prevStats.energyPoints,
-                  current: newEnergy,
-                },
-                experience: {
-                  current: newExperience,
-                  max: newMaxXP, // Use the new max XP value
-                  level: newLevel,
-                },
-              };
-            }
-            
-            return {
-              ...prevStats,
-              energyPoints: {
-                ...prevStats.energyPoints,
-                current: newEnergy,
-              },
-              experience: {
-                ...prevStats.experience,
-                current: newExperience,
-                level: newLevel,
-              },
-            };
-          });
-          
-          // Show mission completed toast
-          toast({
-            title: "Mission Completed",
-            description: `${quest.title} — +${quest.experienceReward} XP`,
-            variant: "default",
-            className: "bg-background/80 border border-primary text-foreground",
-            duration: 1500,
-          });
-        } else {
-          // Restore energy and remove XP if uncompleting
-          setStats((prevStats) => {
-            const energyCost = quest.energyCost;
-            const experienceReward = quest.experienceReward;
-            
-            const newEnergy = Math.min(
-              prevStats.energyPoints.max,
-              prevStats.energyPoints.current + energyCost
-            );
-            
-            let newExperience = prevStats.experience.current - experienceReward;
-            let newLevel = prevStats.experience.level;
-            
-            // Level down if experience goes negative
-            if (newExperience < 0 && newLevel > 1) {
-              // Calculate previous level max XP using the inverse of our multiplier
-              const prevLevelMaxXP = Math.floor(prevStats.experience.max / 1.0372);
-              newExperience = prevLevelMaxXP + newExperience;
-              newLevel -= 1;
-              
-              // Return with updated max XP for the previous level
-              return {
-                ...prevStats,
-                energyPoints: {
-                  ...prevStats.energyPoints,
-                  current: newEnergy,
-                },
-                experience: {
-                  current: newExperience,
-                  max: prevLevelMaxXP,
-                  level: newLevel,
-                },
-              };
-            } else if (newExperience < 0) {
-              newExperience = 0;
-            }
-            
-            return {
-              ...prevStats,
-              energyPoints: {
-                ...prevStats.energyPoints,
-                current: newEnergy,
-              },
-              experience: {
-                ...prevStats.experience,
-                current: newExperience,
-                level: newLevel,
-              },
-            };
-          });
-          
-        }
-        
         return { 
           ...quest, 
           completed,
@@ -762,8 +644,72 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       }
       return quest;
     });
-    
     setQuests(updatedQuests);
+    
+    // Persist to database
+    try {
+      const response = await fetch(`/api/quests/${id}/toggle`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        // Revert on failure
+        setQuests(quests);
+        console.error("Failed to toggle quest completion");
+        return;
+      }
+      
+      const data = await response.json();
+      
+      // Update the quest with the server response
+      setQuests((prev) => prev.map((q) => 
+        q.id === id ? { 
+          ...q, 
+          completed: data.quest.completed,
+          completedAt: data.quest.completedAt 
+        } : q
+      ));
+      
+      // Update stats from server response if available
+      if (data.stats) {
+        setStats((prevStats) => ({
+          ...prevStats,
+          experience: {
+            current: data.stats.experience.current,
+            max: data.stats.experience.max,
+            level: data.stats.experience.level,
+          },
+        }));
+        
+        // Show level up toast if applicable
+        if (data.stats.experience.showLevelUp) {
+          toast({
+            title: "Level Up!",
+            description: `You've reached level ${data.stats.experience.level}! Keep up the good work!`,
+            variant: "default",
+            className: "bg-background/80 border border-primary text-foreground",
+            duration: 5000,
+          });
+        }
+      }
+      
+      // Show mission completed toast
+      if (completed) {
+        toast({
+          title: "Mission Completed",
+          description: `${currentQuest.title} — +${data.xpAwarded || currentQuest.experienceReward} XP`,
+          variant: "default",
+          className: "bg-background/80 border border-primary text-foreground",
+          duration: 1500,
+        });
+      }
+    } catch (error) {
+      // Revert on error
+      setQuests(quests);
+      console.error("Error toggling quest completion:", error);
+    }
   };
 
   // Create a new quest/mission
