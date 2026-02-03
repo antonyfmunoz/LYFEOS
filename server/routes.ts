@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
 import { userDailyLogs } from "@shared/schema";
+import { registerChatRoutes } from "./replit_integrations/chat";
 import { z } from "zod";
 import bcrypt from "bcrypt";
 import multer from "multer";
@@ -3587,6 +3588,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ error: "Failed to update daily log" });
     }
   });
+
+  // Register AI Chat routes
+  registerChatRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;
