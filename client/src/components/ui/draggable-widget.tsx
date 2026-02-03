@@ -110,7 +110,7 @@ export function DraggableWidget({
     <div 
       ref={ref}
       className={cn(
-        "glassmorphic rounded-xl neon-border overflow-hidden mb-4", 
+        "glassmorphic rounded-xl neon-border overflow-hidden mb-6", 
         isDragging && "opacity-50",
         className
       )}

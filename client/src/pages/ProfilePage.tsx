@@ -533,7 +533,7 @@ export default function ProfilePage() {
 
         {/* Profile Card */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="glassmorphic rounded-xl neon-border overflow-hidden mb-4">
+          <div className="glassmorphic rounded-xl neon-border overflow-hidden">
             <div className="p-3 flex items-center justify-between border-b border-primary/20">
               <div className="flex items-center">
                 <User className="mr-2 h-5 w-5 text-primary" />
