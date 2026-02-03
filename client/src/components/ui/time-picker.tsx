@@ -133,30 +133,30 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
         </Button>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-auto p-3 bg-background border border-primary/30 rounded-md shadow-md glassmorphic" 
+        className="w-auto p-4 bg-background border border-primary/30 rounded-md shadow-md glassmorphic" 
         align="start"
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <div className="space-y-2">
-          <div className="flex justify-between items-center mb-2">
-            <div className="text-xs font-medium">Hours</div>
-            <div className="text-xs font-medium">Minutes</div>
-            <div className="text-xs font-medium">AM/PM</div>
+        <div className="space-y-3">
+          <div className="flex justify-between items-center mb-3 gap-6">
+            <div className="text-xs font-medium w-12 text-center">Hours</div>
+            <div className="text-xs font-medium w-12 text-center">Minutes</div>
+            <div className="text-xs font-medium w-12 text-center">AM/PM</div>
           </div>
           
-          <div className="flex justify-between">
-            <div className="flex flex-col items-center">
+          <div className="flex justify-between gap-6">
+            <div className="flex flex-col items-center w-12">
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 onClick={incrementHours}
-                className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                className="h-10 w-10 hover:bg-primary/10 hover:text-primary"
               >
-                <ChevronUp className="h-4 w-4" />
+                <ChevronUp className="h-5 w-5" />
               </Button>
-              <div className="font-mono text-lg py-1">
+              <div className="font-mono text-xl py-2">
                 {selectedHour.toString().padStart(2, "0")}
               </div>
               <Button
@@ -164,25 +164,25 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
                 variant="ghost"
                 size="icon"
                 onClick={decrementHours}
-                className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                className="h-10 w-10 hover:bg-primary/10 hover:text-primary"
               >
-                <ChevronDown className="h-4 w-4" />
+                <ChevronDown className="h-5 w-5" />
               </Button>
             </div>
             
-            <div className="text-lg py-2">:</div>
+            <div className="text-xl py-4 flex items-center">:</div>
             
-            <div className="flex flex-col items-center">
+            <div className="flex flex-col items-center w-12">
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 onClick={incrementMinutes}
-                className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                className="h-10 w-10 hover:bg-primary/10 hover:text-primary"
               >
-                <ChevronUp className="h-4 w-4" />
+                <ChevronUp className="h-5 w-5" />
               </Button>
-              <div className="font-mono text-lg py-1">
+              <div className="font-mono text-xl py-2">
                 {selectedMinute.toString().padStart(2, "0")}
               </div>
               <Button
@@ -190,23 +190,23 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
                 variant="ghost"
                 size="icon"
                 onClick={decrementMinutes}
-                className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                className="h-10 w-10 hover:bg-primary/10 hover:text-primary"
               >
-                <ChevronDown className="h-4 w-4" />
+                <ChevronDown className="h-5 w-5" />
               </Button>
             </div>
             
-            <div className="flex flex-col items-center ml-3">
+            <div className="flex flex-col items-center w-12">
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 onClick={togglePeriod}
-                className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                className="h-10 w-10 hover:bg-primary/10 hover:text-primary"
               >
-                <ChevronUp className="h-4 w-4" />
+                <ChevronUp className="h-5 w-5" />
               </Button>
-              <div className="font-mono text-lg py-1">
+              <div className="font-mono text-xl py-2">
                 {selectedPeriod}
               </div>
               <Button
@@ -214,19 +214,18 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
                 variant="ghost"
                 size="icon"
                 onClick={togglePeriod}
-                className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                className="h-10 w-10 hover:bg-primary/10 hover:text-primary"
               >
-                <ChevronDown className="h-4 w-4" />
+                <ChevronDown className="h-5 w-5" />
               </Button>
             </div>
           </div>
 
-          <div className="flex justify-between pt-2 border-t border-primary/20">
+          <div className="flex justify-between pt-3 border-t border-primary/20">
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="text-xs"
               onClick={handleClear}
             >
               Clear
@@ -235,7 +234,6 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
               type="button"
               variant="ghost"
               size="sm"
-              className="text-xs"
               onClick={handleDone}
             >
               Done
