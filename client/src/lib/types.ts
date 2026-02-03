@@ -55,6 +55,7 @@ export interface Quest {
   notificationEnabled?: boolean;
   notificationTime?: string | null;
   notifications?: QuestNotification[];
+  completedAt?: string | null;
 }
 
 export interface AIMessage {

@@ -2,37 +2,50 @@ import React, { useMemo } from 'react';
 import { useLocation } from "wouter";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useLYFEOS } from "@/lib/context";
-import { Archive, Clock, Tag, CheckCircle2, ArrowLeft } from "lucide-react";
+import { Archive, Clock, CheckCircle2, ArrowLeft, Calendar, Star, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-
 export default function MissionArchivePage() {
-  // Set the page title
   usePageTitle('Mission Archive');
 
-  // Get mission pages from context
-  const { missionPages } = useLYFEOS();
+  const { quests } = useLYFEOS();
   const [, navigate] = useLocation();
 
-  
-  // Filter for only completed missions (archive only shows completed)
-  const completedMissions = useMemo(() => {
-    return missionPages
-      .filter(page => 
-        (page.tags.includes('Mission') || page.tags.includes('Document')) && page.completed
-      )
-      .map(entry => ({
-        id: entry.id,
-        title: entry.title,
-        content: entry.content,
-        slug: entry.slug,
-        tags: entry.tags,
-        createdAt: entry.createdAt,
-        updatedAt: entry.updatedAt,
-        completed: entry.completed
-      }))
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-  }, [missionPages]);
+  const today = new Date().toISOString().split('T')[0];
+
+  const archivedMissionsByDate = useMemo(() => {
+    const completed = quests.filter(q => q.completed && q.completedAt && q.completedAt !== today);
+    
+    const grouped: Record<string, typeof completed> = {};
+    completed.forEach(quest => {
+      const date = quest.completedAt || 'Unknown';
+      if (!grouped[date]) {
+        grouped[date] = [];
+      }
+      grouped[date].push(quest);
+    });
+
+    const sortedDates = Object.keys(grouped).sort((a, b) => 
+      new Date(b).getTime() - new Date(a).getTime()
+    );
+
+    return sortedDates.map(date => ({
+      date,
+      missions: grouped[date]
+    }));
+  }, [quests, today]);
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'long',
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  };
+
+  const totalArchived = archivedMissionsByDate.reduce((sum, group) => sum + group.missions.length, 0);
 
   return (
     <>
@@ -41,7 +54,7 @@ export default function MissionArchivePage() {
           variant="ghost" 
           size="icon" 
           className="h-8 w-8 hover:bg-primary hover:text-background" 
-          onClick={() => navigate('/chronilog')}
+          onClick={() => navigate('/missions')}
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -49,67 +62,98 @@ export default function MissionArchivePage() {
       
       <div className="mb-6">
         <h1 className="text-2xl font-orbitron mb-1">Mission Archive</h1>
-        <p className="text-[#7DAAB2]">Review your completed missions and achievements</p>
+        <p className="text-[#7DAAB2]">Review your completed missions from previous days</p>
       </div>
-      
             
-      {completedMissions.length > 0 ? (
-        <div className="glassmorphic rounded-xl overflow-hidden border border-primary/20">
-          <div className="p-4 flex items-center justify-between border-b border-primary/20">
-            <div className="flex items-center">
-              <CheckCircle2 className="h-5 w-5 text-primary mr-3" />
-              <h2 className="text-lg font-medium">Completed Missions</h2>
+      {archivedMissionsByDate.length > 0 ? (
+        <div className="space-y-6">
+          <div className="glassmorphic rounded-xl p-4 border border-primary/20 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Archive className="h-5 w-5 text-primary" />
+              <span className="font-medium">Total Archived Missions</span>
             </div>
-            <span className="text-xs text-[#7DAAB2] px-2 py-1 bg-slate-800/50 rounded-full">
-              {completedMissions.length} {completedMissions.length === 1 ? 'mission' : 'missions'}
-            </span>
+            <span className="text-lg font-orbitron text-primary">{totalArchived}</span>
           </div>
-          
-          <div className="px-4 pb-4 space-y-3 pt-4">
-            {completedMissions.map((entry) => (
-              <div 
-                key={entry.id}
-                className="p-3 rounded-lg bg-card/30 hover:bg-card/50 transition-all border border-slate-700/30 hover:border-primary/30 hover:shadow-[0_0_5px_var(--primary-glow-light)] cursor-pointer"
-                onClick={() => navigate(`/mission-page/${entry.slug}`)}
-              >
-                <div className="flex justify-between items-center mb-2">
-                  <div className="flex items-center">
-                    <CheckCircle2 className="h-4 w-4 text-primary mr-2" />
-                    <h3 className="font-medium">{entry.title}</h3>
-                  </div>
-                  <div className="flex items-center">
-                    <Clock className="h-3 w-3 mr-1 text-[#7DAAB2]" />
-                    <span className="text-xs text-[#7DAAB2] font-mono">
-                      {new Date(entry.updatedAt).toLocaleDateString()}
-                    </span>
-                  </div>
+
+          {archivedMissionsByDate.map(({ date, missions }) => (
+            <div key={date} className="glassmorphic rounded-xl overflow-hidden border border-primary/20">
+              <div className="p-4 flex items-center justify-between border-b border-primary/20 bg-primary/5">
+                <div className="flex items-center gap-3">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-medium">{formatDate(date)}</h2>
                 </div>
-                
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {entry.tags.map((tag, idx) => (
-                    <div key={idx} className="text-xs px-2 py-0.5 rounded-full bg-slate-700/50 text-slate-300 flex items-center">
-                      <Tag className="h-3 w-3 mr-1" />
-                      {tag}
-                    </div>
-                  ))}
-                </div>
-                
-                <p className="text-sm text-[#7DAAB2] line-clamp-2">
-                  {entry.content.length > 150 
-                    ? entry.content.substring(0, 150) + '...' 
-                    : entry.content}
-                </p>
+                <span className="text-xs text-[#7DAAB2] px-2 py-1 bg-slate-800/50 rounded-full">
+                  {missions.length} {missions.length === 1 ? 'mission' : 'missions'}
+                </span>
               </div>
-            ))}
-          </div>
+              
+              <div className="px-4 pb-4 space-y-3 pt-4">
+                {missions.map((mission) => (
+                  <div 
+                    key={mission.id}
+                    className="p-3 rounded-lg bg-card/30 border border-slate-700/30"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        <h3 className="font-medium">{mission.title}</h3>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-[#7DAAB2]">
+                        <div className="flex items-center gap-1">
+                          <Zap className="h-3 w-3" />
+                          <span>-{mission.energyCost} EP</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-primary">
+                          <Star className="h-3 w-3" />
+                          <span>+{mission.experienceReward} XP</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {mission.description && (
+                      <p className="text-sm text-[#7DAAB2] ml-6">
+                        {mission.description}
+                      </p>
+                    )}
+
+                    {(mission.startDate || mission.endDate) && (
+                      <div className="flex items-center gap-2 mt-2 ml-6 text-xs text-[#7DAAB2]">
+                        <Clock className="h-3 w-3" />
+                        {mission.startDate && (
+                          <span>
+                            {mission.startDate}
+                            {mission.startTime && ` ${mission.startTime}`}
+                          </span>
+                        )}
+                        {mission.startDate && mission.endDate && <span>-</span>}
+                        {mission.endDate && (
+                          <span>
+                            {mission.endDate}
+                            {mission.endTime && ` ${mission.endTime}`}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
         <div className="text-center py-16 glassmorphic rounded-xl border border-primary/20 flex flex-col items-center justify-center">
           <Archive className="h-16 w-16 text-primary/40 mb-4" />
-          <h3 className="text-xl font-medium mb-2">No Completed Missions Yet</h3>
+          <h3 className="text-xl font-medium mb-2">No Archived Missions Yet</h3>
           <p className="text-[#7DAAB2] mb-4 max-w-md">
-            Complete missions from the Active Missions page to see them archived here.
+            Completed missions from previous days will appear here. Missions completed today will be archived tomorrow.
           </p>
+          <Button
+            variant="outline"
+            className="border-primary/30 hover:bg-primary/10"
+            onClick={() => navigate('/missions')}
+          >
+            Go to Missions
+          </Button>
         </div>
       )}
     </>
