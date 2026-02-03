@@ -241,6 +241,7 @@ export const quests = pgTable("quests", {
   notificationEnabled: boolean("notification_enabled").default(false),
   notificationTime: text("notification_time"), // format: "HH:MM" or minutes before like "-15", "-30", "-60" (legacy)
   notifications: jsonb("notifications").default([]), // Array of { date: "YYYY-MM-DD", time: "HH:MM" }
+  completedAt: text("completed_at"), // format: "YYYY-MM-DD" - date when mission was completed
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
