@@ -1268,15 +1268,6 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     
     setChatSessions((prev) => [...prev, newChatSession]);
     
-    // Show chat created toast
-    toast({
-      title: "New Chat Created",
-      description: `${title}`,
-      variant: "default",
-      className: "bg-background/80 border border-primary text-foreground",
-      duration: 3000,
-    });
-    
     return newChatSession;
   };
   
