@@ -452,14 +452,10 @@ export class DatabaseStorage implements IStorage {
     const quest = await this.getQuest(id);
     if (!quest) throw new Error("Quest not found");
     
-    // Toggle the completed state and set completedAt
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    // Toggle the completed state
     const [updatedQuest] = await db
       .update(quests)
-      .set({ 
-        completed: !quest.completed,
-        completedAt: !quest.completed ? today : null // Set date when completing, clear when uncompleting
-      })
+      .set({ completed: !quest.completed })
       .where(eq(quests.id, id))
       .returning();
     

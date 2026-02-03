@@ -1,5 +1,4 @@
 import { useState, useMemo } from "react";
-import { useLocation } from "wouter";
 import { useLYFEOS } from "../lib/context";
 import QuestItem from "../components/dashboard/QuestItem";
 import { usePageTitle } from "@/hooks/use-page-title";
@@ -17,7 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Zap, Star, Bell, Edit3, X, Archive } from "lucide-react";
+import { Plus, Zap, Star, Bell, Edit3, X } from "lucide-react";
 import { Quest, QuestNotification } from "@/lib/types";
 
 interface MissionFormData {
@@ -46,7 +45,6 @@ const defaultFormData: MissionFormData = {
 
 export default function QuestsPage() {
   usePageTitle('Missions');
-  const [, navigate] = useLocation();
   
   const { quests, toggleQuestCompletion, createQuest, updateQuest, deleteQuest } = useLYFEOS();
   
@@ -166,17 +164,7 @@ export default function QuestsPage() {
           <p className="text-muted-foreground">Complete missions to earn XP and reach your goals.</p>
         </div>
         
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            className="gap-2 border-primary/30 hover:bg-primary/10"
-            onClick={() => navigate('/mission-archive')}
-          >
-            <Archive className="h-4 w-4" />
-            <span className="hidden sm:inline">Archive</span>
-          </Button>
-          
-          <Dialog open={isCreateOpen} onOpenChange={(open) => {
+        <Dialog open={isCreateOpen} onOpenChange={(open) => {
           setIsCreateOpen(open);
           if (!open) setCreateFormData(defaultFormData);
         }}>
@@ -369,7 +357,6 @@ export default function QuestsPage() {
             </div>
           </DialogContent>
         </Dialog>
-        </div>
       </div>
 
       <Dialog open={isEditOpen} onOpenChange={(open) => {
