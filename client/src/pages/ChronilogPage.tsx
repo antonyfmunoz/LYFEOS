@@ -191,7 +191,7 @@ export default function ChronilogPage() {
   const [categories, setCategories] = useState<CategoryItem[]>([
     { 
       id: "missions", 
-      title: "Mission Logs", 
+      title: "Mission Archive", 
       icon: "task_alt",
       description: "Documentation of your completed and active missions",
       color: "cyan-400"
