@@ -810,14 +810,6 @@ export default function ProfilePage() {
   const handlePrimaryColorChange = (color: string) => {
     // Use the context function to update the primary color
     setPrimaryColor(color);
-    
-    toast({
-      title: "Theme Color Updated",
-      description: "Your UI theme color has been changed",
-      variant: "default",
-      className: "bg-background/80 border border-primary text-foreground",
-      duration: 3000,
-    });
   };
 
   // File upload handler
