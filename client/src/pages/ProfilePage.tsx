@@ -744,16 +744,26 @@ export default function ProfilePage() {
     return (
       <RootLayout>
         <div className="max-w-4xl mx-auto pb-20">
-          <div className="flex items-center gap-2 mb-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 hover:bg-primary hover:text-background" 
+                onClick={() => window.history.back()}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <h1 className="text-2xl font-orbitron text-foreground">My Account</h1>
+            </div>
             <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8 hover:bg-primary hover:text-background" 
-              onClick={() => window.history.back()}
+              variant="ghost"
+              className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10"
+              disabled
             >
-              <ArrowLeft className="h-4 w-4" />
+              <LogOut className="h-4 w-4" />
+              <span>Logout</span>
             </Button>
-            <h1 className="text-2xl font-orbitron text-foreground">My Account</h1>
           </div>
           
           {/* Loading Skeleton */}
@@ -806,16 +816,26 @@ export default function ProfilePage() {
   return (
     <RootLayout>
       <div className="max-w-4xl mx-auto pb-20">
-        <div className="flex items-center gap-2 mb-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 hover:bg-primary hover:text-background" 
+              onClick={() => window.history.back()}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <h1 className="text-2xl font-orbitron text-foreground">My Account</h1>
+          </div>
           <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8 hover:bg-primary hover:text-background" 
-            onClick={() => window.history.back()}
+            variant="ghost"
+            className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10"
+            onClick={logout}
           >
-            <ArrowLeft className="h-4 w-4" />
+            <LogOut className="h-4 w-4" />
+            <span>Logout</span>
           </Button>
-          <h1 className="text-2xl font-orbitron text-foreground">My Account</h1>
         </div>
 
         {updateProfileMutation.isError && (
