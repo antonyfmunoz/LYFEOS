@@ -117,28 +117,23 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
           <div className="flex gap-2 h-48">
             <div 
               ref={hourRef}
-              className="flex flex-col overflow-y-scroll scrollbar-thin scrollbar-thumb-primary/30 w-14 touch-pan-y"
-              style={{ WebkitOverflowScrolling: 'touch' }}
+              className="flex flex-col overflow-y-auto overscroll-contain w-14"
+              style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
             >
               {hours.map((hour) => (
-                <button
+                <div
                   key={hour}
-                  type="button"
                   data-hour={hour}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setSelectedHour(hour);
-                  }}
+                  onClick={() => setSelectedHour(hour)}
                   className={cn(
-                    "py-2 px-3 text-center rounded-lg transition-all flex-shrink-0",
+                    "py-2 px-3 text-center rounded-lg transition-all flex-shrink-0 cursor-pointer select-none",
                     selectedHour === hour
                       ? "bg-primary/20 text-primary font-medium"
                       : "text-muted-foreground hover:bg-primary/10"
                   )}
                 >
                   {hour}
-                </button>
+                </div>
               ))}
             </div>
 
@@ -146,53 +141,43 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
 
             <div 
               ref={minuteRef}
-              className="flex flex-col overflow-y-scroll scrollbar-thin scrollbar-thumb-primary/30 w-14 touch-pan-y"
-              style={{ WebkitOverflowScrolling: 'touch' }}
+              className="flex flex-col overflow-y-auto overscroll-contain w-14"
+              style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
             >
               {minutes.map((minute) => (
-                <button
+                <div
                   key={minute}
-                  type="button"
                   data-minute={minute}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setSelectedMinute(minute);
-                  }}
+                  onClick={() => setSelectedMinute(minute)}
                   className={cn(
-                    "py-2 px-3 text-center rounded-lg transition-all flex-shrink-0",
+                    "py-2 px-3 text-center rounded-lg transition-all flex-shrink-0 cursor-pointer select-none",
                     selectedMinute === minute
                       ? "bg-primary/20 text-primary font-medium"
                       : "text-muted-foreground hover:bg-primary/10"
                   )}
                 >
                   {minute.toString().padStart(2, "0")}
-                </button>
+                </div>
               ))}
             </div>
 
             <div 
-              className="flex flex-col overflow-y-scroll scrollbar-thin scrollbar-thumb-primary/30 w-14 touch-pan-y ml-2"
-              style={{ WebkitOverflowScrolling: 'touch' }}
+              className="flex flex-col overflow-y-auto overscroll-contain w-14 ml-2"
+              style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
             >
               {(["AM", "PM"] as const).map((period) => (
-                <button
+                <div
                   key={period}
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setSelectedPeriod(period);
-                  }}
+                  onClick={() => setSelectedPeriod(period)}
                   className={cn(
-                    "py-2 px-3 text-center rounded-lg transition-all flex-shrink-0 font-medium",
+                    "py-2 px-3 text-center rounded-lg transition-all flex-shrink-0 cursor-pointer select-none font-medium",
                     selectedPeriod === period
                       ? "bg-primary/20 text-primary"
                       : "text-muted-foreground hover:bg-primary/10"
                   )}
                 >
                   {period}
-                </button>
+                </div>
               ))}
             </div>
           </div>
