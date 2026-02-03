@@ -17,6 +17,7 @@ export const users = pgTable("users", {
   
   // New V2 fields
   email: text("email"), // Email (or blank if using OAuth)
+  phoneNumber: text("phone_number"), // Phone number for contact
   authProvider: text("auth_provider").default("email"), // ("email", "google", "apple", "facebook")
   firebaseUid: text("firebase_uid"), // Firebase UID for Firebase-authenticated users
   termsAccepted: boolean("terms_accepted").default(false),
@@ -414,6 +415,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
   title: true,
   profilePicture: true,
   email: true,
+  phoneNumber: true,
   authProvider: true,
   firebaseUid: true,
   termsAccepted: true,
