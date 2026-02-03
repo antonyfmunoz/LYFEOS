@@ -212,7 +212,7 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
-      <Route path="/active-missions">
+      <Route path="/missions">
         <ProtectedRoute>
           <RootLayout>
             <QuestsPage />
