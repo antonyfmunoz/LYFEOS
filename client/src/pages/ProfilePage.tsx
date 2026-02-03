@@ -321,7 +321,7 @@ export default function ProfilePage() {
     },
     {
       id: 'settings',
-      title: "Settings",
+      title: "UI Settings",
       icon: <Settings className="h-5 w-5 text-primary" />,
       defaultOpen: true
     }
