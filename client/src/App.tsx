@@ -13,6 +13,7 @@ import ChronilogPage from "./pages/ChronilogPage";
 import TimelinePage from "./pages/TimelinePage";
 import TimelineDetailPage from "./pages/TimelineDetailPage";
 import OnboardingPage from "./pages/OnboardingPage";
+import CeremonyPage from "./pages/CeremonyPage";
 import ProfilePage from "./pages/ProfilePage";
 import StatDetailPage from "./pages/StatDetailPage";
 import MissionDetailPage from "./pages/MissionDetailPage";
@@ -201,6 +202,7 @@ function Router() {
       
       {/* Onboarding route - requires auth but has special handling */}
       <Route path="/onboarding" component={OnboardingPage} />
+      <Route path="/ceremony" component={CeremonyPage} />
       
       {/* Wrap main app routes in the layout component */}
       <Route path="/dashboard">

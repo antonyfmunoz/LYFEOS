@@ -8,6 +8,7 @@ import { registerChatRoutes } from "./replit_integrations/chat";
 import { z } from "zod";
 import bcrypt from "bcrypt";
 import multer from "multer";
+import Anthropic from "@anthropic-ai/sdk";
 import { 
   insertUserSchema, 
   insertQuestSchema, 
@@ -715,6 +716,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating user profile:", error);
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // SIMPLIFIED PROFILE ROUTES (uses session userId)
+  app.get("/api/profile", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const profile = await storage.getUserProfile(userId);
+      if (!profile) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+      res.json(profile);
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  app.patch("/api/profile", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const updateData = req.body;
+      updateData.updatedAt = new Date();
+      
+      const existingProfile = await storage.getUserProfile(userId);
+      
+      let updatedProfile;
+      if (existingProfile) {
+        updatedProfile = await storage.updateUserProfile(userId, updateData);
+      } else {
+        updateData.userId = userId;
+        updatedProfile = await storage.createUserProfile(updateData);
+      }
+      
+      res.json(updatedProfile);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Generate Character Affirmation using AI
+  app.post("/api/profile/generate-affirmation", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { displayName, archetypePrimary, archetypeSecondary, coreValues, vision5Year, primaryCraft, desiredEmotion } = req.body;
+      
+      const anthropic = new Anthropic({
+        apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+      });
+      
+      const pronoun = "they";
+      const pronounCap = "They";
+      const pronounPoss = "their";
+      
+      const prompt = `Generate a powerful character affirmation (200-300 words) for a person named "${displayName}". Write in third person using they/them pronouns.
+
+The affirmation should be written like an epic character description, encoding their identity, values, vision, and destiny.
+
+Key details about this person:
+- Primary Archetype: ${archetypePrimary} (their dominant energy and approach to life)
+- Secondary Archetype: ${archetypeSecondary} (their supporting strength)
+- Core Values: ${coreValues?.join(", ") || "growth, integrity, purpose"}
+- 5-Year Vision: ${vision5Year || "becoming the best version of themselves"}
+- Primary Craft: ${primaryCraft || "their chosen field"}
+- Desired Emotion: ${desiredEmotion || "flow"}
+
+Structure the affirmation as:
+1. Opening identity statement (who they are at their core)
+2. Their values and how they embody them
+3. Their vision and what they're creating
+4. Their strengths and traits
+5. Their destiny and impact
+
+Tone: Powerful, certain, declarative (NOT aspirational). Write as if this is already who they are.
+
+Example structure:
+"${displayName} is a sovereign creator of reality, aligned with vision, integrity, and growth. Each day, ${pronoun} expands in clarity, discipline, and creativity..."
+
+Generate the complete affirmation now:`;
+
+      const message = await anthropic.messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1024,
+        messages: [
+          { role: "user", content: prompt }
+        ],
+      });
+      
+      const affirmation = message.content[0].type === "text" ? message.content[0].text : "";
+      
+      res.json({ affirmation });
+    } catch (error) {
+      console.error("Error generating affirmation:", error);
+      res.status(500).json({ error: "Failed to generate affirmation" });
     }
   });
 

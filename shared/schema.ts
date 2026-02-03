@@ -51,25 +51,147 @@ export const userStats = pgTable("user_stats", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// User Profile Table (All Onboarding Answers)
+// User Profile Table (All Onboarding Answers + Player Record)
 export const userProfile = pgTable("user_profile", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
+  
+  // === MISSION 0: ACCESS & QUICKSTART ===
+  ageRange: text("age_range"), // ("18-24", "25-34", "35-44", "45-54", "55-64", "65+")
+  location: text("location"), // Optional location text
+  timezone: text("timezone"), // IANA timezone string
+  
+  // === MISSION 1: ARCHETYPE CALIBRATION ===
+  archetypePrimary: text("archetype_primary"), // ("Warrior", "Architect", "Creator", "Monarch", "Oracle", "Alchemist")
+  archetypeSecondary: text("archetype_secondary"),
+  archetypeShadow: text("archetype_shadow"),
+  archetypeScores: jsonb("archetype_scores").default({}), // { warrior: X, architect: X, creator: X, monarch: X, oracle: X, alchemist: X }
+  
+  // === SECTION 1: IDENTITY ===
+  primaryInstincts: jsonb("primary_instincts").default([]), // Array of instincts
+  keyDrivers: jsonb("key_drivers").default([]), // Array of drivers
+  shadowDistortions: jsonb("shadow_distortions").default([]), // Array of shadow patterns
+  
+  // === SECTION 2: PERSONALITY ===
+  coreBelief: text("core_belief"),
+  limitingBelief: text("limiting_belief"),
+  empoweringBelief: text("empowering_belief"),
+  primaryValues: jsonb("primary_values").default([]), // Array of top 3 values
+  supportingValues: jsonb("supporting_values").default([]), // Additional values
+  selfStandards: text("self_standards"), // Standards held for self
+  othersStandards: text("others_standards"), // Standards expected of others
+  typicalPatterns: text("typical_patterns"), // Behavioral patterns
+  habits: jsonb("habits").default([]), // Array of habits
+  urges: text("urges"), // Urges/impulses
+  traitToReprogram: text("trait_to_reprogram"),
+  desiredTrait: text("desired_trait"),
+  strengths: jsonb("strengths").default([]), // Array of strengths
+  weaknesses: jsonb("weaknesses").default([]), // Array of weaknesses
+  
+  // === SECTION 3: VISION & GOALS ===
+  lifeStage: text("life_stage"), // ("Awakening", "Building", "Mastering", "Leading")
+  desiredEmotion: text("desired_emotion"), // ("Flow", "Peace", "Joy", "Power", "Love", "Purpose")
+  vision90Day: text("vision_90_day"),
+  vision18Month: text("vision_18_month"),
+  vision5Year: text("vision_5_year"),
+  vision10YearLegacy: text("vision_10_year_legacy"),
+  currentGoals: jsonb("current_goals").default([]), // Array of current goals
+  
+  // === SECTION 4: LEARNING & SKILLS ===
+  learningStyle: jsonb("learning_style").default({}), // { visual: X, auditory: X, reading: X, kinesthetic: X }
+  integrationMethod: text("integration_method"),
+  pastDeepDives: jsonb("past_deep_dives").default([]), // Array of past research topics
+  domainsOfCompetence: jsonb("domains_of_competence").default([]),
+  currentDeepDive: jsonb("current_deep_dive").default({}), // { question: "", purpose: "", successCriteria: "" }
+  skillStackingPyramid: jsonb("skill_stacking_pyramid").default({}), // { vocational: "", evolutionary: [], resonant: [], staticFoundational: [], seasonalFoundational: [] }
+  knowledgeAreas: jsonb("knowledge_areas").default([]),
+  skillsToAcquire: jsonb("skills_to_acquire").default([]),
+  practiceCadence: jsonb("practice_cadence").default({}), // { hoursPerWeek: X, note: "" }
+  
+  // === SECTION 5: PROJECTS & CREATIONS ===
+  currentProjects: jsonb("current_projects").default([]), // Array of { name, doneWhen }
+  projectDefinition: text("project_definition"),
+  activePhase: text("active_phase"),
+  primaryCraft: text("primary_craft"),
+  primaryCraftWhy: text("primary_craft_why"),
+  
+  // === SECTION 6: BODY & HEALTH ===
+  physicalMetrics: jsonb("physical_metrics").default({}), // { height: "", weight: "", bodyType: "", distinctiveFeatures: "" }
+  fitnessMovement: jsonb("fitness_movement").default({}), // { trainingStyle: "", movementPractices: [] }
+  nutritionRecovery: jsonb("nutrition_recovery").default({}), // { nutritionalApproach: "", recoveryPractices: [], stressRecoveryStyle: "" }
+  healthVitality: jsonb("health_vitality").default({}), // { conditions: [], energyPatterns: "", somaticAwareness: "", longevityFocus: [] }
+  healthBaseline: jsonb("health_baseline").default({}), // { sleep: X, exercise: X, nutrition: X, priority: "" }
+  injuries: text("injuries"),
+  
+  // === SECTION 7: WEALTH & WORK ===
+  careerVocation: text("career_vocation"),
+  activeVentures: jsonb("active_ventures").default([]),
+  financialPosition: jsonb("financial_position").default({}), // { income: "", expenses: "", savings: "", debt: "" }
+  weeklyCapacity: jsonb("weekly_capacity").default({}), // { hours: X, cap: "" }
+  energyDrains: jsonb("energy_drains").default([]),
+  resources: jsonb("resources").default({}), // { skills: bool, tools: bool, network: bool, financial: bool, time: bool }
+  physicalEnvironment: text("physical_environment"),
+  digitalEnvironment: jsonb("digital_environment").default([]),
+  
+  // === SECTION 8: PERFORMANCE & CONTRIBUTION ===
+  collaborationStyle: text("collaboration_style"),
+  roleOrientation: text("role_orientation"),
+  decisionOrientation: text("decision_orientation"),
+  stressResponse: text("stress_response"),
+  optimalEnvironment: text("optimal_environment"),
+  greatestContribution: text("greatest_contribution"),
+  
+  // === SECTION 9: STYLE & EXPRESSION ===
+  aesthetic: text("aesthetic"),
+  signatureExpression: text("signature_expression"),
+  creativeOutlets: jsonb("creative_outlets").default([]),
+  
+  // === HISTORY & ROOTS ===
+  shadowPatterns: jsonb("shadow_patterns").default({}), // { pattern: "", lesson: "" }
+  historicalContext: jsonb("historical_context").default([]), // Timeline with age markers
+  upbringing: text("upbringing"),
+  culturalContext: text("cultural_context"),
+  keyExperiences: jsonb("key_experiences").default({}), // { experience: "", outcomes: "" }
+  
+  // === SYSTEMS & RITUALS ===
+  idealDay: text("ideal_day"),
+  lockedHabit: text("locked_habit"),
+  idealWeek: jsonb("ideal_week").default({}),
+  yearlyCycles: jsonb("yearly_cycles").default([]),
+  morningRituals: jsonb("morning_rituals").default([]),
+  eveningRituals: jsonb("evening_rituals").default([]),
+  groundingRitual: text("grounding_ritual"),
+  boundaries: jsonb("boundaries").default({}), // { techOffTime: "", workHours: "", recoveryTime: "" }
+  
+  // === EMOTIONS & COPING ===
+  emotionsToCultivate: jsonb("emotions_to_cultivate").default([]),
+  copingPractices: text("coping_practices"),
+  traitsToCultivate: jsonb("traits_to_cultivate").default([]),
+  beliefSystem: jsonb("belief_system").default({}), // { empowering: [], limiting: [], core: "", strongest: "" }
+  
+  // === CHARACTER AFFIRMATION ===
+  characterAffirmation: text("character_affirmation"), // AI-generated third-person narrative
+  
+  // === ONBOARDING TRACKING ===
+  onboardingMission: integer("onboarding_mission").default(0), // Current mission (0-7)
+  onboardingStep: integer("onboarding_step").default(0), // Current step within mission
+  
+  // === LEGACY FIELDS ===
   startStage: text("start_stage"), // ("Awakening", "Building", "Mastering", "Leading")
-  targetArchetype: text("target_archetype"), // ("Leader", "Creator", "Athlete", "Healer", etc.)
-  flowStyle: jsonb("flow_style").default({}), // Object of 5 slider answers: { pace: X, environment: X, risk: X, learning: X, energy: X }
-  coreMotivation: text("core_motivation"), // preset or custom typed by user
+  targetArchetype: text("target_archetype"), // Legacy field
+  flowStyle: jsonb("flow_style").default({}),
+  coreMotivation: text("core_motivation"),
   setupMissionStatus: jsonb("setup_mission_status").default({
     archetype: "incomplete", 
     integrations: "incomplete", 
     future_self: "incomplete", 
     rituals: "incomplete", 
     pillars: "incomplete"
-  }), // Tracks Setup Mission progress
-  primaryThemeColor: text("primary_theme_color").default("#00e0ff"), // Chosen theme color
-  futureSelfSummary: text("future_self_summary"), // optional, filled after Future Self Design mission
-  aiPersonalityProfile: jsonb("ai_personality_profile").default({}), // To store later 12Types results after full archetype mission
-  totalXP: integer("total_xp").notNull().default(0), // Total accumulated XP (New XP system)
+  }),
+  primaryThemeColor: text("primary_theme_color").default("#00e0ff"),
+  futureSelfSummary: text("future_self_summary"),
+  aiPersonalityProfile: jsonb("ai_personality_profile").default({}),
+  totalXP: integer("total_xp").notNull().default(0),
   onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
