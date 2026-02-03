@@ -154,10 +154,10 @@ export default function DashboardPage() {
             type="button"
             size="sm"
             variant="ghost"
-            className={`p-0 w-7 h-7 rounded-md bg-primary/10 text-primary/70 border hover:bg-primary/15 hover:text-primary/80 active:bg-primary/20 focus:bg-primary/15 focus-visible:ring-primary/30 ${
+            className={`p-0 w-7 h-7 rounded-md hover:bg-primary/15 hover:text-primary active:bg-primary/20 focus:bg-primary/15 focus-visible:ring-primary/30 ${
               num === state
-                ? "border-primary/50"
-                : "border-primary/20 hover:border-primary/40"
+                ? "bg-primary/15 text-primary border border-primary/50"
+                : "text-primary/60"
             }`}
             onClick={() => onChange(num)}
           >
