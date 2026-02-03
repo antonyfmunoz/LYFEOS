@@ -1058,32 +1058,9 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       // Get or create the database conversation
       const dbConversationId = await getOrCreateDbConversation(sessionId, title);
       
-      // Create a placeholder AI message that will be updated with streaming content
+      // Create AI message ID (message will be added when first content arrives)
       const aiMessageId = `msg-ai-${Date.now()}`;
-      const aiMessage: AIMessage = {
-        id: aiMessageId,
-        sender: 'ai',
-        content: '',
-        timestamp: new Date(),
-      };
-      
-      // Add empty AI message to chat session (will be updated as content streams in)
-      setChatSessions((prev) => 
-        prev.map((session) => {
-          if (session.id === sessionId) {
-            return {
-              ...session, 
-              messages: [...session.messages, aiMessage],
-              updatedAt: new Date()
-            };
-          }
-          return session;
-        })
-      );
-      
-      if (sessionId === activeChatSessionId) {
-        setMessages((prev) => [...prev, aiMessage]);
-      }
+      let aiMessageAdded = false;
       
       // Make streaming API call to get AI response
       const response = await fetch(`/api/conversations/${dbConversationId}/messages`, {
@@ -1115,32 +1092,62 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
                 if (data.content) {
                   fullContent += data.content;
                   
-                  // Update the AI message content in real-time
-                  setChatSessions((prev) => 
-                    prev.map((session) => {
-                      if (session.id === sessionId) {
-                        return {
-                          ...session,
-                          messages: session.messages.map(msg => 
-                            msg.id === aiMessageId 
-                              ? { ...msg, content: fullContent }
-                              : msg
-                          ),
-                          updatedAt: new Date()
-                        };
-                      }
-                      return session;
-                    })
-                  );
-                  
-                  if (sessionId === activeChatSessionId) {
-                    setMessages((prev) => 
-                      prev.map(msg => 
-                        msg.id === aiMessageId 
-                          ? { ...msg, content: fullContent }
-                          : msg
-                      )
+                  // Add AI message on first content chunk, then update it for subsequent chunks
+                  if (!aiMessageAdded) {
+                    // First chunk - add the AI message
+                    const aiMessage: AIMessage = {
+                      id: aiMessageId,
+                      sender: 'ai',
+                      content: fullContent,
+                      timestamp: new Date(),
+                    };
+                    
+                    setChatSessions((prev) => 
+                      prev.map((session) => {
+                        if (session.id === sessionId) {
+                          return {
+                            ...session, 
+                            messages: [...session.messages, aiMessage],
+                            updatedAt: new Date()
+                          };
+                        }
+                        return session;
+                      })
                     );
+                    
+                    if (sessionId === activeChatSessionId) {
+                      setMessages((prev) => [...prev, aiMessage]);
+                    }
+                    
+                    aiMessageAdded = true;
+                  } else {
+                    // Subsequent chunks - update the existing AI message
+                    setChatSessions((prev) => 
+                      prev.map((session) => {
+                        if (session.id === sessionId) {
+                          return {
+                            ...session,
+                            messages: session.messages.map(msg => 
+                              msg.id === aiMessageId 
+                                ? { ...msg, content: fullContent }
+                                : msg
+                            ),
+                            updatedAt: new Date()
+                          };
+                        }
+                        return session;
+                      })
+                    );
+                    
+                    if (sessionId === activeChatSessionId) {
+                      setMessages((prev) => 
+                        prev.map(msg => 
+                          msg.id === aiMessageId 
+                            ? { ...msg, content: fullContent }
+                            : msg
+                        )
+                      );
+                    }
                   }
                 }
               } catch {
@@ -1152,7 +1159,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error('Error:', error);
-      // Add fallback message on error
+      // Add error message
       const errorMessage: AIMessage = {
         id: `msg-ai-error-${Date.now()}`,
         sender: 'ai',
@@ -1164,11 +1171,9 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       setChatSessions((prev) => 
         prev.map((session) => {
           if (session.id === sessionId) {
-            // Replace the empty AI message or add error message
-            const messagesWithoutEmpty = session.messages.filter(m => m.content !== '');
             return {
               ...session, 
-              messages: [...messagesWithoutEmpty, errorMessage],
+              messages: [...session.messages, errorMessage],
               updatedAt: new Date()
             };
           }
@@ -1178,10 +1183,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       
       // Update legacy messages if this is the active session
       if (sessionId === activeChatSessionId) {
-        setMessages((prev) => {
-          const filtered = prev.filter(m => m.content !== '');
-          return [...filtered, errorMessage];
-        });
+        setMessages((prev) => [...prev, errorMessage]);
       }
     }
   };
