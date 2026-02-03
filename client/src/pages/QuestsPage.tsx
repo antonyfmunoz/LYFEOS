@@ -174,7 +174,7 @@ export default function QuestsPage() {
               New Mission
             </Button>
           </DialogTrigger>
-          <DialogContent className="glassmorphic border-primary/30 w-full h-full max-w-full max-h-full sm:max-w-lg sm:max-h-[90vh] sm:h-auto overflow-y-auto fixed inset-0 sm:inset-auto sm:relative">
+          <DialogContent className="glassmorphic border-primary/30 w-full h-full max-w-full max-h-full left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:max-w-lg sm:max-h-[90vh] sm:h-auto sm:rounded-lg overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="font-orbitron text-xl">Create New Mission</DialogTitle>
             </DialogHeader>
@@ -363,7 +363,7 @@ export default function QuestsPage() {
           setEditingQuest(null);
         }
       }}>
-        <DialogContent className="glassmorphic border-primary/30 w-full h-full max-w-full max-h-full sm:max-w-lg sm:max-h-[90vh] sm:h-auto overflow-y-auto fixed inset-0 sm:inset-auto sm:relative">
+        <DialogContent className="glassmorphic border-primary/30 w-full h-full max-w-full max-h-full left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:max-w-lg sm:max-h-[90vh] sm:h-auto sm:rounded-lg overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-orbitron text-xl flex items-center gap-2">
               <Edit3 className="h-5 w-5" />
