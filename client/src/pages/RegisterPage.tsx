@@ -37,6 +37,7 @@ export default function RegisterPage() {
   const [, navigate] = useLocation();
   
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -151,6 +152,7 @@ export default function RegisterPage() {
     
     // Enhanced validation with trimmed values
     const trimmedUsername = username.trim();
+    const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
     const trimmedConfirmPassword = confirmPassword.trim();
     const trimmedDisplayName = displayName.trim();
@@ -163,6 +165,19 @@ export default function RegisterPage() {
     
     if (trimmedUsername.length < 3) {
       setError("Username must be at least 3 characters");
+      setIsLoading(false);
+      return;
+    }
+    
+    if (!trimmedEmail) {
+      setError("Email is required");
+      setIsLoading(false);
+      return;
+    }
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      setError("Please enter a valid email address");
       setIsLoading(false);
       return;
     }
@@ -196,6 +211,7 @@ export default function RegisterPage() {
       // Store additional registration data for onboarding
       localStorage.setItem("onboarding_data", JSON.stringify({
         displayName: trimmedDisplayName || trimmedUsername,
+        email: trimmedEmail,
         avatarColor: selectedColor,
         step: 1 // Indicates to start with step 1 of onboarding
       }));
@@ -278,6 +294,19 @@ export default function RegisterPage() {
               onChange={(e) => setUsername(e.target.value)}
               className="w-full bg-transparent border-primary/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-primary/30"
               placeholder="Choose a username"
+              required
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="email" className="block text-sm text-muted-foreground">EMAIL</label>
+            <Input 
+              type="email" 
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full bg-transparent border-primary/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-primary/30"
+              placeholder="Enter your email"
               required
             />
           </div>
