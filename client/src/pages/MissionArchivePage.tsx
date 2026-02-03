@@ -2,158 +2,11 @@ import { useMemo, useState } from 'react';
 import { useLocation } from "wouter";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useLYFEOS } from "@/lib/context";
-import { Archive, ArrowLeft, Calendar, Clock, Bell, Eye, EyeOff, ChevronRight, ChevronDown } from "lucide-react";
+import { Archive, ArrowLeft, Calendar, Clock, Bell, ChevronRight, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Quest } from "@/lib/types";
-
-const mockArchivedMissions: Quest[] = [
-  {
-    id: "mock-1",
-    title: "Complete quarterly report",
-    description: "Finish and submit the Q4 2025 financial report",
-    category: "work",
-    completed: true,
-    completedAt: "2026-01-28T14:30:00.000Z",
-    energyCost: 3,
-    experienceReward: 50,
-    startDate: "2026-01-28",
-    startTime: "09:00",
-    endDate: "2026-01-28",
-    endTime: "14:00",
-    notificationEnabled: true,
-    notificationTime: null,
-    dueDate: null,
-    notifications: []
-  },
-  {
-    id: "mock-2",
-    title: "Morning workout routine",
-    description: "45-minute cardio and strength training session",
-    category: "health",
-    completed: true,
-    completedAt: "2026-01-28T07:45:00.000Z",
-    energyCost: 2,
-    experienceReward: 25,
-    startDate: "2026-01-28",
-    startTime: "06:00",
-    endDate: null,
-    endTime: null,
-    notificationEnabled: false,
-    notificationTime: null,
-    dueDate: null,
-    notifications: []
-  },
-  {
-    id: "mock-3",
-    title: "Review project proposals",
-    description: "Evaluate and provide feedback on 3 new project proposals",
-    category: "work",
-    completed: true,
-    completedAt: "2026-01-15T16:00:00.000Z",
-    energyCost: 2,
-    experienceReward: 30,
-    startDate: "2026-01-15",
-    startTime: "13:00",
-    endDate: "2026-01-15",
-    endTime: "16:00",
-    notificationEnabled: true,
-    notificationTime: null,
-    dueDate: null,
-    notifications: []
-  },
-  {
-    id: "mock-4",
-    title: "Weekly meal prep",
-    description: "Prepare healthy meals for the upcoming week",
-    category: "personal",
-    completed: true,
-    completedAt: "2026-01-15T12:30:00.000Z",
-    energyCost: 2,
-    experienceReward: 20,
-    startDate: "2026-01-15",
-    startTime: "10:00",
-    endDate: null,
-    endTime: null,
-    notificationEnabled: false,
-    notificationTime: null,
-    dueDate: null,
-    notifications: []
-  },
-  {
-    id: "mock-5",
-    title: "Year-end team celebration",
-    description: "Organize and host the annual team celebration event",
-    category: "work",
-    completed: true,
-    completedAt: "2025-12-20T18:00:00.000Z",
-    energyCost: 4,
-    experienceReward: 75,
-    startDate: "2025-12-20",
-    startTime: "15:00",
-    endDate: "2025-12-20",
-    endTime: "18:00",
-    notificationEnabled: true,
-    notificationTime: null,
-    dueDate: null,
-    notifications: []
-  },
-  {
-    id: "mock-6",
-    title: "Complete online certification",
-    description: "Finish final exam for cloud architecture certification",
-    category: "learning",
-    completed: true,
-    completedAt: "2025-12-20T11:30:00.000Z",
-    energyCost: 3,
-    experienceReward: 100,
-    startDate: "2025-12-20",
-    startTime: "09:00",
-    endDate: "2025-12-20",
-    endTime: "11:30",
-    notificationEnabled: false,
-    notificationTime: null,
-    dueDate: null,
-    notifications: []
-  },
-  {
-    id: "mock-7",
-    title: "Holiday shopping",
-    description: "Buy gifts for family and friends",
-    category: "personal",
-    completed: true,
-    completedAt: "2025-12-15T16:45:00.000Z",
-    energyCost: 2,
-    experienceReward: 15,
-    startDate: "2025-12-15",
-    startTime: "14:00",
-    endDate: null,
-    endTime: null,
-    notificationEnabled: false,
-    notificationTime: null,
-    dueDate: null,
-    notifications: []
-  },
-  {
-    id: "mock-8",
-    title: "Annual health checkup",
-    description: "Complete yearly physical examination",
-    category: "health",
-    completed: true,
-    completedAt: "2025-12-10T10:00:00.000Z",
-    energyCost: 1,
-    experienceReward: 20,
-    startDate: "2025-12-10",
-    startTime: "09:00",
-    endDate: "2025-12-10",
-    endTime: "10:00",
-    notificationEnabled: true,
-    notificationTime: null,
-    dueDate: null,
-    notifications: []
-  }
-];
 
 interface DayData {
   dayKey: string;
@@ -264,7 +117,6 @@ export default function MissionArchivePage() {
 
   const { quests } = useLYFEOS();
   const [, navigate] = useLocation();
-  const [showMockData, setShowMockData] = useState(true);
   const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set());
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
@@ -273,7 +125,7 @@ export default function MissionArchivePage() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const realMissions = quests
+    return quests
       .filter(quest => {
         if (!quest.completed || !quest.completedAt) return false;
         const completedDate = new Date(quest.completedAt);
@@ -285,17 +137,7 @@ export default function MissionArchivePage() {
         const dateB = new Date(b.completedAt!);
         return dateB.getTime() - dateA.getTime();
       });
-    
-    if (showMockData) {
-      return [...realMissions, ...mockArchivedMissions].sort((a, b) => {
-        const dateA = new Date(a.completedAt!);
-        const dateB = new Date(b.completedAt!);
-        return dateB.getTime() - dateA.getTime();
-      });
-    }
-    
-    return realMissions;
-  }, [quests, showMockData]);
+  }, [quests]);
 
   const hierarchicalData = useMemo((): YearData[] => {
     const yearMap: { [year: string]: { [monthKey: string]: { [dayKey: string]: Quest[] } } } = {};
@@ -426,37 +268,10 @@ export default function MissionArchivePage() {
         </Button>
       </div>
       
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-orbitron mb-1">Mission Archive</h1>
-          <p className="text-[#7DAAB2]">Review your completed missions from previous days</p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowMockData(!showMockData)}
-          className="flex items-center gap-2 text-xs border-primary/30 hover:bg-primary/10"
-        >
-          {showMockData ? (
-            <>
-              <EyeOff className="h-3 w-3" />
-              Hide Preview
-            </>
-          ) : (
-            <>
-              <Eye className="h-3 w-3" />
-              Show Preview
-            </>
-          )}
-        </Button>
+      <div className="mb-6">
+        <h1 className="text-2xl font-orbitron mb-1">Mission Archive</h1>
+        <p className="text-[#7DAAB2]">Review your completed missions from previous days</p>
       </div>
-      
-      {showMockData && (
-        <div className="mb-4 p-3 rounded-lg bg-primary/10 border border-primary/30 text-sm">
-          <span className="text-primary font-medium">Preview Mode:</span>{" "}
-          <span className="text-[#7DAAB2]">Showing sample missions from January and December to demonstrate the archive layout.</span>
-        </div>
-      )}
       
       {hierarchicalData.length > 0 ? (
         <div className="space-y-3">
