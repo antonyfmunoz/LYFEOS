@@ -38,9 +38,11 @@ export interface Quest {
   id: string;
   title: string;
   description: string;
+  category?: string;
   completed: boolean;
   energyCost: number;
   experienceReward: number;
+  dueDate?: string | null;
 }
 
 export interface AIMessage {

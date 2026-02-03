@@ -233,6 +233,7 @@ export const quests = pgTable("quests", {
   energyCost: integer("energy_cost").notNull().default(1),
   experienceReward: integer("experience_reward").notNull().default(10),
   autoUnlockConditions: jsonb("auto_unlock_conditions").default({}), // e.g., { "setup_complete": true }
+  dueDate: text("due_date"), // format: "YYYY-MM-DD", null means no due date
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -449,9 +450,11 @@ export const insertQuestSchema = createInsertSchema(quests).pick({
   userId: true,
   title: true,
   description: true,
+  category: true,
   completed: true,
   energyCost: true,
   experienceReward: true,
+  dueDate: true,
 });
 
 export const insertAIMessageSchema = createInsertSchema(aiMessages).pick({

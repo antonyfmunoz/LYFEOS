@@ -152,6 +152,8 @@ interface LYFEOSContextType {
   kanbanBoards: KanbanBoard[];
   activeChatSessionId: string;
   toggleQuestCompletion: (id: string) => void;
+  createQuest: (quest: Omit<Quest, "id" | "completed">) => Promise<Quest>;
+  deleteQuest: (id: string) => Promise<void>;
   sendMessage: (content: string) => void;
   sendMessageInSession: (sessionId: string, content: string) => void;
   username: string;
@@ -721,6 +723,83 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     });
     
     setQuests(updatedQuests);
+  };
+
+  // Create a new quest/mission
+  const createQuest = async (questData: Omit<Quest, "id" | "completed">): Promise<Quest> => {
+    if (!user?.id) {
+      throw new Error("User not authenticated");
+    }
+    
+    const response = await fetch("/api/quests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        userId: user.id,
+        title: questData.title,
+        description: questData.description,
+        category: questData.category || "general",
+        energyCost: questData.energyCost,
+        experienceReward: questData.experienceReward,
+        dueDate: questData.dueDate || null,
+        completed: false,
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error("Failed to create quest");
+    }
+    
+    const { quest } = await response.json();
+    const newQuest: Quest = {
+      id: String(quest.id),
+      title: quest.title,
+      description: quest.description,
+      category: quest.category,
+      completed: quest.completed,
+      energyCost: quest.energyCost,
+      experienceReward: quest.experienceReward,
+      dueDate: quest.dueDate,
+    };
+    
+    setQuests((prev) => [...prev, newQuest]);
+    
+    toast({
+      title: "Mission Created",
+      description: `${newQuest.title} has been added to your missions`,
+      variant: "default",
+      duration: 2000,
+    });
+    
+    return newQuest;
+  };
+
+  // Delete a quest/mission
+  const deleteQuest = async (id: string): Promise<void> => {
+    // Handle calendar-synced quests locally
+    if (id.startsWith("quest-calendar-")) {
+      setQuests((prev) => prev.filter((q) => q.id !== id));
+      return;
+    }
+    
+    const response = await fetch(`/api/quests/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    
+    if (!response.ok) {
+      throw new Error("Failed to delete quest");
+    }
+    
+    setQuests((prev) => prev.filter((q) => q.id !== id));
+    
+    toast({
+      title: "Mission Deleted",
+      description: "The mission has been removed",
+      variant: "default",
+      duration: 2000,
+    });
   };
 
   // Send a message to AI companion
@@ -1736,6 +1815,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         kanbanBoards,
         activeChatSessionId,
         toggleQuestCompletion,
+        createQuest,
+        deleteQuest,
         sendMessage,
         sendMessageInSession,
         username,

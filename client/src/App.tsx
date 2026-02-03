@@ -17,7 +17,6 @@ import CeremonyPage from "./pages/CeremonyPage";
 import ProfilePage from "./pages/ProfilePage";
 import StatDetailPage from "./pages/StatDetailPage";
 import MissionDetailPage from "./pages/MissionDetailPage";
-import CalendarPage from "./pages/CalendarPage";
 import KanbanPage from "./pages/KanbanPage";
 import KanbanBoardPage from "./pages/KanbanBoardPage";
 import StreakDetailPage from "./pages/StreakDetailPage";
@@ -261,15 +260,6 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
-      
-      <Route path="/calendar">
-        <ProtectedRoute>
-          <RootLayout>
-            <CalendarPage />
-          </RootLayout>
-        </ProtectedRoute>
-      </Route>
-
       <Route path="/kanban">
         <ProtectedRoute>
           <RootLayout>

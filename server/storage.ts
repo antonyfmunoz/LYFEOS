@@ -66,6 +66,7 @@ export interface IStorage {
   createQuest(quest: InsertQuest): Promise<Quest>;
   updateQuest(id: number, quest: Partial<InsertQuest>): Promise<Quest>;
   toggleQuestCompletion(id: number): Promise<Quest>;
+  deleteQuest(id: number): Promise<void>;
   
   // AI Message methods
   getMessages(userId: number): Promise<AIMessage[]>;
@@ -484,6 +485,10 @@ export class DatabaseStorage implements IStorage {
     }
     
     return updatedQuest;
+  }
+  
+  async deleteQuest(id: number): Promise<void> {
+    await db.delete(quests).where(eq(quests.id, id));
   }
   
   // AI Message methods

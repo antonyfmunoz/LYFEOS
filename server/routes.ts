@@ -1291,6 +1291,30 @@ Generate the complete affirmation now:`;
     }
   });
 
+  app.delete("/api/quests/:questId", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const questId = parseInt(req.params.questId);
+      if (isNaN(questId)) {
+        return res.status(400).json({ error: "Invalid quest ID" });
+      }
+      
+      const quest = await storage.getQuest(questId);
+      if (!quest) {
+        return res.status(404).json({ error: "Quest not found" });
+      }
+      
+      if (quest.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized to delete this quest" });
+      }
+      
+      await storage.deleteQuest(questId);
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("Error deleting quest:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // AI MESSAGE ROUTES
   app.get("/api/users/:userId/messages", isOwner, async (req: Request, res: Response) => {
     try {
