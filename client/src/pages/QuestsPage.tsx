@@ -174,7 +174,7 @@ export default function QuestsPage() {
               New Mission
             </Button>
           </DialogTrigger>
-          <DialogContent className="glassmorphic border-primary/30 max-h-[90vh] overflow-y-auto">
+          <DialogContent className="glassmorphic border-primary/30 w-full h-full max-w-full max-h-full sm:max-w-lg sm:max-h-[90vh] sm:h-auto overflow-y-auto fixed inset-0 sm:inset-auto sm:relative">
             <DialogHeader>
               <DialogTitle className="font-orbitron text-xl">Create New Mission</DialogTitle>
             </DialogHeader>
@@ -363,7 +363,7 @@ export default function QuestsPage() {
           setEditingQuest(null);
         }
       }}>
-        <DialogContent className="glassmorphic border-primary/30 max-h-[90vh] overflow-y-auto">
+        <DialogContent className="glassmorphic border-primary/30 w-full h-full max-w-full max-h-full sm:max-w-lg sm:max-h-[90vh] sm:h-auto overflow-y-auto fixed inset-0 sm:inset-auto sm:relative">
           <DialogHeader>
             <DialogTitle className="font-orbitron text-xl flex items-center gap-2">
               <Edit3 className="h-5 w-5" />
