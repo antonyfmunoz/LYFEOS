@@ -192,6 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: "Login Successful",
         description: `Welcome back, ${data.user.username}!`,
         variant: "default",
+        duration: 1500,
       });
       
       // CRITICAL FIX: Wait a moment to ensure the session cookie is properly set
