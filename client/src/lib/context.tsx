@@ -167,7 +167,7 @@ interface LYFEOSContextType {
   getMissionPageBySlug: (slug: string) => MissionPage | undefined;
   getMissionPageById: (id: string) => MissionPage | undefined;
   createChatSession: (title: string) => ChatSession;
-  deleteChatSession: (id: string) => void;
+  deleteChatSession: (id: string) => Promise<void> | void;
   setActiveChatSession: (id: string) => void;
   updateChatSessionTitle: (id: string, title: string) => void;
   updateUserStats: (stats: UserStats) => void;
@@ -472,6 +472,74 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       };
       
       fetchCalendarEvents();
+    }
+  }, [isAuthenticated, user]);
+  
+  // Load chat conversations when user logs in
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const fetchConversations = async () => {
+        try {
+          console.log("Fetching conversations for user:", user.id);
+          const response = await fetch('/api/conversations');
+          if (response.ok) {
+            const conversations = await response.json();
+            if (Array.isArray(conversations) && conversations.length > 0) {
+              console.log("Conversations loaded successfully:", conversations.length, "conversations");
+              
+              // Transform database conversations to frontend ChatSession format
+              const transformedSessions: ChatSession[] = [];
+              const newSessionToDbIdMap: Record<string, number> = {};
+              
+              for (const conv of conversations) {
+                // Fetch messages for each conversation
+                const messagesResponse = await fetch(`/api/conversations/${conv.id}`);
+                let chatMessages: AIMessage[] = [];
+                
+                if (messagesResponse.ok) {
+                  const convWithMessages = await messagesResponse.json();
+                  if (convWithMessages.messages && Array.isArray(convWithMessages.messages)) {
+                    chatMessages = convWithMessages.messages.map((msg: any) => ({
+                      id: `msg-${msg.id}`,
+                      sender: msg.role === 'assistant' ? 'ai' : 'user',
+                      content: msg.content,
+                      timestamp: new Date(msg.createdAt),
+                    }));
+                  }
+                }
+                
+                const sessionId = `db-chat-${conv.id}`;
+                transformedSessions.push({
+                  id: sessionId,
+                  title: conv.title,
+                  messages: chatMessages,
+                  createdAt: new Date(conv.createdAt),
+                  updatedAt: new Date(conv.createdAt),
+                });
+                
+                newSessionToDbIdMap[sessionId] = conv.id;
+              }
+              
+              setChatSessions(transformedSessions);
+              setSessionToDbIdMap(newSessionToDbIdMap);
+              
+              // Set the first conversation as active and sync legacy messages
+              if (transformedSessions.length > 0) {
+                setActiveChatSessionId(transformedSessions[0].id);
+                setMessages(transformedSessions[0].messages);
+              }
+            } else {
+              console.log("No conversations found, using default");
+            }
+          } else {
+            console.error("Failed to fetch conversations, status:", response.status);
+          }
+        } catch (error) {
+          console.error("Failed to fetch conversations:", error);
+        }
+      };
+      
+      fetchConversations();
     }
   }, [isAuthenticated, user]);
   
@@ -1213,7 +1281,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   };
   
   // Delete a chat session
-  const deleteChatSession = (id: string) => {
+  const deleteChatSession = async (id: string) => {
     // Find the chat to show in toast
     const chatToDelete = chatSessions.find(chat => chat.id === id);
     
@@ -1239,8 +1307,24 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       setMessages(remainingChats[0].messages);
     }
     
-    // Remove the chat session
+    // Remove the chat session from local state
     setChatSessions((prev) => prev.filter((chat) => chat.id !== id));
+    
+    // Delete from database if we have a database ID
+    const dbId = sessionToDbIdMap[id];
+    if (dbId) {
+      try {
+        await fetch(`/api/conversations/${dbId}`, { method: 'DELETE' });
+        // Remove from map
+        setSessionToDbIdMap((prev) => {
+          const newMap = { ...prev };
+          delete newMap[id];
+          return newMap;
+        });
+      } catch (error) {
+        console.error("Error deleting conversation from database:", error);
+      }
+    }
     
     // Show chat deleted toast
     if (chatToDelete) {

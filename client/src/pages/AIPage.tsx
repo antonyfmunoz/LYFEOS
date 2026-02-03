@@ -2,9 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import { useLYFEOS } from "../lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { 
-  Bot, Send, ChevronRight, Edit2, Check, X, Sparkles, Brain, Zap,
-  PlusCircle, Trash2, MessageSquare, MoreVertical, Menu, X as CloseIcon
+  Bot, Send, ChevronRight, Edit2, Check, X,
+  PlusCircle, Trash2, MessageSquare, MoreVertical, Menu
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -80,6 +81,18 @@ export default function AIPage() {
     }
   }, [isEditingName, isCreatingChat, isEditingChatTitle]);
   
+  // Prevent background scrolling when sidebar is open on mobile
+  useEffect(() => {
+    if (sidebarOpen && isMobile) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [sidebarOpen, isMobile]);
+  
   const handleSaveName = () => {
     if (nameInput.trim()) {
       setAICompanionName(nameInput);
@@ -137,6 +150,27 @@ export default function AIPage() {
     setIsEditingChatTitle(true);
   };
   
+  // Track message count to detect when AI responds
+  const lastMessageCountRef = useRef<number>(0);
+  const prevMessagesLengthRef = useRef<number>(0);
+  
+  // Watch for AI response to hide loading indicator
+  useEffect(() => {
+    if (activeChat?.messages) {
+      const currentCount = activeChat.messages.length;
+      const lastMessage = activeChat.messages[activeChat.messages.length - 1];
+      
+      // If we have a new AI message with actual content, stop loading
+      if (currentCount > prevMessagesLengthRef.current && 
+          lastMessage?.sender === 'ai' && 
+          lastMessage?.content && 
+          lastMessage.content.length > 0) {
+        setIsLoading(false);
+      }
+      prevMessagesLengthRef.current = currentCount;
+    }
+  }, [activeChat?.messages]);
+  
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputText.trim() && activeChatSessionId) {
@@ -144,7 +178,10 @@ export default function AIPage() {
       const currentChat = chatSessions.find(chat => chat.id === activeChatSessionId);
       const isFirstMessage = currentChat && currentChat.messages.length === 0;
       
-      // Send the message first
+      // Show loading indicator immediately
+      setIsLoading(true);
+      
+      // Send the message
       sendMessageInSession(activeChatSessionId, inputText);
       
       // If this is the first message, update the chat title based on this message
@@ -164,12 +201,6 @@ export default function AIPage() {
       }
       
       setInputText("");
-      
-      // Show loading indicator
-      setIsLoading(true);
-      setTimeout(() => {
-        setIsLoading(false);
-      }, 1000);
     }
   };
 
@@ -430,62 +461,7 @@ export default function AIPage() {
             </div>
           </div>
           
-          {/* Quick Prompts Section */}
-          <h3 className="text-sm font-semibold mb-3 text-foreground">Quick Prompts</h3>
-          
-          <div className="space-y-2">
-            <Button 
-              variant="ghost" 
-              className="w-full justify-start text-sm h-auto py-2 px-3 bg-primary/10 border border-primary/20 hover:bg-primary/20"
-              onClick={() => {
-                setInputText("Analyze my day and suggest focus areas.");
-                if (activeChatSessionId) {
-                  sendMessageInSession(activeChatSessionId, "Analyze my day and suggest focus areas.");
-                }
-                if (isMobile) {
-                  setSidebarOpen(false);
-                }
-              }}
-            >
-              <Brain className="h-4 w-4 mr-2 text-primary" />
-              <span className="text-left">Analyze my day</span>
-            </Button>
-            
-            <Button 
-              variant="ghost" 
-              className="w-full justify-start text-sm h-auto py-2 px-3 bg-card/30 hover:bg-card/50"
-              onClick={() => {
-                setInputText("Generate 3 creative ideas for my current challenge.");
-                if (activeChatSessionId) {
-                  sendMessageInSession(activeChatSessionId, "Generate 3 creative ideas for my current challenge.");
-                }
-                if (isMobile) {
-                  setSidebarOpen(false);
-                }
-              }}
-            >
-              <Sparkles className="h-4 w-4 mr-2 text-primary" />
-              <span className="text-left">Generate creative ideas</span>
-            </Button>
-            
-            <Button 
-              variant="ghost" 
-              className="w-full justify-start text-sm h-auto py-2 px-3 bg-card/30 hover:bg-card/50"
-              onClick={() => {
-                setInputText("Optimize my schedule to maximize productivity.");
-                if (activeChatSessionId) {
-                  sendMessageInSession(activeChatSessionId, "Optimize my schedule to maximize productivity.");
-                }
-                if (isMobile) {
-                  setSidebarOpen(false);
-                }
-              }}
-            >
-              <Zap className="h-4 w-4 mr-2 text-primary" />
-              <span className="text-left">Optimize my schedule</span>
-            </Button>
           </div>
-        </div>
         
         {/* Main Chat Window */}
         <div className="flex-1 flex flex-col glassmorphic rounded-xl p-4 neon-border h-full ml-0 sm:ml-4 md:ml-6 mt-12 sm:mt-0 relative min-w-0">
@@ -546,7 +522,13 @@ export default function AIPage() {
                         {message.sender === 'ai' && (
                           <div className="text-xs text-primary mb-1 font-semibold">{aiCompanionName}</div>
                         )}
-                        <p className="text-sm">{message.content}</p>
+                        {message.sender === 'ai' ? (
+                          <div className="text-sm prose prose-sm prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-headings:text-foreground prose-strong:text-foreground">
+                            <ReactMarkdown>{message.content}</ReactMarkdown>
+                          </div>
+                        ) : (
+                          <p className="text-sm">{message.content}</p>
+                        )}
                         <p className="text-xs text-muted-foreground mt-2 text-right">
                           {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </p>
