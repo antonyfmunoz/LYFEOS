@@ -38,10 +38,10 @@
     --primary: var(--primary-hsl, 188 100% 50%) !important;
     --primary-foreground: 222 47% 5% !important;
     
-    --secondary: 262 100% 68% !important;
-    --secondary-foreground: 218 48% 12% !important;
+    --secondary: 188 80% 35% !important;
+    --secondary-foreground: 192 100% 92% !important;
     
-    --accent: 338 100% 68% !important;
+    --accent: 188 100% 45% !important;
     --accent-foreground: 218 48% 12% !important;
     
     --muted: 218 30% 30% !important;
@@ -76,10 +76,10 @@
     --primary: var(--primary-hsl, 188 95% 40%) !important;
     --primary-foreground: 210 40% 98% !important;
     
-    --secondary: 262 83% 58% !important;
+    --secondary: 188 75% 30% !important;
     --secondary-foreground: 210 40% 98% !important;
     
-    --accent: 338 95% 56% !important;
+    --accent: 188 95% 40% !important;
     --accent-foreground: 210 40% 98% !important;
     
     --muted: 210 40% 90% !important;
@@ -118,10 +118,10 @@
     --primary: 188 100% 50%;
     --primary-foreground: 222 47% 5%;
     
-    --secondary: 262 100% 68%;
-    --secondary-foreground: 218 48% 12%;
+    --secondary: 188 80% 35%;
+    --secondary-foreground: 192 100% 92%;
     
-    --accent: 338 100% 68%;
+    --accent: 188 100% 45%;
     --accent-foreground: 218 48% 12%;
     
     --muted: 218 30% 30%;
