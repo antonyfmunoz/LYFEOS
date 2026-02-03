@@ -1277,9 +1277,6 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   
   // Delete a chat session
   const deleteChatSession = async (id: string) => {
-    // Find the chat to show in toast
-    const chatToDelete = chatSessions.find(chat => chat.id === id);
-    
     // Check if this is the last chat - if so, we'll create a new one
     const isLastChat = chatSessions.length <= 1;
     
@@ -1326,17 +1323,6 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error("Error deleting conversation from database:", error);
       }
-    }
-    
-    // Show chat deleted toast
-    if (chatToDelete) {
-      toast({
-        title: "Chat Deleted",
-        description: `${chatToDelete.title} has been removed`,
-        variant: "destructive",
-        className: "bg-background/80 border border-destructive text-foreground",
-        duration: 3000,
-      });
     }
   };
   
