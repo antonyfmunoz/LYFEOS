@@ -1256,7 +1256,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     }
   };
   
-  // Create a new chat session
+  // Create a new chat session and immediately activate it
   const createChatSession = (title: string): ChatSession => {
     const newChatSession: ChatSession = {
       id: `chat-${Date.now()}`,
@@ -1267,6 +1267,10 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     };
     
     setChatSessions((prev) => [...prev, newChatSession]);
+    
+    // Immediately set as active (bypasses lookup since state update is async)
+    setActiveChatSessionId(newChatSession.id);
+    setMessages([]);
     
     return newChatSession;
   };

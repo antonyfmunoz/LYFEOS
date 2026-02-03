@@ -110,8 +110,7 @@ export default function AIPage() {
 
   // Create a new chat instantly without requiring a name (auto-named from first message)
   const handleCreateChat = () => {
-    const newChat = createChatSession("New Chat");
-    setActiveChatSession(newChat.id);
+    createChatSession("New Chat");
     // Auto-close sidebar on mobile after selection
     if (isMobile) {
       setSidebarOpen(false);
@@ -407,44 +406,7 @@ export default function AIPage() {
         <div className="flex-1 flex flex-col glassmorphic rounded-xl p-4 neon-border h-full ml-0 sm:ml-4 md:ml-6 mt-12 sm:mt-0 relative min-w-0">
           {/* Messages area */}
           <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar">
-            {!activeChat || activeChat.messages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-6">
-                <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mb-4">
-                  <Bot className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2 text-foreground">Welcome to {aiCompanionName}</h3>
-                <p className="text-muted-foreground max-w-md mb-8">Your AI Assistant is ready to assist with insights, ideas, and optimizations for your life.</p>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full max-w-3xl">
-                  <Button 
-                    variant="outline" 
-                    className="flex items-center justify-start border-primary/30 hover:bg-primary/10 text-foreground py-3"
-                    onClick={() => setInputText("Analyze my calendar and suggest optimizations.")}
-                  >
-                    <span className="text-left">Analyze my calendar</span>
-                    <ChevronRight className="h-4 w-4 ml-auto text-primary" />
-                  </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    className="flex items-center justify-start border-primary/30 hover:bg-primary/10 text-foreground py-3"
-                    onClick={() => setInputText("Give me 3 creative ideas for solving my current challenge.")}
-                  >
-                    <span className="text-left">Generate creative ideas</span>
-                    <ChevronRight className="h-4 w-4 ml-auto text-primary" />
-                  </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    className="flex items-center justify-start border-primary/30 hover:bg-primary/10 text-foreground py-3"
-                    onClick={() => setInputText("Help me track my focus and energy levels today.")}
-                  >
-                    <span className="text-left">Track focus & energy</span>
-                    <ChevronRight className="h-4 w-4 ml-auto text-primary" />
-                  </Button>
-                </div>
-              </div>
-            ) : (
+            {activeChat && activeChat.messages.length > 0 ? (
               <div className="flex flex-col space-y-6 pt-2">
                 {activeChat.messages.map((message) => (
                   <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -507,6 +469,8 @@ export default function AIPage() {
                 
                 <div ref={messagesEndRef} />
               </div>
+            ) : (
+              <div className="h-full" />
             )}
           </div>
           
