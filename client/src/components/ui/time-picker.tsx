@@ -133,31 +133,30 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
         </Button>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-auto p-4 glassmorphic border-primary/30" 
+        className="w-auto p-3 bg-background border border-primary/30 rounded-md shadow-md glassmorphic" 
         align="start"
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <div className="space-y-4">
+        <div className="space-y-2">
           <div className="flex justify-between items-center mb-2">
-            <div className="text-xs font-medium text-muted-foreground text-center w-16">Hours</div>
-            <div className="w-4"></div>
-            <div className="text-xs font-medium text-muted-foreground text-center w-16">Minutes</div>
-            <div className="text-xs font-medium text-muted-foreground text-center w-14 ml-2">AM/PM</div>
+            <div className="text-xs font-medium">Hours</div>
+            <div className="text-xs font-medium">Minutes</div>
+            <div className="text-xs font-medium">AM/PM</div>
           </div>
           
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col items-center w-16">
+          <div className="flex justify-between">
+            <div className="flex flex-col items-center">
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 onClick={incrementHours}
-                className="h-10 w-10 hover:bg-primary/10 hover:text-primary"
+                className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
               >
-                <ChevronUp className="h-5 w-5" />
+                <ChevronUp className="h-4 w-4" />
               </Button>
-              <div className="font-mono text-2xl py-2 text-primary font-medium">
+              <div className="font-mono text-lg py-1">
                 {selectedHour.toString().padStart(2, "0")}
               </div>
               <Button
@@ -165,25 +164,25 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
                 variant="ghost"
                 size="icon"
                 onClick={decrementHours}
-                className="h-10 w-10 hover:bg-primary/10 hover:text-primary"
+                className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
               >
-                <ChevronDown className="h-5 w-5" />
+                <ChevronDown className="h-4 w-4" />
               </Button>
             </div>
             
-            <div className="text-2xl font-light text-muted-foreground">:</div>
+            <div className="text-lg py-2">:</div>
             
-            <div className="flex flex-col items-center w-16">
+            <div className="flex flex-col items-center">
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 onClick={incrementMinutes}
-                className="h-10 w-10 hover:bg-primary/10 hover:text-primary"
+                className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
               >
-                <ChevronUp className="h-5 w-5" />
+                <ChevronUp className="h-4 w-4" />
               </Button>
-              <div className="font-mono text-2xl py-2 text-primary font-medium">
+              <div className="font-mono text-lg py-1">
                 {selectedMinute.toString().padStart(2, "0")}
               </div>
               <Button
@@ -191,23 +190,23 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
                 variant="ghost"
                 size="icon"
                 onClick={decrementMinutes}
-                className="h-10 w-10 hover:bg-primary/10 hover:text-primary"
+                className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
               >
-                <ChevronDown className="h-5 w-5" />
+                <ChevronDown className="h-4 w-4" />
               </Button>
             </div>
             
-            <div className="flex flex-col items-center w-14 ml-2">
+            <div className="flex flex-col items-center ml-3">
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 onClick={togglePeriod}
-                className="h-10 w-10 hover:bg-primary/10 hover:text-primary"
+                className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
               >
-                <ChevronUp className="h-5 w-5" />
+                <ChevronUp className="h-4 w-4" />
               </Button>
-              <div className="font-mono text-2xl py-2 text-primary font-medium">
+              <div className="font-mono text-lg py-1">
                 {selectedPeriod}
               </div>
               <Button
@@ -215,9 +214,9 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
                 variant="ghost"
                 size="icon"
                 onClick={togglePeriod}
-                className="h-10 w-10 hover:bg-primary/10 hover:text-primary"
+                className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
               >
-                <ChevronDown className="h-5 w-5" />
+                <ChevronDown className="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -227,7 +226,7 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
               type="button"
               variant="ghost"
               size="sm"
-              className="text-primary"
+              className="text-xs"
               onClick={handleClear}
             >
               Clear
@@ -236,7 +235,7 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
               type="button"
               variant="ghost"
               size="sm"
-              className="text-primary"
+              className="text-xs"
               onClick={handleDone}
             >
               Done
