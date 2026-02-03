@@ -478,6 +478,49 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     }
   }, [isAuthenticated, user]);
   
+  // Load quests/missions when user logs in
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const fetchQuests = async () => {
+        try {
+          console.log("Fetching quests for user:", user.id);
+          const response = await fetch(`/api/users/${user.id}/quests`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.quests && Array.isArray(data.quests)) {
+              console.log("Quests loaded successfully:", data.quests.length, "quests");
+              // Transform database quests to frontend format (id as string)
+              const transformedQuests: Quest[] = data.quests.map((quest: any) => ({
+                id: String(quest.id),
+                title: quest.title,
+                description: quest.description || "",
+                category: quest.category || "general",
+                completed: quest.completed || false,
+                energyCost: quest.energyCost || 1,
+                experienceReward: quest.experienceReward || 10,
+                startDate: quest.startDate || null,
+                startTime: quest.startTime || null,
+                endDate: quest.endDate || null,
+                endTime: quest.endTime || null,
+                dueDate: quest.dueDate || null,
+                notificationEnabled: quest.notificationEnabled || false,
+                notificationTime: quest.notificationTime || null,
+                notifications: quest.notifications || [],
+              }));
+              setQuests(transformedQuests);
+            }
+          } else {
+            console.error("Failed to fetch quests, status:", response.status);
+          }
+        } catch (error) {
+          console.error("Failed to fetch quests:", error);
+        }
+      };
+      
+      fetchQuests();
+    }
+  }, [isAuthenticated, user]);
+  
   // Load chat conversations when user logs in
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -742,6 +785,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         dueDate: questData.dueDate || null,
         notificationEnabled: questData.notificationEnabled || false,
         notificationTime: questData.notificationTime || null,
+        notifications: questData.notifications || [],
         completed: false,
       }),
     });
@@ -766,6 +810,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       dueDate: quest.dueDate,
       notificationEnabled: quest.notificationEnabled,
       notificationTime: quest.notificationTime,
+      notifications: quest.notifications || [],
     };
     
     setQuests((prev) => [...prev, newQuest]);
@@ -802,6 +847,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       dueDate: quest.dueDate,
       notificationEnabled: quest.notificationEnabled,
       notificationTime: quest.notificationTime,
+      notifications: quest.notifications || [],
     };
     
     setQuests((prev) => prev.map((q) => (q.id === id ? updatedQuest : q)));
