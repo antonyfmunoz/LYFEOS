@@ -20,7 +20,7 @@ export default function LoginPage() {
   
   const { login, loginWithGoogle } = useAuth();
   const { primaryColor } = useTheme();
-  const [username, setUsername] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -135,8 +135,8 @@ export default function LoginPage() {
     setError("");
     
     // Client-side validation
-    if (!username.trim() || !password.trim()) {
-      setError("Username and password are required");
+    if (!identifier.trim() || !password.trim()) {
+      setError("Please enter your username, email, or phone number and password");
       return;
     }
     
@@ -144,9 +144,9 @@ export default function LoginPage() {
       // Show loading state immediately
       setIsSubmitting(true);
       
-      // Pass the username and password to the login function
-      console.log("Submitting login form with username:", username);
-      await login(username, password);
+      // Pass the identifier and password to the login function
+      console.log("Submitting login form with identifier:", identifier);
+      await login(identifier, password);
       
       // Login function will handle navigation to dashboard if successful
     } catch (err: any) {
@@ -215,14 +215,14 @@ export default function LoginPage() {
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label htmlFor="username" className="block text-sm text-muted-foreground">USERNAME</label>
+            <label htmlFor="identifier" className="block text-sm text-muted-foreground">USERNAME, EMAIL, OR PHONE</label>
             <Input 
               type="text" 
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              id="identifier"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               className="w-full bg-transparent border-primary/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-primary/30"
-              placeholder="Enter your username"
+              placeholder="Enter username, email, or phone number"
               required
             />
           </div>

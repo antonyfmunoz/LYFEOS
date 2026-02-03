@@ -31,6 +31,8 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByPhone(phoneNumber: string): Promise<User | undefined>;
+  getUserByIdentifier(identifier: string): Promise<User | undefined>;
   getUserByFirebaseUid(firebaseUid: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, userData: Partial<Omit<InsertUser, 'password'>>): Promise<User>;
@@ -216,6 +218,23 @@ export class DatabaseStorage implements IStorage {
   
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+  
+  async getUserByPhone(phoneNumber: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.phoneNumber, phoneNumber));
+    return user;
+  }
+  
+  async getUserByIdentifier(identifier: string): Promise<User | undefined> {
+    // Try to find user by username, email, or phone number
+    let user = await this.getUserByUsername(identifier);
+    if (user) return user;
+    
+    user = await this.getUserByEmail(identifier);
+    if (user) return user;
+    
+    user = await this.getUserByPhone(identifier);
     return user;
   }
   

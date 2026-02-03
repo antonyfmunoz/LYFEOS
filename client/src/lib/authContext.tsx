@@ -25,7 +25,7 @@ interface AuthContextType {
   firebaseUser: FirebaseUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (identifier: string, password: string) => Promise<void>;
   register: (username: string, password: string) => Promise<void>;
   logout: () => void;
   loginWithGoogle: () => Promise<void>;
@@ -104,17 +104,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
   }, []);
 
-  const login = async (username: string, password: string) => {
+  const login = async (identifier: string, password: string) => {
     try {
       setIsLoading(true);
-      console.log("Attempting to login with:", username);
+      console.log("Attempting to login with:", identifier);
       
-      // Ensure username and password are properly trimmed
-      const trimmedUsername = username.trim();
+      // Ensure identifier and password are properly trimmed
+      const trimmedIdentifier = identifier.trim();
       const trimmedPassword = password.trim();
       
-      if (!trimmedUsername || !trimmedPassword) {
-        const error = new Error("Username and password are required");
+      if (!trimmedIdentifier || !trimmedPassword) {
+        const error = new Error("Username, email, or phone number and password are required");
         toast({
           title: "Login Error",
           description: error.message,
@@ -123,14 +123,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
       
-      // Make the login request
+      // Make the login request with identifier (username, email, or phone)
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ 
-          username: trimmedUsername, 
+          identifier: trimmedIdentifier, 
           password: trimmedPassword 
         }),
         credentials: "include" // Important for maintaining session cookies

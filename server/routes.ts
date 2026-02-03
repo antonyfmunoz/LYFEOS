@@ -332,30 +332,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/auth/login", async (req: Request, res: Response) => {
     try {
-      const { username, password } = req.body;
-      console.log("Login attempt:", { username });
+      // Accept either 'username' or 'identifier' field for backward compatibility
+      const identifier = req.body.identifier || req.body.username;
+      const { password } = req.body;
+      console.log("Login attempt:", { identifier });
       
-      if (!username || !password) {
-        console.log("Login failed: Missing username or password");
-        return res.status(400).json({ error: "Username and password are required" });
+      if (!identifier || !password) {
+        console.log("Login failed: Missing identifier or password");
+        return res.status(400).json({ error: "Username, email, or phone number and password are required" });
       }
       
-      // Find user
-      const user = await storage.getUserByUsername(username);
+      // Find user by username, email, or phone number
+      const user = await storage.getUserByIdentifier(identifier);
       if (!user) {
         console.log("Login failed: User not found");
         
         // Auto-register any user for demo purposes
-        console.log("Auto-registering new user:", username);
+        console.log("Auto-registering new user:", identifier);
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
         
+        // Determine if identifier is an email or phone number for better auto-registration
+        const isEmail = identifier.includes('@');
+        const isPhone = /^\+?[\d\s\-()]+$/.test(identifier) && identifier.replace(/\D/g, '').length >= 10;
+        
         const newUser = await storage.createUser({
-          username: username,
+          username: isEmail ? identifier.split('@')[0] : (isPhone ? `user_${identifier.replace(/\D/g, '').slice(-6)}` : identifier),
           password: hashedPassword,
-          displayName: username,
+          displayName: isEmail ? identifier.split('@')[0] : (isPhone ? `User` : identifier),
           title: 'COMMANDER',
-          email: username, // Using username as default email for auto-registration
+          email: isEmail ? identifier : undefined,
+          phoneNumber: isPhone ? identifier : undefined,
           authProvider: 'email',
           termsAccepted: true
         });
