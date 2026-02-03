@@ -34,6 +34,11 @@ export interface UserStats {
   primaryColor?: string;
 }
 
+export interface QuestNotification {
+  date: string; // format: "YYYY-MM-DD"
+  time: string; // format: "HH:MM"
+}
+
 export interface Quest {
   id: string;
   title: string;
@@ -49,6 +54,7 @@ export interface Quest {
   dueDate?: string | null;
   notificationEnabled?: boolean;
   notificationTime?: string | null;
+  notifications?: QuestNotification[];
 }
 
 export interface AIMessage {

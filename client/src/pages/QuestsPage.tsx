@@ -16,8 +16,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Zap, Star, Bell, Edit3 } from "lucide-react";
-import { Quest } from "@/lib/types";
+import { Plus, Zap, Star, Bell, Edit3, X } from "lucide-react";
+import { Quest, QuestNotification } from "@/lib/types";
 
 interface MissionFormData {
   title: string;
@@ -28,8 +28,7 @@ interface MissionFormData {
   startTime: string;
   endDate: string;
   endTime: string;
-  notificationEnabled: boolean;
-  notificationTime: string;
+  notifications: QuestNotification[];
 }
 
 const defaultFormData: MissionFormData = {
@@ -41,8 +40,7 @@ const defaultFormData: MissionFormData = {
   startTime: "",
   endDate: "",
   endTime: "",
-  notificationEnabled: false,
-  notificationTime: "15",
+  notifications: [],
 };
 
 export default function QuestsPage() {
@@ -94,8 +92,7 @@ export default function QuestsPage() {
       startTime: quest.startTime || "",
       endDate: quest.endDate || "",
       endTime: quest.endTime || "",
-      notificationEnabled: quest.notificationEnabled || false,
-      notificationTime: quest.notificationTime || "15",
+      notifications: quest.notifications || [],
     });
     setIsEditOpen(true);
   };
@@ -115,8 +112,9 @@ export default function QuestsPage() {
         endDate: createFormData.endDate || null,
         endTime: createFormData.endTime || null,
         dueDate: null,
-        notificationEnabled: createFormData.notificationEnabled,
-        notificationTime: createFormData.notificationEnabled ? createFormData.notificationTime : null,
+        notificationEnabled: createFormData.notifications.length > 0,
+        notificationTime: null,
+        notifications: createFormData.notifications,
       });
       
       setCreateFormData(defaultFormData);
@@ -143,8 +141,9 @@ export default function QuestsPage() {
         endDate: editFormData.endDate || null,
         endTime: editFormData.endTime || null,
         dueDate: null,
-        notificationEnabled: editFormData.notificationEnabled,
-        notificationTime: editFormData.notificationEnabled ? editFormData.notificationTime : null,
+        notificationEnabled: editFormData.notifications.length > 0,
+        notificationTime: null,
+        notifications: editFormData.notifications,
       });
       
       setEditFormData(defaultFormData);
@@ -245,45 +244,67 @@ export default function QuestsPage() {
               
               <div className="glassmorphic rounded-lg p-4 border border-primary/20">
                 <div className="flex items-center justify-between mb-3">
-                  <Label htmlFor="create-notification" className="flex items-center gap-2 cursor-pointer">
+                  <Label className="flex items-center gap-2">
                     <Bell className="h-4 w-4" />
-                    Notification Reminder
+                    Notification Reminders
                   </Label>
-                  <Switch
-                    id="create-notification"
-                    checked={createFormData.notificationEnabled}
-                    onCheckedChange={(checked) => setCreateFormData(prev => ({ ...prev, notificationEnabled: checked }))}
-                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-primary"
+                    onClick={() => setCreateFormData(prev => ({
+                      ...prev,
+                      notifications: [...prev.notifications, { date: "", time: "" }]
+                    }))}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add
+                  </Button>
                 </div>
                 
-                {createFormData.notificationEnabled && (
+                {createFormData.notifications.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-2">
+                    No reminders set. Click "Add" to create one.
+                  </p>
+                ) : (
                   <div className="space-y-3">
-                    <Label className="text-sm text-muted-foreground">
-                      Remind me before start
-                    </Label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        { value: "5", label: "5 min" },
-                        { value: "10", label: "10 min" },
-                        { value: "15", label: "15 min" },
-                        { value: "30", label: "30 min" },
-                        { value: "60", label: "1 hour" },
-                        { value: "1440", label: "1 day" },
-                      ].map((option) => (
-                        <button
-                          key={option.value}
+                    {createFormData.notifications.map((notification, index) => (
+                      <div key={index} className="flex items-center gap-2 p-3 bg-background/30 rounded-lg border border-primary/10">
+                        <div className="flex-1 grid grid-cols-2 gap-2">
+                          <DatePicker
+                            value={notification.date}
+                            onChange={(date) => {
+                              const updated = [...createFormData.notifications];
+                              updated[index] = { ...updated[index], date };
+                              setCreateFormData(prev => ({ ...prev, notifications: updated }));
+                            }}
+                            placeholder="Date"
+                          />
+                          <TimePicker
+                            value={notification.time}
+                            onChange={(time) => {
+                              const updated = [...createFormData.notifications];
+                              updated[index] = { ...updated[index], time };
+                              setCreateFormData(prev => ({ ...prev, notifications: updated }));
+                            }}
+                            placeholder="Time"
+                          />
+                        </div>
+                        <Button
                           type="button"
-                          onClick={() => setCreateFormData(prev => ({ ...prev, notificationTime: option.value }))}
-                          className={`py-2 px-3 rounded-lg text-sm transition-all ${
-                            createFormData.notificationTime === option.value
-                              ? "bg-primary/20 text-primary border border-primary/50"
-                              : "bg-background/30 text-muted-foreground border border-primary/20 hover:bg-primary/10"
-                          }`}
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            const updated = createFormData.notifications.filter((_, i) => i !== index);
+                            setCreateFormData(prev => ({ ...prev, notifications: updated }));
+                          }}
                         >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -415,45 +436,67 @@ export default function QuestsPage() {
             
             <div className="glassmorphic rounded-lg p-4 border border-primary/20">
               <div className="flex items-center justify-between mb-3">
-                <Label htmlFor="edit-notification" className="flex items-center gap-2 cursor-pointer">
+                <Label className="flex items-center gap-2">
                   <Bell className="h-4 w-4" />
-                  Notification Reminder
+                  Notification Reminders
                 </Label>
-                <Switch
-                  id="edit-notification"
-                  checked={editFormData.notificationEnabled}
-                  onCheckedChange={(checked) => setEditFormData(prev => ({ ...prev, notificationEnabled: checked }))}
-                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-primary"
+                  onClick={() => setEditFormData(prev => ({
+                    ...prev,
+                    notifications: [...prev.notifications, { date: "", time: "" }]
+                  }))}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add
+                </Button>
               </div>
               
-              {editFormData.notificationEnabled && (
+              {editFormData.notifications.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-2">
+                  No reminders set. Click "Add" to create one.
+                </p>
+              ) : (
                 <div className="space-y-3">
-                  <Label className="text-sm text-muted-foreground">
-                    Remind me before start
-                  </Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { value: "5", label: "5 min" },
-                      { value: "10", label: "10 min" },
-                      { value: "15", label: "15 min" },
-                      { value: "30", label: "30 min" },
-                      { value: "60", label: "1 hour" },
-                      { value: "1440", label: "1 day" },
-                    ].map((option) => (
-                      <button
-                        key={option.value}
+                  {editFormData.notifications.map((notification, index) => (
+                    <div key={index} className="flex items-center gap-2 p-3 bg-background/30 rounded-lg border border-primary/10">
+                      <div className="flex-1 grid grid-cols-2 gap-2">
+                        <DatePicker
+                          value={notification.date}
+                          onChange={(date) => {
+                            const updated = [...editFormData.notifications];
+                            updated[index] = { ...updated[index], date };
+                            setEditFormData(prev => ({ ...prev, notifications: updated }));
+                          }}
+                          placeholder="Date"
+                        />
+                        <TimePicker
+                          value={notification.time}
+                          onChange={(time) => {
+                            const updated = [...editFormData.notifications];
+                            updated[index] = { ...updated[index], time };
+                            setEditFormData(prev => ({ ...prev, notifications: updated }));
+                          }}
+                          placeholder="Time"
+                        />
+                      </div>
+                      <Button
                         type="button"
-                        onClick={() => setEditFormData(prev => ({ ...prev, notificationTime: option.value }))}
-                        className={`py-2 px-3 rounded-lg text-sm transition-all ${
-                          editFormData.notificationTime === option.value
-                            ? "bg-primary/20 text-primary border border-primary/50"
-                            : "bg-background/30 text-muted-foreground border border-primary/20 hover:bg-primary/10"
-                        }`}
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                        onClick={() => {
+                          const updated = editFormData.notifications.filter((_, i) => i !== index);
+                          setEditFormData(prev => ({ ...prev, notifications: updated }));
+                        }}
                       >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

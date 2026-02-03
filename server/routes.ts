@@ -1329,6 +1329,7 @@ Generate the complete affirmation now:`;
     dueDate: true,
     notificationEnabled: true,
     notificationTime: true,
+    notifications: true,
   }).partial();
 
   app.patch("/api/quests/:questId", isAuthenticated, async (req: Request, res: Response) => {

@@ -239,7 +239,8 @@ export const quests = pgTable("quests", {
   endTime: text("end_time"), // format: "HH:MM"
   dueDate: text("due_date"), // format: "YYYY-MM-DD", null means no due date (legacy, kept for compatibility)
   notificationEnabled: boolean("notification_enabled").default(false),
-  notificationTime: text("notification_time"), // format: "HH:MM" or minutes before like "-15", "-30", "-60"
+  notificationTime: text("notification_time"), // format: "HH:MM" or minutes before like "-15", "-30", "-60" (legacy)
+  notifications: jsonb("notifications").default([]), // Array of { date: "YYYY-MM-DD", time: "HH:MM" }
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -467,6 +468,7 @@ export const insertQuestSchema = createInsertSchema(quests).pick({
   dueDate: true,
   notificationEnabled: true,
   notificationTime: true,
+  notifications: true,
 });
 
 export const insertAIMessageSchema = createInsertSchema(aiMessages).pick({

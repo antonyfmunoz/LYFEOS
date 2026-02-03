@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
@@ -44,13 +44,18 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
     setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1));
   };
 
+  const [pendingDate, setPendingDate] = useState(value);
+
+  useEffect(() => {
+    setPendingDate(value);
+  }, [value]);
+
   const handleDateSelect = (day: number, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     const newDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
     const formatted = newDate.toISOString().split("T")[0];
-    onChange(formatted);
-    setOpen(false);
+    setPendingDate(formatted);
   };
 
   const formatDisplayDate = (dateStr: string) => {
@@ -68,11 +73,12 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
   };
 
   const isSelected = (day: number) => {
-    if (!selectedDate) return false;
+    if (!pendingDate) return false;
+    const pending = new Date(pendingDate + "T00:00:00");
     return (
-      viewDate.getFullYear() === selectedDate.getFullYear() &&
-      viewDate.getMonth() === selectedDate.getMonth() &&
-      day === selectedDate.getDate()
+      viewDate.getFullYear() === pending.getFullYear() &&
+      viewDate.getMonth() === pending.getMonth() &&
+      day === pending.getDate()
     );
   };
 
@@ -166,6 +172,7 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                setPendingDate("");
                 onChange("");
                 setOpen(false);
               }}
@@ -180,6 +187,7 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                onChange(pendingDate);
                 setOpen(false);
               }}
             >
