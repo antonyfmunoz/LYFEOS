@@ -459,7 +459,7 @@ export default function DashboardPage() {
   }, []);
 
   return (
-      <div className="dashboard-container">
+      <div className="dashboard-container pb-20">
         <AIAgentFAB />
         <DailyInitModal />
         

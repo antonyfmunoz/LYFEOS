@@ -208,27 +208,29 @@ export default function ChronilogPage() {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="mb-6">
-        <h1 className="text-2xl font-orbitron mb-1">Chronilog</h1>
-        <p className="text-[#7DAAB2]">Your personal timeline of knowledge, reflections, and growth logs.</p>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        {categories.map((category, index) => (
-          <DraggableCategoryCard
-            key={category.id}
-            id={category.id}
-            index={index}
-            item={category}
-            moveCategory={moveCategory}
-            navigate={navigate}
-          />
-        ))}
-      </div>
-      
-      {/* Timeline widget */}
-      <div className="mt-8">
-        <TimelineWidget />
+      <div className="pb-20">
+        <div className="mb-6">
+          <h1 className="text-2xl font-orbitron mb-1">Chronilog</h1>
+          <p className="text-[#7DAAB2]">Your personal timeline of knowledge, reflections, and growth logs.</p>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {categories.map((category, index) => (
+            <DraggableCategoryCard
+              key={category.id}
+              id={category.id}
+              index={index}
+              item={category}
+              moveCategory={moveCategory}
+              navigate={navigate}
+            />
+          ))}
+        </div>
+        
+        {/* Timeline widget */}
+        <div className="mt-8">
+          <TimelineWidget />
+        </div>
       </div>
     </DndProvider>
   );
