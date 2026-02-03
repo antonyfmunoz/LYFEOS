@@ -317,41 +317,6 @@ export default function QuestsPage() {
                 )}
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="create-energyCost" className="flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-yellow-500" />
-                    Energy Cost
-                  </Label>
-                  <Input
-                    id="create-energyCost"
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={createFormData.energyCost}
-                    onChange={(e) => setCreateFormData(prev => ({ ...prev, energyCost: parseInt(e.target.value) || 1 }))}
-                    className="bg-background/50 border-primary/30"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="create-xpReward" className="flex items-center gap-2">
-                    <Star className="h-4 w-4 text-primary" />
-                    XP Reward
-                  </Label>
-                  <Input
-                    id="create-xpReward"
-                    type="number"
-                    min={5}
-                    max={100}
-                    step={5}
-                    value={createFormData.experienceReward}
-                    onChange={(e) => setCreateFormData(prev => ({ ...prev, experienceReward: parseInt(e.target.value) || 10 }))}
-                    className="bg-background/50 border-primary/30"
-                  />
-                </div>
-              </div>
-              
               <Button 
                 onClick={handleCreateMission} 
                 className="w-full mt-4"
@@ -510,41 +475,6 @@ export default function QuestsPage() {
                   ))}
                 </div>
               )}
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-energyCost" className="flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-yellow-500" />
-                  Energy Cost
-                </Label>
-                <Input
-                  id="edit-energyCost"
-                  type="number"
-                  min={1}
-                  max={10}
-                  value={editFormData.energyCost}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, energyCost: parseInt(e.target.value) || 1 }))}
-                  className="bg-background/50 border-primary/30"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="edit-xpReward" className="flex items-center gap-2">
-                  <Star className="h-4 w-4 text-primary" />
-                  XP Reward
-                </Label>
-                <Input
-                  id="edit-xpReward"
-                  type="number"
-                  min={5}
-                  max={100}
-                  step={5}
-                  value={editFormData.experienceReward}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, experienceReward: parseInt(e.target.value) || 10 }))}
-                  className="bg-background/50 border-primary/30"
-                />
-              </div>
             </div>
             
             <Button 
