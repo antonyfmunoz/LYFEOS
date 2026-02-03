@@ -6,21 +6,20 @@ import { usePageTitle } from "@/hooks/use-page-title";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Progress } from "@/components/ui/progress";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight, Check, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, Loader2, Zap } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
 const MISSIONS = [
-  { id: 0, title: "Access & Quickstart", questions: 3 },
-  { id: 1, title: "Archetype Calibration", questions: 54 },
-  { id: 2, title: "Identity & Direction", questions: 7 },
-  { id: 3, title: "Craft & Mastery", questions: 6 },
-  { id: 4, title: "Capacity & Constraints", questions: 5 },
-  { id: 5, title: "Baselines & States", questions: 8 },
-  { id: 6, title: "History & Roots", questions: 4 },
-  { id: 7, title: "Systems & Rituals", questions: 5 },
+  { id: 0, title: "Access & Quickstart", questions: 7, xp: 100 },
+  { id: 1, title: "Archetype Calibration", questions: 54, xp: 150 },
+  { id: 2, title: "Identity & Direction", questions: 7, xp: 75 },
+  { id: 3, title: "Craft & Mastery", questions: 6, xp: 60 },
+  { id: 4, title: "Capacity & Constraints", questions: 5, xp: 55 },
+  { id: 5, title: "Baselines & States", questions: 8, xp: 70 },
+  { id: 6, title: "History & Roots", questions: 4, xp: 50 },
+  { id: 7, title: "Systems & Rituals", questions: 5, xp: 65 },
 ];
 
 type Archetype = "warrior" | "architect" | "creator" | "monarch" | "oracle" | "alchemist";
@@ -35,13 +34,39 @@ interface ArchetypeScores {
 }
 
 const AGE_RANGES = ["18-24", "25-34", "35-44", "45-54", "55-64", "65+"];
-const LIFE_STAGES = ["Awakening", "Building", "Mastering", "Leading"];
-const DESIRED_EMOTIONS = ["Flow", "Peace", "Joy", "Power", "Love", "Purpose"];
+const LIFE_STAGES = [
+  { label: "Awakening", emoji: "✨", description: "Just starting your journey" },
+  { label: "Building", emoji: "🏗️", description: "Actively constructing your path" },
+  { label: "Mastering", emoji: "🏆", description: "Refining your expertise" },
+  { label: "Leading", emoji: "🚀", description: "Guiding others forward" },
+];
+
+const ROLE_ARCHETYPES = [
+  { label: "Leader", emoji: "👑" },
+  { label: "Creator", emoji: "🎨" },
+  { label: "Athlete", emoji: "🏃" },
+  { label: "Healer", emoji: "🌿" },
+  { label: "Visionary", emoji: "🔭" },
+  { label: "Artist", emoji: "🎭" },
+  { label: "Teacher", emoji: "📚" },
+  { label: "Builder", emoji: "🛠️" },
+];
+
+const DESIRED_EMOTIONS = ["Achievement", "Freedom", "Mastery", "Impact", "Love", "Adventure"];
+
 const CORE_VALUES = [
   "Integrity", "Growth", "Freedom", "Adventure", "Creativity",
   "Connection", "Family", "Health", "Wealth", "Wisdom",
   "Service", "Leadership", "Excellence", "Balance", "Joy",
   "Peace", "Power", "Love", "Purpose", "Authenticity"
+];
+
+const THRIVE_SLIDERS = [
+  { id: "pace", left: "Fast-Paced", right: "Methodical" },
+  { id: "structure", left: "Structured", right: "Flexible" },
+  { id: "risk", left: "Risk-Averse", right: "Risk-Seeking" },
+  { id: "learning", left: "Visual Learner", right: "Hands-on Learner" },
+  { id: "work", left: "Solo Worker", right: "Collaborative" },
 ];
 
 const ARCHETYPE_QUESTIONS = [
@@ -200,22 +225,90 @@ const SCENARIO_OPTIONS: Record<number, { text: string; archetype: Archetype }[]>
   ],
 };
 
-function LikertScale({ value, onChange }: { value: number; onChange: (val: number) => void }) {
+const SETUP_MISSIONS = [
+  { id: "archetype", title: "Complete Your Archetype", description: "Dive deeper into your chosen path" },
+  { id: "rituals", title: "Set Up Your Rituals", description: "Create daily routines for success" },
+  { id: "future", title: "Design Your Future Self", description: "Visualize who you're becoming" },
+];
+
+function DotNavigation({ current, total }: { current: number; total: number }) {
   return (
-    <div className="flex gap-2 justify-center mt-4">
-      {[1, 2, 3, 4, 5].map((num) => (
+    <div className="flex gap-2 justify-center mt-6">
+      {Array.from({ length: total }).map((_, i) => (
+        <div
+          key={i}
+          className={`w-2.5 h-2.5 rounded-full transition-all ${
+            i === current
+              ? "bg-primary w-6"
+              : i < current
+              ? "bg-primary/60"
+              : "bg-primary/20"
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
+function EmojiGridSelect({ 
+  options, 
+  value, 
+  onChange,
+  columns = 2
+}: { 
+  options: { label: string; emoji: string; description?: string }[]; 
+  value: string; 
+  onChange: (val: string) => void;
+  columns?: number;
+}) {
+  return (
+    <div className={`grid gap-3 mt-4 ${columns === 2 ? "grid-cols-2" : columns === 4 ? "grid-cols-4" : "grid-cols-3"}`}>
+      {options.map((option) => (
         <button
-          key={num}
-          onClick={() => onChange(num)}
-          className={`w-12 h-12 rounded-lg border-2 transition-all font-medium ${
-            value === num
-              ? "bg-primary text-primary-foreground border-primary"
-              : "bg-background/50 text-foreground border-primary/30 hover:border-primary/60"
+          key={option.label}
+          onClick={() => onChange(option.label)}
+          className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
+            value === option.label
+              ? "bg-primary/20 border-primary shadow-[0_0_15px_rgba(0,224,255,0.3)]"
+              : "bg-card/30 border-primary/20 hover:border-primary/50"
           }`}
         >
-          {num}
+          <span className="text-3xl">{option.emoji}</span>
+          <span className="text-sm font-medium">{option.label}</span>
         </button>
       ))}
+    </div>
+  );
+}
+
+function GradientSlider({ 
+  value, 
+  onChange, 
+  left, 
+  right 
+}: { 
+  value: number; 
+  onChange: (val: number) => void; 
+  left: string; 
+  right: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between text-sm text-muted-foreground">
+        <span>{left}</span>
+        <span>{right}</span>
+      </div>
+      <div className="relative">
+        <div className="absolute inset-0 h-2 rounded-full bg-gradient-to-r from-primary via-purple-500 to-primary top-1/2 -translate-y-1/2" />
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={value}
+          onChange={(e) => onChange(parseInt(e.target.value))}
+          className="relative w-full h-6 appearance-none bg-transparent cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-background [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(0,224,255,0.5)]"
+        />
+      </div>
     </div>
   );
 }
@@ -257,13 +350,33 @@ function ChipSelect({
         <button
           key={option}
           onClick={() => handleClick(option)}
-          className={`px-4 py-2 rounded-lg border-2 transition-all text-sm ${
+          className={`px-4 py-2 rounded-xl border-2 transition-all text-sm ${
             isSelected(option)
-              ? "bg-primary text-primary-foreground border-primary"
-              : "bg-background/50 text-foreground border-primary/30 hover:border-primary/60"
+              ? "bg-primary/20 text-primary border-primary shadow-[0_0_10px_rgba(0,224,255,0.3)]"
+              : "bg-card/30 text-foreground border-primary/20 hover:border-primary/50"
           }`}
         >
           {option}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function LikertScale({ value, onChange }: { value: number; onChange: (val: number) => void }) {
+  return (
+    <div className="flex gap-2 justify-center mt-4">
+      {[1, 2, 3, 4, 5].map((num) => (
+        <button
+          key={num}
+          onClick={() => onChange(num)}
+          className={`w-12 h-12 rounded-xl border-2 transition-all font-medium ${
+            value === num
+              ? "bg-primary/20 text-primary border-primary shadow-[0_0_10px_rgba(0,224,255,0.3)]"
+              : "bg-card/30 text-foreground border-primary/20 hover:border-primary/50"
+          }`}
+        >
+          {num}
         </button>
       ))}
     </div>
@@ -285,10 +398,10 @@ function ScenarioSelect({
         <button
           key={option.archetype}
           onClick={() => onChange(option.archetype)}
-          className={`px-4 py-3 rounded-lg border-2 transition-all text-sm text-left ${
+          className={`px-4 py-3 rounded-xl border-2 transition-all text-sm text-left ${
             value === option.archetype
-              ? "bg-primary text-primary-foreground border-primary"
-              : "bg-background/50 text-foreground border-primary/30 hover:border-primary/60"
+              ? "bg-primary/20 text-primary border-primary shadow-[0_0_10px_rgba(0,224,255,0.3)]"
+              : "bg-card/30 text-foreground border-primary/20 hover:border-primary/50"
           }`}
         >
           {option.text}
@@ -307,14 +420,23 @@ export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingAffirmation, setIsGeneratingAffirmation] = useState(false);
+  const [showMissionComplete, setShowMissionComplete] = useState(false);
+  const [showSetupChoice, setShowSetupChoice] = useState(false);
+  const [selectedSetupMission, setSelectedSetupMission] = useState("");
   
   const [ageRange, setAgeRange] = useState("");
   const [location, setLocation] = useState("");
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const [lifeStage, setLifeStage] = useState("");
+  const [roleArchetype, setRoleArchetype] = useState("");
+  const [thriveStyles, setThriveStyles] = useState<Record<string, number>>({
+    pace: 50, structure: 50, risk: 50, learning: 50, work: 50
+  });
+  const [coreMotivation, setCoreMotivation] = useState("");
+  const [customMotivation, setCustomMotivation] = useState("");
   
   const [archetypeAnswers, setArchetypeAnswers] = useState<Record<number, number | Archetype>>({});
   
-  const [lifeStage, setLifeStage] = useState("");
   const [coreValues, setCoreValues] = useState<string[]>([]);
   const [desiredEmotion, setDesiredEmotion] = useState("");
   const [vision90Day, setVision90Day] = useState("");
@@ -393,29 +515,11 @@ export default function OnboardingPage() {
   };
 
   const mission = MISSIONS[currentMission];
-  const totalMissions = MISSIONS.length;
-  const overallProgress = ((currentMission / totalMissions) * 100);
+  const totalSteps = getMaxSteps(currentMission);
   
-  const getCurrentArchetypeQuestion = () => {
-    if (currentMission !== 1) return null;
-    return ARCHETYPE_QUESTIONS[currentStep];
-  };
-  
-  const canProceed = () => {
-    if (currentMission === 0) {
-      if (currentStep === 0) return ageRange !== "";
-      if (currentStep === 1) return true;
-      if (currentStep === 2) return timezone !== "";
-    }
-    if (currentMission === 1) {
-      return archetypeAnswers[ARCHETYPE_QUESTIONS[currentStep]?.id] !== undefined;
-    }
-    return true;
-  };
-  
-  const getMaxSteps = (missionId: number) => {
+  function getMaxSteps(missionId: number) {
     switch (missionId) {
-      case 0: return 3;
+      case 0: return 7; // Welcome, Life Stage, Role, Thrive Styles, Motivation, Setup Choice, Final
       case 1: return ARCHETYPE_QUESTIONS.length;
       case 2: return 7;
       case 3: return 6;
@@ -425,6 +529,22 @@ export default function OnboardingPage() {
       case 7: return 5;
       default: return 1;
     }
+  }
+  
+  const canProceed = () => {
+    if (currentMission === 0) {
+      if (currentStep === 0) return true; // Welcome screen
+      if (currentStep === 1) return lifeStage !== "";
+      if (currentStep === 2) return roleArchetype !== "";
+      if (currentStep === 3) return true; // Thrive sliders always have values
+      if (currentStep === 4) return coreMotivation !== "" || customMotivation !== "";
+      if (currentStep === 5) return true; // Setup choice
+      if (currentStep === 6) return true; // Final step
+    }
+    if (currentMission === 1) {
+      return archetypeAnswers[ARCHETYPE_QUESTIONS[currentStep]?.id] !== undefined;
+    }
+    return true;
   };
   
   const handleNext = async () => {
@@ -433,9 +553,12 @@ export default function OnboardingPage() {
     if (currentStep < maxSteps - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      if (currentMission < MISSIONS.length - 1) {
-        setCurrentMission(currentMission + 1);
-        setCurrentStep(0);
+      // Mission complete
+      if (currentMission === 0) {
+        // After Mission 0 (quickstart), show system online
+        await completeOnboarding();
+      } else if (currentMission < MISSIONS.length - 1) {
+        setShowMissionComplete(true);
       } else {
         await completeOnboarding();
       }
@@ -451,6 +574,17 @@ export default function OnboardingPage() {
       setCurrentStep(getMaxSteps(prevMission) - 1);
     }
   };
+
+  const handleContinueToNextMission = () => {
+    setShowMissionComplete(false);
+    setCurrentMission(currentMission + 1);
+    setCurrentStep(0);
+  };
+
+  const handleSkipToSystem = async () => {
+    setShowMissionComplete(false);
+    await completeOnboarding();
+  };
   
   const completeOnboarding = async () => {
     setIsLoading(true);
@@ -463,11 +597,14 @@ export default function OnboardingPage() {
         ageRange,
         location,
         timezone,
+        lifeStage,
+        roleArchetype,
+        thriveStyles,
+        coreMotivation: coreMotivation || customMotivation,
         archetypePrimary: archetypeResults.primary,
         archetypeSecondary: archetypeResults.secondary,
         archetypeShadow: archetypeResults.shadow,
         archetypeScores: archetypeResults.scores,
-        lifeStage,
         primaryValues: coreValues.slice(0, 3),
         supportingValues: coreValues.slice(3),
         desiredEmotion,
@@ -528,11 +665,6 @@ export default function OnboardingPage() {
         }),
       });
       
-      toast({
-        title: "System Initialized",
-        description: "Your Player Record has been created.",
-      });
-      
       navigate("/ceremony");
       
     } catch (error) {
@@ -548,40 +680,140 @@ export default function OnboardingPage() {
     }
   };
   
+  // Render Mission 0 - Quickstart with old UI style
   const renderMission0 = () => {
     switch (currentStep) {
       case 0:
         return (
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-center">What's your age range?</h3>
-            <ChipSelect options={AGE_RANGES} value={ageRange} onChange={(val) => setAgeRange(val as string)} />
+          <div className="text-center space-y-6">
+            <h2 className="text-3xl font-orbitron font-bold">Welcome to<br/>LYFEOS</h2>
+            <p className="text-muted-foreground">Your journey to mastery begins now.</p>
+            <div className="flex justify-center py-4">
+              <div className="text-5xl text-primary">✦</div>
+            </div>
+            <p className="text-sm">Hello, {user?.username}. Let's set up your operating system.</p>
           </div>
         );
       case 1:
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-center">Where are you located? (Optional)</h3>
-            <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="City, Country" className="max-w-md mx-auto" />
+            <h2 className="text-2xl font-orbitron font-bold text-center">Where Are You Starting From?</h2>
+            <EmojiGridSelect 
+              options={LIFE_STAGES} 
+              value={lifeStage} 
+              onChange={setLifeStage}
+              columns={2}
+            />
+            <p className="text-sm text-muted-foreground text-center mt-4">
+              Select the stage that best describes your current life phase
+            </p>
           </div>
         );
       case 2:
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-center">Your timezone</h3>
-            <p className="text-sm text-muted-foreground text-center">Auto-detected: {timezone}</p>
-            <div className="flex justify-center">
-              <Button variant="outline" onClick={() => setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone)}>
-                <Check className="h-4 w-4 mr-2" />Confirm Timezone
-              </Button>
+            <h2 className="text-2xl font-orbitron font-bold text-center">Where Do You Want to Go?</h2>
+            <EmojiGridSelect 
+              options={ROLE_ARCHETYPES} 
+              value={roleArchetype} 
+              onChange={setRoleArchetype}
+              columns={2}
+            />
+            <p className="text-sm text-muted-foreground text-center mt-4">
+              Choose the role archetype that resonates with your aspirations
+            </p>
+          </div>
+        );
+      case 3:
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-orbitron font-bold text-center">How Do You Thrive Best?</h2>
+            <div className="space-y-6 max-w-md mx-auto">
+              {THRIVE_SLIDERS.map((slider) => (
+                <GradientSlider
+                  key={slider.id}
+                  value={thriveStyles[slider.id]}
+                  onChange={(val) => setThriveStyles({ ...thriveStyles, [slider.id]: val })}
+                  left={slider.left}
+                  right={slider.right}
+                />
+              ))}
             </div>
           </div>
         );
-      default: return null;
+      case 4:
+        return (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-orbitron font-bold text-center">What's Your Core Motivation?</h2>
+            <ChipSelect 
+              options={DESIRED_EMOTIONS} 
+              value={coreMotivation} 
+              onChange={(val) => setCoreMotivation(val as string)} 
+            />
+            <div className="mt-6 max-w-md mx-auto">
+              <p className="text-sm text-muted-foreground mb-2">Or define your own motivation:</p>
+              <Input
+                value={customMotivation}
+                onChange={(e) => setCustomMotivation(e.target.value)}
+                placeholder="Enter custom motivation..."
+                className="bg-card/30 border-primary/20"
+              />
+            </div>
+          </div>
+        );
+      case 5:
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <Zap className="h-6 w-6 text-primary" />
+              <h2 className="text-2xl font-orbitron font-bold">Your First Setup Mission</h2>
+            </div>
+            <p className="text-muted-foreground text-center">Choose one initial mission to kickstart your journey:</p>
+            <div className="space-y-3">
+              {SETUP_MISSIONS.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => setSelectedSetupMission(m.id)}
+                  className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                    selectedSetupMission === m.id
+                      ? "bg-primary/20 border-primary shadow-[0_0_15px_rgba(0,224,255,0.3)]"
+                      : "bg-card/30 border-primary/20 hover:border-primary/50"
+                  }`}
+                >
+                  <h3 className="font-semibold">{m.title}</h3>
+                  <p className="text-sm text-muted-foreground">{m.description}</p>
+                </button>
+              ))}
+            </div>
+            <button 
+              onClick={() => setCurrentStep(6)}
+              className="text-primary text-sm hover:underline block text-center w-full"
+            >
+              Skip for now
+            </button>
+          </div>
+        );
+      case 6:
+        return (
+          <div className="text-center space-y-6">
+            <h2 className="text-2xl font-orbitron font-bold">SYSTEM ONLINE</h2>
+            <div className="w-24 h-24 rounded-full bg-primary/20 border-2 border-primary mx-auto flex items-center justify-center">
+              <span className="text-4xl">✦</span>
+            </div>
+            <p className="text-3xl font-orbitron text-primary">+{mission.xp} XP</p>
+            <p className="text-muted-foreground">
+              Your personal growth operating system is now initialized and ready.
+            </p>
+            <p className="text-sm text-muted-foreground">Command center access granted.</p>
+          </div>
+        );
+      default:
+        return null;
     }
   };
   
   const renderMission1 = () => {
-    const question = getCurrentArchetypeQuestion();
+    const question = ARCHETYPE_QUESTIONS[currentStep];
     if (!question) return null;
     
     const currentValue = archetypeAnswers[question.id];
@@ -607,23 +839,23 @@ export default function OnboardingPage() {
   
   const renderMission2 = () => {
     switch (currentStep) {
-      case 0: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What life stage are you in?</h3><ChipSelect options={LIFE_STAGES} value={lifeStage} onChange={(val) => setLifeStage(val as string)} /></div>);
+      case 0: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What life stage are you in?</h3><EmojiGridSelect options={LIFE_STAGES} value={lifeStage} onChange={setLifeStage} columns={2} /></div>);
       case 1: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Select your core values (up to 5)</h3><ChipSelect options={CORE_VALUES} value={coreValues} onChange={(val) => { const values = val as string[]; if (values.length <= 5) setCoreValues(values); }} multiple /></div>);
       case 2: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What emotion do you want to feel most?</h3><ChipSelect options={DESIRED_EMOTIONS} value={desiredEmotion} onChange={(val) => setDesiredEmotion(val as string)} /></div>);
-      case 3: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What does success look like in 90 days?</h3><Textarea value={vision90Day} onChange={(e) => setVision90Day(e.target.value)} placeholder="Describe your 90-day vision..." className="max-w-md mx-auto" /></div>);
-      case 4: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's the headline of your life in 18 months?</h3><Input value={vision18Month} onChange={(e) => setVision18Month(e.target.value)} placeholder="My 18-month headline..." className="max-w-md mx-auto" /></div>);
-      case 5: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Who are you in 5 years?</h3><Textarea value={vision5Year} onChange={(e) => setVision5Year(e.target.value)} placeholder="Describe your 5-year self..." className="max-w-md mx-auto" /></div>);
-      case 6: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What legacy do you want to leave?</h3><Textarea value={vision10YearLegacy} onChange={(e) => setVision10YearLegacy(e.target.value)} placeholder="Describe your lifetime legacy..." className="max-w-md mx-auto" /></div>);
+      case 3: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What does success look like in 90 days?</h3><Textarea value={vision90Day} onChange={(e) => setVision90Day(e.target.value)} placeholder="Describe your 90-day vision..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 4: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's the headline of your life in 18 months?</h3><Input value={vision18Month} onChange={(e) => setVision18Month(e.target.value)} placeholder="My 18-month headline..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 5: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Who are you in 5 years?</h3><Textarea value={vision5Year} onChange={(e) => setVision5Year(e.target.value)} placeholder="Describe your 5-year self..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 6: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What legacy do you want to leave?</h3><Textarea value={vision10YearLegacy} onChange={(e) => setVision10YearLegacy(e.target.value)} placeholder="Describe your lifetime legacy..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       default: return null;
     }
   };
   
   const renderMission3 = () => {
     switch (currentStep) {
-      case 0: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What is your primary craft?</h3><Input value={primaryCraft} onChange={(e) => setPrimaryCraft(e.target.value)} placeholder="e.g., Software Development, Writing..." className="max-w-md mx-auto" /></div>);
-      case 1: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Why is this your chosen craft?</h3><Textarea value={primaryCraftWhy} onChange={(e) => setPrimaryCraftWhy(e.target.value)} placeholder="What draws you to this craft..." className="max-w-md mx-auto" /></div>);
-      case 2: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What knowledge areas interest you?</h3><Input value={knowledgeAreas} onChange={(e) => setKnowledgeAreas(e.target.value)} placeholder="Comma-separated: AI, Philosophy..." className="max-w-md mx-auto" /></div>);
-      case 3: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What skills do you want to acquire?</h3><Input value={skillsToAcquire} onChange={(e) => setSkillsToAcquire(e.target.value)} placeholder="Comma-separated: Public Speaking..." className="max-w-md mx-auto" /></div>);
+      case 0: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What is your primary craft?</h3><Input value={primaryCraft} onChange={(e) => setPrimaryCraft(e.target.value)} placeholder="e.g., Software Development, Writing..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 1: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Why is this your chosen craft?</h3><Textarea value={primaryCraftWhy} onChange={(e) => setPrimaryCraftWhy(e.target.value)} placeholder="What draws you to this craft..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 2: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What knowledge areas interest you?</h3><Input value={knowledgeAreas} onChange={(e) => setKnowledgeAreas(e.target.value)} placeholder="Comma-separated: AI, Philosophy..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 3: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What skills do you want to acquire?</h3><Input value={skillsToAcquire} onChange={(e) => setSkillsToAcquire(e.target.value)} placeholder="Comma-separated: Public Speaking..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       case 4: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">How do you prefer to learn?</h3><ChipSelect options={["Visual", "Auditory", "Reading/Writing", "Kinesthetic", "Mixed"]} value={learningPreference} onChange={(val) => setLearningPreference(val as string)} /></div>);
       case 5: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Hours per week for practice?</h3><div className="max-w-md mx-auto"><input type="range" min="0" max="40" value={practiceHours} onChange={(e) => setPracticeHours(parseInt(e.target.value))} className="w-full accent-primary" /><p className="text-center text-primary font-medium">{practiceHours} hours/week</p></div></div>);
       default: return null;
@@ -634,9 +866,9 @@ export default function OnboardingPage() {
     switch (currentStep) {
       case 0: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your weekly capacity (hours)?</h3><div className="max-w-md mx-auto"><input type="range" min="10" max="80" value={weeklyCapacity} onChange={(e) => setWeeklyCapacity(parseInt(e.target.value))} className="w-full accent-primary" /><p className="text-center text-primary font-medium">{weeklyCapacity} hours/week</p></div></div>);
       case 1: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What drains your energy?</h3><ChipSelect options={["Meetings", "Admin Tasks", "Conflict", "Uncertainty", "Multitasking", "Perfectionism", "Social Obligations", "Poor Sleep"]} value={energyDrains} onChange={(val) => setEnergyDrains(val as string[])} multiple /></div>);
-      case 2: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Describe your physical environment</h3><Textarea value={physicalEnvironment} onChange={(e) => setPhysicalEnvironment(e.target.value)} placeholder="Where do you work, live, create..." className="max-w-md mx-auto" /></div>);
-      case 3: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your income situation?</h3><Input value={financialIncome} onChange={(e) => setFinancialIncome(e.target.value)} placeholder="Describe your income..." className="max-w-md mx-auto" /></div>);
-      case 4: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your savings situation?</h3><Input value={financialSavings} onChange={(e) => setFinancialSavings(e.target.value)} placeholder="Describe your savings..." className="max-w-md mx-auto" /></div>);
+      case 2: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Describe your physical environment</h3><Textarea value={physicalEnvironment} onChange={(e) => setPhysicalEnvironment(e.target.value)} placeholder="Where do you work, live, create..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 3: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your income situation?</h3><Input value={financialIncome} onChange={(e) => setFinancialIncome(e.target.value)} placeholder="Describe your income..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 4: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your savings situation?</h3><Input value={financialSavings} onChange={(e) => setFinancialSavings(e.target.value)} placeholder="Describe your savings..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       default: return null;
     }
   };
@@ -648,30 +880,30 @@ export default function OnboardingPage() {
       case 2: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your nutrition approach?</h3><ChipSelect options={["Clean Eating", "Balanced", "Intuitive", "Keto/Low Carb", "Vegan/Vegetarian", "No Specific Diet"]} value={nutritionApproach} onChange={(val) => setNutritionApproach(val as string)} /></div>);
       case 3: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What habits do you want to reprogram?</h3><ChipSelect options={["Procrastination", "Overthinking", "Poor Sleep", "Unhealthy Eating", "Phone Addiction", "Negative Self-Talk", "Avoidance", "Perfectionism"]} value={habitsToReprogram} onChange={(val) => setHabitsToReprogram(val as string[])} multiple /></div>);
       case 4: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What traits do you want to cultivate?</h3><ChipSelect options={["Discipline", "Patience", "Confidence", "Resilience", "Creativity", "Focus", "Empathy", "Courage"]} value={traitsToCultivate} onChange={(val) => setTraitsToCultivate(val as string[])} multiple /></div>);
-      case 5: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your core belief about yourself?</h3><Input value={coreBelief} onChange={(e) => setCoreBelief(e.target.value)} placeholder="I believe I am..." className="max-w-md mx-auto" /></div>);
-      case 6: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What limiting belief holds you back?</h3><Input value={limitingBelief} onChange={(e) => setLimitingBelief(e.target.value)} placeholder="I can't because..." className="max-w-md mx-auto" /></div>);
-      case 7: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What empowering belief will you adopt?</h3><Input value={empoweringBelief} onChange={(e) => setEmpoweringBelief(e.target.value)} placeholder="I am capable of..." className="max-w-md mx-auto" /></div>);
+      case 5: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your core belief about yourself?</h3><Input value={coreBelief} onChange={(e) => setCoreBelief(e.target.value)} placeholder="I believe I am..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 6: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What limiting belief holds you back?</h3><Input value={limitingBelief} onChange={(e) => setLimitingBelief(e.target.value)} placeholder="I can't because..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 7: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What empowering belief will you adopt?</h3><Input value={empoweringBelief} onChange={(e) => setEmpoweringBelief(e.target.value)} placeholder="I am capable of..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       default: return null;
     }
   };
   
   const renderMission6 = () => {
     switch (currentStep) {
-      case 0: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What shadow patterns do you recognize?</h3><Textarea value={shadowPatternText} onChange={(e) => setShadowPatternText(e.target.value)} placeholder="Describe patterns you want to change..." className="max-w-md mx-auto" /></div>);
-      case 1: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Describe your upbringing</h3><Textarea value={upbringing} onChange={(e) => setUpbringing(e.target.value)} placeholder="How were you raised..." className="max-w-md mx-auto" /></div>);
-      case 2: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What cultural expectations shaped you?</h3><Textarea value={culturalContext} onChange={(e) => setCulturalContext(e.target.value)} placeholder="Cultural influences..." className="max-w-md mx-auto" /></div>);
-      case 3: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What key experiences shaped you?</h3><Textarea value={keyExperiences} onChange={(e) => setKeyExperiences(e.target.value)} placeholder="Significant life experiences..." className="max-w-md mx-auto" /></div>);
+      case 0: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What shadow patterns do you recognize?</h3><Textarea value={shadowPatternText} onChange={(e) => setShadowPatternText(e.target.value)} placeholder="Describe patterns you want to change..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 1: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Describe your upbringing</h3><Textarea value={upbringing} onChange={(e) => setUpbringing(e.target.value)} placeholder="How were you raised..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 2: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What cultural expectations shaped you?</h3><Textarea value={culturalContext} onChange={(e) => setCulturalContext(e.target.value)} placeholder="Cultural influences..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 3: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What key experiences shaped you?</h3><Textarea value={keyExperiences} onChange={(e) => setKeyExperiences(e.target.value)} placeholder="Significant life experiences..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       default: return null;
     }
   };
   
   const renderMission7 = () => {
     switch (currentStep) {
-      case 0: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Describe your ideal day</h3><Textarea value={idealDay} onChange={(e) => setIdealDay(e.target.value)} placeholder="From morning to night..." className="max-w-md mx-auto" /></div>);
+      case 0: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Describe your ideal day</h3><Textarea value={idealDay} onChange={(e) => setIdealDay(e.target.value)} placeholder="From morning to night..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       case 1: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What morning rituals do you practice?</h3><ChipSelect options={["Meditation", "Exercise", "Journaling", "Cold Shower", "Reading", "Gratitude", "Planning", "Breathwork"]} value={morningRituals} onChange={(val) => setMorningRituals(val as string[])} multiple /></div>);
       case 2: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What evening rituals do you practice?</h3><ChipSelect options={["Reflection", "Reading", "Stretching", "Planning Tomorrow", "Digital Detox", "Gratitude", "Meditation", "Journaling"]} value={eveningRituals} onChange={(val) => setEveningRituals(val as string[])} multiple /></div>);
-      case 3: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your grounding ritual?</h3><Input value={groundingRitual} onChange={(e) => setGroundingRitual(e.target.value)} placeholder="What brings you back to center..." className="max-w-md mx-auto" /></div>);
-      case 4: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Set your boundaries</h3><div className="max-w-md mx-auto space-y-3"><div><label className="text-sm text-muted-foreground">Tech off-time</label><Input value={boundaries.techOffTime} onChange={(e) => setBoundaries({ ...boundaries, techOffTime: e.target.value })} placeholder="e.g., 9 PM - 7 AM" /></div><div><label className="text-sm text-muted-foreground">Work hours</label><Input value={boundaries.workHours} onChange={(e) => setBoundaries({ ...boundaries, workHours: e.target.value })} placeholder="e.g., 9 AM - 6 PM" /></div></div></div>);
+      case 3: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your grounding ritual?</h3><Input value={groundingRitual} onChange={(e) => setGroundingRitual(e.target.value)} placeholder="What brings you back to center..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 4: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Set your boundaries</h3><div className="max-w-md mx-auto space-y-3"><div><label className="text-sm text-muted-foreground">Tech off-time</label><Input value={boundaries.techOffTime} onChange={(e) => setBoundaries({ ...boundaries, techOffTime: e.target.value })} placeholder="e.g., 9 PM - 7 AM" className="bg-card/30 border-primary/20" /></div><div><label className="text-sm text-muted-foreground">Work hours</label><Input value={boundaries.workHours} onChange={(e) => setBoundaries({ ...boundaries, workHours: e.target.value })} placeholder="e.g., 9 AM - 6 PM" className="bg-card/30 border-primary/20" /></div></div></div>);
       default: return null;
     }
   };
@@ -689,11 +921,52 @@ export default function OnboardingPage() {
       default: return null;
     }
   };
-  
-  const getMissionProgress = () => {
-    const maxSteps = getMaxSteps(currentMission);
-    return ((currentStep + 1) / maxSteps) * 100;
-  };
+
+  // Mission Complete Screen
+  if (showMissionComplete) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <div className="flex-1 flex flex-col items-center justify-center p-4">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-orbitron font-bold">
+              <span className="text-foreground">LYFE</span>
+              <span className="text-primary">OS</span>
+            </h1>
+            <p className="text-muted-foreground text-sm">Your personal life operating system</p>
+          </div>
+          
+          <Card className="w-full max-w-md border-primary/30 bg-card/50 backdrop-blur shadow-[0_0_30px_rgba(0,224,255,0.1)]">
+            <CardContent className="p-8 text-center">
+              <h2 className="text-2xl font-orbitron font-bold mb-4">Mission Complete!</h2>
+              <div className="w-20 h-20 rounded-full bg-primary/20 border-2 border-primary mx-auto flex items-center justify-center mb-4">
+                <Check className="h-10 w-10 text-primary" />
+              </div>
+              <p className="text-3xl font-orbitron text-primary mb-4">+{mission.xp} XP</p>
+              <p className="text-muted-foreground mb-6">{mission.title} completed successfully.</p>
+              
+              {currentMission < MISSIONS.length - 1 && (
+                <div className="space-y-3">
+                  <Button 
+                    onClick={handleContinueToNextMission}
+                    className="w-full bg-primary/20 border border-primary text-primary hover:bg-primary/30"
+                  >
+                    Continue to {MISSIONS[currentMission + 1].title}
+                    <ChevronRight className="h-4 w-4 ml-2" />
+                  </Button>
+                  <button
+                    onClick={handleSkipToSystem}
+                    className="text-muted-foreground text-sm hover:text-primary transition-colors"
+                  >
+                    Skip to LYFEOS
+                  </button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   if (isGeneratingAffirmation) {
     return (
@@ -709,38 +982,52 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <div className="border-b border-primary/20 p-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-muted-foreground">Mission {currentMission}: {mission.title}</span>
-            <span className="text-sm text-primary">{currentMission + 1} / {totalMissions}</span>
-          </div>
-          <Progress value={overallProgress} className="h-2" />
-        </div>
+      {/* Header */}
+      <div className="text-center pt-6 pb-4">
+        <h1 className="text-4xl font-orbitron font-bold">
+          <span className="text-foreground">LYFE</span>
+          <span className="text-primary">OS</span>
+        </h1>
+        <p className="text-muted-foreground text-sm">Your personal life operating system</p>
       </div>
       
-      <div className="flex-1 flex flex-col items-center justify-center p-4">
-        <Card className="w-full max-w-2xl border-primary/20 bg-card/50 backdrop-blur">
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col items-center justify-center px-4 pb-4">
+        <Card className="w-full max-w-lg border-primary/30 bg-card/50 backdrop-blur shadow-[0_0_30px_rgba(0,224,255,0.1)]">
           <CardContent className="p-6">
-            <div className="mb-6">
-              <Progress value={getMissionProgress()} className="h-1" />
-              <p className="text-xs text-muted-foreground mt-1 text-center">Step {currentStep + 1}</p>
-            </div>
-            
-            <div className="min-h-[200px] flex items-center justify-center">
-              {renderMissionContent()}
-            </div>
+            {renderMissionContent()}
+            <DotNavigation current={currentStep} total={totalSteps} />
           </CardContent>
         </Card>
       </div>
       
-      <div className="border-t border-primary/20 p-4">
-        <div className="max-w-2xl mx-auto flex justify-between">
-          <Button variant="outline" onClick={handlePrevious} disabled={currentMission === 0 && currentStep === 0}>
-            <ChevronLeft className="h-4 w-4 mr-2" />Back
+      {/* Footer Navigation */}
+      <div className="p-4">
+        <div className="max-w-lg mx-auto flex justify-between items-center">
+          <Button 
+            variant="outline" 
+            onClick={handlePrevious} 
+            disabled={currentMission === 0 && currentStep === 0}
+            className="bg-card/50 border-primary/30 hover:bg-card/80"
+          >
+            <ChevronLeft className="h-4 w-4 mr-2" />
+            Back
           </Button>
-          <Button onClick={handleNext} disabled={!canProceed() || isLoading}>
-            {isLoading ? (<Loader2 className="h-4 w-4 animate-spin" />) : currentMission === MISSIONS.length - 1 && currentStep === getMaxSteps(currentMission) - 1 ? (<><Check className="h-4 w-4 mr-2" />Complete</>) : (<>Next<ChevronRight className="h-4 w-4 ml-2" /></>)}
+          
+          <Button 
+            onClick={handleNext} 
+            disabled={!canProceed() || isLoading}
+            className="bg-transparent border-2 border-primary text-primary hover:bg-primary/20"
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : currentMission === 0 && currentStep === 6 ? (
+              <>Enter LYFEOS<ChevronRight className="h-4 w-4 ml-2" /></>
+            ) : currentMission === MISSIONS.length - 1 && currentStep === totalSteps - 1 ? (
+              <>Initialize System<ChevronRight className="h-4 w-4 ml-2" /></>
+            ) : (
+              <>Next<ChevronRight className="h-4 w-4 ml-2" /></>
+            )}
           </Button>
         </div>
       </div>
