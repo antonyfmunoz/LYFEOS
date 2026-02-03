@@ -157,12 +157,6 @@ export default function MissionArchivePage() {
                                 </div>
                               )}
                               
-                              {mission.dueDate && !hasSchedule && (
-                                <div className="flex items-center gap-1 text-xs mb-1 opacity-50">
-                                  <Calendar className="h-3 w-3" />
-                                  <span>Due: {formatDate(mission.dueDate)}</span>
-                                </div>
-                              )}
                             </div>
                             <div className="flex items-center gap-2">
                               <span className="text-red-400 text-xs font-mono opacity-50">

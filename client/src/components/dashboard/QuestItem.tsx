@@ -11,7 +11,7 @@ interface QuestItemProps {
 }
 
 export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestItemProps) {
-  const { title, description, completed, energyCost, experienceReward, startDate, startTime, endDate, endTime, dueDate, notificationEnabled } = quest;
+  const { title, description, completed, energyCost, experienceReward, startDate, startTime, endDate, endTime, notificationEnabled } = quest;
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -82,19 +82,6 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestIt
                 </div>
               )}
               
-              {dueDate && !hasSchedule && (
-                <div className={`flex items-center gap-1 text-xs mb-1 ${completed ? "opacity-50" : "text-orange-400"}`}>
-                  <Calendar className="h-3 w-3" />
-                  <span>Due: {formatDate(dueDate)}</span>
-                </div>
-              )}
-              
-              {dueDate && hasSchedule && (
-                <div className={`flex items-center gap-1 text-xs mb-1 ${completed ? "opacity-50" : "text-orange-400"}`}>
-                  <span className="text-muted-foreground">Deadline:</span>
-                  <span>{formatDate(dueDate)}</span>
-                </div>
-              )}
             </div>
             <div className="flex items-center gap-2">
               <span className={`text-red-400 text-xs font-mono ${completed ? "opacity-50" : ""}`}>
