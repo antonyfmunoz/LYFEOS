@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
-import { FileText, Clock, Tag, Calendar, Award, GripVertical } from "lucide-react";
+import { FileText, Clock, Tag, Calendar, Award, GripVertical, CheckSquare, BookOpen, Repeat, GraduationCap, Target } from "lucide-react";
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useState, useCallback, useRef } from 'react';
@@ -14,8 +14,7 @@ import TimelineWidget from '@/components/chronilog/TimelineWidget';
 interface CategoryItem {
   id: string;
   title: string;
-  icon: string;
-  color: string;
+  icon: React.ReactNode;
 }
 
 interface DraggableCategoryProps {
@@ -135,37 +134,22 @@ const DraggableCategoryCard = ({ id, index, item, moveCategory, navigate }: Drag
     <div 
       ref={ref}
       className={cn(
-        "glassmorphic rounded-xl p-6 neon-border hover:shadow-[0_0_10px_var(--primary-glow-medium)] hover:border-primary/60 transition-all duration-300 cursor-pointer",
+        "glassmorphic rounded-xl neon-border hover:shadow-[0_0_10px_var(--primary-glow-medium)] hover:border-primary/60 transition-all duration-300 cursor-pointer",
         isDragging && "opacity-50"
       )}
       onClick={navigateToArchive}
       data-handler-id={handlerId}
     >
-      <div className="flex items-center">
-        <div ref={dragHandleRef} className="cursor-move mr-2" onClick={(e) => e.stopPropagation()}>
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
+      <div className="p-3 flex items-center justify-between">
+        <div className="flex items-center">
+          <div ref={dragHandleRef} className="cursor-move" onClick={(e) => e.stopPropagation()}>
+            <GripVertical className="h-4 w-4 mr-2 text-muted-foreground" />
+          </div>
+          <div className="mr-2">{item.icon}</div>
+          <h3 className="text-lg font-orbitron text-foreground">{item.title}</h3>
         </div>
-        <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${
-          item.color === 'primary' ? 'bg-primary/20' : 
-          item.color === 'secondary' ? 'bg-secondary/20' : 
-          item.color === 'accent' ? 'bg-accent/20' : 
-          'bg-emerald-400/20'
-        }`}>
-          <span className={`material-icons text-2xl ${
-            item.color === 'primary' ? 'text-primary' : 
-            item.color === 'secondary' ? 'text-secondary' : 
-            item.color === 'accent' ? 'text-accent' : 
-            'text-emerald-400'
-          }`}>{item.icon}</span>
-        </div>
-        <h3 className="text-lg font-orbitron text-[#D6F4FF]">{item.title}</h3>
         <button 
-          className={`ml-auto text-xs font-medium px-3 py-1 rounded-md ${
-            item.color === 'primary' ? 'bg-primary/10 text-primary' : 
-            item.color === 'secondary' ? 'bg-secondary/10 text-secondary' : 
-            item.color === 'accent' ? 'bg-accent/10 text-accent' : 
-            'bg-emerald-400/10 text-emerald-400'
-          } hover:bg-opacity-20 transition`}
+          className="text-xs font-medium px-3 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition"
           onClick={handleButtonClick}
         >
           OPEN
@@ -186,32 +170,27 @@ export default function ChronilogPage() {
     { 
       id: "missions", 
       title: "Mission Archive", 
-      icon: "task_alt",
-      color: "cyan-400"
+      icon: <CheckSquare className="h-5 w-5 text-primary" />
     },
     { 
       id: "journal", 
       title: "Journal", 
-      icon: "auto_stories",
-      color: "primary"
+      icon: <BookOpen className="h-5 w-5 text-primary" />
     },
     { 
       id: "rituals", 
       title: "Rituals", 
-      icon: "repeat",
-      color: "secondary"
+      icon: <Repeat className="h-5 w-5 text-primary" />
     },
     { 
       id: "knowledge", 
       title: "Knowledge Base", 
-      icon: "school",
-      color: "accent"
+      icon: <GraduationCap className="h-5 w-5 text-primary" />
     },
     { 
       id: "goals", 
       title: "Goals & Vision", 
-      icon: "track_changes",
-      color: "emerald-400"
+      icon: <Target className="h-5 w-5 text-primary" />
     }
   ]);
 
