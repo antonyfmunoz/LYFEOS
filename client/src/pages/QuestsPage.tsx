@@ -72,15 +72,13 @@ export default function QuestsPage() {
     });
     
     const todayItems = active.filter(q => {
-      if (!q.dueDate && !q.startDate) return true;
-      const relevantDate = q.startDate || q.dueDate;
-      return relevantDate === today;
+      if (!q.startDate) return true;
+      return q.startDate === today;
     });
     
     const upcomingItems = active.filter(q => {
-      const relevantDate = q.startDate || q.dueDate;
-      if (!relevantDate) return false;
-      return relevantDate > today;
+      if (!q.startDate) return false;
+      return q.startDate > today;
     });
     
     return {
@@ -120,7 +118,6 @@ export default function QuestsPage() {
         startTime: createFormData.startTime || null,
         endDate: createFormData.endDate || null,
         endTime: createFormData.endTime || null,
-        dueDate: null,
         notificationEnabled: createFormData.notifications.length > 0,
         notificationTime: null,
         notifications: createFormData.notifications,
@@ -149,7 +146,6 @@ export default function QuestsPage() {
         startTime: editFormData.startTime || null,
         endDate: editFormData.endDate || null,
         endTime: editFormData.endTime || null,
-        dueDate: null,
         notificationEnabled: editFormData.notifications.length > 0,
         notificationTime: null,
         notifications: editFormData.notifications,
