@@ -60,7 +60,16 @@ export default function QuestsPage() {
 
   const { todayMissions, upcomingMissions, completedMissions } = useMemo(() => {
     const active = quests.filter(q => !q.completed);
-    const completed = quests.filter(q => q.completed);
+    
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    
+    const completed = quests.filter(q => {
+      if (!q.completed || !q.completedAt) return false;
+      const completedDate = new Date(q.completedAt);
+      completedDate.setHours(0, 0, 0, 0);
+      return completedDate.getTime() === todayStart.getTime();
+    });
     
     const todayItems = active.filter(q => {
       if (!q.dueDate && !q.startDate) return true;

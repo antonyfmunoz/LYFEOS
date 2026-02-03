@@ -2,8 +2,9 @@ import { useMemo } from 'react';
 import { useLocation } from "wouter";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useLYFEOS } from "@/lib/context";
-import { Archive, Clock, CheckCircle2, ArrowLeft, Calendar, Star } from "lucide-react";
+import { Archive, ArrowLeft, Calendar, Clock, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function MissionArchivePage() {
   usePageTitle('Mission Archive');
@@ -85,41 +86,101 @@ export default function MissionArchivePage() {
               </div>
               
               <div className="px-4 pb-4 space-y-3 pt-4">
-                {groupedByDate[dateKey].map((mission) => (
-                  <div 
-                    key={mission.id}
-                    className="p-3 rounded-lg bg-card/30 border border-slate-700/30"
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex items-center flex-1">
-                        <CheckCircle2 className="h-4 w-4 text-primary mr-2 flex-shrink-0" />
-                        <h3 className="font-medium">{mission.title}</h3>
-                      </div>
-                      <div className="flex items-center gap-2 ml-2">
-                        <div className="flex items-center text-xs text-primary">
-                          <Star className="h-3 w-3 mr-1" />
-                          +{mission.experienceReward} XP
-                        </div>
-                        <div className="flex items-center">
-                          <Clock className="h-3 w-3 mr-1 text-[#7DAAB2]" />
-                          <span className="text-xs text-[#7DAAB2] font-mono">
-                            {new Date(mission.completedAt!).toLocaleTimeString('en-US', {
-                              hour: 'numeric',
-                              minute: '2-digit',
-                              hour12: true
-                            })}
-                          </span>
+                {groupedByDate[dateKey].map((mission) => {
+                  const formatDate = (dateStr: string) => {
+                    const date = new Date(dateStr);
+                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                  };
+                  const formatTime = (timeStr: string) => {
+                    const [hours, minutes] = timeStr.split(':');
+                    const hour = parseInt(hours);
+                    const ampm = hour >= 12 ? 'PM' : 'AM';
+                    const hour12 = hour % 12 || 12;
+                    return `${hour12}:${minutes} ${ampm}`;
+                  };
+                  const hasSchedule = mission.startDate || mission.startTime || mission.endDate || mission.endTime;
+                  
+                  return (
+                    <div 
+                      key={mission.id}
+                      className="glassmorphic rounded-xl p-4 hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition neon-border"
+                    >
+                      <div className="flex items-start">
+                        <Checkbox 
+                          className="mt-1 rounded border border-primary/50 data-[state=checked]:bg-primary/20 data-[state=checked]:text-primary"
+                          checked={true}
+                          disabled
+                        />
+                        <div className="ml-3 flex-grow">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-grow">
+                              <h3 className="font-medium mb-1 text-muted-foreground line-through">
+                                {mission.title}
+                                {mission.notificationEnabled && (
+                                  <Bell className="inline-block ml-2 h-3 w-3 text-primary opacity-70" />
+                                )}
+                              </h3>
+                              
+                              {hasSchedule && (
+                                <div className="flex flex-wrap items-center gap-2 text-xs mb-1 opacity-50">
+                                  {mission.startDate && (
+                                    <span className="flex items-center gap-1">
+                                      <Calendar className="h-3 w-3" />
+                                      {formatDate(mission.startDate)}
+                                      {mission.startTime && (
+                                        <>
+                                          <Clock className="h-3 w-3 ml-1" />
+                                          {formatTime(mission.startTime)}
+                                        </>
+                                      )}
+                                    </span>
+                                  )}
+                                  {(mission.endDate || mission.endTime) && (
+                                    <>
+                                      <span className="text-primary">→</span>
+                                      <span className="flex items-center gap-1">
+                                        {mission.endDate && (
+                                          <>
+                                            <Calendar className="h-3 w-3" />
+                                            {formatDate(mission.endDate)}
+                                          </>
+                                        )}
+                                        {mission.endTime && (
+                                          <>
+                                            <Clock className="h-3 w-3 ml-1" />
+                                            {formatTime(mission.endTime)}
+                                          </>
+                                        )}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                              
+                              {mission.dueDate && !hasSchedule && (
+                                <div className="flex items-center gap-1 text-xs mb-1 opacity-50">
+                                  <Calendar className="h-3 w-3" />
+                                  <span>Due: {formatDate(mission.dueDate)}</span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-red-400 text-xs font-mono opacity-50">
+                                -{mission.energyCost} EP
+                              </span>
+                              <span className="text-primary text-xs font-mono opacity-50">
+                                +{mission.experienceReward} XP
+                              </span>
+                            </div>
+                          </div>
+                          <p className="text-muted-foreground text-sm opacity-50">
+                            {mission.description}
+                          </p>
                         </div>
                       </div>
                     </div>
-                    
-                    {mission.description && (
-                      <p className="text-sm text-[#7DAAB2] line-clamp-2 ml-6">
-                        {mission.description}
-                      </p>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}
