@@ -41,6 +41,9 @@ interface DailyReflection {
   contentConsumed: string;
   research: string;
   todoIdeas: string;
+  wentWell: string;
+  couldBeBetter: string;
+  learned: string;
   date: string; // YYYY-MM-DD format
 }
 
@@ -88,6 +91,9 @@ export default function DashboardPage() {
     contentConsumed: "",
     research: "",
     todoIdeas: "",
+    wentWell: "",
+    couldBeBetter: "",
+    learned: "",
     date: new Date().toISOString().split('T')[0]
   });
   
@@ -209,11 +215,46 @@ export default function DashboardPage() {
     switch (widgetId) {
       case 'reflection-log':
         return (
-          <EnhancedMissionWidget 
-            events={events} 
-            maxHeight="96"
-            hideHeader={true}
-          />
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm flex items-center text-[#7DAAB2]">
+                <Smile className="h-4 w-4 text-primary" />
+                <span className="ml-2">What went well today?</span>
+              </label>
+              <MarkdownEditor
+                placeholder="Capture your wins, positive moments, and things you're proud of..."
+                value={reflection.wentWell}
+                onChange={(value) => updateReflection("wentWell", value)}
+                minHeight="80px"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm flex items-center text-[#7DAAB2]">
+                <TargetIcon className="h-4 w-4 text-primary" />
+                <span className="ml-2">What could have been better?</span>
+              </label>
+              <MarkdownEditor
+                placeholder="Areas for improvement, challenges faced, or things to do differently..."
+                value={reflection.couldBeBetter}
+                onChange={(value) => updateReflection("couldBeBetter", value)}
+                minHeight="80px"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm flex items-center text-[#7DAAB2]">
+                <Brain className="h-4 w-4 text-primary" />
+                <span className="ml-2">What did I learn?</span>
+              </label>
+              <MarkdownEditor
+                placeholder="Key insights, lessons, or realizations from today..."
+                value={reflection.learned}
+                onChange={(value) => updateReflection("learned", value)}
+                minHeight="80px"
+              />
+            </div>
+          </div>
         );
       case 'data-entry-log':
         return (
