@@ -496,6 +496,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
                 description: quest.description || "",
                 category: quest.category || "general",
                 completed: quest.completed || false,
+                completedAt: quest.completedAt || null,
                 energyCost: quest.energyCost || 1,
                 experienceReward: quest.experienceReward || 10,
                 startDate: quest.startDate || null,
@@ -753,7 +754,11 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
           
         }
         
-        return { ...quest, completed };
+        return { 
+          ...quest, 
+          completed,
+          completedAt: completed ? new Date().toISOString() : null
+        };
       }
       return quest;
     });

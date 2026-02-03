@@ -45,6 +45,7 @@ export interface Quest {
   description: string;
   category?: string;
   completed: boolean;
+  completedAt?: string | null;
   energyCost: number;
   experienceReward: number;
   startDate?: string | null;

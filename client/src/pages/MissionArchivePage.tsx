@@ -1,38 +1,56 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useLocation } from "wouter";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useLYFEOS } from "@/lib/context";
-import { Archive, Clock, Tag, CheckCircle2, ArrowLeft } from "lucide-react";
+import { Archive, Clock, CheckCircle2, ArrowLeft, Calendar, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-
 export default function MissionArchivePage() {
-  // Set the page title
   usePageTitle('Mission Archive');
 
-  // Get mission pages from context
-  const { missionPages } = useLYFEOS();
+  const { quests } = useLYFEOS();
   const [, navigate] = useLocation();
 
-  
-  // Filter for only completed missions (archive only shows completed)
-  const completedMissions = useMemo(() => {
-    return missionPages
-      .filter(page => 
-        (page.tags.includes('Mission') || page.tags.includes('Document')) && page.completed
-      )
-      .map(entry => ({
-        id: entry.id,
-        title: entry.title,
-        content: entry.content,
-        slug: entry.slug,
-        tags: entry.tags,
-        createdAt: entry.createdAt,
-        updatedAt: entry.updatedAt,
-        completed: entry.completed
-      }))
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-  }, [missionPages]);
+  const archivedMissions = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return quests
+      .filter(quest => {
+        if (!quest.completed || !quest.completedAt) return false;
+        const completedDate = new Date(quest.completedAt);
+        completedDate.setHours(0, 0, 0, 0);
+        return completedDate < today;
+      })
+      .sort((a, b) => {
+        const dateA = new Date(a.completedAt!);
+        const dateB = new Date(b.completedAt!);
+        return dateB.getTime() - dateA.getTime();
+      });
+  }, [quests]);
+
+  const groupedByDate = useMemo(() => {
+    const groups: { [key: string]: typeof archivedMissions } = {};
+    
+    archivedMissions.forEach(mission => {
+      const completedDate = new Date(mission.completedAt!);
+      const dateKey = completedDate.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push(mission);
+    });
+    
+    return groups;
+  }, [archivedMissions]);
+
+  const dateKeys = Object.keys(groupedByDate);
 
   return (
     <>
@@ -49,66 +67,69 @@ export default function MissionArchivePage() {
       
       <div className="mb-6">
         <h1 className="text-2xl font-orbitron mb-1">Mission Archive</h1>
-        <p className="text-[#7DAAB2]">Review your completed missions and achievements</p>
+        <p className="text-[#7DAAB2]">Review your completed missions from previous days</p>
       </div>
       
-            
-      {completedMissions.length > 0 ? (
-        <div className="glassmorphic rounded-xl overflow-hidden border border-primary/20">
-          <div className="p-4 flex items-center justify-between border-b border-primary/20">
-            <div className="flex items-center">
-              <CheckCircle2 className="h-5 w-5 text-primary mr-3" />
-              <h2 className="text-lg font-medium">Completed Missions</h2>
-            </div>
-            <span className="text-xs text-[#7DAAB2] px-2 py-1 bg-slate-800/50 rounded-full">
-              {completedMissions.length} {completedMissions.length === 1 ? 'mission' : 'missions'}
-            </span>
-          </div>
-          
-          <div className="px-4 pb-4 space-y-3 pt-4">
-            {completedMissions.map((entry) => (
-              <div 
-                key={entry.id}
-                className="p-3 rounded-lg bg-card/30 hover:bg-card/50 transition-all border border-slate-700/30 hover:border-primary/30 hover:shadow-[0_0_5px_var(--primary-glow-light)] cursor-pointer"
-                onClick={() => navigate(`/mission-page/${entry.slug}`)}
-              >
-                <div className="flex justify-between items-center mb-2">
-                  <div className="flex items-center">
-                    <CheckCircle2 className="h-4 w-4 text-primary mr-2" />
-                    <h3 className="font-medium">{entry.title}</h3>
-                  </div>
-                  <div className="flex items-center">
-                    <Clock className="h-3 w-3 mr-1 text-[#7DAAB2]" />
-                    <span className="text-xs text-[#7DAAB2] font-mono">
-                      {new Date(entry.updatedAt).toLocaleDateString()}
-                    </span>
-                  </div>
+      {dateKeys.length > 0 ? (
+        <div className="space-y-6">
+          {dateKeys.map((dateKey) => (
+            <div key={dateKey} className="glassmorphic rounded-xl overflow-hidden border border-primary/20">
+              <div className="p-4 flex items-center justify-between border-b border-primary/20 bg-primary/5">
+                <div className="flex items-center">
+                  <Calendar className="h-5 w-5 text-primary mr-3" />
+                  <h2 className="text-lg font-medium">{dateKey}</h2>
                 </div>
-                
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {entry.tags.map((tag, idx) => (
-                    <div key={idx} className="text-xs px-2 py-0.5 rounded-full bg-slate-700/50 text-slate-300 flex items-center">
-                      <Tag className="h-3 w-3 mr-1" />
-                      {tag}
-                    </div>
-                  ))}
-                </div>
-                
-                <p className="text-sm text-[#7DAAB2] line-clamp-2">
-                  {entry.content.length > 150 
-                    ? entry.content.substring(0, 150) + '...' 
-                    : entry.content}
-                </p>
+                <span className="text-xs text-[#7DAAB2] px-2 py-1 bg-slate-800/50 rounded-full">
+                  {groupedByDate[dateKey].length} {groupedByDate[dateKey].length === 1 ? 'mission' : 'missions'}
+                </span>
               </div>
-            ))}
-          </div>
+              
+              <div className="px-4 pb-4 space-y-3 pt-4">
+                {groupedByDate[dateKey].map((mission) => (
+                  <div 
+                    key={mission.id}
+                    className="p-3 rounded-lg bg-card/30 border border-slate-700/30"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex items-center flex-1">
+                        <CheckCircle2 className="h-4 w-4 text-primary mr-2 flex-shrink-0" />
+                        <h3 className="font-medium">{mission.title}</h3>
+                      </div>
+                      <div className="flex items-center gap-2 ml-2">
+                        <div className="flex items-center text-xs text-primary">
+                          <Star className="h-3 w-3 mr-1" />
+                          +{mission.experienceReward} XP
+                        </div>
+                        <div className="flex items-center">
+                          <Clock className="h-3 w-3 mr-1 text-[#7DAAB2]" />
+                          <span className="text-xs text-[#7DAAB2] font-mono">
+                            {new Date(mission.completedAt!).toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {mission.description && (
+                      <p className="text-sm text-[#7DAAB2] line-clamp-2 ml-6">
+                        {mission.description}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
         <div className="text-center py-16 glassmorphic rounded-xl border border-primary/20 flex flex-col items-center justify-center">
           <Archive className="h-16 w-16 text-primary/40 mb-4" />
-          <h3 className="text-xl font-medium mb-2">No Completed Missions Yet</h3>
+          <h3 className="text-xl font-medium mb-2">No Archived Missions Yet</h3>
           <p className="text-[#7DAAB2] mb-4 max-w-md">
-            Complete missions from the Active Missions page to see them archived here.
+            Complete missions to see them archived here. Missions completed today will appear here tomorrow.
           </p>
         </div>
       )}
