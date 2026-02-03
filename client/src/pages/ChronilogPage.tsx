@@ -15,7 +15,6 @@ interface CategoryItem {
   id: string;
   title: string;
   icon: string;
-  description: string;
   color: string;
 }
 
@@ -161,7 +160,6 @@ const DraggableCategoryCard = ({ id, index, item, moveCategory, navigate }: Drag
         </div>
         <div>
           <h3 className="text-lg font-orbitron text-[#D6F4FF]">{item.title}</h3>
-          <p className="text-xs text-[#7DAAB2]">{item.description}</p>
         </div>
       </div>
       <div className="flex justify-end">
@@ -193,35 +191,30 @@ export default function ChronilogPage() {
       id: "missions", 
       title: "Mission Archive", 
       icon: "task_alt",
-      description: "Documentation of your completed and active missions",
       color: "cyan-400"
     },
     { 
       id: "journal", 
       title: "Journal", 
       icon: "auto_stories",
-      description: "Personal reflections and daily entries",
       color: "primary"
     },
     { 
       id: "rituals", 
       title: "Rituals", 
       icon: "repeat",
-      description: "Daily and weekly practices to maintain balance",
       color: "secondary"
     },
     { 
       id: "knowledge", 
       title: "Knowledge Base", 
       icon: "school",
-      description: "Notes and learnings from books and courses",
       color: "accent"
     },
     { 
       id: "goals", 
       title: "Goals & Vision", 
       icon: "track_changes",
-      description: "Long-term objectives and aspirations",
       color: "emerald-400"
     }
   ]);
