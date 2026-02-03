@@ -24,14 +24,16 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <Sidebar currentPage={currentPage} username={username} />
         
         {/* Main content */}
-        <div className="flex-grow overflow-y-auto p-4 lg:p-6">
-          {/* Mobile header (visible on mobile only) */}
-          <div className="flex items-center justify-center mb-6 lg:hidden">
+        <div className="flex-grow overflow-y-auto">
+          {/* Mobile header (visible on mobile only) - sticky */}
+          <div className="sticky top-0 z-40 flex items-center justify-center py-4 lg:hidden bg-background/95 backdrop-blur-sm border-b border-primary/20">
             <span className="text-2xl text-primary font-orbitron font-bold">LYFE<span className="text-white">OS</span></span>
           </div>
           
           {/* Page content */}
-          {children}
+          <div className="p-4 lg:p-6">
+            {children}
+          </div>
         </div>
         
         {/* AI Companion panel (desktop only) */}
