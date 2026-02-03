@@ -28,7 +28,6 @@ interface MissionFormData {
   startTime: string;
   endDate: string;
   endTime: string;
-  dueDate: string;
   notificationEnabled: boolean;
   notificationTime: string;
 }
@@ -42,7 +41,6 @@ const defaultFormData: MissionFormData = {
   startTime: "",
   endDate: "",
   endTime: "",
-  dueDate: "",
   notificationEnabled: false,
   notificationTime: "15",
 };
@@ -96,7 +94,6 @@ export default function QuestsPage() {
       startTime: quest.startTime || "",
       endDate: quest.endDate || "",
       endTime: quest.endTime || "",
-      dueDate: quest.dueDate || "",
       notificationEnabled: quest.notificationEnabled || false,
       notificationTime: quest.notificationTime || "15",
     });
@@ -117,7 +114,7 @@ export default function QuestsPage() {
         startTime: createFormData.startTime || null,
         endDate: createFormData.endDate || null,
         endTime: createFormData.endTime || null,
-        dueDate: createFormData.dueDate || null,
+        dueDate: null,
         notificationEnabled: createFormData.notificationEnabled,
         notificationTime: createFormData.notificationEnabled ? createFormData.notificationTime : null,
       });
@@ -145,7 +142,7 @@ export default function QuestsPage() {
         startTime: editFormData.startTime || null,
         endDate: editFormData.endDate || null,
         endTime: editFormData.endTime || null,
-        dueDate: editFormData.dueDate || null,
+        dueDate: null,
         notificationEnabled: editFormData.notificationEnabled,
         notificationTime: editFormData.notificationEnabled ? editFormData.notificationTime : null,
       });
@@ -246,15 +243,6 @@ export default function QuestsPage() {
                 </div>
               </div>
               
-              <div className="space-y-2">
-                <Label className="text-orange-400">Due Date (Deadline)</Label>
-                <DatePicker
-                  value={createFormData.dueDate}
-                  onChange={(date) => setCreateFormData(prev => ({ ...prev, dueDate: date }))}
-                  placeholder="Select deadline"
-                />
-              </div>
-              
               <div className="glassmorphic rounded-lg p-4 border border-primary/20">
                 <div className="flex items-center justify-between mb-3">
                   <Label htmlFor="create-notification" className="flex items-center gap-2 cursor-pointer">
@@ -269,23 +257,33 @@ export default function QuestsPage() {
                 </div>
                 
                 {createFormData.notificationEnabled && (
-                  <div className="space-y-2">
-                    <Label htmlFor="create-notificationTime" className="text-sm text-muted-foreground">
+                  <div className="space-y-3">
+                    <Label className="text-sm text-muted-foreground">
                       Remind me before start
                     </Label>
-                    <select
-                      id="create-notificationTime"
-                      value={createFormData.notificationTime}
-                      onChange={(e) => setCreateFormData(prev => ({ ...prev, notificationTime: e.target.value }))}
-                      className="w-full bg-background/50 border border-primary/30 rounded-md px-3 py-2 text-sm"
-                    >
-                      <option value="5">5 minutes before</option>
-                      <option value="10">10 minutes before</option>
-                      <option value="15">15 minutes before</option>
-                      <option value="30">30 minutes before</option>
-                      <option value="60">1 hour before</option>
-                      <option value="1440">1 day before</option>
-                    </select>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { value: "5", label: "5 min" },
+                        { value: "10", label: "10 min" },
+                        { value: "15", label: "15 min" },
+                        { value: "30", label: "30 min" },
+                        { value: "60", label: "1 hour" },
+                        { value: "1440", label: "1 day" },
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setCreateFormData(prev => ({ ...prev, notificationTime: option.value }))}
+                          className={`py-2 px-3 rounded-lg text-sm transition-all ${
+                            createFormData.notificationTime === option.value
+                              ? "bg-primary/20 text-primary border border-primary/50"
+                              : "bg-background/30 text-muted-foreground border border-primary/20 hover:bg-primary/10"
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -415,15 +413,6 @@ export default function QuestsPage() {
               </div>
             </div>
             
-            <div className="space-y-2">
-              <Label className="text-orange-400">Due Date (Deadline)</Label>
-              <DatePicker
-                value={editFormData.dueDate}
-                onChange={(date) => setEditFormData(prev => ({ ...prev, dueDate: date }))}
-                placeholder="Select deadline"
-              />
-            </div>
-            
             <div className="glassmorphic rounded-lg p-4 border border-primary/20">
               <div className="flex items-center justify-between mb-3">
                 <Label htmlFor="edit-notification" className="flex items-center gap-2 cursor-pointer">
@@ -438,23 +427,33 @@ export default function QuestsPage() {
               </div>
               
               {editFormData.notificationEnabled && (
-                <div className="space-y-2">
-                  <Label htmlFor="edit-notificationTime" className="text-sm text-muted-foreground">
+                <div className="space-y-3">
+                  <Label className="text-sm text-muted-foreground">
                     Remind me before start
                   </Label>
-                  <select
-                    id="edit-notificationTime"
-                    value={editFormData.notificationTime}
-                    onChange={(e) => setEditFormData(prev => ({ ...prev, notificationTime: e.target.value }))}
-                    className="w-full bg-background/50 border border-primary/30 rounded-md px-3 py-2 text-sm"
-                  >
-                    <option value="5">5 minutes before</option>
-                    <option value="10">10 minutes before</option>
-                    <option value="15">15 minutes before</option>
-                    <option value="30">30 minutes before</option>
-                    <option value="60">1 hour before</option>
-                    <option value="1440">1 day before</option>
-                  </select>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { value: "5", label: "5 min" },
+                      { value: "10", label: "10 min" },
+                      { value: "15", label: "15 min" },
+                      { value: "30", label: "30 min" },
+                      { value: "60", label: "1 hour" },
+                      { value: "1440", label: "1 day" },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setEditFormData(prev => ({ ...prev, notificationTime: option.value }))}
+                        className={`py-2 px-3 rounded-lg text-sm transition-all ${
+                          editFormData.notificationTime === option.value
+                            ? "bg-primary/20 text-primary border border-primary/50"
+                            : "bg-background/30 text-muted-foreground border border-primary/20 hover:bg-primary/10"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

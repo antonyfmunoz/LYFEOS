@@ -648,13 +648,13 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             };
           });
           
-          // Show quest completed toast
+          // Show mission completed toast
           toast({
-            title: "Quest Completed",
+            title: "Mission Completed",
             description: `${quest.title} — +${quest.experienceReward} XP`,
             variant: "default",
             className: "bg-background/80 border border-primary text-foreground",
-            duration: 3000,
+            duration: 1500,
           });
         } else {
           // Restore energy and remove XP if uncompleting
