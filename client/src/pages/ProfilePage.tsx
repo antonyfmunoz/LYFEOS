@@ -44,7 +44,12 @@ import {
   Wallet,
   Zap,
   Palette as PaletteIcon,
-  Loader2
+  Loader2,
+  Mail,
+  Phone,
+  Lock,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -116,6 +121,127 @@ export default function ProfilePage() {
   
   // State for affirmation regeneration
   const [isGeneratingAffirmation, setIsGeneratingAffirmation] = useState(false);
+  
+  // Account settings state
+  const [accountEmail, setAccountEmail] = useState("");
+  const [accountPhone, setAccountPhone] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [isEditingAccount, setIsEditingAccount] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  
+  // Fetch account data
+  const { data: accountData, isLoading: isAccountLoading } = useQuery<{ email?: string; phoneNumber?: string; authProvider?: string }>({
+    queryKey: ["/api/account"],
+    enabled: !!user?.id,
+  });
+  
+  // Update account when data loads
+  useEffect(() => {
+    if (accountData) {
+      setAccountEmail(accountData.email || "");
+      setAccountPhone(accountData.phoneNumber || "");
+    }
+  }, [accountData]);
+  
+  // Update account mutation
+  const updateAccountMutation = useMutation({
+    mutationFn: async (data: { email?: string; phoneNumber?: string }) => {
+      const response = await fetch("/api/account", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to update account");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/account"] });
+      setIsEditingAccount(false);
+      toast({
+        title: "Account Updated",
+        description: "Your account information has been saved.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update account. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Change password mutation
+  const changePasswordMutation = useMutation({
+    mutationFn: async (data: { currentPassword: string; newPassword: string }) => {
+      const response = await fetch("/api/account/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to change password");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      setIsChangingPassword(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      toast({
+        title: "Password Changed",
+        description: "Your password has been updated successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to change password. Please check your current password.",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  const handleSaveAccount = () => {
+    updateAccountMutation.mutate({
+      email: accountEmail,
+      phoneNumber: accountPhone,
+    });
+  };
+  
+  const handleChangePassword = () => {
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "New passwords do not match.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+    changePasswordMutation.mutate({
+      currentPassword,
+      newPassword,
+    });
+  };
 
   // Update profile mutation
   const updateProfileMutation = useMutation({
@@ -1002,6 +1128,226 @@ export default function ProfilePage() {
                 )}
               </>
             )}
+            
+            {/* Account Settings Section */}
+            <div className="mt-6 pt-6 border-t border-primary/20">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-md font-orbitron text-foreground flex items-center gap-2">
+                  <Settings className="h-4 w-4 text-primary" />
+                  Account Settings
+                </h3>
+                {!isEditingAccount && !isChangingPassword && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setIsEditingAccount(true)}
+                    className="hover:bg-primary hover:text-background"
+                  >
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit
+                  </Button>
+                )}
+              </div>
+              
+              {isEditingAccount ? (
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="email" className="flex items-center gap-2 mb-2">
+                      <Mail className="h-4 w-4 text-primary" />
+                      Email Address
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={accountEmail}
+                      onChange={(e) => setAccountEmail(e.target.value)}
+                      placeholder="your@email.com"
+                      className="bg-background/50 border-primary/30 focus:border-primary/50"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="phone" className="flex items-center gap-2 mb-2">
+                      <Phone className="h-4 w-4 text-primary" />
+                      Phone Number
+                    </Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={accountPhone}
+                      onChange={(e) => setAccountPhone(e.target.value)}
+                      placeholder="+1 (555) 123-4567"
+                      className="bg-background/50 border-primary/30 focus:border-primary/50"
+                    />
+                  </div>
+                  
+                  <div className="flex gap-2 pt-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setIsEditingAccount(false);
+                        setAccountEmail(accountData?.email || "");
+                        setAccountPhone(accountData?.phoneNumber || "");
+                      }}
+                      className="hover:bg-primary hover:text-background"
+                    >
+                      <X className="mr-2 h-4 w-4" />
+                      Cancel
+                    </Button>
+                    <Button 
+                      variant="default" 
+                      size="sm"
+                      onClick={handleSaveAccount}
+                      disabled={updateAccountMutation.isPending}
+                      className="hover:bg-primary hover:text-background"
+                    >
+                      {updateAccountMutation.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="mr-2 h-4 w-4" />
+                      )}
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              ) : isChangingPassword ? (
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="currentPassword" className="flex items-center gap-2 mb-2">
+                      <Lock className="h-4 w-4 text-primary" />
+                      Current Password
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="currentPassword"
+                        type={showCurrentPassword ? "text" : "password"}
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        placeholder="Enter current password"
+                        className="bg-background/50 border-primary/30 focus:border-primary/50 pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      >
+                        {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="newPassword" className="flex items-center gap-2 mb-2">
+                      <Lock className="h-4 w-4 text-primary" />
+                      New Password
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="newPassword"
+                        type={showNewPassword ? "text" : "password"}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Enter new password (min 6 characters)"
+                        className="bg-background/50 border-primary/30 focus:border-primary/50 pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                      >
+                        {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="confirmPassword" className="flex items-center gap-2 mb-2">
+                      <Lock className="h-4 w-4 text-primary" />
+                      Confirm New Password
+                    </Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                      className="bg-background/50 border-primary/30 focus:border-primary/50"
+                    />
+                  </div>
+                  
+                  <div className="flex gap-2 pt-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setIsChangingPassword(false);
+                        setCurrentPassword("");
+                        setNewPassword("");
+                        setConfirmPassword("");
+                      }}
+                      className="hover:bg-primary hover:text-background"
+                    >
+                      <X className="mr-2 h-4 w-4" />
+                      Cancel
+                    </Button>
+                    <Button 
+                      variant="default" 
+                      size="sm"
+                      onClick={handleChangePassword}
+                      disabled={changePasswordMutation.isPending}
+                      className="hover:bg-primary hover:text-background"
+                    >
+                      {changePasswordMutation.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="mr-2 h-4 w-4" />
+                      )}
+                      Change Password
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-3 bg-background/30 border border-primary/10 rounded-md">
+                    <Mail className="h-4 w-4 text-primary" />
+                    <div>
+                      <div className="text-xs text-muted-foreground">Email</div>
+                      <div className="text-sm">{accountData?.email || "Not set"}</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-3 bg-background/30 border border-primary/10 rounded-md">
+                    <Phone className="h-4 w-4 text-primary" />
+                    <div>
+                      <div className="text-xs text-muted-foreground">Phone</div>
+                      <div className="text-sm">{accountData?.phoneNumber || "Not set"}</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-3 bg-background/30 border border-primary/10 rounded-md">
+                    <Lock className="h-4 w-4 text-primary" />
+                    <div className="flex-1">
+                      <div className="text-xs text-muted-foreground">Password</div>
+                      <div className="text-sm">••••••••</div>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setIsChangingPassword(true)}
+                      className="hover:bg-primary/10 hover:text-primary"
+                    >
+                      Change
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+            
             </div>
           </div>
 

@@ -757,11 +757,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Validation schemas for account updates
+  const updateAccountSchema = z.object({
+    email: z.string().email("Invalid email format").optional().nullable().or(z.literal("")),
+    phoneNumber: z.string().max(20, "Phone number too long").optional().nullable().or(z.literal("")),
+  });
+  
+  const changePasswordSchema = z.object({
+    currentPassword: z.string().min(1, "Current password is required"),
+    newPassword: z.string().min(6, "Password must be at least 6 characters"),
+  });
+  
   // Update account settings (email, phone)
   app.patch("/api/account", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
-      const { email, phoneNumber } = req.body;
+      
+      // Validate input
+      const parseResult = updateAccountSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          error: parseResult.error.errors[0]?.message || "Invalid input" 
+        });
+      }
+      
+      const { email, phoneNumber } = parseResult.data;
       
       const updateData: Record<string, any> = {};
       if (email !== undefined) updateData.email = email;
@@ -782,15 +802,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/account/change-password", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
-      const { currentPassword, newPassword } = req.body;
       
-      if (!currentPassword || !newPassword) {
-        return res.status(400).json({ error: "Current password and new password are required" });
+      // Validate input
+      const parseResult = changePasswordSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          error: parseResult.error.errors[0]?.message || "Invalid input" 
+        });
       }
       
-      if (newPassword.length < 6) {
-        return res.status(400).json({ error: "New password must be at least 6 characters" });
-      }
+      const { currentPassword, newPassword } = parseResult.data;
       
       // Get current user
       const user = await storage.getUser(userId);
