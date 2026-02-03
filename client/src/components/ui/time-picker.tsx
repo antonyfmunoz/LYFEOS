@@ -117,7 +117,8 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
           <div className="flex gap-2 h-48">
             <div 
               ref={hourRef}
-              className="flex flex-col overflow-y-auto scrollbar-thin scrollbar-thumb-primary/30 w-14 snap-y"
+              className="flex flex-col overflow-y-scroll scrollbar-thin scrollbar-thumb-primary/30 w-14 touch-pan-y"
+              style={{ WebkitOverflowScrolling: 'touch' }}
             >
               {hours.map((hour) => (
                 <button
@@ -130,7 +131,7 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
                     setSelectedHour(hour);
                   }}
                   className={cn(
-                    "py-2 px-3 text-center rounded-lg transition-all snap-center",
+                    "py-2 px-3 text-center rounded-lg transition-all flex-shrink-0",
                     selectedHour === hour
                       ? "bg-primary/20 text-primary font-medium"
                       : "text-muted-foreground hover:bg-primary/10"
@@ -145,7 +146,8 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
 
             <div 
               ref={minuteRef}
-              className="flex flex-col overflow-y-auto scrollbar-thin scrollbar-thumb-primary/30 w-14 snap-y"
+              className="flex flex-col overflow-y-scroll scrollbar-thin scrollbar-thumb-primary/30 w-14 touch-pan-y"
+              style={{ WebkitOverflowScrolling: 'touch' }}
             >
               {minutes.map((minute) => (
                 <button
@@ -158,7 +160,7 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
                     setSelectedMinute(minute);
                   }}
                   className={cn(
-                    "py-2 px-3 text-center rounded-lg transition-all snap-center",
+                    "py-2 px-3 text-center rounded-lg transition-all flex-shrink-0",
                     selectedMinute === minute
                       ? "bg-primary/20 text-primary font-medium"
                       : "text-muted-foreground hover:bg-primary/10"
@@ -169,7 +171,10 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
               ))}
             </div>
 
-            <div className="flex flex-col overflow-y-auto scrollbar-thin scrollbar-thumb-primary/30 w-14 snap-y ml-2">
+            <div 
+              className="flex flex-col overflow-y-scroll scrollbar-thin scrollbar-thumb-primary/30 w-14 touch-pan-y ml-2"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
               {(["AM", "PM"] as const).map((period) => (
                 <button
                   key={period}
@@ -180,7 +185,7 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
                     setSelectedPeriod(period);
                   }}
                   className={cn(
-                    "py-2 px-3 text-center rounded-lg transition-all snap-center font-medium",
+                    "py-2 px-3 text-center rounded-lg transition-all flex-shrink-0 font-medium",
                     selectedPeriod === period
                       ? "bg-primary/20 text-primary"
                       : "text-muted-foreground hover:bg-primary/10"
