@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChevronLeft, ChevronRight, Check, Loader2, Zap } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const MISSIONS = [
   { id: 0, title: "Access & Quickstart", questions: 7, xp: 100 },
@@ -586,6 +586,8 @@ export default function OnboardingPage() {
       
       if (profileResponse.ok) {
         setCompletedOnboardingMissions(prev => [...(prev || []), missionId].filter((v, i, a) => a.indexOf(v) === i));
+        // Invalidate profile cache so QuestsPage gets updated completedOnboardingMissions
+        queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       }
     } catch (error: any) {
       console.error("Failed to save completed mission:", error?.message || error);
