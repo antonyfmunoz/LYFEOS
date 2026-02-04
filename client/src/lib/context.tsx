@@ -96,12 +96,62 @@ export interface EnergyLogData {
   lastPopulatedFingerprint: string | null; // Tracks which data version we've populated
 }
 
+export interface IntentionLogData {
+  gratitude: string;
+  tomorrowGoals: string;
+  annualGoals: string;
+  thoughts: string;
+  isLoaded: boolean;
+  lastPopulatedFingerprint: string | null;
+}
+
+export interface DataLogData {
+  contentConsumed: string;
+  research: string;
+  todoIdeas: string;
+  isLoaded: boolean;
+  lastPopulatedFingerprint: string | null;
+}
+
+export interface ReflectionLogData {
+  wentWell: string;
+  couldBeBetter: string;
+  learned: string;
+  isLoaded: boolean;
+  lastPopulatedFingerprint: string | null;
+}
+
 const initialEnergyLog: EnergyLogData = {
   mentalState: 5,
   physicalState: 5,
   emotionalState: 5,
   wakeTime: "06:00",
   sleepTime: "22:00",
+  isLoaded: false,
+  lastPopulatedFingerprint: null,
+};
+
+const initialIntentionLog: IntentionLogData = {
+  gratitude: "",
+  tomorrowGoals: "",
+  annualGoals: "",
+  thoughts: "",
+  isLoaded: false,
+  lastPopulatedFingerprint: null,
+};
+
+const initialDataLog: DataLogData = {
+  contentConsumed: "",
+  research: "",
+  todoIdeas: "",
+  isLoaded: false,
+  lastPopulatedFingerprint: null,
+};
+
+const initialReflectionLog: ReflectionLogData = {
+  wentWell: "",
+  couldBeBetter: "",
+  learned: "",
   isLoaded: false,
   lastPopulatedFingerprint: null,
 };
@@ -176,6 +226,18 @@ interface LYFEOSContextType {
   energyLog: EnergyLogData;
   updateEnergyLog: (data: Partial<EnergyLogData>) => void;
   resetEnergyLog: () => void;
+  // Intention log state (persists across page navigations)
+  intentionLog: IntentionLogData;
+  updateIntentionLog: (data: Partial<IntentionLogData>) => void;
+  resetIntentionLog: () => void;
+  // Data log state (persists across page navigations)
+  dataLog: DataLogData;
+  updateDataLog: (data: Partial<DataLogData>) => void;
+  resetDataLog: () => void;
+  // Reflection log state (persists across page navigations)
+  reflectionLog: ReflectionLogData;
+  updateReflectionLog: (data: Partial<ReflectionLogData>) => void;
+  resetReflectionLog: () => void;
   toggleQuestCompletion: (id: string) => Promise<void> | void;
   createQuest: (quest: Omit<Quest, "id" | "completed">) => Promise<Quest>;
   updateQuest: (id: string, quest: Partial<Quest>) => Promise<Quest>;
@@ -241,6 +303,9 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const [kanbanTasks, setKanbanTasks] = useState<KanbanTask[]>(initialKanbanTasks);
   const [kanbanBoards, setKanbanBoards] = useState<KanbanBoard[]>(initialKanbanBoards);
   const [energyLog, setEnergyLog] = useState<EnergyLogData>(initialEnergyLog);
+  const [intentionLog, setIntentionLog] = useState<IntentionLogData>(initialIntentionLog);
+  const [dataLog, setDataLog] = useState<DataLogData>(initialDataLog);
+  const [reflectionLog, setReflectionLog] = useState<ReflectionLogData>(initialReflectionLog);
   const [username, setUsername] = useState<string>("Alex Chen");
   const [aiCompanionName, setAICompanionNameState] = useState<string>("Lyfe");
   const [chatSessions, setChatSessions] = useState<ChatSession[]>(initialChatSessions);
@@ -265,6 +330,45 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   // Function to reset energy log (on logout or new day)
   const resetEnergyLog = () => {
     setEnergyLog(initialEnergyLog);
+  };
+  
+  // Function to update intention log (persists across page navigations)
+  const updateIntentionLog = (data: Partial<IntentionLogData>) => {
+    setIntentionLog(prev => ({
+      ...prev,
+      ...data
+    }));
+  };
+  
+  // Function to reset intention log (on logout or new day)
+  const resetIntentionLog = () => {
+    setIntentionLog(initialIntentionLog);
+  };
+  
+  // Function to update data log (persists across page navigations)
+  const updateDataLog = (data: Partial<DataLogData>) => {
+    setDataLog(prev => ({
+      ...prev,
+      ...data
+    }));
+  };
+  
+  // Function to reset data log (on logout or new day)
+  const resetDataLog = () => {
+    setDataLog(initialDataLog);
+  };
+  
+  // Function to update reflection log (persists across page navigations)
+  const updateReflectionLog = (data: Partial<ReflectionLogData>) => {
+    setReflectionLog(prev => ({
+      ...prev,
+      ...data
+    }));
+  };
+  
+  // Function to reset reflection log (on logout or new day)
+  const resetReflectionLog = () => {
+    setReflectionLog(initialReflectionLog);
   };
   
   // Function to set primary color
@@ -1913,6 +2017,15 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         energyLog,
         updateEnergyLog,
         resetEnergyLog,
+        intentionLog,
+        updateIntentionLog,
+        resetIntentionLog,
+        dataLog,
+        updateDataLog,
+        resetDataLog,
+        reflectionLog,
+        updateReflectionLog,
+        resetReflectionLog,
         // Kanban board functions
         createKanbanBoard,
         updateKanbanBoard,
