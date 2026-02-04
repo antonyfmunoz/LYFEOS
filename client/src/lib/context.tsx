@@ -85,6 +85,27 @@ const initialEvents: CalendarEvent[] = [];
 // Initial mission pages
 const initialMissionPages: MissionPage[] = [];
 
+// Energy log data for dashboard persistence across page navigations
+export interface EnergyLogData {
+  mentalState: number;
+  physicalState: number;
+  emotionalState: number;
+  wakeTime: string;
+  sleepTime: string;
+  isLoaded: boolean; // Tracks if data was loaded from server
+  lastPopulatedFingerprint: string | null; // Tracks which data version we've populated
+}
+
+const initialEnergyLog: EnergyLogData = {
+  mentalState: 5,
+  physicalState: 5,
+  emotionalState: 5,
+  wakeTime: "06:00",
+  sleepTime: "22:00",
+  isLoaded: false,
+  lastPopulatedFingerprint: null,
+};
+
 // Initial kanban boards
 const initialKanbanBoards: KanbanBoard[] = [
   {
@@ -151,6 +172,10 @@ interface LYFEOSContextType {
   kanbanTasks: KanbanTask[];
   kanbanBoards: KanbanBoard[];
   activeChatSessionId: string;
+  // Energy log state (persists across page navigations)
+  energyLog: EnergyLogData;
+  updateEnergyLog: (data: Partial<EnergyLogData>) => void;
+  resetEnergyLog: () => void;
   toggleQuestCompletion: (id: string) => Promise<void> | void;
   createQuest: (quest: Omit<Quest, "id" | "completed">) => Promise<Quest>;
   updateQuest: (id: string, quest: Partial<Quest>) => Promise<Quest>;
@@ -215,6 +240,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const [missionPages, setMissionPages] = useState<MissionPage[]>(initialMissionPages);
   const [kanbanTasks, setKanbanTasks] = useState<KanbanTask[]>(initialKanbanTasks);
   const [kanbanBoards, setKanbanBoards] = useState<KanbanBoard[]>(initialKanbanBoards);
+  const [energyLog, setEnergyLog] = useState<EnergyLogData>(initialEnergyLog);
   const [username, setUsername] = useState<string>("Alex Chen");
   const [aiCompanionName, setAICompanionNameState] = useState<string>("Lyfe");
   const [chatSessions, setChatSessions] = useState<ChatSession[]>(initialChatSessions);
@@ -226,6 +252,19 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const updateUserStats = (newStats: UserStats) => {
     setStats(newStats);
     console.log("User stats updated:", newStats);
+  };
+  
+  // Function to update energy log (persists across page navigations)
+  const updateEnergyLog = (data: Partial<EnergyLogData>) => {
+    setEnergyLog(prev => ({
+      ...prev,
+      ...data
+    }));
+  };
+  
+  // Function to reset energy log (on logout or new day)
+  const resetEnergyLog = () => {
+    setEnergyLog(initialEnergyLog);
   };
   
   // Function to set primary color
@@ -1870,6 +1909,10 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         updateChatSessionTitle,
         updateUserStats,
         setPrimaryColor,
+        // Energy log state and functions
+        energyLog,
+        updateEnergyLog,
+        resetEnergyLog,
         // Kanban board functions
         createKanbanBoard,
         updateKanbanBoard,
