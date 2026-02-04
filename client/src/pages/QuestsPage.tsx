@@ -103,32 +103,34 @@ export default function QuestsPage() {
       return;
     }
     
+    // Check if all expected onboarding quests exist
+    const existingOnboardingQuests = quests.filter(q => q.category === "onboarding");
+    const allQuestsExist = completedIds.every((missionId: number) => {
+      const mission = ONBOARDING_MISSIONS.find(m => m.id === missionId);
+      if (!mission) return true;
+      return existingOnboardingQuests.some(q => q.title === `Onboarding: ${mission.title}`);
+    });
+    
+    if (allQuestsExist) {
+      console.log("All onboarding quests already exist, no sync needed");
+      syncedRef.current = true;
+      return;
+    }
+    
+    // Mark as syncing immediately to prevent duplicate runs
+    syncedRef.current = true;
+    
     const syncCompletedOnboardingQuests = async () => {
-      console.log("Checking onboarding sync - completedIds:", completedIds, "existing quests:", quests.length);
-      
-      // Check if all expected onboarding quests exist
-      const existingOnboardingQuests = quests.filter(q => q.category === "onboarding");
-      const allQuestsExist = completedIds.every((missionId: number) => {
-        const mission = ONBOARDING_MISSIONS.find(m => m.id === missionId);
-        if (!mission) return true;
-        return existingOnboardingQuests.some(q => q.title === `Onboarding: ${mission.title}`);
-      });
-      
-      if (allQuestsExist) {
-        console.log("All onboarding quests already exist, no sync needed");
-        syncedRef.current = true;
-        return;
-      }
+      console.log("Starting onboarding sync - completedIds:", completedIds, "existing quests:", quests.length);
       
       let createdAny = false;
-      let allSucceeded = true;
       
       for (const missionId of completedIds) {
         const mission = ONBOARDING_MISSIONS.find(m => m.id === missionId);
         if (!mission) continue;
         
-        const existingQuest = quests.find(q => 
-          q.title === `Onboarding: ${mission.title}` && q.category === "onboarding"
+        const existingQuest = existingOnboardingQuests.find(q => 
+          q.title === `Onboarding: ${mission.title}`
         );
         
         if (!existingQuest) {
@@ -157,13 +159,8 @@ export default function QuestsPage() {
             console.log("Successfully created onboarding quest for mission:", mission.title);
           } catch (error: any) {
             console.error("Failed to sync onboarding quest:", error?.message || error);
-            allSucceeded = false;
           }
         }
-      }
-      
-      if (allSucceeded) {
-        syncedRef.current = true;
       }
       
       if (createdAny) {
