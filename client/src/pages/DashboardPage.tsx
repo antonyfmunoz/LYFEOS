@@ -107,6 +107,9 @@ export default function DashboardPage() {
   // Track if energy log data has been loaded from server
   const [isEnergyLogLoaded, setIsEnergyLogLoaded] = useState(false);
   
+  // Track which data version we've already populated to prevent re-population from stale cache
+  const lastPopulatedDataRef = useRef<string | null>(null);
+  
   // Load today's energy log from the database
   const { data: dailyLogData, isLoading: isLoadingDailyLog, isSuccess: isDailyLogSuccess, refetch: refetchDailyLog } = useQuery({
     queryKey: ['/api/users', user?.id, 'daily-logs', todayDateStr],
@@ -133,6 +136,9 @@ export default function DashboardPage() {
   });
   
   // Save energy log mutation
+  // NOTE: We intentionally do NOT invalidate the query cache on success.
+  // The form state is the source of truth after initial load. Invalidating would
+  // cause a refetch that triggers a race condition, resetting values.
   const saveEnergyLogMutation = useMutation({
     mutationFn: async (energyData: { wakeTime: string; sleepTime: string; mentalState: number; physicalState: number; emotionalState: number }) => {
       if (!user?.id) throw new Error("User not authenticated");
@@ -143,9 +149,6 @@ export default function DashboardPage() {
           ...energyData
         })
       });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'daily-logs'] });
     }
   });
   
@@ -153,6 +156,16 @@ export default function DashboardPage() {
   useEffect(() => {
     // Only run when query has successfully completed (not loading)
     if (isDailyLogSuccess && !isLoadingDailyLog && dailyLogData) {
+      // Create a fingerprint of the data to detect if this is new data vs cached
+      const dataFingerprint = dailyLogData._noData 
+        ? `nodata-${todayDateStr}` 
+        : `${dailyLogData.id}-${dailyLogData.wakeTime}-${dailyLogData.sleepTime}-${dailyLogData.mentalState}-${dailyLogData.physicalState}-${dailyLogData.emotionalState}`;
+      
+      // Skip if we've already populated from this exact data (prevents re-triggering from stale cache)
+      if (lastPopulatedDataRef.current === dataFingerprint) {
+        return;
+      }
+      
       console.log("Daily log data loaded:", dailyLogData);
       // Check if this is actual data or the "no data" marker
       if (!dailyLogData._noData) {
@@ -173,6 +186,7 @@ export default function DashboardPage() {
         }));
       }
       // Mark as loaded so auto-save can start working (whether data existed or not)
+      lastPopulatedDataRef.current = dataFingerprint;
       setIsEnergyLogLoaded(true);
       lastLoadedDateRef.current = todayDateStr;
     }
@@ -194,12 +208,14 @@ export default function DashboardPage() {
     // Detect transition from not authenticated to authenticated (login)
     if (isAuthenticated && !wasAuthenticatedRef.current && user?.id) {
       setIsEnergyLogLoaded(false);
+      lastPopulatedDataRef.current = null; // Reset so new data will populate
       // Direct refetch when user becomes authenticated (more reliable than invalidate)
       refetchDailyLog();
     }
     // Also reset when user logs out
     if (!isAuthenticated && wasAuthenticatedRef.current) {
       setIsEnergyLogLoaded(false);
+      lastPopulatedDataRef.current = null; // Reset for next login
     }
     wasAuthenticatedRef.current = isAuthenticated;
   }, [isAuthenticated, user?.id, refetchDailyLog]);
@@ -208,6 +224,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (lastLoadedDateRef.current !== todayDateStr) {
       setIsEnergyLogLoaded(false);
+      lastPopulatedDataRef.current = null; // Reset so new day's data will populate
       // New day detected - reset energy log values to defaults
       setReflection(prev => ({
         ...prev,
