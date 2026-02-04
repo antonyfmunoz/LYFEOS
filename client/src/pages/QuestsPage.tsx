@@ -83,7 +83,8 @@ export default function QuestsPage() {
   const [upcomingExpanded, setUpcomingExpanded] = useState(true);
   const [completedExpanded, setCompletedExpanded] = useState(true);
 
-  const today = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   
   const completedOnboardingMissions = (userProfile as any)?.completedOnboardingMissions || [];
   const incompleteOnboardingMissions = ONBOARDING_MISSIONS.filter(
@@ -93,14 +94,11 @@ export default function QuestsPage() {
   const { todayMissions, upcomingMissions, completedMissions } = useMemo(() => {
     const active = quests.filter(q => !q.completed);
     
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    
     const completed = quests.filter(q => {
       if (!q.completed || !q.completedAt) return false;
       const completedDate = new Date(q.completedAt);
-      completedDate.setHours(0, 0, 0, 0);
-      return completedDate.getTime() === todayStart.getTime();
+      const completedLocalDate = `${completedDate.getFullYear()}-${String(completedDate.getMonth() + 1).padStart(2, '0')}-${String(completedDate.getDate()).padStart(2, '0')}`;
+      return completedLocalDate === today;
     });
     
     const todayItems = active.filter(q => {

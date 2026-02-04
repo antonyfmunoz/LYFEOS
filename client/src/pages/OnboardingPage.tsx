@@ -540,7 +540,8 @@ export default function OnboardingPage() {
       const mission = MISSIONS.find(m => m.id === missionId);
       if (!mission) return;
       
-      const today = new Date().toISOString().split('T')[0];
+      const now = new Date();
+      const localDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       
       const profileResponse = await fetch("/api/profile", {
         method: "PATCH",
@@ -553,7 +554,6 @@ export default function OnboardingPage() {
       
       if (user?.id) {
         try {
-          const now = new Date();
           const timeStr = now.toTimeString().slice(0, 5); // HH:MM format
           const questData = {
             userId: user.id,
@@ -563,10 +563,10 @@ export default function OnboardingPage() {
             completed: true,
             completedAt: now.toISOString(),
             experienceReward: mission.xp,
-            startDate: today,
+            startDate: localDateStr,
             startTime: timeStr,
-            dueDate: today,
-            endDate: today,
+            dueDate: localDateStr,
+            endDate: localDateStr,
             endTime: timeStr,
           };
           console.log("Creating quest with data:", questData);
