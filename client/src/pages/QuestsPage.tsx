@@ -1,8 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useLYFEOS } from "../lib/context";
 import { useAuth } from "@/lib/authContext";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { apiRequest } from "@/lib/queryClient";
 import QuestItem from "../components/dashboard/QuestItem";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { Button } from "@/components/ui/button";
@@ -88,6 +89,52 @@ export default function QuestsPage() {
   const incompleteOnboardingMissions = ONBOARDING_MISSIONS.filter(
     m => !completedOnboardingMissions.includes(m.id)
   );
+  
+  const syncedRef = useRef(false);
+  
+  useEffect(() => {
+    if (!user?.id || !userProfile || syncedRef.current) return;
+    
+    const syncCompletedOnboardingQuests = async () => {
+      const completedIds = (userProfile as any)?.completedOnboardingMissions || [];
+      if (completedIds.length === 0) return;
+      
+      for (const missionId of completedIds) {
+        const mission = ONBOARDING_MISSIONS.find(m => m.id === missionId);
+        if (!mission) continue;
+        
+        const existingQuest = quests.find(q => 
+          q.title === `Onboarding: ${mission.title}` && q.category === "onboarding"
+        );
+        
+        if (!existingQuest) {
+          const today = new Date().toISOString().split('T')[0];
+          try {
+            await apiRequest("/api/quests", {
+              method: "POST",
+              body: JSON.stringify({
+                userId: user.id,
+                title: `Onboarding: ${mission.title}`,
+                description: `Completed onboarding mission "${mission.title}"`,
+                category: "onboarding",
+                completed: true,
+                completedAt: new Date().toISOString(),
+                experienceReward: mission.xp,
+                dueDate: today,
+                endDate: today,
+              }),
+            });
+          } catch (error) {
+            console.error("Failed to sync onboarding quest:", error);
+          }
+        }
+      }
+      syncedRef.current = true;
+      window.location.reload();
+    };
+    
+    syncCompletedOnboardingQuests();
+  }, [user?.id, userProfile, quests]);
 
   const { todayMissions, upcomingMissions, completedMissions } = useMemo(() => {
     const active = quests.filter(q => !q.completed);
