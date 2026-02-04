@@ -281,10 +281,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aiAssistantName: "NOVA"
       });
       
-      // Create user profile
+      // Create or update user profile (using upsert to handle race conditions)
       console.log("Creating user profile for new user:", user.id);
-      await storage.createUserProfile({
-        userId: user.id,
+      await storage.upsertUserProfile(user.id, {
         startStage: "beginner",
         targetArchetype: "architect",
         flowStyle: "hyperfocus",
@@ -430,10 +429,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           aiAssistantName: "NOVA"
         });
         
-        // Create user profile
+        // Create or update user profile (using upsert to handle race conditions)
         console.log("Creating user profile for new Firebase user:", user.id);
-        await storage.createUserProfile({
-          userId: user.id,
+        await storage.upsertUserProfile(user.id, {
           startStage: "Awakening",
           targetArchetype: "Creator",
           flowStyle: {
