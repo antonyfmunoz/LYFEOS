@@ -68,7 +68,7 @@ export default function DashboardPage() {
   usePageTitle('Dashboard');
   
   const { stats, username, events, updateUserStats } = useLYFEOS();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   
   // Level-up modal state
@@ -104,19 +104,32 @@ export default function DashboardPage() {
     date: todayDateStr
   });
   
+  // Track if energy log data has been loaded from server
+  const [isEnergyLogLoaded, setIsEnergyLogLoaded] = useState(false);
+  
   // Load today's energy log from the database
-  const { data: dailyLogData, isLoading: isLoadingDailyLog } = useQuery({
+  const { data: dailyLogData, isLoading: isLoadingDailyLog, isSuccess: isDailyLogSuccess, refetch: refetchDailyLog } = useQuery({
     queryKey: ['/api/users', user?.id, 'daily-logs', todayDateStr],
     queryFn: async () => {
-      if (!user?.id) return null;
+      if (!user?.id) return undefined;
       const response = await fetch(`/api/users/${user.id}/daily-logs?date=${todayDateStr}`, {
         credentials: 'include'
       });
-      if (!response.ok) return null;
+      // Throw on auth error to distinguish from "no data" state
+      if (response.status === 401) {
+        throw new Error('Authentication required');
+      }
+      if (!response.ok) {
+        throw new Error('Failed to fetch daily log');
+      }
       const data = await response.json();
-      return data.logs?.[0] || null;
+      // Return the log data or an explicit "no_data" marker (confirmed empty)
+      return data.logs?.[0] || { _noData: true, _confirmed: true };
     },
-    enabled: !!user?.id
+    enabled: !!user?.id && isAuthenticated,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    retry: false // Don't retry on auth errors
   });
   
   // Save energy log mutation
@@ -138,23 +151,49 @@ export default function DashboardPage() {
   
   // Populate reflection state when daily log data is loaded
   useEffect(() => {
-    if (dailyLogData) {
-      setReflection(prev => ({
-        ...prev,
-        mentalState: dailyLogData.mentalState ?? 5,
-        physicalState: dailyLogData.physicalState ?? 5,
-        emotionalState: dailyLogData.emotionalState ?? 5,
-        wakeTime: dailyLogData.wakeTime ?? "06:00",
-        sleepTime: dailyLogData.sleepTime ?? "22:00",
-        date: todayDateStr
-      }));
+    // Only run when query has successfully completed (not loading)
+    if (isDailyLogSuccess && !isLoadingDailyLog && dailyLogData) {
+      // Check if this is actual data or the "no data" marker
+      if (!dailyLogData._noData) {
+        // Data exists in database - populate from it
+        setReflection(prev => ({
+          ...prev,
+          mentalState: dailyLogData.mentalState ?? 5,
+          physicalState: dailyLogData.physicalState ?? 5,
+          emotionalState: dailyLogData.emotionalState ?? 5,
+          wakeTime: dailyLogData.wakeTime ?? "06:00",
+          sleepTime: dailyLogData.sleepTime ?? "22:00",
+          date: todayDateStr
+        }));
+      }
+      // Mark as loaded so auto-save can start working (whether data existed or not)
+      setIsEnergyLogLoaded(true);
       lastLoadedDateRef.current = todayDateStr;
     }
-  }, [dailyLogData, todayDateStr]);
+  }, [dailyLogData, todayDateStr, isDailyLogSuccess, isLoadingDailyLog]);
+  
+  // Track previous auth state to detect login events
+  const wasAuthenticatedRef = useRef(false);
+  
+  // Reset energy log loaded flag and refetch when authentication state changes
+  useEffect(() => {
+    // Detect transition from not authenticated to authenticated (login)
+    if (isAuthenticated && !wasAuthenticatedRef.current && user?.id) {
+      setIsEnergyLogLoaded(false);
+      // Direct refetch when user becomes authenticated (more reliable than invalidate)
+      refetchDailyLog();
+    }
+    // Also reset when user logs out
+    if (!isAuthenticated && wasAuthenticatedRef.current) {
+      setIsEnergyLogLoaded(false);
+    }
+    wasAuthenticatedRef.current = isAuthenticated;
+  }, [isAuthenticated, user?.id, refetchDailyLog]);
   
   // Reset energy log data when day changes
   useEffect(() => {
     if (lastLoadedDateRef.current !== todayDateStr) {
+      setIsEnergyLogLoaded(false);
       // New day detected - reset energy log values to defaults
       setReflection(prev => ({
         ...prev,
@@ -216,8 +255,9 @@ export default function DashboardPage() {
       };
       
       // If this is an energy log field, debounce-save to database
+      // Only save if we've successfully loaded from the server first
       const energyLogFields = ['mentalState', 'physicalState', 'emotionalState', 'wakeTime', 'sleepTime'];
-      if (energyLogFields.includes(field)) {
+      if (energyLogFields.includes(field) && isEnergyLogLoaded) {
         // Clear existing timeout
         if (saveTimeoutRef.current) {
           clearTimeout(saveTimeoutRef.current);
