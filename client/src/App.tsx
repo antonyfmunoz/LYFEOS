@@ -383,7 +383,7 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
-      <Route path="/knowledge-archive">
+      <Route path="/knowledge-vault">
         <ProtectedRoute>
           <RootLayout>
             <KnowledgeArchivePage />
