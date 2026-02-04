@@ -55,7 +55,7 @@ export const userStats = pgTable("user_stats", {
 // User Profile Table (All Onboarding Answers + Player Record)
 export const userProfile = pgTable("user_profile", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull().references(() => users.id).unique(),
   
   // === MISSION 0: ACCESS & QUICKSTART ===
   ageRange: text("age_range"), // ("18-24", "25-34", "35-44", "45-54", "55-64", "65+")

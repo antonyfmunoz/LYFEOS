@@ -369,12 +369,16 @@ export class DatabaseStorage implements IStorage {
   }
   
   async upsertUserProfile(userId: number, profileData: Partial<InsertUserProfile>): Promise<UserProfile> {
-    const existing = await this.getUserProfile(userId);
-    if (existing) {
-      return this.updateUserProfile(userId, profileData);
-    } else {
-      return this.createUserProfile({ ...profileData, userId } as InsertUserProfile);
-    }
+    // Use atomic upsert with ON CONFLICT to prevent race condition duplicates
+    const [upsertedProfile] = await db
+      .insert(userProfile)
+      .values({ ...profileData, userId } as InsertUserProfile)
+      .onConflictDoUpdate({
+        target: userProfile.userId,
+        set: { ...profileData, updatedAt: new Date() }
+      })
+      .returning();
+    return upsertedProfile;
   }
   
   // User Daily Logs methods

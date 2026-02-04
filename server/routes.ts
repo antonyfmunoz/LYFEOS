@@ -664,15 +664,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updateData = req.body;
       updateData.updatedAt = new Date();
       
-      const existingProfile = await storage.getUserProfile(userId);
-      
-      let updatedProfile;
-      if (existingProfile) {
-        updatedProfile = await storage.updateUserProfile(userId, updateData);
-      } else {
-        updateData.userId = userId;
-        updatedProfile = await storage.createUserProfile(updateData);
-      }
+      // Use upsert to prevent race condition duplicates
+      const updatedProfile = await storage.upsertUserProfile(userId, updateData);
       
       res.json(updatedProfile);
     } catch (error) {
