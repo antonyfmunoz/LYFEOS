@@ -104,7 +104,7 @@ function MissionCard({ mission }: { mission: Quest }) {
             </div>
           </div>
           <p className="text-muted-foreground text-sm opacity-50">
-            {mission.description}
+            {mission.description?.replace(/^Completed onboarding mission "(.+)"$/, 'Completed the "$1" mission') || mission.description}
           </p>
         </div>
       </div>
