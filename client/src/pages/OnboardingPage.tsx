@@ -430,6 +430,7 @@ export default function OnboardingPage() {
   const [showMissionComplete, setShowMissionComplete] = useState(false);
   const [showSetupChoice, setShowSetupChoice] = useState(false);
   const [selectedSetupMission, setSelectedSetupMission] = useState("");
+  const [completedOnboardingMissions, setCompletedOnboardingMissions] = useState<number[]>([]);
   
   const [ageRange, setAgeRange] = useState("");
   const [location, setLocation] = useState("");
@@ -521,6 +522,24 @@ export default function OnboardingPage() {
     };
   };
 
+  const saveCompletedMission = async (missionId: number) => {
+    try {
+      const response = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          completedOnboardingMissions: [...(completedOnboardingMissions || []), missionId].filter((v, i, a) => a.indexOf(v) === i)
+        })
+      });
+      if (response.ok) {
+        setCompletedOnboardingMissions(prev => [...(prev || []), missionId].filter((v, i, a) => a.indexOf(v) === i));
+      }
+    } catch (error) {
+      console.error("Failed to save completed mission:", error);
+    }
+  };
+
   const mission = MISSIONS[currentMission];
   const totalSteps = getMaxSteps(currentMission);
   
@@ -560,7 +579,9 @@ export default function OnboardingPage() {
     if (currentStep < maxSteps - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      // Mission complete
+      // Mission complete - save the completed mission
+      await saveCompletedMission(currentMission);
+      
       if (currentMission === 0) {
         // After Mission 0 (quickstart), show system online
         await completeOnboarding();
