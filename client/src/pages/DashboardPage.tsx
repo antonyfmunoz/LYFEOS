@@ -153,8 +153,14 @@ export default function DashboardPage() {
   useEffect(() => {
     // Only run when query has successfully completed (not loading)
     if (isDailyLogSuccess && !isLoadingDailyLog && dailyLogData) {
+      console.log("Daily log data loaded:", dailyLogData);
       // Check if this is actual data or the "no data" marker
       if (!dailyLogData._noData) {
+        console.log("Populating reflection with:", {
+          wakeTime: dailyLogData.wakeTime,
+          sleepTime: dailyLogData.sleepTime,
+          mentalState: dailyLogData.mentalState
+        });
         // Data exists in database - populate from it
         setReflection(prev => ({
           ...prev,
