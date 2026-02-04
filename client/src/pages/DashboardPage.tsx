@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Calendar, BarChart, CalendarDays, Clock, Brain, AlarmClock, 
   MoonStar, Smile, HeartPulse, Book, BookOpen, ListChecks, 
   Zap, Target as TargetIcon
 } from 'lucide-react';
 import { useLYFEOS } from '@/lib/context';
+import { useAuth } from '@/lib/authContext';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { UserStats } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,8 @@ import { DndProvider } from 'react-dnd';
 import { DraggableWidget } from '@/components/ui/draggable-widget';
 import update from 'immutability-helper';
 import { LevelUpModal } from '@/components/dashboard/LevelUpModal';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 
 interface TimeBlock {
   id: string;
@@ -65,6 +68,7 @@ export default function DashboardPage() {
   usePageTitle('Dashboard');
   
   const { stats, username, events, updateUserStats } = useLYFEOS();
+  const { user } = useAuth();
   const { toast } = useToast();
   
   // Level-up modal state
@@ -75,6 +79,10 @@ export default function DashboardPage() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [timeFormat, setTimeFormat] = useState<'12h' | '24h'>('12h');
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  
+  // Track the current date for energy log (to detect date changes)
+  const todayDateStr = new Date().toISOString().split('T')[0];
+  const lastLoadedDateRef = useRef<string>(todayDateStr);
   
   // Reflection state
   const [reflection, setReflection] = useState<DailyReflection>({
@@ -93,8 +101,75 @@ export default function DashboardPage() {
     wentWell: "",
     couldBeBetter: "",
     learned: "",
-    date: new Date().toISOString().split('T')[0]
+    date: todayDateStr
   });
+  
+  // Load today's energy log from the database
+  const { data: dailyLogData, isLoading: isLoadingDailyLog } = useQuery({
+    queryKey: ['/api/users', user?.id, 'daily-logs', todayDateStr],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const response = await fetch(`/api/users/${user.id}/daily-logs?date=${todayDateStr}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data.logs?.[0] || null;
+    },
+    enabled: !!user?.id
+  });
+  
+  // Save energy log mutation
+  const saveEnergyLogMutation = useMutation({
+    mutationFn: async (energyData: { wakeTime: string; sleepTime: string; mentalState: number; physicalState: number; emotionalState: number }) => {
+      if (!user?.id) throw new Error("User not authenticated");
+      return apiRequest(`/api/users/${user.id}/daily-logs`, {
+        method: 'POST',
+        body: JSON.stringify({
+          date: todayDateStr,
+          ...energyData
+        })
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'daily-logs'] });
+    }
+  });
+  
+  // Populate reflection state when daily log data is loaded
+  useEffect(() => {
+    if (dailyLogData) {
+      setReflection(prev => ({
+        ...prev,
+        mentalState: dailyLogData.mentalState ?? 5,
+        physicalState: dailyLogData.physicalState ?? 5,
+        emotionalState: dailyLogData.emotionalState ?? 5,
+        wakeTime: dailyLogData.wakeTime ?? "06:00",
+        sleepTime: dailyLogData.sleepTime ?? "22:00",
+        date: todayDateStr
+      }));
+      lastLoadedDateRef.current = todayDateStr;
+    }
+  }, [dailyLogData, todayDateStr]);
+  
+  // Reset energy log data when day changes
+  useEffect(() => {
+    if (lastLoadedDateRef.current !== todayDateStr) {
+      // New day detected - reset energy log values to defaults
+      setReflection(prev => ({
+        ...prev,
+        mentalState: 5,
+        physicalState: 5,
+        emotionalState: 5,
+        wakeTime: "06:00",
+        sleepTime: "22:00",
+        date: todayDateStr
+      }));
+      lastLoadedDateRef.current = todayDateStr;
+      // Invalidate to reload from server for the new day
+      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'daily-logs'] });
+    }
+  }, [todayDateStr, user?.id]);
   
   // Format current date 
   const formattedDate = currentDate.toLocaleDateString('en-US', {
@@ -129,12 +204,38 @@ export default function DashboardPage() {
     }
   }, [stats?.experience?.showLevelUp]);
   
-  // Update reflection
+  // Debounce timer ref for energy log saves
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Update reflection and auto-save energy log fields
   const updateReflection = (field: keyof DailyReflection, value: any) => {
-    setReflection(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setReflection(prev => {
+      const newReflection = {
+        ...prev,
+        [field]: value
+      };
+      
+      // If this is an energy log field, debounce-save to database
+      const energyLogFields = ['mentalState', 'physicalState', 'emotionalState', 'wakeTime', 'sleepTime'];
+      if (energyLogFields.includes(field)) {
+        // Clear existing timeout
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current);
+        }
+        // Debounce save (500ms delay)
+        saveTimeoutRef.current = setTimeout(() => {
+          saveEnergyLogMutation.mutate({
+            wakeTime: newReflection.wakeTime,
+            sleepTime: newReflection.sleepTime,
+            mentalState: newReflection.mentalState,
+            physicalState: newReflection.physicalState,
+            emotionalState: newReflection.emotionalState
+          });
+        }, 500);
+      }
+      
+      return newReflection;
+    });
   };
   
   // Render state selector (1-10 scale)
