@@ -95,21 +95,33 @@ export default function QuestsPage() {
   useEffect(() => {
     if (!user?.id || !userProfile || syncedRef.current) return;
     
-    const syncKey = `onboarding_quests_synced_${user.id}`;
+    const completedIds = (userProfile as any)?.completedOnboardingMissions || [];
+    
+    // Don't run sync if no completed onboarding missions
+    if (completedIds.length === 0) {
+      syncedRef.current = true;
+      return;
+    }
     
     const syncCompletedOnboardingQuests = async () => {
-      const completedIds = (userProfile as any)?.completedOnboardingMissions || [];
       console.log("Checking onboarding sync - completedIds:", completedIds, "existing quests:", quests.length);
       
-      if (completedIds.length === 0) {
-        localStorage.setItem(syncKey, 'true');
+      // Check if all expected onboarding quests exist
+      const existingOnboardingQuests = quests.filter(q => q.category === "onboarding");
+      const allQuestsExist = completedIds.every((missionId: number) => {
+        const mission = ONBOARDING_MISSIONS.find(m => m.id === missionId);
+        if (!mission) return true;
+        return existingOnboardingQuests.some(q => q.title === `Onboarding: ${mission.title}`);
+      });
+      
+      if (allQuestsExist) {
+        console.log("All onboarding quests already exist, no sync needed");
         syncedRef.current = true;
         return;
       }
       
       let createdAny = false;
       let allSucceeded = true;
-      let needsSync = false;
       
       for (const missionId of completedIds) {
         const mission = ONBOARDING_MISSIONS.find(m => m.id === missionId);
@@ -120,8 +132,11 @@ export default function QuestsPage() {
         );
         
         if (!existingQuest) {
-          needsSync = true;
-          const today = new Date().toISOString().split('T')[0];
+          // Use yesterday's date for retroactively created quests so they appear in archive
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          const dateStr = yesterday.toISOString().split('T')[0];
+          
           try {
             console.log("Creating missing onboarding quest for mission:", mission.title);
             await apiRequest("/api/quests", {
@@ -132,10 +147,10 @@ export default function QuestsPage() {
                 description: `Completed onboarding mission "${mission.title}"`,
                 category: "onboarding",
                 completed: true,
-                completedAt: new Date().toISOString(),
+                completedAt: yesterday.toISOString(),
                 experienceReward: mission.xp,
-                dueDate: today,
-                endDate: today,
+                dueDate: dateStr,
+                endDate: dateStr,
               }),
             });
             createdAny = true;
@@ -147,9 +162,7 @@ export default function QuestsPage() {
         }
       }
       
-      // Only mark as synced if all quests were successfully created (or none needed)
-      if (allSucceeded || !needsSync) {
-        localStorage.setItem(syncKey, 'true');
+      if (allSucceeded) {
         syncedRef.current = true;
       }
       
@@ -158,12 +171,7 @@ export default function QuestsPage() {
       }
     };
     
-    // Always attempt sync if not marked as synced in ref (ignoring localStorage to allow retry on failure)
-    if (localStorage.getItem(syncKey) !== 'true') {
-      syncCompletedOnboardingQuests();
-    } else {
-      syncedRef.current = true;
-    }
+    syncCompletedOnboardingQuests();
   }, [user?.id, userProfile, quests]);
 
   const { todayMissions, upcomingMissions, completedMissions } = useMemo(() => {
