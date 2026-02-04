@@ -25,7 +25,8 @@ import {
   insertMediaItemSchema,
   insertMediaAlbumSchema,
   MediaItem,
-  InsertMediaItem
+  InsertMediaItem,
+  Quest
 } from "@shared/schema";
 
 // Extend Request type to include session
@@ -1113,6 +1114,18 @@ Generate the complete affirmation now:`;
       // Ensure user can only create quests for their own account
       if (questData.userId !== req.session.userId) {
         return res.status(403).json({ error: "Not authorized to create quests for this user" });
+      }
+      
+      // For onboarding quests, check if one already exists to prevent duplicates
+      if (questData.category === "onboarding" && questData.title) {
+        const existingQuests = await storage.getQuests(questData.userId);
+        const existingOnboardingQuest = existingQuests.find(
+          (q: Quest) => q.title === questData.title && q.category === "onboarding"
+        );
+        if (existingOnboardingQuest) {
+          console.log(`Onboarding quest already exists for user ${questData.userId}: ${questData.title}`);
+          return res.status(200).json({ quest: existingOnboardingQuest, duplicate: true });
+        }
       }
       
       const quest = await storage.createQuest(questData);

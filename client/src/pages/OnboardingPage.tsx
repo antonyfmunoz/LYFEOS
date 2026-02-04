@@ -415,7 +415,7 @@ function ScenarioSelect({
 export default function OnboardingPage() {
   usePageTitle("Onboarding");
   const { user, isLoading: authLoading } = useAuth();
-  const { refetchQuests } = useLYFEOS();
+  const { quests, refetchQuests } = useLYFEOS();
   const [, navigate] = useLocation();
   
   const { data: userProfile } = useQuery({
@@ -555,27 +555,35 @@ export default function OnboardingPage() {
       
       if (user?.id) {
         try {
-          const timeStr = now.toTimeString().slice(0, 5); // HH:MM format
-          const questData = {
-            userId: user.id,
-            title: `Onboarding: ${mission.title}`,
-            description: `Completed onboarding mission "${mission.title}"`,
-            category: "onboarding",
-            completed: true,
-            completedAt: now.toISOString(),
-            experienceReward: mission.xp,
-            startDate: localDateStr,
-            startTime: timeStr,
-            dueDate: localDateStr,
-            endDate: localDateStr,
-            endTime: timeStr,
-          };
-          console.log("Creating quest with data:", questData);
-          const result = await apiRequest("/api/quests", {
-            method: "POST",
-            body: JSON.stringify(questData),
-          });
-          console.log("Quest created successfully:", result);
+          const questTitle = `Onboarding: ${mission.title}`;
+          
+          // Check if this onboarding quest already exists to prevent duplicates
+          const existingQuest = quests.find(q => q.title === questTitle && q.completed);
+          if (existingQuest) {
+            console.log("Onboarding quest already exists, skipping creation:", questTitle);
+          } else {
+            const timeStr = now.toTimeString().slice(0, 5); // HH:MM format
+            const questData = {
+              userId: user.id,
+              title: questTitle,
+              description: `Completed onboarding mission "${mission.title}"`,
+              category: "onboarding",
+              completed: true,
+              completedAt: now.toISOString(),
+              experienceReward: mission.xp,
+              startDate: localDateStr,
+              startTime: timeStr,
+              dueDate: localDateStr,
+              endDate: localDateStr,
+              endTime: timeStr,
+            };
+            console.log("Creating quest with data:", questData);
+            const result = await apiRequest("/api/quests", {
+              method: "POST",
+              body: JSON.stringify(questData),
+            });
+            console.log("Quest created successfully:", result);
+          }
           console.log("Refetching quests after onboarding mission completion...");
           await refetchQuests();
           console.log("Quests refetched successfully");
