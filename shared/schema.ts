@@ -41,6 +41,8 @@ export const userStats = pgTable("user_stats", {
   experienceMax: integer("experience_max").notNull().default(1000), // Level 1 threshold is 1000 XP
   level: integer("level").notNull().default(1),
   streakDays: integer("streak_days").notNull().default(0),
+  lastActiveDate: date("last_active_date"),
+  previousDayEnergyUsed: integer("previous_day_energy_used").default(0),
   efficiencyScore: integer("efficiency_score").notNull().default(0),
   aiAssistantName: text("ai_assistant_name").default("NOVA").notNull(),
   // System settings

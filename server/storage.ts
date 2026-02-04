@@ -43,6 +43,9 @@ export interface IStorage {
   getUserStats(userId: number): Promise<UserStats | undefined>;
   createUserStats(stats: InsertUserStats): Promise<UserStats>;
   updateUserStats(userId: number, stats: Partial<InsertUserStats>): Promise<UserStats>;
+  processLoginStreak(userId: number): Promise<{ streakDays: number; isNewDay: boolean }>;
+  calculateEfficiency(userId: number): Promise<number>;
+  processDailyHealthUpdate(userId: number): Promise<number>;
   
   // User Profile methods
   getUserProfile(userId: number): Promise<UserProfile | undefined>;
@@ -349,6 +352,99 @@ export class DatabaseStorage implements IStorage {
     return updatedStats;
   }
   
+  async processLoginStreak(userId: number): Promise<{ streakDays: number; isNewDay: boolean }> {
+    const stats = await this.getUserStats(userId);
+    if (!stats) {
+      return { streakDays: 0, isNewDay: false };
+    }
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().split('T')[0];
+    
+    const lastActiveDate = stats.lastActiveDate;
+    let newStreak = stats.streakDays;
+    let isNewDay = false;
+    
+    if (!lastActiveDate) {
+      newStreak = 1;
+      isNewDay = true;
+    } else {
+      const lastDate = new Date(lastActiveDate);
+      lastDate.setHours(0, 0, 0, 0);
+      const lastDateStr = lastDate.toISOString().split('T')[0];
+      
+      if (lastDateStr === todayStr) {
+        isNewDay = false;
+      } else {
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        
+        if (lastDateStr === yesterdayStr) {
+          newStreak = stats.streakDays + 1;
+        } else {
+          newStreak = 1;
+        }
+        isNewDay = true;
+      }
+    }
+    
+    await this.updateUserStats(userId, {
+      streakDays: newStreak,
+      lastActiveDate: todayStr
+    });
+    
+    return { streakDays: newStreak, isNewDay };
+  }
+  
+  async calculateEfficiency(userId: number): Promise<number> {
+    const allQuests = await this.getQuests(userId);
+    if (allQuests.length === 0) {
+      return 0;
+    }
+    
+    const completedQuests = allQuests.filter(q => q.completed);
+    const efficiency = Math.round((completedQuests.length / allQuests.length) * 100);
+    
+    await this.updateUserStats(userId, {
+      efficiencyScore: efficiency
+    });
+    
+    return efficiency;
+  }
+  
+  async processDailyHealthUpdate(userId: number): Promise<number> {
+    const stats = await this.getUserStats(userId);
+    if (!stats) {
+      return 10;
+    }
+    
+    const previousDayEnergyUsed = stats.previousDayEnergyUsed || 0;
+    const energyMax = stats.energyPointsMax;
+    const energyUsageRatio = energyMax > 0 ? previousDayEnergyUsed / energyMax : 0;
+    
+    let healthAdjustment = 0;
+    if (energyUsageRatio >= 0.8) {
+      healthAdjustment = -2;
+    } else if (energyUsageRatio >= 0.5) {
+      healthAdjustment = -1;
+    } else if (energyUsageRatio <= 0.2 && energyUsageRatio >= 0) {
+      healthAdjustment = 1;
+    }
+    
+    const currentHealth = stats.healthPointsCurrent;
+    const maxHealth = stats.healthPointsMax;
+    const newHealth = Math.max(1, Math.min(maxHealth, currentHealth + healthAdjustment));
+    
+    await this.updateUserStats(userId, {
+      healthPointsCurrent: newHealth,
+      previousDayEnergyUsed: 0
+    });
+    
+    return newHealth;
+  }
+  
   // User Profile methods
   async getUserProfile(userId: number): Promise<UserProfile | undefined> {
     const [profile] = await db.select().from(userProfile)
@@ -541,6 +637,9 @@ export class DatabaseStorage implements IStorage {
           levelUp = true;
         }
         
+        // Track energy used today for health calculation
+        const previousDayEnergyUsed = (userStats.previousDayEnergyUsed || 0) + energyCost;
+        
         // Update all user stats
         await this.updateUserStats(updatedQuest.userId, {
           timeTokensCurrent: newTimeTokens,
@@ -548,7 +647,8 @@ export class DatabaseStorage implements IStorage {
           energyPointsCurrent: newEnergyPoints,
           experienceCurrent: newExperience,
           level: newLevel,
-          experienceMax: newExperienceMax
+          experienceMax: newExperienceMax,
+          previousDayEnergyUsed: previousDayEnergyUsed
         });
         
         // Also update totalXP in user profile for consistency
@@ -556,6 +656,9 @@ export class DatabaseStorage implements IStorage {
           const newTotalXP = (userProfileData.totalXP || 0) + quest.experienceReward;
           await this.updateUserProfile(updatedQuest.userId, { totalXP: newTotalXP });
         }
+        
+        // Recalculate efficiency after completing a quest
+        await this.calculateEfficiency(updatedQuest.userId);
         
         statsUpdated = true;
         
@@ -581,11 +684,15 @@ export class DatabaseStorage implements IStorage {
         // Deduct XP (but don't go below 0 - we don't de-level to keep progression simple)
         const newExperience = Math.max(0, userStats.experienceCurrent - quest.experienceReward);
         
+        // Reduce today's tracked energy usage when uncompleting
+        const previousDayEnergyUsed = Math.max(0, (userStats.previousDayEnergyUsed || 0) - energyCost);
+        
         await this.updateUserStats(updatedQuest.userId, {
           timeTokensCurrent: newTimeTokens,
           attentionTokensCurrent: newAttentionTokens,
           energyPointsCurrent: newEnergyPoints,
-          experienceCurrent: newExperience
+          experienceCurrent: newExperience,
+          previousDayEnergyUsed: previousDayEnergyUsed
         });
         
         // Also update totalXP in user profile for consistency
@@ -593,6 +700,9 @@ export class DatabaseStorage implements IStorage {
           const newTotalXP = Math.max(0, (userProfileData.totalXP || 0) - quest.experienceReward);
           await this.updateUserProfile(updatedQuest.userId, { totalXP: newTotalXP });
         }
+        
+        // Recalculate efficiency after uncompleting a quest
+        await this.calculateEfficiency(updatedQuest.userId);
         
         statsUpdated = true;
       }

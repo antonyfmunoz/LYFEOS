@@ -362,6 +362,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.session.userId = user.id;
       req.session.username = user.username;
       
+      // Process daily stats (streak, health)
+      const { streakDays, isNewDay } = await storage.processLoginStreak(user.id);
+      if (isNewDay) {
+        await storage.processDailyHealthUpdate(user.id);
+        console.log("New day detected - updated streak and health for user:", user.username);
+      }
+      
       // Check if user has completed onboarding
       const userProfile = await storage.getUserProfile(user.id);
       const isNewUser = !userProfile || !userProfile.onboardingCompleted;
@@ -473,6 +480,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Set session
       req.session.userId = user.id;
       req.session.username = user.username;
+      
+      // Process daily stats (streak, health)
+      const { streakDays, isNewDay } = await storage.processLoginStreak(user.id);
+      if (isNewDay) {
+        await storage.processDailyHealthUpdate(user.id);
+        console.log("New day detected - updated streak and health for user:", user.username);
+      }
       
       // Fetch user profile to check if onboarding is completed
       const userProfile = await storage.getUserProfile(user.id);
