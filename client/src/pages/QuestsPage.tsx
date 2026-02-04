@@ -3,7 +3,7 @@ import { useLYFEOS } from "../lib/context";
 import { useAuth } from "@/lib/authContext";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import QuestItem from "../components/dashboard/QuestItem";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { Button } from "@/components/ui/button";
@@ -95,9 +95,21 @@ export default function QuestsPage() {
   useEffect(() => {
     if (!user?.id || !userProfile || syncedRef.current) return;
     
+    const syncKey = `onboarding_quests_synced_${user.id}`;
+    if (localStorage.getItem(syncKey) === 'true') {
+      syncedRef.current = true;
+      return;
+    }
+    
     const syncCompletedOnboardingQuests = async () => {
       const completedIds = (userProfile as any)?.completedOnboardingMissions || [];
-      if (completedIds.length === 0) return;
+      if (completedIds.length === 0) {
+        localStorage.setItem(syncKey, 'true');
+        syncedRef.current = true;
+        return;
+      }
+      
+      let createdAny = false;
       
       for (const missionId of completedIds) {
         const mission = ONBOARDING_MISSIONS.find(m => m.id === missionId);
@@ -124,13 +136,19 @@ export default function QuestsPage() {
                 endDate: today,
               }),
             });
+            createdAny = true;
           } catch (error) {
             console.error("Failed to sync onboarding quest:", error);
           }
         }
       }
+      
+      localStorage.setItem(syncKey, 'true');
       syncedRef.current = true;
-      window.location.reload();
+      
+      if (createdAny) {
+        queryClient.invalidateQueries({ queryKey: [`/api/users/${user.id}/quests`] });
+      }
     };
     
     syncCompletedOnboardingQuests();
