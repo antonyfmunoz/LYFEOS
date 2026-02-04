@@ -258,7 +258,7 @@ interface LYFEOSContextType {
   getMissionPageBySlug: (slug: string) => MissionPage | undefined;
   getMissionPageById: (id: string) => MissionPage | undefined;
   createChatSession: (title: string) => ChatSession;
-  deleteChatSession: (id: string) => Promise<void> | void;
+  deleteChatSession: (id: string) => Promise<boolean>;
   setActiveChatSession: (id: string) => void;
   updateChatSessionTitle: (id: string, title: string) => void;
   updateUserStats: (stats: UserStats) => void;
@@ -1529,8 +1529,29 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   };
   
   // Delete a chat session
-  const deleteChatSession = async (id: string) => {
-    // Check if this is the last chat - if so, we'll create a new one
+  const deleteChatSession = async (id: string): Promise<boolean> => {
+    // Delete from database FIRST if we have a database ID
+    const dbId = sessionToDbIdMap[id];
+    if (dbId) {
+      try {
+        const response = await fetch(`/api/conversations/${dbId}`, { method: 'DELETE' });
+        if (!response.ok) {
+          console.error("Failed to delete conversation from database, status:", response.status);
+          return false;
+        }
+        // Remove from map on success
+        setSessionToDbIdMap((prev) => {
+          const newMap = { ...prev };
+          delete newMap[id];
+          return newMap;
+        });
+      } catch (error) {
+        console.error("Error deleting conversation from database:", error);
+        return false;
+      }
+    }
+    
+    // Only update local state AFTER successful database deletion
     const isLastChat = chatSessions.length <= 1;
     
     // Check if this is the active session
@@ -1562,21 +1583,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       setChatSessions((prev) => prev.filter((chat) => chat.id !== id));
     }
     
-    // Delete from database if we have a database ID
-    const dbId = sessionToDbIdMap[id];
-    if (dbId) {
-      try {
-        await fetch(`/api/conversations/${dbId}`, { method: 'DELETE' });
-        // Remove from map
-        setSessionToDbIdMap((prev) => {
-          const newMap = { ...prev };
-          delete newMap[id];
-          return newMap;
-        });
-      } catch (error) {
-        console.error("Error deleting conversation from database:", error);
-      }
-    }
+    return true;
   };
   
   // Set the active chat session

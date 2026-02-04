@@ -381,9 +381,16 @@ export default function AIPage() {
                           
                           <DropdownMenuItem 
                             className="text-red-400 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-400 cursor-pointer"
-                            onClick={(e) => {
+                            onClick={async (e) => {
                               e.stopPropagation();
-                              deleteChatSession(chat.id);
+                              const success = await deleteChatSession(chat.id);
+                              if (!success) {
+                                toast({
+                                  title: "Delete Failed",
+                                  description: "Could not delete the chat. Please try again.",
+                                  variant: "destructive",
+                                });
+                              }
                             }}
                           >
                             <Trash2 className="h-3.5 w-3.5 mr-2" />
