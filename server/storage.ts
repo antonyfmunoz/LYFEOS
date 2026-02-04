@@ -24,7 +24,7 @@ import {
   mediaAlbums, type MediaAlbum, type InsertMediaAlbum
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -48,6 +48,7 @@ export interface IStorage {
   getUserProfile(userId: number): Promise<UserProfile | undefined>;
   createUserProfile(profile: InsertUserProfile): Promise<UserProfile>;
   updateUserProfile(userId: number, profile: Partial<InsertUserProfile>): Promise<UserProfile>;
+  upsertUserProfile(userId: number, profileData: Partial<InsertUserProfile>): Promise<UserProfile>;
   
   // User Daily Logs methods
   getUserDailyLogs(userId: number): Promise<UserDailyLog[]>;
@@ -343,7 +344,10 @@ export class DatabaseStorage implements IStorage {
   
   // User Profile methods
   async getUserProfile(userId: number): Promise<UserProfile | undefined> {
-    const [profile] = await db.select().from(userProfile).where(eq(userProfile.userId, userId));
+    const [profile] = await db.select().from(userProfile)
+      .where(eq(userProfile.userId, userId))
+      .orderBy(desc(userProfile.id))
+      .limit(1);
     return profile;
   }
   
@@ -362,6 +366,15 @@ export class DatabaseStorage implements IStorage {
       .where(eq(userProfile.userId, userId))
       .returning();
     return updatedProfile;
+  }
+  
+  async upsertUserProfile(userId: number, profileData: Partial<InsertUserProfile>): Promise<UserProfile> {
+    const existing = await this.getUserProfile(userId);
+    if (existing) {
+      return this.updateUserProfile(userId, profileData);
+    } else {
+      return this.createUserProfile({ ...profileData, userId } as InsertUserProfile);
+    }
   }
   
   // User Daily Logs methods
