@@ -210,11 +210,25 @@ export const userDailyLogs = pgTable("user_daily_logs", {
   todayPrimaryMission: text("today_primary_mission"),
   optionalBoostsShown: boolean("optional_boosts_shown").default(false),
   boostsData: jsonb("boosts_data").default({}), // Store daily boosts data
+  // Energy log fields
   wakeTime: text("wake_time"), // Time user woke up (HH:MM format)
   sleepTime: text("sleep_time"), // Time user went to sleep (HH:MM format)
   mentalState: integer("mental_state").default(5), // 1-10 scale
   physicalState: integer("physical_state").default(5), // 1-10 scale
   emotionalState: integer("emotional_state").default(5), // 1-10 scale
+  // Intention log fields
+  gratitude: text("gratitude"), // What I'm grateful for today
+  tomorrowGoals: text("tomorrow_goals"), // Goals for tomorrow
+  annualGoals: text("annual_goals"), // Annual goals reminder
+  thoughts: text("thoughts"), // Free-form thoughts/intentions
+  // Data log fields
+  contentConsumed: text("content_consumed"), // Content consumed today
+  research: text("research"), // Research notes
+  todoIdeas: text("todo_ideas"), // Ideas for future todos
+  // Reflection log fields
+  wentWell: text("went_well"), // What went well today
+  couldBeBetter: text("could_be_better"), // What could be better
+  learned: text("learned"), // What I learned today
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -556,11 +570,25 @@ export const insertUserDailyLogsSchema = createInsertSchema(userDailyLogs).pick(
   todayPrimaryMission: true,
   optionalBoostsShown: true,
   boostsData: true,
+  // Energy log fields
   wakeTime: true,
   sleepTime: true,
   mentalState: true,
   physicalState: true,
   emotionalState: true,
+  // Intention log fields
+  gratitude: true,
+  tomorrowGoals: true,
+  annualGoals: true,
+  thoughts: true,
+  // Data log fields
+  contentConsumed: true,
+  research: true,
+  todoIdeas: true,
+  // Reflection log fields
+  wentWell: true,
+  couldBeBetter: true,
+  learned: true,
 });
 
 export const insertUserIntegrationsSchema = createInsertSchema(userIntegrations).pick({
