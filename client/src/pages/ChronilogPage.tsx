@@ -184,7 +184,7 @@ export default function ChronilogPage() {
     },
     { 
       id: "knowledge", 
-      title: "Knowledge Base", 
+      title: "Knowledge Vault", 
       icon: <GraduationCap className="h-5 w-5 text-primary" />
     },
     { 
