@@ -179,10 +179,18 @@ export default function DashboardPage() {
   }, [dailyLogData, todayDateStr, isDailyLogSuccess, isLoadingDailyLog]);
   
   // Track previous auth state to detect login events
-  const wasAuthenticatedRef = useRef(false);
+  // Initialize with current auth state to avoid false "login" detection on component remount
+  const wasAuthenticatedRef = useRef<boolean | null>(null);
   
   // Reset energy log loaded flag and refetch when authentication state changes
   useEffect(() => {
+    // On first render, just capture current state without treating it as a login
+    if (wasAuthenticatedRef.current === null) {
+      wasAuthenticatedRef.current = isAuthenticated;
+      // If already authenticated on mount, the useQuery will handle data loading
+      return;
+    }
+    
     // Detect transition from not authenticated to authenticated (login)
     if (isAuthenticated && !wasAuthenticatedRef.current && user?.id) {
       setIsEnergyLogLoaded(false);
