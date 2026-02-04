@@ -1184,15 +1184,8 @@ Generate the complete affirmation now:`;
         return res.status(403).json({ error: "Not authorized to toggle this quest" });
       }
       
-      // Toggle completion and reward XP if completed
-      const updatedQuest = await storage.toggleQuestCompletion(questId);
-      
-      // Award XP if the quest is now completed
-      let xpResult = { success: false, levelUp: false };
-      if (updatedQuest.completed) {
-        // Award 10 XP for completing a quest
-        xpResult = await awardExperiencePoints(quest.userId, 10);
-      }
+      // Toggle completion - this now handles all stat updates (XP, time, energy, attention)
+      const { quest: updatedQuest, statsUpdated, levelUp } = await storage.toggleQuestCompletion(questId);
       
       // Get updated user stats and profile to return to the client
       const userStats = await storage.getUserStats(quest.userId);
@@ -1201,15 +1194,28 @@ Generate the complete affirmation now:`;
       
       return res.status(200).json({ 
         quest: updatedQuest,
-        xpAwarded: updatedQuest.completed ? 10 : 0,
-        levelUp: xpResult.levelUp,
+        xpAwarded: updatedQuest.completed ? quest.experienceReward : 0,
+        levelUp: levelUp,
+        statsUpdated: statsUpdated,
         stats: userStats ? {
+          timeTokens: {
+            current: userStats.timeTokensCurrent,
+            max: userStats.timeTokensMax
+          },
+          attentionTokens: {
+            current: userStats.attentionTokensCurrent,
+            max: userStats.attentionTokensMax
+          },
+          energyPoints: {
+            current: userStats.energyPointsCurrent,
+            max: userStats.energyPointsMax
+          },
           experience: {
             current: userStats.experienceCurrent,
             max: userStats.experienceMax,
             level: userStats.level,
             totalXP: totalXP,
-            showLevelUp: xpResult.levelUp // Set this to true when level up occurs
+            showLevelUp: levelUp
           }
         } : undefined
       });

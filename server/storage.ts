@@ -66,7 +66,7 @@ export interface IStorage {
   getQuest(id: number): Promise<Quest | undefined>;
   createQuest(quest: InsertQuest): Promise<Quest>;
   updateQuest(id: number, quest: Partial<InsertQuest>): Promise<Quest>;
-  toggleQuestCompletion(id: number): Promise<Quest>;
+  toggleQuestCompletion(id: number): Promise<{ quest: Quest; statsUpdated: boolean; levelUp: boolean }>;
   deleteQuest(id: number): Promise<void>;
   
   // AI Message methods
@@ -464,7 +464,7 @@ export class DatabaseStorage implements IStorage {
     return updatedQuest;
   }
   
-  async toggleQuestCompletion(id: number): Promise<Quest> {
+  async toggleQuestCompletion(id: number): Promise<{ quest: Quest; statsUpdated: boolean; levelUp: boolean }> {
     // First, get the current state
     const quest = await this.getQuest(id);
     if (!quest) throw new Error("Quest not found");
@@ -480,32 +480,118 @@ export class DatabaseStorage implements IStorage {
       .where(eq(quests.id, id))
       .returning();
     
-    // If quest was just completed, update user experience
+    let statsUpdated = false;
+    let levelUp = false;
+    
+    // Helper function to calculate duration in hours, handling overnight spans
+    const calculateDurationHours = (startTime: string | null, endTime: string | null): number => {
+      if (!startTime || !endTime) return 1; // Default to 1 hour if times not set
+      
+      const [startHour, startMin] = startTime.split(':').map(Number);
+      const [endHour, endMin] = endTime.split(':').map(Number);
+      
+      // Validate parsed values
+      if (isNaN(startHour) || isNaN(startMin) || isNaN(endHour) || isNaN(endMin)) {
+        return 1;
+      }
+      
+      let startMinutes = startHour * 60 + startMin;
+      let endMinutes = endHour * 60 + endMin;
+      
+      // Handle overnight spans (e.g., 22:00 to 02:00)
+      if (endMinutes < startMinutes) {
+        endMinutes += 24 * 60; // Add 24 hours worth of minutes
+      }
+      
+      const durationMins = endMinutes - startMinutes;
+      return Math.max(1, Math.ceil(durationMins / 60));
+    };
+    
+    // If quest was just completed, update all user stats
     if (!quest.completed && updatedQuest.completed) {
       const userStats = await this.getUserStats(updatedQuest.userId);
+      const userProfileData = await this.getUserProfile(updatedQuest.userId);
+      
       if (userStats) {
+        const durationHours = calculateDurationHours(quest.startTime, quest.endTime);
+        const energyCost = quest.energyCost || 1;
+        
+        // Calculate new stat values (deduct resources, add XP)
+        const newTimeTokens = Math.max(0, userStats.timeTokensCurrent - durationHours);
+        const newAttentionTokens = Math.max(0, userStats.attentionTokensCurrent - durationHours);
+        const newEnergyPoints = Math.max(0, userStats.energyPointsCurrent - energyCost);
+        
         // Add experience reward
         let newExperience = userStats.experienceCurrent + quest.experienceReward;
         let newLevel = userStats.level;
         let newExperienceMax = userStats.experienceMax;
         
         // Level up if necessary
-        while (newExperience >= userStats.experienceMax) {
-          newExperience -= userStats.experienceMax;
+        while (newExperience >= newExperienceMax) {
+          newExperience -= newExperienceMax;
           newLevel += 1;
-          newExperienceMax = Math.floor(userStats.experienceMax * 1.0372); // Precise scaling to reach 1M XP at level 100
+          newExperienceMax = Math.floor(newExperienceMax * 1.0372); // Precise scaling to reach 1M XP at level 100
+          levelUp = true;
         }
         
-        // Update user stats
+        // Update all user stats
         await this.updateUserStats(updatedQuest.userId, {
+          timeTokensCurrent: newTimeTokens,
+          attentionTokensCurrent: newAttentionTokens,
+          energyPointsCurrent: newEnergyPoints,
           experienceCurrent: newExperience,
           level: newLevel,
           experienceMax: newExperienceMax
         });
+        
+        // Also update totalXP in user profile for consistency
+        if (userProfileData) {
+          const newTotalXP = (userProfileData.totalXP || 0) + quest.experienceReward;
+          await this.updateUserProfile(updatedQuest.userId, { totalXP: newTotalXP });
+        }
+        
+        statsUpdated = true;
+        
+        console.log(`Quest completed: duration=${durationHours}h, energyCost=${energyCost}, xp=${quest.experienceReward}`);
+        console.log(`Stats updated: time=${newTimeTokens}, attention=${newAttentionTokens}, energy=${newEnergyPoints}, xp=${newExperience}, level=${newLevel}`);
       }
     }
     
-    return updatedQuest;
+    // If quest was uncompleted, refund the resources
+    if (quest.completed && !updatedQuest.completed) {
+      const userStats = await this.getUserStats(updatedQuest.userId);
+      const userProfileData = await this.getUserProfile(updatedQuest.userId);
+      
+      if (userStats) {
+        const durationHours = calculateDurationHours(quest.startTime, quest.endTime);
+        const energyCost = quest.energyCost || 1;
+        
+        // Refund resources (cap at max values)
+        const newTimeTokens = Math.min(userStats.timeTokensMax, userStats.timeTokensCurrent + durationHours);
+        const newAttentionTokens = Math.min(userStats.attentionTokensMax, userStats.attentionTokensCurrent + durationHours);
+        const newEnergyPoints = Math.min(userStats.energyPointsMax, userStats.energyPointsCurrent + energyCost);
+        
+        // Deduct XP (but don't go below 0 - we don't de-level to keep progression simple)
+        const newExperience = Math.max(0, userStats.experienceCurrent - quest.experienceReward);
+        
+        await this.updateUserStats(updatedQuest.userId, {
+          timeTokensCurrent: newTimeTokens,
+          attentionTokensCurrent: newAttentionTokens,
+          energyPointsCurrent: newEnergyPoints,
+          experienceCurrent: newExperience
+        });
+        
+        // Also update totalXP in user profile for consistency
+        if (userProfileData) {
+          const newTotalXP = Math.max(0, (userProfileData.totalXP || 0) - quest.experienceReward);
+          await this.updateUserProfile(updatedQuest.userId, { totalXP: newTotalXP });
+        }
+        
+        statsUpdated = true;
+      }
+    }
+    
+    return { quest: updatedQuest, statsUpdated, levelUp };
   }
   
   async deleteQuest(id: number): Promise<void> {

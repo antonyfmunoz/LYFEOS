@@ -674,14 +674,19 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         } : q
       ));
       
-      // Update stats from server response if available
+      // Update all stats from server response if available
       if (data.stats) {
         setStats((prevStats) => ({
           ...prevStats,
+          timeTokens: data.stats.timeTokens || prevStats.timeTokens,
+          attentionTokens: data.stats.attentionTokens || prevStats.attentionTokens,
+          energyPoints: data.stats.energyPoints || prevStats.energyPoints,
           experience: {
             current: data.stats.experience.current,
             max: data.stats.experience.max,
             level: data.stats.experience.level,
+            totalXP: data.stats.experience.totalXP || prevStats.experience.totalXP,
+            showLevelUp: data.stats.experience.showLevelUp
           },
         }));
         
