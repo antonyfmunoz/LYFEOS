@@ -413,8 +413,15 @@ function ScenarioSelect({
 
 export default function OnboardingPage() {
   usePageTitle("Onboarding");
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [, navigate] = useLocation();
+  
+  useEffect(() => {
+    if (!authLoading && !user) {
+      console.log("User not authenticated, redirecting to login");
+      navigate("/login");
+    }
+  }, [user, authLoading, navigate]);
   
   const [currentMission, setCurrentMission] = useState(0);
   const [currentStep, setCurrentStep] = useState(0);
@@ -975,6 +982,17 @@ export default function OnboardingPage() {
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
           <h2 className="text-xl font-medium">Generating Your Character Affirmation...</h2>
           <p className="text-muted-foreground">Our AI is crafting your personalized narrative</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     );
