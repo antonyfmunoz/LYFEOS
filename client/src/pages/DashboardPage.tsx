@@ -74,7 +74,7 @@ export default function DashboardPage() {
     dataLog, updateDataLog, resetDataLog,
     reflectionLog: reflectionLogState, updateReflectionLog: updateReflectionLogState, resetReflectionLog
   } = useLYFEOS();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, registerPreLogoutCallback, unregisterPreLogoutCallback } = useAuth();
   const { toast } = useToast();
   
   // Level-up modal state
@@ -89,6 +89,25 @@ export default function DashboardPage() {
   // Track the current date for energy log (to detect date changes)
   const todayDateStr = new Date().toISOString().split('T')[0];
   const lastLoadedDateRef = useRef<string>(todayDateStr);
+  
+  // Ref to track current log values for flush save on logout
+  // This allows us to access current values without adding them to effect dependencies
+  const currentLogsRef = useRef({
+    energyLog,
+    intentionLog,
+    dataLog,
+    reflectionLog: reflectionLogState
+  });
+  
+  // Keep the ref updated with latest values
+  useEffect(() => {
+    currentLogsRef.current = {
+      energyLog,
+      intentionLog,
+      dataLog,
+      reflectionLog: reflectionLogState
+    };
+  }, [energyLog, intentionLog, dataLog, reflectionLogState]);
   
   // Combine all global log contexts into a unified DailyReflection interface
   const reflection: DailyReflection = {
@@ -155,6 +174,56 @@ export default function DashboardPage() {
       });
     }
   });
+  
+  // Register pre-logout callback to save data BEFORE session is invalidated
+  useEffect(() => {
+    const flushSaveBeforeLogout = async () => {
+      // Cancel any pending debounced save
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+      
+      // Use REF values (always current) to get the latest log data
+      const logs = currentLogsRef.current;
+      
+      // Only save if all logs were loaded (have valid data to save)
+      if (logs.energyLog.isLoaded && logs.intentionLog.isLoaded && logs.dataLog.isLoaded && logs.reflectionLog.isLoaded) {
+        const dataToSave: Partial<DailyReflection> = {
+          wakeTime: logs.energyLog.wakeTime,
+          sleepTime: logs.energyLog.sleepTime,
+          mentalState: logs.energyLog.mentalState,
+          physicalState: logs.energyLog.physicalState,
+          emotionalState: logs.energyLog.emotionalState,
+          gratitude: logs.intentionLog.gratitude,
+          tomorrowGoals: logs.intentionLog.tomorrowGoals,
+          annualGoals: logs.intentionLog.annualGoals,
+          thoughts: logs.intentionLog.thoughts,
+          contentConsumed: logs.dataLog.contentConsumed,
+          research: logs.dataLog.research,
+          todoIdeas: logs.dataLog.todoIdeas,
+          wentWell: logs.reflectionLog.wentWell,
+          couldBeBetter: logs.reflectionLog.couldBeBetter,
+          learned: logs.reflectionLog.learned,
+        };
+        console.log("Pre-logout: Flushing save with data:", dataToSave);
+        
+        // Wait for the mutation to complete to ensure data is saved before logout proceeds
+        await saveDailyLogMutation.mutateAsync(dataToSave);
+        console.log("Pre-logout: Save completed successfully");
+      } else {
+        console.log("Pre-logout: Skipping save - not all logs loaded");
+      }
+    };
+    
+    // Register the callback
+    registerPreLogoutCallback(flushSaveBeforeLogout);
+    
+    // Cleanup: unregister on unmount
+    return () => {
+      unregisterPreLogoutCallback(flushSaveBeforeLogout);
+    };
+  }, [registerPreLogoutCallback, unregisterPreLogoutCallback, saveDailyLogMutation]);
   
   // Populate all log states from database when data is loaded
   useEffect(() => {
@@ -240,8 +309,15 @@ export default function DashboardPage() {
       // Direct refetch when user becomes authenticated (more reliable than invalidate)
       refetchDailyLog();
     }
-    // Also reset when user logs out
+    // When user logs out - just reset contexts (save is handled by pre-logout callback)
     if (!isAuthenticated && wasAuthenticatedRef.current) {
+      // Cancel any pending debounced save (save already happened in pre-logout callback)
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+      
+      // Reset the contexts after logout
       resetEnergyLog();
       resetIntentionLog();
       resetDataLog();

@@ -30,6 +30,8 @@ interface AuthContextType {
   logout: () => void;
   loginWithGoogle: () => Promise<void>;
   handleOAuthRedirect: () => Promise<void>;
+  registerPreLogoutCallback: (callback: () => Promise<void> | void) => void;
+  unregisterPreLogoutCallback: (callback: () => Promise<void> | void) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,6 +41,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [, navigate] = useLocation();
+  
+  // Pre-logout callbacks - called BEFORE logout clears auth to allow saving data
+  const preLogoutCallbacksRef = React.useRef<Set<() => Promise<void> | void>>(new Set());
+  
+  const registerPreLogoutCallback = React.useCallback((callback: () => Promise<void> | void) => {
+    preLogoutCallbacksRef.current.add(callback);
+  }, []);
+  
+  const unregisterPreLogoutCallback = React.useCallback((callback: () => Promise<void> | void) => {
+    preLogoutCallbacksRef.current.delete(callback);
+  }, []);
 
   // Firebase auth state listener
   useEffect(() => {
@@ -372,7 +385,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log("Logging out user...");
       
-      // First clear local state
+      // Call all pre-logout callbacks BEFORE clearing auth
+      // This allows components to save their data while the session is still valid
+      const callbacks = Array.from(preLogoutCallbacksRef.current);
+      console.log(`Calling ${callbacks.length} pre-logout callbacks...`);
+      for (let i = 0; i < callbacks.length; i++) {
+        try {
+          await callbacks[i]();
+        } catch (error) {
+          console.error("Pre-logout callback error:", error);
+          // Continue with other callbacks even if one fails
+        }
+      }
+      console.log("Pre-logout callbacks completed");
+      
+      // Now clear local state
       setUser(null);
       setFirebaseUser(null);
       localStorage.removeItem("lyfeos_user");
@@ -510,6 +537,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         loginWithGoogle,
         handleOAuthRedirect,
+        registerPreLogoutCallback,
+        unregisterPreLogoutCallback,
       }}
     >
       {children}
