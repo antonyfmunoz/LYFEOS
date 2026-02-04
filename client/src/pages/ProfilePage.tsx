@@ -94,6 +94,7 @@ export default function ProfilePage() {
   const queryClient = useQueryClient();
 
   const [isEditing, setIsEditing] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(true);
   const [profileData, setProfileData] = useState<UserProfile>({
     id: user?.id || 0,
     username: username,
@@ -967,46 +968,58 @@ export default function ProfilePage() {
         {/* Profile Card */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="glassmorphic rounded-xl neon-border overflow-hidden">
-            <div className="p-3 flex items-center justify-between border-b border-primary/20">
+            <div 
+              className="p-3 flex items-center justify-between border-b border-primary/20 cursor-pointer hover:bg-primary/5 transition-colors"
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+            >
               <div className="flex items-center">
                 <User className="mr-2 h-5 w-5 text-primary" />
                 <h2 className="text-lg font-orbitron text-foreground">Profile</h2>
               </div>
-              {isEditing ? (
-                <div className="flex gap-2">
+              <div className="flex items-center gap-2">
+                {isEditing ? (
+                  <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleCancel}
+                      className="hover:bg-primary hover:text-background"
+                    >
+                      <X className="mr-2 h-4 w-4" />
+                      Cancel
+                    </Button>
+                    <Button 
+                      variant="default" 
+                      size="sm"
+                      onClick={handleSave}
+                      disabled={updateProfileMutation.isPending}
+                      className="hover:bg-primary hover:text-background"
+                    >
+                      <Save className="mr-2 h-4 w-4" />
+                      Save
+                    </Button>
+                  </div>
+                ) : (
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={handleCancel}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsEditing(true);
+                    }}
                     className="hover:bg-primary hover:text-background"
                   >
-                    <X className="mr-2 h-4 w-4" />
-                    Cancel
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit Profile
                   </Button>
-                  <Button 
-                    variant="default" 
-                    size="sm"
-                    onClick={handleSave}
-                    disabled={updateProfileMutation.isPending}
-                    className="hover:bg-primary hover:text-background"
-                  >
-                    <Save className="mr-2 h-4 w-4" />
-                    Save
-                  </Button>
+                )}
+                <div className="text-primary">
+                  {isProfileOpen ? <ChevronDown className="h-5 w-5 rotate-180 transition-transform" /> : <ChevronDown className="h-5 w-5 transition-transform" />}
                 </div>
-              ) : (
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setIsEditing(true)}
-                  className="hover:bg-primary hover:text-background"
-                >
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit Profile
-                </Button>
-              )}
+              </div>
             </div>
             
+            {isProfileOpen && (
             <div className="p-4">
             
             {/* Profile Image - Centered at the top */}
@@ -1341,6 +1354,7 @@ export default function ProfilePage() {
             </div>
             
             </div>
+            )}
           </div>
 
           </div>
