@@ -52,7 +52,7 @@ function MissionCard({ mission }: { mission: Quest }) {
           <div className="flex justify-between items-start">
             <div className="flex-grow">
               <h3 className="font-medium mb-1 text-muted-foreground line-through">
-                {mission.title}
+                {mission.title.replace(/^Onboarding:\s*/, '')}
                 {mission.notificationEnabled && (
                   <Bell className="inline-block ml-2 h-3 w-3 text-primary opacity-70" />
                 )}
