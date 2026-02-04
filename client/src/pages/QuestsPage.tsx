@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLYFEOS } from "../lib/context";
 import { useAuth } from "@/lib/authContext";
 import { useQuery } from "@tanstack/react-query";
@@ -90,91 +90,6 @@ export default function QuestsPage() {
     m => !completedOnboardingMissions.includes(m.id)
   );
   
-  const syncedRef = useRef(false);
-  
-  useEffect(() => {
-    if (!user?.id || !userProfile || syncedRef.current) return;
-    
-    const completedIds = (userProfile as any)?.completedOnboardingMissions || [];
-    
-    // Don't run sync if no completed onboarding missions
-    if (completedIds.length === 0) {
-      syncedRef.current = true;
-      return;
-    }
-    
-    // Check if all expected onboarding quests exist
-    const existingOnboardingQuests = quests.filter(q => q.category === "onboarding");
-    const allQuestsExist = completedIds.every((missionId: number) => {
-      const mission = ONBOARDING_MISSIONS.find(m => m.id === missionId);
-      if (!mission) return true;
-      return existingOnboardingQuests.some(q => q.title === `Onboarding: ${mission.title}`);
-    });
-    
-    if (allQuestsExist) {
-      console.log("All onboarding quests already exist, no sync needed");
-      syncedRef.current = true;
-      return;
-    }
-    
-    // Mark as syncing immediately to prevent duplicate runs
-    syncedRef.current = true;
-    
-    const syncCompletedOnboardingQuests = async () => {
-      console.log("Starting onboarding sync - completedIds:", completedIds, "existing quests:", quests.length);
-      
-      let createdAny = false;
-      
-      for (const missionId of completedIds) {
-        const mission = ONBOARDING_MISSIONS.find(m => m.id === missionId);
-        if (!mission) continue;
-        
-        const existingQuest = existingOnboardingQuests.find(q => 
-          q.title === `Onboarding: ${mission.title}`
-        );
-        
-        if (!existingQuest) {
-          // Use yesterday's date for retroactively created quests so they appear in archive
-          const yesterday = new Date();
-          yesterday.setDate(yesterday.getDate() - 1);
-          const dateStr = yesterday.toISOString().split('T')[0];
-          const timeStr = yesterday.toTimeString().slice(0, 5); // HH:MM format
-          
-          try {
-            console.log("Creating missing onboarding quest for mission:", mission.title);
-            await apiRequest("/api/quests", {
-              method: "POST",
-              body: JSON.stringify({
-                userId: user.id,
-                title: `Onboarding: ${mission.title}`,
-                description: `Completed onboarding mission "${mission.title}"`,
-                category: "onboarding",
-                completed: true,
-                completedAt: yesterday.toISOString(),
-                experienceReward: mission.xp,
-                startDate: dateStr,
-                startTime: timeStr,
-                dueDate: dateStr,
-                endDate: dateStr,
-                endTime: timeStr,
-              }),
-            });
-            createdAny = true;
-            console.log("Successfully created onboarding quest for mission:", mission.title);
-          } catch (error: any) {
-            console.error("Failed to sync onboarding quest:", error?.message || error);
-          }
-        }
-      }
-      
-      if (createdAny) {
-        queryClient.invalidateQueries({ queryKey: [`/api/users/${user.id}/quests`] });
-      }
-    };
-    
-    syncCompletedOnboardingQuests();
-  }, [user?.id, userProfile, quests]);
-
   const { todayMissions, upcomingMissions, completedMissions } = useMemo(() => {
     const active = quests.filter(q => !q.completed);
     

@@ -553,16 +553,21 @@ export default function OnboardingPage() {
       
       if (user?.id) {
         try {
+          const now = new Date();
+          const timeStr = now.toTimeString().slice(0, 5); // HH:MM format
           const questData = {
             userId: user.id,
             title: `Onboarding: ${mission.title}`,
             description: `Completed onboarding mission "${mission.title}"`,
             category: "onboarding",
             completed: true,
-            completedAt: new Date().toISOString(),
+            completedAt: now.toISOString(),
             experienceReward: mission.xp,
+            startDate: today,
+            startTime: timeStr,
             dueDate: today,
             endDate: today,
+            endTime: timeStr,
           };
           console.log("Creating quest with data:", questData);
           const result = await apiRequest("/api/quests", {
