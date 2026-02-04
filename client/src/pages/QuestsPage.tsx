@@ -138,6 +138,7 @@ export default function QuestsPage() {
           const yesterday = new Date();
           yesterday.setDate(yesterday.getDate() - 1);
           const dateStr = yesterday.toISOString().split('T')[0];
+          const timeStr = yesterday.toTimeString().slice(0, 5); // HH:MM format
           
           try {
             console.log("Creating missing onboarding quest for mission:", mission.title);
@@ -151,8 +152,11 @@ export default function QuestsPage() {
                 completed: true,
                 completedAt: yesterday.toISOString(),
                 experienceReward: mission.xp,
+                startDate: dateStr,
+                startTime: timeStr,
                 dueDate: dateStr,
                 endDate: dateStr,
+                endTime: timeStr,
               }),
             });
             createdAny = true;
