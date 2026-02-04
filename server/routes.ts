@@ -3717,7 +3717,17 @@ Generate the complete affirmation now:`;
         return res.status(400).json({ error: "Invalid user ID" });
       }
       
-      const { date, yesterdayXp, todayPrimaryMission, optionalBoostsShown, boostsData, wakeTime, sleepTime, mentalState, physicalState, emotionalState } = req.body;
+      const { 
+        date, yesterdayXp, todayPrimaryMission, optionalBoostsShown, boostsData,
+        // Energy log fields
+        wakeTime, sleepTime, mentalState, physicalState, emotionalState,
+        // Intention log fields
+        gratitude, tomorrowGoals, annualGoals, thoughts,
+        // Data log fields
+        contentConsumed, research, todoIdeas,
+        // Reflection log fields
+        wentWell, couldBeBetter, learned
+      } = req.body;
       
       if (!date) {
         return res.status(400).json({ error: "Date is required" });
@@ -3732,18 +3742,32 @@ Generate the complete affirmation now:`;
         ));
       
       if (existingLog.length > 0) {
-        // Update the existing log
+        // Update the existing log with all fields
         await db.update(userDailyLogs)
           .set({
             yesterdayXp: yesterdayXp !== undefined ? yesterdayXp : existingLog[0].yesterdayXp,
             todayPrimaryMission: todayPrimaryMission || existingLog[0].todayPrimaryMission,
             optionalBoostsShown: optionalBoostsShown !== undefined ? optionalBoostsShown : existingLog[0].optionalBoostsShown,
             boostsData: boostsData || existingLog[0].boostsData,
+            // Energy log fields
             wakeTime: wakeTime !== undefined ? wakeTime : existingLog[0].wakeTime,
             sleepTime: sleepTime !== undefined ? sleepTime : existingLog[0].sleepTime,
             mentalState: mentalState !== undefined ? mentalState : existingLog[0].mentalState,
             physicalState: physicalState !== undefined ? physicalState : existingLog[0].physicalState,
-            emotionalState: emotionalState !== undefined ? emotionalState : existingLog[0].emotionalState
+            emotionalState: emotionalState !== undefined ? emotionalState : existingLog[0].emotionalState,
+            // Intention log fields
+            gratitude: gratitude !== undefined ? gratitude : existingLog[0].gratitude,
+            tomorrowGoals: tomorrowGoals !== undefined ? tomorrowGoals : existingLog[0].tomorrowGoals,
+            annualGoals: annualGoals !== undefined ? annualGoals : existingLog[0].annualGoals,
+            thoughts: thoughts !== undefined ? thoughts : existingLog[0].thoughts,
+            // Data log fields
+            contentConsumed: contentConsumed !== undefined ? contentConsumed : existingLog[0].contentConsumed,
+            research: research !== undefined ? research : existingLog[0].research,
+            todoIdeas: todoIdeas !== undefined ? todoIdeas : existingLog[0].todoIdeas,
+            // Reflection log fields
+            wentWell: wentWell !== undefined ? wentWell : existingLog[0].wentWell,
+            couldBeBetter: couldBeBetter !== undefined ? couldBeBetter : existingLog[0].couldBeBetter,
+            learned: learned !== undefined ? learned : existingLog[0].learned
           })
           .where(eq(userDailyLogs.id, existingLog[0].id));
           
@@ -3758,11 +3782,25 @@ Generate the complete affirmation now:`;
           todayPrimaryMission,
           optionalBoostsShown,
           boostsData: boostsData || {},
+          // Energy log fields
           wakeTime: wakeTime || null,
           sleepTime: sleepTime || null,
           mentalState: mentalState || 5,
           physicalState: physicalState || 5,
-          emotionalState: emotionalState || 5
+          emotionalState: emotionalState || 5,
+          // Intention log fields
+          gratitude: gratitude || null,
+          tomorrowGoals: tomorrowGoals || null,
+          annualGoals: annualGoals || null,
+          thoughts: thoughts || null,
+          // Data log fields
+          contentConsumed: contentConsumed || null,
+          research: research || null,
+          todoIdeas: todoIdeas || null,
+          // Reflection log fields
+          wentWell: wentWell || null,
+          couldBeBetter: couldBeBetter || null,
+          learned: learned || null
         }).returning();
         
         return res.status(201).json({ log: newLog[0] });
@@ -3781,7 +3819,17 @@ Generate the complete affirmation now:`;
         return res.status(400).json({ error: "Invalid user ID" });
       }
       
-      const { date, boostsData, wakeTime, sleepTime, mentalState, physicalState, emotionalState } = req.body;
+      const { 
+        date, boostsData,
+        // Energy log fields
+        wakeTime, sleepTime, mentalState, physicalState, emotionalState,
+        // Intention log fields
+        gratitude, tomorrowGoals, annualGoals, thoughts,
+        // Data log fields
+        contentConsumed, research, todoIdeas,
+        // Reflection log fields
+        wentWell, couldBeBetter, learned
+      } = req.body;
       
       if (!date) {
         return res.status(400).json({ error: "Date is required" });
@@ -3796,15 +3844,29 @@ Generate the complete affirmation now:`;
         ));
       
       if (existingLog.length > 0) {
-        // Update the existing log with all energy log fields
+        // Update the existing log with all fields
         await db.update(userDailyLogs)
           .set({
             boostsData: boostsData !== undefined ? boostsData : existingLog[0].boostsData,
+            // Energy log fields
             wakeTime: wakeTime !== undefined ? wakeTime : existingLog[0].wakeTime,
             sleepTime: sleepTime !== undefined ? sleepTime : existingLog[0].sleepTime,
             mentalState: mentalState !== undefined ? mentalState : existingLog[0].mentalState,
             physicalState: physicalState !== undefined ? physicalState : existingLog[0].physicalState,
-            emotionalState: emotionalState !== undefined ? emotionalState : existingLog[0].emotionalState
+            emotionalState: emotionalState !== undefined ? emotionalState : existingLog[0].emotionalState,
+            // Intention log fields
+            gratitude: gratitude !== undefined ? gratitude : existingLog[0].gratitude,
+            tomorrowGoals: tomorrowGoals !== undefined ? tomorrowGoals : existingLog[0].tomorrowGoals,
+            annualGoals: annualGoals !== undefined ? annualGoals : existingLog[0].annualGoals,
+            thoughts: thoughts !== undefined ? thoughts : existingLog[0].thoughts,
+            // Data log fields
+            contentConsumed: contentConsumed !== undefined ? contentConsumed : existingLog[0].contentConsumed,
+            research: research !== undefined ? research : existingLog[0].research,
+            todoIdeas: todoIdeas !== undefined ? todoIdeas : existingLog[0].todoIdeas,
+            // Reflection log fields
+            wentWell: wentWell !== undefined ? wentWell : existingLog[0].wentWell,
+            couldBeBetter: couldBeBetter !== undefined ? couldBeBetter : existingLog[0].couldBeBetter,
+            learned: learned !== undefined ? learned : existingLog[0].learned
           })
           .where(eq(userDailyLogs.id, existingLog[0].id));
           
@@ -3816,11 +3878,25 @@ Generate the complete affirmation now:`;
           userId: userId,
           date,
           boostsData: boostsData || {},
+          // Energy log fields
           wakeTime: wakeTime || null,
           sleepTime: sleepTime || null,
           mentalState: mentalState || 5,
           physicalState: physicalState || 5,
-          emotionalState: emotionalState || 5
+          emotionalState: emotionalState || 5,
+          // Intention log fields
+          gratitude: gratitude || null,
+          tomorrowGoals: tomorrowGoals || null,
+          annualGoals: annualGoals || null,
+          thoughts: thoughts || null,
+          // Data log fields
+          contentConsumed: contentConsumed || null,
+          research: research || null,
+          todoIdeas: todoIdeas || null,
+          // Reflection log fields
+          wentWell: wentWell || null,
+          couldBeBetter: couldBeBetter || null,
+          learned: learned || null
         }).returning();
         
         return res.status(201).json({ log: newLog[0] });
