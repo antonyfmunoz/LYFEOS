@@ -58,8 +58,9 @@ app.use((req, res, next) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
+    log(`Error: ${message} (${status})`);
+    console.error(err);
     res.status(status).json({ message });
-    throw err;
   });
 
   // importantly only setup vite in development and after
@@ -81,5 +82,37 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+  });
+
+  // Graceful shutdown handling to properly release port
+  const gracefulShutdown = (signal: string) => {
+    log(`Received ${signal}, shutting down gracefully...`);
+    server.close(() => {
+      log('Server closed');
+      process.exit(0);
+    });
+    
+    // Force exit if server doesn't close within 5 seconds
+    setTimeout(() => {
+      log('Forcing shutdown after timeout');
+      process.exit(1);
+    }, 5000);
+  };
+
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));
+
+  // Handle uncaught exceptions and unhandled promise rejections
+  process.on('uncaughtException', (err) => {
+    log(`Uncaught exception: ${err.message}`);
+    console.error(err);
+    gracefulShutdown('uncaughtException');
+  });
+
+  process.on('unhandledRejection', (reason, promise) => {
+    log(`Unhandled rejection at: ${promise}, reason: ${reason}`);
+    console.error(reason);
+    gracefulShutdown('unhandledRejection');
   });
 })();
