@@ -155,6 +155,7 @@ interface LYFEOSContextType {
   createQuest: (quest: Omit<Quest, "id" | "completed">) => Promise<Quest>;
   updateQuest: (id: string, quest: Partial<Quest>) => Promise<Quest>;
   deleteQuest: (id: string) => Promise<void>;
+  refetchQuests: () => Promise<void>;
   sendMessage: (content: string) => void;
   sendMessageInSession: (sessionId: string, content: string) => void;
   username: string;
@@ -478,47 +479,48 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     }
   }, [isAuthenticated, user]);
   
+  // Refetch quests from the server
+  const refetchQuests = async () => {
+    if (!user?.id) return;
+    try {
+      console.log("Refetching quests for user:", user.id);
+      const response = await fetch(`/api/users/${user.id}/quests`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.quests && Array.isArray(data.quests)) {
+          console.log("Quests refetched successfully:", data.quests.length, "quests");
+          const transformedQuests: Quest[] = data.quests.map((quest: any) => ({
+            id: String(quest.id),
+            title: quest.title,
+            description: quest.description || "",
+            category: quest.category || "general",
+            completed: quest.completed || false,
+            completedAt: quest.completedAt || null,
+            energyCost: quest.energyCost || 1,
+            experienceReward: quest.experienceReward || 10,
+            startDate: quest.startDate || null,
+            startTime: quest.startTime || null,
+            endDate: quest.endDate || null,
+            endTime: quest.endTime || null,
+            dueDate: quest.dueDate || null,
+            notificationEnabled: quest.notificationEnabled || false,
+            notificationTime: quest.notificationTime || null,
+            notifications: quest.notifications || [],
+          }));
+          setQuests(transformedQuests);
+        }
+      } else {
+        console.error("Failed to refetch quests, status:", response.status);
+      }
+    } catch (error) {
+      console.error("Failed to refetch quests:", error);
+    }
+  };
+
   // Load quests/missions when user logs in
   useEffect(() => {
     if (isAuthenticated && user) {
-      const fetchQuests = async () => {
-        try {
-          console.log("Fetching quests for user:", user.id);
-          const response = await fetch(`/api/users/${user.id}/quests`);
-          if (response.ok) {
-            const data = await response.json();
-            if (data.quests && Array.isArray(data.quests)) {
-              console.log("Quests loaded successfully:", data.quests.length, "quests");
-              // Transform database quests to frontend format (id as string)
-              const transformedQuests: Quest[] = data.quests.map((quest: any) => ({
-                id: String(quest.id),
-                title: quest.title,
-                description: quest.description || "",
-                category: quest.category || "general",
-                completed: quest.completed || false,
-                completedAt: quest.completedAt || null,
-                energyCost: quest.energyCost || 1,
-                experienceReward: quest.experienceReward || 10,
-                startDate: quest.startDate || null,
-                startTime: quest.startTime || null,
-                endDate: quest.endDate || null,
-                endTime: quest.endTime || null,
-                dueDate: quest.dueDate || null,
-                notificationEnabled: quest.notificationEnabled || false,
-                notificationTime: quest.notificationTime || null,
-                notifications: quest.notifications || [],
-              }));
-              setQuests(transformedQuests);
-            }
-          } else {
-            console.error("Failed to fetch quests, status:", response.status);
-          }
-        } catch (error) {
-          console.error("Failed to fetch quests:", error);
-        }
-      };
-      
-      fetchQuests();
+      refetchQuests();
     }
   }, [isAuthenticated, user]);
   
@@ -1842,6 +1844,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         createQuest,
         updateQuest,
         deleteQuest,
+        refetchQuests,
         sendMessage,
         sendMessageInSession,
         username,

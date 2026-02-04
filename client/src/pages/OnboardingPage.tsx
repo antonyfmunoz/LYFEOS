@@ -415,6 +415,7 @@ function ScenarioSelect({
 export default function OnboardingPage() {
   usePageTitle("Onboarding");
   const { user, isLoading: authLoading } = useAuth();
+  const { refetchQuests } = useLYFEOS();
   const [, navigate] = useLocation();
   
   const { data: userProfile } = useQuery({
@@ -575,6 +576,9 @@ export default function OnboardingPage() {
             body: JSON.stringify(questData),
           });
           console.log("Quest created successfully:", result);
+          console.log("Refetching quests after onboarding mission completion...");
+          await refetchQuests();
+          console.log("Quests refetched successfully");
         } catch (questError: any) {
           console.error("Failed to create quest:", questError?.message || questError);
         }
