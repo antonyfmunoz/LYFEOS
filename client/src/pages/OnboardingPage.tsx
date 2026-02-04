@@ -1004,15 +1004,18 @@ export default function OnboardingPage() {
       {/* Footer Navigation */}
       <div className="p-4">
         <div className="max-w-lg mx-auto flex justify-between items-center">
-          <Button 
-            variant="outline" 
-            onClick={handlePrevious} 
-            disabled={currentMission === 0 && currentStep === 0}
-            className="bg-card/50 border-primary/30 hover:bg-card/80"
-          >
-            <ChevronLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
+          {currentMission === 0 && currentStep === 0 ? (
+            <div />
+          ) : (
+            <Button 
+              variant="outline" 
+              onClick={handlePrevious} 
+              className="bg-card/50 border-primary/30 hover:bg-card/80"
+            >
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+          )}
           
           <Button 
             onClick={handleNext} 
