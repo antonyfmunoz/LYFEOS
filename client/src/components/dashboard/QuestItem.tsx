@@ -40,7 +40,7 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestIt
           <div className="flex justify-between items-start">
             <div className="flex-grow">
               <h3 className={`font-medium mb-1 ${completed ? "text-muted-foreground line-through" : ""}`}>
-                {title}
+                {title.replace(/^Onboarding:\s*/, '')}
                 {notificationEnabled && (
                   <Bell className="inline-block ml-2 h-3 w-3 text-primary opacity-70" />
                 )}
@@ -119,7 +119,7 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestIt
             </div>
           </div>
           <p className={`text-muted-foreground text-sm ${completed ? "opacity-50" : ""}`}>
-            {description}
+            {description?.replace(/^Completed onboarding mission "(.+)"$/, 'Completed the "$1" mission') || description}
           </p>
         </div>
       </div>
