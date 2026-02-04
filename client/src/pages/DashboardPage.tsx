@@ -158,18 +158,45 @@ export default function DashboardPage() {
     retry: false // Don't retry on auth errors
   });
   
+  // Track which database record has been loaded (fingerprint) - only allow saves for that record
+  const loadedRecordFingerprintRef = useRef<string | null>(null);
+  
+  // Track if user has actually made changes (dirty flag) - prevents saving defaults
+  const isDirtyRef = useRef(false);
+  
   // Save daily log mutation (includes energy, intention, data, and reflection fields)
   // NOTE: We intentionally do NOT invalidate the query cache on success.
   // The form state is the source of truth after initial load. Invalidating would
   // cause a refetch that triggers a race condition, resetting values.
   const saveDailyLogMutation = useMutation({
-    mutationFn: async (logData: Partial<DailyReflection>) => {
+    mutationFn: async (logData: Partial<DailyReflection> & { _expectedFingerprint?: string; _forceSave?: boolean }) => {
       if (!user?.id) throw new Error("User not authenticated");
+      const { _expectedFingerprint, _forceSave, ...dataToSend } = logData;
+      
+      // Safety check 1: never save if we haven't loaded from DB yet
+      if (!loadedRecordFingerprintRef.current) {
+        console.log("Skipping save - data not yet loaded from database");
+        return { skipped: true };
+      }
+      
+      // Safety check 2: fingerprint mismatch (stale data from before a reload)
+      if (_expectedFingerprint && _expectedFingerprint !== loadedRecordFingerprintRef.current) {
+        console.log("Skipping save - fingerprint mismatch (stale data)");
+        return { skipped: true };
+      }
+      
+      // Safety check 3: don't save if user hasn't made any changes (prevents saving defaults)
+      // Can be bypassed with _forceSave for pre-logout flush when we know data is valid
+      if (!_forceSave && !isDirtyRef.current) {
+        console.log("Skipping save - no user changes (not dirty)");
+        return { skipped: true };
+      }
+      
       return apiRequest(`/api/users/${user.id}/daily-logs`, {
         method: 'POST',
         body: JSON.stringify({
           date: todayDateStr,
-          ...logData
+          ...dataToSend
         })
       });
     }
@@ -187,9 +214,14 @@ export default function DashboardPage() {
       // Use REF values (always current) to get the latest log data
       const logs = currentLogsRef.current;
       
-      // Only save if all logs were loaded (have valid data to save)
-      if (logs.energyLog.isLoaded && logs.intentionLog.isLoaded && logs.dataLog.isLoaded && logs.reflectionLog.isLoaded) {
-        const dataToSave: Partial<DailyReflection> = {
+      // Only save if: all logs were loaded, user made changes, and we have a valid fingerprint
+      const hasValidData = logs.energyLog.isLoaded && logs.intentionLog.isLoaded && 
+                           logs.dataLog.isLoaded && logs.reflectionLog.isLoaded;
+      const hasFingerprint = !!loadedRecordFingerprintRef.current;
+      const isDirty = isDirtyRef.current;
+      
+      if (hasValidData && hasFingerprint && isDirty) {
+        const dataToSave: Partial<DailyReflection> & { _expectedFingerprint?: string; _forceSave?: boolean } = {
           wakeTime: logs.energyLog.wakeTime,
           sleepTime: logs.energyLog.sleepTime,
           mentalState: logs.energyLog.mentalState,
@@ -205,6 +237,8 @@ export default function DashboardPage() {
           wentWell: logs.reflectionLog.wentWell,
           couldBeBetter: logs.reflectionLog.couldBeBetter,
           learned: logs.reflectionLog.learned,
+          _expectedFingerprint: loadedRecordFingerprintRef.current || undefined,
+          _forceSave: true, // Bypass dirty check since we already verified
         };
         console.log("Pre-logout: Flushing save with data:", dataToSave);
         
@@ -212,7 +246,7 @@ export default function DashboardPage() {
         await saveDailyLogMutation.mutateAsync(dataToSave);
         console.log("Pre-logout: Save completed successfully");
       } else {
-        console.log("Pre-logout: Skipping save - not all logs loaded");
+        console.log(`Pre-logout: Skipping save - hasValidData: ${hasValidData}, hasFingerprint: ${hasFingerprint}, isDirty: ${isDirty}`);
       }
     };
     
@@ -241,6 +275,19 @@ export default function DashboardPage() {
       }
       
       console.log("Daily log data loaded:", dailyLogData);
+      
+      // Cancel any pending debounced save from before load (prevents stale default values from saving)
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+        console.log("Cancelled pending save before DB hydration");
+      }
+      
+      // Mark which record we loaded - saves will only be allowed for this fingerprint
+      loadedRecordFingerprintRef.current = dataFingerprint;
+      // Reset dirty flag - fresh load means no unsaved user changes yet
+      isDirtyRef.current = false;
+      
       // Check if this is actual data or the "no data" marker
       if (!dailyLogData._noData) {
         // Data exists in database - populate all global contexts
@@ -317,6 +364,11 @@ export default function DashboardPage() {
         saveTimeoutRef.current = null;
       }
       
+      // Reset loaded record fingerprint - next login needs fresh data before saving
+      loadedRecordFingerprintRef.current = null;
+      // Reset dirty flag - new session starts fresh
+      isDirtyRef.current = false;
+      
       // Reset the contexts after logout
       resetEnergyLog();
       resetIntentionLog();
@@ -334,6 +386,10 @@ export default function DashboardPage() {
       resetIntentionLog();
       resetDataLog();
       resetReflectionLog();
+      // Reset loaded record fingerprint - new day needs fresh data before saving
+      loadedRecordFingerprintRef.current = null;
+      // Reset dirty flag - new day starts fresh
+      isDirtyRef.current = false;
       lastLoadedDateRef.current = todayDateStr;
       // Invalidate to reload from server for the new day
       queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'daily-logs'] });
@@ -399,6 +455,9 @@ export default function DashboardPage() {
       updateReflectionLogState({ [field]: value });
     }
     
+    // Mark as dirty - user made a change, so saves are now allowed
+    isDirtyRef.current = true;
+    
     // Debounce-save to database only if all logs are loaded to prevent partial data overwrites
     if (isAllLogsLoaded) {
       // Clear existing timeout
@@ -429,9 +488,12 @@ export default function DashboardPage() {
         learned: field === 'learned' ? value : reflectionLogState.learned,
       };
       
+      // Capture current fingerprint to validate at save time
+      const currentFingerprint = loadedRecordFingerprintRef.current;
+      
       // Debounce save (500ms delay)
       saveTimeoutRef.current = setTimeout(() => {
-        saveDailyLogMutation.mutate(updatedData);
+        saveDailyLogMutation.mutate({ ...updatedData, _expectedFingerprint: currentFingerprint || undefined });
       }, 500);
     }
   };
