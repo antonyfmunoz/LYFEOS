@@ -551,19 +551,22 @@ export default function OnboardingPage() {
         })
       });
       
-      await apiRequest("/api/quests", {
-        method: "POST",
-        body: JSON.stringify({
-          title: `Onboarding: ${mission.title}`,
-          description: `Completed onboarding mission "${mission.title}"`,
-          category: "onboarding",
-          completed: true,
-          completedAt: new Date().toISOString(),
-          experienceReward: mission.xp,
-          dueDate: today,
-          endDate: today,
-        }),
-      });
+      if (user?.id) {
+        await apiRequest("/api/quests", {
+          method: "POST",
+          body: JSON.stringify({
+            userId: user.id,
+            title: `Onboarding: ${mission.title}`,
+            description: `Completed onboarding mission "${mission.title}"`,
+            category: "onboarding",
+            completed: true,
+            completedAt: new Date().toISOString(),
+            experienceReward: mission.xp,
+            dueDate: today,
+            endDate: today,
+          }),
+        });
+      }
       
       if (profileResponse.ok) {
         setCompletedOnboardingMissions(prev => [...(prev || []), missionId].filter((v, i, a) => a.indexOf(v) === i));
