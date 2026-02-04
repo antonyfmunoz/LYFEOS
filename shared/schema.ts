@@ -210,6 +210,11 @@ export const userDailyLogs = pgTable("user_daily_logs", {
   todayPrimaryMission: text("today_primary_mission"),
   optionalBoostsShown: boolean("optional_boosts_shown").default(false),
   boostsData: jsonb("boosts_data").default({}), // Store daily boosts data
+  wakeTime: text("wake_time"), // Time user woke up (HH:MM format)
+  sleepTime: text("sleep_time"), // Time user went to sleep (HH:MM format)
+  mentalState: integer("mental_state").default(5), // 1-10 scale
+  physicalState: integer("physical_state").default(5), // 1-10 scale
+  emotionalState: integer("emotional_state").default(5), // 1-10 scale
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -551,6 +556,11 @@ export const insertUserDailyLogsSchema = createInsertSchema(userDailyLogs).pick(
   todayPrimaryMission: true,
   optionalBoostsShown: true,
   boostsData: true,
+  wakeTime: true,
+  sleepTime: true,
+  mentalState: true,
+  physicalState: true,
+  emotionalState: true,
 });
 
 export const insertUserIntegrationsSchema = createInsertSchema(userIntegrations).pick({
