@@ -552,9 +552,8 @@ export default function OnboardingPage() {
       });
       
       if (user?.id) {
-        await apiRequest("/api/quests", {
-          method: "POST",
-          body: JSON.stringify({
+        try {
+          const questData = {
             userId: user.id,
             title: `Onboarding: ${mission.title}`,
             description: `Completed onboarding mission "${mission.title}"`,
@@ -564,15 +563,23 @@ export default function OnboardingPage() {
             experienceReward: mission.xp,
             dueDate: today,
             endDate: today,
-          }),
-        });
+          };
+          console.log("Creating quest with data:", questData);
+          const result = await apiRequest("/api/quests", {
+            method: "POST",
+            body: JSON.stringify(questData),
+          });
+          console.log("Quest created successfully:", result);
+        } catch (questError: any) {
+          console.error("Failed to create quest:", questError?.message || questError);
+        }
       }
       
       if (profileResponse.ok) {
         setCompletedOnboardingMissions(prev => [...(prev || []), missionId].filter((v, i, a) => a.indexOf(v) === i));
       }
-    } catch (error) {
-      console.error("Failed to save completed mission:", error);
+    } catch (error: any) {
+      console.error("Failed to save completed mission:", error?.message || error);
     }
   };
 

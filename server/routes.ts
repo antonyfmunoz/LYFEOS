@@ -1111,7 +1111,13 @@ Generate the complete affirmation now:`;
 
   app.post("/api/quests", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const questData = insertQuestSchema.parse(req.body);
+      // Pre-process the request body to convert date strings to Date objects
+      const processedBody = { ...req.body };
+      if (processedBody.completedAt && typeof processedBody.completedAt === 'string') {
+        processedBody.completedAt = new Date(processedBody.completedAt);
+      }
+      
+      const questData = insertQuestSchema.parse(processedBody);
       
       // Ensure user can only create quests for their own account
       if (questData.userId !== req.session.userId) {
@@ -1121,6 +1127,7 @@ Generate the complete affirmation now:`;
       const quest = await storage.createQuest(questData);
       return res.status(201).json({ quest });
     } catch (error) {
+      console.error("Quest creation error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
       }
