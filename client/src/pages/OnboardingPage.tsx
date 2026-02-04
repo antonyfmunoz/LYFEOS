@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/lib/authContext";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -416,6 +417,11 @@ export default function OnboardingPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, navigate] = useLocation();
   
+  const { data: userProfile } = useQuery({
+    queryKey: ["/api/profile"],
+    enabled: !!user?.id,
+  });
+  
   useEffect(() => {
     if (!authLoading && !user) {
       console.log("User not authenticated, redirecting to login");
@@ -431,6 +437,13 @@ export default function OnboardingPage() {
   const [showSetupChoice, setShowSetupChoice] = useState(false);
   const [selectedSetupMission, setSelectedSetupMission] = useState("");
   const [completedOnboardingMissions, setCompletedOnboardingMissions] = useState<number[]>([]);
+  
+  useEffect(() => {
+    if (userProfile) {
+      const existingCompleted = (userProfile as any)?.completedOnboardingMissions || [];
+      setCompletedOnboardingMissions(existingCompleted);
+    }
+  }, [userProfile]);
   
   const [ageRange, setAgeRange] = useState("");
   const [location, setLocation] = useState("");

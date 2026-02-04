@@ -1,5 +1,8 @@
 import { useState, useMemo } from "react";
 import { useLYFEOS } from "../lib/context";
+import { useAuth } from "@/lib/authContext";
+import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import QuestItem from "../components/dashboard/QuestItem";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { Button } from "@/components/ui/button";
@@ -17,8 +20,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Zap, Star, Bell, Edit3, X, ChevronDown, ChevronRight, Target, Calendar, CheckCircle2 } from "lucide-react";
+import { Plus, Zap, Star, Bell, Edit3, X, ChevronDown, ChevronRight, Target, Calendar, CheckCircle2, GraduationCap } from "lucide-react";
 import { Quest, QuestNotification } from "@/lib/types";
+
+const ONBOARDING_MISSIONS = [
+  { id: 0, title: "Access & Quickstart", xp: 100 },
+  { id: 1, title: "Archetype Calibration", xp: 150 },
+  { id: 2, title: "Identity & Direction", xp: 75 },
+  { id: 3, title: "Craft & Mastery", xp: 60 },
+  { id: 4, title: "Capacity & Constraints", xp: 55 },
+  { id: 5, title: "Baselines & States", xp: 70 },
+  { id: 6, title: "History & Roots", xp: 50 },
+  { id: 7, title: "Systems & Rituals", xp: 65 },
+];
 
 interface MissionFormData {
   title: string;
@@ -46,8 +60,15 @@ const defaultFormData: MissionFormData = {
 
 export default function QuestsPage() {
   usePageTitle('Missions');
+  const [, navigate] = useLocation();
   
   const { quests, toggleQuestCompletion, createQuest, updateQuest, deleteQuest } = useLYFEOS();
+  const { user } = useAuth();
+  
+  const { data: userProfile } = useQuery({
+    queryKey: ["/api/profile"],
+    enabled: !!user?.id,
+  });
   
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -62,6 +83,11 @@ export default function QuestsPage() {
   const [completedExpanded, setCompletedExpanded] = useState(true);
 
   const today = new Date().toISOString().split('T')[0];
+  
+  const completedOnboardingMissions = (userProfile as any)?.completedOnboardingMissions || [];
+  const incompleteOnboardingMissions = ONBOARDING_MISSIONS.filter(
+    m => !completedOnboardingMissions.includes(m.id)
+  );
 
   const { todayMissions, upcomingMissions, completedMissions } = useMemo(() => {
     const active = quests.filter(q => !q.completed);
@@ -539,7 +565,7 @@ export default function QuestsPage() {
       </Collapsible>
       
       {/* Upcoming Missions */}
-      {upcomingMissions.length > 0 && (
+      {(upcomingMissions.length > 0 || incompleteOnboardingMissions.length > 0) && (
         <Collapsible open={upcomingExpanded} onOpenChange={setUpcomingExpanded} className="mb-6">
           <div className="glassmorphic rounded-xl overflow-hidden border border-primary/20">
             <CollapsibleTrigger asChild>
@@ -555,7 +581,7 @@ export default function QuestsPage() {
                     <h2 className="text-lg font-orbitron">Upcoming Missions</h2>
                   </div>
                   <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
-                    {upcomingMissions.length} SCHEDULED
+                    {upcomingMissions.length + incompleteOnboardingMissions.length} SCHEDULED
                   </div>
                 </div>
               </div>
@@ -563,6 +589,29 @@ export default function QuestsPage() {
             
             <CollapsibleContent>
               <div className="px-4 pb-4 space-y-3">
+                {incompleteOnboardingMissions.map((mission) => (
+                  <div 
+                    key={`onboarding-${mission.id}`}
+                    className="p-3 rounded-lg border border-primary/20 bg-card/30 hover:bg-primary/5 transition-colors cursor-pointer"
+                    onClick={() => navigate('/onboarding')}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <GraduationCap className="h-5 w-5 text-primary" />
+                        <div>
+                          <h3 className="text-sm font-medium text-foreground">{mission.title}</h3>
+                          <p className="text-xs text-muted-foreground">Onboarding Mission</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 text-xs text-primary">
+                          <Star className="h-3 w-3" />
+                          <span>+{mission.xp} XP</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
                 {upcomingMissions.map((quest) => (
                   <QuestItem 
                     key={quest.id}
