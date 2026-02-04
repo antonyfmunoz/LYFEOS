@@ -3717,7 +3717,7 @@ Generate the complete affirmation now:`;
         return res.status(400).json({ error: "Invalid user ID" });
       }
       
-      const { date, yesterdayXp, todayPrimaryMission, optionalBoostsShown, boostsData } = req.body;
+      const { date, yesterdayXp, todayPrimaryMission, optionalBoostsShown, boostsData, wakeTime, sleepTime, mentalState, physicalState, emotionalState } = req.body;
       
       if (!date) {
         return res.status(400).json({ error: "Date is required" });
@@ -3738,11 +3738,17 @@ Generate the complete affirmation now:`;
             yesterdayXp: yesterdayXp !== undefined ? yesterdayXp : existingLog[0].yesterdayXp,
             todayPrimaryMission: todayPrimaryMission || existingLog[0].todayPrimaryMission,
             optionalBoostsShown: optionalBoostsShown !== undefined ? optionalBoostsShown : existingLog[0].optionalBoostsShown,
-            boostsData: boostsData || existingLog[0].boostsData
+            boostsData: boostsData || existingLog[0].boostsData,
+            wakeTime: wakeTime !== undefined ? wakeTime : existingLog[0].wakeTime,
+            sleepTime: sleepTime !== undefined ? sleepTime : existingLog[0].sleepTime,
+            mentalState: mentalState !== undefined ? mentalState : existingLog[0].mentalState,
+            physicalState: physicalState !== undefined ? physicalState : existingLog[0].physicalState,
+            emotionalState: emotionalState !== undefined ? emotionalState : existingLog[0].emotionalState
           })
           .where(eq(userDailyLogs.id, existingLog[0].id));
           
-        return res.status(200).json({ message: "Daily log updated successfully" });
+        const updatedLog = await db.select().from(userDailyLogs).where(eq(userDailyLogs.id, existingLog[0].id));
+        return res.status(200).json({ log: updatedLog[0], message: "Daily log updated successfully" });
       } else {
         // Create a new log
         const newLog = await db.insert(userDailyLogs).values({
@@ -3751,7 +3757,12 @@ Generate the complete affirmation now:`;
           yesterdayXp: yesterdayXp || 0,
           todayPrimaryMission,
           optionalBoostsShown,
-          boostsData: boostsData || {}
+          boostsData: boostsData || {},
+          wakeTime: wakeTime || null,
+          sleepTime: sleepTime || null,
+          mentalState: mentalState || 5,
+          physicalState: physicalState || 5,
+          emotionalState: emotionalState || 5
         }).returning();
         
         return res.status(201).json({ log: newLog[0] });
@@ -3770,7 +3781,7 @@ Generate the complete affirmation now:`;
         return res.status(400).json({ error: "Invalid user ID" });
       }
       
-      const { date, boostsData } = req.body;
+      const { date, boostsData, wakeTime, sleepTime, mentalState, physicalState, emotionalState } = req.body;
       
       if (!date) {
         return res.status(400).json({ error: "Date is required" });
@@ -3785,20 +3796,31 @@ Generate the complete affirmation now:`;
         ));
       
       if (existingLog.length > 0) {
-        // Update the existing log
+        // Update the existing log with all energy log fields
         await db.update(userDailyLogs)
           .set({
-            boostsData: boostsData || existingLog[0].boostsData
+            boostsData: boostsData !== undefined ? boostsData : existingLog[0].boostsData,
+            wakeTime: wakeTime !== undefined ? wakeTime : existingLog[0].wakeTime,
+            sleepTime: sleepTime !== undefined ? sleepTime : existingLog[0].sleepTime,
+            mentalState: mentalState !== undefined ? mentalState : existingLog[0].mentalState,
+            physicalState: physicalState !== undefined ? physicalState : existingLog[0].physicalState,
+            emotionalState: emotionalState !== undefined ? emotionalState : existingLog[0].emotionalState
           })
           .where(eq(userDailyLogs.id, existingLog[0].id));
           
-        return res.status(200).json({ message: "Daily log updated successfully" });
+        const updatedLog = await db.select().from(userDailyLogs).where(eq(userDailyLogs.id, existingLog[0].id));
+        return res.status(200).json({ log: updatedLog[0], message: "Daily log updated successfully" });
       } else {
         // Create a new log if it doesn't exist
         const newLog = await db.insert(userDailyLogs).values({
           userId: userId,
           date,
-          boostsData: boostsData || {}
+          boostsData: boostsData || {},
+          wakeTime: wakeTime || null,
+          sleepTime: sleepTime || null,
+          mentalState: mentalState || 5,
+          physicalState: physicalState || 5,
+          emotionalState: emotionalState || 5
         }).returning();
         
         return res.status(201).json({ log: newLog[0] });
