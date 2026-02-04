@@ -7,13 +7,6 @@ import { Loader2, Mail, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/lib/themeContext";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Separator } from "@/components/ui/separator";
-import { 
-  SiGoogle, 
-  SiApple, 
-  SiFacebook 
-} from "react-icons/si";
-import { toast } from "@/hooks/use-toast";
 
 // Avatar color options
 const avatarColors = [
@@ -32,7 +25,7 @@ export default function RegisterPage() {
   // Set the page title
   usePageTitle('Register');
   
-  const { register, loginWithGoogle } = useAuth();
+  const { register } = useAuth();
   const { primaryColor } = useTheme();
   const [, navigate] = useLocation();
   
@@ -118,34 +111,6 @@ export default function RegisterPage() {
     }
   }, [primaryColor]);
   
-  // Handle OAuth signin with Firebase
-  const handleOAuthSignin = async (provider: string) => {
-    try {
-      if (provider === "Google") {
-        toast({
-          title: "Google Sign Up",
-          description: "Redirecting to Google authentication...",
-        });
-        
-        // Use our Firebase Google auth integration
-        await loginWithGoogle();
-        // The redirect and result handling will be managed by Firebase auth
-      } else {
-        toast({
-          title: `${provider} Sign Up`,
-          description: `${provider} authentication will be available soon. Please use email signup or Google for now.`,
-        });
-      }
-    } catch (error) {
-      console.error(`${provider} sign-in error:`, error);
-      toast({
-        title: "Authentication Error",
-        description: `An error occurred during ${provider} authentication. Please try again.`,
-        variant: "destructive"
-      });
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -260,38 +225,6 @@ export default function RegisterPage() {
       <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-primary/40 animate-fadeIn"
            style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
         <h2 className="text-xl font-orbitron text-center mb-6 text-foreground">Create Your LYFEOS Account</h2>
-        
-        {/* OAuth Sign-in Buttons */}
-        <div className="grid grid-cols-3 gap-2 mb-6">
-          <Button 
-            variant="outline" 
-            className="flex items-center justify-center space-x-2 py-5 border-primary/30 hover:bg-primary/10"
-            onClick={() => handleOAuthSignin("Google")}
-          >
-            <SiGoogle className="h-5 w-5" />
-          </Button>
-          <Button 
-            variant="outline" 
-            className="flex items-center justify-center space-x-2 py-5 border-primary/30 hover:bg-primary/10"
-            onClick={() => handleOAuthSignin("Apple")}
-          >
-            <SiApple className="h-5 w-5" />
-          </Button>
-          <Button 
-            variant="outline" 
-            className="flex items-center justify-center space-x-2 py-5 border-primary/30 hover:bg-primary/10"
-            onClick={() => handleOAuthSignin("Facebook")}
-          >
-            <SiFacebook className="h-5 w-5" />
-          </Button>
-        </div>
-        
-        <div className="relative mb-6">
-          <Separator className="my-2" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="bg-background px-2 text-xs text-muted-foreground">OR</span>
-          </div>
-        </div>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
