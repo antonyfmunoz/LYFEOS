@@ -69,6 +69,7 @@ export default function QuestsPage() {
   const { data: userProfile } = useQuery({
     queryKey: ["/api/profile"],
     enabled: !!user?.id,
+    staleTime: 0,
   });
   
   const [isCreateOpen, setIsCreateOpen] = useState(false);
