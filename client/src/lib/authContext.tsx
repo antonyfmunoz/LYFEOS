@@ -323,13 +323,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.user);
       localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
       
-      // Show success message
-      toast({
-        title: "Registration Successful",
-        description: `Welcome to LYFEOS, ${data.user.username}!`,
-        variant: "default",
-      });
-      
       // CRITICAL FIX: Wait a moment to ensure the session cookie is properly set
       // This prevents the immediate redirect that's happening after registration
       await new Promise(resolve => setTimeout(resolve, 300));
