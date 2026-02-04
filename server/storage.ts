@@ -321,7 +321,10 @@ export class DatabaseStorage implements IStorage {
   
   // Stats methods
   async getUserStats(userId: number): Promise<UserStats | undefined> {
-    const [stats] = await db.select().from(userStats).where(eq(userStats.userId, userId));
+    const [stats] = await db.select().from(userStats)
+      .where(eq(userStats.userId, userId))
+      .orderBy(desc(userStats.updatedAt))
+      .limit(1);
     return stats;
   }
   
@@ -329,6 +332,10 @@ export class DatabaseStorage implements IStorage {
     const [newStats] = await db
       .insert(userStats)
       .values(stats)
+      .onConflictDoUpdate({
+        target: userStats.userId,
+        set: { ...stats, updatedAt: new Date() }
+      })
       .returning();
     return newStats;
   }

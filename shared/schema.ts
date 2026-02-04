@@ -28,7 +28,7 @@ export const users = pgTable("users", {
 // User Stats table
 export const userStats = pgTable("user_stats", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull().references(() => users.id).unique(),
   timeTokensCurrent: integer("time_tokens_current").notNull().default(10),
   timeTokensMax: integer("time_tokens_max").notNull().default(100),
   energyPointsCurrent: integer("energy_points_current").notNull().default(10),
