@@ -461,6 +461,7 @@ export const insertQuestSchema = createInsertSchema(quests).pick({
   description: true,
   category: true,
   completed: true,
+  completedAt: true,
   energyCost: true,
   experienceReward: true,
   startDate: true,

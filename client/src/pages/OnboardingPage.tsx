@@ -537,7 +537,12 @@ export default function OnboardingPage() {
 
   const saveCompletedMission = async (missionId: number) => {
     try {
-      const response = await fetch("/api/profile", {
+      const mission = MISSIONS.find(m => m.id === missionId);
+      if (!mission) return;
+      
+      const today = new Date().toISOString().split('T')[0];
+      
+      const profileResponse = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -545,7 +550,22 @@ export default function OnboardingPage() {
           completedOnboardingMissions: [...(completedOnboardingMissions || []), missionId].filter((v, i, a) => a.indexOf(v) === i)
         })
       });
-      if (response.ok) {
+      
+      await apiRequest("/api/quests", {
+        method: "POST",
+        body: JSON.stringify({
+          title: `Onboarding: ${mission.title}`,
+          description: `Completed onboarding mission "${mission.title}"`,
+          category: "onboarding",
+          completed: true,
+          completedAt: new Date().toISOString(),
+          experienceReward: mission.xp,
+          dueDate: today,
+          endDate: today,
+        }),
+      });
+      
+      if (profileResponse.ok) {
         setCompletedOnboardingMissions(prev => [...(prev || []), missionId].filter((v, i, a) => a.indexOf(v) === i));
       }
     } catch (error) {
