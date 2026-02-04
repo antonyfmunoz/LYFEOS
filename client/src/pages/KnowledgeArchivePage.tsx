@@ -164,10 +164,9 @@ export default function KnowledgeArchivePage() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
       </div>
-      
       <div className="mb-6 flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-orbitron mb-1">Knowledge Archive</h1>
+          <h1 className="text-2xl font-orbitron mb-1">Knowledge Vault</h1>
           <p className="text-[#7DAAB2]">Organize your notes, learnings, and insights from various sources</p>
         </div>
         <Button 
@@ -178,7 +177,6 @@ export default function KnowledgeArchivePage() {
           <span>New Entry</span>
         </Button>
       </div>
-      
       {knowledgeCategories.some(category => category.entries.length > 0) ? (
         <div className="space-y-4">
           {knowledgeCategories.map((category) => (
