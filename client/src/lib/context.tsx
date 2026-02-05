@@ -3,6 +3,7 @@ import { UserStats, Quest, AIMessage, CalendarEvent, MissionPage, ChatSession, K
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "./authContext";
 import { apiRequest } from "./queryClient";
+import { getLocalDateString } from "./utils";
 
 // Initial stats data
 const initialStats: UserStats = {
@@ -589,7 +590,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
               setEvents(transformedEvents);
               
               // Sync calendar events to quests for the Missions page
-              const today = new Date().toISOString().split('T')[0];
+              const today = getLocalDateString();
               const calendarQuests: Quest[] = transformedEvents
                 .filter((event: CalendarEvent) => event.date === today)
                 .map((event: CalendarEvent) => ({

@@ -11,6 +11,7 @@ import { Sparkles, CheckCircle2, Star, Edit2, X, Save, Plus, Trash2 } from "luci
 import { useAuth } from "@/lib/authContext";
 import { useTheme } from "@/lib/themeContext";
 import { apiRequest } from "@/lib/queryClient";
+import { getLocalDateString } from "@/lib/utils";
 
 // Define interfaces for better type checking
 interface Mission {
@@ -164,8 +165,8 @@ export function DailyInitModal() {
               // Track this daily init session in the database if we have API access
               if (user && user.id) {
                 try {
-                  // Format date as YYYY-MM-DD for the API
-                  const formattedDate = new Date().toISOString().split('T')[0];
+                  // Format date as YYYY-MM-DD for the API (uses local timezone)
+                  const formattedDate = getLocalDateString();
                   console.log("Logging daily init for date:", formattedDate);
                   
                   // Create or update daily log entry
@@ -269,8 +270,8 @@ export function DailyInitModal() {
   const handleBeginDay = async () => {
     if (user && user.id) {
       try {
-        // Format date as YYYY-MM-DD for the API
-        const formattedDate = new Date().toISOString().split('T')[0];
+        // Format date as YYYY-MM-DD for the API (uses local timezone)
+        const formattedDate = getLocalDateString();
         
         // Map selected boosts to data objects
         const selectedBoostsData = selectedBoosts.map(boostId => {

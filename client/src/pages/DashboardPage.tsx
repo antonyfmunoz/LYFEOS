@@ -21,6 +21,7 @@ import update from 'immutability-helper';
 import { LevelUpModal } from '@/components/dashboard/LevelUpModal';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { getLocalDateString } from '@/lib/utils';
 
 interface TimeBlock {
   id: string;
@@ -86,8 +87,8 @@ export default function DashboardPage() {
   const [timeFormat, setTimeFormat] = useState<'12h' | '24h'>('12h');
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
   
-  // Track the current date for energy log (to detect date changes)
-  const todayDateStr = new Date().toISOString().split('T')[0];
+  // Track the current date for energy log (to detect date changes) - uses local timezone
+  const todayDateStr = getLocalDateString();
   const lastLoadedDateRef = useRef<string>(todayDateStr);
   
   // Ref to track current log values for flush save on logout

@@ -5,6 +5,7 @@ import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
 import { Archive, Calendar, ChevronDown, ChevronRight, ArrowLeft, Sun, Moon, Brain, Heart, Zap, BookOpen, Target, Lightbulb, CheckCircle, AlertCircle, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getLocalDateString } from "@/lib/utils";
 
 interface DailyLog {
   id: number;
@@ -69,8 +70,7 @@ export default function JournalArchivePage() {
     if (!logsData?.logs) return [];
     
     // Get today's date in YYYY-MM-DD format (local timezone) to filter out today's log
-    const now = new Date();
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const today = getLocalDateString();
     
     const folderMap = new Map<string, MonthFolder>();
     

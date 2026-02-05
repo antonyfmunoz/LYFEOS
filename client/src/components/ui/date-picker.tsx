@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getLocalDateString } from "@/lib/utils";
 
 interface DatePickerProps {
   value: string;
@@ -54,7 +54,7 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
     e.preventDefault();
     e.stopPropagation();
     const newDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
-    const formatted = newDate.toISOString().split("T")[0];
+    const formatted = getLocalDateString(newDate);
     setPendingDate(formatted);
   };
 
