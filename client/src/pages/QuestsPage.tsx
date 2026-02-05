@@ -21,7 +21,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Zap, Star, Bell, Edit3, X, ChevronDown, ChevronRight, Target, Calendar, CheckCircle2, GraduationCap, Inbox } from "lucide-react";
+import { Plus, Zap, Star, Bell, Edit3, X, ChevronDown, ChevronRight, Target, Calendar, CheckCircle2, GraduationCap, Inbox, Info } from "lucide-react";
+import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { Quest, QuestNotification } from "@/lib/types";
 
 const ONBOARDING_MISSIONS = [
@@ -531,6 +532,16 @@ export default function QuestsPage() {
                 <div className="flex items-center gap-3">
                   <Target className="h-5 w-5 text-primary" />
                   <h2 className="text-lg font-orbitron">Today's Missions</h2>
+                  <StatInfoDialog
+                    trigger={
+                      <button className="h-5 w-5 rounded-full bg-primary/10 hover:bg-primary/20 flex items-center justify-center transition-colors" onClick={(e) => e.stopPropagation()}>
+                        <Info className="h-3 w-3 text-primary" />
+                      </button>
+                    }
+                    title="Today's Missions"
+                    description="Missions scheduled for today or without a specific date. Complete these to earn XP and level up your character."
+                    additionalInfo="Focus on high-priority missions first to maximize your daily productivity."
+                  />
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
@@ -579,6 +590,16 @@ export default function QuestsPage() {
                   <div className="flex items-center gap-3">
                     <Calendar className="h-5 w-5 text-primary" />
                     <h2 className="text-lg font-orbitron">Future Missions</h2>
+                    <StatInfoDialog
+                      trigger={
+                        <button className="h-5 w-5 rounded-full bg-primary/10 hover:bg-primary/20 flex items-center justify-center transition-colors" onClick={(e) => e.stopPropagation()}>
+                          <Info className="h-3 w-3 text-primary" />
+                        </button>
+                      }
+                      title="Future Missions"
+                      description="Missions scheduled for upcoming days. Plan ahead to ensure you're prepared for what's coming."
+                      additionalInfo="Review and adjust future missions regularly to keep your schedule aligned with your goals."
+                    />
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
@@ -644,6 +665,16 @@ export default function QuestsPage() {
                   <div className="flex items-center gap-3">
                     <CheckCircle2 className="h-5 w-5 text-primary" />
                     <h2 className="text-lg font-orbitron">Completed Missions</h2>
+                    <StatInfoDialog
+                      trigger={
+                        <button className="h-5 w-5 rounded-full bg-primary/10 hover:bg-primary/20 flex items-center justify-center transition-colors" onClick={(e) => e.stopPropagation()}>
+                          <Info className="h-3 w-3 text-primary" />
+                        </button>
+                      }
+                      title="Completed Missions"
+                      description="Missions you've finished today. Each completed mission contributes to your XP gains and overall progress."
+                      additionalInfo="Review your completed missions to celebrate your achievements and identify patterns in your productivity."
+                    />
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
@@ -686,6 +717,16 @@ export default function QuestsPage() {
                   <div className="flex items-center gap-3">
                     <Inbox className="h-5 w-5 text-primary" />
                     <h2 className="text-lg font-orbitron">Mission Archive</h2>
+                    <StatInfoDialog
+                      trigger={
+                        <button className="h-5 w-5 rounded-full bg-primary/10 hover:bg-primary/20 flex items-center justify-center transition-colors" onClick={(e) => e.stopPropagation()}>
+                          <Info className="h-3 w-3 text-primary" />
+                        </button>
+                      }
+                      title="Mission Archive"
+                      description="Missions created from your to-do ideas. Edit to schedule or complete them directly."
+                      additionalInfo="These missions were automatically generated from ideas you captured. Review and prioritize them as needed."
+                    />
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
@@ -702,21 +743,16 @@ export default function QuestsPage() {
             </CollapsibleTrigger>
             
             <CollapsibleContent>
-              <div className="px-4 pb-4">
-                <p className="text-xs text-muted-foreground mb-3">
-                  Missions created from your to-do ideas. Edit to schedule or complete them directly.
-                </p>
-                <div className="space-y-3">
-                  {inboxMissions.map((quest) => (
-                    <QuestItem 
-                      key={quest.id}
-                      quest={quest}
-                      onToggle={() => toggleQuestCompletion(quest.id)}
-                      onDelete={() => deleteQuest(quest.id)}
-                      onEdit={() => openEditDialog(quest)}
-                    />
-                  ))}
-                </div>
+              <div className="px-4 pb-4 space-y-3">
+                {inboxMissions.map((quest) => (
+                  <QuestItem 
+                    key={quest.id}
+                    quest={quest}
+                    onToggle={() => toggleQuestCompletion(quest.id)}
+                    onDelete={() => deleteQuest(quest.id)}
+                    onEdit={() => openEditDialog(quest)}
+                  />
+                ))}
               </div>
             </CollapsibleContent>
           </div>
