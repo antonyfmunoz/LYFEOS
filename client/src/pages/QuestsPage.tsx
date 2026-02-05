@@ -21,7 +21,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Zap, Star, Bell, Edit3, X, ChevronDown, ChevronRight, Target, Calendar, CheckCircle2, GraduationCap } from "lucide-react";
+import { Plus, Zap, Star, Bell, Edit3, X, ChevronDown, ChevronRight, Target, Calendar, CheckCircle2, GraduationCap, Inbox } from "lucide-react";
 import { Quest, QuestNotification } from "@/lib/types";
 
 const ONBOARDING_MISSIONS = [
@@ -81,6 +81,7 @@ export default function QuestsPage() {
   const [todayExpanded, setTodayExpanded] = useState(true);
   const [upcomingExpanded, setUpcomingExpanded] = useState(true);
   const [completedExpanded, setCompletedExpanded] = useState(true);
+  const [inboxExpanded, setInboxExpanded] = useState(true);
 
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -90,7 +91,7 @@ export default function QuestsPage() {
     m => !completedOnboardingMissions.includes(m.id)
   );
   
-  const { todayMissions, upcomingMissions, completedMissions } = useMemo(() => {
+  const { todayMissions, upcomingMissions, completedMissions, inboxMissions } = useMemo(() => {
     const active = quests.filter(q => !q.completed);
     
     const completed = quests.filter(q => {
@@ -100,12 +101,18 @@ export default function QuestsPage() {
       return completedLocalDate === today;
     });
     
+    // Inbox missions: missions created from to-do ideas (category='todo')
+    const inboxItems = active.filter(q => q.category === 'todo');
+    
+    // Today's missions: exclude 'todo' category (those go to inbox)
     const todayItems = active.filter(q => {
+      if (q.category === 'todo') return false;
       if (!q.startDate) return true;
       return q.startDate === today;
     });
     
     const upcomingItems = active.filter(q => {
+      if (q.category === 'todo') return false;
       if (!q.startDate) return false;
       return q.startDate > today;
     });
@@ -114,6 +121,7 @@ export default function QuestsPage() {
       todayMissions: todayItems,
       upcomingMissions: upcomingItems,
       completedMissions: completed,
+      inboxMissions: inboxItems,
     };
   }, [quests, today]);
 
@@ -656,6 +664,51 @@ export default function QuestsPage() {
                     onEdit={() => openEditDialog(quest)}
                   />
                 ))}
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+      )}
+      
+      {/* Mission Inbox - missions from to-do ideas */}
+      {inboxMissions.length > 0 && (
+        <Collapsible open={inboxExpanded} onOpenChange={setInboxExpanded} className="mb-6">
+          <div className="glassmorphic rounded-xl overflow-hidden border border-primary/20">
+            <CollapsibleTrigger asChild>
+              <div className="p-4 cursor-pointer hover:bg-primary/5 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {inboxExpanded ? (
+                      <ChevronDown className="h-5 w-5 text-primary" />
+                    ) : (
+                      <ChevronRight className="h-5 w-5 text-primary" />
+                    )}
+                    <Inbox className="h-5 w-5 text-primary" />
+                    <h2 className="text-lg font-orbitron">Mission Inbox</h2>
+                  </div>
+                  <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
+                    {inboxMissions.length} QUEUED
+                  </div>
+                </div>
+              </div>
+            </CollapsibleTrigger>
+            
+            <CollapsibleContent>
+              <div className="px-4 pb-4">
+                <p className="text-xs text-muted-foreground mb-3">
+                  Missions created from your to-do ideas. Edit to schedule or complete them directly.
+                </p>
+                <div className="space-y-3">
+                  {inboxMissions.map((quest) => (
+                    <QuestItem 
+                      key={quest.id}
+                      quest={quest}
+                      onToggle={() => toggleQuestCompletion(quest.id)}
+                      onDelete={() => deleteQuest(quest.id)}
+                      onEdit={() => openEditDialog(quest)}
+                    />
+                  ))}
+                </div>
               </div>
             </CollapsibleContent>
           </div>
