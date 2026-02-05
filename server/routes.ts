@@ -119,6 +119,47 @@ function calculateLevelFromTotalXP(totalXP: number): {
   return { level, current, max };
 }
 
+/**
+ * Calculate attention and time costs based on mission duration
+ * @param startDate Start date string (YYYY-MM-DD)
+ * @param startTime Start time string (HH:mm)
+ * @param endDate End date string (YYYY-MM-DD)
+ * @param endTime End time string (HH:mm)
+ * @returns Object with attentionCost and timeCost
+ */
+function calculateMissionCosts(
+  startDate: string | null,
+  startTime: string | null,
+  endDate: string | null,
+  endTime: string | null
+): { attentionCost: number; timeCost: number } {
+  // Default costs when no duration is set
+  if (!startDate || !startTime || !endDate || !endTime) {
+    return { attentionCost: 0, timeCost: 0 };
+  }
+  
+  try {
+    // Parse start and end datetimes
+    const startDateTime = new Date(`${startDate}T${startTime}`);
+    const endDateTime = new Date(`${endDate}T${endTime}`);
+    
+    // Calculate duration in minutes
+    const durationMs = endDateTime.getTime() - startDateTime.getTime();
+    const durationMinutes = Math.max(0, Math.floor(durationMs / (1000 * 60)));
+    
+    // Time Tokens: 1 TT per 15 minutes (minimum 1 if duration > 0)
+    const timeCost = durationMinutes > 0 ? Math.max(1, Math.floor(durationMinutes / 15)) : 0;
+    
+    // Attention Tokens: 1 AT per 30 minutes (requires sustained focus)
+    const attentionCost = durationMinutes > 0 ? Math.max(1, Math.floor(durationMinutes / 30)) : 0;
+    
+    return { attentionCost, timeCost };
+  } catch (error) {
+    console.error("Error calculating mission costs:", error);
+    return { attentionCost: 0, timeCost: 0 };
+  }
+}
+
 // Helper function to award XP
 async function awardExperiencePoints(
   userId: number, 
@@ -1142,7 +1183,19 @@ Generate the complete affirmation now:`;
         }
       }
       
-      const quest = await storage.createQuest(questData);
+      // Auto-calculate attention and time costs based on duration
+      const { attentionCost, timeCost } = calculateMissionCosts(
+        questData.startDate || null,
+        questData.startTime || null,
+        questData.endDate || null,
+        questData.endTime || null
+      );
+      
+      const quest = await storage.createQuest({
+        ...questData,
+        attentionCost,
+        timeCost,
+      });
       return res.status(201).json({ quest });
     } catch (error) {
       console.error("Quest creation error:", error);
@@ -1172,7 +1225,25 @@ Generate the complete affirmation now:`;
       }
       
       const questUpdate = req.body;
-      const updatedQuest = await storage.updateQuest(questId, questUpdate);
+      
+      // Auto-calculate attention and time costs if dates/times are being updated
+      const startDate = questUpdate.startDate ?? quest.startDate;
+      const startTime = questUpdate.startTime ?? quest.startTime;
+      const endDate = questUpdate.endDate ?? quest.endDate;
+      const endTime = questUpdate.endTime ?? quest.endTime;
+      
+      const { attentionCost, timeCost } = calculateMissionCosts(
+        startDate || null,
+        startTime || null,
+        endDate || null,
+        endTime || null
+      );
+      
+      const updatedQuest = await storage.updateQuest(questId, {
+        ...questUpdate,
+        attentionCost,
+        timeCost,
+      });
       
       return res.status(200).json({ quest: updatedQuest });
     } catch (error) {
@@ -1297,7 +1368,25 @@ Generate the complete affirmation now:`;
       }
       
       const validatedData = updateQuestSchema.parse(req.body);
-      const updatedQuest = await storage.updateQuest(questId, validatedData);
+      
+      // Auto-calculate attention and time costs if dates/times are being updated
+      const startDate = validatedData.startDate ?? quest.startDate;
+      const startTime = validatedData.startTime ?? quest.startTime;
+      const endDate = validatedData.endDate ?? quest.endDate;
+      const endTime = validatedData.endTime ?? quest.endTime;
+      
+      const { attentionCost, timeCost } = calculateMissionCosts(
+        startDate || null,
+        startTime || null,
+        endDate || null,
+        endTime || null
+      );
+      
+      const updatedQuest = await storage.updateQuest(questId, {
+        ...validatedData,
+        attentionCost,
+        timeCost,
+      });
       return res.status(200).json({ quest: updatedQuest });
     } catch (error) {
       if (error instanceof z.ZodError) {
