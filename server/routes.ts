@@ -3897,6 +3897,9 @@ Generate the complete affirmation now:`;
           const previousDay = new Date(year, month - 1, day - 1); // month is 0-indexed
           const previousDateStr = `${previousDay.getFullYear()}-${String(previousDay.getMonth() + 1).padStart(2, '0')}-${String(previousDay.getDate()).padStart(2, '0')}`;
           
+          // Create midnight timestamp for today (so missions appear as created at start of day)
+          const todayMidnight = new Date(year, month - 1, day, 0, 0, 0, 0);
+          
           // Fetch previous day's log
           const previousLogs = await db.select()
             .from(userDailyLogs)
@@ -3913,7 +3916,7 @@ Generate the complete affirmation now:`;
               .map((line: string) => line.trim())
               .filter((line: string) => line.length > 0);
             
-            // Create quests for each non-empty line
+            // Create quests for each non-empty line with createdAt set to midnight
             for (const todoLine of todoLines) {
               await storage.createQuest({
                 userId,
@@ -3921,11 +3924,12 @@ Generate the complete affirmation now:`;
                 description: `Auto-created from To-Do Ideas on ${previousDateStr}`,
                 category: 'todo',
                 completed: false,
-                experienceReward: 50
+                experienceReward: 50,
+                createdAt: todayMidnight
               });
             }
             
-            console.log(`Created ${todoLines.length} quests from previous day's todoIdeas for user ${userId}`);
+            console.log(`Created ${todoLines.length} quests from previous day's todoIdeas for user ${userId} with createdAt set to midnight`);
           }
         } catch (todoError) {
           // Don't fail the log creation if todo conversion fails

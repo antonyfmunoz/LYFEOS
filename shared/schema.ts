@@ -497,6 +497,7 @@ export const insertQuestSchema = createInsertSchema(quests).pick({
   notificationEnabled: true,
   notificationTime: true,
   notifications: true,
+  createdAt: true,
 });
 
 export const insertAIMessageSchema = createInsertSchema(aiMessages).pick({
