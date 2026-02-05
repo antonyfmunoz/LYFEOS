@@ -8,7 +8,6 @@ interface StatInfoDialogProps {
   children?: React.ReactNode;
   trigger: React.ReactNode;
   title: string;
-  titleColor?: string;
   description: string;
   additionalInfo?: string;
   statType?: "attention" | "time" | "energy" | "health" | "experience" | "streak" | "efficiency";
@@ -19,7 +18,6 @@ export function StatInfoDialog({
   children,
   trigger,
   title,
-  titleColor = "text-primary",
   description,
   additionalInfo,
   statType = "time",
@@ -49,28 +47,6 @@ export function StatInfoDialog({
     }
   };
   
-  // Map statType to border color
-  const getBorderColor = () => {
-    switch (statType) {
-      case "attention":
-        return "border-[#9C6ADE]";
-      case "time":
-        return "border-primary";
-      case "energy":
-        return "border-[#FCD34D]";
-      case "health":
-        return "border-[#EC4899]";
-      case "experience":
-        return "border-[#36F1CD]";
-      case "streak":
-        return "border-[#60A5FA]";
-      case "efficiency":
-        return "border-[#10B981]";
-      default:
-        return "border-primary";
-    }
-  };
-  
   if (!open) {
     return (
       <div onClick={() => setOpen(true)}>
@@ -92,14 +68,13 @@ export function StatInfoDialog({
         aria-describedby={`dialog-desc-${statType}`}
         className={cn(
           "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 max-w-[500px] w-[90%] z-[100]",
-          "border bg-[#001E26]/80 text-white shadow-lg rounded-md p-6 pr-8",
-          "backdrop-blur-lg animate-in fade-in-0 zoom-in-90 duration-100",
-          getBorderColor()
+          "glassmorphic border border-primary/30 text-white shadow-lg rounded-xl p-6 pr-8",
+          "animate-in fade-in-0 zoom-in-90 duration-100"
         )}
       >
         <button 
           onClick={() => setOpen(false)}
-          className="absolute right-2 top-2 rounded-md p-1 text-white/70 transition-opacity hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          className="absolute right-2 top-2 rounded-md p-1 text-primary/70 transition-opacity hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
           aria-label="Close"
         >
           <X className="h-4 w-4" />
@@ -108,18 +83,18 @@ export function StatInfoDialog({
         <div className="grid gap-1">
           <h3 
             id={`dialog-title-${statType}`}
-            className={cn("text-lg font-bold text-white tracking-wide font-orbitron", titleColor)}
+            className="text-lg font-bold text-primary tracking-wide font-orbitron"
           >
             {title}
           </h3>
           
           <div 
             id={`dialog-desc-${statType}`}
-            className="text-sm opacity-90 text-gray-200 mt-2"
+            className="text-sm opacity-90 text-foreground mt-2"
           >
             <p className="leading-relaxed">{description}</p>
             {additionalInfo && (
-              <p className="text-sm text-[#7DAAB2] italic mt-3">{additionalInfo}</p>
+              <p className="text-sm text-primary/70 italic mt-3">{additionalInfo}</p>
             )}
             {children}
           </div>
@@ -129,16 +104,9 @@ export function StatInfoDialog({
           <div className="mt-6 flex justify-end">
             <Link href={getDetailUrl()} className={cn(
                 "inline-flex h-9 items-center justify-center rounded-md px-4 py-2 text-sm font-medium",
-                "ring-offset-background transition-colors",
-                "border border-white/10 hover:bg-white/5",
-                "focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2",
-                statType === "attention" ? "text-[#9C6ADE]" :
-                statType === "time" ? "text-primary" : 
-                statType === "energy" ? "text-[#FCD34D]" : 
-                statType === "health" ? "text-[#EC4899]" : 
-                statType === "streak" ? "text-[#60A5FA]" :
-                statType === "efficiency" ? "text-[#10B981]" :
-                "text-[#36F1CD]"
+                "ring-offset-background transition-colors text-primary",
+                "border border-primary/30 hover:bg-primary/5",
+                "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
               )}>
                 <ExternalLink size={14} className="mr-2" /> More Details
             </Link>
