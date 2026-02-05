@@ -569,7 +569,7 @@ export default function QuestsPage() {
         </div>
       </Collapsible>
       
-      {/* Upcoming Missions */}
+      {/* Future Missions */}
       {(upcomingMissions.length > 0 || incompleteOnboardingMissions.length > 0) && (
         <Collapsible open={upcomingExpanded} onOpenChange={setUpcomingExpanded} className="mb-6">
           <div className="glassmorphic rounded-xl overflow-hidden border border-primary/20">
@@ -578,7 +578,7 @@ export default function QuestsPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Calendar className="h-5 w-5 text-primary" />
-                    <h2 className="text-lg font-orbitron">Upcoming Missions</h2>
+                    <h2 className="text-lg font-orbitron">Future Missions</h2>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
