@@ -12,6 +12,7 @@ interface StatInfoDialogProps {
   description: string;
   additionalInfo?: string;
   statType?: "attention" | "time" | "energy" | "health" | "experience" | "streak" | "efficiency";
+  hideMoreDetails?: boolean;
 }
 
 export function StatInfoDialog({
@@ -22,6 +23,7 @@ export function StatInfoDialog({
   description,
   additionalInfo,
   statType = "time",
+  hideMoreDetails = false,
 }: StatInfoDialogProps) {
   const [open, setOpen] = useState(false);
   
@@ -123,23 +125,25 @@ export function StatInfoDialog({
           </div>
         </div>
         
-        <div className="mt-6 flex justify-end">
-          <Link href={getDetailUrl()} className={cn(
-              "inline-flex h-9 items-center justify-center rounded-md px-4 py-2 text-sm font-medium",
-              "ring-offset-background transition-colors",
-              "border border-white/10 hover:bg-white/5",
-              "focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2",
-              statType === "attention" ? "text-[#9C6ADE]" :
-              statType === "time" ? "text-primary" : 
-              statType === "energy" ? "text-[#FCD34D]" : 
-              statType === "health" ? "text-[#EC4899]" : 
-              statType === "streak" ? "text-[#60A5FA]" :
-              statType === "efficiency" ? "text-[#10B981]" :
-              "text-[#36F1CD]"
-            )}>
-              <ExternalLink size={14} className="mr-2" /> More Details
-          </Link>
-        </div>
+        {!hideMoreDetails && (
+          <div className="mt-6 flex justify-end">
+            <Link href={getDetailUrl()} className={cn(
+                "inline-flex h-9 items-center justify-center rounded-md px-4 py-2 text-sm font-medium",
+                "ring-offset-background transition-colors",
+                "border border-white/10 hover:bg-white/5",
+                "focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2",
+                statType === "attention" ? "text-[#9C6ADE]" :
+                statType === "time" ? "text-primary" : 
+                statType === "energy" ? "text-[#FCD34D]" : 
+                statType === "health" ? "text-[#EC4899]" : 
+                statType === "streak" ? "text-[#60A5FA]" :
+                statType === "efficiency" ? "text-[#10B981]" :
+                "text-[#36F1CD]"
+              )}>
+                <ExternalLink size={14} className="mr-2" /> More Details
+            </Link>
+          </div>
+        )}
       </div>
     </>
   );

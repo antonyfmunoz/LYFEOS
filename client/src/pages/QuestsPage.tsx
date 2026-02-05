@@ -539,6 +539,7 @@ export default function QuestsPage() {
                 title="Today's Missions"
                 description="Missions scheduled for today or without a specific date. Complete these to earn XP and level up your character."
                 additionalInfo="Focus on high-priority missions first to maximize your daily productivity."
+                hideMoreDetails
               />
             </div>
             <CollapsibleTrigger asChild>
@@ -595,6 +596,7 @@ export default function QuestsPage() {
                   title="Future Missions"
                   description="Missions scheduled for upcoming days. Plan ahead to ensure you're prepared for what's coming."
                   additionalInfo="Review and adjust future missions regularly to keep your schedule aligned with your goals."
+                  hideMoreDetails
                 />
               </div>
               <CollapsibleTrigger asChild>
@@ -668,6 +670,7 @@ export default function QuestsPage() {
                   title="Completed Missions"
                   description="Missions you've finished today. Each completed mission contributes to your XP gains and overall progress."
                   additionalInfo="Review your completed missions to celebrate your achievements and identify patterns in your productivity."
+                  hideMoreDetails
                 />
               </div>
               <CollapsibleTrigger asChild>
@@ -718,6 +721,7 @@ export default function QuestsPage() {
                   title="Mission Archive"
                   description="Missions created from your to-do ideas. Edit to schedule or complete them directly."
                   additionalInfo="These missions were automatically generated from ideas you captured. Review and prioritize them as needed."
+                  hideMoreDetails
                 />
               </div>
               <CollapsibleTrigger asChild>
