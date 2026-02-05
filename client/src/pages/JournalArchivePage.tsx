@@ -206,13 +206,13 @@ export default function JournalArchivePage() {
                                 <span className="flex items-center gap-1">
                                   <Moon className="h-3 w-3" /> {formatTime12Hour(log.sleepTime)}
                                 </span>
-                                <span className={`flex items-center gap-1 ${getStateColor(log.mentalState)}`}>
+                                <span className="flex items-center gap-1 text-primary">
                                   <Brain className="h-3 w-3" /> {log.mentalState ?? '-'}/10
                                 </span>
-                                <span className={`flex items-center gap-1 ${getStateColor(log.physicalState)}`}>
+                                <span className="flex items-center gap-1 text-primary">
                                   <Zap className="h-3 w-3" /> {log.physicalState ?? '-'}/10
                                 </span>
-                                <span className={`flex items-center gap-1 ${getStateColor(log.emotionalState)}`}>
+                                <span className="flex items-center gap-1 text-primary">
                                   <Heart className="h-3 w-3" /> {log.emotionalState ?? '-'}/10
                                 </span>
                               </div>
