@@ -117,7 +117,7 @@ const DraggableCategoryCard = ({ id, index, item, moveCategory, navigate }: Drag
     } else if (item.id === "missions") {
       navigate('/mission-archive');
     } else if (item.id === "rituals") {
-      navigate('/rituals-archive');
+      navigate('/rituals');
     } else if (item.id === "knowledge") {
       navigate('/knowledge-vault');
     } else if (item.id === "goals") {

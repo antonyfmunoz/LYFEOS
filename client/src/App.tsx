@@ -375,7 +375,7 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
-      <Route path="/rituals-archive">
+      <Route path="/rituals">
         <ProtectedRoute>
           <RootLayout>
             <RitualsArchivePage />
