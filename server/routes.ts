@@ -132,10 +132,10 @@ function calculateMissionCosts(
   startTime: string | null,
   endDate: string | null,
   endTime: string | null
-): { attentionCost: number; timeCost: number } {
+): { attentionCost: number; timeCost: number; energyCost: number } {
   // Default costs when no duration is set
   if (!startDate || !startTime || !endDate || !endTime) {
-    return { attentionCost: 0, timeCost: 0 };
+    return { attentionCost: 0, timeCost: 0, energyCost: 1 };
   }
   
   try {
@@ -160,10 +160,13 @@ function calculateMissionCosts(
     // Attention Tokens: 1 AT per 30 minutes (rounded down, 0 for short tasks)
     const attentionCost = Math.floor(durationMinutes / 30);
     
-    return { attentionCost, timeCost };
+    // Energy Points: 1 EP per 20 minutes (minimum 1 for any task)
+    const energyCost = durationMinutes > 0 ? Math.max(1, Math.ceil(durationMinutes / 20)) : 1;
+    
+    return { attentionCost, timeCost, energyCost };
   } catch (error) {
     console.error("Error calculating mission costs:", error);
-    return { attentionCost: 0, timeCost: 0 };
+    return { attentionCost: 0, timeCost: 0, energyCost: 1 };
   }
 }
 
@@ -1190,8 +1193,8 @@ Generate the complete affirmation now:`;
         }
       }
       
-      // Auto-calculate attention and time costs based on duration
-      const { attentionCost, timeCost } = calculateMissionCosts(
+      // Auto-calculate attention, time, and energy costs based on duration
+      const { attentionCost, timeCost, energyCost } = calculateMissionCosts(
         questData.startDate || null,
         questData.startTime || null,
         questData.endDate || null,
@@ -1202,6 +1205,7 @@ Generate the complete affirmation now:`;
         ...questData,
         attentionCost,
         timeCost,
+        energyCost,
       });
       return res.status(201).json({ quest });
     } catch (error) {
@@ -1209,6 +1213,36 @@ Generate the complete affirmation now:`;
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
       }
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Recalculate costs for all quests for a user (useful for updating existing data)
+  app.post("/api/quests/recalculate-costs", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const quests = await storage.getQuests(userId);
+      
+      let updatedCount = 0;
+      for (const quest of quests) {
+        const { attentionCost, timeCost, energyCost } = calculateMissionCosts(
+          quest.startDate || null,
+          quest.startTime || null,
+          quest.endDate || null,
+          quest.endTime || null
+        );
+        
+        await storage.updateQuest(quest.id, {
+          attentionCost,
+          timeCost,
+          energyCost,
+        });
+        updatedCount++;
+      }
+      
+      return res.status(200).json({ message: `Recalculated costs for ${updatedCount} quests` });
+    } catch (error) {
+      console.error("Error recalculating quest costs:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });
@@ -1337,7 +1371,7 @@ Generate the complete affirmation now:`;
       const endDate = validatedData.endDate ?? quest.endDate;
       const endTime = validatedData.endTime ?? quest.endTime;
       
-      const { attentionCost, timeCost } = calculateMissionCosts(
+      const { attentionCost, timeCost, energyCost } = calculateMissionCosts(
         startDate || null,
         startTime || null,
         endDate || null,
@@ -1348,6 +1382,7 @@ Generate the complete affirmation now:`;
         ...validatedData,
         attentionCost,
         timeCost,
+        energyCost,
       });
       return res.status(200).json({ quest: updatedQuest });
     } catch (error) {

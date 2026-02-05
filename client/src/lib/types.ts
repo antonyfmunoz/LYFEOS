@@ -46,7 +46,7 @@ export interface Quest {
   category?: string;
   completed: boolean;
   completedAt?: string | null;
-  energyCost: number;
+  energyCost?: number;
   attentionCost?: number;
   timeCost?: number;
   experienceReward: number;

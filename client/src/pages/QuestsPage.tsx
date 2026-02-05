@@ -38,7 +38,6 @@ const ONBOARDING_MISSIONS = [
 interface MissionFormData {
   title: string;
   description: string;
-  energyCost: number;
   experienceReward: number;
   startDate: string;
   startTime: string;
@@ -50,7 +49,6 @@ interface MissionFormData {
 const defaultFormData: MissionFormData = {
   title: "",
   description: "",
-  energyCost: 1,
   experienceReward: 10,
   startDate: "",
   startTime: "",
@@ -124,7 +122,6 @@ export default function QuestsPage() {
     setEditFormData({
       title: quest.title,
       description: quest.description,
-      energyCost: quest.energyCost,
       experienceReward: quest.experienceReward,
       startDate: quest.startDate || "",
       startTime: quest.startTime || "",
@@ -143,7 +140,6 @@ export default function QuestsPage() {
       await createQuest({
         title: createFormData.title.trim(),
         description: createFormData.description.trim() || "No description",
-        energyCost: createFormData.energyCost,
         experienceReward: createFormData.experienceReward,
         startDate: createFormData.startDate || null,
         startTime: createFormData.startTime || null,
@@ -171,7 +167,6 @@ export default function QuestsPage() {
       await updateQuest(editingQuest.id, {
         title: editFormData.title.trim(),
         description: editFormData.description.trim() || "No description",
-        energyCost: editFormData.energyCost,
         experienceReward: editFormData.experienceReward,
         startDate: editFormData.startDate || null,
         startTime: editFormData.startTime || null,
@@ -238,20 +233,6 @@ export default function QuestsPage() {
                   value={createFormData.description}
                   onChange={(e) => setCreateFormData(prev => ({ ...prev, description: e.target.value }))}
                   className="bg-background/50 border-primary/30 min-h-[80px]"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label className="flex items-center gap-1">
-                  <Zap className="h-3 w-3 text-red-400" />
-                  EP Cost
-                </Label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={createFormData.energyCost}
-                  onChange={(e) => setCreateFormData(prev => ({ ...prev, energyCost: parseInt(e.target.value) || 0 }))}
-                  className="bg-background/50 border-primary/30"
                 />
               </div>
               
@@ -412,20 +393,6 @@ export default function QuestsPage() {
                 value={editFormData.description}
                 onChange={(e) => setEditFormData(prev => ({ ...prev, description: e.target.value }))}
                 className="bg-background/50 border-primary/30 min-h-[80px]"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1">
-                <Zap className="h-3 w-3 text-red-400" />
-                EP Cost
-              </Label>
-              <Input
-                type="number"
-                min="0"
-                value={editFormData.energyCost}
-                onChange={(e) => setEditFormData(prev => ({ ...prev, energyCost: parseInt(e.target.value) || 0 }))}
-                className="bg-background/50 border-primary/30"
               />
             </div>
             
