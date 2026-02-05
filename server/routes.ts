@@ -3803,6 +3803,49 @@ Generate the complete affirmation now:`;
           learned: learned || null
         }).returning();
         
+        // Convert previous day's todoIdeas into upcoming missions (quests)
+        try {
+          // Calculate previous day's date in local format (YYYY-MM-DD)
+          // Parse the date components directly to avoid timezone conversion issues
+          const [year, month, day] = date.split('-').map(Number);
+          const previousDay = new Date(year, month - 1, day - 1); // month is 0-indexed
+          const previousDateStr = `${previousDay.getFullYear()}-${String(previousDay.getMonth() + 1).padStart(2, '0')}-${String(previousDay.getDate()).padStart(2, '0')}`;
+          
+          // Fetch previous day's log
+          const previousLogs = await db.select()
+            .from(userDailyLogs)
+            .where(and(
+              eq(userDailyLogs.userId, userId),
+              eq(userDailyLogs.date, previousDateStr)
+            ));
+          
+          if (previousLogs.length > 0 && previousLogs[0].todoIdeas) {
+            const todoIdeasText = previousLogs[0].todoIdeas;
+            // Split by newlines and filter out empty lines
+            const todoLines = todoIdeasText
+              .split('\n')
+              .map((line: string) => line.trim())
+              .filter((line: string) => line.length > 0);
+            
+            // Create quests for each non-empty line
+            for (const todoLine of todoLines) {
+              await storage.createQuest({
+                userId,
+                title: todoLine,
+                description: `Auto-created from To-Do Ideas on ${previousDateStr}`,
+                category: 'todo',
+                completed: false,
+                experienceReward: 50
+              });
+            }
+            
+            console.log(`Created ${todoLines.length} quests from previous day's todoIdeas for user ${userId}`);
+          }
+        } catch (todoError) {
+          // Don't fail the log creation if todo conversion fails
+          console.error("Error converting todoIdeas to quests:", todoError);
+        }
+        
         return res.status(201).json({ log: newLog[0] });
       }
     } catch (error) {
