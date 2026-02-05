@@ -529,16 +529,18 @@ export default function QuestsPage() {
             <div className="p-4 cursor-pointer hover:bg-primary/5 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
+                  <Target className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-orbitron">Today's Missions</h2>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
+                    {todayMissions.length} ACTIVE
+                  </div>
                   {todayExpanded ? (
                     <ChevronDown className="h-5 w-5 text-primary" />
                   ) : (
                     <ChevronRight className="h-5 w-5 text-primary" />
                   )}
-                  <Target className="h-5 w-5 text-primary" />
-                  <h2 className="text-lg font-orbitron">Today's Missions</h2>
-                </div>
-                <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
-                  {todayMissions.length} ACTIVE
                 </div>
               </div>
             </div>
@@ -575,16 +577,18 @@ export default function QuestsPage() {
               <div className="p-4 cursor-pointer hover:bg-primary/5 transition-colors">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
+                    <Calendar className="h-5 w-5 text-primary" />
+                    <h2 className="text-lg font-orbitron">Upcoming Missions</h2>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
+                      {upcomingMissions.length + incompleteOnboardingMissions.length} SCHEDULED
+                    </div>
                     {upcomingExpanded ? (
                       <ChevronDown className="h-5 w-5 text-primary" />
                     ) : (
                       <ChevronRight className="h-5 w-5 text-primary" />
                     )}
-                    <Calendar className="h-5 w-5 text-primary" />
-                    <h2 className="text-lg font-orbitron">Upcoming Missions</h2>
-                  </div>
-                  <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
-                    {upcomingMissions.length + incompleteOnboardingMissions.length} SCHEDULED
                   </div>
                 </div>
               </div>
@@ -638,16 +642,18 @@ export default function QuestsPage() {
               <div className="p-4 cursor-pointer hover:bg-primary/5 transition-colors">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
+                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                    <h2 className="text-lg font-orbitron">Completed Missions</h2>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
+                      {completedMissions.length} COMPLETED
+                    </div>
                     {completedExpanded ? (
                       <ChevronDown className="h-5 w-5 text-primary" />
                     ) : (
                       <ChevronRight className="h-5 w-5 text-primary" />
                     )}
-                    <CheckCircle2 className="h-5 w-5 text-primary" />
-                    <h2 className="text-lg font-orbitron">Completed Missions</h2>
-                  </div>
-                  <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
-                    {completedMissions.length} COMPLETED
                   </div>
                 </div>
               </div>
@@ -678,16 +684,18 @@ export default function QuestsPage() {
               <div className="p-4 cursor-pointer hover:bg-primary/5 transition-colors">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
+                    <Inbox className="h-5 w-5 text-primary" />
+                    <h2 className="text-lg font-orbitron">Mission Archive</h2>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
+                      {inboxMissions.length} QUEUED
+                    </div>
                     {inboxExpanded ? (
                       <ChevronDown className="h-5 w-5 text-primary" />
                     ) : (
                       <ChevronRight className="h-5 w-5 text-primary" />
                     )}
-                    <Inbox className="h-5 w-5 text-primary" />
-                    <h2 className="text-lg font-orbitron">Mission Archive</h2>
-                  </div>
-                  <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
-                    {inboxMissions.length} QUEUED
                   </div>
                 </div>
               </div>
