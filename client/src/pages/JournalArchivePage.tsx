@@ -218,11 +218,6 @@ export default function JournalArchivePage() {
                               </div>
                             </div>
                           </div>
-                          {hasContent(log) && (
-                            <span className="text-xs text-primary/70 bg-primary/10 px-2 py-1 rounded">
-                              View Details
-                            </span>
-                          )}
                         </div>
                         
                         {expandedDays.includes(log.date) && (
