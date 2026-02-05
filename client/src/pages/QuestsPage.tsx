@@ -543,10 +543,7 @@ export default function QuestsPage() {
               />
             </div>
             <CollapsibleTrigger asChild>
-              <div className="flex items-center gap-3 cursor-pointer hover:bg-primary/5 transition-colors rounded-md px-2 py-1">
-                <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
-                  {todayMissions.length} ACTIVE
-                </div>
+              <div className="flex items-center cursor-pointer hover:bg-primary/5 transition-colors rounded-md px-2 py-1">
                 {todayExpanded ? (
                   <ChevronDown className="h-5 w-5 text-primary" />
                 ) : (
@@ -600,10 +597,7 @@ export default function QuestsPage() {
                 />
               </div>
               <CollapsibleTrigger asChild>
-                <div className="flex items-center gap-3 cursor-pointer hover:bg-primary/5 transition-colors rounded-md px-2 py-1">
-                  <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
-                    {upcomingMissions.length + incompleteOnboardingMissions.length} SCHEDULED
-                  </div>
+                <div className="flex items-center cursor-pointer hover:bg-primary/5 transition-colors rounded-md px-2 py-1">
                   {upcomingExpanded ? (
                     <ChevronDown className="h-5 w-5 text-primary" />
                   ) : (
@@ -674,10 +668,7 @@ export default function QuestsPage() {
                 />
               </div>
               <CollapsibleTrigger asChild>
-                <div className="flex items-center gap-3 cursor-pointer hover:bg-primary/5 transition-colors rounded-md px-2 py-1">
-                  <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
-                    {completedMissions.length} COMPLETED
-                  </div>
+                <div className="flex items-center cursor-pointer hover:bg-primary/5 transition-colors rounded-md px-2 py-1">
                   {completedExpanded ? (
                     <ChevronDown className="h-5 w-5 text-primary" />
                   ) : (
@@ -725,10 +716,7 @@ export default function QuestsPage() {
                 />
               </div>
               <CollapsibleTrigger asChild>
-                <div className="flex items-center gap-3 cursor-pointer hover:bg-primary/5 transition-colors rounded-md px-2 py-1">
-                  <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
-                    {inboxMissions.length} QUEUED
-                  </div>
+                <div className="flex items-center cursor-pointer hover:bg-primary/5 transition-colors rounded-md px-2 py-1">
                   {inboxExpanded ? (
                     <ChevronDown className="h-5 w-5 text-primary" />
                   ) : (
