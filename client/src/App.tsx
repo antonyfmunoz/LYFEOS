@@ -358,8 +358,8 @@ function Router() {
       </Route>
       
             
-      {/* Archive Pages */}
-      <Route path="/journal-archive">
+      {/* Log Pages */}
+      <Route path="/journal-log">
         <ProtectedRoute>
           <RootLayout>
             <JournalArchivePage />
@@ -367,7 +367,7 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
-      <Route path="/mission-archive">
+      <Route path="/mission-log">
         <ProtectedRoute>
           <RootLayout>
             <MissionArchivePage />

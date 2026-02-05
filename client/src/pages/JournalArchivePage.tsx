@@ -36,7 +36,7 @@ interface MonthFolder {
 }
 
 export default function JournalArchivePage() {
-  usePageTitle('Journal Archive');
+  usePageTitle('Journal Log');
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [expandedMonths, setExpandedMonths] = useState<string[]>([]);
@@ -142,7 +142,7 @@ export default function JournalArchivePage() {
       </div>
       
       <div className="mb-6">
-        <h1 className="text-2xl font-orbitron mb-1">Journal Archive</h1>
+        <h1 className="text-2xl font-orbitron mb-1">Journal Log</h1>
         <p className="text-[#7DAAB2]">Your daily logs organized by date - energy, intentions, data, and reflections</p>
       </div>
       

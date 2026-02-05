@@ -113,9 +113,9 @@ const DraggableCategoryCard = ({ id, index, item, moveCategory, navigate }: Drag
 
   const navigateToArchive = () => {
     if (item.id === "journal") {
-      navigate('/journal-archive');
+      navigate('/journal-log');
     } else if (item.id === "missions") {
-      navigate('/mission-archive');
+      navigate('/mission-log');
     } else if (item.id === "rituals") {
       navigate('/rituals');
     } else if (item.id === "knowledge") {
@@ -169,12 +169,12 @@ export default function ChronilogPage() {
   const [categories, setCategories] = useState<CategoryItem[]>([
     { 
       id: "missions", 
-      title: "Mission Archive", 
+      title: "Mission Log", 
       icon: <CheckSquare className="h-5 w-5 text-primary" />
     },
     { 
       id: "journal", 
-      title: "Journal Archive", 
+      title: "Journal Log", 
       icon: <BookOpen className="h-5 w-5 text-primary" />
     },
     { 
