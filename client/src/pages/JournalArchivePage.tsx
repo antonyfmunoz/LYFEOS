@@ -68,9 +68,13 @@ export default function JournalArchivePage() {
   const monthFolders = useMemo(() => {
     if (!logsData?.logs) return [];
     
+    // Get today's date in YYYY-MM-DD format to filter out today's log
+    const today = new Date().toISOString().split('T')[0];
+    
     const folderMap = new Map<string, MonthFolder>();
     
-    logsData.logs.forEach(log => {
+    // Only include logs from previous days (exclude today)
+    logsData.logs.filter(log => log.date !== today).forEach(log => {
       const date = new Date(log.date);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       const monthTitle = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
