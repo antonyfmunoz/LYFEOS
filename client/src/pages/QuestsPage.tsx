@@ -670,7 +670,7 @@ export default function QuestsPage() {
         </Collapsible>
       )}
       
-      {/* Mission Inbox - missions from to-do ideas */}
+      {/* Mission Archive - missions from to-do ideas */}
       {inboxMissions.length > 0 && (
         <Collapsible open={inboxExpanded} onOpenChange={setInboxExpanded} className="mb-6">
           <div className="glassmorphic rounded-xl overflow-hidden border border-primary/20">
@@ -684,7 +684,7 @@ export default function QuestsPage() {
                       <ChevronRight className="h-5 w-5 text-primary" />
                     )}
                     <Inbox className="h-5 w-5 text-primary" />
-                    <h2 className="text-lg font-orbitron">Mission Inbox</h2>
+                    <h2 className="text-lg font-orbitron">Mission Archive</h2>
                   </div>
                   <div className="text-xs bg-transparent border border-primary/30 text-primary px-2 py-1 rounded-md">
                     {inboxMissions.length} QUEUED
