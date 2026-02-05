@@ -72,20 +72,10 @@ export default function JournalArchivePage() {
     // Get today's date in YYYY-MM-DD format (local timezone) to filter out today's log
     const today = getLocalDateString();
     
-    // Debug: log what we're filtering
-    console.log('[JournalArchive] Today (local):', today);
-    console.log('[JournalArchive] All log dates:', logsData.logs.map(l => l.date));
-    
     const folderMap = new Map<string, MonthFolder>();
     
     // Only include logs from previous days (exclude today)
-    const filteredLogs = logsData.logs.filter(log => {
-      const shouldInclude = log.date !== today;
-      console.log('[JournalArchive] Log date:', log.date, 'Include:', shouldInclude);
-      return shouldInclude;
-    });
-    
-    filteredLogs.forEach(log => {
+    logsData.logs.filter(log => log.date !== today).forEach(log => {
       const date = new Date(log.date);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       const monthTitle = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
