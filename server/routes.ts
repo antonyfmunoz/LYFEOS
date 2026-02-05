@@ -139,19 +139,26 @@ function calculateMissionCosts(
   }
   
   try {
-    // Parse start and end datetimes
-    const startDateTime = new Date(`${startDate}T${startTime}`);
-    const endDateTime = new Date(`${endDate}T${endTime}`);
+    // Parse dates using local Date constructor with explicit components
+    // This ensures correct calendar math across month/year boundaries
+    const [startYear, startMonth, startDay] = startDate.split('-').map(Number);
+    const [startHour, startMinute] = startTime.split(':').map(Number);
+    const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
+    const [endHour, endMinute] = endTime.split(':').map(Number);
     
-    // Calculate duration in minutes
+    // Create Date objects in local time (month is 0-indexed in JS Date)
+    const startDateTime = new Date(startYear, startMonth - 1, startDay, startHour, startMinute, 0, 0);
+    const endDateTime = new Date(endYear, endMonth - 1, endDay, endHour, endMinute, 0, 0);
+    
+    // Calculate duration in minutes using proper Date arithmetic
     const durationMs = endDateTime.getTime() - startDateTime.getTime();
     const durationMinutes = Math.max(0, Math.floor(durationMs / (1000 * 60)));
     
-    // Time Tokens: 1 TT per 15 minutes (minimum 1 if duration > 0)
-    const timeCost = durationMinutes > 0 ? Math.max(1, Math.floor(durationMinutes / 15)) : 0;
+    // Time Tokens: 1 TT per 15 minutes (rounded up, minimum 1 if any duration)
+    const timeCost = durationMinutes > 0 ? Math.ceil(durationMinutes / 15) : 0;
     
-    // Attention Tokens: 1 AT per 30 minutes (requires sustained focus)
-    const attentionCost = durationMinutes > 0 ? Math.max(1, Math.floor(durationMinutes / 30)) : 0;
+    // Attention Tokens: 1 AT per 30 minutes (rounded down, 0 for short tasks)
+    const attentionCost = Math.floor(durationMinutes / 30);
     
     return { attentionCost, timeCost };
   } catch (error) {
@@ -1202,51 +1209,6 @@ Generate the complete affirmation now:`;
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
       }
-      return res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
-  app.patch("/api/quests/:questId", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const questId = parseInt(req.params.questId);
-      if (isNaN(questId)) {
-        return res.status(400).json({ error: "Invalid quest ID" });
-      }
-      
-      // Get the quest to check ownership
-      const quest = await storage.getQuest(questId);
-      if (!quest) {
-        return res.status(404).json({ error: "Quest not found" });
-      }
-      
-      // Verify ownership
-      if (quest.userId !== req.session.userId) {
-        return res.status(403).json({ error: "Not authorized to update this quest" });
-      }
-      
-      const questUpdate = req.body;
-      
-      // Auto-calculate attention and time costs if dates/times are being updated
-      const startDate = questUpdate.startDate ?? quest.startDate;
-      const startTime = questUpdate.startTime ?? quest.startTime;
-      const endDate = questUpdate.endDate ?? quest.endDate;
-      const endTime = questUpdate.endTime ?? quest.endTime;
-      
-      const { attentionCost, timeCost } = calculateMissionCosts(
-        startDate || null,
-        startTime || null,
-        endDate || null,
-        endTime || null
-      );
-      
-      const updatedQuest = await storage.updateQuest(questId, {
-        ...questUpdate,
-        attentionCost,
-        timeCost,
-      });
-      
-      return res.status(200).json({ quest: updatedQuest });
-    } catch (error) {
       return res.status(500).json({ error: "Internal server error" });
     }
   });
