@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
 import { Archive, Calendar, ChevronDown, ChevronRight, ArrowLeft, Sun, Moon, Brain, Heart, Zap, BookOpen, Target, Lightbulb, CheckCircle, AlertCircle, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { getLocalDateString } from "@/lib/utils";
 
 interface DailyLog {
@@ -29,78 +30,27 @@ interface DailyLog {
   createdAt: string;
 }
 
-interface MonthFolder {
-  month: string;
-  title: string;
-  entries: DailyLog[];
+interface DayData {
+  dayKey: string;
+  displayLabel: string;
+  log: DailyLog;
 }
 
-export default function JournalArchivePage() {
-  usePageTitle('Journal Log');
-  const { user } = useAuth();
-  const [, navigate] = useLocation();
-  const [expandedMonths, setExpandedMonths] = useState<string[]>([]);
-  const [expandedDays, setExpandedDays] = useState<string[]>([]);
+interface MonthData {
+  monthKey: string;
+  monthName: string;
+  monthNum: number;
+  days: DayData[];
+}
 
-  const { data: logsData, isLoading } = useQuery<{ logs: DailyLog[] }>({
-    queryKey: ['/api/users', user?.id, 'daily-logs', 'all'],
-    queryFn: async () => {
-      const response = await fetch(`/api/users/${user?.id}/daily-logs`, {
-        credentials: 'include'
-      });
-      if (!response.ok) throw new Error('Failed to fetch daily logs');
-      return response.json();
-    },
-    enabled: !!user?.id,
-  });
+interface YearData {
+  year: string;
+  months: MonthData[];
+}
 
-  const toggleMonth = (month: string) => {
-    setExpandedMonths(prev => 
-      prev.includes(month) ? prev.filter(m => m !== month) : [...prev, month]
-    );
-  };
-
-  const toggleDay = (date: string) => {
-    setExpandedDays(prev => 
-      prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]
-    );
-  };
-
-  const monthFolders = useMemo(() => {
-    if (!logsData?.logs) return [];
-    
-    // Get today's date in YYYY-MM-DD format (local timezone) to filter out today's log
-    const today = getLocalDateString();
-    
-    const folderMap = new Map<string, MonthFolder>();
-    
-    // Helper to parse date string as local date (not UTC)
-    const parseDate = (dateString: string): Date => {
-      const [y, m, d] = dateString.split('-').map(Number);
-      return new Date(y, m - 1, d);
-    };
-
-    // Only include logs from previous days (exclude today)
-    logsData.logs.filter(log => log.date !== today).forEach(log => {
-      const date = parseDate(log.date);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      const monthTitle = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      
-      if (!folderMap.has(monthKey)) {
-        folderMap.set(monthKey, {
-          month: monthKey,
-          title: monthTitle,
-          entries: []
-        });
-      }
-      
-      folderMap.get(monthKey)?.entries.push(log);
-    });
-    
-    return Array.from(folderMap.values())
-      .sort((a, b) => b.month.localeCompare(a.month));
-  }, [logsData?.logs]);
-
+function LogCard({ log }: { log: DailyLog }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
   const parseLocalDate = (dateString: string): Date => {
     const [year, month, day] = dateString.split('-').map(Number);
     return new Date(year, month - 1, day);
@@ -114,18 +64,278 @@ export default function JournalArchivePage() {
     return `${hour12}:${minutes.toString().padStart(2, '0')} ${period}`;
   };
 
-  const getStateColor = (value: number | null) => {
-    if (value === null) return 'text-muted-foreground';
-    if (value >= 7) return 'text-green-400';
-    if (value >= 4) return 'text-yellow-400';
-    return 'text-red-400';
-  };
-
   const hasContent = (log: DailyLog) => {
     return log.wakeTime || log.sleepTime || log.mentalState || log.physicalState || 
            log.emotionalState || log.gratitude || log.tomorrowGoals || log.annualGoals ||
            log.thoughts || log.contentConsumed || log.research || log.todoIdeas ||
            log.wentWell || log.couldBeBetter || log.learned;
+  };
+
+  return (
+    <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+      <CollapsibleTrigger asChild>
+        <div className="glassmorphic rounded-xl p-3 cursor-pointer hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition border border-primary/10 bg-primary/3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {isExpanded ? (
+                <ChevronDown className="h-4 w-4 text-primary" />
+              ) : (
+                <ChevronRight className="h-4 w-4 text-primary" />
+              )}
+              <div>
+                <h4 className="text-base">
+                  {parseLocalDate(log.date).toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
+                </h4>
+                <div className="flex items-center gap-4 text-xs text-[#7DAAB2] mt-1">
+                  <span className="flex items-center gap-1">
+                    <Sun className="h-3 w-3" /> {formatTime12Hour(log.wakeTime)}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Moon className="h-3 w-3" /> {formatTime12Hour(log.sleepTime)}
+                  </span>
+                  <span className="flex items-center gap-1 text-primary">
+                    <Brain className="h-3 w-3" /> {log.mentalState ?? '-'}/10
+                  </span>
+                  <span className="flex items-center gap-1 text-primary">
+                    <Zap className="h-3 w-3" /> {log.physicalState ?? '-'}/10
+                  </span>
+                  <span className="flex items-center gap-1 text-primary">
+                    <Heart className="h-3 w-3" /> {log.emotionalState ?? '-'}/10
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </CollapsibleTrigger>
+      
+      <CollapsibleContent>
+        <div className="ml-6 mt-2 p-4 glassmorphic rounded-xl border border-primary/10 space-y-4 bg-background/30">
+          {(log.gratitude || log.tomorrowGoals || log.annualGoals) && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium text-primary flex items-center gap-2">
+                <Target className="h-4 w-4" /> Intentions
+              </h4>
+              {log.gratitude && (
+                <div className="pl-6">
+                  <p className="text-xs text-[#7DAAB2] mb-1">Gratitude</p>
+                  <p className="text-sm whitespace-pre-wrap">{log.gratitude}</p>
+                </div>
+              )}
+              {log.tomorrowGoals && (
+                <div className="pl-6">
+                  <p className="text-xs text-[#7DAAB2] mb-1">Tomorrow's Goals</p>
+                  <p className="text-sm whitespace-pre-wrap">{log.tomorrowGoals}</p>
+                </div>
+              )}
+              {log.annualGoals && (
+                <div className="pl-6">
+                  <p className="text-xs text-[#7DAAB2] mb-1">Annual Goals</p>
+                  <p className="text-sm whitespace-pre-wrap">{log.annualGoals}</p>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {(log.thoughts || log.contentConsumed || log.research || log.todoIdeas) && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium text-primary flex items-center gap-2">
+                <BookOpen className="h-4 w-4" /> Data & Thoughts
+              </h4>
+              {log.thoughts && (
+                <div className="pl-6">
+                  <p className="text-xs text-[#7DAAB2] mb-1">Thoughts</p>
+                  <p className="text-sm whitespace-pre-wrap">{log.thoughts}</p>
+                </div>
+              )}
+              {log.contentConsumed && (
+                <div className="pl-6">
+                  <p className="text-xs text-[#7DAAB2] mb-1">Content Consumed</p>
+                  <p className="text-sm whitespace-pre-wrap">{log.contentConsumed}</p>
+                </div>
+              )}
+              {log.research && (
+                <div className="pl-6">
+                  <p className="text-xs text-[#7DAAB2] mb-1">Research</p>
+                  <p className="text-sm whitespace-pre-wrap">{log.research}</p>
+                </div>
+              )}
+              {log.todoIdeas && (
+                <div className="pl-6">
+                  <p className="text-xs text-[#7DAAB2] mb-1">Todo Ideas</p>
+                  <p className="text-sm whitespace-pre-wrap">{log.todoIdeas}</p>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {(log.wentWell || log.couldBeBetter || log.learned) && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium text-primary flex items-center gap-2">
+                <Lightbulb className="h-4 w-4" /> Reflection
+              </h4>
+              {log.wentWell && (
+                <div className="pl-6">
+                  <p className="text-xs text-[#7DAAB2] mb-1 flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3 text-green-400" /> What Went Well
+                  </p>
+                  <p className="text-sm whitespace-pre-wrap">{log.wentWell}</p>
+                </div>
+              )}
+              {log.couldBeBetter && (
+                <div className="pl-6">
+                  <p className="text-xs text-[#7DAAB2] mb-1 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3 text-yellow-400" /> Could Be Better
+                  </p>
+                  <p className="text-sm whitespace-pre-wrap">{log.couldBeBetter}</p>
+                </div>
+              )}
+              {log.learned && (
+                <div className="pl-6">
+                  <p className="text-xs text-[#7DAAB2] mb-1 flex items-center gap-1">
+                    <GraduationCap className="h-3 w-3 text-blue-400" /> What I Learned
+                  </p>
+                  <p className="text-sm whitespace-pre-wrap">{log.learned}</p>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {!hasContent(log) && (
+            <p className="text-sm text-[#7DAAB2] italic text-center py-4">
+              No detailed entries for this day
+            </p>
+          )}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+export default function JournalArchivePage() {
+  usePageTitle('Journal Log');
+  const { user } = useAuth();
+  const [, navigate] = useLocation();
+  const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set());
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
+
+  const { data: logsData, isLoading } = useQuery<{ logs: DailyLog[] }>({
+    queryKey: ['/api/users', user?.id, 'daily-logs', 'all'],
+    queryFn: async () => {
+      const response = await fetch(`/api/users/${user?.id}/daily-logs`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch daily logs');
+      return response.json();
+    },
+    enabled: !!user?.id,
+  });
+
+  const parseLocalDate = (dateString: string): Date => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
+
+  const hierarchicalData = useMemo((): YearData[] => {
+    if (!logsData?.logs) return [];
+    
+    const today = getLocalDateString();
+    const yearMap: { [year: string]: { [monthKey: string]: { [dayKey: string]: DailyLog } } } = {};
+    
+    logsData.logs.filter(log => log.date !== today).forEach(log => {
+      const date = parseLocalDate(log.date);
+      const year = date.getFullYear().toString();
+      const monthNum = date.getMonth();
+      const monthKey = `${year}-${String(monthNum + 1).padStart(2, '0')}`;
+      const dayNum = date.getDate();
+      const dayKey = `${year}-${String(monthNum + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+      
+      if (!yearMap[year]) {
+        yearMap[year] = {};
+      }
+      if (!yearMap[year][monthKey]) {
+        yearMap[year][monthKey] = {};
+      }
+      yearMap[year][monthKey][dayKey] = log;
+    });
+    
+    const years: YearData[] = Object.keys(yearMap)
+      .sort((a, b) => parseInt(b) - parseInt(a))
+      .map(year => {
+        const months: MonthData[] = Object.keys(yearMap[year])
+          .sort((a, b) => b.localeCompare(a))
+          .map(monthKey => {
+            const monthNum = parseInt(monthKey.split('-')[1]) - 1;
+            const monthName = new Date(parseInt(year), monthNum, 1).toLocaleDateString('en-US', { month: 'long' });
+            
+            const days: DayData[] = Object.keys(yearMap[year][monthKey])
+              .sort((a, b) => b.localeCompare(a))
+              .map(dayKey => {
+                const [, , dayStr] = dayKey.split('-');
+                const dayNum = parseInt(dayStr);
+                const sampleDate = new Date(parseInt(year), monthNum, dayNum);
+                const weekday = sampleDate.toLocaleDateString('en-US', { weekday: 'long' });
+                const displayLabel = `${weekday}, ${monthName} ${dayNum}`;
+                
+                return {
+                  dayKey,
+                  displayLabel,
+                  log: yearMap[year][monthKey][dayKey]
+                };
+              });
+            
+            return {
+              monthKey,
+              monthName,
+              monthNum,
+              days
+            };
+          });
+        
+        return { year, months };
+      });
+    
+    return years;
+  }, [logsData?.logs]);
+
+  const toggleYear = (year: string) => {
+    setExpandedYears(prev => {
+      const next = new Set(prev);
+      if (next.has(year)) {
+        next.delete(year);
+      } else {
+        next.add(year);
+      }
+      return next;
+    });
+  };
+
+  const toggleMonth = (monthKey: string) => {
+    setExpandedMonths(prev => {
+      const next = new Set(prev);
+      if (next.has(monthKey)) {
+        next.delete(monthKey);
+      } else {
+        next.add(monthKey);
+      }
+      return next;
+    });
+  };
+
+  const countEntriesInYear = (yearData: YearData) => {
+    let count = 0;
+    yearData.months.forEach(month => {
+      count += month.days.length;
+    });
+    return count;
+  };
+
+  const countEntriesInMonth = (monthData: MonthData) => {
+    return monthData.days.length;
   };
 
   return (
@@ -150,181 +360,74 @@ export default function JournalArchivePage() {
         <div className="text-center py-16 glassmorphic rounded-xl border border-primary/20">
           <div className="animate-pulse text-primary">Loading your journal entries...</div>
         </div>
-      ) : monthFolders.length > 0 ? (
-        <div className="space-y-4">
-          {monthFolders.map((folder) => (
-            <div key={folder.month} className="glassmorphic rounded-xl overflow-hidden border border-slate-700/50">
-              <div 
-                className="p-4 flex items-center justify-between cursor-pointer hover:bg-card/40"
-                onClick={() => toggleMonth(folder.month)}
-              >
-                <div className="flex items-center">
-                  {expandedMonths.includes(folder.month) ? (
-                    <ChevronDown className="h-5 w-5 text-primary mr-2" />
-                  ) : (
-                    <ChevronRight className="h-5 w-5 text-primary mr-2" />
-                  )}
-                  <Calendar className="h-5 w-5 text-primary mr-3" />
-                  <h2 className="text-lg font-medium">{folder.title}</h2>
-                </div>
-                <span className="text-xs text-[#7DAAB2] px-2 py-1 bg-slate-800/50 rounded-full">
-                  {folder.entries.length} {folder.entries.length === 1 ? 'day' : 'days'}
-                </span>
-              </div>
-              
-              {expandedMonths.includes(folder.month) && (
-                <div className="px-4 pb-4 space-y-3 pt-2 border-t border-slate-700/50">
-                  {folder.entries
-                    .sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime())
-                    .map((log) => (
-                      <div 
-                        key={log.id}
-                        className="rounded-lg bg-card/30 border border-slate-700/30 overflow-hidden"
-                      >
-                        <div 
-                          className="p-3 flex justify-between items-center cursor-pointer hover:bg-card/50 transition-colors"
-                          onClick={() => toggleDay(log.date)}
-                        >
-                          <div className="flex items-center gap-3">
-                            {expandedDays.includes(log.date) ? (
-                              <ChevronDown className="h-4 w-4 text-primary" />
-                            ) : (
-                              <ChevronRight className="h-4 w-4 text-primary" />
-                            )}
-                            <div>
-                              <h3 className="font-medium">
-                                {parseLocalDate(log.date).toLocaleDateString('en-US', { 
-                                  weekday: 'long', 
-                                  month: 'short', 
-                                  day: 'numeric' 
-                                })}
-                              </h3>
-                              <div className="flex items-center gap-4 text-xs text-[#7DAAB2] mt-1">
-                                <span className="flex items-center gap-1">
-                                  <Sun className="h-3 w-3" /> {formatTime12Hour(log.wakeTime)}
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <Moon className="h-3 w-3" /> {formatTime12Hour(log.sleepTime)}
-                                </span>
-                                <span className="flex items-center gap-1 text-primary">
-                                  <Brain className="h-3 w-3" /> {log.mentalState ?? '-'}/10
-                                </span>
-                                <span className="flex items-center gap-1 text-primary">
-                                  <Zap className="h-3 w-3" /> {log.physicalState ?? '-'}/10
-                                </span>
-                                <span className="flex items-center gap-1 text-primary">
-                                  <Heart className="h-3 w-3" /> {log.emotionalState ?? '-'}/10
+      ) : hierarchicalData.length > 0 ? (
+        <div className="space-y-3">
+          {hierarchicalData.map((yearData) => {
+            const isYearExpanded = expandedYears.has(yearData.year);
+            const yearEntryCount = countEntriesInYear(yearData);
+            
+            return (
+              <Collapsible key={yearData.year} open={isYearExpanded} onOpenChange={() => toggleYear(yearData.year)}>
+                <CollapsibleTrigger asChild>
+                  <div className="glassmorphic rounded-xl p-4 cursor-pointer hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition border border-primary/20">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {isYearExpanded ? (
+                          <ChevronDown className="h-5 w-5 text-primary" />
+                        ) : (
+                          <ChevronRight className="h-5 w-5 text-primary" />
+                        )}
+                        <Calendar className="h-5 w-5 text-primary" />
+                        <h2 className="text-xl font-orbitron">{yearData.year}</h2>
+                      </div>
+                      <span className="text-xs text-[#7DAAB2] px-2 py-1 bg-slate-800/50 rounded-full">
+                        {yearEntryCount} {yearEntryCount === 1 ? 'entry' : 'entries'}
+                      </span>
+                    </div>
+                  </div>
+                </CollapsibleTrigger>
+                
+                <CollapsibleContent>
+                  <div className="ml-6 mt-2 space-y-2">
+                    {yearData.months.map((monthData) => {
+                      const isMonthExpanded = expandedMonths.has(monthData.monthKey);
+                      const monthEntryCount = countEntriesInMonth(monthData);
+                      
+                      return (
+                        <Collapsible key={monthData.monthKey} open={isMonthExpanded} onOpenChange={() => toggleMonth(monthData.monthKey)}>
+                          <CollapsibleTrigger asChild>
+                            <div className="glassmorphic rounded-xl p-3 cursor-pointer hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition border border-primary/15 bg-primary/5">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  {isMonthExpanded ? (
+                                    <ChevronDown className="h-4 w-4 text-primary" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4 text-primary" />
+                                  )}
+                                  <h3 className="text-lg font-medium">{monthData.monthName}</h3>
+                                </div>
+                                <span className="text-xs text-[#7DAAB2] px-2 py-1 bg-slate-800/50 rounded-full">
+                                  {monthEntryCount} {monthEntryCount === 1 ? 'entry' : 'entries'}
                                 </span>
                               </div>
                             </div>
-                          </div>
-                        </div>
-                        
-                        {expandedDays.includes(log.date) && (
-                          <div className="p-4 border-t border-slate-700/30 space-y-4 bg-background/30">
-                            {(log.gratitude || log.tomorrowGoals || log.annualGoals) && (
-                              <div className="space-y-3">
-                                <h4 className="text-sm font-medium text-primary flex items-center gap-2">
-                                  <Target className="h-4 w-4" /> Intentions
-                                </h4>
-                                {log.gratitude && (
-                                  <div className="pl-6">
-                                    <p className="text-xs text-[#7DAAB2] mb-1">Gratitude</p>
-                                    <p className="text-sm whitespace-pre-wrap">{log.gratitude}</p>
-                                  </div>
-                                )}
-                                {log.tomorrowGoals && (
-                                  <div className="pl-6">
-                                    <p className="text-xs text-[#7DAAB2] mb-1">Tomorrow's Goals</p>
-                                    <p className="text-sm whitespace-pre-wrap">{log.tomorrowGoals}</p>
-                                  </div>
-                                )}
-                                {log.annualGoals && (
-                                  <div className="pl-6">
-                                    <p className="text-xs text-[#7DAAB2] mb-1">Annual Goals</p>
-                                    <p className="text-sm whitespace-pre-wrap">{log.annualGoals}</p>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                            
-                            {(log.thoughts || log.contentConsumed || log.research || log.todoIdeas) && (
-                              <div className="space-y-3">
-                                <h4 className="text-sm font-medium text-primary flex items-center gap-2">
-                                  <BookOpen className="h-4 w-4" /> Data & Thoughts
-                                </h4>
-                                {log.thoughts && (
-                                  <div className="pl-6">
-                                    <p className="text-xs text-[#7DAAB2] mb-1">Thoughts</p>
-                                    <p className="text-sm whitespace-pre-wrap">{log.thoughts}</p>
-                                  </div>
-                                )}
-                                {log.contentConsumed && (
-                                  <div className="pl-6">
-                                    <p className="text-xs text-[#7DAAB2] mb-1">Content Consumed</p>
-                                    <p className="text-sm whitespace-pre-wrap">{log.contentConsumed}</p>
-                                  </div>
-                                )}
-                                {log.research && (
-                                  <div className="pl-6">
-                                    <p className="text-xs text-[#7DAAB2] mb-1">Research</p>
-                                    <p className="text-sm whitespace-pre-wrap">{log.research}</p>
-                                  </div>
-                                )}
-                                {log.todoIdeas && (
-                                  <div className="pl-6">
-                                    <p className="text-xs text-[#7DAAB2] mb-1">Todo Ideas</p>
-                                    <p className="text-sm whitespace-pre-wrap">{log.todoIdeas}</p>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                            
-                            {(log.wentWell || log.couldBeBetter || log.learned) && (
-                              <div className="space-y-3">
-                                <h4 className="text-sm font-medium text-primary flex items-center gap-2">
-                                  <Lightbulb className="h-4 w-4" /> Reflection
-                                </h4>
-                                {log.wentWell && (
-                                  <div className="pl-6">
-                                    <p className="text-xs text-[#7DAAB2] mb-1 flex items-center gap-1">
-                                      <CheckCircle className="h-3 w-3 text-green-400" /> What Went Well
-                                    </p>
-                                    <p className="text-sm whitespace-pre-wrap">{log.wentWell}</p>
-                                  </div>
-                                )}
-                                {log.couldBeBetter && (
-                                  <div className="pl-6">
-                                    <p className="text-xs text-[#7DAAB2] mb-1 flex items-center gap-1">
-                                      <AlertCircle className="h-3 w-3 text-yellow-400" /> Could Be Better
-                                    </p>
-                                    <p className="text-sm whitespace-pre-wrap">{log.couldBeBetter}</p>
-                                  </div>
-                                )}
-                                {log.learned && (
-                                  <div className="pl-6">
-                                    <p className="text-xs text-[#7DAAB2] mb-1 flex items-center gap-1">
-                                      <GraduationCap className="h-3 w-3 text-blue-400" /> What I Learned
-                                    </p>
-                                    <p className="text-sm whitespace-pre-wrap">{log.learned}</p>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                            
-                            {!hasContent(log) && (
-                              <p className="text-sm text-[#7DAAB2] italic text-center py-4">
-                                No detailed entries for this day
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
-          ))}
+                          </CollapsibleTrigger>
+                          
+                          <CollapsibleContent>
+                            <div className="ml-6 mt-2 space-y-2">
+                              {monthData.days.map((dayData) => (
+                                <LogCard key={dayData.dayKey} log={dayData.log} />
+                              ))}
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      );
+                    })}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            );
+          })}
         </div>
       ) : (
         <div className="text-center py-16 glassmorphic rounded-xl border border-primary/20 flex flex-col items-center justify-center">
