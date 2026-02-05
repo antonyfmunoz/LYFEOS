@@ -92,7 +92,7 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
 
   const incrementMinutes = () => {
     setSelectedMinute((prev) => {
-      const newMinutes = prev + 5;
+      const newMinutes = prev + 1;
       if (newMinutes >= 60) {
         incrementHours();
         return 0;
@@ -103,10 +103,10 @@ export function TimePicker({ value, onChange, placeholder = "Select time", class
 
   const decrementMinutes = () => {
     setSelectedMinute((prev) => {
-      const newMinutes = prev - 5;
+      const newMinutes = prev - 1;
       if (newMinutes < 0) {
         decrementHours();
-        return 55;
+        return 59;
       }
       return newMinutes;
     });
