@@ -68,8 +68,9 @@ export default function JournalArchivePage() {
   const monthFolders = useMemo(() => {
     if (!logsData?.logs) return [];
     
-    // Get today's date in YYYY-MM-DD format to filter out today's log
-    const today = new Date().toISOString().split('T')[0];
+    // Get today's date in YYYY-MM-DD format (local timezone) to filter out today's log
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     
     const folderMap = new Map<string, MonthFolder>();
     
