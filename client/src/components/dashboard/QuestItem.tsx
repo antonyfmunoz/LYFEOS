@@ -88,16 +88,12 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestIt
               <span className={`text-red-400 text-xs font-mono whitespace-nowrap ${completed ? "opacity-50" : ""}`}>
                 -{energyCost} EP
               </span>
-              {(attentionCost ?? 0) > 0 && (
-                <span className={`text-amber-400 text-xs font-mono whitespace-nowrap ${completed ? "opacity-50" : ""}`}>
-                  -{attentionCost} AT
-                </span>
-              )}
-              {(timeCost ?? 0) > 0 && (
-                <span className={`text-purple-400 text-xs font-mono whitespace-nowrap ${completed ? "opacity-50" : ""}`}>
-                  -{timeCost} TT
-                </span>
-              )}
+              <span className={`text-amber-400 text-xs font-mono whitespace-nowrap ${completed ? "opacity-50" : ""}`}>
+                -{attentionCost ?? 0} AT
+              </span>
+              <span className={`text-purple-400 text-xs font-mono whitespace-nowrap ${completed ? "opacity-50" : ""}`}>
+                -{timeCost ?? 0} TT
+              </span>
               <span className={`text-primary text-xs font-mono whitespace-nowrap ${completed ? "opacity-50" : ""}`}>
                 +{experienceReward} XP
               </span>
