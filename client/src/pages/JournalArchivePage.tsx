@@ -74,9 +74,15 @@ export default function JournalArchivePage() {
     
     const folderMap = new Map<string, MonthFolder>();
     
+    // Helper to parse date string as local date (not UTC)
+    const parseDate = (dateString: string): Date => {
+      const [y, m, d] = dateString.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    };
+
     // Only include logs from previous days (exclude today)
     logsData.logs.filter(log => log.date !== today).forEach(log => {
-      const date = new Date(log.date);
+      const date = parseDate(log.date);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       const monthTitle = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
       
@@ -94,6 +100,11 @@ export default function JournalArchivePage() {
     return Array.from(folderMap.values())
       .sort((a, b) => b.month.localeCompare(a.month));
   }, [logsData?.logs]);
+
+  const parseLocalDate = (dateString: string): Date => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
 
   const formatTime12Hour = (time: string | null) => {
     if (!time) return '--:--';
@@ -164,7 +175,7 @@ export default function JournalArchivePage() {
               {expandedMonths.includes(folder.month) && (
                 <div className="px-4 pb-4 space-y-3 pt-2 border-t border-slate-700/50">
                   {folder.entries
-                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime())
                     .map((log) => (
                       <div 
                         key={log.id}
@@ -182,7 +193,7 @@ export default function JournalArchivePage() {
                             )}
                             <div>
                               <h3 className="font-medium">
-                                {new Date(log.date).toLocaleDateString('en-US', { 
+                                {parseLocalDate(log.date).toLocaleDateString('en-US', { 
                                   weekday: 'long', 
                                   month: 'short', 
                                   day: 'numeric' 
