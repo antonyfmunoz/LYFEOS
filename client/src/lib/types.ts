@@ -47,6 +47,8 @@ export interface Quest {
   completed: boolean;
   completedAt?: string | null;
   energyCost: number;
+  attentionCost?: number;
+  timeCost?: number;
   experienceReward: number;
   startDate?: string | null;
   startTime?: string | null;

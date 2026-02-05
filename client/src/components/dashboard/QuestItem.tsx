@@ -11,7 +11,7 @@ interface QuestItemProps {
 }
 
 export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestItemProps) {
-  const { title, description, completed, energyCost, experienceReward, startDate, startTime, endDate, endTime, notificationEnabled } = quest;
+  const { title, description, completed, energyCost, attentionCost, timeCost, experienceReward, startDate, startTime, endDate, endTime, notificationEnabled } = quest;
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -87,6 +87,16 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestIt
               <span className={`text-red-400 text-xs font-mono whitespace-nowrap ${completed ? "opacity-50" : ""}`}>
                 -{energyCost} EP
               </span>
+              {(attentionCost ?? 0) > 0 && (
+                <span className={`text-amber-400 text-xs font-mono whitespace-nowrap ${completed ? "opacity-50" : ""}`}>
+                  -{attentionCost} AT
+                </span>
+              )}
+              {(timeCost ?? 0) > 0 && (
+                <span className={`text-purple-400 text-xs font-mono whitespace-nowrap ${completed ? "opacity-50" : ""}`}>
+                  -{timeCost} TT
+                </span>
+              )}
               <span className={`text-primary text-xs font-mono whitespace-nowrap ${completed ? "opacity-50" : ""}`}>
                 +{experienceReward} XP
               </span>

@@ -39,6 +39,8 @@ interface MissionFormData {
   title: string;
   description: string;
   energyCost: number;
+  attentionCost: number;
+  timeCost: number;
   experienceReward: number;
   startDate: string;
   startTime: string;
@@ -51,6 +53,8 @@ const defaultFormData: MissionFormData = {
   title: "",
   description: "",
   energyCost: 1,
+  attentionCost: 0,
+  timeCost: 0,
   experienceReward: 10,
   startDate: "",
   startTime: "",
@@ -125,6 +129,8 @@ export default function QuestsPage() {
       title: quest.title,
       description: quest.description,
       energyCost: quest.energyCost,
+      attentionCost: quest.attentionCost || 0,
+      timeCost: quest.timeCost || 0,
       experienceReward: quest.experienceReward,
       startDate: quest.startDate || "",
       startTime: quest.startTime || "",
@@ -144,6 +150,8 @@ export default function QuestsPage() {
         title: createFormData.title.trim(),
         description: createFormData.description.trim() || "No description",
         energyCost: createFormData.energyCost,
+        attentionCost: createFormData.attentionCost,
+        timeCost: createFormData.timeCost,
         experienceReward: createFormData.experienceReward,
         startDate: createFormData.startDate || null,
         startTime: createFormData.startTime || null,
@@ -172,6 +180,8 @@ export default function QuestsPage() {
         title: editFormData.title.trim(),
         description: editFormData.description.trim() || "No description",
         energyCost: editFormData.energyCost,
+        attentionCost: editFormData.attentionCost,
+        timeCost: editFormData.timeCost,
         experienceReward: editFormData.experienceReward,
         startDate: editFormData.startDate || null,
         startTime: editFormData.startTime || null,
@@ -239,6 +249,48 @@ export default function QuestsPage() {
                   onChange={(e) => setCreateFormData(prev => ({ ...prev, description: e.target.value }))}
                   className="bg-background/50 border-primary/30 min-h-[80px]"
                 />
+              </div>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1">
+                    <Zap className="h-3 w-3 text-red-400" />
+                    EP Cost
+                  </Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={createFormData.energyCost}
+                    onChange={(e) => setCreateFormData(prev => ({ ...prev, energyCost: parseInt(e.target.value) || 0 }))}
+                    className="bg-background/50 border-primary/30"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1">
+                    <span className="text-amber-400 text-xs font-bold">AT</span>
+                    Attention
+                  </Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={createFormData.attentionCost}
+                    onChange={(e) => setCreateFormData(prev => ({ ...prev, attentionCost: parseInt(e.target.value) || 0 }))}
+                    className="bg-background/50 border-primary/30"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1">
+                    <span className="text-purple-400 text-xs font-bold">TT</span>
+                    Time
+                  </Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={createFormData.timeCost}
+                    onChange={(e) => setCreateFormData(prev => ({ ...prev, timeCost: parseInt(e.target.value) || 0 }))}
+                    className="bg-background/50 border-primary/30"
+                  />
+                </div>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
@@ -399,6 +451,48 @@ export default function QuestsPage() {
                 onChange={(e) => setEditFormData(prev => ({ ...prev, description: e.target.value }))}
                 className="bg-background/50 border-primary/30 min-h-[80px]"
               />
+            </div>
+            
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1">
+                  <Zap className="h-3 w-3 text-red-400" />
+                  EP Cost
+                </Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={editFormData.energyCost}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, energyCost: parseInt(e.target.value) || 0 }))}
+                  className="bg-background/50 border-primary/30"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1">
+                  <span className="text-amber-400 text-xs font-bold">AT</span>
+                  Attention
+                </Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={editFormData.attentionCost}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, attentionCost: parseInt(e.target.value) || 0 }))}
+                  className="bg-background/50 border-primary/30"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1">
+                  <span className="text-purple-400 text-xs font-bold">TT</span>
+                  Time
+                </Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={editFormData.timeCost}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, timeCost: parseInt(e.target.value) || 0 }))}
+                  className="bg-background/50 border-primary/30"
+                />
+              </div>
             </div>
             
             <div className="grid grid-cols-2 gap-4">
