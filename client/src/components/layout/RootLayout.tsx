@@ -26,19 +26,19 @@ export default function RootLayout({ children }: RootLayoutProps) {
             <div className="flex items-center justify-center py-4">
               <span className="text-2xl text-primary font-orbitron font-bold">LYFE<span className="text-white">OS</span></span>
             </div>
-            {activeTimerQuest && (
-              <div className="px-4 pb-2">
-                <MissionTimer
-                  timerStartedAt={timerStartedAt}
-                  timerPausedElapsed={timerPausedElapsed}
-                  timerIsPaused={timerIsPaused}
-                  onEnd={endMissionTimer}
-                  onPauseResume={pauseResumeTimer}
-                  missionTitle={activeTimerQuest.title}
-                />
-              </div>
-            )}
           </div>
+          {activeTimerQuest && (
+            <div className="sticky top-[57px] z-30 lg:hidden px-4 pt-2 pb-2 bg-background/80 backdrop-blur-sm">
+              <MissionTimer
+                timerStartedAt={timerStartedAt}
+                timerPausedElapsed={timerPausedElapsed}
+                timerIsPaused={timerIsPaused}
+                onEnd={endMissionTimer}
+                onPauseResume={pauseResumeTimer}
+                missionTitle={activeTimerQuest.title}
+              />
+            </div>
+          )}
           
           {activeTimerQuest && (
             <div className="sticky top-0 z-30 px-6 pt-2 pb-2 bg-background/50 backdrop-blur-sm hidden lg:block">
