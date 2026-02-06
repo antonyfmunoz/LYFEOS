@@ -791,12 +791,11 @@ export default function DashboardPage() {
                 <Link2 className="h-4 w-4 text-primary" />
                 <span className="ml-2">Source Material</span>
               </label>
-              <input
-                type="text"
+              <MarkdownEditor
                 placeholder="URL, book title, article, video, or reference..."
                 value={reflection.sourceMaterial}
-                onChange={(e) => updateReflection("sourceMaterial", e.target.value)}
-                className="w-full bg-background/50 border border-primary/20 rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50"
+                onChange={(value) => updateReflection("sourceMaterial", value)}
+                minHeight="80px"
               />
             </div>
 
