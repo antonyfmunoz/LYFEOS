@@ -64,7 +64,7 @@ export default function MissionTimer({ timerStartedAt, timerPausedElapsed, timer
   };
 
   return (
-    <div className="glassmorphic rounded-xl p-3 border border-primary/40 shadow-[0_0_20px_rgba(0,224,255,0.2)]">
+    <div className="bg-card rounded-xl p-3 border border-primary/40 shadow-[0_0_20px_rgba(0,224,255,0.2)]">
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-0.5 min-w-0 mr-3">
           {missionTitle && (
