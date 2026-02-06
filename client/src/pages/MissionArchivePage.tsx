@@ -27,6 +27,8 @@ interface YearData {
 }
 
 function MissionCard({ mission }: { mission: Quest }) {
+  const difficultyMultipliers: Record<string, number> = { D: 1, C: 1.5, B: 2, A: 3, S: 5 };
+  const adjustedXp = Math.floor(mission.experienceReward * (difficultyMultipliers[mission.difficulty || 'D'] || 1));
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -99,7 +101,7 @@ function MissionCard({ mission }: { mission: Quest }) {
                 -{mission.energyCost} ET
               </span>
               <span className="text-primary text-xs font-mono opacity-50">
-                +{mission.experienceReward} XP
+                +{adjustedXp} XP
               </span>
             </div>
           </div>

@@ -855,7 +855,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       if (completed) {
         toast({
           title: "Mission Completed",
-          description: `${currentQuest.title} — +${data.xpAwarded || currentQuest.experienceReward} XP`,
+          description: `${currentQuest.title} — +${data.xpAwarded || Math.floor(currentQuest.experienceReward * ({ D: 1, C: 1.5, B: 2, A: 3, S: 5 }[currentQuest.difficulty || 'D'] || 1))} XP`,
           variant: "default",
           className: "bg-background/80 border border-primary text-foreground",
           duration: 1500,

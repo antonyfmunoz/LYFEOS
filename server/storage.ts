@@ -660,8 +660,13 @@ export class DatabaseStorage implements IStorage {
         const newAttentionTokens = Math.max(0, userStats.attentionTokensCurrent - durationHours);
         const newEnergyPoints = Math.max(0, userStats.energyPointsCurrent - energyCost);
         
+        // Difficulty rank XP multipliers: D=1x, C=1.5x, B=2x, A=3x, S=5x
+        const difficultyMultipliers: Record<string, number> = { D: 1, C: 1.5, B: 2, A: 3, S: 5 };
+        const xpMultiplier = difficultyMultipliers[quest.difficulty || 'D'] || 1;
+        const adjustedXpReward = Math.floor(quest.experienceReward * xpMultiplier);
+        
         // Add experience reward
-        let newExperience = userStats.experienceCurrent + quest.experienceReward;
+        let newExperience = userStats.experienceCurrent + adjustedXpReward;
         let newLevel = userStats.level;
         let newExperienceMax = userStats.experienceMax;
         

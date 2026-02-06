@@ -14,6 +14,9 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestIt
   const { title, description, completed, energyCost, attentionCost, timeCost, experienceReward, startDate, startTime, endDate, endTime, notificationEnabled, difficulty } = quest;
 
   const difficultyStyle = "bg-primary/20 border-primary/50 text-primary";
+  const difficultyMultipliers: Record<string, number> = { D: 1, C: 1.5, B: 2, A: 3, S: 5 };
+  const xpMultiplier = difficultyMultipliers[difficulty || 'D'] || 1;
+  const adjustedXp = Math.floor(experienceReward * xpMultiplier);
 
   const formatDate = (dateStr: string) => {
     const [year, month, day] = dateStr.split('-').map(Number);
@@ -85,7 +88,7 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestIt
             <span className="text-primary text-xs font-mono whitespace-nowrap">-{energyCost} ET</span>
             <span className="text-primary text-xs font-mono whitespace-nowrap">-{attentionCost ?? 0} AT</span>
             <span className="text-primary text-xs font-mono whitespace-nowrap">-{timeCost ?? 0} TT</span>
-            <span className="text-primary text-xs font-mono whitespace-nowrap">+{experienceReward} XP</span>
+            <span className="text-primary text-xs font-mono whitespace-nowrap">+{adjustedXp} XP</span>
           </div>
           {hasSchedule && (
             <div className={`flex items-center gap-1 text-xs mt-1 flex-wrap ${completed ? "opacity-50" : "text-muted-foreground"}`}>

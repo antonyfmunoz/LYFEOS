@@ -1271,7 +1271,7 @@ Generate the complete affirmation now:`;
       
       return res.status(200).json({ 
         quest: updatedQuest,
-        xpAwarded: updatedQuest.completed ? quest.experienceReward : 0,
+        xpAwarded: updatedQuest.completed ? Math.floor(quest.experienceReward * ({ D: 1, C: 1.5, B: 2, A: 3, S: 5 }[quest.difficulty || 'D'] || 1)) : 0,
         levelUp: levelUp,
         statsUpdated: statsUpdated,
         stats: userStats ? {
