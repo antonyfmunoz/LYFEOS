@@ -28,7 +28,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
           <StatInfoDialog
             trigger={
               <button 
-                className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
+                className="absolute top-3 right-3 h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors"
                 onClick={(e) => e.stopPropagation()} // Prevent navigation when clicking info button
               >
                 <Info className="h-4 w-4" />
@@ -77,7 +77,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
+                  className="absolute top-3 right-3 h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Info className="h-4 w-4" />
@@ -120,7 +120,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
+                  className="absolute top-3 right-3 h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Info className="h-4 w-4" />
@@ -169,7 +169,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
+                  className="absolute top-3 right-3 h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Info className="h-4 w-4" />
@@ -209,7 +209,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
+                  className="absolute top-3 right-3 h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Info className="h-4 w-4" />
@@ -249,7 +249,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
+                  className="absolute top-3 right-3 h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Info className="h-4 w-4" />
@@ -289,7 +289,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <StatInfoDialog
               trigger={
                 <button 
-                  className="absolute top-3 right-3 p-1 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
+                  className="absolute top-3 right-3 h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Info className="h-4 w-4" />

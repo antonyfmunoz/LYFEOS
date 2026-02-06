@@ -1,7 +1,8 @@
 import { Link, useLocation } from "wouter";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
-import { FileText, Clock, Tag, Calendar, Award, GripVertical, CheckSquare, BookOpen, Repeat, GraduationCap, Target } from "lucide-react";
+import { FileText, Clock, Tag, Calendar, Award, GripVertical, CheckSquare, BookOpen, Repeat, GraduationCap, Target, Info } from "lucide-react";
+import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useState, useCallback, useRef } from 'react';
@@ -15,6 +16,7 @@ interface CategoryItem {
   id: string;
   title: string;
   icon: React.ReactNode;
+  description: string;
 }
 
 interface DraggableCategoryProps {
@@ -147,6 +149,18 @@ const DraggableCategoryCard = ({ id, index, item, moveCategory, navigate }: Drag
           </div>
           <div className="mr-2">{item.icon}</div>
           <h3 className="text-lg font-orbitron text-foreground">{item.title}</h3>
+          <div onClick={(e) => e.stopPropagation()} className="ml-2">
+            <StatInfoDialog
+              trigger={
+                <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors">
+                  <Info className="h-3.5 w-3.5" />
+                </button>
+              }
+              title={item.title}
+              description={item.description}
+              hideMoreDetails
+            />
+          </div>
         </div>
         <button 
           className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
@@ -170,27 +184,32 @@ export default function ChronilogPage() {
     { 
       id: "missions", 
       title: "Mission Log", 
-      icon: <CheckSquare className="h-5 w-5 text-primary" />
+      icon: <CheckSquare className="h-5 w-5 text-primary" />,
+      description: "A detailed history of all your completed and active missions. Track your progress and revisit past achievements."
     },
     { 
       id: "journal", 
       title: "Journal Log", 
-      icon: <BookOpen className="h-5 w-5 text-primary" />
+      icon: <BookOpen className="h-5 w-5 text-primary" />,
+      description: "Your daily reflections, thoughts, and personal entries. Review past journal logs to track your growth over time."
     },
     { 
       id: "rituals", 
       title: "Rituals", 
-      icon: <Repeat className="h-5 w-5 text-primary" />
+      icon: <Repeat className="h-5 w-5 text-primary" />,
+      description: "Recurring habits and routines that build consistency. Manage your daily, weekly, and monthly rituals here."
     },
     { 
       id: "knowledge", 
       title: "Knowledge Vault", 
-      icon: <GraduationCap className="h-5 w-5 text-primary" />
+      icon: <GraduationCap className="h-5 w-5 text-primary" />,
+      description: "Your personal library of notes, documents, and saved knowledge. Store and organize information for easy retrieval."
     },
     { 
       id: "goals", 
       title: "Goals & Vision", 
-      icon: <Target className="h-5 w-5 text-primary" />
+      icon: <Target className="h-5 w-5 text-primary" />,
+      description: "Long-term goals and vision board. Set objectives, track milestones, and align your daily actions with your bigger picture."
     }
   ]);
 

@@ -120,7 +120,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
             </h3>
             <div className="flex items-center gap-1 flex-shrink-0 ml-2">
               {difficulty && (
-                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${difficultyStyle} ${completed ? "opacity-50" : ""}`}>
+                <span className={`text-[10px] font-mono h-6 w-6 inline-flex items-center justify-center rounded border ${difficultyStyle} ${completed ? "opacity-50" : ""}`}>
                   {difficulty}
                 </span>
               )}

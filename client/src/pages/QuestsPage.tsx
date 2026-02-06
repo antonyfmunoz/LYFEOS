@@ -290,7 +290,7 @@ export default function QuestsPage() {
         }}>
           <DialogTrigger asChild>
             <button className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5">
-              New Mission
+              Create Mission
             </button>
           </DialogTrigger>
           <DialogContent 
@@ -648,8 +648,8 @@ export default function QuestsPage() {
               <h2 className="text-lg font-orbitron">Today's Missions</h2>
               <StatInfoDialog
                 trigger={
-                  <button className="h-5 w-5 rounded-full bg-primary/10 hover:bg-primary/20 flex items-center justify-center transition-colors">
-                    <Info className="h-3 w-3 text-primary" />
+                  <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors">
+                    <Info className="h-3.5 w-3.5" />
                   </button>
                 }
                 title="Today's Missions"
@@ -712,8 +712,8 @@ export default function QuestsPage() {
                 <h2 className="text-lg font-orbitron">Future Missions</h2>
                 <StatInfoDialog
                   trigger={
-                    <button className="h-5 w-5 rounded-full bg-primary/10 hover:bg-primary/20 flex items-center justify-center transition-colors">
-                      <Info className="h-3 w-3 text-primary" />
+                    <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors">
+                      <Info className="h-3.5 w-3.5" />
                     </button>
                   }
                   title="Future Missions"
@@ -769,8 +769,8 @@ export default function QuestsPage() {
               <h2 className="text-lg font-orbitron">Completed Missions</h2>
               <StatInfoDialog
                 trigger={
-                  <button className="h-5 w-5 rounded-full bg-primary/10 hover:bg-primary/20 flex items-center justify-center transition-colors">
-                    <Info className="h-3 w-3 text-primary" />
+                  <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors">
+                    <Info className="h-3.5 w-3.5" />
                   </button>
                 }
                 title="Completed Missions"
@@ -827,8 +827,8 @@ export default function QuestsPage() {
                 <h2 className="text-lg font-orbitron">Archived Missions</h2>
                 <StatInfoDialog
                   trigger={
-                    <button className="h-5 w-5 rounded-full bg-primary/10 hover:bg-primary/20 flex items-center justify-center transition-colors">
-                      <Info className="h-3 w-3 text-primary" />
+                    <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors">
+                      <Info className="h-3.5 w-3.5" />
                     </button>
                   }
                   title="Archived Missions"
@@ -947,8 +947,8 @@ export default function QuestsPage() {
               <h2 className="text-lg font-orbitron">Terminated Missions</h2>
               <StatInfoDialog
                 trigger={
-                  <button className="h-5 w-5 rounded-full bg-primary/10 hover:bg-primary/20 flex items-center justify-center transition-colors">
-                    <Info className="h-3 w-3 text-primary" />
+                  <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors">
+                    <Info className="h-3.5 w-3.5" />
                   </button>
                 }
                 title="Terminated Missions"

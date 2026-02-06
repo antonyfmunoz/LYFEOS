@@ -31,7 +31,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <StatInfoDialog
             trigger={
               <button 
-                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
+                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   setLocation("/experience");
@@ -79,7 +79,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <StatInfoDialog
             trigger={
               <button 
-                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
+                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   setLocation("/streak");
@@ -116,7 +116,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <StatInfoDialog
             trigger={
               <button 
-                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
+                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   setLocation("/efficiency");
@@ -153,7 +153,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <StatInfoDialog
             trigger={
               <button 
-                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
+                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   setLocation("/attention");
@@ -190,7 +190,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <StatInfoDialog
             trigger={
               <button 
-                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
+                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   setLocation("/time");
@@ -227,7 +227,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <StatInfoDialog
             trigger={
               <button 
-                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
+                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   setLocation("/energy");
@@ -264,7 +264,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <StatInfoDialog
             trigger={
               <button 
-                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
+                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   setLocation("/health");
