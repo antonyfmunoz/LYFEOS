@@ -1,9 +1,9 @@
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "wouter";
 import { ExternalLink, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Create a custom styled dialog specifically for stat information
 interface StatInfoDialogProps {
   children?: React.ReactNode;
   trigger: React.ReactNode;
@@ -25,7 +25,6 @@ export function StatInfoDialog({
 }: StatInfoDialogProps) {
   const [open, setOpen] = useState(false);
   
-  // Map statType to the correct URL
   const getDetailUrl = () => {
     switch (statType) {
       case "attention":
@@ -46,20 +45,12 @@ export function StatInfoDialog({
         return "/dashboard";
     }
   };
-  
-  if (!open) {
-    return (
-      <div onClick={(e) => { e.stopPropagation(); setOpen(true); }}>
-        {trigger}
-      </div>
-    );
-  }
-  
-  return (
+
+  const dialogContent = open ? createPortal(
     <>
       <div 
         className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[99]"
-        onClick={() => setOpen(false)}
+        onClick={(e) => { e.stopPropagation(); setOpen(false); }}
       />
       <div 
         role="dialog"
@@ -71,9 +62,10 @@ export function StatInfoDialog({
           "glassmorphic border border-primary/30 text-white shadow-lg rounded-xl p-6 pr-8",
           "animate-in fade-in-0 zoom-in-90 duration-100"
         )}
+        onClick={(e) => e.stopPropagation()}
       >
         <button 
-          onClick={() => setOpen(false)}
+          onClick={(e) => { e.stopPropagation(); setOpen(false); }}
           className="absolute right-2 top-2 rounded-md p-1 text-primary/70 transition-opacity hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
           aria-label="Close"
         >
@@ -113,6 +105,16 @@ export function StatInfoDialog({
           </div>
         )}
       </div>
+    </>,
+    document.body
+  ) : null;
+  
+  return (
+    <>
+      <div onClick={(e) => { e.stopPropagation(); setOpen(true); }}>
+        {trigger}
+      </div>
+      {dialogContent}
     </>
   );
 }
