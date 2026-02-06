@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Calendar, BarChart, CalendarDays, Clock, Brain, AlarmClock, 
   MoonStar, Smile, HeartPulse, Book, BookOpen, ListChecks, 
-  Zap, Target as TargetIcon
+  Zap, Target as TargetIcon, ChevronDown, Check
 } from 'lucide-react';
 import { useLYFEOS } from '@/lib/context';
 import { useAuth } from '@/lib/authContext';
@@ -64,6 +64,66 @@ function formatTimeForInput(timeStr: string): string {
   const [hour, minute] = timeStr.split(':').map(Number);
   return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
 };
+
+const TIMEZONE_OPTIONS = [
+  { label: 'EST', value: 'America/New_York' },
+  { label: 'CST', value: 'America/Chicago' },
+  { label: 'MST', value: 'America/Denver' },
+  { label: 'PST', value: 'America/Los_Angeles' },
+  { label: 'GMT', value: 'Europe/London' },
+  { label: 'CET', value: 'Europe/Paris' },
+  { label: 'JST', value: 'Asia/Tokyo' },
+  { label: 'AEST', value: 'Australia/Sydney' },
+  { label: 'NZST', value: 'Pacific/Auckland' }
+];
+
+function TimezoneSelector({ timezone, setTimezone }: { timezone: string; setTimezone: (tz: string) => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const currentLabel = TIMEZONE_OPTIONS.find(tz => tz.value === timezone)?.label || 'PST';
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative inline-block" ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="ml-3 font-mono text-xs px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors cursor-pointer flex items-center gap-1"
+      >
+        {currentLabel}
+        <ChevronDown className="h-3 w-3" />
+      </button>
+      {isOpen && (
+        <div className="absolute z-50 mt-1 min-w-[120px] rounded-md border border-primary/30 bg-background shadow-md glassmorphic">
+          <div className="p-1">
+            {TIMEZONE_OPTIONS.map(tz => (
+              <button
+                key={tz.value}
+                onClick={() => { setTimezone(tz.value); setIsOpen(false); }}
+                className={`w-full text-left px-3 py-1.5 text-xs font-mono rounded flex items-center justify-between transition-colors ${
+                  timezone === tz.value
+                    ? "bg-primary/20 text-primary"
+                    : "text-foreground hover:bg-primary/10 hover:text-primary"
+                }`}
+              >
+                {tz.label}
+                {timezone === tz.value && <Check className="h-3 w-3 text-primary" />}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function PersistentDraggableWidget({ widgetId, ...props }: Omit<DraggableWidgetProps, 'isOpenProp' | 'onOpenChange'> & { widgetId: string }) {
   const [isOpen, setIsOpen] = useWidgetState(widgetId, props.defaultOpen ?? true);
@@ -870,28 +930,7 @@ export default function DashboardPage() {
                 <Clock className="h-4 w-4 text-[#7DAAB2] mr-2" />
                 <span className="text-[#7DAAB2] font-mono">{formattedTime}</span>
                 
-                <select 
-                  value={timezone}
-                  onChange={(e) => setTimezone(e.target.value)}
-                  className="ml-3 font-mono text-xs px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors appearance-none cursor-pointer"
-                  style={{ backgroundImage: 'none' }}
-                >
-                  {[
-                    { label: 'EST', value: 'America/New_York' },
-                    { label: 'CST', value: 'America/Chicago' },
-                    { label: 'MST', value: 'America/Denver' },
-                    { label: 'PST', value: 'America/Los_Angeles' },
-                    { label: 'GMT', value: 'Europe/London' },
-                    { label: 'CET', value: 'Europe/Paris' },
-                    { label: 'JST', value: 'Asia/Tokyo' },
-                    { label: 'AEST', value: 'Australia/Sydney' },
-                    { label: 'NZST', value: 'Pacific/Auckland' }
-                  ].map(tz => (
-                    <option key={tz.value} value={tz.value} className="bg-background text-foreground">
-                      {tz.label}
-                    </option>
-                  ))}
-                </select>
+                <TimezoneSelector timezone={timezone} setTimezone={setTimezone} />
                 
                 <button 
                   onClick={() => setTimeFormat(prev => prev === '12h' ? '24h' : '12h')}
