@@ -1,7 +1,8 @@
 import React, { useRef } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
+import { ChevronDown, ChevronUp, GripVertical, Info } from 'lucide-react';
+import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 
 export interface DraggableWidgetProps {
   id: string;
@@ -14,6 +15,8 @@ export interface DraggableWidgetProps {
   onOpenChange?: (open: boolean) => void;
   className?: string;
   moveWidget: (dragIndex: number, hoverIndex: number) => void;
+  infoTitle?: string;
+  infoDescription?: string;
 }
 
 interface DragItem {
@@ -32,7 +35,9 @@ export function DraggableWidget({
   isOpenProp,
   onOpenChange,
   className,
-  moveWidget 
+  moveWidget,
+  infoTitle,
+  infoDescription
 }: DraggableWidgetProps) {
   const [localOpen, setLocalOpen] = React.useState(defaultOpen);
   const isControlled = isOpenProp !== undefined;
@@ -136,6 +141,20 @@ export function DraggableWidget({
           </div>
           {icon && <div className="mr-2">{icon}</div>}
           <h2 className="text-lg font-orbitron text-foreground">{title}</h2>
+          {infoDescription && (
+            <div onClick={(e) => e.stopPropagation()} className="ml-2">
+              <StatInfoDialog
+                trigger={
+                  <button className="h-5 w-5 rounded-full bg-primary/10 hover:bg-primary/20 flex items-center justify-center transition-colors">
+                    <Info className="h-3 w-3 text-primary" />
+                  </button>
+                }
+                title={infoTitle || title}
+                description={infoDescription}
+                hideMoreDetails
+              />
+            </div>
+          )}
         </div>
         <div className="text-primary">
           {isOpen ? (

@@ -547,6 +547,7 @@ export default function DashboardPage() {
     title: string;
     icon: React.ReactNode;
     defaultOpen?: boolean;
+    infoDescription?: string;
   }
 
   // Define widgets for drag and drop functionality (metadata only)
@@ -555,25 +556,29 @@ export default function DashboardPage() {
       id: 'data-entry-log',
       title: "Data Log",
       icon: <BookOpen className="h-5 w-5 text-primary" />,
-      defaultOpen: true
+      defaultOpen: true,
+      infoDescription: "Capture your daily thoughts, content consumed, and ideas. These entries are saved to your journal and can be reviewed in the Chronilog."
     },
     {
       id: 'reflection-log',
       title: "Reflection Log",
       icon: <Calendar className="h-5 w-5 text-primary" />,
-      defaultOpen: true
+      defaultOpen: true,
+      infoDescription: "Reflect on what went well, what could improve, and lessons learned. Daily reflection builds self-awareness and accelerates growth."
     },
     {
       id: 'intention-setter',
       title: "Intention Log",
       icon: <TargetIcon className="h-5 w-5 text-primary" />,
-      defaultOpen: true
+      defaultOpen: true,
+      infoDescription: "Set your focus and priorities for the day. Clear intentions help direct your energy and attention toward what matters most."
     },
     {
       id: 'energy-log',
       title: "Energy Log",
       icon: <Brain className="h-5 w-5 text-primary" />,
-      defaultOpen: true
+      defaultOpen: true,
+      infoDescription: "Track your energy levels, sleep, exercise, and mood throughout the day. Understanding your patterns helps optimize your performance."
     }
   ]);
 
@@ -909,6 +914,7 @@ export default function DashboardPage() {
             icon={widget.icon}
             moveWidget={moveWidget}
             defaultOpen={widget.defaultOpen}
+            infoDescription={widget.infoDescription}
           >
             {renderWidgetContent(widget.id)}
           </PersistentDraggableWidget>

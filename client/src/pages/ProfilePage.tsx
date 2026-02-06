@@ -329,6 +329,7 @@ export default function ProfilePage() {
     title: string;
     icon: React.ReactNode;
     defaultOpen?: boolean;
+    infoDescription?: string;
   }
 
   // Define widgets for drag and drop functionality
@@ -337,25 +338,29 @@ export default function ProfilePage() {
       id: 'player-record',
       title: "Player Record",
       icon: <FileText className="h-5 w-5 text-primary" />,
-      defaultOpen: true
+      defaultOpen: true,
+      infoDescription: "Your personal bio and background story. This is your player identity card — edit it to define who you are in the system."
     },
     {
       id: 'player-affirmation',
       title: "Player Affirmation",
       icon: <Terminal className="h-5 w-5 text-primary" />,
-      defaultOpen: true
+      defaultOpen: true,
+      infoDescription: "Your personal affirmation or mantra. Set a message that motivates and reminds you of your purpose every time you visit your profile."
     },
     {
       id: 'stats',
       title: "Player Stats",
       icon: <BarChart4 className="h-5 w-5 text-primary" />,
-      defaultOpen: true
+      defaultOpen: true,
+      infoDescription: "Overview of your current resource levels — XP, energy, health, time tokens, and attention tokens. These stats reflect your daily activity and progress."
     },
     {
       id: 'settings',
       title: "UI Settings",
       icon: <Settings className="h-5 w-5 text-primary" />,
-      defaultOpen: true
+      defaultOpen: true,
+      infoDescription: "Customize the look and feel of your interface. Adjust theme colors, layout preferences, and display options to match your style."
     }
   ]);
 
@@ -1385,6 +1390,7 @@ export default function ProfilePage() {
                 icon={widget.icon}
                 moveWidget={moveWidget}
                 defaultOpen={widget.defaultOpen}
+                infoDescription={widget.infoDescription}
               >
                 {renderWidgetContent(widget.id)}
               </PersistentProfileDraggableWidget>
