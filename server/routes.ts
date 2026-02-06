@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
-import { userDailyLogs } from "@shared/schema";
+import { userDailyLogs, quests as questsTable } from "@shared/schema";
 import { registerChatRoutes } from "./replit_integrations/chat";
 import { z } from "zod";
 import bcrypt from "bcrypt";
@@ -1167,6 +1167,11 @@ Generate the complete affirmation now:`;
             eq(userDailyLogs.todosConverted, false)
           ));
         
+        const existingQuests = await db.select({ title: questsTable.title })
+          .from(questsTable)
+          .where(eq(questsTable.userId, userId));
+        const existingTitles = new Set(existingQuests.map(q => q.title.toLowerCase().trim()));
+        
         for (const log of unconvertedLogs) {
           if (log.todoIdeas && log.date < todayStr) {
             const todoLines = log.todoIdeas
@@ -1174,28 +1179,31 @@ Generate the complete affirmation now:`;
               .map((line: string) => line.trim())
               .filter((line: string) => line.length > 0);
             
-            // Parse the log date to create quests with next-day midnight timestamp
             const [year, month, day] = log.date.split('-').map(Number);
             const nextDayMidnight = new Date(year, month - 1, day + 1, 0, 0, 0, 0);
             
+            let created = 0;
             for (const todoLine of todoLines) {
-              await storage.createQuest({
-                userId,
-                title: todoLine,
-                description: `Auto-created from To-Do Ideas on ${log.date}`,
-                category: 'todo',
-                completed: false,
-                experienceReward: 50,
-                createdAt: nextDayMidnight
-              });
+              if (!existingTitles.has(todoLine.toLowerCase().trim())) {
+                await storage.createQuest({
+                  userId,
+                  title: todoLine,
+                  description: `Auto-created from To-Do Ideas on ${log.date}`,
+                  category: 'todo',
+                  completed: false,
+                  experienceReward: 50,
+                  createdAt: nextDayMidnight
+                });
+                existingTitles.add(todoLine.toLowerCase().trim());
+                created++;
+              }
             }
             
-            // Mark as converted
             await db.update(userDailyLogs)
               .set({ todosConverted: true })
               .where(eq(userDailyLogs.id, log.id));
             
-            console.log(`Auto-converted ${todoLines.length} todoIdeas from ${log.date} for user ${userId}`);
+            console.log(`Auto-converted ${created}/${todoLines.length} todoIdeas from ${log.date} for user ${userId} (${todoLines.length - created} duplicates skipped)`);
           }
         }
       } catch (todoError) {
@@ -3958,23 +3966,33 @@ Generate the complete affirmation now:`;
               .map((line: string) => line.trim())
               .filter((line: string) => line.length > 0);
             
+            const existingQuests = await db.select({ title: questsTable.title })
+              .from(questsTable)
+              .where(eq(questsTable.userId, userId));
+            const existingTitles = new Set(existingQuests.map(q => q.title.toLowerCase().trim()));
+            
+            let created = 0;
             for (const todoLine of todoLines) {
-              await storage.createQuest({
-                userId,
-                title: todoLine,
-                description: `Auto-created from To-Do Ideas on ${previousDateStr}`,
-                category: 'todo',
-                completed: false,
-                experienceReward: 50,
-                createdAt: todayMidnight
-              });
+              if (!existingTitles.has(todoLine.toLowerCase().trim())) {
+                await storage.createQuest({
+                  userId,
+                  title: todoLine,
+                  description: `Auto-created from To-Do Ideas on ${previousDateStr}`,
+                  category: 'todo',
+                  completed: false,
+                  experienceReward: 50,
+                  createdAt: todayMidnight
+                });
+                existingTitles.add(todoLine.toLowerCase().trim());
+                created++;
+              }
             }
             
             await db.update(userDailyLogs)
               .set({ todosConverted: true })
               .where(eq(userDailyLogs.id, previousLogs[0].id));
             
-            console.log(`Created ${todoLines.length} quests from previous day's todoIdeas for user ${userId} with createdAt set to midnight`);
+            console.log(`Created ${created}/${todoLines.length} quests from previous day's todoIdeas for user ${userId} (${todoLines.length - created} duplicates skipped)`);
           }
         } catch (todoError) {
           // Don't fail the log creation if todo conversion fails
