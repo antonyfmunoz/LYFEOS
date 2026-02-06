@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { Quest } from "../../lib/types";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2, Calendar, Clock, Bell, Edit3 } from "lucide-react";
+import { Trash2, Calendar, Clock, Bell, Edit3, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface QuestItemProps {
@@ -11,6 +12,7 @@ interface QuestItemProps {
 }
 
 export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestItemProps) {
+  const [showDescription, setShowDescription] = useState(false);
   const { title, description, completed, energyCost, attentionCost, timeCost, experienceReward, startDate, startTime, endDate, endTime, notificationEnabled, difficulty } = quest;
 
   const difficultyStyle = "bg-primary/20 border-primary/50 text-primary";
@@ -55,6 +57,19 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestIt
                 <span className={`text-[10px] font-bold font-mono px-1.5 py-0.5 rounded border ${difficultyStyle} ${completed ? "opacity-50" : ""}`}>
                   {difficulty}
                 </span>
+              )}
+              {description && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-6 w-6 ${showDescription ? "text-primary" : "text-muted-foreground"} hover:text-primary`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDescription(!showDescription);
+                  }}
+                >
+                  <Info className="h-3.5 w-3.5" />
+                </Button>
               )}
               {onEdit && (
                 <Button
@@ -121,9 +136,11 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestIt
               )}
             </div>
           )}
-          <p className={`text-muted-foreground text-sm mt-1 ${completed ? "opacity-50" : ""}`}>
-            {description?.replace(/^Completed onboarding mission "(.+)"$/, 'Completed the "$1" mission') || description}
-          </p>
+          {showDescription && description && (
+            <p className={`text-muted-foreground text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 ${completed ? "opacity-50" : ""}`}>
+              {description.replace(/^Completed onboarding mission "(.+)"$/, 'Completed the "$1" mission')}
+            </p>
+          )}
         </div>
       </div>
     </div>
