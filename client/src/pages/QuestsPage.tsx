@@ -624,7 +624,7 @@ export default function QuestsPage() {
       </Collapsible>
       
       {/* Future Missions */}
-      {(upcomingMissions.length > 0 || incompleteOnboardingMissions.length > 0) && (
+      {upcomingMissions.length > 0 && (
         <Collapsible open={upcomingExpanded} onOpenChange={setUpcomingExpanded} className="mb-6">
           <div className="glassmorphic rounded-xl overflow-hidden border border-primary/20">
             <div className="p-4 flex items-center justify-between">
@@ -656,29 +656,6 @@ export default function QuestsPage() {
             
             <CollapsibleContent>
               <div className="px-4 pb-4 space-y-3">
-                {incompleteOnboardingMissions.map((mission) => (
-                  <div 
-                    key={`onboarding-${mission.id}`}
-                    className="p-3 rounded-lg border border-primary/20 bg-card/30 hover:bg-primary/5 transition-colors cursor-pointer"
-                    onClick={() => navigate('/onboarding')}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <GraduationCap className="h-5 w-5 text-primary" />
-                        <div>
-                          <h3 className="text-sm font-medium text-foreground">{mission.title}</h3>
-                          <p className="text-xs text-muted-foreground">Onboarding Mission</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1 text-xs text-primary">
-                          <Star className="h-3 w-3" />
-                          <span>+{mission.xp} XP</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
                 {upcomingMissions.map((quest) => (
                   <QuestItem 
                     key={quest.id}
@@ -742,8 +719,8 @@ export default function QuestsPage() {
         </Collapsible>
       )}
       
-      {/* Mission Archive - missions from to-do ideas */}
-      {inboxMissions.length > 0 && (
+      {/* Mission Archive - onboarding missions and to-do ideas */}
+      {(inboxMissions.length > 0 || incompleteOnboardingMissions.length > 0) && (
         <Collapsible open={inboxExpanded} onOpenChange={setInboxExpanded} className="mb-6">
           <div className="glassmorphic rounded-xl overflow-hidden border border-primary/20">
             <div className="p-4 flex items-center justify-between">
@@ -775,6 +752,29 @@ export default function QuestsPage() {
             
             <CollapsibleContent>
               <div className="px-4 pb-4 space-y-3">
+                {incompleteOnboardingMissions.map((mission) => (
+                  <div 
+                    key={`onboarding-${mission.id}`}
+                    className="p-3 rounded-lg border border-primary/20 bg-card/30 hover:bg-primary/5 transition-colors cursor-pointer"
+                    onClick={() => navigate('/onboarding')}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <GraduationCap className="h-5 w-5 text-primary" />
+                        <div>
+                          <h3 className="text-sm font-medium text-foreground">{mission.title}</h3>
+                          <p className="text-xs text-muted-foreground">Onboarding Mission</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 text-xs text-primary">
+                          <Star className="h-3 w-3" />
+                          <span>+{mission.xp} XP</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
                 {inboxMissions.map((quest) => (
                   <QuestItem 
                     key={quest.id}
