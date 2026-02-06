@@ -84,45 +84,49 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestIt
               )}
               
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <span className={`text-red-400 text-xs font-mono whitespace-nowrap ${completed ? "opacity-50" : ""}`}>
-                -{energyCost} EP
-              </span>
-              <span className={`text-amber-400 text-xs font-mono whitespace-nowrap ${completed ? "opacity-50" : ""}`}>
-                -{attentionCost ?? 0} AT
-              </span>
-              <span className={`text-purple-400 text-xs font-mono whitespace-nowrap ${completed ? "opacity-50" : ""}`}>
-                -{timeCost ?? 0} TT
-              </span>
-              <span className={`text-primary text-xs font-mono whitespace-nowrap ${completed ? "opacity-50" : ""}`}>
-                +{experienceReward} XP
-              </span>
-              {onEdit && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 text-muted-foreground hover:text-primary"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEdit();
-                  }}
-                >
-                  <Edit3 className="h-3.5 w-3.5" />
-                </Button>
-              )}
-              {onDelete && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete();
-                  }}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              )}
+            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <span className={`text-red-400 text-xs font-mono whitespace-nowrap ${completed ? "opacity-50" : ""}`}>
+                  -{energyCost} EP
+                </span>
+                <span className={`text-primary text-xs font-mono whitespace-nowrap ${completed ? "opacity-50" : ""}`}>
+                  +{experienceReward} XP
+                </span>
+                {onEdit && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground hover:text-primary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit();
+                    }}
+                  >
+                    <Edit3 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+                {onDelete && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete();
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-amber-400 text-xs font-mono whitespace-nowrap ${completed ? "opacity-50" : ""}`}>
+                  -{attentionCost ?? 0} AT
+                </span>
+                <span className={`text-purple-400 text-xs font-mono whitespace-nowrap ${completed ? "opacity-50" : ""}`}>
+                  -{timeCost ?? 0} TT
+                </span>
+              </div>
             </div>
           </div>
           <p className={`text-muted-foreground text-sm ${completed ? "opacity-50" : ""}`}>
