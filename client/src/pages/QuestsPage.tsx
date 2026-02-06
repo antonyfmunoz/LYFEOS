@@ -26,7 +26,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Zap, Star, Bell, Edit3, X, ChevronDown, ChevronRight, Target, Calendar, CheckCircle2, GraduationCap, Inbox, Info, Archive, Undo2 } from "lucide-react";
+import { Plus, Zap, Star, Bell, Edit3, X, ChevronDown, ChevronRight, Target, Calendar, Clock, CheckCircle2, GraduationCap, Inbox, Info, Archive, Undo2 } from "lucide-react";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Quest, QuestNotification } from "@/lib/types";
@@ -104,10 +104,13 @@ export default function QuestsPage() {
 
   const handleRestoreMission = async (questId: string | number) => {
     try {
+      queryClient.setQueryData(["/api/quests/archived"], (old: any[] | undefined) => {
+        return (old || []).filter((q: any) => String(q.id) !== String(questId));
+      });
       await apiRequest(`/api/quests/${questId}/restore`, { method: "POST" });
-      await queryClient.refetchQueries({ queryKey: ["/api/quests/archived"] });
       await refetchQuests();
     } catch {
+      queryClient.invalidateQueries({ queryKey: ["/api/quests/archived"] });
       toast({ title: "Failed to restore mission", variant: "destructive" });
     }
   };
@@ -976,25 +979,72 @@ export default function QuestsPage() {
                   const deletedAt = quest.deletedAt ? new Date(quest.deletedAt) : null;
                   const expiresAt = deletedAt ? new Date(deletedAt.getTime() + 24 * 60 * 60 * 1000) : null;
                   const hoursLeft = expiresAt ? Math.max(0, Math.round((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60))) : 0;
+                  const formatDate = (dateStr: string) => {
+                    const [year, month, day] = dateStr.split('-').map(Number);
+                    const date = new Date(year, month - 1, day);
+                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                  };
+                  const formatTime = (timeStr: string) => {
+                    const [hours, minutes] = timeStr.split(':');
+                    const hour = parseInt(hours);
+                    const ampm = hour >= 12 ? 'PM' : 'AM';
+                    const hour12 = hour % 12 || 12;
+                    return `${hour12}:${minutes} ${ampm}`;
+                  };
+                  const hasSchedule = quest.startDate || quest.startTime || quest.endDate || quest.endTime;
                   return (
                     <div 
                       key={quest.id}
-                      className="glassmorphic rounded-xl p-4 hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition neon-border opacity-60"
+                      className="glassmorphic rounded-xl p-4 mb-3 hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition neon-border opacity-60"
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-grow">
+                      <div className="flex items-start">
+                        <div className="ml-2 flex-grow">
                           <div className="flex justify-between items-start">
                             <h3 className="font-medium line-through text-muted-foreground">{quest.title}</h3>
                             <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border bg-primary/20 border-primary/50 text-primary">
+                              <span className="text-[10px] font-mono h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary opacity-50">
                                 {quest.difficulty || 'D'}
                               </span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-3 mt-1 flex-wrap">
+                          <div className="flex items-center gap-3 mt-1 flex-wrap opacity-50">
+                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((quest.energyCost ?? 0) / 1440) * 100).toFixed(1)}% ET</span>
+                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((quest.attentionCost ?? 0) / 1440) * 100).toFixed(1)}% AT</span>
+                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((quest.timeCost ?? 0) / 1440) * 100).toFixed(1)}% TT</span>
                             <span className="text-primary text-xs font-mono whitespace-nowrap">+{adjustedXp} XP</span>
                             <span className="text-muted-foreground text-xs">{hoursLeft}h left</span>
                           </div>
+                          {hasSchedule && (
+                            <div className="flex items-center gap-1 text-xs mt-1 flex-wrap opacity-50 text-muted-foreground">
+                              {quest.startDate && (
+                                <span className="flex items-center gap-1 whitespace-nowrap">
+                                  <Calendar className="h-3 w-3 flex-shrink-0" />
+                                  {formatDate(quest.startDate)}
+                                </span>
+                              )}
+                              {quest.startTime && (
+                                <span className="flex items-center gap-1 whitespace-nowrap">
+                                  <Clock className="h-3 w-3 flex-shrink-0" />
+                                  {formatTime(quest.startTime)}
+                                </span>
+                              )}
+                              {(quest.endDate || quest.endTime) && (
+                                <span className="text-primary flex-shrink-0">→</span>
+                              )}
+                              {quest.endDate && (
+                                <span className="flex items-center gap-1 whitespace-nowrap">
+                                  <Calendar className="h-3 w-3 flex-shrink-0" />
+                                  {formatDate(quest.endDate)}
+                                </span>
+                              )}
+                              {quest.endTime && (
+                                <span className="flex items-center gap-1 whitespace-nowrap">
+                                  <Clock className="h-3 w-3 flex-shrink-0" />
+                                  {formatTime(quest.endTime)}
+                                </span>
+                              )}
+                            </div>
+                          )}
                           <button
                             className="mt-2 text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5"
                             onClick={() => handleRestoreMission(quest.id)}
