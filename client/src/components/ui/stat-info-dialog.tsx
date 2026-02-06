@@ -49,7 +49,7 @@ export function StatInfoDialog({
   
   if (!open) {
     return (
-      <div onClick={() => setOpen(true)}>
+      <div onClick={(e) => { e.stopPropagation(); setOpen(true); }}>
         {trigger}
       </div>
     );
