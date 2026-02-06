@@ -105,7 +105,7 @@ export default function QuestsPage() {
   const handleRestoreMission = async (questId: string | number) => {
     try {
       await apiRequest(`/api/quests/${questId}/restore`, { method: "POST" });
-      queryClient.invalidateQueries({ queryKey: ["/api/quests/archived"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/quests/archived"] });
       await refetchQuests();
     } catch {
       toast({ title: "Failed to restore mission", variant: "destructive" });
@@ -133,11 +133,10 @@ export default function QuestsPage() {
     // Inbox missions: missions created from to-do ideas (category='todo')
     const inboxItems = active.filter(q => q.category === 'todo');
     
-    // Today's missions: exclude 'todo' category (those go to inbox)
     const todayItems = active.filter(q => {
       if (q.category === 'todo') return false;
       if (!q.startDate) return true;
-      return q.startDate === today;
+      return q.startDate <= today;
     });
     
     const upcomingItems = active.filter(q => {

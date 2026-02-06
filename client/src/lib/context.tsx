@@ -985,7 +985,6 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
 
   // Delete a quest/mission
   const deleteQuest = async (id: string): Promise<void> => {
-    // Handle calendar-synced quests locally
     if (id.startsWith("quest-calendar-")) {
       setQuests((prev) => prev.filter((q) => q.id !== id));
       return;
@@ -1001,7 +1000,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     }
     
     setQuests((prev) => prev.filter((q) => q.id !== id));
-    await queryClient.invalidateQueries({ queryKey: ["/api/quests/archived"] });
+    await queryClient.refetchQueries({ queryKey: ["/api/quests/archived"] });
   };
 
   // Send a message to AI companion
