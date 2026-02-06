@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
-import { Archive, Calendar, ChevronDown, ChevronRight, ArrowLeft, Sun, Moon, Brain, Heart, Zap, BookOpen, Target, Lightbulb, CheckCircle, AlertCircle, GraduationCap, Search, FileText, Play } from "lucide-react";
+import { Archive, Calendar, ChevronDown, ChevronRight, ArrowLeft, Sun, Moon, Brain, Heart, Zap, BookOpen, Target, Lightbulb, CheckCircle, AlertCircle, GraduationCap, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { getLocalDateString } from "@/lib/utils";
@@ -53,6 +53,50 @@ interface YearData {
   months: MonthData[];
 }
 
+interface LogField {
+  label: string;
+  value: string | null;
+  labelIcon?: React.ReactNode;
+}
+
+function LogSection({ icon: Icon, title, fields }: { icon: any; title: string; fields: LogField[] }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <div className="space-y-2">
+      <div
+        className="flex items-center gap-2 cursor-pointer hover:bg-card/40 rounded px-1 py-0.5 transition-colors"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        {isExpanded ? (
+          <ChevronDown className="h-4 w-4 text-primary flex-shrink-0" />
+        ) : (
+          <ChevronRight className="h-4 w-4 text-primary flex-shrink-0" />
+        )}
+        <Icon className="h-4 w-4 text-primary" />
+        <h4 className="text-sm font-medium text-primary">{title}</h4>
+      </div>
+      {isExpanded && (
+        <div className="space-y-3 pl-2">
+          {fields.map(({ label, value, labelIcon }) => (
+            <div key={label} className="pl-6">
+              <p className="text-xs text-[#7DAAB2] mb-1 flex items-center gap-1">
+                {labelIcon}
+                {label}
+              </p>
+              {value ? (
+                <p className="text-sm whitespace-pre-wrap">{value}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground/40 italic">--</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LogCard({ log }: { log: DailyLog }) {
   const [isExpanded, setIsExpanded] = useState(false);
   
@@ -69,12 +113,6 @@ function LogCard({ log }: { log: DailyLog }) {
     return `${hour12}:${minutes.toString().padStart(2, '0')} ${period}`;
   };
 
-  const hasContent = (log: DailyLog) => {
-    return log.wakeTime || log.sleepTime || log.mentalState || log.physicalState || 
-           log.emotionalState || log.gratitude || log.tomorrowGoals || log.annualGoals ||
-           log.thoughts || log.contentConsumed || log.research || log.sourceAuthor || log.sourceMaterial || log.researchNote || log.revisionNote || log.executionNote || log.todoIdeas ||
-           log.wentWell || log.couldBeBetter || log.learned;
-  };
 
   return (
     <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
@@ -120,139 +158,48 @@ function LogCard({ log }: { log: DailyLog }) {
       
       <CollapsibleContent>
         <div className="ml-6 mt-2 p-4 glassmorphic rounded-xl border border-primary/10 space-y-4 bg-background/30">
-          {(log.gratitude || log.tomorrowGoals || log.annualGoals) && (
-            <div className="space-y-3">
-              <h4 className="text-sm font-medium text-primary flex items-center gap-2">
-                <Target className="h-4 w-4" /> Daily Intentions
-              </h4>
-              {log.gratitude && (
-                <div className="pl-6">
-                  <p className="text-xs text-[#7DAAB2] mb-1">Gratitude</p>
-                  <p className="text-sm whitespace-pre-wrap">{log.gratitude}</p>
-                </div>
-              )}
-              {log.tomorrowGoals && (
-                <div className="pl-6">
-                  <p className="text-xs text-[#7DAAB2] mb-1">Tomorrow's Goals</p>
-                  <p className="text-sm whitespace-pre-wrap">{log.tomorrowGoals}</p>
-                </div>
-              )}
-              {log.annualGoals && (
-                <div className="pl-6">
-                  <p className="text-xs text-[#7DAAB2] mb-1">Annual Goals</p>
-                  <p className="text-sm whitespace-pre-wrap">{log.annualGoals}</p>
-                </div>
-              )}
-            </div>
-          )}
-          
-          {(log.thoughts || log.contentConsumed || log.research || log.todoIdeas) && (
-            <div className="space-y-3">
-              <h4 className="text-sm font-medium text-primary flex items-center gap-2">
-                <BookOpen className="h-4 w-4" /> Daily Data & Thoughts
-              </h4>
-              {log.thoughts && (
-                <div className="pl-6">
-                  <p className="text-xs text-[#7DAAB2] mb-1">Thoughts</p>
-                  <p className="text-sm whitespace-pre-wrap">{log.thoughts}</p>
-                </div>
-              )}
-              {log.contentConsumed && (
-                <div className="pl-6">
-                  <p className="text-xs text-[#7DAAB2] mb-1">Information Consumed</p>
-                  <p className="text-sm whitespace-pre-wrap">{log.contentConsumed}</p>
-                </div>
-              )}
-              {log.research && (
-                <div className="pl-6">
-                  <p className="text-xs text-[#7DAAB2] mb-1">Research</p>
-                  <p className="text-sm whitespace-pre-wrap">{log.research}</p>
-                </div>
-              )}
-              {log.todoIdeas && (
-                <div className="pl-6">
-                  <p className="text-xs text-[#7DAAB2] mb-1">Todo Ideas</p>
-                  <p className="text-sm whitespace-pre-wrap">{log.todoIdeas}</p>
-                </div>
-              )}
-            </div>
-          )}
-          
-          {(log.sourceAuthor || log.sourceMaterial || log.researchNote || log.revisionNote || log.executionNote) && (
-            <div className="space-y-3">
-              <h4 className="text-sm font-medium text-primary flex items-center gap-2">
-                <Search className="h-4 w-4" /> Daily Research Log
-              </h4>
-              {log.sourceAuthor && (
-                <div className="pl-6">
-                  <p className="text-xs text-[#7DAAB2] mb-1">Source Author</p>
-                  <p className="text-sm whitespace-pre-wrap">{log.sourceAuthor}</p>
-                </div>
-              )}
-              {log.sourceMaterial && (
-                <div className="pl-6">
-                  <p className="text-xs text-[#7DAAB2] mb-1">Source Material</p>
-                  <p className="text-sm whitespace-pre-wrap">{log.sourceMaterial}</p>
-                </div>
-              )}
-              {log.researchNote && (
-                <div className="pl-6">
-                  <p className="text-xs text-[#7DAAB2] mb-1">Research Note</p>
-                  <p className="text-sm whitespace-pre-wrap">{log.researchNote}</p>
-                </div>
-              )}
-              {log.revisionNote && (
-                <div className="pl-6">
-                  <p className="text-xs text-[#7DAAB2] mb-1">Revision & Summary Note</p>
-                  <p className="text-sm whitespace-pre-wrap">{log.revisionNote}</p>
-                </div>
-              )}
-              {log.executionNote && (
-                <div className="pl-6">
-                  <p className="text-xs text-[#7DAAB2] mb-1">Execution Note</p>
-                  <p className="text-sm whitespace-pre-wrap">{log.executionNote}</p>
-                </div>
-              )}
-            </div>
-          )}
-          
-          {(log.wentWell || log.couldBeBetter || log.learned) && (
-            <div className="space-y-3">
-              <h4 className="text-sm font-medium text-primary flex items-center gap-2">
-                <Lightbulb className="h-4 w-4" /> Daily Reflection
-              </h4>
-              {log.wentWell && (
-                <div className="pl-6">
-                  <p className="text-xs text-[#7DAAB2] mb-1 flex items-center gap-1">
-                    <CheckCircle className="h-3 w-3 text-green-400" /> What Went Well
-                  </p>
-                  <p className="text-sm whitespace-pre-wrap">{log.wentWell}</p>
-                </div>
-              )}
-              {log.couldBeBetter && (
-                <div className="pl-6">
-                  <p className="text-xs text-[#7DAAB2] mb-1 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3 text-yellow-400" /> Could Be Better
-                  </p>
-                  <p className="text-sm whitespace-pre-wrap">{log.couldBeBetter}</p>
-                </div>
-              )}
-              {log.learned && (
-                <div className="pl-6">
-                  <p className="text-xs text-[#7DAAB2] mb-1 flex items-center gap-1">
-                    <GraduationCap className="h-3 w-3 text-blue-400" /> What I Learned
-                  </p>
-                  <p className="text-sm whitespace-pre-wrap">{log.learned}</p>
-                </div>
-              )}
-            </div>
-          )}
-          
-          {!hasContent(log) && (
-            <p className="text-sm text-[#7DAAB2] italic text-center py-4">
-              No detailed entries for this day
-            </p>
-          )}
+          <LogSection
+            icon={Target}
+            title="Daily Intentions"
+            fields={[
+              { label: 'Gratitude', value: log.gratitude },
+              { label: "Tomorrow's Goals", value: log.tomorrowGoals },
+              { label: 'Annual Goals', value: log.annualGoals },
+            ]}
+          />
+
+          <LogSection
+            icon={BookOpen}
+            title="Daily Data & Thoughts"
+            fields={[
+              { label: 'Thoughts', value: log.thoughts },
+              { label: 'Information Consumed', value: log.contentConsumed },
+              { label: 'Research', value: log.research },
+              { label: 'Todo Ideas', value: log.todoIdeas },
+            ]}
+          />
+
+          <LogSection
+            icon={Search}
+            title="Daily Research Log"
+            fields={[
+              { label: 'Source Author', value: log.sourceAuthor },
+              { label: 'Source Material', value: log.sourceMaterial },
+              { label: 'Research Note', value: log.researchNote },
+              { label: 'Revision & Summary Note', value: log.revisionNote },
+              { label: 'Execution Note', value: log.executionNote },
+            ]}
+          />
+
+          <LogSection
+            icon={Lightbulb}
+            title="Daily Reflection"
+            fields={[
+              { label: 'What Went Well', value: log.wentWell, labelIcon: <CheckCircle className="h-3 w-3 text-green-400" /> },
+              { label: 'Could Be Better', value: log.couldBeBetter, labelIcon: <AlertCircle className="h-3 w-3 text-yellow-400" /> },
+              { label: 'What I Learned', value: log.learned, labelIcon: <GraduationCap className="h-3 w-3 text-blue-400" /> },
+            ]}
+          />
         </div>
       </CollapsibleContent>
     </Collapsible>

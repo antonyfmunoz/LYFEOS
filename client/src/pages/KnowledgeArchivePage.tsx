@@ -129,20 +129,19 @@ export default function KnowledgeArchivePage() {
 
   const filteredGroups = useMemo(() => {
     if (!searchQuery.trim()) return authorGroups;
-    const q = searchQuery.toLowerCase().trim();
+    const q = searchQuery.trim();
 
     return authorGroups
       .map(group => {
-        if (group.author.toLowerCase().includes(q)) return group;
+        if (group.author.includes(q)) return group;
 
         const filteredSources = group.sources
           .map(source => {
-            if (source.sourceMaterial.toLowerCase().includes(q)) return source;
+            if (source.sourceMaterial.includes(q)) return source;
 
             const matchingEntries = source.entries.filter(
-              e => (e.researchNote?.toLowerCase().includes(q)) ||
-                   (e.revisionNote?.toLowerCase().includes(q)) ||
-                   (e.executionNote?.toLowerCase().includes(q))
+              e => (e.researchNote?.includes(q)) ||
+                   (e.executionNote?.includes(q))
             );
             if (matchingEntries.length > 0) return { ...source, entries: matchingEntries };
             return null;
@@ -263,7 +262,6 @@ export default function KnowledgeArchivePage() {
                                 const entryKey = `${sourceKey}::${entry.date}::${idx}`;
                                 const noteTypes = [
                                   { key: 'research', label: 'Research Note', icon: Search, content: entry.researchNote },
-                                  { key: 'revision', label: 'Revision & Summary Note', icon: FileText, content: entry.revisionNote },
                                   { key: 'execution', label: 'Execution Note', icon: Play, content: entry.executionNote },
                                 ].filter(n => n.content);
 
