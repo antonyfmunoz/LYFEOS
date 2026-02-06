@@ -121,7 +121,7 @@ function LogCard({ log }: { log: DailyLog }) {
           {(log.gratitude || log.tomorrowGoals || log.annualGoals) && (
             <div className="space-y-3">
               <h4 className="text-sm font-medium text-primary flex items-center gap-2">
-                <Target className="h-4 w-4" /> Intentions
+                <Target className="h-4 w-4" /> Daily Intentions
               </h4>
               {log.gratitude && (
                 <div className="pl-6">
@@ -147,7 +147,7 @@ function LogCard({ log }: { log: DailyLog }) {
           {(log.thoughts || log.contentConsumed || log.research || log.todoIdeas) && (
             <div className="space-y-3">
               <h4 className="text-sm font-medium text-primary flex items-center gap-2">
-                <BookOpen className="h-4 w-4" /> Data & Thoughts
+                <BookOpen className="h-4 w-4" /> Daily Data & Thoughts
               </h4>
               {log.thoughts && (
                 <div className="pl-6">
@@ -179,7 +179,7 @@ function LogCard({ log }: { log: DailyLog }) {
           {(log.researchNote || log.revisionNote || log.executionNote) && (
             <div className="space-y-3">
               <h4 className="text-sm font-medium text-primary flex items-center gap-2">
-                <Search className="h-4 w-4" /> Research Log
+                <Search className="h-4 w-4" /> Daily Research Log
               </h4>
               {log.researchNote && (
                 <div className="pl-6">
@@ -205,7 +205,7 @@ function LogCard({ log }: { log: DailyLog }) {
           {(log.wentWell || log.couldBeBetter || log.learned) && (
             <div className="space-y-3">
               <h4 className="text-sm font-medium text-primary flex items-center gap-2">
-                <Lightbulb className="h-4 w-4" /> Reflection
+                <Lightbulb className="h-4 w-4" /> Daily Reflection
               </h4>
               {log.wentWell && (
                 <div className="pl-6">
