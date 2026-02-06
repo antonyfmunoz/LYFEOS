@@ -1,6 +1,14 @@
-import { useState, useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+
+function getCachedState(widgetId: string): boolean | undefined {
+  const cached = queryClient.getQueryData<Record<string, boolean>>(["/api/widget-states"]);
+  if (cached && widgetId in cached) {
+    return cached[widgetId];
+  }
+  return undefined;
+}
 
 export function useWidgetState(widgetId: string, defaultOpen: boolean = true): [boolean, (open: boolean) => void] {
   const { data: allStates } = useQuery<Record<string, boolean>>({
@@ -8,15 +16,8 @@ export function useWidgetState(widgetId: string, defaultOpen: boolean = true): [
     staleTime: Infinity,
   });
 
-  const hasServerState = allStates !== undefined && widgetId in (allStates || {});
-  const serverValue = allStates?.[widgetId];
-  const [localValue, setLocalValue] = useState(defaultOpen);
-
-  useEffect(() => {
-    if (hasServerState && serverValue !== undefined) {
-      setLocalValue(serverValue);
-    }
-  }, [hasServerState, serverValue]);
+  const savedValue = allStates?.[widgetId];
+  const isOpen = savedValue !== undefined ? savedValue : (getCachedState(widgetId) ?? defaultOpen);
 
   const mutation = useMutation({
     mutationFn: async ({ isOpen }: { isOpen: boolean }) => {
@@ -28,14 +29,21 @@ export function useWidgetState(widgetId: string, defaultOpen: boolean = true): [
     onSuccess: (data) => {
       queryClient.setQueryData(["/api/widget-states"], data);
     },
+    onMutate: async ({ isOpen }) => {
+      const prev = queryClient.getQueryData<Record<string, boolean>>(["/api/widget-states"]);
+      queryClient.setQueryData(["/api/widget-states"], { ...prev, [widgetId]: isOpen });
+      return { prev };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev) {
+        queryClient.setQueryData(["/api/widget-states"], context.prev);
+      }
+    },
   });
 
   const setIsOpen = useCallback((open: boolean) => {
-    setLocalValue(open);
     mutation.mutate({ isOpen: open });
   }, [widgetId, mutation]);
-
-  const isOpen = hasServerState ? (serverValue ?? defaultOpen) : localValue;
 
   return [isOpen, setIsOpen];
 }
