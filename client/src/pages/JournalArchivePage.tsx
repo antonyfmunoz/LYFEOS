@@ -125,32 +125,13 @@ function LogCard({ log }: { log: DailyLog }) {
               ) : (
                 <ChevronRight className="h-4 w-4 text-primary" />
               )}
-              <div>
-                <h4 className="text-base">
-                  {parseLocalDate(log.date).toLocaleDateString('en-US', { 
-                    weekday: 'long', 
-                    month: 'long', 
-                    day: 'numeric' 
-                  })}
-                </h4>
-                <div className="flex items-center gap-4 text-xs text-[#7DAAB2] mt-1">
-                  <span className="flex items-center gap-1">
-                    <Sun className="h-3 w-3" /> {formatTime12Hour(log.wakeTime)}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Moon className="h-3 w-3" /> {formatTime12Hour(log.sleepTime)}
-                  </span>
-                  <span className="flex items-center gap-1 text-primary">
-                    <Brain className="h-3 w-3" /> {log.mentalState ?? '-'}/10
-                  </span>
-                  <span className="flex items-center gap-1 text-primary">
-                    <Zap className="h-3 w-3" /> {log.physicalState ?? '-'}/10
-                  </span>
-                  <span className="flex items-center gap-1 text-primary">
-                    <Heart className="h-3 w-3" /> {log.emotionalState ?? '-'}/10
-                  </span>
-                </div>
-              </div>
+              <h4 className="text-base">
+                {parseLocalDate(log.date).toLocaleDateString('en-US', { 
+                  weekday: 'long', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}
+              </h4>
             </div>
           </div>
         </div>
@@ -158,6 +139,18 @@ function LogCard({ log }: { log: DailyLog }) {
       
       <CollapsibleContent>
         <div className="ml-6 mt-2 p-4 glassmorphic rounded-xl border border-primary/10 space-y-4 bg-background/30">
+          <LogSection
+            icon={Zap}
+            title="Daily Energy Log"
+            fields={[
+              { label: 'Wake Time', value: formatTime12Hour(log.wakeTime) === '--:--' ? null : formatTime12Hour(log.wakeTime) },
+              { label: 'Sleep Time', value: formatTime12Hour(log.sleepTime) === '--:--' ? null : formatTime12Hour(log.sleepTime) },
+              { label: 'Mental State', value: log.mentalState != null ? `${log.mentalState}/10` : null },
+              { label: 'Physical State', value: log.physicalState != null ? `${log.physicalState}/10` : null },
+              { label: 'Emotional State', value: log.emotionalState != null ? `${log.emotionalState}/10` : null },
+            ]}
+          />
+
           <LogSection
             icon={Target}
             title="Daily Intentions"
