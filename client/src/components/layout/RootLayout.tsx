@@ -21,14 +21,14 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <div className="flex flex-grow overflow-hidden">
         <Sidebar currentPage={currentPage} username={username} />
         
-        <div className="flex-grow overflow-y-auto">
-          <div className="sticky top-0 z-40 lg:hidden bg-background/95 backdrop-blur-sm border-b border-primary/20">
+        <div className="flex-grow flex flex-col overflow-hidden">
+          <div className="shrink-0 lg:hidden bg-background/95 backdrop-blur-sm border-b border-primary/20 z-40">
             <div className="flex items-center justify-center py-4">
               <span className="text-2xl text-primary font-orbitron font-bold">LYFE<span className="text-white">OS</span></span>
             </div>
           </div>
           {activeTimerQuest && (
-            <div className="sticky top-[57px] z-30 lg:hidden px-4 pt-2 pb-2 bg-background/80 backdrop-blur-sm">
+            <div className="shrink-0 lg:hidden px-4 pt-2 pb-2 bg-background/80 backdrop-blur-sm z-30">
               <MissionTimer
                 timerStartedAt={timerStartedAt}
                 timerPausedElapsed={timerPausedElapsed}
@@ -41,7 +41,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           )}
           
           {activeTimerQuest && (
-            <div className="sticky top-0 z-30 px-6 pt-2 pb-2 bg-background/50 backdrop-blur-sm hidden lg:block">
+            <div className="shrink-0 px-6 pt-2 pb-2 bg-background/50 backdrop-blur-sm z-30 hidden lg:block">
               <MissionTimer
                 timerStartedAt={timerStartedAt}
                 timerPausedElapsed={timerPausedElapsed}
@@ -53,7 +53,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
             </div>
           )}
           
-          <div className="p-4 lg:p-6">
+          <div className="flex-grow overflow-y-auto p-4 lg:p-6">
             {children}
           </div>
         </div>
