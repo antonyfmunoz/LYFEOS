@@ -74,6 +74,12 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestIt
               )}
             </div>
           </div>
+          <div className={`flex items-center gap-3 mt-1 flex-wrap ${completed ? "opacity-50" : ""}`}>
+            <span className="text-primary text-xs font-mono whitespace-nowrap">-{energyCost} ET</span>
+            <span className="text-primary text-xs font-mono whitespace-nowrap">-{attentionCost ?? 0} AT</span>
+            <span className="text-primary text-xs font-mono whitespace-nowrap">-{timeCost ?? 0} TT</span>
+            <span className="text-primary text-xs font-mono whitespace-nowrap">+{experienceReward} XP</span>
+          </div>
           {hasSchedule && (
             <div className={`flex items-center gap-1 text-xs mt-1 flex-wrap ${completed ? "opacity-50" : "text-muted-foreground"}`}>
               {startDate && (
@@ -105,12 +111,6 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestIt
               )}
             </div>
           )}
-          <div className={`flex items-center gap-3 mt-1.5 flex-wrap ${completed ? "opacity-50" : ""}`}>
-            <span className="text-primary text-xs font-mono whitespace-nowrap">-{energyCost} ET</span>
-            <span className="text-primary text-xs font-mono whitespace-nowrap">-{attentionCost ?? 0} AT</span>
-            <span className="text-primary text-xs font-mono whitespace-nowrap">-{timeCost ?? 0} TT</span>
-            <span className="text-primary text-xs font-mono whitespace-nowrap">+{experienceReward} XP</span>
-          </div>
           <p className={`text-muted-foreground text-sm mt-1 ${completed ? "opacity-50" : ""}`}>
             {description?.replace(/^Completed onboarding mission "(.+)"$/, 'Completed the "$1" mission') || description}
           </p>
