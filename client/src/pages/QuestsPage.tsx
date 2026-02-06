@@ -107,7 +107,6 @@ export default function QuestsPage() {
       await apiRequest(`/api/quests/${questId}/restore`, { method: "POST" });
       queryClient.invalidateQueries({ queryKey: ["/api/quests/archived"] });
       await refetchQuests();
-      toast({ title: "Mission restored" });
     } catch {
       toast({ title: "Failed to restore mission", variant: "destructive" });
     }

@@ -1001,7 +1001,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     }
     
     setQuests((prev) => prev.filter((q) => q.id !== id));
-    queryClient.invalidateQueries({ queryKey: ["/api/quests/archived"] });
+    await queryClient.invalidateQueries({ queryKey: ["/api/quests/archived"] });
   };
 
   // Send a message to AI companion
