@@ -807,19 +807,17 @@ export default function QuestsPage() {
                               {mission.description}
                             </p>
                           )}
-                          <div className="flex justify-end mt-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="border-primary/50 text-primary hover:bg-primary/10 hover:text-primary"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate('/onboarding');
-                              }}
-                            >
-                              Start
-                            </Button>
-                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-2 border-primary/50 text-primary hover:bg-primary/10 hover:text-primary gap-1.5"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate('/onboarding');
+                            }}
+                          >
+                            Start
+                          </Button>
                         </div>
                       </div>
                     </div>
