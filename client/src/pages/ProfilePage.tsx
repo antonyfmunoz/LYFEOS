@@ -57,11 +57,16 @@ import { apiRequest } from "@/lib/queryClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { DraggableWidget } from '@/components/ui/draggable-widget';
+import { DraggableWidget, type DraggableWidgetProps } from '@/components/ui/draggable-widget';
 import update from 'immutability-helper';
 import type { UserProfile as UserProfileSchema } from "@shared/schema";
 
 
+
+function PersistentProfileDraggableWidget({ widgetId, ...props }: Omit<DraggableWidgetProps, 'isOpenProp' | 'onOpenChange'> & { widgetId: string }) {
+  const [isOpen, setIsOpen] = useWidgetState(widgetId, props.defaultOpen ?? true);
+  return <DraggableWidget {...props} isOpenProp={isOpen} onOpenChange={setIsOpen} />;
+}
 
 function PersistentProfileSection({ section }: { section: { id: string; title: string; icon: React.ReactNode; items: { label: string; value: any }[] } }) {
   const [isOpen, setIsOpen] = useWidgetState(`profile.section.${section.id}`, false);
@@ -1371,8 +1376,9 @@ export default function ProfilePage() {
         <div className="mt-6">
           <DndProvider backend={HTML5Backend}>
             {widgets.map((widget, index) => (
-              <DraggableWidget
+              <PersistentProfileDraggableWidget
                 key={widget.id}
+                widgetId={`profile.${widget.id}`}
                 id={widget.id}
                 index={index}
                 title={widget.title}
@@ -1381,7 +1387,7 @@ export default function ProfilePage() {
                 defaultOpen={widget.defaultOpen}
               >
                 {renderWidgetContent(widget.id)}
-              </DraggableWidget>
+              </PersistentProfileDraggableWidget>
             ))}
           </DndProvider>
         </div>
