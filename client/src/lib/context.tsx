@@ -109,6 +109,7 @@ export interface IntentionLogData {
 export interface DataLogData {
   contentConsumed: string;
   research: string;
+  sourceAuthor: string;
   sourceMaterial: string;
   researchNote: string;
   revisionNote: string;
@@ -148,6 +149,7 @@ const initialIntentionLog: IntentionLogData = {
 const initialDataLog: DataLogData = {
   contentConsumed: "",
   research: "",
+  sourceAuthor: "",
   sourceMaterial: "",
   researchNote: "",
   revisionNote: "",

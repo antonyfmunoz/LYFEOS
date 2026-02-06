@@ -226,6 +226,7 @@ export const userDailyLogs = pgTable("user_daily_logs", {
   research: text("research"), // Research notes (legacy)
   todoIdeas: text("todo_ideas"), // Ideas for future todos
   // Research log fields
+  sourceAuthor: text("source_author"), // Source author name
   sourceMaterial: text("source_material"), // Source material reference
   researchNote: text("research_note"), // Research note
   revisionNote: text("revision_note"), // Revision & summary note
@@ -604,6 +605,7 @@ export const insertUserDailyLogsSchema = createInsertSchema(userDailyLogs).pick(
   todoIdeas: true,
   todosConverted: true,
   // Research log fields
+  sourceAuthor: true,
   sourceMaterial: true,
   researchNote: true,
   revisionNote: true,

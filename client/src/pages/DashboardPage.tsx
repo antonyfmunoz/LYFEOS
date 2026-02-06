@@ -45,6 +45,7 @@ interface DailyReflection {
   thoughts: string;
   contentConsumed: string;
   research: string;
+  sourceAuthor: string;
   sourceMaterial: string;
   researchNote: string;
   revisionNote: string;
@@ -219,6 +220,7 @@ export default function DashboardPage() {
     // Data log fields
     contentConsumed: dataLog.contentConsumed,
     research: dataLog.research,
+    sourceAuthor: dataLog.sourceAuthor,
     sourceMaterial: dataLog.sourceMaterial,
     researchNote: dataLog.researchNote,
     revisionNote: dataLog.revisionNote,
@@ -331,6 +333,7 @@ export default function DashboardPage() {
           thoughts: logs.intentionLog.thoughts,
           contentConsumed: logs.dataLog.contentConsumed,
           research: logs.dataLog.research,
+          sourceAuthor: logs.dataLog.sourceAuthor,
           sourceMaterial: logs.dataLog.sourceMaterial,
           researchNote: logs.dataLog.researchNote,
           revisionNote: logs.dataLog.revisionNote,
@@ -413,6 +416,7 @@ export default function DashboardPage() {
         updateDataLog({
           contentConsumed: dailyLogData.contentConsumed ?? "",
           research: dailyLogData.research ?? "",
+          sourceAuthor: dailyLogData.sourceAuthor ?? "",
           sourceMaterial: dailyLogData.sourceMaterial ?? "",
           researchNote: dailyLogData.researchNote ?? "",
           revisionNote: dailyLogData.revisionNote ?? "",
@@ -587,6 +591,7 @@ export default function DashboardPage() {
         // Data log fields
         contentConsumed: field === 'contentConsumed' ? value : dataLog.contentConsumed,
         research: field === 'research' ? value : dataLog.research,
+        sourceAuthor: field === 'sourceAuthor' ? value : dataLog.sourceAuthor,
         sourceMaterial: field === 'sourceMaterial' ? value : dataLog.sourceMaterial,
         researchNote: field === 'researchNote' ? value : dataLog.researchNote,
         revisionNote: field === 'revisionNote' ? value : dataLog.revisionNote,
@@ -786,6 +791,20 @@ export default function DashboardPage() {
       case 'research-log':
         return (
           <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm flex items-center text-[#7DAAB2]">
+                <BookOpen className="h-4 w-4 text-primary" />
+                <span className="ml-2">Source Author</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Author name..."
+                value={reflection.sourceAuthor}
+                onChange={(e) => updateReflection("sourceAuthor", e.target.value)}
+                className="w-full bg-background/50 border border-primary/20 rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50"
+              />
+            </div>
+
             <div className="space-y-2">
               <label className="text-sm flex items-center text-[#7DAAB2]">
                 <Link2 className="h-4 w-4 text-primary" />
