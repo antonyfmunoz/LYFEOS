@@ -198,7 +198,7 @@ export default function QuestsPage() {
 
   return (
     <>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-orbitron mb-1">Missions</h1>
           <p className="text-muted-foreground">Complete missions to earn XP and reach your goals.</p>
@@ -524,9 +524,9 @@ export default function QuestsPage() {
       </Dialog>
       
       {/* Today's Missions */}
-      <Collapsible open={todayExpanded} onOpenChange={setTodayExpanded} className="mb-6">
+      <Collapsible open={todayExpanded} onOpenChange={setTodayExpanded} className="mb-4">
         <div className="glassmorphic rounded-xl overflow-hidden border border-primary/20">
-          <div className="p-4 flex items-center justify-between">
+          <div className="p-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Target className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-orbitron">Today's Missions</h2>
@@ -554,7 +554,7 @@ export default function QuestsPage() {
           </div>
           
           <CollapsibleContent>
-            <div className="px-4 pb-4 space-y-3">
+            <div className="px-3 pb-3 space-y-2">
               {todayMissions.length > 0 ? (
                 todayMissions.map((quest) => (
                   <QuestItem 
@@ -578,9 +578,9 @@ export default function QuestsPage() {
       
       {/* Future Missions */}
       {(upcomingMissions.length > 0 || incompleteOnboardingMissions.length > 0) && (
-        <Collapsible open={upcomingExpanded} onOpenChange={setUpcomingExpanded} className="mb-6">
+        <Collapsible open={upcomingExpanded} onOpenChange={setUpcomingExpanded} className="mb-4">
           <div className="glassmorphic rounded-xl overflow-hidden border border-primary/20">
-            <div className="p-4 flex items-center justify-between">
+            <div className="p-3 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Calendar className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-orbitron">Future Missions</h2>
@@ -608,7 +608,7 @@ export default function QuestsPage() {
             </div>
             
             <CollapsibleContent>
-              <div className="px-4 pb-4 space-y-3">
+              <div className="px-3 pb-3 space-y-2">
                 {incompleteOnboardingMissions.map((mission) => (
                   <div 
                     key={`onboarding-${mission.id}`}
@@ -649,9 +649,9 @@ export default function QuestsPage() {
       
       {/* Completed Missions */}
       {completedMissions.length > 0 && (
-        <Collapsible open={completedExpanded} onOpenChange={setCompletedExpanded} className="mb-6">
+        <Collapsible open={completedExpanded} onOpenChange={setCompletedExpanded} className="mb-4">
           <div className="glassmorphic rounded-xl overflow-hidden border border-primary/20">
-            <div className="p-4 flex items-center justify-between">
+            <div className="p-3 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-orbitron">Completed Missions</h2>
@@ -679,7 +679,7 @@ export default function QuestsPage() {
             </div>
             
             <CollapsibleContent>
-              <div className="px-4 pb-4 space-y-3">
+              <div className="px-3 pb-3 space-y-2">
                 {completedMissions.map((quest) => (
                   <QuestItem 
                     key={quest.id}
@@ -697,9 +697,9 @@ export default function QuestsPage() {
       
       {/* Mission Archive - missions from to-do ideas */}
       {inboxMissions.length > 0 && (
-        <Collapsible open={inboxExpanded} onOpenChange={setInboxExpanded} className="mb-6">
+        <Collapsible open={inboxExpanded} onOpenChange={setInboxExpanded} className="mb-4">
           <div className="glassmorphic rounded-xl overflow-hidden border border-primary/20">
-            <div className="p-4 flex items-center justify-between">
+            <div className="p-3 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Inbox className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-orbitron">Mission Archive</h2>
@@ -727,7 +727,7 @@ export default function QuestsPage() {
             </div>
             
             <CollapsibleContent>
-              <div className="px-4 pb-4 space-y-3">
+              <div className="px-3 pb-3 space-y-2">
                 {inboxMissions.map((quest) => (
                   <QuestItem 
                     key={quest.id}

@@ -30,7 +30,7 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestIt
   const hasSchedule = startDate || startTime || endDate || endTime;
 
   return (
-    <div className="glassmorphic rounded-xl p-4 mb-3 hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition neon-border">
+    <div className="glassmorphic rounded-xl p-3 mb-2 hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition neon-border">
       <div className="flex items-start">
         <Checkbox 
           className="mt-1 rounded border border-primary/50 data-[state=checked]:bg-primary/20 data-[state=checked]:text-primary"
