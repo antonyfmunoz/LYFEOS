@@ -15,6 +15,7 @@ interface QuestItemProps {
   onUndo?: () => void;
   elapsedSeconds?: number;
   isTimerActive?: boolean;
+  timerBlocked?: boolean;
 }
 
 function formatElapsed(totalSeconds: number) {
@@ -27,7 +28,7 @@ function formatElapsed(totalSeconds: number) {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-export default function QuestItem({ quest, onToggle, onDelete, onEdit, onStart, onResume, onDone, onUndo, elapsedSeconds, isTimerActive }: QuestItemProps) {
+export default function QuestItem({ quest, onToggle, onDelete, onEdit, onStart, onResume, onDone, onUndo, elapsedSeconds, isTimerActive, timerBlocked }: QuestItemProps) {
   const [showDescription, setShowDescription] = useState(false);
   const { title, description, completed, energyCost, attentionCost, timeCost, experienceReward, startDate, startTime, endDate, endTime, notificationEnabled, difficulty } = quest;
 
@@ -170,7 +171,8 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit, onStart, 
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-primary/50 text-primary hover:bg-primary/10 hover:text-primary"
+                  disabled={timerBlocked}
+                  className="border-primary/50 text-primary hover:bg-primary/10 hover:text-primary disabled:opacity-40"
                   onClick={(e) => {
                     e.stopPropagation();
                     onStart();
@@ -183,7 +185,8 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit, onStart, 
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-primary/50 text-primary hover:bg-primary/10 hover:text-primary"
+                  disabled={timerBlocked}
+                  className="border-primary/50 text-primary hover:bg-primary/10 hover:text-primary disabled:opacity-40"
                   onClick={(e) => {
                     e.stopPropagation();
                     onResume();

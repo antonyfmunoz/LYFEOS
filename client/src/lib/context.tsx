@@ -278,6 +278,11 @@ interface LYFEOSContextType {
   updateKanbanTask: (id: string, taskData: Partial<KanbanTask>) => void;
   deleteKanbanTask: (id: string) => void;
   moveKanbanTask: (id: string, newStatus: KanbanStatus, boardId?: string) => void;
+  activeTimerQuest: Quest | null;
+  missionElapsedTimes: { [key: string]: number };
+  startMissionTimer: (quest: Quest) => void;
+  resumeMissionTimer: (quest: Quest) => void;
+  endMissionTimer: (elapsedSeconds: number) => void;
 }
 
 // Create the context
@@ -313,6 +318,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   // Mapping from local chat session IDs to database conversation IDs
   const [sessionToDbIdMap, setSessionToDbIdMap] = useState<Record<string, number>>({});
   const [activeChatSessionId, setActiveChatSessionId] = useState<string>(initialChatSessions[0].id);
+  const [activeTimerQuest, setActiveTimerQuest] = useState<Quest | null>(null);
+  const [missionElapsedTimes, setMissionElapsedTimes] = useState<{ [key: string]: number }>({});
   
   // Function to update user stats
   const updateUserStats = (newStats: UserStats) => {
@@ -1997,6 +2004,24 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const startMissionTimer = (quest: Quest) => {
+    if (activeTimerQuest) return;
+    setMissionElapsedTimes(prev => ({ ...prev, [quest.id]: 0 }));
+    setActiveTimerQuest(quest);
+  };
+
+  const resumeMissionTimer = (quest: Quest) => {
+    if (activeTimerQuest) return;
+    setActiveTimerQuest(quest);
+  };
+
+  const endMissionTimer = (elapsedSeconds: number) => {
+    if (activeTimerQuest) {
+      setMissionElapsedTimes(prev => ({ ...prev, [activeTimerQuest.id]: elapsedSeconds }));
+    }
+    setActiveTimerQuest(null);
+  };
+
   return (
     <LYFEOSContext.Provider
       value={{
@@ -2060,7 +2085,12 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         createKanbanTask,
         updateKanbanTask,
         deleteKanbanTask,
-        moveKanbanTask
+        moveKanbanTask,
+        activeTimerQuest,
+        missionElapsedTimes,
+        startMissionTimer,
+        resumeMissionTimer,
+        endMissionTimer
       }}
     >
       {children}

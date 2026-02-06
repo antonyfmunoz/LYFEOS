@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 interface MissionTimerProps {
   initialSeconds?: number;
   onEnd: (elapsedSeconds: number) => void;
+  missionTitle?: string;
 }
 
-export default function MissionTimer({ initialSeconds = 0, onEnd }: MissionTimerProps) {
+export default function MissionTimer({ initialSeconds = 0, onEnd, missionTitle }: MissionTimerProps) {
   const [elapsedSeconds, setElapsedSeconds] = useState(initialSeconds);
   const [isPaused, setIsPaused] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -57,30 +58,33 @@ export default function MissionTimer({ initialSeconds = 0, onEnd }: MissionTimer
   };
 
   return (
-    <div className="fixed top-[57px] lg:top-4 left-0 lg:left-auto right-0 z-50 px-4 lg:px-6">
-      <div className="glassmorphic rounded-xl p-4 border border-primary/40 shadow-[0_0_20px_rgba(0,224,255,0.2)]">
-        <div className="flex items-center justify-between">
+    <div className="glassmorphic rounded-xl p-3 border border-primary/40 shadow-[0_0_20px_rgba(0,224,255,0.2)]">
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-0.5 min-w-0 mr-3">
+          {missionTitle && (
+            <span className="text-xs text-muted-foreground truncate">{missionTitle}</span>
+          )}
           <span className={`font-mono text-2xl font-bold tracking-wider ${isPaused ? "text-muted-foreground" : "text-primary"}`}>
             {formatTime(elapsedSeconds)}
           </span>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-9 w-9 border-primary/50 text-primary hover:bg-primary/10"
-              onClick={handlePauseResume}
-            >
-              {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-9 w-9 border-destructive/50 text-destructive hover:bg-destructive/10"
-              onClick={handleEnd}
-            >
-              <Square className="h-4 w-4" />
-            </Button>
-          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 border-primary/50 text-primary hover:bg-primary/10"
+            onClick={handlePauseResume}
+          >
+            {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 border-destructive/50 text-destructive hover:bg-destructive/10"
+            onClick={handleEnd}
+          >
+            <Square className="h-4 w-4" />
+          </Button>
         </div>
       </div>
     </div>

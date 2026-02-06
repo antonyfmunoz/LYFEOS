@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import QuestItem from "../components/dashboard/QuestItem";
-import MissionTimer from "../components/dashboard/MissionTimer";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,7 +68,7 @@ export default function QuestsPage() {
   usePageTitle('Missions');
   const [, navigate] = useLocation();
   
-  const { quests, toggleQuestCompletion, createQuest, updateQuest, deleteQuest } = useLYFEOS();
+  const { quests, toggleQuestCompletion, createQuest, updateQuest, deleteQuest, activeTimerQuest, missionElapsedTimes, startMissionTimer, resumeMissionTimer } = useLYFEOS();
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -92,8 +91,6 @@ export default function QuestsPage() {
   const [completedExpanded, setCompletedExpanded] = useState(true);
   const [inboxExpanded, setInboxExpanded] = useState(true);
   const [onboardingInfoOpen, setOnboardingInfoOpen] = useState<Record<number, boolean>>({});
-  const [activeTimerQuest, setActiveTimerQuest] = useState<Quest | null>(null);
-  const [missionElapsedTimes, setMissionElapsedTimes] = useState<{ [key: number]: number }>({});
 
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -215,8 +212,7 @@ export default function QuestsPage() {
       toast({ title: "Timer Already Active", description: `End the current timer first.` });
       return;
     }
-    setMissionElapsedTimes(prev => ({ ...prev, [quest.id]: 0 }));
-    setActiveTimerQuest(quest);
+    startMissionTimer(quest);
   };
 
   const handleResumeMission = (quest: Quest) => {
@@ -224,14 +220,7 @@ export default function QuestsPage() {
       toast({ title: "Timer Already Active", description: `End the current timer first.` });
       return;
     }
-    setActiveTimerQuest(quest);
-  };
-
-  const handleEndTimer = (elapsedSeconds: number) => {
-    if (activeTimerQuest) {
-      setMissionElapsedTimes(prev => ({ ...prev, [activeTimerQuest.id]: elapsedSeconds }));
-    }
-    setActiveTimerQuest(null);
+    resumeMissionTimer(quest);
   };
 
   const handleDoneMission = (quest: Quest) => {
@@ -244,12 +233,6 @@ export default function QuestsPage() {
 
   return (
     <>
-      {activeTimerQuest && (
-        <MissionTimer
-          initialSeconds={missionElapsedTimes[activeTimerQuest.id] || 0}
-          onEnd={handleEndTimer}
-        />
-      )}
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-orbitron mb-1">Missions</h1>
@@ -660,6 +643,7 @@ export default function QuestsPage() {
                     onDone={() => handleDoneMission(quest)}
                     elapsedSeconds={missionElapsedTimes[quest.id]}
                     isTimerActive={activeTimerQuest?.id === quest.id}
+                    timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
                   />
                 ))
               ) : (
@@ -718,6 +702,7 @@ export default function QuestsPage() {
                     onDone={() => handleDoneMission(quest)}
                     elapsedSeconds={missionElapsedTimes[quest.id]}
                     isTimerActive={activeTimerQuest?.id === quest.id}
+                    timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
                   />
                 ))}
               </div>
@@ -885,6 +870,7 @@ export default function QuestsPage() {
                     onDone={() => handleDoneMission(quest)}
                     elapsedSeconds={missionElapsedTimes[quest.id]}
                     isTimerActive={activeTimerQuest?.id === quest.id}
+                    timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
                   />
                 ))}
               </div>
