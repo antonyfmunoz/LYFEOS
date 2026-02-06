@@ -27,14 +27,14 @@ import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { Quest, QuestNotification } from "@/lib/types";
 
 const ONBOARDING_MISSIONS = [
-  { id: 0, title: "Access & Quickstart", xp: 100 },
-  { id: 1, title: "Archetype Calibration", xp: 150 },
-  { id: 2, title: "Identity & Direction", xp: 75 },
-  { id: 3, title: "Craft & Mastery", xp: 60 },
-  { id: 4, title: "Capacity & Constraints", xp: 55 },
-  { id: 5, title: "Baselines & States", xp: 70 },
-  { id: 6, title: "History & Roots", xp: 50 },
-  { id: 7, title: "Systems & Rituals", xp: 65 },
+  { id: 0, title: "Access & Quickstart", xp: 100, difficulty: "D", duration: 10, description: "Log in, explore the dashboard, and complete your first quick mission to get familiar with LYFEOS." },
+  { id: 1, title: "Archetype Calibration", xp: 150, difficulty: "C", duration: 15, description: "Discover your player archetype through a guided assessment to personalize your LYFEOS experience." },
+  { id: 2, title: "Identity & Direction", xp: 75, difficulty: "D", duration: 8, description: "Define your core identity pillars and set your life direction compass." },
+  { id: 3, title: "Craft & Mastery", xp: 60, difficulty: "D", duration: 6, description: "Identify your key skills and craft areas to track mastery progression." },
+  { id: 4, title: "Capacity & Constraints", xp: 55, difficulty: "D", duration: 6, description: "Set your daily energy, attention, and time capacity limits for balanced resource management." },
+  { id: 5, title: "Baselines & States", xp: 70, difficulty: "D", duration: 7, description: "Establish your baseline stats and current life state for accurate tracking." },
+  { id: 6, title: "History & Roots", xp: 50, difficulty: "D", duration: 5, description: "Record your background and personal history to inform your growth trajectory." },
+  { id: 7, title: "Systems & Rituals", xp: 65, difficulty: "D", duration: 7, description: "Set up your daily rituals and recurring systems for consistent progress." },
 ];
 
 interface MissionFormData {
@@ -88,6 +88,7 @@ export default function QuestsPage() {
   const [upcomingExpanded, setUpcomingExpanded] = useState(true);
   const [completedExpanded, setCompletedExpanded] = useState(true);
   const [inboxExpanded, setInboxExpanded] = useState(true);
+  const [onboardingInfoOpen, setOnboardingInfoOpen] = useState<Record<number, boolean>>({});
 
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -753,30 +754,59 @@ export default function QuestsPage() {
             
             <CollapsibleContent>
               <div className="px-4 pb-4 space-y-3">
-                {incompleteOnboardingMissions.map((mission) => (
-                  <div 
-                    key={`onboarding-${mission.id}`}
-                    className="glassmorphic rounded-xl p-4 mb-3 hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition neon-border cursor-pointer"
-                    onClick={() => navigate('/onboarding')}
-                  >
-                    <div className="flex items-start">
-                      <Checkbox 
-                        className="mt-1 rounded border border-primary/50"
-                        checked={false}
-                        disabled
-                      />
-                      <div className="ml-3 flex-grow">
-                        <div className="flex justify-between items-start">
-                          <h3 className="font-medium">{mission.title}</h3>
+                {incompleteOnboardingMissions.map((mission) => {
+                  const difficultyMultipliers: Record<string, number> = { D: 1, C: 1.5, B: 2, A: 3, S: 5 };
+                  const xpMultiplier = difficultyMultipliers[mission.difficulty] || 1;
+                  const adjustedXp = Math.floor(mission.xp * xpMultiplier);
+                  const isInfoOpen = onboardingInfoOpen[mission.id] || false;
+                  return (
+                    <div 
+                      key={`onboarding-${mission.id}`}
+                      className="glassmorphic rounded-xl p-4 mb-3 hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition neon-border"
+                    >
+                      <div className="flex items-start">
+                        <Checkbox 
+                          className="mt-1 rounded border border-primary/50"
+                          checked={false}
+                          onCheckedChange={() => navigate('/onboarding')}
+                        />
+                        <div className="ml-3 flex-grow">
+                          <div className="flex justify-between items-start">
+                            <h3 className="font-medium">{mission.title}</h3>
+                            <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                              <span className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded border bg-primary/20 border-primary/50 text-primary">
+                                {mission.difficulty}
+                              </span>
+                              {mission.description && (
+                                <button
+                                  className={`h-6 w-6 inline-flex items-center justify-center rounded-md ${isInfoOpen ? "text-primary" : "text-muted-foreground"} hover:text-primary hover:bg-accent`}
+                                  onClick={() => setOnboardingInfoOpen(prev => ({ ...prev, [mission.id]: !prev[mission.id] }))}
+                                >
+                                  <Info className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 mt-1 flex-wrap">
+                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{mission.duration} ET</span>
+                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{mission.duration} AT</span>
+                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{mission.duration} TT</span>
+                            <span className="text-primary text-xs font-mono whitespace-nowrap">+{adjustedXp} XP</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-xs mt-1 text-muted-foreground">
+                            <Calendar className="h-3 w-3 flex-shrink-0" />
+                            <span>{mission.duration} min</span>
+                          </div>
+                          {isInfoOpen && mission.description && (
+                            <p className="text-muted-foreground text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10">
+                              {mission.description}
+                            </p>
+                          )}
                         </div>
-                        <div className="flex items-center gap-3 mt-1 flex-wrap">
-                          <span className="text-primary text-xs font-mono whitespace-nowrap">+{mission.xp} XP</span>
-                        </div>
-                        <p className="text-muted-foreground text-sm mt-1">Onboarding Mission</p>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {inboxMissions.map((quest) => (
                   <QuestItem 
                     key={quest.id}
