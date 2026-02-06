@@ -290,7 +290,6 @@ export default function QuestsPage() {
         }}>
           <DialogTrigger asChild>
             <button className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5">
-              <Plus className="h-3 w-3" />
               New Mission
             </button>
           </DialogTrigger>
@@ -825,14 +824,14 @@ export default function QuestsPage() {
             <div className="p-3 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Inbox className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-orbitron">Mission Archive</h2>
+                <h2 className="text-lg font-orbitron">Archived Missions</h2>
                 <StatInfoDialog
                   trigger={
                     <button className="h-5 w-5 rounded-full bg-primary/10 hover:bg-primary/20 flex items-center justify-center transition-colors">
                       <Info className="h-3 w-3 text-primary" />
                     </button>
                   }
-                  title="Mission Archive"
+                  title="Archived Missions"
                   description="Missions created from your to-do ideas. Edit to schedule or complete them directly."
                   additionalInfo="These missions were automatically generated from ideas you captured. Review and prioritize them as needed."
                   hideMoreDetails
@@ -939,22 +938,22 @@ export default function QuestsPage() {
         </Collapsible>
       )}
 
-      {/* Archived Missions - recently deleted, held for 24 hours */}
+      {/* Terminated Missions - recently deleted, held for 24 hours */}
       <Collapsible open={archivedExpanded} onOpenChange={setArchivedExpanded} className="mb-6">
         <div className="glassmorphic rounded-xl overflow-hidden neon-border">
           <div className="p-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Archive className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-orbitron">Archived Missions</h2>
+              <h2 className="text-lg font-orbitron">Terminated Missions</h2>
               <StatInfoDialog
                 trigger={
                   <button className="h-5 w-5 rounded-full bg-primary/10 hover:bg-primary/20 flex items-center justify-center transition-colors">
                     <Info className="h-3 w-3 text-primary" />
                   </button>
                 }
-                title="Archived Missions"
+                title="Terminated Missions"
                 description="Recently deleted missions are held here for 24 hours before being permanently removed."
-                additionalInfo="You can restore any archived mission back to your active list within 24 hours of deletion."
+                additionalInfo="You can restore any terminated mission back to your active list within 24 hours of deletion."
                 hideMoreDetails
               />
             </div>
@@ -1012,7 +1011,7 @@ export default function QuestsPage() {
                 })
               ) : (
                 <div className="glassmorphic rounded-xl p-6 text-center neon-border">
-                  <p className="text-muted-foreground">No archived missions. Deleted missions will appear here for 24 hours.</p>
+                  <p className="text-muted-foreground">No terminated missions. Deleted missions will appear here for 24 hours.</p>
                 </div>
               )}
             </div>

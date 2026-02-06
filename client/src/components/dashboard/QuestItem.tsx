@@ -125,30 +125,26 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
                 </span>
               )}
               {description && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={`h-6 w-6 ${showDescription ? "text-primary" : "text-muted-foreground"} hover:text-primary`}
+                <button
+                  className={`h-6 w-6 inline-flex items-center justify-center rounded border ${showDescription ? "bg-primary/20 border-primary/50 text-primary" : "bg-primary/10 border-primary/30 text-primary/60"} hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors`}
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowDescription(!showDescription);
                   }}
                 >
                   <Info className="h-3.5 w-3.5" />
-                </Button>
+                </button>
               )}
               {onEdit && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 text-muted-foreground hover:text-primary"
+                <button
+                  className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
                     onEdit();
                   }}
                 >
                   <Edit3 className="h-3.5 w-3.5" />
-                </Button>
+                </button>
               )}
               {onDelete && (
                 <Button
