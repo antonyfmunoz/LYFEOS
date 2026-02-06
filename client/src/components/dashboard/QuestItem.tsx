@@ -39,62 +39,13 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestIt
         />
         <div className="ml-3 flex-grow">
           <div className="flex justify-between items-start">
-            <div className="flex-grow">
-              <h3 className={`font-medium mb-1 ${completed ? "text-muted-foreground line-through" : ""}`}>
-                {title.replace(/^Onboarding:\s*/, '')}
-                {notificationEnabled && (
-                  <Bell className="inline-block ml-2 h-3 w-3 text-primary opacity-70" />
-                )}
-              </h3>
-              
-              {hasSchedule && (
-                <div className={`flex items-center gap-1 text-xs mb-1 flex-nowrap ${completed ? "opacity-50" : "text-muted-foreground"}`}>
-                  {startDate && (
-                    <span className="flex items-center gap-1 whitespace-nowrap">
-                      <Calendar className="h-3 w-3 flex-shrink-0" />
-                      {formatDate(startDate)}
-                    </span>
-                  )}
-                  {startTime && (
-                    <span className="flex items-center gap-1 whitespace-nowrap">
-                      <Clock className="h-3 w-3 flex-shrink-0" />
-                      {formatTime(startTime)}
-                    </span>
-                  )}
-                  {(endDate || endTime) && (
-                    <span className="text-primary flex-shrink-0">→</span>
-                  )}
-                  {endDate && (
-                    <span className="flex items-center gap-1 whitespace-nowrap">
-                      <Calendar className="h-3 w-3 flex-shrink-0" />
-                      {formatDate(endDate)}
-                    </span>
-                  )}
-                  {endTime && (
-                    <span className="flex items-center gap-1 whitespace-nowrap">
-                      <Clock className="h-3 w-3 flex-shrink-0" />
-                      {formatTime(endTime)}
-                    </span>
-                  )}
-                </div>
+            <h3 className={`font-medium ${completed ? "text-muted-foreground line-through" : ""}`}>
+              {title.replace(/^Onboarding:\s*/, '')}
+              {notificationEnabled && (
+                <Bell className="inline-block ml-2 h-3 w-3 text-primary opacity-70" />
               )}
-              
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-right">
-                <span className={`text-primary text-xs font-mono whitespace-nowrap ${completed ? "opacity-50" : ""}`}>
-                  -{energyCost} ET
-                </span>
-                <span className={`text-primary text-xs font-mono whitespace-nowrap ${completed ? "opacity-50" : ""}`}>
-                  +{experienceReward} XP
-                </span>
-                <span className={`text-primary text-xs font-mono whitespace-nowrap ${completed ? "opacity-50" : ""}`}>
-                  -{attentionCost ?? 0} AT
-                </span>
-                <span className={`text-primary text-xs font-mono whitespace-nowrap ${completed ? "opacity-50" : ""}`}>
-                  -{timeCost ?? 0} TT
-                </span>
-              </div>
+            </h3>
+            <div className="flex items-center gap-1 flex-shrink-0 ml-2">
               {onEdit && (
                 <Button
                   variant="ghost"
@@ -123,7 +74,44 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestIt
               )}
             </div>
           </div>
-          <p className={`text-muted-foreground text-sm ${completed ? "opacity-50" : ""}`}>
+          {hasSchedule && (
+            <div className={`flex items-center gap-1 text-xs mt-1 flex-wrap ${completed ? "opacity-50" : "text-muted-foreground"}`}>
+              {startDate && (
+                <span className="flex items-center gap-1 whitespace-nowrap">
+                  <Calendar className="h-3 w-3 flex-shrink-0" />
+                  {formatDate(startDate)}
+                </span>
+              )}
+              {startTime && (
+                <span className="flex items-center gap-1 whitespace-nowrap">
+                  <Clock className="h-3 w-3 flex-shrink-0" />
+                  {formatTime(startTime)}
+                </span>
+              )}
+              {(endDate || endTime) && (
+                <span className="text-primary flex-shrink-0">→</span>
+              )}
+              {endDate && (
+                <span className="flex items-center gap-1 whitespace-nowrap">
+                  <Calendar className="h-3 w-3 flex-shrink-0" />
+                  {formatDate(endDate)}
+                </span>
+              )}
+              {endTime && (
+                <span className="flex items-center gap-1 whitespace-nowrap">
+                  <Clock className="h-3 w-3 flex-shrink-0" />
+                  {formatTime(endTime)}
+                </span>
+              )}
+            </div>
+          )}
+          <div className={`flex items-center gap-3 mt-1.5 flex-wrap ${completed ? "opacity-50" : ""}`}>
+            <span className="text-primary text-xs font-mono whitespace-nowrap">-{energyCost} ET</span>
+            <span className="text-primary text-xs font-mono whitespace-nowrap">-{attentionCost ?? 0} AT</span>
+            <span className="text-primary text-xs font-mono whitespace-nowrap">-{timeCost ?? 0} TT</span>
+            <span className="text-primary text-xs font-mono whitespace-nowrap">+{experienceReward} XP</span>
+          </div>
+          <p className={`text-muted-foreground text-sm mt-1 ${completed ? "opacity-50" : ""}`}>
             {description?.replace(/^Completed onboarding mission "(.+)"$/, 'Completed the "$1" mission') || description}
           </p>
         </div>
