@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Quest } from "../../lib/types";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2, Calendar, Clock, Bell, Edit3, Info } from "lucide-react";
+import { Trash2, Calendar, Clock, Bell, Edit3, Info, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface QuestItemProps {
@@ -9,9 +9,10 @@ interface QuestItemProps {
   onToggle: () => void;
   onDelete?: () => void;
   onEdit?: () => void;
+  onStart?: () => void;
 }
 
-export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestItemProps) {
+export default function QuestItem({ quest, onToggle, onDelete, onEdit, onStart }: QuestItemProps) {
   const [showDescription, setShowDescription] = useState(false);
   const { title, description, completed, energyCost, attentionCost, timeCost, experienceReward, startDate, startTime, endDate, endTime, notificationEnabled, difficulty } = quest;
 
@@ -140,6 +141,20 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestIt
             <p className={`text-muted-foreground text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 ${completed ? "opacity-50" : ""}`}>
               {description.replace(/^Completed onboarding mission "(.+)"$/, 'Completed the "$1" mission')}
             </p>
+          )}
+          {!completed && onStart && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2 border-primary/50 text-primary hover:bg-primary/10 hover:text-primary gap-1.5"
+              onClick={(e) => {
+                e.stopPropagation();
+                onStart();
+              }}
+            >
+              <Play className="h-3.5 w-3.5" />
+              Start
+            </Button>
           )}
         </div>
       </div>

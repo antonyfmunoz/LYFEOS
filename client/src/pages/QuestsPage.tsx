@@ -22,8 +22,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Zap, Star, Bell, Edit3, X, ChevronDown, ChevronRight, Target, Calendar, CheckCircle2, GraduationCap, Inbox, Info } from "lucide-react";
+import { Plus, Zap, Star, Bell, Edit3, X, ChevronDown, ChevronRight, Target, Calendar, CheckCircle2, GraduationCap, Inbox, Info, Play } from "lucide-react";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
+import { useToast } from "@/hooks/use-toast";
 import { Quest, QuestNotification } from "@/lib/types";
 
 const ONBOARDING_MISSIONS = [
@@ -69,6 +70,7 @@ export default function QuestsPage() {
   
   const { quests, toggleQuestCompletion, createQuest, updateQuest, deleteQuest } = useLYFEOS();
   const { user } = useAuth();
+  const { toast } = useToast();
   
   const { data: userProfile } = useQuery({
     queryKey: ["/api/profile"],
@@ -612,6 +614,7 @@ export default function QuestsPage() {
                     onToggle={() => toggleQuestCompletion(quest.id)}
                     onDelete={() => deleteQuest(quest.id)}
                     onEdit={() => openEditDialog(quest)}
+                    onStart={() => toast({ title: "Mission Started", description: `"${quest.title}" is now in progress.` })}
                   />
                 ))
               ) : (
@@ -665,6 +668,7 @@ export default function QuestsPage() {
                     onToggle={() => toggleQuestCompletion(quest.id)}
                     onDelete={() => deleteQuest(quest.id)}
                     onEdit={() => openEditDialog(quest)}
+                    onStart={() => toast({ title: "Mission Started", description: `"${quest.title}" is now in progress.` })}
                   />
                 ))}
               </div>
@@ -713,6 +717,7 @@ export default function QuestsPage() {
                     onToggle={() => toggleQuestCompletion(quest.id)}
                     onDelete={() => deleteQuest(quest.id)}
                     onEdit={() => openEditDialog(quest)}
+                    onStart={() => toast({ title: "Mission Started", description: `"${quest.title}" is now in progress.` })}
                   />
                 ))}
               </div>
@@ -802,6 +807,18 @@ export default function QuestsPage() {
                               {mission.description}
                             </p>
                           )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-2 border-primary/50 text-primary hover:bg-primary/10 hover:text-primary gap-1.5"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate('/onboarding');
+                            }}
+                          >
+                            <Play className="h-3.5 w-3.5" />
+                            Start
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -814,6 +831,7 @@ export default function QuestsPage() {
                     onToggle={() => toggleQuestCompletion(quest.id)}
                     onDelete={() => deleteQuest(quest.id)}
                     onEdit={() => openEditDialog(quest)}
+                    onStart={() => toast({ title: "Mission Started", description: `"${quest.title}" is now in progress.` })}
                   />
                 ))}
               </div>
