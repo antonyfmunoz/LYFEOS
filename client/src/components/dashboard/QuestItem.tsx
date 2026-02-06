@@ -40,7 +40,7 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestIt
         <div className="ml-3 flex-grow">
           <div className="flex justify-between items-start">
             <div className="flex-grow">
-              <h3 className={`font-medium mb-2 ${completed ? "text-muted-foreground line-through" : ""}`}>
+              <h3 className={`font-medium mb-1 ${completed ? "text-muted-foreground line-through" : ""}`}>
                 {title.replace(/^Onboarding:\s*/, '')}
                 {notificationEnabled && (
                   <Bell className="inline-block ml-2 h-3 w-3 text-primary opacity-70" />
@@ -48,7 +48,7 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestIt
               </h3>
               
               {hasSchedule && (
-                <div className={`flex items-center gap-1 text-xs mb-2 flex-nowrap ${completed ? "opacity-50" : "text-muted-foreground"}`}>
+                <div className={`flex items-center gap-1 text-xs mb-1 flex-nowrap ${completed ? "opacity-50" : "text-muted-foreground"}`}>
                   {startDate && (
                     <span className="flex items-center gap-1 whitespace-nowrap">
                       <Calendar className="h-3 w-3 flex-shrink-0" />
