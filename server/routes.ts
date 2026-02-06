@@ -154,14 +154,10 @@ function calculateMissionCosts(
     const durationMs = endDateTime.getTime() - startDateTime.getTime();
     const durationMinutes = Math.max(0, Math.floor(durationMs / (1000 * 60)));
     
-    // Time Tokens: 1 TT per 15 minutes (rounded up, minimum 1 if any duration)
-    const timeCost = durationMinutes > 0 ? Math.ceil(durationMinutes / 15) : 0;
-    
-    // Attention Tokens: 1 AT per 30 minutes (rounded down, 0 for short tasks)
-    const attentionCost = Math.floor(durationMinutes / 30);
-    
-    // Energy Points: 1 EP per 20 minutes (minimum 1 for any task)
-    const energyCost = durationMinutes > 0 ? Math.max(1, Math.ceil(durationMinutes / 20)) : 1;
+    // All tokens = 1 per minute of duration
+    const timeCost = durationMinutes;
+    const attentionCost = durationMinutes;
+    const energyCost = durationMinutes > 0 ? durationMinutes : 1;
     
     return { attentionCost, timeCost, energyCost };
   } catch (error) {
