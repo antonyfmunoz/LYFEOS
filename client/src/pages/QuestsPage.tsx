@@ -68,7 +68,7 @@ export default function QuestsPage() {
   usePageTitle('Missions');
   const [, navigate] = useLocation();
   
-  const { quests, toggleQuestCompletion, createQuest, updateQuest, deleteQuest, activeTimerQuest, missionElapsedTimes, startMissionTimer, resumeMissionTimer } = useLYFEOS();
+  const { quests, toggleQuestCompletion, createQuest, updateQuest, deleteQuest, activeTimerQuest, missionElapsedTimes, startMissionTimer, resumeMissionTimer, restartMissionTimer } = useLYFEOS();
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -641,6 +641,7 @@ export default function QuestsPage() {
                     onStart={() => handleStartMission(quest)}
                     onResume={() => handleResumeMission(quest)}
                     onDone={() => handleDoneMission(quest)}
+                    onRestart={restartMissionTimer}
                     elapsedSeconds={missionElapsedTimes[quest.id]}
                     isTimerActive={activeTimerQuest?.id === quest.id}
                     timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
@@ -700,6 +701,7 @@ export default function QuestsPage() {
                     onStart={() => handleStartMission(quest)}
                     onResume={() => handleResumeMission(quest)}
                     onDone={() => handleDoneMission(quest)}
+                    onRestart={restartMissionTimer}
                     elapsedSeconds={missionElapsedTimes[quest.id]}
                     isTimerActive={activeTimerQuest?.id === quest.id}
                     timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
@@ -869,6 +871,7 @@ export default function QuestsPage() {
                     onStart={() => handleStartMission(quest)}
                     onResume={() => handleResumeMission(quest)}
                     onDone={() => handleDoneMission(quest)}
+                    onRestart={restartMissionTimer}
                     elapsedSeconds={missionElapsedTimes[quest.id]}
                     isTimerActive={activeTimerQuest?.id === quest.id}
                     timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}

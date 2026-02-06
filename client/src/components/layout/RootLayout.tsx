@@ -11,7 +11,7 @@ interface RootLayoutProps {
 }
 
 export default function RootLayout({ children }: RootLayoutProps) {
-  const { username, activeTimerQuest, timerStartedAt, timerPausedElapsed, timerIsPaused, endMissionTimer, pauseResumeTimer, restartMissionTimer } = useLYFEOS();
+  const { username, activeTimerQuest, timerStartedAt, timerPausedElapsed, timerIsPaused, endMissionTimer, pauseResumeTimer } = useLYFEOS();
   const [location] = useLocation();
   
   const currentPage = location.split('/')[1] || 'dashboard';
@@ -34,7 +34,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
                   timerIsPaused={timerIsPaused}
                   onEnd={endMissionTimer}
                   onPauseResume={pauseResumeTimer}
-                  onRestart={restartMissionTimer}
                   missionTitle={activeTimerQuest.title}
                 />
               </div>
@@ -49,7 +48,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 timerIsPaused={timerIsPaused}
                 onEnd={endMissionTimer}
                 onPauseResume={pauseResumeTimer}
-                onRestart={restartMissionTimer}
                 missionTitle={activeTimerQuest.title}
               />
             </div>

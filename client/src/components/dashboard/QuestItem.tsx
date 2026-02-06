@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Quest } from "../../lib/types";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2, Calendar, Clock, Bell, Edit3, Info, Timer, Undo2 } from "lucide-react";
+import { Trash2, Calendar, Clock, Bell, Edit3, Info, Timer, Undo2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface QuestItemProps {
@@ -13,6 +13,7 @@ interface QuestItemProps {
   onResume?: () => void;
   onDone?: () => void;
   onUndo?: () => void;
+  onRestart?: () => void;
   elapsedSeconds?: number;
   isTimerActive?: boolean;
   timerBlocked?: boolean;
@@ -28,7 +29,7 @@ function formatElapsed(totalSeconds: number) {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-export default function QuestItem({ quest, onToggle, onDelete, onEdit, onStart, onResume, onDone, onUndo, elapsedSeconds, isTimerActive, timerBlocked }: QuestItemProps) {
+export default function QuestItem({ quest, onToggle, onDelete, onEdit, onStart, onResume, onDone, onUndo, onRestart, elapsedSeconds, isTimerActive, timerBlocked }: QuestItemProps) {
   const [showDescription, setShowDescription] = useState(false);
   const { title, description, completed, energyCost, attentionCost, timeCost, experienceReward, startDate, startTime, endDate, endTime, notificationEnabled, difficulty } = quest;
 
@@ -206,6 +207,20 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit, onStart, 
                   }}
                 >
                   Done
+                </Button>
+              )}
+              {(isTimerActive || (hasBeenStarted && !completed)) && onRestart && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 border-primary/50 text-primary hover:bg-primary/10"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRestart();
+                  }}
+                  title="Cancel timer"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
                 </Button>
               )}
             </div>
