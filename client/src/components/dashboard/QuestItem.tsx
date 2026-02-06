@@ -196,7 +196,7 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit, onStart, 
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-green-500/50 text-green-500 hover:bg-green-500/10 hover:text-green-500"
+                  className="border-primary/50 text-primary hover:bg-primary/10 hover:text-primary"
                   onClick={(e) => {
                     e.stopPropagation();
                     onDone();
