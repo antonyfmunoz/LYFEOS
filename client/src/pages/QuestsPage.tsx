@@ -15,7 +15,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -96,6 +95,7 @@ export default function QuestsPage() {
   const [inboxExpanded, setInboxExpanded] = useWidgetState("quests.inbox", true);
   const [archivedExpanded, setArchivedExpanded] = useWidgetState("quests.archived", false);
   const [onboardingInfoOpen, setOnboardingInfoOpen] = useState<Record<number, boolean>>({});
+  const [terminatedInfoOpen, setTerminatedInfoOpen] = useState<Record<string | number, boolean>>({});
 
   const [archivedQuests, setArchivedQuests] = useState<Quest[]>([]);
   
@@ -877,12 +877,7 @@ export default function QuestsPage() {
                       className="glassmorphic rounded-xl p-4 mb-3 hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition neon-border"
                     >
                       <div className="flex items-start">
-                        <Checkbox 
-                          className="mt-1 rounded border border-primary/50"
-                          checked={false}
-                          onCheckedChange={() => navigate('/onboarding')}
-                        />
-                        <div className="ml-3 flex-grow">
+                        <div className="ml-2 flex-grow">
                           <div className="flex justify-between items-start">
                             <h3 className="font-medium">{mission.title}</h3>
                             <div className="flex items-center gap-1 flex-shrink-0 ml-2">
@@ -1020,6 +1015,18 @@ export default function QuestsPage() {
                               <span className="text-[10px] font-mono h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary opacity-50">
                                 {quest.difficulty || 'D'}
                               </span>
+                              <button
+                                className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors opacity-50 hover:opacity-100"
+                                onClick={() => setTerminatedInfoOpen(prev => ({ ...prev, [quest.id]: !prev[quest.id] }))}
+                              >
+                                <Info className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors opacity-50 hover:opacity-100"
+                                onClick={() => openEditDialog({ ...quest, id: String(quest.id) } as Quest)}
+                              >
+                                <Edit3 className="h-3.5 w-3.5" />
+                              </button>
                             </div>
                           </div>
                           <div className="flex items-center gap-3 mt-1 flex-wrap opacity-50">
@@ -1029,6 +1036,11 @@ export default function QuestsPage() {
                             <span className="text-primary text-xs font-mono whitespace-nowrap">+{adjustedXp} XP</span>
                             <span className="text-muted-foreground text-xs">{hoursLeft}h left</span>
                           </div>
+                          {terminatedInfoOpen[quest.id] && quest.description && (
+                            <p className="text-muted-foreground text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 opacity-60">
+                              {quest.description}
+                            </p>
+                          )}
                           {hasSchedule && (
                             <div className="flex items-center gap-1 text-xs mt-1 flex-wrap opacity-50 text-muted-foreground">
                               {quest.startDate && (
