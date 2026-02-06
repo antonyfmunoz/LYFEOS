@@ -648,7 +648,7 @@ export default function QuestsPage() {
               <h2 className="text-lg font-orbitron">Today's Missions</h2>
               <StatInfoDialog
                 trigger={
-                  <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors">
+                  <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">
                     <Info className="h-3.5 w-3.5" />
                   </button>
                 }
@@ -712,7 +712,7 @@ export default function QuestsPage() {
                 <h2 className="text-lg font-orbitron">Future Missions</h2>
                 <StatInfoDialog
                   trigger={
-                    <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors">
+                    <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">
                       <Info className="h-3.5 w-3.5" />
                     </button>
                   }
@@ -769,7 +769,7 @@ export default function QuestsPage() {
               <h2 className="text-lg font-orbitron">Completed Missions</h2>
               <StatInfoDialog
                 trigger={
-                  <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors">
+                  <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">
                     <Info className="h-3.5 w-3.5" />
                   </button>
                 }
@@ -827,7 +827,7 @@ export default function QuestsPage() {
                 <h2 className="text-lg font-orbitron">Archived Missions</h2>
                 <StatInfoDialog
                   trigger={
-                    <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors">
+                    <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">
                       <Info className="h-3.5 w-3.5" />
                     </button>
                   }
@@ -870,12 +870,12 @@ export default function QuestsPage() {
                           <div className="flex justify-between items-start">
                             <h3 className="font-medium">{mission.title}</h3>
                             <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border bg-primary/20 border-primary/50 text-primary">
+                              <span className="h-6 w-6 inline-flex items-center justify-center text-[10px] font-mono rounded border bg-primary/20 border-primary/50 text-primary">
                                 {mission.difficulty}
                               </span>
                               {mission.description && (
                                 <button
-                                  className={`h-6 w-6 inline-flex items-center justify-center rounded-md ${isInfoOpen ? "text-primary" : "text-muted-foreground"} hover:text-primary hover:bg-accent`}
+                                  className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
                                   onClick={() => setOnboardingInfoOpen(prev => ({ ...prev, [mission.id]: !prev[mission.id] }))}
                                 >
                                   <Info className="h-3.5 w-3.5" />
@@ -947,7 +947,7 @@ export default function QuestsPage() {
               <h2 className="text-lg font-orbitron">Terminated Missions</h2>
               <StatInfoDialog
                 trigger={
-                  <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors">
+                  <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">
                     <Info className="h-3.5 w-3.5" />
                   </button>
                 }

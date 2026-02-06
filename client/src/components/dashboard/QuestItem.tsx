@@ -126,7 +126,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
               )}
               {description && (
                 <button
-                  className={`h-6 w-6 inline-flex items-center justify-center rounded border ${showDescription ? "bg-primary/20 border-primary/50 text-primary" : "bg-primary/10 border-primary/30 text-primary/60"} hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors`}
+                  className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowDescription(!showDescription);
@@ -137,7 +137,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
               )}
               {onEdit && (
                 <button
-                  className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors"
+                  className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
                     onEdit();

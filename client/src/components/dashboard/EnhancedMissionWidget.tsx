@@ -273,7 +273,7 @@ export default function EnhancedMissionWidget({
                     'bg-primary/5 border border-primary/20 hover:border-primary/40'}`}
               >
                 <Link href={`/mission/${mission.slug}`}>
-                  <button className="absolute top-4 right-4 h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors">
+                  <button className="absolute top-4 right-4 h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">
                     <Info className="h-3.5 w-3.5" />
                   </button>
                 </Link>
@@ -316,7 +316,7 @@ export default function EnhancedMissionWidget({
                       'bg-primary/5 border border-primary/20 hover:border-primary/40'}`}
                 >
                   <Link href={`/mission/${event.id}`}>
-                    <button className="absolute top-4 right-4 h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors">
+                    <button className="absolute top-4 right-4 h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">
                       <Info className="h-3.5 w-3.5" />
                     </button>
                   </Link>

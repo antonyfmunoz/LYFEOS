@@ -152,7 +152,7 @@ const DraggableCategoryCard = ({ id, index, item, moveCategory, navigate }: Drag
           <div onClick={(e) => e.stopPropagation()} className="ml-2">
             <StatInfoDialog
               trigger={
-                <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/10 border-primary/30 text-primary/60 hover:bg-primary/20 hover:border-primary/50 hover:text-primary transition-colors">
+                <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">
                   <Info className="h-3.5 w-3.5" />
                 </button>
               }
