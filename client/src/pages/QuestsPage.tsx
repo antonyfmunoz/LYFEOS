@@ -231,7 +231,7 @@ export default function QuestsPage() {
             
             <div className="space-y-4 mt-4">
               <div className="space-y-2">
-                <Label htmlFor="create-title">Mission Title</Label>
+                <Label htmlFor="create-title">Mission Title <span className="text-primary">*</span></Label>
                 <Input
                   id="create-title"
                   placeholder="Enter mission title..."
@@ -253,7 +253,7 @@ export default function QuestsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Difficulty Rank</Label>
+                <Label>Difficulty Rank <span className="text-primary">*</span></Label>
                 <div className="flex gap-2">
                   {DIFFICULTY_RANKS.map((rank) => (
                     <button
@@ -415,7 +415,7 @@ export default function QuestsPage() {
           
           <div className="space-y-4 mt-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-title">Mission Title</Label>
+              <Label htmlFor="edit-title">Mission Title <span className="text-primary">*</span></Label>
               <Input
                 id="edit-title"
                 placeholder="Enter mission title..."
@@ -437,7 +437,7 @@ export default function QuestsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Difficulty Rank</Label>
+              <Label>Difficulty Rank <span className="text-primary">*</span></Label>
               <div className="flex gap-2">
                 {DIFFICULTY_RANKS.map((rank) => (
                   <button
