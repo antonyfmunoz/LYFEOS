@@ -268,6 +268,7 @@ export const quests = pgTable("quests", {
   notificationTime: text("notification_time"), // format: "HH:MM" or minutes before like "-15", "-30", "-60" (legacy)
   notifications: jsonb("notifications").default([]), // Array of { date: "YYYY-MM-DD", time: "HH:MM" }
   difficulty: text("difficulty").default("D"), // S, A, B, C, D ranks
+  sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -501,6 +502,7 @@ export const insertQuestSchema = createInsertSchema(quests).pick({
   notifications: true,
   difficulty: true,
   createdAt: true,
+  sortOrder: true,
 });
 
 export const insertAIMessageSchema = createInsertSchema(aiMessages).pick({

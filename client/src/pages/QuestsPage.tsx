@@ -1,10 +1,13 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useWidgetState } from "@/hooks/use-widget-state";
 import { useLYFEOS } from "../lib/context";
 import { useAuth } from "@/lib/authContext";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import update from 'immutability-helper';
 import QuestItem from "../components/dashboard/QuestItem";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { Button } from "@/components/ui/button";
@@ -127,13 +130,37 @@ export default function QuestsPage() {
       return q.startDate > today;
     });
     
+    const sortByOrder = (a: Quest, b: Quest) => ((a as any).sortOrder ?? 0) - ((b as any).sortOrder ?? 0);
     return {
-      todayMissions: todayItems,
-      upcomingMissions: upcomingItems,
-      completedMissions: completed,
-      inboxMissions: inboxItems,
+      todayMissions: todayItems.sort(sortByOrder),
+      upcomingMissions: upcomingItems.sort(sortByOrder),
+      completedMissions: completed.sort(sortByOrder),
+      inboxMissions: inboxItems.sort(sortByOrder),
     };
   }, [quests, today]);
+
+  const moveMission = useCallback((section: string, dragIndex: number, hoverIndex: number) => {
+    const sectionMap: Record<string, Quest[]> = {
+      today: todayMissions,
+      upcoming: upcomingMissions,
+      completed: completedMissions,
+      inbox: inboxMissions,
+    };
+    const missions = sectionMap[section];
+    if (!missions) return;
+    const reordered = update(missions, {
+      $splice: [
+        [dragIndex, 1],
+        [hoverIndex, 0, missions[dragIndex]],
+      ],
+    });
+    const orderedIds = reordered.map(q => q.id);
+    apiRequest("/api/quests/reorder", {
+      method: "PATCH",
+      body: JSON.stringify({ orderedIds }),
+    });
+    queryClient.invalidateQueries({ queryKey: [`/api/users/${user?.id}/quests`] });
+  }, [todayMissions, upcomingMissions, completedMissions, inboxMissions, user?.id]);
 
   const openEditDialog = (quest: Quest) => {
     setEditingQuest(quest);
@@ -599,6 +626,7 @@ export default function QuestsPage() {
         </DialogContent>
       </Dialog>
       
+      <DndProvider backend={HTML5Backend}>
       {/* Today's Missions */}
       <Collapsible open={todayExpanded} onOpenChange={setTodayExpanded} className="mb-6">
         <div className="glassmorphic rounded-xl overflow-hidden neon-border">
@@ -632,10 +660,12 @@ export default function QuestsPage() {
           <CollapsibleContent>
             <div className="px-4 pb-4 space-y-3">
               {todayMissions.length > 0 ? (
-                todayMissions.map((quest) => (
+                todayMissions.map((quest, idx) => (
                   <QuestItem 
                     key={quest.id}
                     quest={quest}
+                    index={idx}
+                    section="today"
                     onToggle={() => toggleQuestCompletion(quest.id)}
                     onDelete={() => deleteQuest(quest.id)}
                     onEdit={() => openEditDialog(quest)}
@@ -643,6 +673,7 @@ export default function QuestsPage() {
                     onResume={() => handleResumeMission(quest)}
                     onDone={() => handleDoneMission(quest)}
                     onRestart={restartMissionTimer}
+                    onMoveQuest={(dragIdx, hoverIdx) => moveMission("today", dragIdx, hoverIdx)}
                     elapsedSeconds={missionElapsedTimes[quest.id]}
                     isTimerActive={activeTimerQuest?.id === quest.id}
                     timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
@@ -692,10 +723,12 @@ export default function QuestsPage() {
             
             <CollapsibleContent>
               <div className="px-4 pb-4 space-y-3">
-                {upcomingMissions.map((quest) => (
+                {upcomingMissions.map((quest, idx) => (
                   <QuestItem 
                     key={quest.id}
                     quest={quest}
+                    index={idx}
+                    section="upcoming"
                     onToggle={() => toggleQuestCompletion(quest.id)}
                     onDelete={() => deleteQuest(quest.id)}
                     onEdit={() => openEditDialog(quest)}
@@ -703,6 +736,7 @@ export default function QuestsPage() {
                     onResume={() => handleResumeMission(quest)}
                     onDone={() => handleDoneMission(quest)}
                     onRestart={restartMissionTimer}
+                    onMoveQuest={(dragIdx, hoverIdx) => moveMission("upcoming", dragIdx, hoverIdx)}
                     elapsedSeconds={missionElapsedTimes[quest.id]}
                     isTimerActive={activeTimerQuest?.id === quest.id}
                     timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
@@ -715,54 +749,61 @@ export default function QuestsPage() {
       )}
       
       {/* Completed Missions */}
-      {completedMissions.length > 0 && (
-        <Collapsible open={completedExpanded} onOpenChange={setCompletedExpanded} className="mb-6">
-          <div className="glassmorphic rounded-xl overflow-hidden neon-border">
-            <div className="p-3 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-orbitron">Completed Missions</h2>
-                <StatInfoDialog
-                  trigger={
-                    <button className="h-5 w-5 rounded-full bg-primary/10 hover:bg-primary/20 flex items-center justify-center transition-colors">
-                      <Info className="h-3 w-3 text-primary" />
-                    </button>
-                  }
-                  title="Completed Missions"
-                  description="Missions you've finished today. Each completed mission contributes to your XP gains and overall progress."
-                  additionalInfo="Review your completed missions to celebrate your achievements and identify patterns in your productivity."
-                  hideMoreDetails
-                />
-              </div>
-              <CollapsibleTrigger asChild>
-                <div className="flex items-center cursor-pointer hover:bg-primary/5 transition-colors rounded-md px-2 py-1">
-                  {completedExpanded ? (
-                    <ChevronDown className="h-5 w-5 text-primary" />
-                  ) : (
-                    <ChevronRight className="h-5 w-5 text-primary" />
-                  )}
-                </div>
-              </CollapsibleTrigger>
+      <Collapsible open={completedExpanded} onOpenChange={setCompletedExpanded} className="mb-6">
+        <div className="glassmorphic rounded-xl overflow-hidden neon-border">
+          <div className="p-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-orbitron">Completed Missions</h2>
+              <StatInfoDialog
+                trigger={
+                  <button className="h-5 w-5 rounded-full bg-primary/10 hover:bg-primary/20 flex items-center justify-center transition-colors">
+                    <Info className="h-3 w-3 text-primary" />
+                  </button>
+                }
+                title="Completed Missions"
+                description="Missions you've finished today. Each completed mission contributes to your XP gains and overall progress."
+                additionalInfo="Review your completed missions to celebrate your achievements and identify patterns in your productivity."
+                hideMoreDetails
+              />
             </div>
-            
-            <CollapsibleContent>
-              <div className="px-4 pb-4 space-y-3">
-                {completedMissions.map((quest) => (
+            <CollapsibleTrigger asChild>
+              <div className="flex items-center cursor-pointer hover:bg-primary/5 transition-colors rounded-md px-2 py-1">
+                {completedExpanded ? (
+                  <ChevronDown className="h-5 w-5 text-primary" />
+                ) : (
+                  <ChevronRight className="h-5 w-5 text-primary" />
+                )}
+              </div>
+            </CollapsibleTrigger>
+          </div>
+          
+          <CollapsibleContent>
+            <div className="px-4 pb-4 space-y-3">
+              {completedMissions.length > 0 ? (
+                completedMissions.map((quest, idx) => (
                   <QuestItem 
                     key={quest.id}
                     quest={quest}
+                    index={idx}
+                    section="completed"
                     onToggle={() => toggleQuestCompletion(quest.id)}
                     onDelete={() => deleteQuest(quest.id)}
                     onEdit={() => openEditDialog(quest)}
                     onUndo={() => handleUndoMission(quest)}
+                    onMoveQuest={(dragIdx, hoverIdx) => moveMission("completed", dragIdx, hoverIdx)}
                     elapsedSeconds={missionElapsedTimes[quest.id]}
                   />
-                ))}
-              </div>
-            </CollapsibleContent>
-          </div>
-        </Collapsible>
-      )}
+                ))
+              ) : (
+                <div className="glassmorphic rounded-xl p-6 text-center neon-border">
+                  <p className="text-muted-foreground">No completed missions today yet. Finish a mission to see it here!</p>
+                </div>
+              )}
+            </div>
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
       
       {/* Mission Archive - onboarding missions and to-do ideas */}
       {(inboxMissions.length > 0 || incompleteOnboardingMissions.length > 0) && (
@@ -862,10 +903,12 @@ export default function QuestsPage() {
                     </div>
                   );
                 })}
-                {inboxMissions.map((quest) => (
+                {inboxMissions.map((quest, idx) => (
                   <QuestItem 
                     key={quest.id}
                     quest={quest}
+                    index={idx}
+                    section="inbox"
                     onToggle={() => toggleQuestCompletion(quest.id)}
                     onDelete={() => deleteQuest(quest.id)}
                     onEdit={() => openEditDialog(quest)}
@@ -873,6 +916,7 @@ export default function QuestsPage() {
                     onResume={() => handleResumeMission(quest)}
                     onDone={() => handleDoneMission(quest)}
                     onRestart={restartMissionTimer}
+                    onMoveQuest={(dragIdx, hoverIdx) => moveMission("inbox", dragIdx, hoverIdx)}
                     elapsedSeconds={missionElapsedTimes[quest.id]}
                     isTimerActive={activeTimerQuest?.id === quest.id}
                     timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
@@ -883,6 +927,7 @@ export default function QuestsPage() {
           </div>
         </Collapsible>
       )}
+      </DndProvider>
 
     </div>
   );

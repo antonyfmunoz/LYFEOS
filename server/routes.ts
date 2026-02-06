@@ -1398,6 +1398,27 @@ Generate the complete affirmation now:`;
     notifications: true,
   }).partial();
 
+  app.patch("/api/quests/reorder", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { orderedIds } = req.body;
+      if (!Array.isArray(orderedIds)) {
+        return res.status(400).json({ error: "orderedIds must be an array" });
+      }
+      const userId = req.session.userId!;
+      for (let i = 0; i < orderedIds.length; i++) {
+        const questId = orderedIds[i];
+        const quest = await storage.getQuest(questId);
+        if (quest && quest.userId === userId) {
+          await storage.updateQuest(questId, { sortOrder: i });
+        }
+      }
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("Error reordering quests:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.patch("/api/quests/:questId", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const questId = parseInt(req.params.questId);
