@@ -225,6 +225,7 @@ export const userDailyLogs = pgTable("user_daily_logs", {
   contentConsumed: text("content_consumed"), // Content consumed today
   research: text("research"), // Research notes
   todoIdeas: text("todo_ideas"), // Ideas for future todos
+  todosConverted: boolean("todos_converted").default(false), // Whether todoIdeas have been converted to quests
   // Reflection log fields
   wentWell: text("went_well"), // What went well today
   couldBeBetter: text("could_be_better"), // What could be better
@@ -592,6 +593,7 @@ export const insertUserDailyLogsSchema = createInsertSchema(userDailyLogs).pick(
   contentConsumed: true,
   research: true,
   todoIdeas: true,
+  todosConverted: true,
   // Reflection log fields
   wentWell: true,
   couldBeBetter: true,

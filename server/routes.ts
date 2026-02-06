@@ -1155,6 +1155,53 @@ Generate the complete affirmation now:`;
         return res.status(400).json({ error: "Invalid user ID" });
       }
       
+      // Auto-convert any unconverted todoIdeas from past days into quests
+      try {
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        
+        const unconvertedLogs = await db.select()
+          .from(userDailyLogs)
+          .where(and(
+            eq(userDailyLogs.userId, userId),
+            eq(userDailyLogs.todosConverted, false)
+          ));
+        
+        for (const log of unconvertedLogs) {
+          if (log.todoIdeas && log.date < todayStr) {
+            const todoLines = log.todoIdeas
+              .split('\n')
+              .map((line: string) => line.trim())
+              .filter((line: string) => line.length > 0);
+            
+            // Parse the log date to create quests with next-day midnight timestamp
+            const [year, month, day] = log.date.split('-').map(Number);
+            const nextDayMidnight = new Date(year, month - 1, day + 1, 0, 0, 0, 0);
+            
+            for (const todoLine of todoLines) {
+              await storage.createQuest({
+                userId,
+                title: todoLine,
+                description: `Auto-created from To-Do Ideas on ${log.date}`,
+                category: 'todo',
+                completed: false,
+                experienceReward: 50,
+                createdAt: nextDayMidnight
+              });
+            }
+            
+            // Mark as converted
+            await db.update(userDailyLogs)
+              .set({ todosConverted: true })
+              .where(eq(userDailyLogs.id, log.id));
+            
+            console.log(`Auto-converted ${todoLines.length} todoIdeas from ${log.date} for user ${userId}`);
+          }
+        }
+      } catch (todoError) {
+        console.error("Error auto-converting todoIdeas:", todoError);
+      }
+      
       const quests = await storage.getQuests(userId);
       return res.status(200).json({ quests });
     } catch (error) {
@@ -3904,15 +3951,13 @@ Generate the complete affirmation now:`;
               eq(userDailyLogs.date, previousDateStr)
             ));
           
-          if (previousLogs.length > 0 && previousLogs[0].todoIdeas) {
+          if (previousLogs.length > 0 && previousLogs[0].todoIdeas && !previousLogs[0].todosConverted) {
             const todoIdeasText = previousLogs[0].todoIdeas;
-            // Split by newlines and filter out empty lines
             const todoLines = todoIdeasText
               .split('\n')
               .map((line: string) => line.trim())
               .filter((line: string) => line.length > 0);
             
-            // Create quests for each non-empty line with createdAt set to midnight
             for (const todoLine of todoLines) {
               await storage.createQuest({
                 userId,
@@ -3924,6 +3969,10 @@ Generate the complete affirmation now:`;
                 createdAt: todayMidnight
               });
             }
+            
+            await db.update(userDailyLogs)
+              .set({ todosConverted: true })
+              .where(eq(userDailyLogs.id, previousLogs[0].id));
             
             console.log(`Created ${todoLines.length} quests from previous day's todoIdeas for user ${userId} with createdAt set to midnight`);
           }
@@ -3992,6 +4041,7 @@ Generate the complete affirmation now:`;
             contentConsumed: contentConsumed !== undefined ? contentConsumed : existingLog[0].contentConsumed,
             research: research !== undefined ? research : existingLog[0].research,
             todoIdeas: todoIdeas !== undefined ? todoIdeas : existingLog[0].todoIdeas,
+            todosConverted: todoIdeas !== undefined ? false : existingLog[0].todosConverted,
             // Reflection log fields
             wentWell: wentWell !== undefined ? wentWell : existingLog[0].wentWell,
             couldBeBetter: couldBeBetter !== undefined ? couldBeBetter : existingLog[0].couldBeBetter,
