@@ -222,9 +222,13 @@ export const userDailyLogs = pgTable("user_daily_logs", {
   annualGoals: text("annual_goals"), // Annual goals reminder
   thoughts: text("thoughts"), // Free-form thoughts/intentions
   // Data log fields
-  contentConsumed: text("content_consumed"), // Content consumed today
-  research: text("research"), // Research notes
+  contentConsumed: text("content_consumed"), // Information consumed today
+  research: text("research"), // Research notes (legacy)
   todoIdeas: text("todo_ideas"), // Ideas for future todos
+  // Research log fields
+  researchNote: text("research_note"), // Research note
+  revisionNote: text("revision_note"), // Revision & summary note
+  executionNote: text("execution_note"), // Execution note
   todosConverted: boolean("todos_converted").default(false), // Whether todoIdeas have been converted to quests
   // Reflection log fields
   wentWell: text("went_well"), // What went well today
@@ -598,6 +602,10 @@ export const insertUserDailyLogsSchema = createInsertSchema(userDailyLogs).pick(
   research: true,
   todoIdeas: true,
   todosConverted: true,
+  // Research log fields
+  researchNote: true,
+  revisionNote: true,
+  executionNote: true,
   // Reflection log fields
   wentWell: true,
   couldBeBetter: true,

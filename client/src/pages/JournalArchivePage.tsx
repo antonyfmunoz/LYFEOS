@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
-import { Archive, Calendar, ChevronDown, ChevronRight, ArrowLeft, Sun, Moon, Brain, Heart, Zap, BookOpen, Target, Lightbulb, CheckCircle, AlertCircle, GraduationCap } from "lucide-react";
+import { Archive, Calendar, ChevronDown, ChevronRight, ArrowLeft, Sun, Moon, Brain, Heart, Zap, BookOpen, Target, Lightbulb, CheckCircle, AlertCircle, GraduationCap, Search, FileText, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { getLocalDateString } from "@/lib/utils";
@@ -23,6 +23,9 @@ interface DailyLog {
   thoughts: string | null;
   contentConsumed: string | null;
   research: string | null;
+  researchNote: string | null;
+  revisionNote: string | null;
+  executionNote: string | null;
   todoIdeas: string | null;
   wentWell: string | null;
   couldBeBetter: string | null;
@@ -67,7 +70,7 @@ function LogCard({ log }: { log: DailyLog }) {
   const hasContent = (log: DailyLog) => {
     return log.wakeTime || log.sleepTime || log.mentalState || log.physicalState || 
            log.emotionalState || log.gratitude || log.tomorrowGoals || log.annualGoals ||
-           log.thoughts || log.contentConsumed || log.research || log.todoIdeas ||
+           log.thoughts || log.contentConsumed || log.research || log.researchNote || log.revisionNote || log.executionNote || log.todoIdeas ||
            log.wentWell || log.couldBeBetter || log.learned;
   };
 
@@ -154,7 +157,7 @@ function LogCard({ log }: { log: DailyLog }) {
               )}
               {log.contentConsumed && (
                 <div className="pl-6">
-                  <p className="text-xs text-[#7DAAB2] mb-1">Content Consumed</p>
+                  <p className="text-xs text-[#7DAAB2] mb-1">Information Consumed</p>
                   <p className="text-sm whitespace-pre-wrap">{log.contentConsumed}</p>
                 </div>
               )}
@@ -168,6 +171,32 @@ function LogCard({ log }: { log: DailyLog }) {
                 <div className="pl-6">
                   <p className="text-xs text-[#7DAAB2] mb-1">Todo Ideas</p>
                   <p className="text-sm whitespace-pre-wrap">{log.todoIdeas}</p>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {(log.researchNote || log.revisionNote || log.executionNote) && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium text-primary flex items-center gap-2">
+                <Search className="h-4 w-4" /> Research Log
+              </h4>
+              {log.researchNote && (
+                <div className="pl-6">
+                  <p className="text-xs text-[#7DAAB2] mb-1">Research Note</p>
+                  <p className="text-sm whitespace-pre-wrap">{log.researchNote}</p>
+                </div>
+              )}
+              {log.revisionNote && (
+                <div className="pl-6">
+                  <p className="text-xs text-[#7DAAB2] mb-1">Revision & Summary Note</p>
+                  <p className="text-sm whitespace-pre-wrap">{log.revisionNote}</p>
+                </div>
+              )}
+              {log.executionNote && (
+                <div className="pl-6">
+                  <p className="text-xs text-[#7DAAB2] mb-1">Execution Note</p>
+                  <p className="text-sm whitespace-pre-wrap">{log.executionNote}</p>
                 </div>
               )}
             </div>

@@ -109,6 +109,9 @@ export interface IntentionLogData {
 export interface DataLogData {
   contentConsumed: string;
   research: string;
+  researchNote: string;
+  revisionNote: string;
+  executionNote: string;
   todoIdeas: string;
   isLoaded: boolean;
   lastPopulatedFingerprint: string | null;
@@ -144,6 +147,9 @@ const initialIntentionLog: IntentionLogData = {
 const initialDataLog: DataLogData = {
   contentConsumed: "",
   research: "",
+  researchNote: "",
+  revisionNote: "",
+  executionNote: "",
   todoIdeas: "",
   isLoaded: false,
   lastPopulatedFingerprint: null,

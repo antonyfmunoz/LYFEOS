@@ -3917,6 +3917,8 @@ Generate the complete affirmation now:`;
         gratitude, tomorrowGoals, annualGoals, thoughts,
         // Data log fields
         contentConsumed, research, todoIdeas,
+        // Research log fields
+        researchNote, revisionNote, executionNote,
         // Reflection log fields
         wentWell, couldBeBetter, learned
       } = req.body;
@@ -3956,6 +3958,10 @@ Generate the complete affirmation now:`;
             contentConsumed: contentConsumed !== undefined ? contentConsumed : existingLog[0].contentConsumed,
             research: research !== undefined ? research : existingLog[0].research,
             todoIdeas: todoIdeas !== undefined ? todoIdeas : existingLog[0].todoIdeas,
+            // Research log fields
+            researchNote: researchNote !== undefined ? researchNote : existingLog[0].researchNote,
+            revisionNote: revisionNote !== undefined ? revisionNote : existingLog[0].revisionNote,
+            executionNote: executionNote !== undefined ? executionNote : existingLog[0].executionNote,
             // Reflection log fields
             wentWell: wentWell !== undefined ? wentWell : existingLog[0].wentWell,
             couldBeBetter: couldBeBetter !== undefined ? couldBeBetter : existingLog[0].couldBeBetter,
@@ -3989,6 +3995,10 @@ Generate the complete affirmation now:`;
           contentConsumed: contentConsumed || null,
           research: research || null,
           todoIdeas: todoIdeas || null,
+          // Research log fields
+          researchNote: researchNote || null,
+          revisionNote: revisionNote || null,
+          executionNote: executionNote || null,
           // Reflection log fields
           wentWell: wentWell || null,
           couldBeBetter: couldBeBetter || null,
@@ -4078,6 +4088,8 @@ Generate the complete affirmation now:`;
         gratitude, tomorrowGoals, annualGoals, thoughts,
         // Data log fields
         contentConsumed, research, todoIdeas,
+        // Research log fields
+        researchNote, revisionNote, executionNote,
         // Reflection log fields
         wentWell, couldBeBetter, learned
       } = req.body;
@@ -4115,6 +4127,10 @@ Generate the complete affirmation now:`;
             research: research !== undefined ? research : existingLog[0].research,
             todoIdeas: todoIdeas !== undefined ? todoIdeas : existingLog[0].todoIdeas,
             todosConverted: todoIdeas !== undefined ? false : existingLog[0].todosConverted,
+            // Research log fields
+            researchNote: researchNote !== undefined ? researchNote : existingLog[0].researchNote,
+            revisionNote: revisionNote !== undefined ? revisionNote : existingLog[0].revisionNote,
+            executionNote: executionNote !== undefined ? executionNote : existingLog[0].executionNote,
             // Reflection log fields
             wentWell: wentWell !== undefined ? wentWell : existingLog[0].wentWell,
             couldBeBetter: couldBeBetter !== undefined ? couldBeBetter : existingLog[0].couldBeBetter,
@@ -4145,6 +4161,10 @@ Generate the complete affirmation now:`;
           contentConsumed: contentConsumed || null,
           research: research || null,
           todoIdeas: todoIdeas || null,
+          // Research log fields
+          researchNote: researchNote || null,
+          revisionNote: revisionNote || null,
+          executionNote: executionNote || null,
           // Reflection log fields
           wentWell: wentWell || null,
           couldBeBetter: couldBeBetter || null,

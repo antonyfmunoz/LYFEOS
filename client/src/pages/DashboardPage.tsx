@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import { 
   Calendar, BarChart, CalendarDays, Clock, Brain, AlarmClock, 
   MoonStar, Smile, HeartPulse, Book, BookOpen, ListChecks, 
-  Zap, Target as TargetIcon, ChevronDown, Check
+  Zap, Target as TargetIcon, ChevronDown, Check, Search, FileText, Play
 } from 'lucide-react';
 import { useLYFEOS } from '@/lib/context';
 import { useAuth } from '@/lib/authContext';
@@ -45,6 +45,9 @@ interface DailyReflection {
   thoughts: string;
   contentConsumed: string;
   research: string;
+  researchNote: string;
+  revisionNote: string;
+  executionNote: string;
   todoIdeas: string;
   wentWell: string;
   couldBeBetter: string;
@@ -215,6 +218,9 @@ export default function DashboardPage() {
     // Data log fields
     contentConsumed: dataLog.contentConsumed,
     research: dataLog.research,
+    researchNote: dataLog.researchNote,
+    revisionNote: dataLog.revisionNote,
+    executionNote: dataLog.executionNote,
     todoIdeas: dataLog.todoIdeas,
     // Reflection log fields
     wentWell: reflectionLogState.wentWell,
@@ -323,6 +329,9 @@ export default function DashboardPage() {
           thoughts: logs.intentionLog.thoughts,
           contentConsumed: logs.dataLog.contentConsumed,
           research: logs.dataLog.research,
+          researchNote: logs.dataLog.researchNote,
+          revisionNote: logs.dataLog.revisionNote,
+          executionNote: logs.dataLog.executionNote,
           todoIdeas: logs.dataLog.todoIdeas,
           wentWell: logs.reflectionLog.wentWell,
           couldBeBetter: logs.reflectionLog.couldBeBetter,
@@ -401,6 +410,9 @@ export default function DashboardPage() {
         updateDataLog({
           contentConsumed: dailyLogData.contentConsumed ?? "",
           research: dailyLogData.research ?? "",
+          researchNote: dailyLogData.researchNote ?? "",
+          revisionNote: dailyLogData.revisionNote ?? "",
+          executionNote: dailyLogData.executionNote ?? "",
           todoIdeas: dailyLogData.todoIdeas ?? "",
           isLoaded: true,
           lastPopulatedFingerprint: dataFingerprint,
@@ -525,7 +537,7 @@ export default function DashboardPage() {
   // Define field categories
   const energyLogFields = ['mentalState', 'physicalState', 'emotionalState', 'wakeTime', 'sleepTime'];
   const intentionLogFields = ['gratitude', 'tomorrowGoals', 'annualGoals', 'thoughts'];
-  const dataLogFields = ['contentConsumed', 'research', 'todoIdeas'];
+  const dataLogFields = ['contentConsumed', 'research', 'researchNote', 'revisionNote', 'executionNote', 'todoIdeas'];
   const reflectionLogFields = ['wentWell', 'couldBeBetter', 'learned'];
   
   // Check if all logs are loaded (so we can safely save without overwriting)
@@ -571,6 +583,9 @@ export default function DashboardPage() {
         // Data log fields
         contentConsumed: field === 'contentConsumed' ? value : dataLog.contentConsumed,
         research: field === 'research' ? value : dataLog.research,
+        researchNote: field === 'researchNote' ? value : dataLog.researchNote,
+        revisionNote: field === 'revisionNote' ? value : dataLog.revisionNote,
+        executionNote: field === 'executionNote' ? value : dataLog.executionNote,
         todoIdeas: field === 'todoIdeas' ? value : dataLog.todoIdeas,
         // Reflection log fields
         wentWell: field === 'wentWell' ? value : reflectionLogState.wentWell,
@@ -640,7 +655,14 @@ export default function DashboardPage() {
       title: "Data Log",
       icon: <BookOpen className="h-5 w-5 text-primary" />,
       defaultOpen: true,
-      infoDescription: "Capture your daily thoughts, content consumed, and ideas. These entries are saved to your journal and can be reviewed in the Chronilog."
+      infoDescription: "Capture your daily thoughts, information consumed, and ideas. These entries are saved to your journal and can be reviewed in the Chronilog."
+    },
+    {
+      id: 'research-log',
+      title: "Research Log",
+      icon: <Search className="h-5 w-5 text-primary" />,
+      defaultOpen: true,
+      infoDescription: "Document your research findings, revision summaries, and execution plans. Track the lifecycle of ideas from discovery through implementation."
     },
     {
       id: 'reflection-log',
@@ -731,7 +753,7 @@ export default function DashboardPage() {
               <div className="space-y-2">
                 <label className="text-sm flex items-center text-[#7DAAB2]">
                   <Book className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Content Consumed</span>
+                  <span className="ml-2">Information Consumed</span>
                 </label>
                 <MarkdownEditor
                   placeholder="Articles, books, or videos you consumed today..."
@@ -744,19 +766,6 @@ export default function DashboardPage() {
             
             <div className="space-y-2">
               <label className="text-sm flex items-center text-[#7DAAB2]">
-                <Zap className="h-4 w-4 text-primary" />
-                <span className="ml-2">Research & Discoveries</span>
-              </label>
-              <MarkdownEditor
-                placeholder="Interesting facts or discoveries you made..."
-                value={reflection.research}
-                onChange={(value) => updateReflection("research", value)}
-                minHeight="60px"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm flex items-center text-[#7DAAB2]">
                 <ListChecks className="h-4 w-4 text-primary" />
                 <span className="ml-2">To-Do Ideas</span>
               </label>
@@ -765,6 +774,49 @@ export default function DashboardPage() {
                 value={reflection.todoIdeas}
                 onChange={(value) => updateReflection("todoIdeas", value)}
                 minHeight="60px"
+              />
+            </div>
+          </div>
+        );
+      case 'research-log':
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm flex items-center text-[#7DAAB2]">
+                <Search className="h-4 w-4 text-primary" />
+                <span className="ml-2">Research Note</span>
+              </label>
+              <MarkdownEditor
+                placeholder="Document your research findings, observations, and raw notes..."
+                value={reflection.researchNote}
+                onChange={(value) => updateReflection("researchNote", value)}
+                minHeight="80px"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm flex items-center text-[#7DAAB2]">
+                <FileText className="h-4 w-4 text-primary" />
+                <span className="ml-2">Revision & Summary Note</span>
+              </label>
+              <MarkdownEditor
+                placeholder="Summarize key takeaways, revise earlier findings, and consolidate insights..."
+                value={reflection.revisionNote}
+                onChange={(value) => updateReflection("revisionNote", value)}
+                minHeight="80px"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm flex items-center text-[#7DAAB2]">
+                <Play className="h-4 w-4 text-primary" />
+                <span className="ml-2">Execution Note</span>
+              </label>
+              <MarkdownEditor
+                placeholder="Plan next steps, action items, and implementation details..."
+                value={reflection.executionNote}
+                onChange={(value) => updateReflection("executionNote", value)}
+                minHeight="80px"
               />
             </div>
           </div>
