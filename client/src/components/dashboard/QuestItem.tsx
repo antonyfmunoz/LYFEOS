@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Quest } from "../../lib/types";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2, Calendar, Clock, Bell, Edit3, Info, Play } from "lucide-react";
+import { Trash2, Calendar, Clock, Bell, Edit3, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface QuestItemProps {

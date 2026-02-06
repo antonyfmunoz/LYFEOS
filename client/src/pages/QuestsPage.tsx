@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import QuestItem from "../components/dashboard/QuestItem";
+import MissionTimer from "../components/dashboard/MissionTimer";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +23,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Zap, Star, Bell, Edit3, X, ChevronDown, ChevronRight, Target, Calendar, CheckCircle2, GraduationCap, Inbox, Info, Play } from "lucide-react";
+import { Plus, Zap, Star, Bell, Edit3, X, ChevronDown, ChevronRight, Target, Calendar, CheckCircle2, GraduationCap, Inbox, Info } from "lucide-react";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Quest, QuestNotification } from "@/lib/types";
@@ -91,6 +92,7 @@ export default function QuestsPage() {
   const [completedExpanded, setCompletedExpanded] = useState(true);
   const [inboxExpanded, setInboxExpanded] = useState(true);
   const [onboardingInfoOpen, setOnboardingInfoOpen] = useState<Record<number, boolean>>({});
+  const [activeTimerQuest, setActiveTimerQuest] = useState<Quest | null>(null);
 
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -205,6 +207,23 @@ export default function QuestsPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleStartMission = (quest: Quest) => {
+    if (activeTimerQuest) {
+      toast({ title: "Timer Already Active", description: `End the current timer for "${activeTimerQuest.title}" first.` });
+      return;
+    }
+    setActiveTimerQuest(quest);
+    toast({ title: "Mission Started", description: `Timer started for "${quest.title}".` });
+  };
+
+  const handleEndTimer = (elapsedSeconds: number) => {
+    const minutes = Math.floor(elapsedSeconds / 60);
+    const seconds = elapsedSeconds % 60;
+    const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+    toast({ title: "Mission Timer Ended", description: `You spent ${timeStr} on "${activeTimerQuest?.title}".` });
+    setActiveTimerQuest(null);
   };
 
   return (
@@ -614,7 +633,7 @@ export default function QuestsPage() {
                     onToggle={() => toggleQuestCompletion(quest.id)}
                     onDelete={() => deleteQuest(quest.id)}
                     onEdit={() => openEditDialog(quest)}
-                    onStart={() => toast({ title: "Mission Started", description: `"${quest.title}" is now in progress.` })}
+                    onStart={() => handleStartMission(quest)}
                   />
                 ))
               ) : (
@@ -668,7 +687,7 @@ export default function QuestsPage() {
                     onToggle={() => toggleQuestCompletion(quest.id)}
                     onDelete={() => deleteQuest(quest.id)}
                     onEdit={() => openEditDialog(quest)}
-                    onStart={() => toast({ title: "Mission Started", description: `"${quest.title}" is now in progress.` })}
+                    onStart={() => handleStartMission(quest)}
                   />
                 ))}
               </div>
@@ -717,7 +736,7 @@ export default function QuestsPage() {
                     onToggle={() => toggleQuestCompletion(quest.id)}
                     onDelete={() => deleteQuest(quest.id)}
                     onEdit={() => openEditDialog(quest)}
-                    onStart={() => toast({ title: "Mission Started", description: `"${quest.title}" is now in progress.` })}
+                    onStart={() => handleStartMission(quest)}
                   />
                 ))}
               </div>
@@ -830,13 +849,20 @@ export default function QuestsPage() {
                     onToggle={() => toggleQuestCompletion(quest.id)}
                     onDelete={() => deleteQuest(quest.id)}
                     onEdit={() => openEditDialog(quest)}
-                    onStart={() => toast({ title: "Mission Started", description: `"${quest.title}" is now in progress.` })}
+                    onStart={() => handleStartMission(quest)}
                   />
                 ))}
               </div>
             </CollapsibleContent>
           </div>
         </Collapsible>
+      )}
+
+      {activeTimerQuest && (
+        <MissionTimer
+          missionTitle={activeTimerQuest.title}
+          onEnd={handleEndTimer}
+        />
       )}
     </>
   );
