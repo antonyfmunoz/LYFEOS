@@ -39,6 +39,7 @@ export default function KnowledgeArchivePage() {
 
   const [expandedAuthors, setExpandedAuthors] = useState<Set<string>>(new Set());
   const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
 
   const { data: logsData, isLoading } = useQuery<{ logs: DailyLog[] }>({
     queryKey: ['/api/users', user?.id, 'daily-logs', 'knowledge'],
@@ -116,9 +117,33 @@ export default function KnowledgeArchivePage() {
       }));
   }, [logsData]);
 
-  const totalEntries = useMemo(() => {
-    return authorGroups.reduce((sum, g) => sum + g.sources.reduce((s, src) => s + src.entries.length, 0), 0);
-  }, [authorGroups]);
+  const filteredGroups = useMemo(() => {
+    if (!searchQuery.trim()) return authorGroups;
+    const q = searchQuery.toLowerCase().trim();
+
+    return authorGroups
+      .map(group => {
+        if (group.author.toLowerCase().includes(q)) return group;
+
+        const filteredSources = group.sources
+          .map(source => {
+            if (source.sourceMaterial.toLowerCase().includes(q)) return source;
+
+            const matchingEntries = source.entries.filter(
+              e => (e.researchNote?.toLowerCase().includes(q)) ||
+                   (e.revisionNote?.toLowerCase().includes(q)) ||
+                   (e.executionNote?.toLowerCase().includes(q))
+            );
+            if (matchingEntries.length > 0) return { ...source, entries: matchingEntries };
+            return null;
+          })
+          .filter((s): s is SourceEntry => s !== null);
+
+        if (filteredSources.length > 0) return { ...group, sources: filteredSources };
+        return null;
+      })
+      .filter((g): g is AuthorGroup => g !== null);
+  }, [authorGroups, searchQuery]);
 
   const parseLocalDate = (dateString: string): Date => {
     const [year, month, day] = dateString.split('-').map(Number);
@@ -155,9 +180,22 @@ export default function KnowledgeArchivePage() {
         <p className="text-[#7DAAB2]">Research log entries organized by author and source material</p>
       </div>
 
-      {authorGroups.length > 0 ? (
+      {authorGroups.length > 0 && (
+        <div className="mb-4 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
+          <input
+            type="text"
+            placeholder="Search by author, source, or note content..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-background/50 border border-primary/20 rounded-lg pl-9 pr-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50"
+          />
+        </div>
+      )}
+
+      {filteredGroups.length > 0 ? (
         <div className="space-y-3">
-          {authorGroups.map((group) => {
+          {filteredGroups.map((group) => {
             const authorKey = group.author;
             const isAuthorExpanded = expandedAuthors.has(authorKey);
             const sourceCount = group.sources.length;
@@ -258,10 +296,21 @@ export default function KnowledgeArchivePage() {
       ) : (
         <div className="text-center py-16 glassmorphic rounded-xl border border-primary/20 flex flex-col items-center justify-center">
           <Archive className="h-16 w-16 text-primary/40 mb-4" />
-          <h3 className="text-xl font-medium mb-2">No Research Entries Yet</h3>
-          <p className="text-[#7DAAB2] mb-4 max-w-md">
-            Start documenting your research in the Daily Research Log on the Dashboard. Entries will appear here organized by author and source.
-          </p>
+          {searchQuery.trim() ? (
+            <>
+              <h3 className="text-xl font-medium mb-2">No Matching Entries</h3>
+              <p className="text-[#7DAAB2] mb-4 max-w-md">
+                No research entries match "{searchQuery}". Try a different search term.
+              </p>
+            </>
+          ) : (
+            <>
+              <h3 className="text-xl font-medium mb-2">No Research Entries Yet</h3>
+              <p className="text-[#7DAAB2] mb-4 max-w-md">
+                Start documenting your research in the Daily Research Log on the Dashboard. Entries will appear here organized by author and source.
+              </p>
+            </>
+          )}
         </div>
       )}
     </>
