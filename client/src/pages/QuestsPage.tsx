@@ -816,7 +816,6 @@ export default function QuestsPage() {
                               navigate('/onboarding');
                             }}
                           >
-                            <Play className="h-3.5 w-3.5" />
                             Start
                           </Button>
                         </div>

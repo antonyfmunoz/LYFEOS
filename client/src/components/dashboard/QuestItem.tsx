@@ -152,7 +152,6 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit, onStart }
                 onStart();
               }}
             >
-              <Play className="h-3.5 w-3.5" />
               Start
             </Button>
           )}
