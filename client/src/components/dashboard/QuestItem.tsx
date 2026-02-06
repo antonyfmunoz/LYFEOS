@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Quest } from "../../lib/types";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2, Calendar, Clock, Bell, Edit3, Info } from "lucide-react";
+import { Trash2, Calendar, Clock, Bell, Edit3, Info, Timer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface QuestItemProps {
@@ -10,9 +10,23 @@ interface QuestItemProps {
   onDelete?: () => void;
   onEdit?: () => void;
   onStart?: () => void;
+  onResume?: () => void;
+  onDone?: () => void;
+  elapsedSeconds?: number;
+  isTimerActive?: boolean;
 }
 
-export default function QuestItem({ quest, onToggle, onDelete, onEdit, onStart }: QuestItemProps) {
+function formatElapsed(totalSeconds: number) {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+export default function QuestItem({ quest, onToggle, onDelete, onEdit, onStart, onResume, onDone, elapsedSeconds, isTimerActive }: QuestItemProps) {
   const [showDescription, setShowDescription] = useState(false);
   const { title, description, completed, energyCost, attentionCost, timeCost, experienceReward, startDate, startTime, endDate, endTime, notificationEnabled, difficulty } = quest;
 
@@ -36,6 +50,7 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit, onStart }
   };
 
   const hasSchedule = startDate || startTime || endDate || endTime;
+  const hasBeenStarted = elapsedSeconds !== undefined || isTimerActive;
 
   return (
     <div className="glassmorphic rounded-xl p-4 mb-3 hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition neon-border">
@@ -137,23 +152,59 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit, onStart }
               )}
             </div>
           )}
+          {!completed && elapsedSeconds !== undefined && elapsedSeconds > 0 && !isTimerActive && (
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <Timer className="h-3 w-3 text-primary" />
+              <span className="text-xs font-mono text-primary">{formatElapsed(elapsedSeconds)}</span>
+            </div>
+          )}
           {showDescription && description && (
             <p className={`text-muted-foreground text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 ${completed ? "opacity-50" : ""}`}>
               {description.replace(/^Completed onboarding mission "(.+)"$/, 'Completed the "$1" mission')}
             </p>
           )}
-          {!completed && onStart && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-2 border-primary/50 text-primary hover:bg-primary/10 hover:text-primary gap-1.5"
-              onClick={(e) => {
-                e.stopPropagation();
-                onStart();
-              }}
-            >
-              Start
-            </Button>
+          {!completed && (
+            <div className="flex items-center gap-2 mt-2">
+              {!hasBeenStarted && onStart && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-primary/50 text-primary hover:bg-primary/10 hover:text-primary"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onStart();
+                  }}
+                >
+                  Start
+                </Button>
+              )}
+              {hasBeenStarted && !isTimerActive && onResume && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-primary/50 text-primary hover:bg-primary/10 hover:text-primary"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onResume();
+                  }}
+                >
+                  Resume
+                </Button>
+              )}
+              {hasBeenStarted && !isTimerActive && onDone && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-green-500/50 text-green-500 hover:bg-green-500/10 hover:text-green-500"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDone();
+                  }}
+                >
+                  Done
+                </Button>
+              )}
+            </div>
           )}
         </div>
       </div>

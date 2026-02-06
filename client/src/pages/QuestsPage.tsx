@@ -93,6 +93,7 @@ export default function QuestsPage() {
   const [inboxExpanded, setInboxExpanded] = useState(true);
   const [onboardingInfoOpen, setOnboardingInfoOpen] = useState<Record<number, boolean>>({});
   const [activeTimerQuest, setActiveTimerQuest] = useState<Quest | null>(null);
+  const [missionElapsedTimes, setMissionElapsedTimes] = useState<{ [key: number]: number }>({});
 
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -211,19 +212,35 @@ export default function QuestsPage() {
 
   const handleStartMission = (quest: Quest) => {
     if (activeTimerQuest) {
-      toast({ title: "Timer Already Active", description: `End the current timer for "${activeTimerQuest.title}" first.` });
+      toast({ title: "Timer Already Active", description: `End the current timer first.` });
+      return;
+    }
+    setMissionElapsedTimes(prev => ({ ...prev, [quest.id]: 0 }));
+    setActiveTimerQuest(quest);
+  };
+
+  const handleResumeMission = (quest: Quest) => {
+    if (activeTimerQuest) {
+      toast({ title: "Timer Already Active", description: `End the current timer first.` });
       return;
     }
     setActiveTimerQuest(quest);
-    toast({ title: "Mission Started", description: `Timer started for "${quest.title}".` });
   };
 
   const handleEndTimer = (elapsedSeconds: number) => {
-    const minutes = Math.floor(elapsedSeconds / 60);
-    const seconds = elapsedSeconds % 60;
-    const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
-    toast({ title: "Mission Timer Ended", description: `You spent ${timeStr} on "${activeTimerQuest?.title}".` });
+    if (activeTimerQuest) {
+      setMissionElapsedTimes(prev => ({ ...prev, [activeTimerQuest.id]: elapsedSeconds }));
+    }
     setActiveTimerQuest(null);
+  };
+
+  const handleDoneMission = (quest: Quest) => {
+    toggleQuestCompletion(quest.id);
+    setMissionElapsedTimes(prev => {
+      const next = { ...prev };
+      delete next[quest.id];
+      return next;
+    });
   };
 
   return (
@@ -634,6 +651,10 @@ export default function QuestsPage() {
                     onDelete={() => deleteQuest(quest.id)}
                     onEdit={() => openEditDialog(quest)}
                     onStart={() => handleStartMission(quest)}
+                    onResume={() => handleResumeMission(quest)}
+                    onDone={() => handleDoneMission(quest)}
+                    elapsedSeconds={missionElapsedTimes[quest.id]}
+                    isTimerActive={activeTimerQuest?.id === quest.id}
                   />
                 ))
               ) : (
@@ -688,6 +709,10 @@ export default function QuestsPage() {
                     onDelete={() => deleteQuest(quest.id)}
                     onEdit={() => openEditDialog(quest)}
                     onStart={() => handleStartMission(quest)}
+                    onResume={() => handleResumeMission(quest)}
+                    onDone={() => handleDoneMission(quest)}
+                    elapsedSeconds={missionElapsedTimes[quest.id]}
+                    isTimerActive={activeTimerQuest?.id === quest.id}
                   />
                 ))}
               </div>
@@ -736,7 +761,6 @@ export default function QuestsPage() {
                     onToggle={() => toggleQuestCompletion(quest.id)}
                     onDelete={() => deleteQuest(quest.id)}
                     onEdit={() => openEditDialog(quest)}
-                    onStart={() => handleStartMission(quest)}
                   />
                 ))}
               </div>
@@ -850,6 +874,10 @@ export default function QuestsPage() {
                     onDelete={() => deleteQuest(quest.id)}
                     onEdit={() => openEditDialog(quest)}
                     onStart={() => handleStartMission(quest)}
+                    onResume={() => handleResumeMission(quest)}
+                    onDone={() => handleDoneMission(quest)}
+                    elapsedSeconds={missionElapsedTimes[quest.id]}
+                    isTimerActive={activeTimerQuest?.id === quest.id}
                   />
                 ))}
               </div>
@@ -860,7 +888,7 @@ export default function QuestsPage() {
 
       {activeTimerQuest && (
         <MissionTimer
-          missionTitle={activeTimerQuest.title}
+          initialSeconds={missionElapsedTimes[activeTimerQuest.id] || 0}
           onEnd={handleEndTimer}
         />
       )}

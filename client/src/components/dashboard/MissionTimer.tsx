@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Pause, Play, Square, Timer } from "lucide-react";
+import { Pause, Play, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface MissionTimerProps {
-  missionTitle: string;
+  initialSeconds?: number;
   onEnd: (elapsedSeconds: number) => void;
 }
 
-export default function MissionTimer({ missionTitle, onEnd }: MissionTimerProps) {
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+export default function MissionTimer({ initialSeconds = 0, onEnd }: MissionTimerProps) {
+  const [elapsedSeconds, setElapsedSeconds] = useState(initialSeconds);
   const [isPaused, setIsPaused] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -59,10 +59,6 @@ export default function MissionTimer({ missionTitle, onEnd }: MissionTimerProps)
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-md">
       <div className="glassmorphic rounded-xl p-4 border border-primary/40 shadow-[0_0_20px_rgba(0,224,255,0.2)]">
-        <div className="flex items-center gap-2 mb-3">
-          <Timer className="h-4 w-4 text-primary animate-pulse" />
-          <span className="text-xs text-muted-foreground truncate flex-1">{missionTitle}</span>
-        </div>
         <div className="flex items-center justify-between">
           <span className={`font-mono text-2xl font-bold tracking-wider ${isPaused ? "text-muted-foreground" : "text-primary"}`}>
             {formatTime(elapsedSeconds)}
