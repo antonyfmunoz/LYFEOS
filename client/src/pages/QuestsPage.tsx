@@ -29,7 +29,7 @@ import { Quest, QuestNotification } from "@/lib/types";
 
 const ONBOARDING_MISSIONS = [
   { id: 0, title: "Access & Quickstart", xp: 100, difficulty: "D", duration: 10, description: "Log in, explore the dashboard, and complete your first quick mission to get familiar with LYFEOS." },
-  { id: 1, title: "Archetype Calibration", xp: 150, difficulty: "C", duration: 15, description: "Discover your player archetype through a guided assessment to personalize your LYFEOS experience." },
+  { id: 1, title: "Archetype Calibration", xp: 150, difficulty: "D", duration: 15, description: "Discover your player archetype through a guided assessment to personalize your LYFEOS experience." },
   { id: 2, title: "Identity & Direction", xp: 75, difficulty: "D", duration: 8, description: "Define your core identity pillars and set your life direction compass." },
   { id: 3, title: "Craft & Mastery", xp: 60, difficulty: "D", duration: 6, description: "Identify your key skills and craft areas to track mastery progression." },
   { id: 4, title: "Capacity & Constraints", xp: 55, difficulty: "D", duration: 6, description: "Set your daily energy, attention, and time capacity limits for balanced resource management." },
