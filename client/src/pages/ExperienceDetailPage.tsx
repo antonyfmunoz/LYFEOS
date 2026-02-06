@@ -36,9 +36,9 @@ export default function ExperienceDetailPage() {
   return (
     <div className="mx-auto max-w-4xl py-8">
       <div className="mb-6">
-        <Link href="/dashboard" className="flex items-center text-[#7DAAB2] hover:text-white transition-colors">
+        <Link href="/profile" className="flex items-center text-muted-foreground hover:text-white transition-colors">
           <ArrowLeft className="h-4 w-4 mr-2" />
-          <span>Back to Dashboard</span>
+          <span>Back to Player Stats</span>
         </Link>
       </div>
       
