@@ -2042,7 +2042,14 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
 
   const restartMissionTimer = () => {
     if (!activeTimerQuest) return;
-    setTimerStartedAt(Date.now());
+    const questId = activeTimerQuest.id;
+    setMissionElapsedTimes(prev => {
+      const next = { ...prev };
+      delete next[questId];
+      return next;
+    });
+    setActiveTimerQuest(null);
+    setTimerStartedAt(null);
     setTimerPausedElapsed(0);
     setTimerIsPaused(false);
   };
