@@ -63,6 +63,31 @@ import type { UserProfile as UserProfileSchema } from "@shared/schema";
 
 
 
+function PersistentProfileSection({ section }: { section: { id: string; title: string; icon: React.ReactNode; items: { label: string; value: any }[] } }) {
+  const [isOpen, setIsOpen] = useWidgetState(`profile.section.${section.id}`, false);
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors group">
+        <div className="flex items-center gap-2">
+          {section.icon}
+          <span className="text-sm font-medium text-foreground">{section.title}</span>
+        </div>
+        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="p-3 pt-2 space-y-2">
+          {section.items.map((item, idx) => (
+            <div key={idx} className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-3 py-1 border-b border-primary/5 last:border-0">
+              <span className="text-xs text-muted-foreground min-w-[120px]">{item.label}</span>
+              <span className="text-sm text-foreground flex-1">{item.value || "\u2014"}</span>
+            </div>
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
 // Chakra colors for stats (used for theme colors)
 const STAT_COLORS = [
   "#00e0ff", // cyan - Time Tokens (Throat Chakra)
@@ -541,25 +566,7 @@ export default function ProfilePage() {
     return (
       <div className="space-y-3">
         {sections.map((section) => (
-          <Collapsible key={section.id} defaultOpen={false}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors group">
-              <div className="flex items-center gap-2">
-                {section.icon}
-                <span className="text-sm font-medium text-foreground">{section.title}</span>
-              </div>
-              <ChevronDown className="h-4 w-4 text-muted-foreground group-data-[state=open]:rotate-180 transition-transform" />
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="p-3 pt-2 space-y-2">
-                {section.items.map((item, idx) => (
-                  <div key={idx} className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-3 py-1 border-b border-primary/5 last:border-0">
-                    <span className="text-xs text-muted-foreground min-w-[120px]">{item.label}</span>
-                    <span className="text-sm text-foreground flex-1">{item.value || "—"}</span>
-                  </div>
-                ))}
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
+          <PersistentProfileSection key={section.id} section={section} />
         ))}
       </div>
     );
