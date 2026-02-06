@@ -10,6 +10,8 @@ export interface DraggableWidgetProps {
   icon: React.ReactNode;
   children: React.ReactNode;
   defaultOpen?: boolean;
+  isOpenProp?: boolean;
+  onOpenChange?: (open: boolean) => void;
   className?: string;
   moveWidget: (dragIndex: number, hoverIndex: number) => void;
 }
@@ -27,10 +29,18 @@ export function DraggableWidget({
   icon, 
   children, 
   defaultOpen = true,
+  isOpenProp,
+  onOpenChange,
   className,
   moveWidget 
 }: DraggableWidgetProps) {
-  const [isOpen, setIsOpen] = React.useState(defaultOpen);
+  const [localOpen, setLocalOpen] = React.useState(defaultOpen);
+  const isControlled = isOpenProp !== undefined;
+  const isOpen = isControlled ? isOpenProp : localOpen;
+  const setIsOpen = (val: boolean) => {
+    if (!isControlled) setLocalOpen(val);
+    onOpenChange?.(val);
+  };
   const ref = useRef<HTMLDivElement>(null);
   const dragHandleRef = useRef<HTMLDivElement>(null);
 

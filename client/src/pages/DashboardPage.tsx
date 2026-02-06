@@ -16,8 +16,9 @@ import { DailyInitModal } from '@/components/dailyInit/DailyInitModal';
 import { useToast } from '@/hooks/use-toast';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { DndProvider } from 'react-dnd';
-import { DraggableWidget } from '@/components/ui/draggable-widget';
+import { DraggableWidget, DraggableWidgetProps } from '@/components/ui/draggable-widget';
 import update from 'immutability-helper';
+import { useWidgetState } from '@/hooks/use-widget-state';
 import { LevelUpModal } from '@/components/dashboard/LevelUpModal';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -63,6 +64,11 @@ function formatTimeForInput(timeStr: string): string {
   const [hour, minute] = timeStr.split(':').map(Number);
   return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
 };
+
+function PersistentDraggableWidget({ widgetId, ...props }: Omit<DraggableWidgetProps, 'isOpenProp' | 'onOpenChange'> & { widgetId: string }) {
+  const [isOpen, setIsOpen] = useWidgetState(widgetId, props.defaultOpen ?? true);
+  return <DraggableWidget {...props} isOpenProp={isOpen} onOpenChange={setIsOpen} />;
+}
 
 export default function DashboardPage() {
   // Set the page title
@@ -894,8 +900,9 @@ export default function DashboardPage() {
         
         {/* Draggable Widget Sections */}
         {widgets.map((widget, index) => (
-          <DraggableWidget
+          <PersistentDraggableWidget
             key={widget.id}
+            widgetId={`dashboard.${widget.id}`}
             id={widget.id}
             index={index}
             title={widget.title}
@@ -904,7 +911,7 @@ export default function DashboardPage() {
             defaultOpen={widget.defaultOpen}
           >
             {renderWidgetContent(widget.id)}
-          </DraggableWidget>
+          </PersistentDraggableWidget>
         ))}
       </div>
   );

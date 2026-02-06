@@ -4104,6 +4104,33 @@ Generate the complete affirmation now:`;
     }
   });
 
+  app.get("/api/widget-states", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const states = await storage.getWidgetStates(userId);
+      return res.json(states);
+    } catch (error) {
+      console.error("Error fetching widget states:", error);
+      return res.status(500).json({ error: "Failed to fetch widget states" });
+    }
+  });
+
+  app.put("/api/widget-states", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const schema = z.object({ widgetId: z.string().min(1), isOpen: z.boolean() });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "widgetId (string) and isOpen (boolean) required" });
+      }
+      const states = await storage.setWidgetState(userId, parsed.data.widgetId, parsed.data.isOpen);
+      return res.json(states);
+    } catch (error) {
+      console.error("Error updating widget state:", error);
+      return res.status(500).json({ error: "Failed to update widget state" });
+    }
+  });
+
   // Register AI Chat routes
   registerChatRoutes(app);
 

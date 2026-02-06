@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { useWidgetState } from "@/hooks/use-widget-state";
 import { useLYFEOS } from "../lib/context";
 import { useAuth } from "@/lib/authContext";
 import { useQuery } from "@tanstack/react-query";
@@ -86,10 +87,10 @@ export default function QuestsPage() {
   const [createFormData, setCreateFormData] = useState<MissionFormData>(defaultFormData);
   const [editFormData, setEditFormData] = useState<MissionFormData>(defaultFormData);
   
-  const [todayExpanded, setTodayExpanded] = useState(true);
-  const [upcomingExpanded, setUpcomingExpanded] = useState(true);
-  const [completedExpanded, setCompletedExpanded] = useState(true);
-  const [inboxExpanded, setInboxExpanded] = useState(true);
+  const [todayExpanded, setTodayExpanded] = useWidgetState("quests.today", true);
+  const [upcomingExpanded, setUpcomingExpanded] = useWidgetState("quests.upcoming", true);
+  const [completedExpanded, setCompletedExpanded] = useWidgetState("quests.completed", true);
+  const [inboxExpanded, setInboxExpanded] = useWidgetState("quests.inbox", true);
   const [onboardingInfoOpen, setOnboardingInfoOpen] = useState<Record<number, boolean>>({});
 
   const now = new Date();

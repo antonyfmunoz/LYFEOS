@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useWidgetState } from "@/hooks/use-widget-state";
 import RootLayout from "../components/layout/RootLayout";
 import { useLYFEOS } from "../lib/context";
 import { useAuth } from "@/lib/authContext";
@@ -94,7 +95,7 @@ export default function ProfilePage() {
   const queryClient = useQueryClient();
 
   const [isEditing, setIsEditing] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(true);
+  const [isProfileOpen, setIsProfileOpen] = useWidgetState("profile.details", true);
   const [profileData, setProfileData] = useState<UserProfile>({
     id: user?.id || 0,
     username: username,

@@ -1,4 +1,4 @@
-import { useState, ReactNode, useRef } from "react";
+import { useState, ReactNode, useRef, useEffect } from "react";
 import { ChevronDown, ChevronUp, GripVertical, MoreHorizontal, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -35,6 +35,8 @@ interface CollapsibleWidgetProps {
   children: ReactNode;
   className?: string;
   defaultOpen?: boolean;
+  isOpenProp?: boolean;
+  onOpenChange?: (open: boolean) => void;
   id?: string;
   index?: number;
   moveWidget?: (dragIndex: number, hoverIndex: number) => void;
@@ -50,11 +52,19 @@ export function CollapsibleWidget({
   children, 
   className = "",
   defaultOpen = true,
+  isOpenProp,
+  onOpenChange,
   id,
   index,
   moveWidget
 }: CollapsibleWidgetProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [localOpen, setLocalOpen] = useState(defaultOpen);
+  const isControlled = isOpenProp !== undefined;
+  const isOpen = isControlled ? isOpenProp : localOpen;
+  const setIsOpen = (val: boolean) => {
+    if (!isControlled) setLocalOpen(val);
+    onOpenChange?.(val);
+  };
   const ref = useRef<HTMLDivElement>(null);
   const dragHandleRef = useRef<HTMLDivElement>(null);
   

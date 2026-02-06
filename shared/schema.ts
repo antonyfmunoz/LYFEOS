@@ -1083,3 +1083,16 @@ export type Conversation = typeof conversations.$inferSelect;
 export type InsertConversation = z.infer<typeof insertConversationSchema>;
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
+
+export const widgetStates = pgTable("widget_states", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id).unique(),
+  states: jsonb("states").notNull().default({}),
+});
+
+export const insertWidgetStatesSchema = createInsertSchema(widgetStates).omit({
+  id: true,
+});
+
+export type WidgetStates = typeof widgetStates.$inferSelect;
+export type InsertWidgetStates = z.infer<typeof insertWidgetStatesSchema>;

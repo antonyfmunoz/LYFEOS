@@ -21,7 +21,8 @@ import {
   kanbanTasks, type KanbanTask, type InsertKanbanTask,
   progressTrackers, type ProgressTracker, type InsertProgressTracker,
   mediaItems, type MediaItem, type InsertMediaItem,
-  mediaAlbums, type MediaAlbum, type InsertMediaAlbum
+  mediaAlbums, type MediaAlbum, type InsertMediaAlbum,
+  widgetStates, type WidgetStates
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -207,6 +208,9 @@ export interface IStorage {
   updateMediaAlbum(id: number, album: Partial<InsertMediaAlbum>): Promise<MediaAlbum>;
   deleteMediaAlbum(id: number): Promise<void>;
   setAlbumCoverImage(albumId: number, mediaItemId: number): Promise<MediaAlbum>;
+  
+  getWidgetStates(userId: number): Promise<Record<string, boolean>>;
+  setWidgetState(userId: number, widgetId: string, isOpen: boolean): Promise<Record<string, boolean>>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1579,6 +1583,25 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return updatedAlbum;
+  }
+  async getWidgetStates(userId: number): Promise<Record<string, boolean>> {
+    const [row] = await db.select().from(widgetStates).where(eq(widgetStates.userId, userId));
+    return (row?.states as Record<string, boolean>) || {};
+  }
+
+  async setWidgetState(userId: number, widgetId: string, isOpen: boolean): Promise<Record<string, boolean>> {
+    const [existing] = await db.select().from(widgetStates).where(eq(widgetStates.userId, userId));
+    
+    if (existing) {
+      const currentStates = (existing.states as Record<string, boolean>) || {};
+      const newStates = { ...currentStates, [widgetId]: isOpen };
+      await db.update(widgetStates).set({ states: newStates }).where(eq(widgetStates.userId, userId));
+      return newStates;
+    } else {
+      const newStates = { [widgetId]: isOpen };
+      await db.insert(widgetStates).values({ userId, states: newStates });
+      return newStates;
+    }
   }
 }
 
