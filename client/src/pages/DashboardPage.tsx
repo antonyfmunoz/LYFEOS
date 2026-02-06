@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { 
   Calendar, BarChart, CalendarDays, Clock, Brain, AlarmClock, 
   MoonStar, Smile, HeartPulse, Book, BookOpen, ListChecks, 
@@ -79,12 +80,17 @@ const TIMEZONE_OPTIONS = [
 
 function TimezoneSelector({ timezone, setTimezone }: { timezone: string; setTimezone: (tz: string) => void }) {
   const [isOpen, setIsOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
   const currentLabel = TIMEZONE_OPTIONS.find(tz => tz.value === timezone)?.label || 'PST';
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
+        buttonRef.current && !buttonRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -92,17 +98,33 @@ function TimezoneSelector({ timezone, setTimezone }: { timezone: string; setTime
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const handleToggle = () => {
+    if (!isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPos({
+        top: rect.bottom + 4,
+        left: rect.left,
+      });
+    }
+    setIsOpen(!isOpen);
+  };
+
   return (
-    <div className="relative inline-block" ref={dropdownRef}>
+    <>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        ref={buttonRef}
+        onClick={handleToggle}
         className="ml-3 font-mono text-xs px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors cursor-pointer flex items-center gap-1"
       >
         {currentLabel}
         <ChevronDown className="h-3 w-3" />
       </button>
-      {isOpen && (
-        <div className="absolute z-50 mt-1 min-w-[120px] rounded-md border border-primary/30 bg-background shadow-md glassmorphic">
+      {isOpen && ReactDOM.createPortal(
+        <div
+          ref={dropdownRef}
+          className="fixed min-w-[120px] rounded-md border border-primary/30 bg-background shadow-lg glassmorphic"
+          style={{ top: dropdownPos.top, left: dropdownPos.left, zIndex: 9999 }}
+        >
           <div className="p-1">
             {TIMEZONE_OPTIONS.map(tz => (
               <button
@@ -119,9 +141,10 @@ function TimezoneSelector({ timezone, setTimezone }: { timezone: string; setTime
               </button>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 }
 
