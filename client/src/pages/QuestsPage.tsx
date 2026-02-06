@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -755,22 +756,23 @@ export default function QuestsPage() {
                 {incompleteOnboardingMissions.map((mission) => (
                   <div 
                     key={`onboarding-${mission.id}`}
-                    className="p-3 rounded-lg border border-primary/20 bg-card/30 hover:bg-primary/5 transition-colors cursor-pointer"
+                    className="glassmorphic rounded-xl p-4 mb-3 hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition neon-border cursor-pointer"
                     onClick={() => navigate('/onboarding')}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <GraduationCap className="h-5 w-5 text-primary" />
-                        <div>
-                          <h3 className="text-sm font-medium text-foreground">{mission.title}</h3>
-                          <p className="text-xs text-muted-foreground">Onboarding Mission</p>
+                    <div className="flex items-start">
+                      <Checkbox 
+                        className="mt-1 rounded border border-primary/50"
+                        checked={false}
+                        disabled
+                      />
+                      <div className="ml-3 flex-grow">
+                        <div className="flex justify-between items-start">
+                          <h3 className="font-medium">{mission.title}</h3>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1 text-xs text-primary">
-                          <Star className="h-3 w-3" />
-                          <span>+{mission.xp} XP</span>
+                        <div className="flex items-center gap-3 mt-1 flex-wrap">
+                          <span className="text-primary text-xs font-mono whitespace-nowrap">+{mission.xp} XP</span>
                         </div>
+                        <p className="text-muted-foreground text-sm mt-1">Onboarding Mission</p>
                       </div>
                     </div>
                   </div>
