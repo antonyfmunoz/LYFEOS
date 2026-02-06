@@ -23,6 +23,7 @@ interface DailyLog {
   thoughts: string | null;
   contentConsumed: string | null;
   research: string | null;
+  sourceMaterial: string | null;
   researchNote: string | null;
   revisionNote: string | null;
   executionNote: string | null;
@@ -70,7 +71,7 @@ function LogCard({ log }: { log: DailyLog }) {
   const hasContent = (log: DailyLog) => {
     return log.wakeTime || log.sleepTime || log.mentalState || log.physicalState || 
            log.emotionalState || log.gratitude || log.tomorrowGoals || log.annualGoals ||
-           log.thoughts || log.contentConsumed || log.research || log.researchNote || log.revisionNote || log.executionNote || log.todoIdeas ||
+           log.thoughts || log.contentConsumed || log.research || log.sourceMaterial || log.researchNote || log.revisionNote || log.executionNote || log.todoIdeas ||
            log.wentWell || log.couldBeBetter || log.learned;
   };
 
@@ -176,11 +177,17 @@ function LogCard({ log }: { log: DailyLog }) {
             </div>
           )}
           
-          {(log.researchNote || log.revisionNote || log.executionNote) && (
+          {(log.sourceMaterial || log.researchNote || log.revisionNote || log.executionNote) && (
             <div className="space-y-3">
               <h4 className="text-sm font-medium text-primary flex items-center gap-2">
                 <Search className="h-4 w-4" /> Daily Research Log
               </h4>
+              {log.sourceMaterial && (
+                <div className="pl-6">
+                  <p className="text-xs text-[#7DAAB2] mb-1">Source Material</p>
+                  <p className="text-sm whitespace-pre-wrap">{log.sourceMaterial}</p>
+                </div>
+              )}
               {log.researchNote && (
                 <div className="pl-6">
                   <p className="text-xs text-[#7DAAB2] mb-1">Research Note</p>

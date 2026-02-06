@@ -3918,7 +3918,7 @@ Generate the complete affirmation now:`;
         // Data log fields
         contentConsumed, research, todoIdeas,
         // Research log fields
-        researchNote, revisionNote, executionNote,
+        sourceMaterial, researchNote, revisionNote, executionNote,
         // Reflection log fields
         wentWell, couldBeBetter, learned
       } = req.body;
@@ -3959,6 +3959,7 @@ Generate the complete affirmation now:`;
             research: research !== undefined ? research : existingLog[0].research,
             todoIdeas: todoIdeas !== undefined ? todoIdeas : existingLog[0].todoIdeas,
             // Research log fields
+            sourceMaterial: sourceMaterial !== undefined ? sourceMaterial : existingLog[0].sourceMaterial,
             researchNote: researchNote !== undefined ? researchNote : existingLog[0].researchNote,
             revisionNote: revisionNote !== undefined ? revisionNote : existingLog[0].revisionNote,
             executionNote: executionNote !== undefined ? executionNote : existingLog[0].executionNote,
@@ -3996,6 +3997,7 @@ Generate the complete affirmation now:`;
           research: research || null,
           todoIdeas: todoIdeas || null,
           // Research log fields
+          sourceMaterial: sourceMaterial || null,
           researchNote: researchNote || null,
           revisionNote: revisionNote || null,
           executionNote: executionNote || null,
@@ -4089,7 +4091,7 @@ Generate the complete affirmation now:`;
         // Data log fields
         contentConsumed, research, todoIdeas,
         // Research log fields
-        researchNote, revisionNote, executionNote,
+        sourceMaterial, researchNote, revisionNote, executionNote,
         // Reflection log fields
         wentWell, couldBeBetter, learned
       } = req.body;
@@ -4128,6 +4130,7 @@ Generate the complete affirmation now:`;
             todoIdeas: todoIdeas !== undefined ? todoIdeas : existingLog[0].todoIdeas,
             todosConverted: todoIdeas !== undefined ? false : existingLog[0].todosConverted,
             // Research log fields
+            sourceMaterial: sourceMaterial !== undefined ? sourceMaterial : existingLog[0].sourceMaterial,
             researchNote: researchNote !== undefined ? researchNote : existingLog[0].researchNote,
             revisionNote: revisionNote !== undefined ? revisionNote : existingLog[0].revisionNote,
             executionNote: executionNote !== undefined ? executionNote : existingLog[0].executionNote,
@@ -4162,6 +4165,7 @@ Generate the complete affirmation now:`;
           research: research || null,
           todoIdeas: todoIdeas || null,
           // Research log fields
+          sourceMaterial: sourceMaterial || null,
           researchNote: researchNote || null,
           revisionNote: revisionNote || null,
           executionNote: executionNote || null,

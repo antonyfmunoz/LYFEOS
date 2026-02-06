@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import { 
   Calendar, BarChart, CalendarDays, Clock, Brain, AlarmClock, 
   MoonStar, Smile, HeartPulse, Book, BookOpen, ListChecks, 
-  Zap, Target as TargetIcon, ChevronDown, Check, Search, FileText, Play
+  Zap, Target as TargetIcon, ChevronDown, Check, Search, FileText, Play, Link2
 } from 'lucide-react';
 import { useLYFEOS } from '@/lib/context';
 import { useAuth } from '@/lib/authContext';
@@ -45,6 +45,7 @@ interface DailyReflection {
   thoughts: string;
   contentConsumed: string;
   research: string;
+  sourceMaterial: string;
   researchNote: string;
   revisionNote: string;
   executionNote: string;
@@ -218,6 +219,7 @@ export default function DashboardPage() {
     // Data log fields
     contentConsumed: dataLog.contentConsumed,
     research: dataLog.research,
+    sourceMaterial: dataLog.sourceMaterial,
     researchNote: dataLog.researchNote,
     revisionNote: dataLog.revisionNote,
     executionNote: dataLog.executionNote,
@@ -329,6 +331,7 @@ export default function DashboardPage() {
           thoughts: logs.intentionLog.thoughts,
           contentConsumed: logs.dataLog.contentConsumed,
           research: logs.dataLog.research,
+          sourceMaterial: logs.dataLog.sourceMaterial,
           researchNote: logs.dataLog.researchNote,
           revisionNote: logs.dataLog.revisionNote,
           executionNote: logs.dataLog.executionNote,
@@ -410,6 +413,7 @@ export default function DashboardPage() {
         updateDataLog({
           contentConsumed: dailyLogData.contentConsumed ?? "",
           research: dailyLogData.research ?? "",
+          sourceMaterial: dailyLogData.sourceMaterial ?? "",
           researchNote: dailyLogData.researchNote ?? "",
           revisionNote: dailyLogData.revisionNote ?? "",
           executionNote: dailyLogData.executionNote ?? "",
@@ -537,7 +541,7 @@ export default function DashboardPage() {
   // Define field categories
   const energyLogFields = ['mentalState', 'physicalState', 'emotionalState', 'wakeTime', 'sleepTime'];
   const intentionLogFields = ['gratitude', 'tomorrowGoals', 'annualGoals', 'thoughts'];
-  const dataLogFields = ['contentConsumed', 'research', 'researchNote', 'revisionNote', 'executionNote', 'todoIdeas'];
+  const dataLogFields = ['contentConsumed', 'research', 'sourceMaterial', 'researchNote', 'revisionNote', 'executionNote', 'todoIdeas'];
   const reflectionLogFields = ['wentWell', 'couldBeBetter', 'learned'];
   
   // Check if all logs are loaded (so we can safely save without overwriting)
@@ -583,6 +587,7 @@ export default function DashboardPage() {
         // Data log fields
         contentConsumed: field === 'contentConsumed' ? value : dataLog.contentConsumed,
         research: field === 'research' ? value : dataLog.research,
+        sourceMaterial: field === 'sourceMaterial' ? value : dataLog.sourceMaterial,
         researchNote: field === 'researchNote' ? value : dataLog.researchNote,
         revisionNote: field === 'revisionNote' ? value : dataLog.revisionNote,
         executionNote: field === 'executionNote' ? value : dataLog.executionNote,
@@ -781,6 +786,20 @@ export default function DashboardPage() {
       case 'research-log':
         return (
           <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm flex items-center text-[#7DAAB2]">
+                <Link2 className="h-4 w-4 text-primary" />
+                <span className="ml-2">Source Material</span>
+              </label>
+              <input
+                type="text"
+                placeholder="URL, book title, article, video, or reference..."
+                value={reflection.sourceMaterial}
+                onChange={(e) => updateReflection("sourceMaterial", e.target.value)}
+                className="w-full bg-background/50 border border-primary/20 rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50"
+              />
+            </div>
+
             <div className="space-y-2">
               <label className="text-sm flex items-center text-[#7DAAB2]">
                 <Search className="h-4 w-4 text-primary" />
