@@ -97,20 +97,29 @@ export default function QuestsPage() {
   const [archivedExpanded, setArchivedExpanded] = useWidgetState("quests.archived", false);
   const [onboardingInfoOpen, setOnboardingInfoOpen] = useState<Record<number, boolean>>({});
 
-  const { data: archivedQuests = [] } = useQuery<Quest[]>({
-    queryKey: ["/api/quests/archived"],
-    enabled: !!user?.id,
-  });
+  const [archivedQuests, setArchivedQuests] = useState<Quest[]>([]);
+  
+  const fetchArchivedQuests = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const data = await apiRequest<Quest[]>("/api/quests/archived");
+      setArchivedQuests(data);
+    } catch {
+      // ignore
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    fetchArchivedQuests();
+  }, [fetchArchivedQuests]);
 
   const handleRestoreMission = async (questId: string | number) => {
     try {
-      queryClient.setQueryData(["/api/quests/archived"], (old: any[] | undefined) => {
-        return (old || []).filter((q: any) => String(q.id) !== String(questId));
-      });
+      setArchivedQuests(prev => prev.filter(q => String(q.id) !== String(questId)));
       await apiRequest(`/api/quests/${questId}/restore`, { method: "POST" });
       await refetchQuests();
     } catch {
-      queryClient.invalidateQueries({ queryKey: ["/api/quests/archived"] });
+      await fetchArchivedQuests();
       toast({ title: "Failed to restore mission", variant: "destructive" });
     }
   };
@@ -267,6 +276,12 @@ export default function QuestsPage() {
       return;
     }
     resumeMissionTimer(quest);
+  };
+
+  const handleDeleteMission = async (quest: Quest) => {
+    const questCopy = { ...quest };
+    await deleteQuest(quest.id);
+    setArchivedQuests(prev => [...prev, { ...questCopy, id: questCopy.id as any, deletedAt: new Date().toISOString() } as any]);
   };
 
   const handleDoneMission = (quest: Quest) => {
@@ -680,7 +695,7 @@ export default function QuestsPage() {
                     index={idx}
                     section="today"
                     onToggle={() => toggleQuestCompletion(quest.id)}
-                    onDelete={() => deleteQuest(quest.id)}
+                    onDelete={() => handleDeleteMission(quest)}
                     onEdit={() => openEditDialog(quest)}
                     onStart={() => handleStartMission(quest)}
                     onResume={() => handleResumeMission(quest)}
@@ -743,7 +758,7 @@ export default function QuestsPage() {
                     index={idx}
                     section="upcoming"
                     onToggle={() => toggleQuestCompletion(quest.id)}
-                    onDelete={() => deleteQuest(quest.id)}
+                    onDelete={() => handleDeleteMission(quest)}
                     onEdit={() => openEditDialog(quest)}
                     onStart={() => handleStartMission(quest)}
                     onResume={() => handleResumeMission(quest)}
@@ -801,7 +816,7 @@ export default function QuestsPage() {
                     index={idx}
                     section="completed"
                     onToggle={() => toggleQuestCompletion(quest.id)}
-                    onDelete={() => deleteQuest(quest.id)}
+                    onDelete={() => handleDeleteMission(quest)}
                     onEdit={() => openEditDialog(quest)}
                     onUndo={() => handleUndoMission(quest)}
                     onMoveQuest={(dragIdx, hoverIdx) => moveMission("completed", dragIdx, hoverIdx)}
@@ -921,7 +936,7 @@ export default function QuestsPage() {
                     index={idx}
                     section="inbox"
                     onToggle={() => toggleQuestCompletion(quest.id)}
-                    onDelete={() => deleteQuest(quest.id)}
+                    onDelete={() => handleDeleteMission(quest)}
                     onEdit={() => openEditDialog(quest)}
                     onStart={() => handleStartMission(quest)}
                     onResume={() => handleResumeMission(quest)}

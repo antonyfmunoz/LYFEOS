@@ -990,8 +990,6 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       return;
     }
     
-    const questToDelete = quests.find((q) => q.id === id);
-    
     const response = await fetch(`/api/quests/${id}`, {
       method: "DELETE",
       credentials: "include",
@@ -1002,18 +1000,6 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     }
     
     setQuests((prev) => prev.filter((q) => q.id !== id));
-    
-    if (questToDelete) {
-      const now = new Date().toISOString();
-      queryClient.setQueryData(["/api/quests/archived"], (old: any[] | undefined) => {
-        const archivedQuest = {
-          ...questToDelete,
-          id: parseInt(questToDelete.id),
-          deletedAt: now,
-        };
-        return [...(old || []), archivedQuest];
-      });
-    }
   };
 
   // Send a message to AI companion
