@@ -39,6 +39,7 @@ export default function KnowledgeArchivePage() {
 
   const [expandedAuthors, setExpandedAuthors] = useState<Set<string>>(new Set());
   const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
 
   const { data: logsData, isLoading } = useQuery<{ logs: DailyLog[] }>({
@@ -64,6 +65,15 @@ export default function KnowledgeArchivePage() {
 
   const toggleSource = (key: string) => {
     setExpandedSources(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleNote = (key: string) => {
+    setExpandedNotes(prev => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -249,39 +259,47 @@ export default function KnowledgeArchivePage() {
 
                           {isSourceExpanded && (
                             <div className="px-3 pb-3 pt-2 space-y-3 border-t border-slate-700/20">
-                              {source.entries.map((entry, idx) => (
-                                <div key={idx} className="p-3 rounded-lg bg-card/30 border border-slate-700/20 space-y-2">
-                                  <div className="flex items-center gap-1.5 text-xs text-[#7DAAB2]">
-                                    <Calendar className="h-3 w-3" />
-                                    <span className="font-mono">{formatDate(entry.date)}</span>
-                                  </div>
+                              {source.entries.map((entry, idx) => {
+                                const entryKey = `${sourceKey}::${entry.date}::${idx}`;
+                                const noteTypes = [
+                                  { key: 'research', label: 'Research Note', icon: Search, content: entry.researchNote },
+                                  { key: 'revision', label: 'Revision & Summary Note', icon: FileText, content: entry.revisionNote },
+                                  { key: 'execution', label: 'Execution Note', icon: Play, content: entry.executionNote },
+                                ].filter(n => n.content);
 
-                                  {entry.researchNote && (
-                                    <div>
-                                      <p className="text-xs text-primary/80 mb-0.5 flex items-center gap-1">
-                                        <Search className="h-3 w-3" /> Research Note
-                                      </p>
-                                      <p className="text-sm whitespace-pre-wrap text-foreground/90 pl-4">{entry.researchNote}</p>
+                                return (
+                                  <div key={idx} className="p-3 rounded-lg bg-card/30 border border-slate-700/20 space-y-1.5">
+                                    <div className="flex items-center gap-1.5 text-xs text-[#7DAAB2]">
+                                      <Calendar className="h-3 w-3" />
+                                      <span className="font-mono">{formatDate(entry.date)}</span>
                                     </div>
-                                  )}
-                                  {entry.revisionNote && (
-                                    <div>
-                                      <p className="text-xs text-primary/80 mb-0.5 flex items-center gap-1">
-                                        <FileText className="h-3 w-3" /> Revision & Summary Note
-                                      </p>
-                                      <p className="text-sm whitespace-pre-wrap text-foreground/90 pl-4">{entry.revisionNote}</p>
-                                    </div>
-                                  )}
-                                  {entry.executionNote && (
-                                    <div>
-                                      <p className="text-xs text-primary/80 mb-0.5 flex items-center gap-1">
-                                        <Play className="h-3 w-3" /> Execution Note
-                                      </p>
-                                      <p className="text-sm whitespace-pre-wrap text-foreground/90 pl-4">{entry.executionNote}</p>
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
+
+                                    {noteTypes.map(({ key, label, icon: Icon, content }) => {
+                                      const noteKey = `${entryKey}::${key}`;
+                                      const isNoteExpanded = expandedNotes.has(noteKey);
+                                      return (
+                                        <div key={key}>
+                                          <div
+                                            className="flex items-center gap-1 cursor-pointer hover:bg-card/40 rounded px-1 py-0.5 transition-colors"
+                                            onClick={() => toggleNote(noteKey)}
+                                          >
+                                            {isNoteExpanded ? (
+                                              <ChevronDown className="h-3 w-3 text-primary/60 flex-shrink-0" />
+                                            ) : (
+                                              <ChevronRight className="h-3 w-3 text-primary/60 flex-shrink-0" />
+                                            )}
+                                            <Icon className="h-3 w-3 text-primary/80" />
+                                            <span className="text-xs text-primary/80">{label}</span>
+                                          </div>
+                                          {isNoteExpanded && (
+                                            <p className="text-sm whitespace-pre-wrap text-foreground/90 pl-6 pt-1">{content}</p>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                         </div>
