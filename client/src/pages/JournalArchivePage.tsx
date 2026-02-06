@@ -195,9 +195,9 @@ function LogCard({ log }: { log: DailyLog }) {
             icon={Lightbulb}
             title="Daily Reflection"
             fields={[
-              { label: 'What Went Well', value: log.wentWell, labelIcon: <CheckCircle className="h-3 w-3 text-green-400" /> },
-              { label: 'Could Be Better', value: log.couldBeBetter, labelIcon: <AlertCircle className="h-3 w-3 text-yellow-400" /> },
-              { label: 'What I Learned', value: log.learned, labelIcon: <GraduationCap className="h-3 w-3 text-blue-400" /> },
+              { label: 'What Went Well', value: log.wentWell, labelIcon: <CheckCircle className="h-3 w-3 text-primary" /> },
+              { label: 'Could Be Better', value: log.couldBeBetter, labelIcon: <AlertCircle className="h-3 w-3 text-primary" /> },
+              { label: 'What I Learned', value: log.learned, labelIcon: <GraduationCap className="h-3 w-3 text-primary" /> },
             ]}
           />
         </div>
