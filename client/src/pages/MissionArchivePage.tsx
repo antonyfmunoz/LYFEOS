@@ -98,7 +98,7 @@ function MissionCard({ mission }: { mission: Quest }) {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-primary text-xs font-mono opacity-50">
-                -{mission.energyCost} ET
+                -{(((mission.energyCost ?? 0) / 1440) * 100).toFixed(1)}% ET
               </span>
               <span className="text-primary text-xs font-mono opacity-50">
                 +{adjustedXp} XP

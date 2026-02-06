@@ -788,9 +788,9 @@ export default function QuestsPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-3 mt-1 flex-wrap">
-                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{mission.duration} ET</span>
-                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{mission.duration} AT</span>
-                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{mission.duration} TT</span>
+                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{((mission.duration / 1440) * 100).toFixed(1)}% ET</span>
+                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{((mission.duration / 1440) * 100).toFixed(1)}% AT</span>
+                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{((mission.duration / 1440) * 100).toFixed(1)}% TT</span>
                             <span className="text-primary text-xs font-mono whitespace-nowrap">+{adjustedXp} XP</span>
                           </div>
                           <div className="flex items-center gap-1 text-xs mt-1 text-muted-foreground">
