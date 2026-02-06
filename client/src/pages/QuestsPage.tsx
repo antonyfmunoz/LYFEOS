@@ -845,7 +845,8 @@ export default function QuestsPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="mt-2 border-primary/50 text-primary hover:bg-primary/10 hover:text-primary gap-1.5"
+                            disabled={!!activeTimerQuest}
+                            className="mt-2 border-primary/50 text-primary hover:bg-primary/10 hover:text-primary gap-1.5 disabled:opacity-40"
                             onClick={(e) => {
                               e.stopPropagation();
                               navigate('/onboarding');

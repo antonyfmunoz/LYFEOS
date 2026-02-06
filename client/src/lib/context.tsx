@@ -280,9 +280,14 @@ interface LYFEOSContextType {
   moveKanbanTask: (id: string, newStatus: KanbanStatus, boardId?: string) => void;
   activeTimerQuest: Quest | null;
   missionElapsedTimes: { [key: string]: number };
+  timerStartedAt: number | null;
+  timerPausedElapsed: number;
+  timerIsPaused: boolean;
   startMissionTimer: (quest: Quest) => void;
   resumeMissionTimer: (quest: Quest) => void;
   endMissionTimer: (elapsedSeconds: number) => void;
+  restartMissionTimer: () => void;
+  pauseResumeTimer: () => void;
 }
 
 // Create the context
@@ -320,6 +325,9 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const [activeChatSessionId, setActiveChatSessionId] = useState<string>(initialChatSessions[0].id);
   const [activeTimerQuest, setActiveTimerQuest] = useState<Quest | null>(null);
   const [missionElapsedTimes, setMissionElapsedTimes] = useState<{ [key: string]: number }>({});
+  const [timerStartedAt, setTimerStartedAt] = useState<number | null>(null);
+  const [timerPausedElapsed, setTimerPausedElapsed] = useState<number>(0);
+  const [timerIsPaused, setTimerIsPaused] = useState(false);
   
   // Function to update user stats
   const updateUserStats = (newStats: UserStats) => {
@@ -2007,11 +2015,18 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const startMissionTimer = (quest: Quest) => {
     if (activeTimerQuest) return;
     setMissionElapsedTimes(prev => ({ ...prev, [quest.id]: 0 }));
+    setTimerStartedAt(Date.now());
+    setTimerPausedElapsed(0);
+    setTimerIsPaused(false);
     setActiveTimerQuest(quest);
   };
 
   const resumeMissionTimer = (quest: Quest) => {
     if (activeTimerQuest) return;
+    const prevElapsed = missionElapsedTimes[quest.id] || 0;
+    setTimerPausedElapsed(prevElapsed);
+    setTimerStartedAt(Date.now());
+    setTimerIsPaused(false);
     setActiveTimerQuest(quest);
   };
 
@@ -2020,6 +2035,29 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       setMissionElapsedTimes(prev => ({ ...prev, [activeTimerQuest.id]: elapsedSeconds }));
     }
     setActiveTimerQuest(null);
+    setTimerStartedAt(null);
+    setTimerPausedElapsed(0);
+    setTimerIsPaused(false);
+  };
+
+  const restartMissionTimer = () => {
+    if (!activeTimerQuest) return;
+    setTimerStartedAt(Date.now());
+    setTimerPausedElapsed(0);
+    setTimerIsPaused(false);
+  };
+
+  const pauseResumeTimer = () => {
+    if (!activeTimerQuest) return;
+    if (timerIsPaused) {
+      setTimerStartedAt(Date.now());
+      setTimerIsPaused(false);
+    } else if (timerStartedAt) {
+      const elapsed = timerPausedElapsed + Math.floor((Date.now() - timerStartedAt) / 1000);
+      setTimerPausedElapsed(elapsed);
+      setTimerStartedAt(null);
+      setTimerIsPaused(true);
+    }
   };
 
   return (
@@ -2088,9 +2126,14 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         moveKanbanTask,
         activeTimerQuest,
         missionElapsedTimes,
+        timerStartedAt,
+        timerPausedElapsed,
+        timerIsPaused,
         startMissionTimer,
         resumeMissionTimer,
-        endMissionTimer
+        endMissionTimer,
+        restartMissionTimer,
+        pauseResumeTimer
       }}
     >
       {children}

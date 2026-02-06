@@ -11,7 +11,7 @@ interface RootLayoutProps {
 }
 
 export default function RootLayout({ children }: RootLayoutProps) {
-  const { username, activeTimerQuest, missionElapsedTimes, endMissionTimer } = useLYFEOS();
+  const { username, activeTimerQuest, timerStartedAt, timerPausedElapsed, timerIsPaused, endMissionTimer, pauseResumeTimer, restartMissionTimer } = useLYFEOS();
   const [location] = useLocation();
   
   const currentPage = location.split('/')[1] || 'dashboard';
@@ -22,15 +22,34 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <Sidebar currentPage={currentPage} username={username} />
         
         <div className="flex-grow overflow-y-auto">
-          <div className="sticky top-0 z-40 flex items-center justify-center py-4 lg:hidden bg-background/95 backdrop-blur-sm border-b border-primary/20">
-            <span className="text-2xl text-primary font-orbitron font-bold">LYFE<span className="text-white">OS</span></span>
+          <div className="sticky top-0 z-40 lg:hidden bg-background/95 backdrop-blur-sm border-b border-primary/20">
+            <div className="flex items-center justify-center py-4">
+              <span className="text-2xl text-primary font-orbitron font-bold">LYFE<span className="text-white">OS</span></span>
+            </div>
+            {activeTimerQuest && (
+              <div className="px-4 pb-2">
+                <MissionTimer
+                  timerStartedAt={timerStartedAt}
+                  timerPausedElapsed={timerPausedElapsed}
+                  timerIsPaused={timerIsPaused}
+                  onEnd={endMissionTimer}
+                  onPauseResume={pauseResumeTimer}
+                  onRestart={restartMissionTimer}
+                  missionTitle={activeTimerQuest.title}
+                />
+              </div>
+            )}
           </div>
           
           {activeTimerQuest && (
-            <div className="sticky top-[57px] lg:top-0 z-30 px-4 lg:px-6 pt-2 pb-2 bg-background/50 backdrop-blur-sm">
+            <div className="sticky top-0 z-30 px-6 pt-2 pb-2 bg-background/50 backdrop-blur-sm hidden lg:block">
               <MissionTimer
-                initialSeconds={missionElapsedTimes[activeTimerQuest.id] || 0}
+                timerStartedAt={timerStartedAt}
+                timerPausedElapsed={timerPausedElapsed}
+                timerIsPaused={timerIsPaused}
                 onEnd={endMissionTimer}
+                onPauseResume={pauseResumeTimer}
+                onRestart={restartMissionTimer}
                 missionTitle={activeTimerQuest.title}
               />
             </div>

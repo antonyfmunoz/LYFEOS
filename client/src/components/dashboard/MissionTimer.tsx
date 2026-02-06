@@ -1,50 +1,57 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Pause, Play, Square } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Pause, Play, Square, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface MissionTimerProps {
-  initialSeconds?: number;
+  timerStartedAt: number | null;
+  timerPausedElapsed: number;
+  timerIsPaused: boolean;
   onEnd: (elapsedSeconds: number) => void;
+  onPauseResume: () => void;
+  onRestart: () => void;
   missionTitle?: string;
 }
 
-export default function MissionTimer({ initialSeconds = 0, onEnd, missionTitle }: MissionTimerProps) {
-  const [elapsedSeconds, setElapsedSeconds] = useState(initialSeconds);
-  const [isPaused, setIsPaused] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+export default function MissionTimer({ timerStartedAt, timerPausedElapsed, timerIsPaused, onEnd, onPauseResume, onRestart, missionTitle }: MissionTimerProps) {
+  const [displaySeconds, setDisplaySeconds] = useState(0);
 
-  const startInterval = useCallback(() => {
-    if (intervalRef.current) return;
-    intervalRef.current = setInterval(() => {
-      setElapsedSeconds(prev => prev + 1);
-    }, 1000);
-  }, []);
-
-  const stopInterval = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
+  const getElapsed = useCallback(() => {
+    if (timerIsPaused || !timerStartedAt) {
+      return timerPausedElapsed;
     }
-  }, []);
+    return timerPausedElapsed + Math.floor((Date.now() - timerStartedAt) / 1000);
+  }, [timerStartedAt, timerPausedElapsed, timerIsPaused]);
 
   useEffect(() => {
-    startInterval();
-    return () => stopInterval();
-  }, [startInterval, stopInterval]);
+    setDisplaySeconds(getElapsed());
+    if (timerIsPaused) return;
 
-  const handlePauseResume = () => {
-    if (isPaused) {
-      startInterval();
-      setIsPaused(false);
-    } else {
-      stopInterval();
-      setIsPaused(true);
-    }
-  };
+    const interval = setInterval(() => {
+      setDisplaySeconds(getElapsed());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [getElapsed, timerIsPaused]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        setDisplaySeconds(getElapsed());
+      }
+    };
+    const handleBeforeUnload = () => {
+      const elapsed = getElapsed();
+      onEnd(elapsed);
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [getElapsed, onEnd]);
 
   const handleEnd = () => {
-    stopInterval();
-    onEnd(elapsedSeconds);
+    onEnd(getElapsed());
   };
 
   const formatTime = (totalSeconds: number) => {
@@ -64,8 +71,8 @@ export default function MissionTimer({ initialSeconds = 0, onEnd, missionTitle }
           {missionTitle && (
             <span className="text-xs text-muted-foreground truncate">{missionTitle}</span>
           )}
-          <span className={`font-mono text-2xl font-bold tracking-wider ${isPaused ? "text-muted-foreground" : "text-primary"}`}>
-            {formatTime(elapsedSeconds)}
+          <span className={`font-mono text-2xl font-bold tracking-wider ${timerIsPaused ? "text-muted-foreground" : "text-primary"}`}>
+            {formatTime(displaySeconds)}
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -73,9 +80,18 @@ export default function MissionTimer({ initialSeconds = 0, onEnd, missionTitle }
             variant="outline"
             size="icon"
             className="h-9 w-9 border-primary/50 text-primary hover:bg-primary/10"
-            onClick={handlePauseResume}
+            onClick={onRestart}
+            title="Restart"
           >
-            {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+            <RotateCcw className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 border-primary/50 text-primary hover:bg-primary/10"
+            onClick={onPauseResume}
+          >
+            {timerIsPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
           </Button>
           <Button
             variant="outline"
