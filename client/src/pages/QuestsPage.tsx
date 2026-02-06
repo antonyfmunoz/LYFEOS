@@ -142,7 +142,7 @@ export default function QuestsPage() {
   };
 
   const handleCreateMission = async () => {
-    if (!createFormData.title.trim()) return;
+    if (!createFormData.title.trim() || !createFormData.startDate || !createFormData.startTime || !createFormData.endDate || !createFormData.endTime) return;
     
     setIsSubmitting(true);
     try {
@@ -169,7 +169,7 @@ export default function QuestsPage() {
   };
 
   const handleUpdateMission = async () => {
-    if (!editingQuest || !editFormData.title.trim()) return;
+    if (!editingQuest || !editFormData.title.trim() || !editFormData.startDate || !editFormData.startTime || !editFormData.endDate || !editFormData.endTime) return;
     
     setIsSubmitting(true);
     try {
@@ -247,7 +247,7 @@ export default function QuestsPage() {
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Start Date</Label>
+                  <Label>Start Date <span className="text-primary">*</span></Label>
                   <DatePicker
                     value={createFormData.startDate}
                     onChange={(date) => setCreateFormData(prev => ({ ...prev, startDate: date }))}
@@ -256,7 +256,7 @@ export default function QuestsPage() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label>Start Time</Label>
+                  <Label>Start Time <span className="text-primary">*</span></Label>
                   <TimePicker
                     value={createFormData.startTime}
                     onChange={(time) => setCreateFormData(prev => ({ ...prev, startTime: time }))}
@@ -267,7 +267,7 @@ export default function QuestsPage() {
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Date Due</Label>
+                  <Label>Date Due <span className="text-primary">*</span></Label>
                   <DatePicker
                     value={createFormData.endDate}
                     onChange={(date) => setCreateFormData(prev => ({ ...prev, endDate: date }))}
@@ -276,7 +276,7 @@ export default function QuestsPage() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label>Time Due</Label>
+                  <Label>Time Due <span className="text-primary">*</span></Label>
                   <TimePicker
                     value={createFormData.endTime}
                     onChange={(time) => setCreateFormData(prev => ({ ...prev, endTime: time }))}
@@ -355,7 +355,7 @@ export default function QuestsPage() {
               <Button 
                 onClick={handleCreateMission} 
                 className="w-full mt-4"
-                disabled={!createFormData.title.trim() || isSubmitting}
+                disabled={!createFormData.title.trim() || !createFormData.startDate || !createFormData.startTime || !createFormData.endDate || !createFormData.endTime || isSubmitting}
               >
                 {isSubmitting ? "Creating..." : "Create Mission"}
               </Button>
@@ -407,7 +407,7 @@ export default function QuestsPage() {
             
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Start Date</Label>
+                <Label>Start Date <span className="text-primary">*</span></Label>
                 <DatePicker
                   value={editFormData.startDate}
                   onChange={(date) => setEditFormData(prev => ({ ...prev, startDate: date }))}
@@ -416,7 +416,7 @@ export default function QuestsPage() {
               </div>
               
               <div className="space-y-2">
-                <Label>Start Time</Label>
+                <Label>Start Time <span className="text-primary">*</span></Label>
                 <TimePicker
                   value={editFormData.startTime}
                   onChange={(time) => setEditFormData(prev => ({ ...prev, startTime: time }))}
@@ -427,7 +427,7 @@ export default function QuestsPage() {
             
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Date Due</Label>
+                <Label>Date Due <span className="text-primary">*</span></Label>
                 <DatePicker
                   value={editFormData.endDate}
                   onChange={(date) => setEditFormData(prev => ({ ...prev, endDate: date }))}
@@ -436,7 +436,7 @@ export default function QuestsPage() {
               </div>
               
               <div className="space-y-2">
-                <Label>Time Due</Label>
+                <Label>Time Due <span className="text-primary">*</span></Label>
                 <TimePicker
                   value={editFormData.endTime}
                   onChange={(time) => setEditFormData(prev => ({ ...prev, endTime: time }))}
@@ -515,7 +515,7 @@ export default function QuestsPage() {
             <Button 
               onClick={handleUpdateMission} 
               className="w-full mt-4"
-              disabled={!editFormData.title.trim() || isSubmitting}
+              disabled={!editFormData.title.trim() || !editFormData.startDate || !editFormData.startTime || !editFormData.endDate || !editFormData.endTime || isSubmitting}
             >
               {isSubmitting ? "Updating..." : "Update Mission"}
             </Button>

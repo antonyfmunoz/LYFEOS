@@ -48,37 +48,33 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestIt
               </h3>
               
               {hasSchedule && (
-                <div className={`flex flex-wrap items-center gap-2 text-xs mb-1 ${completed ? "opacity-50" : "text-muted-foreground"}`}>
+                <div className={`flex items-center gap-1 text-xs mb-1 flex-nowrap ${completed ? "opacity-50" : "text-muted-foreground"}`}>
                   {startDate && (
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
+                    <span className="flex items-center gap-1 whitespace-nowrap">
+                      <Calendar className="h-3 w-3 flex-shrink-0" />
                       {formatDate(startDate)}
-                      {startTime && (
-                        <>
-                          <Clock className="h-3 w-3 ml-1" />
-                          {formatTime(startTime)}
-                        </>
-                      )}
+                    </span>
+                  )}
+                  {startTime && (
+                    <span className="flex items-center gap-1 whitespace-nowrap">
+                      <Clock className="h-3 w-3 flex-shrink-0" />
+                      {formatTime(startTime)}
                     </span>
                   )}
                   {(endDate || endTime) && (
-                    <>
-                      <span className="text-primary">→</span>
-                      <span className="flex items-center gap-1">
-                        {endDate && (
-                          <>
-                            <Calendar className="h-3 w-3" />
-                            {formatDate(endDate)}
-                          </>
-                        )}
-                        {endTime && (
-                          <>
-                            <Clock className="h-3 w-3 ml-1" />
-                            {formatTime(endTime)}
-                          </>
-                        )}
-                      </span>
-                    </>
+                    <span className="text-primary flex-shrink-0">→</span>
+                  )}
+                  {endDate && (
+                    <span className="flex items-center gap-1 whitespace-nowrap">
+                      <Calendar className="h-3 w-3 flex-shrink-0" />
+                      {formatDate(endDate)}
+                    </span>
+                  )}
+                  {endTime && (
+                    <span className="flex items-center gap-1 whitespace-nowrap">
+                      <Clock className="h-3 w-3 flex-shrink-0" />
+                      {formatTime(endTime)}
+                    </span>
                   )}
                 </div>
               )}
