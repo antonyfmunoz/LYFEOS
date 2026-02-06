@@ -57,7 +57,7 @@ export default function MissionTimer({ initialSeconds = 0, onEnd }: MissionTimer
   };
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-md">
+    <div className="sticky top-0 z-30 -mx-4 lg:-mx-6 px-4 lg:px-6 pt-2 pb-2">
       <div className="glassmorphic rounded-xl p-4 border border-primary/40 shadow-[0_0_20px_rgba(0,224,255,0.2)]">
         <div className="flex items-center justify-between">
           <span className={`font-mono text-2xl font-bold tracking-wider ${isPaused ? "text-muted-foreground" : "text-primary"}`}>

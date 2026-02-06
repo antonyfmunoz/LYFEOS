@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Quest } from "../../lib/types";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2, Calendar, Clock, Bell, Edit3, Info, Timer } from "lucide-react";
+import { Trash2, Calendar, Clock, Bell, Edit3, Info, Timer, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface QuestItemProps {
@@ -12,6 +12,7 @@ interface QuestItemProps {
   onStart?: () => void;
   onResume?: () => void;
   onDone?: () => void;
+  onUndo?: () => void;
   elapsedSeconds?: number;
   isTimerActive?: boolean;
 }
@@ -26,7 +27,7 @@ function formatElapsed(totalSeconds: number) {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-export default function QuestItem({ quest, onToggle, onDelete, onEdit, onStart, onResume, onDone, elapsedSeconds, isTimerActive }: QuestItemProps) {
+export default function QuestItem({ quest, onToggle, onDelete, onEdit, onStart, onResume, onDone, onUndo, elapsedSeconds, isTimerActive }: QuestItemProps) {
   const [showDescription, setShowDescription] = useState(false);
   const { title, description, completed, energyCost, attentionCost, timeCost, experienceReward, startDate, startTime, endDate, endTime, notificationEnabled, difficulty } = quest;
 
@@ -152,10 +153,10 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit, onStart, 
               )}
             </div>
           )}
-          {!completed && elapsedSeconds !== undefined && elapsedSeconds > 0 && !isTimerActive && (
+          {elapsedSeconds !== undefined && elapsedSeconds > 0 && !isTimerActive && (
             <div className="flex items-center gap-1.5 mt-1.5">
-              <Timer className="h-3 w-3 text-primary" />
-              <span className="text-xs font-mono text-primary">{formatElapsed(elapsedSeconds)}</span>
+              <Timer className={`h-3 w-3 ${completed ? "text-muted-foreground" : "text-primary"}`} />
+              <span className={`text-xs font-mono ${completed ? "text-muted-foreground" : "text-primary"}`}>{formatElapsed(elapsedSeconds)}</span>
             </div>
           )}
           {showDescription && description && (
@@ -205,6 +206,20 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit, onStart, 
                 </Button>
               )}
             </div>
+          )}
+          {completed && onUndo && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2 border-primary/50 text-primary hover:bg-primary/10 hover:text-primary gap-1.5"
+              onClick={(e) => {
+                e.stopPropagation();
+                onUndo();
+              }}
+            >
+              <Undo2 className="h-3.5 w-3.5" />
+              Undo
+            </Button>
           )}
         </div>
       </div>

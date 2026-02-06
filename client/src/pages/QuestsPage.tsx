@@ -236,15 +236,20 @@ export default function QuestsPage() {
 
   const handleDoneMission = (quest: Quest) => {
     toggleQuestCompletion(quest.id);
-    setMissionElapsedTimes(prev => {
-      const next = { ...prev };
-      delete next[quest.id];
-      return next;
-    });
+  };
+
+  const handleUndoMission = (quest: Quest) => {
+    toggleQuestCompletion(quest.id);
   };
 
   return (
     <>
+      {activeTimerQuest && (
+        <MissionTimer
+          initialSeconds={missionElapsedTimes[activeTimerQuest.id] || 0}
+          onEnd={handleEndTimer}
+        />
+      )}
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-orbitron mb-1">Missions</h1>
@@ -761,6 +766,8 @@ export default function QuestsPage() {
                     onToggle={() => toggleQuestCompletion(quest.id)}
                     onDelete={() => deleteQuest(quest.id)}
                     onEdit={() => openEditDialog(quest)}
+                    onUndo={() => handleUndoMission(quest)}
+                    elapsedSeconds={missionElapsedTimes[quest.id]}
                   />
                 ))}
               </div>
@@ -886,12 +893,6 @@ export default function QuestsPage() {
         </Collapsible>
       )}
 
-      {activeTimerQuest && (
-        <MissionTimer
-          initialSeconds={missionElapsedTimes[activeTimerQuest.id] || 0}
-          onEnd={handleEndTimer}
-        />
-      )}
     </>
   );
 }
