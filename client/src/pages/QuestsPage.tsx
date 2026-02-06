@@ -45,7 +45,10 @@ interface MissionFormData {
   endDate: string;
   endTime: string;
   notifications: QuestNotification[];
+  difficulty: string;
 }
+
+const DIFFICULTY_RANKS = ["S", "A", "B", "C", "D"] as const;
 
 const defaultFormData: MissionFormData = {
   title: "",
@@ -56,6 +59,7 @@ const defaultFormData: MissionFormData = {
   endDate: "",
   endTime: "",
   notifications: [],
+  difficulty: "D",
 };
 
 export default function QuestsPage() {
@@ -137,6 +141,7 @@ export default function QuestsPage() {
       endDate: quest.endDate || "",
       endTime: quest.endTime || "",
       notifications: quest.notifications || [],
+      difficulty: quest.difficulty || "D",
     });
     setIsEditOpen(true);
   };
@@ -157,6 +162,7 @@ export default function QuestsPage() {
         notificationEnabled: createFormData.notifications.length > 0,
         notificationTime: null,
         notifications: createFormData.notifications,
+        difficulty: createFormData.difficulty,
       });
       
       setCreateFormData(defaultFormData);
@@ -184,6 +190,7 @@ export default function QuestsPage() {
         notificationEnabled: editFormData.notifications.length > 0,
         notificationTime: null,
         notifications: editFormData.notifications,
+        difficulty: editFormData.difficulty,
       });
       
       setEditFormData(defaultFormData);
@@ -243,6 +250,30 @@ export default function QuestsPage() {
                   onChange={(e) => setCreateFormData(prev => ({ ...prev, description: e.target.value }))}
                   className="bg-background/50 border-primary/30 min-h-[80px]"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Difficulty Rank</Label>
+                <div className="flex gap-2">
+                  {DIFFICULTY_RANKS.map((rank) => (
+                    <button
+                      key={rank}
+                      type="button"
+                      onClick={() => setCreateFormData(prev => ({ ...prev, difficulty: rank }))}
+                      className={`flex-1 py-2 rounded-lg text-sm font-bold font-mono border transition-all ${
+                        createFormData.difficulty === rank
+                          ? rank === "S" ? "bg-red-500/30 border-red-400 text-red-300 shadow-[0_0_8px_rgba(239,68,68,0.4)]"
+                          : rank === "A" ? "bg-orange-500/30 border-orange-400 text-orange-300 shadow-[0_0_8px_rgba(249,115,22,0.4)]"
+                          : rank === "B" ? "bg-yellow-500/30 border-yellow-400 text-yellow-300 shadow-[0_0_8px_rgba(234,179,8,0.4)]"
+                          : rank === "C" ? "bg-blue-500/30 border-blue-400 text-blue-300 shadow-[0_0_8px_rgba(59,130,246,0.4)]"
+                          : "bg-gray-500/30 border-gray-400 text-gray-300 shadow-[0_0_8px_rgba(156,163,175,0.4)]"
+                          : "bg-background/30 border-primary/20 text-muted-foreground hover:border-primary/40"
+                      }`}
+                    >
+                      {rank}
+                    </button>
+                  ))}
+                </div>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
@@ -403,6 +434,30 @@ export default function QuestsPage() {
                 onChange={(e) => setEditFormData(prev => ({ ...prev, description: e.target.value }))}
                 className="bg-background/50 border-primary/30 min-h-[80px]"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Difficulty Rank</Label>
+              <div className="flex gap-2">
+                {DIFFICULTY_RANKS.map((rank) => (
+                  <button
+                    key={rank}
+                    type="button"
+                    onClick={() => setEditFormData(prev => ({ ...prev, difficulty: rank }))}
+                    className={`flex-1 py-2 rounded-lg text-sm font-bold font-mono border transition-all ${
+                      editFormData.difficulty === rank
+                        ? rank === "S" ? "bg-red-500/30 border-red-400 text-red-300 shadow-[0_0_8px_rgba(239,68,68,0.4)]"
+                        : rank === "A" ? "bg-orange-500/30 border-orange-400 text-orange-300 shadow-[0_0_8px_rgba(249,115,22,0.4)]"
+                        : rank === "B" ? "bg-yellow-500/30 border-yellow-400 text-yellow-300 shadow-[0_0_8px_rgba(234,179,8,0.4)]"
+                        : rank === "C" ? "bg-blue-500/30 border-blue-400 text-blue-300 shadow-[0_0_8px_rgba(59,130,246,0.4)]"
+                        : "bg-gray-500/30 border-gray-400 text-gray-300 shadow-[0_0_8px_rgba(156,163,175,0.4)]"
+                        : "bg-background/30 border-primary/20 text-muted-foreground hover:border-primary/40"
+                    }`}
+                  >
+                    {rank}
+                  </button>
+                ))}
+              </div>
             </div>
             
             <div className="grid grid-cols-2 gap-4">

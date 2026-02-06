@@ -654,6 +654,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             notificationEnabled: quest.notificationEnabled || false,
             notificationTime: quest.notificationTime || null,
             notifications: quest.notifications || [],
+            difficulty: quest.difficulty || "D",
           }));
           setQuests(transformedQuests);
         }
@@ -919,6 +920,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       notificationEnabled: quest.notificationEnabled,
       notificationTime: quest.notificationTime,
       notifications: quest.notifications || [],
+      difficulty: quest.difficulty || "D",
     };
     
     setQuests((prev) => [...prev, newQuest]);
@@ -958,6 +960,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       notificationEnabled: quest.notificationEnabled,
       notificationTime: quest.notificationTime,
       notifications: quest.notifications || [],
+      difficulty: quest.difficulty || "D",
     };
     
     setQuests((prev) => prev.map((q) => (q.id === id ? updatedQuest : q)));

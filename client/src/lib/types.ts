@@ -58,6 +58,7 @@ export interface Quest {
   notificationEnabled?: boolean;
   notificationTime?: string | null;
   notifications?: QuestNotification[];
+  difficulty?: string;
 }
 
 export interface AIMessage {
