@@ -95,9 +95,9 @@ export default function MissionLogWidget({
           <div className="flex flex-col space-y-2">
             <div className="text-sm opacity-90">{event.title}</div>
             <div className="flex space-x-4 text-sm mt-2">
-              <div className="flex items-center text-red-400">
+              <div className="flex items-center text-primary">
                 <Zap className="h-4 w-4 mr-1" />
-                <span>-5 Energy Points</span>
+                <span>-5 Energy Tokens</span>
               </div>
               <div className="flex items-center text-primary">
                 <Award className="h-4 w-4 mr-1" />
@@ -262,7 +262,7 @@ export default function MissionLogWidget({
                               {event.title}
                             </h3>
                             <div className="flex items-center">
-                              <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
+                              <span className="text-primary text-xs font-mono mr-2">-5 ET</span>
                               <span className="text-primary text-xs font-mono mr-2">+15 XP</span>
                               <Button
                                 variant="ghost"
@@ -348,7 +348,7 @@ export default function MissionLogWidget({
                               {event.title}
                             </h3>
                             <div className="flex items-center">
-                              <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
+                              <span className="text-primary text-xs font-mono mr-2">-5 ET</span>
                               <span className="text-primary text-xs font-mono mr-2">+15 XP</span>
                               <Button
                                 variant="ghost"
@@ -432,9 +432,9 @@ export default function MissionLogWidget({
                 </div>
                 
                 <div className="flex space-x-4 pt-2">
-                  <div className="flex items-center text-red-400">
+                  <div className="flex items-center text-primary">
                     <Zap className="h-4 w-4 mr-1" />
-                    <span className="text-sm">-5 Energy Points</span>
+                    <span className="text-sm">-5 Energy Tokens</span>
                   </div>
                   <div className="flex items-center text-primary">
                     <Award className="h-4 w-4 mr-1" />

@@ -115,9 +115,9 @@ export default function EnhancedMissionWidget({
           <div className="flex flex-col space-y-2">
             <div className="text-sm opacity-90">{event.title}</div>
             <div className="flex space-x-4 text-sm mt-2">
-              <div className="flex items-center text-red-400">
+              <div className="flex items-center text-primary">
                 <Zap className="h-4 w-4 mr-1" />
-                <span>-5 Energy Points</span>
+                <span>-5 Energy Tokens</span>
               </div>
               <div className="flex items-center text-primary">
                 <Award className="h-4 w-4 mr-1" />
@@ -212,9 +212,9 @@ export default function EnhancedMissionWidget({
             <div className="flex flex-col space-y-2">
               <div className="text-sm opacity-90">{mission.title}</div>
               <div className="flex space-x-4 text-sm mt-2">
-                <div className="flex items-center text-red-400">
+                <div className="flex items-center text-primary">
                   <Zap className="h-4 w-4 mr-1" />
-                  <span>-5 Energy Points</span>
+                  <span>-5 Energy Tokens</span>
                 </div>
                 <div className="flex items-center text-primary">
                   <Award className="h-4 w-4 mr-1" />
@@ -290,7 +290,7 @@ export default function EnhancedMissionWidget({
                         {mission.title}
                       </h3>
                       <div className="flex items-center mr-8">
-                        <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
+                        <span className="text-primary text-xs font-mono mr-2">-5 ET</span>
                         <span className="text-primary text-xs font-mono mr-2">+{mission.xpValue} XP</span>
                       </div>
                     </div>
@@ -336,7 +336,7 @@ export default function EnhancedMissionWidget({
                           {event.title}
                         </h3>
                         <div className="flex items-center mr-8">
-                          <span className="text-red-400 text-xs font-mono mr-2">-5 EP</span>
+                          <span className="text-primary text-xs font-mono mr-2">-5 ET</span>
                           <span className="text-primary text-xs font-mono mr-2">+15 XP</span>
                         </div>
                       </div>

@@ -152,7 +152,7 @@ export function MissionInfoDialog({
             <div className="flex justify-between bg-primary/5 p-4 rounded-md">
               <div>
                 <h4 className="text-sm font-semibold mb-2">Energy Cost</h4>
-                <p className="text-sm leading-relaxed text-red-400 font-mono">-5 EP</p>
+                <p className="text-sm leading-relaxed text-primary font-mono">-5 ET</p>
               </div>
               <div>
                 <h4 className="text-sm font-semibold mb-2">XP Reward</h4>

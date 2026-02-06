@@ -18,7 +18,7 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
     switch(stat) {
       case 'attention': return 'Attention Tokens';
       case 'time': return 'Time Tokens';
-      case 'energy': return 'Energy Points';
+      case 'energy': return 'Energy Tokens';
       case 'health': return 'Health Points';
       case 'experience': return 'Experience';
       default: return 'Stats';
@@ -64,7 +64,7 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
       ],
     },
     energy: {
-      title: "Energy Points",
+      title: "Energy Tokens",
       icon: <Zap className="w-8 h-8" />,
       color: "#F97316", // Orange (Sacral)
       current: stats.energyPoints.current,

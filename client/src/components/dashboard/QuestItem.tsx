@@ -87,7 +87,7 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestIt
             <div className="flex items-center gap-2 flex-shrink-0">
               <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-right">
                 <span className={`text-primary text-xs font-mono whitespace-nowrap ${completed ? "opacity-50" : ""}`}>
-                  -{energyCost} EP
+                  -{energyCost} ET
                 </span>
                 <span className={`text-primary text-xs font-mono whitespace-nowrap ${completed ? "opacity-50" : ""}`}>
                   +{experienceReward} XP

@@ -6,7 +6,7 @@ import { usePageTitle } from "@/hooks/use-page-title";
 
 export default function EnergyDetailPage() {
   // Set page title
-  usePageTitle("Energy Points - LYFEOS");
+  usePageTitle("Energy Tokens - LYFEOS");
   
   // Get stats from context
   const { stats } = useLYFEOS();
@@ -38,7 +38,7 @@ export default function EnergyDetailPage() {
       
       <div className="mb-8 flex items-center">
         <Zap className="h-8 w-8 mr-3 text-[#F97316]" /> {/* Orange (Sacral) */}
-        <h1 className="text-3xl font-orbitron">Energy Points</h1>
+        <h1 className="text-3xl font-orbitron">Energy Tokens</h1>
       </div>
       
       {/* Current Energy Level */}

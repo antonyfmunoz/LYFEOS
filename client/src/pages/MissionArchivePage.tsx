@@ -95,8 +95,8 @@ function MissionCard({ mission }: { mission: Quest }) {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-red-400 text-xs font-mono opacity-50">
-                -{mission.energyCost} EP
+              <span className="text-primary text-xs font-mono opacity-50">
+                -{mission.energyCost} ET
               </span>
               <span className="text-primary text-xs font-mono opacity-50">
                 +{mission.experienceReward} XP

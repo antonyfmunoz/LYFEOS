@@ -599,6 +599,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
                   description: `${event.description || event.category} - ${event.date} at ${event.startTime}`,
                   completed: false,
                   energyCost: 1,
+                  attentionCost: 0,
+                  timeCost: 0,
                   experienceReward: 15,
                 }));
               
@@ -641,6 +643,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             completed: quest.completed || false,
             completedAt: quest.completedAt || null,
             energyCost: quest.energyCost || 1,
+            attentionCost: quest.attentionCost || 0,
+            timeCost: quest.timeCost || 0,
             experienceReward: quest.experienceReward || 10,
             startDate: quest.startDate || null,
             startTime: quest.startTime || null,
@@ -904,6 +908,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       category: quest.category,
       completed: quest.completed,
       energyCost: quest.energyCost,
+      attentionCost: quest.attentionCost,
+      timeCost: quest.timeCost,
       experienceReward: quest.experienceReward,
       startDate: quest.startDate,
       startTime: quest.startTime,
@@ -941,6 +947,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       category: quest.category,
       completed: quest.completed,
       energyCost: quest.energyCost,
+      attentionCost: quest.attentionCost,
+      timeCost: quest.timeCost,
       experienceReward: quest.experienceReward,
       startDate: quest.startDate,
       startTime: quest.startTime,
@@ -1090,6 +1098,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
               description: `${event.description || event.category} - ${event.date} at ${event.startTime}`,
               completed: false,
               energyCost: 1,
+              attentionCost: 0,
+              timeCost: 0,
               experienceReward: 15,
             };
             
