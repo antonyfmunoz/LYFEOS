@@ -1381,6 +1381,40 @@ Generate the complete affirmation now:`;
     }
   });
 
+  // Archived missions (soft-deleted within last 24 hours)
+  app.get("/api/quests/archived", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      await storage.purgeExpiredArchivedQuests();
+      const archived = await storage.getArchivedQuests(userId);
+      return res.status(200).json(archived);
+    } catch (error) {
+      console.error("Error fetching archived quests:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/quests/:questId/restore", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const questId = parseInt(req.params.questId);
+      if (isNaN(questId)) {
+        return res.status(400).json({ error: "Invalid quest ID" });
+      }
+      const quest = await storage.getQuest(questId);
+      if (!quest) {
+        return res.status(404).json({ error: "Quest not found" });
+      }
+      if (quest.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      const restored = await storage.restoreQuest(questId);
+      return res.status(200).json(restored);
+    } catch (error) {
+      console.error("Error restoring quest:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Update quest (PATCH)
   const updateQuestSchema = insertQuestSchema.pick({
     title: true,

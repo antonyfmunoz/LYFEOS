@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { UserStats, Quest, AIMessage, CalendarEvent, MissionPage, ChatSession, KanbanTask, KanbanStatus, KanbanBoard, KanbanColumn } from "./types";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "./authContext";
-import { apiRequest } from "./queryClient";
+import { apiRequest, queryClient } from "./queryClient";
 import { getLocalDateString } from "./utils";
 
 // Initial stats data
@@ -1001,6 +1001,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     }
     
     setQuests((prev) => prev.filter((q) => q.id !== id));
+    queryClient.invalidateQueries({ queryKey: ["/api/quests/archived"] });
   };
 
   // Send a message to AI companion

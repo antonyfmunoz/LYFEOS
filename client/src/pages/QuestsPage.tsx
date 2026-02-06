@@ -26,7 +26,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Zap, Star, Bell, Edit3, X, ChevronDown, ChevronRight, Target, Calendar, CheckCircle2, GraduationCap, Inbox, Info } from "lucide-react";
+import { Plus, Zap, Star, Bell, Edit3, X, ChevronDown, ChevronRight, Target, Calendar, CheckCircle2, GraduationCap, Inbox, Info, Archive, Undo2 } from "lucide-react";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Quest, QuestNotification } from "@/lib/types";
@@ -72,7 +72,7 @@ export default function QuestsPage() {
   usePageTitle('Missions');
   const [, navigate] = useLocation();
   
-  const { quests, toggleQuestCompletion, createQuest, updateQuest, deleteQuest, activeTimerQuest, missionElapsedTimes, startMissionTimer, resumeMissionTimer, restartMissionTimer } = useLYFEOS();
+  const { quests, toggleQuestCompletion, createQuest, updateQuest, deleteQuest, refetchQuests, activeTimerQuest, missionElapsedTimes, startMissionTimer, resumeMissionTimer, restartMissionTimer } = useLYFEOS();
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -94,7 +94,24 @@ export default function QuestsPage() {
   const [upcomingExpanded, setUpcomingExpanded] = useWidgetState("quests.upcoming", true);
   const [completedExpanded, setCompletedExpanded] = useWidgetState("quests.completed", true);
   const [inboxExpanded, setInboxExpanded] = useWidgetState("quests.inbox", true);
+  const [archivedExpanded, setArchivedExpanded] = useWidgetState("quests.archived", false);
   const [onboardingInfoOpen, setOnboardingInfoOpen] = useState<Record<number, boolean>>({});
+
+  const { data: archivedQuests = [] } = useQuery<Quest[]>({
+    queryKey: ["/api/quests/archived"],
+    enabled: !!user?.id,
+  });
+
+  const handleRestoreMission = async (questId: string | number) => {
+    try {
+      await apiRequest(`/api/quests/${questId}/restore`, { method: "POST" });
+      queryClient.invalidateQueries({ queryKey: ["/api/quests/archived"] });
+      await refetchQuests();
+      toast({ title: "Mission restored" });
+    } catch {
+      toast({ title: "Failed to restore mission", variant: "destructive" });
+    }
+  };
 
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -272,10 +289,10 @@ export default function QuestsPage() {
           if (!open) setCreateFormData(defaultFormData);
         }}>
           <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
+            <button className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5">
+              <Plus className="h-3 w-3" />
               New Mission
-            </Button>
+            </button>
           </DialogTrigger>
           <DialogContent 
             className="glassmorphic border-primary/30 w-full h-full max-w-full max-h-full left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:max-w-lg sm:max-h-[90vh] sm:h-auto sm:rounded-lg overflow-y-auto"
@@ -316,7 +333,7 @@ export default function QuestsPage() {
                       key={rank}
                       type="button"
                       onClick={() => setCreateFormData(prev => ({ ...prev, difficulty: rank }))}
-                      className={`flex-1 py-2 rounded-lg text-sm font-bold font-mono border transition-all ${
+                      className={`flex-1 py-2 rounded-lg text-sm font-mono border transition-all ${
                         createFormData.difficulty === rank
                           ? "bg-primary/20 border-primary text-primary shadow-[0_0_8px_hsl(var(--primary)/0.4)]"
                           : "bg-background/30 border-primary/20 text-muted-foreground hover:border-primary/40"
@@ -374,19 +391,17 @@ export default function QuestsPage() {
                     <Bell className="h-4 w-4" />
                     Notification Reminders
                   </Label>
-                  <Button
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="text-primary"
+                    className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1"
                     onClick={() => setCreateFormData(prev => ({
                       ...prev,
                       notifications: [...prev.notifications, { date: "", time: "" }]
                     }))}
                   >
-                    <Plus className="h-4 w-4 mr-1" />
+                    <Plus className="h-3 w-3" />
                     Add
-                  </Button>
+                  </button>
                 </div>
                 
                 {createFormData.notifications.length === 0 ? (
@@ -435,13 +450,13 @@ export default function QuestsPage() {
                 )}
               </div>
               
-              <Button 
+              <button 
                 onClick={handleCreateMission} 
-                className="w-full mt-4"
+                className="w-full mt-4 text-sm font-mono px-4 py-2.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center"
                 disabled={!createFormData.title.trim() || !createFormData.startDate || !createFormData.startTime || !createFormData.endDate || !createFormData.endTime || isSubmitting}
               >
                 {isSubmitting ? "Creating..." : "Create Mission"}
-              </Button>
+              </button>
             </div>
           </DialogContent>
         </Dialog>
@@ -496,7 +511,7 @@ export default function QuestsPage() {
                     key={rank}
                     type="button"
                     onClick={() => setEditFormData(prev => ({ ...prev, difficulty: rank }))}
-                    className={`flex-1 py-2 rounded-lg text-sm font-bold font-mono border transition-all ${
+                    className={`flex-1 py-2 rounded-lg text-sm font-mono border transition-all ${
                       editFormData.difficulty === rank
                         ? "bg-primary/20 border-primary text-primary shadow-[0_0_8px_hsl(var(--primary)/0.4)]"
                         : "bg-background/30 border-primary/20 text-muted-foreground hover:border-primary/40"
@@ -554,19 +569,17 @@ export default function QuestsPage() {
                   <Bell className="h-4 w-4" />
                   Notification Reminders
                 </Label>
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="text-primary"
+                  className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1"
                   onClick={() => setEditFormData(prev => ({
                     ...prev,
                     notifications: [...prev.notifications, { date: "", time: "" }]
                   }))}
                 >
-                  <Plus className="h-4 w-4 mr-1" />
+                  <Plus className="h-3 w-3" />
                   Add
-                </Button>
+                </button>
               </div>
               
               {editFormData.notifications.length === 0 ? (
@@ -615,13 +628,13 @@ export default function QuestsPage() {
               )}
             </div>
             
-            <Button 
+            <button 
               onClick={handleUpdateMission} 
-              className="w-full mt-4"
+              className="w-full mt-4 text-sm font-mono px-4 py-2.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center"
               disabled={!editFormData.title.trim() || !editFormData.startDate || !editFormData.startTime || !editFormData.endDate || !editFormData.endTime || isSubmitting}
             >
               {isSubmitting ? "Updating..." : "Update Mission"}
-            </Button>
+            </button>
           </div>
         </DialogContent>
       </Dialog>
@@ -858,7 +871,7 @@ export default function QuestsPage() {
                           <div className="flex justify-between items-start">
                             <h3 className="font-medium">{mission.title}</h3>
                             <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                              <span className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded border bg-primary/20 border-primary/50 text-primary">
+                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border bg-primary/20 border-primary/50 text-primary">
                                 {mission.difficulty}
                               </span>
                               {mission.description && (
@@ -888,7 +901,7 @@ export default function QuestsPage() {
                           )}
                           <button
                             disabled={!!activeTimerQuest}
-                            className="mt-2 text-xs font-bold font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40"
+                            className="mt-2 text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40"
                             onClick={(e) => {
                               e.stopPropagation();
                               navigate('/onboarding');
@@ -925,6 +938,87 @@ export default function QuestsPage() {
           </div>
         </Collapsible>
       )}
+
+      {/* Archived Missions - recently deleted, held for 24 hours */}
+      <Collapsible open={archivedExpanded} onOpenChange={setArchivedExpanded} className="mb-6">
+        <div className="glassmorphic rounded-xl overflow-hidden neon-border">
+          <div className="p-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Archive className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-orbitron">Archived Missions</h2>
+              <StatInfoDialog
+                trigger={
+                  <button className="h-5 w-5 rounded-full bg-primary/10 hover:bg-primary/20 flex items-center justify-center transition-colors">
+                    <Info className="h-3 w-3 text-primary" />
+                  </button>
+                }
+                title="Archived Missions"
+                description="Recently deleted missions are held here for 24 hours before being permanently removed."
+                additionalInfo="You can restore any archived mission back to your active list within 24 hours of deletion."
+                hideMoreDetails
+              />
+            </div>
+            <CollapsibleTrigger asChild>
+              <div className="flex items-center cursor-pointer hover:bg-primary/5 transition-colors rounded-md px-2 py-1">
+                {archivedExpanded ? (
+                  <ChevronDown className="h-5 w-5 text-primary" />
+                ) : (
+                  <ChevronRight className="h-5 w-5 text-primary" />
+                )}
+              </div>
+            </CollapsibleTrigger>
+          </div>
+          
+          <CollapsibleContent>
+            <div className="px-4 pb-4 space-y-3">
+              {archivedQuests.length > 0 ? (
+                archivedQuests.map((quest) => {
+                  const difficultyMultipliers: Record<string, number> = { D: 1, C: 1.5, B: 2, A: 3, S: 5 };
+                  const xpMultiplier = difficultyMultipliers[quest.difficulty || 'D'] || 1;
+                  const adjustedXp = Math.floor(quest.experienceReward * xpMultiplier);
+                  const deletedAt = quest.deletedAt ? new Date(quest.deletedAt) : null;
+                  const expiresAt = deletedAt ? new Date(deletedAt.getTime() + 24 * 60 * 60 * 1000) : null;
+                  const hoursLeft = expiresAt ? Math.max(0, Math.round((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60))) : 0;
+                  return (
+                    <div 
+                      key={quest.id}
+                      className="glassmorphic rounded-xl p-4 hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition neon-border opacity-60"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-grow">
+                          <div className="flex justify-between items-start">
+                            <h3 className="font-medium line-through text-muted-foreground">{quest.title}</h3>
+                            <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border bg-primary/20 border-primary/50 text-primary">
+                                {quest.difficulty || 'D'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 mt-1 flex-wrap">
+                            <span className="text-primary text-xs font-mono whitespace-nowrap">+{adjustedXp} XP</span>
+                            <span className="text-muted-foreground text-xs">{hoursLeft}h left</span>
+                          </div>
+                          <button
+                            className="mt-2 text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5"
+                            onClick={() => handleRestoreMission(quest.id)}
+                          >
+                            <Undo2 className="h-3 w-3" />
+                            Restore
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="glassmorphic rounded-xl p-6 text-center neon-border">
+                  <p className="text-muted-foreground">No archived missions. Deleted missions will appear here for 24 hours.</p>
+                </div>
+              )}
+            </div>
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
       </DndProvider>
 
     </div>

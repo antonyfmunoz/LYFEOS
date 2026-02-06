@@ -149,7 +149,7 @@ const DraggableCategoryCard = ({ id, index, item, moveCategory, navigate }: Drag
           <h3 className="text-lg font-orbitron text-foreground">{item.title}</h3>
         </div>
         <button 
-          className="text-xs font-bold font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+          className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
           onClick={handleButtonClick}
         >
           OPEN

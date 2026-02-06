@@ -488,14 +488,13 @@ export default function AIPage() {
                   }
                 }}
               />
-              <Button 
+              <button 
                 type="submit"
-                size="sm"
                 disabled={!inputText.trim()}
-                className="absolute right-2 bottom-2 h-9 w-9 p-0 rounded-lg bg-primary/50 text-white hover:bg-primary/70 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="absolute right-2 bottom-2 h-8 w-8 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center"
               >
                 <Send className="h-4 w-4" />
-              </Button>
+              </button>
             </div>
             <p className="text-xs text-muted-foreground mt-2 text-center">
               {aiCompanionName} can make mistakes. Consider checking important information.

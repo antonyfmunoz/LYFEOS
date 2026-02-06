@@ -343,7 +343,7 @@ export default function RegisterPage() {
           
           <button 
             type="submit"
-            className="w-full mt-4 text-sm font-bold font-mono px-4 py-2.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-2"
+            className="w-full mt-4 text-sm font-mono px-4 py-2.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-2"
             disabled={isLoading}
           >
             {isLoading ? (

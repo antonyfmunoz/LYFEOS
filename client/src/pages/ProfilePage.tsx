@@ -609,7 +609,7 @@ export default function ProfilePage() {
               <button
                 onClick={handleGenerateAffirmation}
                 disabled={isGeneratingAffirmation}
-                className="text-xs font-bold font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center gap-1.5"
+                className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center gap-1.5"
               >
                 {isGeneratingAffirmation ? (
                   <>
@@ -631,25 +631,23 @@ export default function ProfilePage() {
             <p className="text-sm text-muted-foreground mb-4">
               Generate a personalized character affirmation based on your profile data.
             </p>
-            <Button
-              variant="outline"
-              size="sm"
+            <button
               onClick={handleGenerateAffirmation}
               disabled={isGeneratingAffirmation || !profile}
-              className="hover:bg-primary hover:text-background"
+              className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center gap-1.5"
             >
               {isGeneratingAffirmation ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-3 w-3 animate-spin" />
                   Generating...
                 </>
               ) : (
                 <>
-                  <Sparkles className="h-4 w-4 mr-2" />
+                  <Sparkles className="h-3 w-3" />
                   Generate Affirmation
                 </>
               )}
-            </Button>
+            </button>
             {!profile && (
               <p className="text-xs text-muted-foreground mt-2">
                 Complete onboarding first to enable this feature.
@@ -995,25 +993,12 @@ export default function ProfilePage() {
               <div className="flex items-center gap-2">
                 {isEditing ? (
                   <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={handleCancel}
-                      className="hover:bg-primary hover:text-background"
-                    >
-                      <X className="mr-2 h-4 w-4" />
-                      Cancel
-                    </Button>
-                    <Button 
-                      variant="default" 
-                      size="sm"
-                      onClick={handleSave}
-                      disabled={updateProfileMutation.isPending}
-                      className="hover:bg-primary hover:text-background"
-                    >
-                      <Save className="mr-2 h-4 w-4" />
-                      Save
-                    </Button>
+                    <button onClick={handleCancel} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5">
+                      <X className="h-3 w-3" />Cancel
+                    </button>
+                    <button onClick={handleSave} disabled={updateProfileMutation.isPending} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center gap-1.5">
+                      <Save className="h-3 w-3" />Save
+                    </button>
                   </div>
                 ) : (
                   <button
@@ -1021,7 +1006,7 @@ export default function ProfilePage() {
                       e.stopPropagation();
                       setIsEditing(true);
                     }}
-                    className="text-xs font-bold font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5"
+                    className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5"
                   >
                     <Edit className="h-3 w-3" />
                     Edit Profile
@@ -1156,15 +1141,9 @@ export default function ProfilePage() {
                   Account Settings
                 </h3>
                 {!isEditingAccount && !isChangingPassword && (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setIsEditingAccount(true)}
-                    className="hover:bg-primary hover:text-background"
-                  >
-                    <Edit className="mr-2 h-4 w-4" />
-                    Edit
-                  </Button>
+                  <button onClick={() => setIsEditingAccount(true)} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5">
+                    <Edit className="h-3 w-3" />Edit
+                  </button>
                 )}
               </div>
               
@@ -1201,33 +1180,21 @@ export default function ProfilePage() {
                   </div>
                   
                   <div className="flex gap-2 pt-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
+                    <button onClick={() => {
                         setIsEditingAccount(false);
                         setAccountEmail(accountData?.email || "");
                         setAccountPhone(accountData?.phoneNumber || "");
-                      }}
-                      className="hover:bg-primary hover:text-background"
-                    >
-                      <X className="mr-2 h-4 w-4" />
-                      Cancel
-                    </Button>
-                    <Button 
-                      variant="default" 
-                      size="sm"
-                      onClick={handleSaveAccount}
-                      disabled={updateAccountMutation.isPending}
-                      className="hover:bg-primary hover:text-background"
-                    >
+                      }} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5">
+                      <X className="h-3 w-3" />Cancel
+                    </button>
+                    <button onClick={handleSaveAccount} disabled={updateAccountMutation.isPending} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center gap-1.5">
                       {updateAccountMutation.isPending ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <Loader2 className="h-3 w-3 animate-spin" />
                       ) : (
-                        <Save className="mr-2 h-4 w-4" />
+                        <Save className="h-3 w-3" />
                       )}
                       Save
-                    </Button>
+                    </button>
                   </div>
                 </div>
               ) : isChangingPassword ? (
@@ -1300,34 +1267,22 @@ export default function ProfilePage() {
                   </div>
                   
                   <div className="flex gap-2 pt-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
+                    <button onClick={() => {
                         setIsChangingPassword(false);
                         setCurrentPassword("");
                         setNewPassword("");
                         setConfirmPassword("");
-                      }}
-                      className="hover:bg-primary hover:text-background"
-                    >
-                      <X className="mr-2 h-4 w-4" />
-                      Cancel
-                    </Button>
-                    <Button 
-                      variant="default" 
-                      size="sm"
-                      onClick={handleChangePassword}
-                      disabled={changePasswordMutation.isPending}
-                      className="hover:bg-primary hover:text-background"
-                    >
+                      }} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5">
+                      <X className="h-3 w-3" />Cancel
+                    </button>
+                    <button onClick={handleChangePassword} disabled={changePasswordMutation.isPending} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center gap-1.5">
                       {changePasswordMutation.isPending ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <Loader2 className="h-3 w-3 animate-spin" />
                       ) : (
-                        <Save className="mr-2 h-4 w-4" />
+                        <Save className="h-3 w-3" />
                       )}
                       Change Password
-                    </Button>
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -1354,14 +1309,9 @@ export default function ProfilePage() {
                       <div className="text-xs text-muted-foreground">Password</div>
                       <div className="text-sm">••••••••</div>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => setIsChangingPassword(true)}
-                      className="hover:bg-primary/10 hover:text-primary"
-                    >
+                    <button onClick={() => setIsChangingPassword(true)} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">
                       Change
-                    </Button>
+                    </button>
                   </div>
                 </div>
               )}

@@ -25,7 +25,7 @@ import {
   widgetStates, type WidgetStates
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, isNull, isNotNull, gt, lt } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -72,6 +72,9 @@ export interface IStorage {
   updateQuest(id: number, quest: Partial<InsertQuest>): Promise<Quest>;
   toggleQuestCompletion(id: number): Promise<{ quest: Quest; statsUpdated: boolean; levelUp: boolean }>;
   deleteQuest(id: number): Promise<void>;
+  getArchivedQuests(userId: number): Promise<Quest[]>;
+  restoreQuest(id: number): Promise<Quest>;
+  purgeExpiredArchivedQuests(): Promise<void>;
   
   // AI Message methods
   getMessages(userId: number): Promise<AIMessage[]>;
@@ -582,7 +585,7 @@ export class DatabaseStorage implements IStorage {
   
   // Quest methods
   async getQuests(userId: number): Promise<Quest[]> {
-    return db.select().from(quests).where(eq(quests.userId, userId));
+    return db.select().from(quests).where(and(eq(quests.userId, userId), isNull(quests.deletedAt)));
   }
   
   async getQuest(id: number): Promise<Quest | undefined> {
@@ -757,7 +760,33 @@ export class DatabaseStorage implements IStorage {
   }
   
   async deleteQuest(id: number): Promise<void> {
-    await db.delete(quests).where(eq(quests.id, id));
+    await db.update(quests).set({ deletedAt: new Date() }).where(eq(quests.id, id));
+  }
+
+  async getArchivedQuests(userId: number): Promise<Quest[]> {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    return db.select().from(quests).where(
+      and(
+        eq(quests.userId, userId),
+        isNotNull(quests.deletedAt),
+        gt(quests.deletedAt, twentyFourHoursAgo)
+      )
+    );
+  }
+
+  async restoreQuest(id: number): Promise<Quest> {
+    const [restored] = await db.update(quests).set({ deletedAt: null }).where(eq(quests.id, id)).returning();
+    return restored;
+  }
+
+  async purgeExpiredArchivedQuests(): Promise<void> {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    await db.delete(quests).where(
+      and(
+        isNotNull(quests.deletedAt),
+        lt(quests.deletedAt, twentyFourHoursAgo)
+      )
+    );
   }
   
   // AI Message methods

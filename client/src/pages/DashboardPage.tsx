@@ -873,7 +873,8 @@ export default function DashboardPage() {
                 <select 
                   value={timezone}
                   onChange={(e) => setTimezone(e.target.value)}
-                  className="ml-3 bg-card border border-primary/30 rounded text-xs p-1"
+                  className="ml-3 font-mono text-xs px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors appearance-none cursor-pointer"
+                  style={{ backgroundImage: 'none' }}
                 >
                   {[
                     { label: 'EST', value: 'America/New_York' },
@@ -886,7 +887,7 @@ export default function DashboardPage() {
                     { label: 'AEST', value: 'Australia/Sydney' },
                     { label: 'NZST', value: 'Pacific/Auckland' }
                   ].map(tz => (
-                    <option key={tz.value} value={tz.value}>
+                    <option key={tz.value} value={tz.value} className="bg-background text-foreground">
                       {tz.label}
                     </option>
                   ))}
@@ -894,7 +895,7 @@ export default function DashboardPage() {
                 
                 <button 
                   onClick={() => setTimeFormat(prev => prev === '12h' ? '24h' : '12h')}
-                  className="text-xs font-bold font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                  className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
                 >
                   {timeFormat === '12h' ? '24h' : '12h'}
                 </button>

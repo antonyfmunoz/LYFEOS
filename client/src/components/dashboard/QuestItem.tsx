@@ -120,7 +120,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
             </h3>
             <div className="flex items-center gap-1 flex-shrink-0 ml-2">
               {difficulty && (
-                <span className={`text-[10px] font-bold font-mono px-1.5 py-0.5 rounded border ${difficultyStyle} ${completed ? "opacity-50" : ""}`}>
+                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${difficultyStyle} ${completed ? "opacity-50" : ""}`}>
                   {difficulty}
                 </span>
               )}
@@ -218,7 +218,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
               {!hasBeenStarted && onStart && (
                 <button
                   disabled={timerBlocked}
-                  className="text-xs font-bold font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40"
+                  className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40"
                   onClick={(e) => {
                     e.stopPropagation();
                     onStart();
@@ -230,7 +230,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
               {hasBeenStarted && !isTimerActive && onResume && (
                 <button
                   disabled={timerBlocked}
-                  className="text-xs font-bold font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40"
+                  className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40"
                   onClick={(e) => {
                     e.stopPropagation();
                     onResume();
@@ -241,7 +241,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
               )}
               {hasBeenStarted && !isTimerActive && onDone && (
                 <button
-                  className="text-xs font-bold font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                  className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
                     onDone();
@@ -252,7 +252,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
               )}
               {(isTimerActive || (hasBeenStarted && !completed)) && onRestart && (
                 <button
-                  className="text-xs font-bold font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                  className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
                     onRestart(quest.id);
@@ -265,7 +265,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
           )}
           {completed && onUndo && (
             <button
-              className="mt-2 text-xs font-bold font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5"
+              className="mt-2 text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5"
               onClick={(e) => {
                 e.stopPropagation();
                 onUndo();

@@ -59,6 +59,7 @@ export interface Quest {
   notificationTime?: string | null;
   notifications?: QuestNotification[];
   difficulty?: string;
+  deletedAt?: string | null;
 }
 
 export interface AIMessage {
