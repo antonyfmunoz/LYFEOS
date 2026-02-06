@@ -886,18 +886,16 @@ export default function QuestsPage() {
                               {mission.description}
                             </p>
                           )}
-                          <Button
-                            variant="outline"
-                            size="sm"
+                          <button
                             disabled={!!activeTimerQuest}
-                            className="mt-2 border-primary/50 text-primary hover:bg-primary/10 hover:text-primary gap-1.5 disabled:opacity-40"
+                            className="mt-2 text-xs font-bold font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40"
                             onClick={(e) => {
                               e.stopPropagation();
                               navigate('/onboarding');
                             }}
                           >
                             Start
-                          </Button>
+                          </button>
                         </div>
                       </div>
                     </div>

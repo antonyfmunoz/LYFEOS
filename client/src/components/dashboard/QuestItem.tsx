@@ -216,74 +216,64 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
           {!completed && (
             <div className="flex items-center gap-2 mt-2">
               {!hasBeenStarted && onStart && (
-                <Button
-                  variant="outline"
-                  size="sm"
+                <button
                   disabled={timerBlocked}
-                  className="border-primary/50 text-primary hover:bg-primary/10 hover:text-primary disabled:opacity-40"
+                  className="text-xs font-bold font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40"
                   onClick={(e) => {
                     e.stopPropagation();
                     onStart();
                   }}
                 >
                   Start
-                </Button>
+                </button>
               )}
               {hasBeenStarted && !isTimerActive && onResume && (
-                <Button
-                  variant="outline"
-                  size="sm"
+                <button
                   disabled={timerBlocked}
-                  className="border-primary/50 text-primary hover:bg-primary/10 hover:text-primary disabled:opacity-40"
+                  className="text-xs font-bold font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40"
                   onClick={(e) => {
                     e.stopPropagation();
                     onResume();
                   }}
                 >
                   Resume
-                </Button>
+                </button>
               )}
               {hasBeenStarted && !isTimerActive && onDone && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-primary/50 text-primary hover:bg-primary/10 hover:text-primary"
+                <button
+                  className="text-xs font-bold font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
                     onDone();
                   }}
                 >
                   Done
-                </Button>
+                </button>
               )}
               {(isTimerActive || (hasBeenStarted && !completed)) && onRestart && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-primary/50 text-primary hover:bg-primary/10 hover:text-primary"
+                <button
+                  className="text-xs font-bold font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
                     onRestart(quest.id);
                   }}
                 >
                   Restart
-                </Button>
+                </button>
               )}
             </div>
           )}
           {completed && onUndo && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-2 border-primary/50 text-primary hover:bg-primary/10 hover:text-primary gap-1.5"
+            <button
+              className="mt-2 text-xs font-bold font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5"
               onClick={(e) => {
                 e.stopPropagation();
                 onUndo();
               }}
             >
-              <Undo2 className="h-3.5 w-3.5" />
+              <Undo2 className="h-3 w-3" />
               Undo
-            </Button>
+            </button>
           )}
         </div>
       </div>

@@ -606,25 +606,23 @@ export default function ProfilePage() {
               </p>
             </div>
             <div className="flex justify-end">
-              <Button
-                variant="outline"
-                size="sm"
+              <button
                 onClick={handleGenerateAffirmation}
                 disabled={isGeneratingAffirmation}
-                className="hover:bg-primary hover:text-background"
+                className="text-xs font-bold font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center gap-1.5"
               >
                 {isGeneratingAffirmation ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <Loader2 className="h-3 w-3 animate-spin" />
                     Regenerating...
                   </>
                 ) : (
                   <>
-                    <RefreshCw className="h-4 w-4 mr-2" />
+                    <RefreshCw className="h-3 w-3" />
                     Regenerate
                   </>
                 )}
-              </Button>
+              </button>
             </div>
           </>
         ) : (
@@ -1018,18 +1016,16 @@ export default function ProfilePage() {
                     </Button>
                   </div>
                 ) : (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       setIsEditing(true);
                     }}
-                    className="hover:bg-primary hover:text-background"
+                    className="text-xs font-bold font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5"
                   >
-                    <Edit className="mr-2 h-4 w-4" />
+                    <Edit className="h-3 w-3" />
                     Edit Profile
-                  </Button>
+                  </button>
                 )}
                 <div className="text-primary">
                   {isProfileOpen ? <ChevronDown className="h-5 w-5 rotate-180 transition-transform" /> : <ChevronDown className="h-5 w-5 transition-transform" />}

@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import { Pause, Play, Square } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 interface MissionTimerProps {
   timerStartedAt: number | null;
@@ -75,22 +74,18 @@ export default function MissionTimer({ timerStartedAt, timerPausedElapsed, timer
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-9 w-9 border-primary/50 text-primary hover:bg-primary/10"
+          <button
+            className="h-8 w-8 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center justify-center"
             onClick={onPauseResume}
           >
-            {timerIsPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-9 w-9 border-destructive/50 text-destructive hover:bg-destructive/10"
+            {timerIsPaused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+          </button>
+          <button
+            className="h-8 w-8 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center justify-center"
             onClick={handleEnd}
           >
-            <Square className="h-4 w-4" />
-          </Button>
+            <Square className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
     </div>

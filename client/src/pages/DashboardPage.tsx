@@ -894,7 +894,7 @@ export default function DashboardPage() {
                 
                 <button 
                   onClick={() => setTimeFormat(prev => prev === '12h' ? '24h' : '12h')}
-                  className="bg-primary/10 hover:bg-primary hover:text-background rounded px-2 py-1 text-xs"
+                  className="text-xs font-bold font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
                 >
                   {timeFormat === '12h' ? '24h' : '12h'}
                 </button>

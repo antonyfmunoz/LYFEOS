@@ -4,7 +4,6 @@ import { useAuth } from "@/lib/authContext";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { Input } from "@/components/ui/input";
 import { Loader2, Mail, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useTheme } from "@/lib/themeContext";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -342,21 +341,20 @@ export default function RegisterPage() {
             </div>
           )}
           
-          <Button 
+          <button 
             type="submit"
-            className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90 font-medium py-2 transition-all hover:shadow-glow"
+            className="w-full mt-4 text-sm font-bold font-mono px-4 py-2.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-2"
             disabled={isLoading}
-            variant="default"
           >
             {isLoading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
                 Initializing...
               </>
             ) : (
               "Create Account"
             )}
-          </Button>
+          </button>
         </form>
         
         <div className="mt-6 text-center">
