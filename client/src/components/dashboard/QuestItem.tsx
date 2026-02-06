@@ -13,15 +13,7 @@ interface QuestItemProps {
 export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestItemProps) {
   const { title, description, completed, energyCost, attentionCost, timeCost, experienceReward, startDate, startTime, endDate, endTime, notificationEnabled, difficulty } = quest;
 
-  const difficultyStyle = (rank: string) => {
-    switch (rank) {
-      case "S": return "bg-red-500/20 border-red-400/50 text-red-300";
-      case "A": return "bg-orange-500/20 border-orange-400/50 text-orange-300";
-      case "B": return "bg-yellow-500/20 border-yellow-400/50 text-yellow-300";
-      case "C": return "bg-blue-500/20 border-blue-400/50 text-blue-300";
-      default: return "bg-gray-500/20 border-gray-400/50 text-gray-300";
-    }
-  };
+  const difficultyStyle = "bg-primary/20 border-primary/50 text-primary";
 
   const formatDate = (dateStr: string) => {
     const [year, month, day] = dateStr.split('-').map(Number);
@@ -57,7 +49,7 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit }: QuestIt
             </h3>
             <div className="flex items-center gap-1 flex-shrink-0 ml-2">
               {difficulty && (
-                <span className={`text-[10px] font-bold font-mono px-1.5 py-0.5 rounded border ${difficultyStyle(difficulty)} ${completed ? "opacity-50" : ""}`}>
+                <span className={`text-[10px] font-bold font-mono px-1.5 py-0.5 rounded border ${difficultyStyle} ${completed ? "opacity-50" : ""}`}>
                   {difficulty}
                 </span>
               )}

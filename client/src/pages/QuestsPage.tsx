@@ -262,11 +262,7 @@ export default function QuestsPage() {
                       onClick={() => setCreateFormData(prev => ({ ...prev, difficulty: rank }))}
                       className={`flex-1 py-2 rounded-lg text-sm font-bold font-mono border transition-all ${
                         createFormData.difficulty === rank
-                          ? rank === "S" ? "bg-red-500/30 border-red-400 text-red-300 shadow-[0_0_8px_rgba(239,68,68,0.4)]"
-                          : rank === "A" ? "bg-orange-500/30 border-orange-400 text-orange-300 shadow-[0_0_8px_rgba(249,115,22,0.4)]"
-                          : rank === "B" ? "bg-yellow-500/30 border-yellow-400 text-yellow-300 shadow-[0_0_8px_rgba(234,179,8,0.4)]"
-                          : rank === "C" ? "bg-blue-500/30 border-blue-400 text-blue-300 shadow-[0_0_8px_rgba(59,130,246,0.4)]"
-                          : "bg-gray-500/30 border-gray-400 text-gray-300 shadow-[0_0_8px_rgba(156,163,175,0.4)]"
+                          ? "bg-primary/20 border-primary text-primary shadow-[0_0_8px_hsl(var(--primary)/0.4)]"
                           : "bg-background/30 border-primary/20 text-muted-foreground hover:border-primary/40"
                       }`}
                     >
@@ -446,11 +442,7 @@ export default function QuestsPage() {
                     onClick={() => setEditFormData(prev => ({ ...prev, difficulty: rank }))}
                     className={`flex-1 py-2 rounded-lg text-sm font-bold font-mono border transition-all ${
                       editFormData.difficulty === rank
-                        ? rank === "S" ? "bg-red-500/30 border-red-400 text-red-300 shadow-[0_0_8px_rgba(239,68,68,0.4)]"
-                        : rank === "A" ? "bg-orange-500/30 border-orange-400 text-orange-300 shadow-[0_0_8px_rgba(249,115,22,0.4)]"
-                        : rank === "B" ? "bg-yellow-500/30 border-yellow-400 text-yellow-300 shadow-[0_0_8px_rgba(234,179,8,0.4)]"
-                        : rank === "C" ? "bg-blue-500/30 border-blue-400 text-blue-300 shadow-[0_0_8px_rgba(59,130,246,0.4)]"
-                        : "bg-gray-500/30 border-gray-400 text-gray-300 shadow-[0_0_8px_rgba(156,163,175,0.4)]"
+                        ? "bg-primary/20 border-primary text-primary shadow-[0_0_8px_hsl(var(--primary)/0.4)]"
                         : "bg-background/30 border-primary/20 text-muted-foreground hover:border-primary/40"
                     }`}
                   >
