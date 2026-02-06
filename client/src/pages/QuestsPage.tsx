@@ -233,7 +233,7 @@ export default function QuestsPage() {
   };
 
   return (
-    <>
+    <div className="pb-20">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-orbitron mb-1">Missions</h1>
@@ -884,6 +884,6 @@ export default function QuestsPage() {
         </Collapsible>
       )}
 
-    </>
+    </div>
   );
 }
