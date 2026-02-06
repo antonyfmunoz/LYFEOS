@@ -141,6 +141,7 @@ export default function KnowledgeArchivePage() {
 
             const matchingEntries = source.entries.filter(
               e => (e.researchNote?.includes(q)) ||
+                   (e.revisionNote?.includes(q)) ||
                    (e.executionNote?.includes(q))
             );
             if (matchingEntries.length > 0) return { ...source, entries: matchingEntries };
@@ -262,6 +263,7 @@ export default function KnowledgeArchivePage() {
                                 const entryKey = `${sourceKey}::${entry.date}::${idx}`;
                                 const noteTypes = [
                                   { key: 'research', label: 'Research Note', icon: Search, content: entry.researchNote },
+                                  { key: 'revision', label: 'Revision & Summary Note', icon: FileText, content: entry.revisionNote },
                                   { key: 'execution', label: 'Execution Note', icon: Play, content: entry.executionNote },
                                 ].filter(n => n.content);
 
