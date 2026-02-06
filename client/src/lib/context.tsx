@@ -286,7 +286,7 @@ interface LYFEOSContextType {
   startMissionTimer: (quest: Quest) => void;
   resumeMissionTimer: (quest: Quest) => void;
   endMissionTimer: (elapsedSeconds: number) => void;
-  restartMissionTimer: () => void;
+  restartMissionTimer: (questId?: string) => void;
   pauseResumeTimer: () => void;
 }
 
@@ -2040,18 +2040,20 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     setTimerIsPaused(false);
   };
 
-  const restartMissionTimer = () => {
-    if (!activeTimerQuest) return;
-    const questId = activeTimerQuest.id;
+  const restartMissionTimer = (questId?: string) => {
+    const id = questId ?? activeTimerQuest?.id;
+    if (!id) return;
     setMissionElapsedTimes(prev => {
       const next = { ...prev };
-      delete next[questId];
+      delete next[id];
       return next;
     });
-    setActiveTimerQuest(null);
-    setTimerStartedAt(null);
-    setTimerPausedElapsed(0);
-    setTimerIsPaused(false);
+    if (activeTimerQuest?.id === id) {
+      setActiveTimerQuest(null);
+      setTimerStartedAt(null);
+      setTimerPausedElapsed(0);
+      setTimerIsPaused(false);
+    }
   };
 
   const pauseResumeTimer = () => {

@@ -13,7 +13,7 @@ interface QuestItemProps {
   onResume?: () => void;
   onDone?: () => void;
   onUndo?: () => void;
-  onRestart?: () => void;
+  onRestart?: (questId: string) => void;
   elapsedSeconds?: number;
   isTimerActive?: boolean;
   timerBlocked?: boolean;
@@ -216,7 +216,7 @@ export default function QuestItem({ quest, onToggle, onDelete, onEdit, onStart, 
                   className="h-8 w-8 border-primary/50 text-primary hover:bg-primary/10"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onRestart();
+                    onRestart(quest.id);
                   }}
                   title="Cancel timer"
                 >
