@@ -15,9 +15,9 @@ export default function AttentionDetailPage() {
   const totalMax = stats.attentionTokens.max;
   const categoryBreakdown = computedStats?.categoryBreakdown ?? {};
   
-  const totalUsed = totalMax - unallocatedAttention;
-  const missionsPct = totalMax > 0 ? Math.round((totalAttentionCost / totalMax) * 100) : 0;
-  const unallocatedPct = totalMax > 0 ? Math.round((unallocatedAttention / totalMax) * 100) : 0;
+  const allocationTotal = totalAttentionCost + unallocatedAttention;
+  const missionsPct = allocationTotal > 0 ? Math.round((totalAttentionCost / allocationTotal) * 100) : 0;
+  const unallocatedPct = allocationTotal > 0 ? Math.round((unallocatedAttention / allocationTotal) * 100) : 0;
   
   const categoryEntries = Object.entries(categoryBreakdown as Record<string, { total: number; completed: number }>);
   
