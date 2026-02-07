@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
-import { Archive, Calendar, ChevronDown, ChevronRight, ArrowLeft, Sun, Moon, Brain, Heart, Zap, BookOpen, Target, Lightbulb, CheckCircle, AlertCircle, GraduationCap, Search } from "lucide-react";
+import { Archive, Calendar, ChevronDown, ChevronRight, ArrowLeft, BookOpen, Target, Brain, CheckCircle, AlertCircle, GraduationCap, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { getLocalDateString } from "@/lib/utils";
@@ -140,30 +140,8 @@ function LogCard({ log }: { log: DailyLog }) {
       <CollapsibleContent>
         <div className="ml-6 mt-2 p-4 glassmorphic rounded-xl border border-primary/10 space-y-4 bg-background/30">
           <LogSection
-            icon={Zap}
-            title="Daily Energy Log"
-            fields={[
-              { label: 'Wake Time', value: formatTime12Hour(log.wakeTime) === '--:--' ? null : formatTime12Hour(log.wakeTime) },
-              { label: 'Sleep Time', value: formatTime12Hour(log.sleepTime) === '--:--' ? null : formatTime12Hour(log.sleepTime) },
-              { label: 'Mental State', value: log.mentalState != null ? `${log.mentalState}/10` : null },
-              { label: 'Physical State', value: log.physicalState != null ? `${log.physicalState}/10` : null },
-              { label: 'Emotional State', value: log.emotionalState != null ? `${log.emotionalState}/10` : null },
-            ]}
-          />
-
-          <LogSection
-            icon={Target}
-            title="Daily Intentions"
-            fields={[
-              { label: 'Gratitude', value: log.gratitude },
-              { label: "Tomorrow's Goals", value: log.tomorrowGoals },
-              { label: 'Annual Goals', value: log.annualGoals },
-            ]}
-          />
-
-          <LogSection
             icon={BookOpen}
-            title="Daily Data & Thoughts"
+            title="Daily Data Log"
             fields={[
               { label: 'Thoughts', value: log.thoughts },
               { label: 'Information Consumed', value: log.contentConsumed },
@@ -185,12 +163,34 @@ function LogCard({ log }: { log: DailyLog }) {
           />
 
           <LogSection
-            icon={Lightbulb}
-            title="Daily Reflection"
+            icon={Calendar}
+            title="Daily Reflection Log"
             fields={[
               { label: 'What Went Well', value: log.wentWell, labelIcon: <CheckCircle className="h-3 w-3 text-primary" /> },
               { label: 'Could Be Better', value: log.couldBeBetter, labelIcon: <AlertCircle className="h-3 w-3 text-primary" /> },
               { label: 'What I Learned', value: log.learned, labelIcon: <GraduationCap className="h-3 w-3 text-primary" /> },
+            ]}
+          />
+
+          <LogSection
+            icon={Target}
+            title="Daily Intention Log"
+            fields={[
+              { label: 'Gratitude', value: log.gratitude },
+              { label: "Tomorrow's Goals", value: log.tomorrowGoals },
+              { label: 'Annual Goals', value: log.annualGoals },
+            ]}
+          />
+
+          <LogSection
+            icon={Brain}
+            title="Daily Energy Log"
+            fields={[
+              { label: 'Wake Time', value: formatTime12Hour(log.wakeTime) === '--:--' ? null : formatTime12Hour(log.wakeTime) },
+              { label: 'Sleep Time', value: formatTime12Hour(log.sleepTime) === '--:--' ? null : formatTime12Hour(log.sleepTime) },
+              { label: 'Mental State', value: log.mentalState != null ? `${log.mentalState}/10` : null },
+              { label: 'Physical State', value: log.physicalState != null ? `${log.physicalState}/10` : null },
+              { label: 'Emotional State', value: log.emotionalState != null ? `${log.emotionalState}/10` : null },
             ]}
           />
         </div>
