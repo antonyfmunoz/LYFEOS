@@ -407,6 +407,13 @@ export default function ProfilePage() {
       infoDescription: "Your personal bio and background story. This is your player identity card — edit it to define who you are in the system."
     },
     {
+      id: 'stats',
+      title: "Player Stats",
+      icon: <BarChart4 className="h-5 w-5 text-primary" />,
+      defaultOpen: true,
+      infoDescription: "Overview of your current resource levels — XP, energy, health, time tokens, and attention tokens. These stats reflect your daily activity and progress."
+    },
+    {
       id: 'player-affirmation',
       title: "Player Affirmation",
       icon: <Terminal className="h-5 w-5 text-primary" />,
@@ -748,6 +755,8 @@ export default function ProfilePage() {
   // Render widget content based on id
   const renderWidgetContent = (widgetId: string) => {
     switch (widgetId) {
+      case 'stats':
+        return <CompactStatsWidget stats={stats} />;
       case 'player-record':
         return renderPlayerRecord();
       case 'player-affirmation':
@@ -1381,14 +1390,6 @@ export default function ProfilePage() {
               <></>
             )}
             
-            {/* Player Stats in Profile Widget */}
-            <div className="mt-6 pt-6 border-t border-primary/20">
-              <div className="flex items-center gap-2 mb-4">
-                <BarChart4 className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-orbitron text-foreground">Player Stats</h2>
-              </div>
-              <CompactStatsWidget stats={stats} />
-            </div>
             
             </div>
             )}

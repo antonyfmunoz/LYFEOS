@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
-import { FileText, Clock, Tag, Calendar, Award, GripVertical, CheckSquare, BookOpen, Repeat, GraduationCap, Target, Info } from "lucide-react";
+import { FileText, Clock, Tag, Calendar, Award, GripVertical, CheckSquare, BookOpen, GraduationCap, Target, Info } from "lucide-react";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -118,8 +118,6 @@ const DraggableCategoryCard = ({ id, index, item, moveCategory, navigate }: Drag
       navigate('/journal-log');
     } else if (item.id === "missions") {
       navigate('/mission-log');
-    } else if (item.id === "rituals") {
-      navigate('/rituals');
     } else if (item.id === "knowledge") {
       navigate('/knowledge-vault');
     } else if (item.id === "goals") {
@@ -192,12 +190,6 @@ export default function ChronilogPage() {
       title: "Journal Log", 
       icon: <BookOpen className="h-5 w-5 text-primary" />,
       description: "Your daily reflections, thoughts, and personal entries. Review past journal logs to track your growth over time."
-    },
-    { 
-      id: "rituals", 
-      title: "Rituals", 
-      icon: <Repeat className="h-5 w-5 text-primary" />,
-      description: "Recurring habits and routines that build consistency. Manage your daily, weekly, and monthly rituals here."
     },
     { 
       id: "knowledge", 
