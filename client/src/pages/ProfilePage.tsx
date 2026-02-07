@@ -1249,7 +1249,7 @@ export default function ProfilePage() {
             >
               <div className="flex items-center">
                 <User className="mr-2 h-5 w-5 text-primary" />
-                <h2 className="text-lg font-orbitron text-foreground">Profile</h2>
+                <h2 className="text-lg font-orbitron text-foreground">Player Profile</h2>
               </div>
               <div className="flex items-center gap-2">
                 {isEditing ? (
