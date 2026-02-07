@@ -12,7 +12,7 @@ interface VoiceCommandResponse {
 }
 
 export default function VoiceControlButton() {
-  const { activeChatSessionId, chatSessions } = useLYFEOS();
+  const { activeChatSessionId, chatSessions, aiCompanionName } = useLYFEOS();
   const { executeToolActions } = useNovaActions();
 
   const [showOverlay, setShowOverlay] = useState(false);
@@ -114,7 +114,7 @@ export default function VoiceControlButton() {
                 {isProcessing ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />
-                    <span className="text-xs font-mono text-primary">NOVA thinking...</span>
+                    <span className="text-xs font-mono text-primary">{aiCompanionName || 'NOVA'} thinking...</span>
                   </>
                 ) : isListening ? (
                   <>
@@ -122,7 +122,7 @@ export default function VoiceControlButton() {
                     <span className="text-xs font-mono text-primary">Listening...</span>
                   </>
                 ) : (
-                  <span className="text-xs font-mono text-muted-foreground">NOVA Voice</span>
+                  <span className="text-xs font-mono text-muted-foreground">{aiCompanionName || 'NOVA'} Voice</span>
                 )}
               </div>
               <button

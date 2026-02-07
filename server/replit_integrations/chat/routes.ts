@@ -120,7 +120,7 @@ ${terminatedMissions.slice(0, 5).map(m => `- [ID:${m.id}] "${m.title}"`).join('\
 You can take actions for the user using tools. When the user asks you to do something (create, delete, complete, update missions, etc.), use the appropriate tool. After performing an action, confirm what you did clearly.
 
 When creating missions, use sensible defaults:
-- category: "general" unless specified
+- category: ALWAYS choose the most fitting category from: 'work', 'health', 'fitness', 'finance', 'learning', 'creative', 'social', 'personal', 'mindset', 'career', 'nutrition', 'recovery', 'planning', 'spiritual', 'household'. Never use 'general'. Default to 'personal' if unclear.
 - difficulty: "D" (easiest) unless specified. Ranks are S, A, B, C, D.
 - energyCost: 1, attentionCost: 0, timeCost: 0 unless specified
 - experienceReward: calculate based on difficulty (D=10, C=25, B=50, A=100, S=200)
@@ -171,7 +171,7 @@ const tools: Anthropic.Messages.Tool[] = [
       properties: {
         title: { type: "string", description: "The mission title" },
         description: { type: "string", description: "A brief description of the mission" },
-        category: { type: "string", description: "Category: 'general', 'setup', 'rituals', 'life pillars', 'todo'", default: "general" },
+        category: { type: "string", description: "Category - ALWAYS choose the most fitting one: 'work', 'health', 'fitness', 'finance', 'learning', 'creative', 'social', 'personal', 'mindset', 'career', 'nutrition', 'recovery', 'planning', 'spiritual', 'household'. Never use 'general'." },
         difficulty: { type: "string", description: "Difficulty rank: 'S', 'A', 'B', 'C', 'D' (D is easiest)", default: "D" },
         startDate: { type: "string", description: "Start date in YYYY-MM-DD format" },
         endDate: { type: "string", description: "End date in YYYY-MM-DD format" },
@@ -181,7 +181,7 @@ const tools: Anthropic.Messages.Tool[] = [
         timeCost: { type: "number", description: "Time cost (default 0)", default: 0 },
         experienceReward: { type: "number", description: "XP reward (default based on difficulty)" }
       },
-      required: ["title", "description"]
+      required: ["title", "description", "category"]
     }
   },
   {
@@ -402,7 +402,7 @@ async function executeTool(toolName: string, input: any, userId: number): Promis
         const quest = await storage.getQuest(input.mission_id);
         if (!quest || quest.userId !== userId) return JSON.stringify({ error: "Mission not found or access denied" });
         await storage.deleteQuest(input.mission_id);
-        return JSON.stringify({ success: true, message: `Mission "${quest.title}" has been terminated (moved to Terminated). It can be restored within 24 hours.` });
+        return JSON.stringify({ success: true, action: "terminate_mission", message: `Mission "${quest.title}" has been terminated (moved to Terminated). It can be restored within 24 hours.` });
       }
 
       case "complete_mission": {
@@ -411,6 +411,7 @@ async function executeTool(toolName: string, input: any, userId: number): Promis
         const result = await storage.toggleQuestCompletion(input.mission_id);
         return JSON.stringify({ 
           success: true, 
+          action: "complete_mission",
           message: `Mission "${quest.title}" has been completed! +${quest.experienceReward} XP awarded.`,
           levelUp: result.levelUp,
           xpAwarded: quest.experienceReward
@@ -428,7 +429,7 @@ async function executeTool(toolName: string, input: any, userId: number): Promis
           userId,
           title: input.title,
           description: input.description || "",
-          category: input.category || "general",
+          category: input.category || "personal",
           difficulty,
           energyCost: input.energyCost ?? 1,
           attentionCost: input.attentionCost ?? 0,
@@ -439,7 +440,7 @@ async function executeTool(toolName: string, input: any, userId: number): Promis
           dueDate: input.dueDate || null,
           completed: false,
         });
-        return JSON.stringify({ success: true, message: `Mission "${quest.title}" created with ${xpReward} XP reward (Difficulty: ${difficulty}).`, missionId: quest.id });
+        return JSON.stringify({ success: true, action: "create_mission", message: `Mission "${quest.title}" created with ${xpReward} XP reward (Difficulty: ${difficulty}).`, missionId: quest.id });
       }
 
       case "update_mission": {
@@ -460,14 +461,14 @@ async function executeTool(toolName: string, input: any, userId: number): Promis
         if (input.experienceReward !== undefined) updateData.experienceReward = input.experienceReward;
         
         const updated = await storage.updateQuest(input.mission_id, updateData);
-        return JSON.stringify({ success: true, message: `Mission "${updated.title}" has been updated.` });
+        return JSON.stringify({ success: true, action: "update_mission", message: `Mission "${updated.title}" has been updated.` });
       }
 
       case "restore_mission": {
         const quest = await storage.getQuest(input.mission_id);
         if (!quest || quest.userId !== userId) return JSON.stringify({ error: "Mission not found or access denied" });
         const restored = await storage.restoreQuest(input.mission_id);
-        return JSON.stringify({ success: true, message: `Mission "${restored.title}" has been restored from Terminated.` });
+        return JSON.stringify({ success: true, action: "restore_mission", message: `Mission "${restored.title}" has been restored from Terminated.` });
       }
 
       case "search_missions": {
@@ -499,7 +500,7 @@ async function executeTool(toolName: string, input: any, userId: number): Promis
         const { ...profileUpdates } = input;
         await storage.updateUserProfile(userId, profileUpdates);
         const fields = Object.keys(profileUpdates).join(", ");
-        return JSON.stringify({ success: true, message: `Profile updated: ${fields}` });
+        return JSON.stringify({ success: true, action: "update_profile", message: `Profile updated: ${fields}` });
       }
 
       case "create_calendar_event": {
@@ -512,7 +513,7 @@ async function executeTool(toolName: string, input: any, userId: number): Promis
           duration: input.duration,
           category: input.category || "personal",
         });
-        return JSON.stringify({ success: true, message: `Calendar event "${event.title}" created for ${input.date} at ${input.startTime}.` });
+        return JSON.stringify({ success: true, action: "create_calendar_event", message: `Calendar event "${event.title}" created for ${input.date} at ${input.startTime}.` });
       }
 
       case "toggle_widget": {

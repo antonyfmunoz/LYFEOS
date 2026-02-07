@@ -29,6 +29,7 @@ export function useNovaActions() {
     timerIsPaused,
     timerStartedAt,
     timerPausedElapsed,
+    refetchQuests,
   } = useLYFEOS();
 
   const executeToolAction = useCallback((toolAction: NovaToolAction) => {
@@ -90,11 +91,7 @@ export function useNovaActions() {
       }
 
       case 'update_daily_log': {
-        queryClient.invalidateQueries({ queryKey: ['/api/users'] });
-        queryClient.invalidateQueries({ predicate: (query) => {
-          const key = query.queryKey;
-          return Array.isArray(key) && key.some(k => typeof k === 'string' && k.includes('daily-log'));
-        }});
+        window.dispatchEvent(new CustomEvent("nova-daily-log-updated"));
         break;
       }
 
@@ -154,6 +151,7 @@ export function useNovaActions() {
       executeToolAction(ta);
     }
     if (toolActions.some(ta => ta.action === 'complete_mission' || ta.action === 'create_mission' || ta.action === 'terminate_mission' || ta.action === 'restore_mission' || ta.action === 'update_mission')) {
+      refetchQuests();
       queryClient.invalidateQueries({ queryKey: ["/api/quests"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
@@ -166,7 +164,7 @@ export function useNovaActions() {
     if (toolActions.some(ta => ta.action === 'update_profile' || ta.action === 'generate_affirmation')) {
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
     }
-  }, [executeToolAction]);
+  }, [executeToolAction, refetchQuests]);
 
   return { executeToolAction, executeToolActions };
 }

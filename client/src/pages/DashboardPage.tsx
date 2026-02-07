@@ -443,6 +443,20 @@ export default function DashboardPage() {
     }
   }, [dailyLogData, todayDateStr, isDailyLogSuccess, isLoadingDailyLog, energyLog.lastPopulatedFingerprint, updateEnergyLog, updateIntentionLog, updateDataLog, updateReflectionLogState]);
   
+  useEffect(() => {
+    const handler = () => {
+      updateEnergyLog({ lastPopulatedFingerprint: '' });
+      updateIntentionLog({ lastPopulatedFingerprint: '' });
+      updateDataLog({ lastPopulatedFingerprint: '' });
+      updateReflectionLogState({ lastPopulatedFingerprint: '' });
+      loadedRecordFingerprintRef.current = null;
+      isDirtyRef.current = false;
+      refetchDailyLog();
+    };
+    window.addEventListener("nova-daily-log-updated", handler);
+    return () => window.removeEventListener("nova-daily-log-updated", handler);
+  }, [refetchDailyLog, updateEnergyLog, updateIntentionLog, updateDataLog, updateReflectionLogState]);
+
   // Track previous auth state to detect login events
   // Initialize with current auth state to avoid false "login" detection on component remount
   const wasAuthenticatedRef = useRef<boolean | null>(null);
