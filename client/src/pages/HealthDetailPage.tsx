@@ -46,7 +46,7 @@ export default function HealthDetailPage() {
   return (
     <div className="mx-auto max-w-4xl py-8">
       <div className="mb-6">
-        <Link href="/profile" className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors rounded-md px-2 py-1">
+        <Link href="/profile" className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors rounded-md px-3 py-2">
           <ArrowLeft className="h-4 w-4" />
           <span>Back to Player Stats</span>
         </Link>

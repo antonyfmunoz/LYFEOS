@@ -72,10 +72,9 @@ export default function MissionDetailPage() {
         <div className="glassmorphic rounded-xl p-8 max-w-xl text-center">
           <h1 className="text-2xl font-orbitron mb-4">Mission Not Found</h1>
           <p className="text-[#7DAAB2] mb-6">The mission you're looking for doesn't exist or may have been deleted.</p>
-          <Link href="/dashboard">
-            <Button variant="ghost" className="text-muted-foreground hover:text-primary hover:bg-primary/10">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Return to Dashboard
-            </Button>
+          <Link href="/dashboard" className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors rounded-md px-3 py-2">
+            <ArrowLeft className="h-4 w-4" />
+            <span>Return to Dashboard</span>
           </Link>
         </div>
       </div>
@@ -167,8 +166,9 @@ export default function MissionDetailPage() {
     <div className="container max-w-5xl py-6">
       {/* Header with back button */}
       <div className="mb-6 flex items-center">
-        <Link href="/dashboard" className="mr-3 flex items-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition rounded-md p-1">
-          <ArrowLeft size={20} />
+        <Link href="/dashboard" className="mr-3 inline-flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors rounded-md px-3 py-2">
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back</span>
         </Link>
         <h1 className="text-2xl font-orbitron">{mission.title}</h1>
       </div>

@@ -173,11 +173,11 @@ export default function GoalsArchivePage() {
       <div className="mb-4">
         <Button 
           variant="ghost" 
-          size="icon" 
-          className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10" 
+          className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10" 
           onClick={() => navigate('/chronilog')}
         >
           <ArrowLeft className="h-4 w-4" />
+          <span>Back</span>
         </Button>
       </div>
       

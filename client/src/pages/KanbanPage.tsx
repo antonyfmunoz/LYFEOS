@@ -162,11 +162,11 @@ export default function KanbanPage() {
           <div className="flex items-center w-full">
             <Button
               variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10" 
+              className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10" 
               onClick={() => navigate('/dashboard')}
             >
               <ArrowLeft className="h-4 w-4" />
+              <span>Back</span>
             </Button>
             <h1 className="text-2xl font-bold mx-auto pr-8">Boards</h1>
           </div>

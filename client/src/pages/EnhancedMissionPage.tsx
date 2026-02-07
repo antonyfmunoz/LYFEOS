@@ -138,11 +138,11 @@ export default function EnhancedMissionPage() {
       <div className="flex justify-between items-start mb-6">
         <Button 
           variant="ghost" 
-          size="sm" 
-          className="rounded-full w-8 h-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10" 
+          className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10" 
           onClick={() => navigate('/chronilog')}
         >
           <ArrowLeft className="h-4 w-4" />
+          <span>Back</span>
         </Button>
         
         <div className="flex gap-2">

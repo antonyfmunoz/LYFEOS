@@ -138,11 +138,11 @@ export default function CalendarPage() {
         <div className="flex items-center">
           <Button 
             variant="ghost" 
-            size="icon" 
-            className="h-8 w-8 mr-3 text-muted-foreground hover:text-primary hover:bg-primary/10" 
+            className="flex items-center gap-2 mr-3 text-muted-foreground hover:text-primary hover:bg-primary/10" 
             onClick={() => navigate('/dashboard')}
           >
             <ArrowLeft className="h-4 w-4" />
+            <span>Back</span>
           </Button>
           <h1 className="text-2xl font-orbitron">Calendar</h1>
         </div>

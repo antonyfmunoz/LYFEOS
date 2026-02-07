@@ -951,14 +951,6 @@ export default function ProfilePage() {
       <div className="max-w-4xl mx-auto pb-20">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8 hover:bg-primary hover:text-background" 
-              onClick={() => window.history.back()}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
             <h1 className="text-2xl font-orbitron text-foreground">My Account</h1>
           </div>
           <Button 

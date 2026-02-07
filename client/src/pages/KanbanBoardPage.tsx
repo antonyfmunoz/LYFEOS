@@ -516,11 +516,11 @@ export default function KanbanBoardPage() {
         <div className="flex items-center w-full mb-6">
           <Button
             variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10" 
+            className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10" 
             onClick={() => navigate('/kanban')}
           >
             <ArrowLeft className="h-4 w-4" />
+            <span>Back</span>
           </Button>
           <h1 className="text-2xl font-bold mx-auto pr-8">Board not found</h1>
         </div>
@@ -791,11 +791,11 @@ export default function KanbanBoardPage() {
           <div className="flex items-center w-full">
             <Button
               variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10" 
+              className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10" 
               onClick={() => navigate('/kanban')}
             >
               <ArrowLeft className="h-4 w-4" />
+              <span>Back</span>
             </Button>
             <h1 className="text-2xl font-bold mx-auto pr-8">{activeBoard.title}</h1>
           </div>
