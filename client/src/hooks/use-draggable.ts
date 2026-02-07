@@ -6,18 +6,21 @@ interface Position {
 }
 
 interface UseDraggableOptions {
-  boundToWindow?: boolean;
+  topBound?: number;
+  bottomBound?: number;
 }
 
 export function useDraggable(options: UseDraggableOptions = {}) {
-  const { boundToWindow = true } = options;
+  const { topBound = 64, bottomBound = 64 } = options;
   const [position, setPosition] = useState<Position | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [dragWidth, setDragWidth] = useState<number | null>(null);
   const dragStartRef = useRef<{ x: number; y: number; elemX: number; elemY: number } | null>(null);
   const elementRef = useRef<HTMLDivElement | null>(null);
 
   const resetPosition = useCallback(() => {
     setPosition(null);
+    setDragWidth(null);
   }, []);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
@@ -34,6 +37,7 @@ export function useDraggable(options: UseDraggableOptions = {}) {
       elemY: rect.top,
     };
 
+    setDragWidth(rect.width);
     setIsDragging(true);
     e.preventDefault();
   }, []);
@@ -48,12 +52,14 @@ export function useDraggable(options: UseDraggableOptions = {}) {
       let newX = elemX + (e.clientX - startX);
       let newY = elemY + (e.clientY - startY);
 
-      if (boundToWindow && elementRef.current) {
-        const el = elementRef.current;
+      const el = elementRef.current;
+      if (el) {
         const w = el.offsetWidth;
         const h = el.offsetHeight;
+        const minY = topBound;
+        const maxY = window.innerHeight - bottomBound - h;
         newX = Math.max(0, Math.min(window.innerWidth - w, newX));
-        newY = Math.max(0, Math.min(window.innerHeight - h, newY));
+        newY = Math.max(minY, Math.min(maxY, newY));
       }
 
       setPosition({ x: newX, y: newY });
@@ -77,10 +83,18 @@ export function useDraggable(options: UseDraggableOptions = {}) {
       window.removeEventListener('pointerup', handlePointerUp);
       document.removeEventListener('touchmove', preventScroll);
     };
-  }, [isDragging, boundToWindow]);
+  }, [isDragging, topBound, bottomBound]);
 
   const dragStyle: CSSProperties = position
-    ? { position: 'fixed', left: position.x, top: position.y, right: 'auto', bottom: 'auto' }
+    ? {
+        position: 'fixed',
+        left: position.x,
+        top: position.y,
+        right: 'auto',
+        bottom: 'auto',
+        zIndex: 50,
+        ...(dragWidth ? { width: dragWidth } : {}),
+      }
     : {};
 
   const dragHandleProps = {
@@ -95,5 +109,6 @@ export function useDraggable(options: UseDraggableOptions = {}) {
     dragStyle,
     dragHandleProps,
     resetPosition,
+    dragWidth,
   };
 }
