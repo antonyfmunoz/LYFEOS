@@ -121,6 +121,8 @@ export default function QuestsPage() {
   const [onboardingInfoOpen, setOnboardingInfoOpen] = useState<Record<number, boolean>>({});
   const [terminatedInfoOpen, setTerminatedInfoOpen] = useState<Record<string | number, boolean>>({});
   const [originalDates, setOriginalDates] = useState<Record<string, { startDate?: string; endDate?: string; startTime?: string; endTime?: string }>>({});
+  const originalDatesRef = useRef(originalDates);
+  originalDatesRef.current = originalDates;
 
   const [archivedQuests, setArchivedQuests] = useState<Quest[]>([]);
   
@@ -230,16 +232,16 @@ export default function QuestsPage() {
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-    if (!originalDates[questId] && quest.startDate) {
-      setOriginalDates(prev => ({
-        ...prev,
-        [questId]: {
-          startDate: quest.startDate || '',
-          endDate: quest.endDate || '',
-          startTime: quest.startTime || '',
-          endTime: quest.endTime || '',
-        }
-      }));
+    const currentSaved = originalDatesRef.current[questId];
+    if (!currentSaved) {
+      const dateSnapshot = {
+        startDate: quest.startDate || '',
+        endDate: quest.endDate || '',
+        startTime: quest.startTime || '',
+        endTime: quest.endTime || '',
+      };
+      setOriginalDates(prev => ({ ...prev, [questId]: dateSnapshot }));
+      originalDatesRef.current = { ...originalDatesRef.current, [questId]: dateSnapshot };
     }
 
     try {
@@ -256,25 +258,20 @@ export default function QuestsPage() {
           category: '',
         });
       } else if (targetSection === 'upcoming') {
-        const saved = originalDates[questId];
+        const saved = originalDatesRef.current[questId];
         if (fromSection === 'terminated') {
           await handleRestoreMission(quest.id);
         }
         if (quest.completed) {
           await toggleQuestCompletion(questId);
         }
-        if (saved && saved.startDate && saved.startDate > todayStr) {
+        if (saved && (saved.startDate || saved.endDate)) {
           await updateQuest(questId, {
-            startDate: saved.startDate,
+            startDate: saved.startDate || '',
             endDate: saved.endDate || '',
             startTime: saved.startTime || '',
             endTime: saved.endTime || '',
             category: '',
-          });
-          setOriginalDates(prev => {
-            const next = { ...prev };
-            delete next[questId];
-            return next;
           });
         } else {
           const tomorrow = new Date(now);
@@ -285,6 +282,13 @@ export default function QuestsPage() {
             category: '',
           });
         }
+        setOriginalDates(prev => {
+          const next = { ...prev };
+          delete next[questId];
+          return next;
+        });
+        originalDatesRef.current = { ...originalDatesRef.current };
+        delete originalDatesRef.current[questId];
       } else if (targetSection === 'completed') {
         if (fromSection === 'terminated') {
           await handleRestoreMission(quest.id);
@@ -299,7 +303,13 @@ export default function QuestsPage() {
         if (quest.completed) {
           await toggleQuestCompletion(questId);
         }
-        await updateQuest(questId, { category: 'todo' });
+        await updateQuest(questId, {
+          category: 'todo',
+          startDate: '',
+          endDate: '',
+          startTime: '',
+          endTime: '',
+        });
       } else if (targetSection === 'terminated') {
         await handleDeleteMission(quest);
       }
@@ -308,7 +318,7 @@ export default function QuestsPage() {
     } catch (err) {
       toast({ title: "Failed to move mission", variant: "destructive" });
     }
-  }, [originalDates, updateQuest, toggleQuestCompletion, handleDeleteMission, handleRestoreMission, refetchQuests, fetchArchivedQuests, toast]);
+  }, [updateQuest, toggleQuestCompletion, handleDeleteMission, handleRestoreMission, refetchQuests, fetchArchivedQuests, toast]);
 
   const openEditDialog = (quest: Quest) => {
     setEditingQuest(quest);
