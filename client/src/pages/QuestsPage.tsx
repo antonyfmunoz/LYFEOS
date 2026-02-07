@@ -255,7 +255,6 @@ export default function QuestsPage() {
           endDate: todayStr,
           category: '',
         });
-        toast({ title: `Moved "${quest.title}" to Today's Missions` });
       } else if (targetSection === 'upcoming') {
         const saved = originalDates[questId];
         if (fromSection === 'terminated') {
@@ -277,7 +276,6 @@ export default function QuestsPage() {
             delete next[questId];
             return next;
           });
-          toast({ title: `Moved "${quest.title}" back to Future Missions` });
         } else {
           const tomorrow = new Date(now);
           tomorrow.setDate(tomorrow.getDate() + 1);
@@ -286,7 +284,6 @@ export default function QuestsPage() {
             startDate: tomorrowStr,
             category: '',
           });
-          toast({ title: `Moved "${quest.title}" to Future Missions` });
         }
       } else if (targetSection === 'completed') {
         if (fromSection === 'terminated') {
@@ -295,7 +292,6 @@ export default function QuestsPage() {
         if (!quest.completed) {
           await toggleQuestCompletion(questId);
         }
-        toast({ title: `Marked "${quest.title}" as completed` });
       } else if (targetSection === 'inbox') {
         if (fromSection === 'terminated') {
           await handleRestoreMission(quest.id);
@@ -304,10 +300,8 @@ export default function QuestsPage() {
           await toggleQuestCompletion(questId);
         }
         await updateQuest(questId, { category: 'todo' });
-        toast({ title: `Moved "${quest.title}" to Archived Missions` });
       } else if (targetSection === 'terminated') {
         await handleDeleteMission(quest);
-        toast({ title: `Terminated "${quest.title}"` });
       }
       await refetchQuests();
       await fetchArchivedQuests();
