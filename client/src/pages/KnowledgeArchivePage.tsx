@@ -174,7 +174,7 @@ export default function KnowledgeArchivePage() {
   }
 
   return (
-    <>
+    <div className="pb-20">
       <div className="mb-4">
         <Button 
           variant="ghost" 
@@ -331,6 +331,6 @@ export default function KnowledgeArchivePage() {
           )}
         </div>
       )}
-    </>
+    </div>
   );
 }

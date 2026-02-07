@@ -169,7 +169,7 @@ export default function GoalsArchivePage() {
   };
 
   return (
-    <>
+    <div className="pb-20">
       <div className="mb-4">
         <Button 
           variant="ghost" 
@@ -289,6 +289,6 @@ export default function GoalsArchivePage() {
           </Button>
         </div>
       )}
-    </>
+    </div>
   );
 }

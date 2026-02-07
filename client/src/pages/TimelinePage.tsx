@@ -343,7 +343,7 @@ export default function TimelinePage() {
   }, []);
 
   return (
-    <div>
+    <div className="pb-20">
       <div className="mb-4">
         <Button 
           variant="ghost" 

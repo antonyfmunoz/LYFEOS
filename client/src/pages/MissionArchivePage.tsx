@@ -309,7 +309,7 @@ export default function MissionArchivePage() {
   };
 
   return (
-    <>
+    <div className="pb-20">
       <div className="mb-4">
         <Button 
           variant="ghost" 
@@ -434,6 +434,6 @@ export default function MissionArchivePage() {
           </p>
         </div>
       )}
-    </>
+    </div>
   );
 }

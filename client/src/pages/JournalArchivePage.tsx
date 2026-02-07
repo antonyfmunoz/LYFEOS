@@ -322,7 +322,7 @@ export default function JournalArchivePage() {
   };
 
   return (
-    <>
+    <div className="pb-20">
       <div className="mb-4">
         <Button 
           variant="ghost" 
@@ -428,6 +428,6 @@ export default function JournalArchivePage() {
           </Button>
         </div>
       )}
-    </>
+    </div>
   );
 }
