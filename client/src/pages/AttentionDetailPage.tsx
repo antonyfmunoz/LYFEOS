@@ -9,10 +9,11 @@ export default function AttentionDetailPage() {
   
   const { stats, computedStats } = useLYFEOS();
   
-  const totalMax = stats.attentionTokens.max;
+  const DAY_CAPACITY = 24;
   const currentAttention = stats.attentionTokens.current;
-  const attentionPct = totalMax > 0 ? Math.round((currentAttention / totalMax) * 100) : 0;
-  const allocatedPct = totalMax > 0 ? Math.round(((totalMax - currentAttention) / totalMax) * 100) : 0;
+  const usedAttention = DAY_CAPACITY - currentAttention;
+  const attentionPct = Math.round((currentAttention / DAY_CAPACITY) * 100);
+  const allocatedPct = Math.round((usedAttention / DAY_CAPACITY) * 100);
   
   const categoryBreakdown = computedStats?.categoryBreakdown ?? {};
   const categoryEntries = Object.entries(categoryBreakdown as Record<string, { total: number; completed: number }>);
@@ -40,7 +41,7 @@ export default function AttentionDetailPage() {
         <h2 className="font-orbitron text-xl mb-4 text-primary">Attention Capacity</h2>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-muted-foreground mb-1">Focus and cognitive allocation</p>
+            <p className="text-muted-foreground mb-1">Focus and cognitive allocation (24h day)</p>
             <div className="flex items-baseline">
               <span className="text-white text-5xl font-mono">{attentionPct}</span>
               <span className="text-muted-foreground ml-2 text-2xl">%</span>

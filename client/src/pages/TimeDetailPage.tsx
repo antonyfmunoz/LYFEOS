@@ -9,21 +9,19 @@ export default function TimeDetailPage() {
   
   const { stats, computedStats } = useLYFEOS();
   
-  const DAY_HOURS = 24;
-  const maxTime = stats.timeTokens.max;
+  const DAY_CAPACITY = 24;
   const currentTime = stats.timeTokens.current;
-  const timePct = maxTime > 0 ? Math.round((currentTime / maxTime) * 100) : 0;
-  const allocatedPct = maxTime > 0 ? Math.round(((maxTime - currentTime) / maxTime) * 100) : 0;
+  const usedTime = DAY_CAPACITY - currentTime;
+  const timePct = Math.round((currentTime / DAY_CAPACITY) * 100);
+  const allocatedPct = Math.round((usedTime / DAY_CAPACITY) * 100);
   
   const eventCategoryHours = computedStats?.eventCategoryHours ?? {};
   const eventEntries = Object.entries(eventCategoryHours as Record<string, number>);
   
-  const totalAllocatedHours = maxTime - currentTime;
-  
   const timeAllocation: Array<{ category: string; percentage: number; icon: React.ElementType }> = [];
   
   eventEntries.forEach(([category, hours]) => {
-    const pct = maxTime > 0 ? Math.round((hours / maxTime) * 100) : 0;
+    const pct = Math.round((hours / DAY_CAPACITY) * 100);
     timeAllocation.push({
       category: category.charAt(0).toUpperCase() + category.slice(1),
       percentage: pct,
@@ -33,7 +31,7 @@ export default function TimeDetailPage() {
   
   const missionTimeCost = computedStats?.totalTimeCost ?? 0;
   if (missionTimeCost > 0) {
-    const missionPct = maxTime > 0 ? Math.round((missionTimeCost / maxTime) * 100) : 0;
+    const missionPct = Math.round((missionTimeCost / DAY_CAPACITY) * 100);
     timeAllocation.push({
       category: "Missions",
       percentage: missionPct,
@@ -59,7 +57,7 @@ export default function TimeDetailPage() {
         <h2 className="font-orbitron text-xl mb-4 text-primary">Unallocated Time</h2>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-muted-foreground mb-1">Available time capacity ({DAY_HOURS}h day)</p>
+            <p className="text-muted-foreground mb-1">Available time capacity (24h day)</p>
             <div className="flex items-baseline">
               <span className="text-white text-5xl font-mono">{timePct}</span>
               <span className="text-muted-foreground ml-2 text-2xl">%</span>

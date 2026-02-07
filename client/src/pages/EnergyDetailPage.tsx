@@ -9,10 +9,11 @@ export default function EnergyDetailPage() {
   
   const { stats, computedStats } = useLYFEOS();
   
-  const maxEnergy = stats.energyPoints.max;
+  const DAY_CAPACITY = 24;
   const currentEnergy = stats.energyPoints.current;
-  const energyPct = maxEnergy > 0 ? Math.round((currentEnergy / maxEnergy) * 100) : 0;
-  const allocatedPct = maxEnergy > 0 ? Math.round(((maxEnergy - currentEnergy) / maxEnergy) * 100) : 0;
+  const usedEnergy = DAY_CAPACITY - currentEnergy;
+  const energyPct = Math.round((currentEnergy / DAY_CAPACITY) * 100);
+  const allocatedPct = Math.round((usedEnergy / DAY_CAPACITY) * 100);
   
   const categoryBreakdown = computedStats?.categoryBreakdown ?? {};
   const categoryEntries = Object.entries(categoryBreakdown as Record<string, { total: number; completed: number }>);
