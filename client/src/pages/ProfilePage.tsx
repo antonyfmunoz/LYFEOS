@@ -781,13 +781,6 @@ export default function ProfilePage() {
                 <button 
                   onClick={() => {
                     toggleDarkMode();
-                    toast({
-                      title: "Theme Updated",
-                      description: `Dark Theme has been ${!stats.darkThemeEnabled ? 'enabled' : 'disabled'}.`,
-                      variant: "default",
-                      className: "bg-background/80 border border-primary text-foreground",
-                      duration: 2000,
-                    });
                   }}
                   className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
                     stats.darkThemeEnabled ? 'bg-primary/30' : 'bg-card'
@@ -834,22 +827,11 @@ export default function ProfilePage() {
                       
                       if (!response.ok) throw new Error("Failed to update setting");
                       
-                      const updatedStats = await response.json();
-                      updateUserStats(updatedStats.stats);
-                      
-                      toast({
-                        title: "Setting Updated",
-                        description: `Notifications have been ${newValue ? 'enabled' : 'disabled'}.`,
-                        variant: "default",
-                        className: "bg-background/80 border border-primary text-foreground",
-                        duration: 2000,
+                      updateUserStats({
+                        ...stats,
+                        notificationsEnabled: newValue,
                       });
                     } catch (error) {
-                      toast({
-                        title: "Error",
-                        description: "Failed to update notification settings.",
-                        variant: "destructive",
-                      });
                       console.error("Error updating notification settings:", error);
                     }
                   }}
