@@ -44,7 +44,7 @@ function formatElapsed(totalSeconds: number) {
 
 export default function QuestItem({ quest, index, section, onToggle, onDelete, onEdit, onStart, onResume, onDone, onUndo, onRestart, onMoveQuest, elapsedSeconds, isTimerActive, timerBlocked }: QuestItemProps) {
   const [showDescription, setShowDescription] = useState(false);
-  const { title, description, completed, energyCost, attentionCost, timeCost, experienceReward, startDate, startTime, endDate, endTime, notificationEnabled, difficulty } = quest;
+  const { title, description, completed, energyCost, attentionCost, timeCost, experienceReward, startDate, startTime, endDate, endTime, notificationEnabled, difficulty, category } = quest;
 
   const difficultyStyle = "bg-primary/20 border-primary/50 text-primary";
   const difficultyMultipliers: Record<string, number> = { D: 1, C: 1.5, B: 2, A: 3, S: 5 };
@@ -123,6 +123,11 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
               )}
             </h3>
             <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+              {category && category !== "general" && category !== "onboarding" && (
+                <span className={`text-[10px] font-mono h-6 px-1.5 inline-flex items-center justify-center rounded border ${difficultyStyle} ${completed ? "opacity-50" : ""} capitalize`}>
+                  {category}
+                </span>
+              )}
               {difficulty && (
                 <span className={`text-[10px] font-mono h-6 w-6 inline-flex items-center justify-center rounded border ${difficultyStyle} ${completed ? "opacity-50" : ""}`}>
                   {difficulty}

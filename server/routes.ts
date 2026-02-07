@@ -1258,8 +1258,41 @@ Generate the complete affirmation now:`;
         questData.endTime || null
       );
       
+      // AI-powered category classification (skip for onboarding or pre-set categories)
+      let assignedCategory = questData.category || "general";
+      const presetCategories = ["onboarding", "setup", "rituals"];
+      if (!presetCategories.includes(assignedCategory) && questData.title) {
+        try {
+          const anthropic = new Anthropic({
+            apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
+            baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+          });
+          const categoryResponse = await anthropic.messages.create({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 20,
+            messages: [{
+              role: "user",
+              content: `Classify this mission into exactly ONE category. Respond with ONLY the category word, nothing else.
+
+Categories: work, health, fitness, finance, learning, creative, social, personal, mindset, career, nutrition, recovery, planning, spiritual, household
+
+Mission title: ${questData.title}
+${questData.description ? `Description: ${questData.description}` : ''}`
+            }],
+          });
+          const categoryText = (categoryResponse.content[0] as any).text?.trim().toLowerCase();
+          const validCategories = ["work", "health", "fitness", "finance", "learning", "creative", "social", "personal", "mindset", "career", "nutrition", "recovery", "planning", "spiritual", "household"];
+          if (categoryText && validCategories.includes(categoryText)) {
+            assignedCategory = categoryText;
+          }
+        } catch (aiError) {
+          console.error("AI category classification failed, using default:", aiError);
+        }
+      }
+      
       const quest = await storage.createQuest({
         ...questData,
+        category: assignedCategory,
         attentionCost,
         timeCost,
         energyCost,

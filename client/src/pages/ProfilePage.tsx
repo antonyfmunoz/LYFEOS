@@ -422,7 +422,7 @@ export default function ProfilePage() {
     },
     {
       id: 'settings',
-      title: "UI Settings",
+      title: "Settings",
       icon: <Settings className="h-5 w-5 text-primary" />,
       defaultOpen: true,
       infoDescription: "Customize the look and feel of your interface. Adjust theme colors, layout preferences, and display options to match your style."
@@ -906,6 +906,190 @@ export default function ProfilePage() {
                 </p>
               </div>
             </div>
+            
+            {/* Account Settings */}
+            <div className="p-4 border border-primary/10 rounded-lg bg-background/40">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Lock className="h-4 w-4 text-primary" />
+                  <Label className="text-sm text-foreground">Account</Label>
+                </div>
+                {!isEditingAccount && !isChangingPassword && (
+                  <button onClick={() => setIsEditingAccount(true)} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5">
+                    <Edit className="h-3 w-3" />Edit
+                  </button>
+                )}
+              </div>
+              
+              {isEditingAccount ? (
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="email" className="flex items-center gap-2 mb-2">
+                      <Mail className="h-4 w-4 text-primary" />
+                      Email Address
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={accountEmail}
+                      onChange={(e) => setAccountEmail(e.target.value)}
+                      placeholder="your@email.com"
+                      className="bg-background/50 border-primary/30 focus:border-primary/50"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="phone" className="flex items-center gap-2 mb-2">
+                      <Phone className="h-4 w-4 text-primary" />
+                      Phone Number
+                    </Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={accountPhone}
+                      onChange={(e) => setAccountPhone(e.target.value)}
+                      placeholder="+1 (555) 123-4567"
+                      className="bg-background/50 border-primary/30 focus:border-primary/50"
+                    />
+                  </div>
+                  
+                  <div className="flex gap-2 pt-2">
+                    <button onClick={() => {
+                        setIsEditingAccount(false);
+                        setAccountEmail(accountData?.email || "");
+                        setAccountPhone(accountData?.phoneNumber || "");
+                      }} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5">
+                      <X className="h-3 w-3" />Cancel
+                    </button>
+                    <button onClick={handleSaveAccount} disabled={updateAccountMutation.isPending} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center gap-1.5">
+                      {updateAccountMutation.isPending ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Save className="h-3 w-3" />
+                      )}
+                      Save
+                    </button>
+                  </div>
+                </div>
+              ) : isChangingPassword ? (
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="currentPassword" className="flex items-center gap-2 mb-2">
+                      <Lock className="h-4 w-4 text-primary" />
+                      Current Password
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="currentPassword"
+                        type={showCurrentPassword ? "text" : "password"}
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        placeholder="Enter current password"
+                        className="bg-background/50 border-primary/30 focus:border-primary/50 pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      >
+                        {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="newPassword" className="flex items-center gap-2 mb-2">
+                      <Lock className="h-4 w-4 text-primary" />
+                      New Password
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="newPassword"
+                        type={showNewPassword ? "text" : "password"}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Enter new password (min 6 characters)"
+                        className="bg-background/50 border-primary/30 focus:border-primary/50 pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                      >
+                        {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="confirmPassword" className="flex items-center gap-2 mb-2">
+                      <Lock className="h-4 w-4 text-primary" />
+                      Confirm New Password
+                    </Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                      className="bg-background/50 border-primary/30 focus:border-primary/50"
+                    />
+                  </div>
+                  
+                  <div className="flex gap-2 pt-2">
+                    <button onClick={() => {
+                        setIsChangingPassword(false);
+                        setCurrentPassword("");
+                        setNewPassword("");
+                        setConfirmPassword("");
+                      }} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5">
+                      <X className="h-3 w-3" />Cancel
+                    </button>
+                    <button onClick={handleChangePassword} disabled={changePasswordMutation.isPending} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center gap-1.5">
+                      {changePasswordMutation.isPending ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Save className="h-3 w-3" />
+                      )}
+                      Change Password
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-3 bg-card/50 rounded-lg border border-primary/10">
+                    <Mail className="h-4 w-4 text-primary" />
+                    <div>
+                      <div className="text-xs text-muted-foreground">Email</div>
+                      <div className="text-sm">{accountData?.email ? "••••••••" : "Not set"}</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-3 bg-card/50 rounded-lg border border-primary/10">
+                    <Phone className="h-4 w-4 text-primary" />
+                    <div>
+                      <div className="text-xs text-muted-foreground">Phone</div>
+                      <div className="text-sm">{accountData?.phoneNumber ? "••••••••" : "Not set"}</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-3 bg-card/50 rounded-lg border border-primary/10">
+                    <Lock className="h-4 w-4 text-primary" />
+                    <div className="flex-1">
+                      <div className="text-xs text-muted-foreground">Password</div>
+                      <div className="text-sm">••••••••</div>
+                    </div>
+                    <button onClick={() => setIsChangingPassword(true)} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">
+                      Change
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </>
         );
       default:
@@ -1206,188 +1390,9 @@ export default function ProfilePage() {
               <></>
             )}
             
-            {/* Account Settings Section */}
+            {/* Player Stats in Profile Widget */}
             <div className="mt-6 pt-6 border-t border-primary/20">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-md font-orbitron text-foreground flex items-center gap-2">
-                  <Settings className="h-4 w-4 text-primary" />
-                  Account Settings
-                </h3>
-                {!isEditingAccount && !isChangingPassword && (
-                  <button onClick={() => setIsEditingAccount(true)} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5">
-                    <Edit className="h-3 w-3" />Edit
-                  </button>
-                )}
-              </div>
-              
-              {isEditingAccount ? (
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="email" className="flex items-center gap-2 mb-2">
-                      <Mail className="h-4 w-4 text-primary" />
-                      Email Address
-                    </Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={accountEmail}
-                      onChange={(e) => setAccountEmail(e.target.value)}
-                      placeholder="your@email.com"
-                      className="bg-background/50 border-primary/30 focus:border-primary/50"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="phone" className="flex items-center gap-2 mb-2">
-                      <Phone className="h-4 w-4 text-primary" />
-                      Phone Number
-                    </Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      value={accountPhone}
-                      onChange={(e) => setAccountPhone(e.target.value)}
-                      placeholder="+1 (555) 123-4567"
-                      className="bg-background/50 border-primary/30 focus:border-primary/50"
-                    />
-                  </div>
-                  
-                  <div className="flex gap-2 pt-2">
-                    <button onClick={() => {
-                        setIsEditingAccount(false);
-                        setAccountEmail(accountData?.email || "");
-                        setAccountPhone(accountData?.phoneNumber || "");
-                      }} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5">
-                      <X className="h-3 w-3" />Cancel
-                    </button>
-                    <button onClick={handleSaveAccount} disabled={updateAccountMutation.isPending} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center gap-1.5">
-                      {updateAccountMutation.isPending ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Save className="h-3 w-3" />
-                      )}
-                      Save
-                    </button>
-                  </div>
-                </div>
-              ) : isChangingPassword ? (
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="currentPassword" className="flex items-center gap-2 mb-2">
-                      <Lock className="h-4 w-4 text-primary" />
-                      Current Password
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="currentPassword"
-                        type={showCurrentPassword ? "text" : "password"}
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        placeholder="Enter current password"
-                        className="bg-background/50 border-primary/30 focus:border-primary/50 pr-10"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                      >
-                        {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="newPassword" className="flex items-center gap-2 mb-2">
-                      <Lock className="h-4 w-4 text-primary" />
-                      New Password
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="newPassword"
-                        type={showNewPassword ? "text" : "password"}
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Enter new password (min 6 characters)"
-                        className="bg-background/50 border-primary/30 focus:border-primary/50 pr-10"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                      >
-                        {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="confirmPassword" className="flex items-center gap-2 mb-2">
-                      <Lock className="h-4 w-4 text-primary" />
-                      Confirm New Password
-                    </Label>
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Confirm new password"
-                      className="bg-background/50 border-primary/30 focus:border-primary/50"
-                    />
-                  </div>
-                  
-                  <div className="flex gap-2 pt-2">
-                    <button onClick={() => {
-                        setIsChangingPassword(false);
-                        setCurrentPassword("");
-                        setNewPassword("");
-                        setConfirmPassword("");
-                      }} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5">
-                      <X className="h-3 w-3" />Cancel
-                    </button>
-                    <button onClick={handleChangePassword} disabled={changePasswordMutation.isPending} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center gap-1.5">
-                      {changePasswordMutation.isPending ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Save className="h-3 w-3" />
-                      )}
-                      Change Password
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 bg-background/30 border border-primary/10 rounded-md">
-                    <Mail className="h-4 w-4 text-primary" />
-                    <div>
-                      <div className="text-xs text-muted-foreground">Email</div>
-                      <div className="text-sm">{accountData?.email ? "••••••••" : "Not set"}</div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3 p-3 bg-background/30 border border-primary/10 rounded-md">
-                    <Phone className="h-4 w-4 text-primary" />
-                    <div>
-                      <div className="text-xs text-muted-foreground">Phone</div>
-                      <div className="text-sm">{accountData?.phoneNumber ? "••••••••" : "Not set"}</div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3 p-3 bg-background/30 border border-primary/10 rounded-md">
-                    <Lock className="h-4 w-4 text-primary" />
-                    <div className="flex-1">
-                      <div className="text-xs text-muted-foreground">Password</div>
-                      <div className="text-sm">••••••••</div>
-                    </div>
-                    <button onClick={() => setIsChangingPassword(true)} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">
-                      Change
-                    </button>
-                  </div>
-                </div>
-              )}
+              <CompactStatsWidget stats={stats} />
             </div>
             
             </div>
