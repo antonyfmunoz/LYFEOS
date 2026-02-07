@@ -1,38 +1,19 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useLocation } from 'wouter';
 import { Mic, MicOff, X, Loader2 } from 'lucide-react';
 import { useVoiceControl } from '@/hooks/use-voice-control';
 import { useLYFEOS } from '@/lib/context';
-import { useToast } from '@/hooks/use-toast';
+import { useNovaActions } from '@/hooks/use-nova-actions';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 
-interface VoiceAction {
-  type: string;
-  target?: string;
-  open?: boolean;
-  title?: string;
-  description?: string;
-}
-
 interface VoiceCommandResponse {
-  actions: VoiceAction[];
   speech: string;
+  toolActions: any[];
   understood: boolean;
 }
 
 export default function VoiceControlButton() {
-  const [, navigate] = useLocation();
-  const { toast } = useToast();
-  const {
-    quests,
-    startMissionTimer,
-    pauseResumeTimer,
-    endMissionTimer,
-    activeTimerQuest,
-    timerIsPaused,
-    timerStartedAt,
-    timerPausedElapsed,
-  } = useLYFEOS();
+  const { activeChatSessionId, chatSessions } = useLYFEOS();
+  const { executeToolActions } = useNovaActions();
 
   const [showOverlay, setShowOverlay] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -49,87 +30,33 @@ export default function VoiceControlButton() {
     }, duration);
   }, []);
 
-  const executeActions = useCallback((actions: VoiceAction[]) => {
-    for (const action of actions) {
-      switch (action.type) {
-        case 'navigate':
-          if (action.target?.startsWith('/')) {
-            navigate(action.target);
-          }
-          break;
-
-        case 'toggle_widget':
-          if (action.target) {
-            const openVal = action.open !== false;
-            queryClient.setQueryData<Record<string, boolean>>(["/api/widget-states"], (prev) => ({
-              ...prev,
-              [action.target!]: openVal,
-            }));
-            window.dispatchEvent(new CustomEvent("widget-state-changed", {
-              detail: { widgetId: action.target, open: openVal },
-            }));
-          }
-          break;
-
-        case 'complete_mission':
-          queryClient.invalidateQueries({ queryKey: ["/api/quests"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/user-stats"] });
-          break;
-
-        case 'create_mission':
-          queryClient.invalidateQueries({ queryKey: ["/api/quests"] });
-          break;
-
-        case 'start_mission': {
-          const targetId = action.target;
-          const mission = targetId
-            ? quests.find(q => String(q.id) === String(targetId))
-            : null;
-          if (mission) {
-            startMissionTimer(mission);
-          }
-          break;
-        }
-
-        case 'pause_timer':
-          if (activeTimerQuest && !timerIsPaused) {
-            pauseResumeTimer();
-          }
-          break;
-
-        case 'resume_timer':
-          if (activeTimerQuest && timerIsPaused) {
-            pauseResumeTimer();
-          }
-          break;
-
-        case 'end_timer':
-          if (activeTimerQuest && timerStartedAt) {
-            const elapsed = Math.floor((Date.now() - timerStartedAt) / 1000) + (timerPausedElapsed || 0);
-            endMissionTimer(elapsed);
-          }
-          break;
-
-        case 'none':
-        default:
-          break;
-      }
-    }
-  }, [quests, startMissionTimer, pauseResumeTimer, endMissionTimer, activeTimerQuest, timerIsPaused, timerStartedAt, timerPausedElapsed, navigate]);
+  const getDbConversationId = useCallback((): string | null => {
+    if (!activeChatSessionId) return null;
+    const session = chatSessions.find(s => s.id === activeChatSessionId);
+    if (!session) return null;
+    const match = session.id.match(/^db-chat-(\d+)$/);
+    return match ? match[1] : null;
+  }, [activeChatSessionId, chatSessions]);
 
   const handleCommand = useCallback(async (finalTranscript: string) => {
     setIsProcessing(true);
     setTranscript(finalTranscript);
 
     try {
+      const conversationId = getDbConversationId();
       const data = await apiRequest<VoiceCommandResponse>("/api/voice-command", {
         method: "POST",
-        body: JSON.stringify({ transcript: finalTranscript }),
+        body: JSON.stringify({ 
+          transcript: finalTranscript,
+          conversationId: conversationId || undefined,
+        }),
       });
 
-      if (data.actions && data.actions.length > 0) {
-        executeActions(data.actions);
+      if (data.toolActions && data.toolActions.length > 0) {
+        executeToolActions(data.toolActions);
       }
+
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
 
       showFeedback(data.speech || "Command processed.", 4000);
     } catch (error) {
@@ -138,7 +65,7 @@ export default function VoiceControlButton() {
     } finally {
       setIsProcessing(false);
     }
-  }, [executeActions, showFeedback]);
+  }, [executeToolActions, showFeedback, getDbConversationId]);
 
   const onVoiceCommand = useCallback((command: { raw: string }) => {
     handleCommand(command.raw);
@@ -216,13 +143,13 @@ export default function VoiceControlButton() {
 
             {!feedback && !transcript && isListening && !isProcessing && (
               <p className="text-xs text-muted-foreground">
-                Speak naturally — NOVA understands context. Try "open the energy log" or "how am I doing?"
+                Speak naturally — NOVA understands everything. Try "play my affirmation" or "schedule a meeting tomorrow"
               </p>
             )}
 
             <div className="mt-2 border-t border-primary/10 pt-2">
               <p className="text-[10px] text-muted-foreground font-mono leading-relaxed">
-                AI-powered: Navigate, control widgets, manage missions, ask questions
+                Full control: Navigate, widgets, missions, timers, daily log, affirmations, calendar, themes
               </p>
             </div>
           </div>

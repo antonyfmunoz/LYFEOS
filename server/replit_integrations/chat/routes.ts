@@ -263,6 +263,126 @@ const tools: Anthropic.Messages.Tool[] = [
       },
       required: ["title", "description", "date", "startTime", "duration", "category"]
     }
+  },
+  {
+    name: "toggle_widget",
+    description: "Open or close a dashboard widget. Use when user wants to show/hide/expand/collapse a widget on the dashboard.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        widget_id: { type: "string", description: "Widget ID: 'dashboard.data-entry-log', 'dashboard.research-log', 'dashboard.reflection-log', 'dashboard.intention-setter', 'dashboard.energy-log'" },
+        open: { type: "boolean", description: "true to open/expand, false to close/collapse" }
+      },
+      required: ["widget_id", "open"]
+    }
+  },
+  {
+    name: "navigate_to_page",
+    description: "Navigate the user to a specific page in the app. Use when user asks to go to, open, or show a page.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        route: { type: "string", description: "Route path: '/dashboard', '/missions', '/ai', '/chronilog', '/profile', '/journal-log', '/chronilog/timeline', '/knowledge-vault', '/goals-archive'" }
+      },
+      required: ["route"]
+    }
+  },
+  {
+    name: "play_affirmation",
+    description: "Play the user's character affirmation aloud using text-to-speech. Use when user says 'play my affirmation', 'read my affirmation', 'say my affirmation'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: []
+    }
+  },
+  {
+    name: "generate_affirmation",
+    description: "Generate a new AI-powered character affirmation for the user based on their profile data. Use when user says 'create a new affirmation', 'generate affirmation', 'make me a new affirmation'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: []
+    }
+  },
+  {
+    name: "update_daily_log",
+    description: "Update fields in the user's daily log for today. Use when user wants to log their mental/physical/emotional state, gratitude, thoughts, goals, reflections, wake/sleep time, research notes, etc.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        mentalState: { type: "number", description: "Mental state rating 1-10" },
+        physicalState: { type: "number", description: "Physical state rating 1-10" },
+        emotionalState: { type: "number", description: "Emotional state rating 1-10" },
+        wakeTime: { type: "string", description: "Wake time in HH:MM format" },
+        sleepTime: { type: "string", description: "Sleep time in HH:MM format" },
+        gratitude: { type: "string", description: "What user is grateful for" },
+        tomorrowGoals: { type: "string", description: "Goals for tomorrow" },
+        annualGoals: { type: "string", description: "Annual goals reminder" },
+        thoughts: { type: "string", description: "Free-form thoughts/intentions" },
+        contentConsumed: { type: "string", description: "Information consumed today" },
+        todoIdeas: { type: "string", description: "Ideas for future todos" },
+        sourceAuthor: { type: "string", description: "Source author name" },
+        sourceMaterial: { type: "string", description: "Source material reference" },
+        researchNote: { type: "string", description: "Research note" },
+        revisionNote: { type: "string", description: "Revision and summary note" },
+        executionNote: { type: "string", description: "Execution note" },
+        wentWell: { type: "string", description: "What went well today" },
+        couldBeBetter: { type: "string", description: "What could be better" },
+        learned: { type: "string", description: "What was learned today" },
+        todayPrimaryMission: { type: "string", description: "Today's primary mission/focus" }
+      },
+      required: []
+    }
+  },
+  {
+    name: "toggle_theme",
+    description: "Toggle between dark and light theme. Use when user says 'switch theme', 'dark mode', 'light mode', 'toggle theme'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        dark: { type: "boolean", description: "true for dark theme, false for light theme" }
+      },
+      required: ["dark"]
+    }
+  },
+  {
+    name: "start_mission_timer",
+    description: "Start a timer for a specific mission. Use when user says 'start timer for [mission]', 'begin working on [mission]', 'start [mission]'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        mission_id: { type: "number", description: "The ID of the mission to start timer for" }
+      },
+      required: ["mission_id"]
+    }
+  },
+  {
+    name: "pause_timer",
+    description: "Pause the currently running mission timer. Use when user says 'pause timer', 'pause'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: []
+    }
+  },
+  {
+    name: "resume_timer",
+    description: "Resume a paused mission timer. Use when user says 'resume timer', 'resume', 'continue timer', 'unpause'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: []
+    }
+  },
+  {
+    name: "end_timer",
+    description: "End/stop the currently running mission timer. Use when user says 'stop timer', 'end timer', 'stop'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: []
+    }
   }
 ];
 
@@ -384,6 +504,114 @@ async function executeTool(toolName: string, input: any, userId: number): Promis
           category: input.category || "personal",
         });
         return JSON.stringify({ success: true, message: `Calendar event "${event.title}" created for ${input.date} at ${input.startTime}.` });
+      }
+
+      case "toggle_widget": {
+        await storage.setWidgetState(userId, input.widget_id, input.open);
+        return JSON.stringify({ 
+          success: true, 
+          action: "toggle_widget",
+          widgetId: input.widget_id, 
+          open: input.open,
+          message: `Widget ${input.open ? 'opened' : 'closed'}.` 
+        });
+      }
+
+      case "navigate_to_page": {
+        return JSON.stringify({ 
+          success: true, 
+          action: "navigate",
+          route: input.route,
+          message: `Navigating to ${input.route}.` 
+        });
+      }
+
+      case "play_affirmation": {
+        const profile = await storage.getUserProfile(userId);
+        const affirmation = profile?.characterAffirmation;
+        if (!affirmation) {
+          return JSON.stringify({ success: false, action: "play_affirmation", message: "No affirmation set yet. Generate one first." });
+        }
+        return JSON.stringify({ 
+          success: true, 
+          action: "play_affirmation",
+          affirmationText: affirmation,
+          message: "Playing your affirmation now." 
+        });
+      }
+
+      case "generate_affirmation": {
+        const userProfile = await storage.getUserProfile(userId);
+        const user = await storage.getUser(userId);
+        try {
+          const affirmationResponse = await anthropic.messages.create({
+            model: "claude-sonnet-4-5",
+            max_tokens: 512,
+            messages: [{ role: "user", content: "Generate a powerful, personalized character affirmation." }],
+            system: `Generate a deeply personal character affirmation for this person:
+Name: ${user?.displayName || user?.username || 'Commander'}
+Archetype: ${userProfile?.archetypePrimary || 'Warrior'}/${userProfile?.archetypeSecondary || 'Architect'}
+Core Motivation: ${userProfile?.coreMotivation || 'growth, discipline'}
+5-Year Vision: ${userProfile?.vision5Year || 'mastery'}
+Primary Craft: ${userProfile?.primaryCraft || 'creation'}
+
+Write a 2-3 paragraph affirmation in second person ("You are..."). Make it powerful, specific to their data, and motivating. No emojis. No title or label.`
+          });
+          const textBlock = affirmationResponse.content.find(b => b.type === "text");
+          const affirmation = textBlock?.text || "You are a force of nature.";
+          await storage.upsertUserProfile(userId, { characterAffirmation: affirmation } as any);
+          return JSON.stringify({ success: true, action: "generate_affirmation", affirmationText: affirmation, message: "New affirmation generated and saved." });
+        } catch (err: any) {
+          return JSON.stringify({ success: false, message: "Failed to generate affirmation: " + (err.message || "Unknown error") });
+        }
+      }
+
+      case "update_daily_log": {
+        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+        const { ...logUpdates } = input;
+        const todayDate = new Date(today + 'T00:00:00');
+        const todayLog = await storage.getUserDailyLogByDate(userId, todayDate);
+        if (todayLog) {
+          await storage.updateUserDailyLog(todayLog.id, logUpdates);
+        } else {
+          await storage.createUserDailyLog({ userId, date: today, ...logUpdates });
+        }
+        const fields = Object.keys(logUpdates).join(", ");
+        return JSON.stringify({ success: true, action: "update_daily_log", message: `Daily log updated: ${fields}` });
+      }
+
+      case "toggle_theme": {
+        const stats = await storage.getUserStats(userId);
+        if (stats) {
+          await storage.updateUserStats(userId, { darkThemeEnabled: input.dark });
+        }
+        return JSON.stringify({ 
+          success: true, 
+          action: "toggle_theme",
+          dark: input.dark,
+          message: `Theme switched to ${input.dark ? 'dark' : 'light'} mode.` 
+        });
+      }
+
+      case "start_mission_timer": {
+        return JSON.stringify({ 
+          success: true, 
+          action: "start_mission_timer",
+          missionId: input.mission_id,
+          message: `Starting timer for mission.` 
+        });
+      }
+
+      case "pause_timer": {
+        return JSON.stringify({ success: true, action: "pause_timer", message: "Timer paused." });
+      }
+
+      case "resume_timer": {
+        return JSON.stringify({ success: true, action: "resume_timer", message: "Timer resumed." });
+      }
+
+      case "end_timer": {
+        return JSON.stringify({ success: true, action: "end_timer", message: "Timer ended." });
       }
 
       default:
@@ -773,124 +1001,103 @@ Return ONLY the JSON, no other text.`;
   app.post("/api/voice-command", isAuthenticated, aiRateLimiter, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
-      const { transcript } = req.body;
+      const { transcript, conversationId } = req.body;
 
       if (!transcript || typeof transcript !== "string") {
         return res.status(400).json({ error: "Transcript is required" });
       }
 
-      const [user, stats, missions] = await Promise.all([
+      const [user, stats, missions, profile] = await Promise.all([
         storage.getUser(userId),
         storage.getUserStats(userId),
         storage.getQuests(userId),
+        storage.getUserProfile(userId),
       ]);
 
       const activeMissions = (missions || []).filter((m: any) => !m.completed && !m.deletedAt);
+      const archivedMissions = await storage.getArchivedQuests(userId);
 
-      const voiceSystemPrompt = `You are NOVA, an AI voice assistant for LYFEOS (a gamified life operating system). The user just spoke a voice command. Interpret their intent and respond with a JSON object describing the action to take.
+      let recentMessages: { role: string; content: string }[] = [];
+      let dbConversationId = conversationId ? parseInt(conversationId) : null;
+      
+      if (dbConversationId) {
+        const messages = await chatStorage.getMessagesByConversation(dbConversationId);
+        recentMessages = messages.slice(-10).map(m => ({
+          role: m.role,
+          content: m.content,
+        }));
+      }
 
-USER: ${user?.displayName || user?.username || 'Commander'} (Level ${stats?.level || 1})
+      if (dbConversationId) {
+        await chatStorage.createMessage(dbConversationId, "user", `[Voice] ${transcript}`);
+      }
 
-ACTIVE MISSIONS:
-${activeMissions.map((m: any) => `- [ID:${m.id}] "${m.title}"`).join('\n') || 'None'}
+      const voiceSystemPrompt = buildSystemPrompt(user, stats, profile, [...(missions || []), ...archivedMissions]);
 
-AVAILABLE DASHBOARD WIDGETS (can be opened/collapsed):
-- "dashboard.data-entry-log" (Daily Data Log)
-- "dashboard.research-log" (Daily Research Log)
-- "dashboard.reflection-log" (Daily Reflection Log)
-- "dashboard.intention-setter" (Daily Intention Log)
-- "dashboard.energy-log" (Daily Energy Log)
+      const apiMessages: any[] = [
+        ...recentMessages.map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
+        { role: "user" as const, content: `[Voice Command] ${transcript}` }
+      ];
 
-AVAILABLE PAGES:
-- /dashboard (Dashboard/Home)
-- /missions (Missions)
-- /ai (AI/NOVA Chat)
-- /chronilog (Chronilog)
-- /profile (Profile/Settings)
-- /journal-log (Journal)
-- /chronilog/timeline (Timeline)
-- /knowledge-vault (Knowledge Vault)
-- /goals-archive (Goals/Vision)
+      let currentMessages = apiMessages;
+      let maxIterations = 3;
+      let fullResponse = "";
+      let toolActions: any[] = [];
 
-You must respond with ONLY a valid JSON object (no markdown, no code fences) with these fields:
-{
-  "actions": [
-    {
-      "type": "navigate" | "toggle_widget" | "complete_mission" | "start_mission" | "pause_timer" | "resume_timer" | "end_timer" | "create_mission" | "none",
-      "target": "route path or widget ID or mission ID",
-      "open": true/false (only for toggle_widget),
-      "title": "mission title" (only for create_mission),
-      "description": "mission description" (only for create_mission)
-    }
-  ],
-  "speech": "A brief spoken response to say back to the user (1-2 sentences max, no emojis)",
-  "understood": true/false
-}
+      while (maxIterations > 0) {
+        maxIterations--;
 
-RULES:
-- For navigation: match the user's intent to the closest page. "open" or "show" can mean navigation too.
-- For widgets: when user says "open/expand/show [widget name]" set open:true, "close/collapse/hide [widget name]" set open:false. Match by name loosely (e.g. "energy" -> "dashboard.energy-log", "data" or "data log" -> "dashboard.data-entry-log", "research" -> "dashboard.research-log", "reflection" -> "dashboard.reflection-log", "intention" -> "dashboard.intention-setter"). When toggling a widget, ALSO include a navigate action to /dashboard first so the user sees the widget change.
-- For missions: match by title similarity. Use the mission ID as the target.
-- For timer commands: pause, resume, stop/end timer.
-- If the command is conversational or a question (not an action), set type to "none" and put your conversational answer in "speech".
-- Multiple actions can be returned in the actions array.
-- Keep speech responses concise and futuristic-sounding.`;
+        const response = await anthropic.messages.create({
+          model: "claude-sonnet-4-5",
+          max_tokens: 512,
+          system: voiceSystemPrompt + "\n\nIMPORTANT: This is a VOICE command. Keep your text responses very brief (1-2 sentences). The response will be spoken aloud. Do not use markdown formatting, emojis, or special characters. Be concise and natural-sounding.",
+          messages: currentMessages,
+          tools,
+        });
 
-      const response = await anthropic.messages.create({
-        model: "claude-sonnet-4-5",
-        max_tokens: 512,
-        messages: [
-          { role: "user", content: `Voice command: "${transcript}"` }
-        ],
-        system: voiceSystemPrompt,
-      });
+        if (response.stop_reason === "tool_use") {
+          const toolUseBlocks = response.content.filter(
+            (block): block is Anthropic.Messages.ToolUseBlock => block.type === "tool_use"
+          );
 
-      const textBlock = response.content.find(b => b.type === "text");
-      const rawText = textBlock ? textBlock.text.trim() : '{"actions":[],"speech":"I didn\'t catch that.","understood":false}';
+          const toolResults: Anthropic.Messages.ToolResultBlockParam[] = [];
 
-      try {
-        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-        const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { actions: [], speech: "I didn't understand that.", understood: false };
+          for (const toolUse of toolUseBlocks) {
+            const result = await executeTool(toolUse.name, toolUse.input, userId);
+            toolActions.push(JSON.parse(result));
 
-        for (const action of parsed.actions || []) {
-          if (action.type === "toggle_widget" && action.target) {
-            const widgetId = action.target;
-            const isOpen = action.open !== false;
-            await storage.setWidgetState(userId, widgetId, isOpen);
-          }
-          if (action.type === "complete_mission" && action.target) {
-            const missionId = parseInt(action.target);
-            if (!isNaN(missionId)) {
-              const quest = await storage.getQuest(missionId);
-              if (quest && quest.userId === userId && !quest.completed) {
-                await storage.toggleQuestCompletion(missionId);
-              }
-            }
-          }
-          if (action.type === "create_mission" && action.title) {
-            const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
-            await storage.createQuest({
-              userId,
-              title: action.title,
-              description: action.description || "",
-              category: "general",
-              difficulty: "D",
-              energyCost: 1,
-              attentionCost: 0,
-              timeCost: 0,
-              experienceReward: 10,
-              startDate: today,
-              endDate: null,
-              dueDate: null,
-              completed: false,
+            toolResults.push({
+              type: "tool_result",
+              tool_use_id: toolUse.id,
+              content: result,
             });
           }
+
+          currentMessages = [
+            ...currentMessages,
+            { role: "assistant" as const, content: response.content },
+            { role: "user" as const, content: toolResults },
+          ];
+
+          continue;
         }
 
-        res.json(parsed);
-      } catch (parseError) {
-        res.json({ actions: [], speech: rawText.substring(0, 200), understood: true });
+        const textBlocks = response.content.filter(
+          (block): block is Anthropic.Messages.TextBlock => block.type === "text"
+        );
+        fullResponse = textBlocks.map(b => b.text).join("");
+        break;
       }
+
+      if (dbConversationId && fullResponse) {
+        await chatStorage.createMessage(dbConversationId, "assistant", fullResponse);
+      }
+
+      res.json({ 
+        speech: fullResponse || "Done.", 
+        toolActions, 
+        understood: true 
+      });
     } catch (error) {
       console.error("Error processing voice command:", error);
       res.status(500).json({ error: "Failed to process voice command" });
