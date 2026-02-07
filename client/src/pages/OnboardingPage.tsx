@@ -300,14 +300,14 @@ function GradientSlider({
         <span>{right}</span>
       </div>
       <div className="relative">
-        <div className="absolute inset-0 h-2 rounded-full bg-gradient-to-r from-primary via-purple-500 to-primary top-1/2 -translate-y-1/2" />
+        <div className="absolute inset-0 h-2 rounded-full bg-gradient-to-r from-primary/80 via-primary to-primary/80 top-1/2 -translate-y-1/2" />
         <input
           type="range"
           min="0"
           max="100"
           value={value}
           onChange={(e) => onChange(parseInt(e.target.value))}
-          className="relative w-full h-6 appearance-none bg-transparent cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-background [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(0,224,255,0.5)]"
+          className="theme-slider relative w-full h-6 appearance-none bg-transparent cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-background"
         />
       </div>
     </div>

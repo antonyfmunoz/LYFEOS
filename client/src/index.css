@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Onboarding slider thumb with theme-aware glow */
+input[type="range"].theme-slider::-webkit-slider-thumb {
+  box-shadow: 0 0 10px var(--primary-glow-medium, rgba(0,224,255,0.5));
+}
+input[type="range"].theme-slider::-moz-range-thumb {
+  box-shadow: 0 0 10px var(--primary-glow-medium, rgba(0,224,255,0.5));
+}
+
 /* Custom styles for LYFEOS */
 @layer components {
   /* Yellow hover effect for select items and dropdown menus */

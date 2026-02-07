@@ -15,7 +15,7 @@ const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
   return res.status(401).json({ error: "Authentication required" });
 };
 
-function buildSystemPrompt(user: any, stats: any, profile: any, missions: any[]): string {
+function buildSystemPrompt(user: any, stats: any, profile: any, missions: any[], conversationHistory?: { role: string; content: string; conversationTitle?: string; createdAt: Date }[]): string {
   const activeMissions = missions.filter(m => !m.completed && !m.deletedAt);
   const completedMissions = missions.filter(m => m.completed && !m.deletedAt);
   const terminatedMissions = missions.filter(m => m.deletedAt);
@@ -95,7 +95,12 @@ Guidelines:
 - Reference their archetype, goals, and current missions to personalize advice
 - Be encouraging but honest — push them toward growth
 - When they ask about their data, reference the actual numbers above
-- If they want to make changes, use the tools — don't just tell them what to do`;
+- If they want to make changes, use the tools — don't just tell them what to do
+
+=== PREVIOUS CONVERSATION HISTORY ===
+${conversationHistory && conversationHistory.length > 0 
+  ? `You have had previous conversations with this user. Here is a summary of past interactions so you maintain continuity and remember context from earlier chats:\n${conversationHistory.slice(-100).map(m => `[${m.conversationTitle || 'Chat'}] ${m.role === 'user' ? 'User' : 'You'}: ${m.content.substring(0, 500)}${m.content.length > 500 ? '...' : ''}`).join('\n')}`
+  : 'No previous conversation history yet.'}`;
 }
 
 const tools: Anthropic.Messages.Tool[] = [
@@ -443,16 +448,19 @@ export function registerChatRoutes(app: Express): void {
         content: m.content,
       }));
 
-      const [user, stats, profile, missions] = await Promise.all([
+      const [user, stats, profile, missions, allConversationMessages] = await Promise.all([
         storage.getUser(userId),
         storage.getUserStats(userId),
         storage.getUserProfile(userId),
         storage.getQuests(userId),
+        chatStorage.getAllMessagesByUser(userId),
       ]);
       const archivedMissions = await storage.getArchivedQuests(userId);
       const allMissions = [...missions, ...archivedMissions];
 
-      const systemPrompt = buildSystemPrompt(user, stats, profile, allMissions);
+      const otherConversationMessages = allConversationMessages.filter(m => m.conversationId !== conversationId);
+
+      const systemPrompt = buildSystemPrompt(user, stats, profile, allMissions, otherConversationMessages);
 
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");

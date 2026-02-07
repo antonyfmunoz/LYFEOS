@@ -1075,6 +1075,7 @@ export const conversations = pgTable("conversations", {
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export const messages = pgTable("messages", {

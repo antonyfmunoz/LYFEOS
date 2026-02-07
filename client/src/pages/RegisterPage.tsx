@@ -33,7 +33,8 @@ export default function RegisterPage() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [error, setError] = useState("");
   const [selectedColor, setSelectedColor] = useState("#00e0ff");
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -121,7 +122,9 @@ export default function RegisterPage() {
     const trimmedPhone = phone.trim();
     const trimmedPassword = password.trim();
     const trimmedConfirmPassword = confirmPassword.trim();
-    const trimmedDisplayName = displayName.trim();
+    const trimmedFirstName = firstName.trim();
+    const trimmedLastName = lastName.trim();
+    const trimmedDisplayName = [trimmedFirstName, trimmedLastName].filter(Boolean).join(" ");
     
     if (!trimmedUsername) {
       setError("Username is required");
@@ -180,13 +183,14 @@ export default function RegisterPage() {
     
     try {
       console.log("Saving onboarding data to localStorage");
-      // Store additional registration data for onboarding
       localStorage.setItem("onboarding_data", JSON.stringify({
         displayName: trimmedDisplayName || trimmedUsername,
+        firstName: trimmedFirstName,
+        lastName: trimmedLastName,
         email: trimmedEmail,
         phone: trimmedPhone,
         avatarColor: selectedColor,
-        step: 1 // Indicates to start with step 1 of onboarding
+        step: 1
       }));
       
       console.log("Registering user with username:", trimmedUsername);
@@ -265,16 +269,29 @@ export default function RegisterPage() {
             />
           </div>
           
-          <div className="space-y-2">
-            <label htmlFor="displayName" className="block text-sm text-muted-foreground">DISPLAY NAME (OPTIONAL)</label>
-            <Input 
-              type="text" 
-              id="displayName"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full bg-transparent border-primary/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-primary/30"
-              placeholder="Your name or alias"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <label htmlFor="firstName" className="block text-sm text-muted-foreground">FIRST NAME</label>
+              <Input 
+                type="text" 
+                id="firstName"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className="w-full bg-transparent border-primary/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-primary/30"
+                placeholder="First name"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="lastName" className="block text-sm text-muted-foreground">LAST NAME</label>
+              <Input 
+                type="text" 
+                id="lastName"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                className="w-full bg-transparent border-primary/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-primary/30"
+                placeholder="Last name"
+              />
+            </div>
           </div>
           
           <div className="space-y-2">
