@@ -50,10 +50,7 @@ interface MissionFormData {
   endDate: string;
   endTime: string;
   notifications: QuestNotification[];
-  difficulty: string;
 }
-
-const DIFFICULTY_RANKS = ["S", "A", "B", "C", "D"] as const;
 
 const defaultFormData: MissionFormData = {
   title: "",
@@ -64,7 +61,6 @@ const defaultFormData: MissionFormData = {
   endDate: "",
   endTime: "",
   notifications: [],
-  difficulty: "D",
 };
 
 function DroppableSection({ section, onDropQuest, children, className }: { section: string; onDropQuest: (item: DragItem, targetSection: string) => void; children: React.ReactNode; className?: string }) {
@@ -331,7 +327,6 @@ export default function QuestsPage() {
       endDate: quest.endDate || "",
       endTime: quest.endTime || "",
       notifications: quest.notifications || [],
-      difficulty: quest.difficulty || "D",
     });
     setIsEditOpen(true);
   };
@@ -352,7 +347,6 @@ export default function QuestsPage() {
         notificationEnabled: createFormData.notifications.length > 0,
         notificationTime: null,
         notifications: createFormData.notifications,
-        difficulty: createFormData.difficulty,
       });
       
       setCreateFormData(defaultFormData);
@@ -380,7 +374,6 @@ export default function QuestsPage() {
         notificationEnabled: editFormData.notifications.length > 0,
         notificationTime: null,
         notifications: editFormData.notifications,
-        difficulty: editFormData.difficulty,
       });
       
       setEditFormData(defaultFormData);
@@ -465,26 +458,6 @@ export default function QuestsPage() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label>Difficulty Rank <span className="text-primary">*</span></Label>
-                <div className="flex gap-2">
-                  {DIFFICULTY_RANKS.map((rank) => (
-                    <button
-                      key={rank}
-                      type="button"
-                      onClick={() => setCreateFormData(prev => ({ ...prev, difficulty: rank }))}
-                      className={`flex-1 py-2 rounded-lg text-sm font-mono border transition-all ${
-                        createFormData.difficulty === rank
-                          ? "bg-primary/20 border-primary text-primary shadow-[0_0_8px_hsl(var(--primary)/0.4)]"
-                          : "bg-background/30 border-primary/20 text-muted-foreground hover:border-primary/40"
-                      }`}
-                    >
-                      {rank}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Start Date <span className="text-primary">*</span></Label>
@@ -643,26 +616,6 @@ export default function QuestsPage() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>Difficulty Rank <span className="text-primary">*</span></Label>
-              <div className="flex gap-2">
-                {DIFFICULTY_RANKS.map((rank) => (
-                  <button
-                    key={rank}
-                    type="button"
-                    onClick={() => setEditFormData(prev => ({ ...prev, difficulty: rank }))}
-                    className={`flex-1 py-2 rounded-lg text-sm font-mono border transition-all ${
-                      editFormData.difficulty === rank
-                        ? "bg-primary/20 border-primary text-primary shadow-[0_0_8px_hsl(var(--primary)/0.4)]"
-                        : "bg-background/30 border-primary/20 text-muted-foreground hover:border-primary/40"
-                    }`}
-                  >
-                    {rank}
-                  </button>
-                ))}
-              </div>
-            </div>
-            
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Start Date <span className="text-primary">*</span></Label>
@@ -1182,10 +1135,30 @@ export default function QuestsPage() {
                             <span className="text-primary text-xs font-mono whitespace-nowrap">+{adjustedXp} XP</span>
                             <span className="text-muted-foreground text-xs">{hoursLeft}h left</span>
                           </div>
-                          {terminatedInfoOpen[quest.id] && quest.description && (
-                            <p className="text-muted-foreground text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 opacity-60">
-                              {quest.description}
-                            </p>
+                          {terminatedInfoOpen[quest.id] && (
+                            <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 opacity-60 space-y-2">
+                              {quest.description && (
+                                <p className="text-muted-foreground">{quest.description}</p>
+                              )}
+                              <div className="border-t border-primary/10 pt-2 space-y-1">
+                                {quest.category && quest.category !== "general" && quest.category !== "onboarding" && (
+                                  <p className="text-muted-foreground text-xs">
+                                    <span className="text-primary font-mono capitalize">{quest.category}</span> — Mission category, auto-assigned by AI.
+                                  </p>
+                                )}
+                                {(quest.difficulty || 'D') && (
+                                  <p className="text-muted-foreground text-xs">
+                                    <span className="text-primary font-mono">Rank {quest.difficulty || 'D'}</span> — {
+                                      quest.difficulty === 'S' ? 'Extreme effort. 5x XP multiplier.' :
+                                      quest.difficulty === 'A' ? 'High effort. 3x XP multiplier.' :
+                                      quest.difficulty === 'B' ? 'Moderate effort. 2x XP multiplier.' :
+                                      quest.difficulty === 'C' ? 'Light effort. 1.5x XP multiplier.' :
+                                      'Minimal effort. 1x XP multiplier.'
+                                    }
+                                  </p>
+                                )}
+                              </div>
+                            </div>
                           )}
                           {hasSchedule && (
                             <div className="flex items-center gap-1 text-xs mt-1 flex-wrap opacity-50 text-muted-foreground">

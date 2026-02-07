@@ -128,22 +128,18 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
                   {category}
                 </span>
               )}
-              {difficulty && (
-                <span className={`text-[10px] font-mono h-6 w-6 inline-flex items-center justify-center rounded border ${difficultyStyle} ${completed ? "opacity-50" : ""}`}>
-                  {difficulty}
-                </span>
-              )}
-              {description && (
-                <button
-                  className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowDescription(!showDescription);
-                  }}
-                >
-                  <Info className="h-3.5 w-3.5" />
-                </button>
-              )}
+              <span className={`text-[10px] font-mono h-6 w-6 inline-flex items-center justify-center rounded border ${difficultyStyle} ${completed ? "opacity-50" : ""}`}>
+                {difficulty || 'D'}
+              </span>
+              <button
+                className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDescription(!showDescription);
+                }}
+              >
+                <Info className="h-3.5 w-3.5" />
+              </button>
               {onEdit && (
                 <button
                   className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
@@ -213,10 +209,30 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
               <span className={`text-xs font-mono ${completed ? "text-muted-foreground" : "text-primary"}`}>{formatElapsed(elapsedSeconds)}</span>
             </div>
           )}
-          {showDescription && description && (
-            <p className={`text-muted-foreground text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 ${completed ? "opacity-50" : ""}`}>
-              {description.replace(/^Completed onboarding mission "(.+)"$/, 'Completed the "$1" mission')}
-            </p>
+          {showDescription && (
+            <div className={`text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 space-y-2 ${completed ? "opacity-50" : ""}`}>
+              {description && (
+                <p className="text-muted-foreground">
+                  {description.replace(/^Completed onboarding mission "(.+)"$/, 'Completed the "$1" mission')}
+                </p>
+              )}
+              <div className="border-t border-primary/10 pt-2 space-y-1">
+                {category && category !== "general" && category !== "onboarding" && (
+                  <p className="text-muted-foreground text-xs">
+                    <span className="text-primary font-mono capitalize">{category}</span> — Mission category, auto-assigned by AI based on title and description.
+                  </p>
+                )}
+                <p className="text-muted-foreground text-xs">
+                  <span className="text-primary font-mono">Rank {difficulty || 'D'}</span> — {
+                    (difficulty || 'D') === 'S' ? 'Extreme effort. Multi-day or life-changing. 5x XP multiplier.' :
+                    (difficulty || 'D') === 'A' ? 'High effort. Significant commitment. 3x XP multiplier.' :
+                    (difficulty || 'D') === 'B' ? 'Moderate effort. Requires focus and planning. 2x XP multiplier.' :
+                    (difficulty || 'D') === 'C' ? 'Light effort. Simple but requires attention. 1.5x XP multiplier.' :
+                    'Minimal effort. Quick and easy. 1x XP multiplier.'
+                  }
+                </p>
+              </div>
+            </div>
           )}
           {!completed && (
             <div className="flex items-center gap-2 mt-2">

@@ -1258,8 +1258,9 @@ Generate the complete affirmation now:`;
         questData.endTime || null
       );
       
-      // AI-powered category classification (skip for onboarding or pre-set categories)
+      // AI-powered category + difficulty classification (skip for onboarding or pre-set categories)
       let assignedCategory = questData.category || "general";
+      let assignedDifficulty = questData.difficulty || "D";
       const presetCategories = ["onboarding", "setup", "rituals"];
       if (!presetCategories.includes(assignedCategory) && questData.title) {
         try {
@@ -1267,32 +1268,49 @@ Generate the complete affirmation now:`;
             apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
             baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
           });
-          const categoryResponse = await anthropic.messages.create({
+          const classifyResponse = await anthropic.messages.create({
             model: "claude-sonnet-4-20250514",
-            max_tokens: 20,
+            max_tokens: 30,
             messages: [{
               role: "user",
-              content: `Classify this mission into exactly ONE category. Respond with ONLY the category word, nothing else.
+              content: `Classify this mission. Respond with ONLY two words separated by a space: the category and the difficulty rank. Nothing else.
 
 Categories: work, health, fitness, finance, learning, creative, social, personal, mindset, career, nutrition, recovery, planning, spiritual, household
+
+Difficulty ranks (based on effort, complexity, and time required):
+S = Extreme effort, multi-day or life-changing tasks
+A = High effort, significant commitment (several hours or very challenging)
+B = Moderate effort, requires focus and planning (1-3 hours)
+C = Light effort, simple but requires some attention (30min-1hr)
+D = Minimal effort, quick and easy tasks (under 30min)
 
 Mission title: ${questData.title}
 ${questData.description ? `Description: ${questData.description}` : ''}`
             }],
           });
-          const categoryText = (categoryResponse.content[0] as any).text?.trim().toLowerCase();
+          const responseText = (classifyResponse.content[0] as any).text?.trim().toLowerCase();
           const validCategories = ["work", "health", "fitness", "finance", "learning", "creative", "social", "personal", "mindset", "career", "nutrition", "recovery", "planning", "spiritual", "household"];
-          if (categoryText && validCategories.includes(categoryText)) {
-            assignedCategory = categoryText;
+          const validDifficulties = ["s", "a", "b", "c", "d"];
+          if (responseText) {
+            const parts = responseText.split(/\s+/);
+            if (parts.length >= 2) {
+              const cat = parts[0];
+              const diff = parts[1];
+              if (validCategories.includes(cat)) assignedCategory = cat;
+              if (validDifficulties.includes(diff)) assignedDifficulty = diff.toUpperCase();
+            } else if (parts.length === 1 && validCategories.includes(parts[0])) {
+              assignedCategory = parts[0];
+            }
           }
         } catch (aiError) {
-          console.error("AI category classification failed, using default:", aiError);
+          console.error("AI classification failed, using defaults:", aiError);
         }
       }
       
       const quest = await storage.createQuest({
         ...questData,
         category: assignedCategory,
+        difficulty: assignedDifficulty,
         attentionCost,
         timeCost,
         energyCost,
@@ -1459,6 +1477,7 @@ ${questData.description ? `Description: ${questData.description}` : ''}`
     title: true,
     description: true,
     category: true,
+    difficulty: true,
     energyCost: true,
     experienceReward: true,
     startDate: true,
@@ -1531,8 +1550,60 @@ ${questData.description ? `Description: ${questData.description}` : ''}`
         endTime || null
       );
       
+      // Re-classify category + difficulty if title or description changed
+      const titleChanged = 'title' in validatedData && validatedData.title !== quest.title;
+      const descChanged = 'description' in validatedData && validatedData.description !== quest.description;
+      let reclassifiedCategory = validatedData.category;
+      let reclassifiedDifficulty = validatedData.difficulty;
+      const presetCategories = ["onboarding", "setup", "rituals"];
+      const currentCategory = validatedData.category || quest.category || "";
+      if ((titleChanged || descChanged) && !presetCategories.includes(currentCategory)) {
+        try {
+          const anthropic = new Anthropic({
+            apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
+            baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+          });
+          const newTitle = validatedData.title || quest.title;
+          const newDesc = validatedData.description || quest.description;
+          const classifyResponse = await anthropic.messages.create({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 30,
+            messages: [{
+              role: "user",
+              content: `Classify this mission. Respond with ONLY two words separated by a space: the category and the difficulty rank. Nothing else.
+
+Categories: work, health, fitness, finance, learning, creative, social, personal, mindset, career, nutrition, recovery, planning, spiritual, household
+
+Difficulty ranks (based on effort, complexity, and time required):
+S = Extreme effort, multi-day or life-changing tasks
+A = High effort, significant commitment (several hours or very challenging)
+B = Moderate effort, requires focus and planning (1-3 hours)
+C = Light effort, simple but requires some attention (30min-1hr)
+D = Minimal effort, quick and easy tasks (under 30min)
+
+Mission title: ${newTitle}
+${newDesc ? `Description: ${newDesc}` : ''}`
+            }],
+          });
+          const responseText = (classifyResponse.content[0] as any).text?.trim().toLowerCase();
+          const validCategories = ["work", "health", "fitness", "finance", "learning", "creative", "social", "personal", "mindset", "career", "nutrition", "recovery", "planning", "spiritual", "household"];
+          const validDifficulties = ["s", "a", "b", "c", "d"];
+          if (responseText) {
+            const parts = responseText.split(/\s+/);
+            if (parts.length >= 2) {
+              if (validCategories.includes(parts[0])) reclassifiedCategory = parts[0];
+              if (validDifficulties.includes(parts[1])) reclassifiedDifficulty = parts[1].toUpperCase();
+            }
+          }
+        } catch (aiError) {
+          console.error("AI re-classification failed on update:", aiError);
+        }
+      }
+      
       const updatedQuest = await storage.updateQuest(questId, {
         ...validatedData,
+        ...(reclassifiedCategory ? { category: reclassifiedCategory } : {}),
+        ...(reclassifiedDifficulty ? { difficulty: reclassifiedDifficulty } : {}),
         attentionCost,
         timeCost,
         energyCost,
