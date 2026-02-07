@@ -2,11 +2,28 @@ import { useMemo, useState } from 'react';
 import { useLocation } from "wouter";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useLYFEOS } from "@/lib/context";
-import { Archive, ArrowLeft, Calendar, Clock, Bell, ChevronRight, ChevronDown } from "lucide-react";
+import { Archive, ArrowLeft, Calendar, Clock, Bell, ChevronRight, ChevronDown, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Quest } from "@/lib/types";
+
+const categoryDescriptions: Record<string, string> = {
+  work: 'Professional tasks, projects, and job-related responsibilities.',
+  health: 'Medical care, wellness checkups, and overall well-being.',
+  fitness: 'Exercise, workouts, physical training, and movement goals.',
+  finance: 'Budgeting, saving, investing, and money management.',
+  learning: 'Education, studying, courses, and skill development.',
+  creative: 'Art, music, writing, design, and creative expression.',
+  social: 'Relationships, events, gatherings, and interpersonal connections.',
+  personal: 'Self-care, errands, and individual life management.',
+  mindset: 'Mental health, meditation, mindfulness, and inner growth.',
+  career: 'Long-term professional growth, networking, and advancement.',
+  nutrition: 'Meal planning, diet, cooking, and food choices.',
+  recovery: 'Rest, rehabilitation, stress relief, and recharging.',
+  planning: 'Strategy, organization, scheduling, and goal-setting.',
+  spiritual: 'Faith, purpose, reflection, and spiritual practices.',
+  household: 'Home maintenance, cleaning, chores, and living space.',
+};
 
 interface DayData {
   dayKey: string;
@@ -27,10 +44,17 @@ interface YearData {
 }
 
 function MissionCard({ mission }: { mission: Quest }) {
+  const [showDescription, setShowDescription] = useState(false);
+  const { title, description, energyCost, attentionCost, timeCost, experienceReward, startDate, startTime, endDate, endTime, notificationEnabled, difficulty, category } = mission;
+  
+  const difficultyStyle = "bg-primary/20 border-primary/50 text-primary";
   const difficultyMultipliers: Record<string, number> = { D: 1, C: 1.5, B: 2, A: 3, S: 5 };
-  const adjustedXp = Math.floor(mission.experienceReward * (difficultyMultipliers[mission.difficulty || 'D'] || 1));
+  const xpMultiplier = difficultyMultipliers[difficulty || 'D'] || 1;
+  const adjustedXp = Math.floor(experienceReward * xpMultiplier);
+
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
   const formatTime = (timeStr: string) => {
@@ -40,75 +64,102 @@ function MissionCard({ mission }: { mission: Quest }) {
     const hour12 = hour % 12 || 12;
     return `${hour12}:${minutes} ${ampm}`;
   };
-  const hasSchedule = mission.startDate || mission.startTime || mission.endDate || mission.endTime;
+  const hasSchedule = startDate || startTime || endDate || endTime;
   
   return (
     <div className="glassmorphic rounded-xl p-4 hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition neon-border">
-      <div className="flex items-start">
-        <Checkbox 
-          className="mt-1 rounded border border-primary/50 data-[state=checked]:bg-primary/20 data-[state=checked]:text-primary"
-          checked={true}
-          disabled
-        />
-        <div className="ml-3 flex-grow">
-          <div className="flex justify-between items-start">
-            <div className="flex-grow">
-              <h3 className="font-medium mb-1 text-muted-foreground line-through">
-                {mission.title.replace(/^Onboarding:\s*/, '')}
-                {mission.notificationEnabled && (
-                  <Bell className="inline-block ml-2 h-3 w-3 text-primary opacity-70" />
-                )}
-              </h3>
-              
-              {hasSchedule && (
-                <div className="flex flex-wrap items-center gap-2 text-xs mb-1 opacity-50">
-                  {mission.startDate && (
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {formatDate(mission.startDate)}
-                      {mission.startTime && (
-                        <>
-                          <Clock className="h-3 w-3 ml-1" />
-                          {formatTime(mission.startTime)}
-                        </>
-                      )}
-                    </span>
-                  )}
-                  {(mission.endDate || mission.endTime) && (
-                    <>
-                      <span className="text-primary">→</span>
-                      <span className="flex items-center gap-1">
-                        {mission.endDate && (
-                          <>
-                            <Calendar className="h-3 w-3" />
-                            {formatDate(mission.endDate)}
-                          </>
-                        )}
-                        {mission.endTime && (
-                          <>
-                            <Clock className="h-3 w-3 ml-1" />
-                            {formatTime(mission.endTime)}
-                          </>
-                        )}
-                      </span>
-                    </>
-                  )}
-                </div>
+      <div className="flex-grow">
+        <div className="flex justify-between items-start">
+          <h3 className="font-medium text-muted-foreground line-through">
+            {title.replace(/^Onboarding:\s*/, '')}
+            {notificationEnabled && (
+              <Bell className="inline-block ml-2 h-3 w-3 text-primary opacity-70" />
+            )}
+          </h3>
+          <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+            {category && category !== "general" && category !== "onboarding" && (
+              <span className={`text-[10px] font-mono h-6 px-1.5 inline-flex items-center justify-center rounded border ${difficultyStyle} opacity-50 capitalize`}>
+                {category}
+              </span>
+            )}
+            <span className={`text-[10px] font-mono h-6 w-6 inline-flex items-center justify-center rounded border ${difficultyStyle} opacity-50`}>
+              {difficulty || 'D'}
+            </span>
+            <button
+              className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowDescription(!showDescription);
+              }}
+            >
+              <Info className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 mt-1 flex-wrap opacity-50">
+          <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((energyCost ?? 0) / 1440) * 100).toFixed(1)}% ET</span>
+          <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((attentionCost ?? 0) / 1440) * 100).toFixed(1)}% AT</span>
+          <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((timeCost ?? 0) / 1440) * 100).toFixed(1)}% TT</span>
+          <span className="text-primary text-xs font-mono whitespace-nowrap">+{adjustedXp} XP</span>
+        </div>
+        {hasSchedule && (
+          <div className="flex items-center gap-1 text-xs mt-1 flex-wrap text-muted-foreground opacity-50">
+            {startDate && (
+              <span className="flex items-center gap-1 whitespace-nowrap">
+                <Calendar className="h-3 w-3 flex-shrink-0" />
+                {formatDate(startDate)}
+              </span>
+            )}
+            {startTime && (
+              <span className="flex items-center gap-1 whitespace-nowrap">
+                <Clock className="h-3 w-3 flex-shrink-0" />
+                {formatTime(startTime)}
+              </span>
+            )}
+            {(endDate || endTime) && (
+              <span className="text-primary flex-shrink-0">→</span>
+            )}
+            {endDate && (
+              <span className="flex items-center gap-1 whitespace-nowrap">
+                <Calendar className="h-3 w-3 flex-shrink-0" />
+                {formatDate(endDate)}
+              </span>
+            )}
+            {endTime && (
+              <span className="flex items-center gap-1 whitespace-nowrap">
+                <Clock className="h-3 w-3 flex-shrink-0" />
+                {formatTime(endTime)}
+              </span>
+            )}
+          </div>
+        )}
+        {showDescription && (
+          <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 space-y-2 opacity-50">
+            {description && (
+              <p className="text-muted-foreground">
+                {description.replace(/^Completed onboarding mission "(.+)"$/, 'Completed the "$1" mission')}
+              </p>
+            )}
+            <div className="border-t border-primary/10 pt-2 space-y-1">
+              {category && category !== "general" && category !== "onboarding" && (
+                <p className="text-muted-foreground text-xs">
+                  <span className="text-primary font-mono capitalize">{category}</span> — {
+                    categoryDescriptions[category] || 'Auto-classified mission category.'
+                  }
+                </p>
               )}
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-primary text-xs font-mono opacity-50">
-                -{(((mission.energyCost ?? 0) / 1440) * 100).toFixed(1)}% ET
-              </span>
-              <span className="text-primary text-xs font-mono opacity-50">
-                +{adjustedXp} XP
-              </span>
+              <p className="text-muted-foreground text-xs">
+                <span className="text-primary font-mono">Rank {difficulty || 'D'}</span> — {
+                  (difficulty || 'D') === 'S' ? 'Extreme effort. Multi-day or life-changing. 5x XP multiplier.' :
+                  (difficulty || 'D') === 'A' ? 'High effort. Significant commitment. 3x XP multiplier.' :
+                  (difficulty || 'D') === 'B' ? 'Moderate effort. Requires focus and planning. 2x XP multiplier.' :
+                  (difficulty || 'D') === 'C' ? 'Light effort. Simple but requires attention. 1.5x XP multiplier.' :
+                  'Minimal effort. Quick and easy. 1x XP multiplier.'
+                }
+              </p>
             </div>
           </div>
-          <p className="text-muted-foreground text-sm opacity-50">
-            {mission.description?.replace(/^Completed onboarding mission "(.+)"$/, 'Completed the "$1" mission') || mission.description}
-          </p>
-        </div>
+        )}
       </div>
     </div>
   );
