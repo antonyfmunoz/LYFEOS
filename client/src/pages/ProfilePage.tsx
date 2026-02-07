@@ -1385,7 +1385,7 @@ export default function ProfilePage() {
             <div className="mt-6 pt-6 border-t border-primary/20">
               <div className="flex items-center gap-2 mb-4">
                 <BarChart4 className="h-5 w-5 text-primary" />
-                <h3 className="text-lg font-bold text-foreground tracking-wide">Player Stats</h3>
+                <h2 className="text-lg font-orbitron text-foreground">Player Stats</h2>
               </div>
               <CompactStatsWidget stats={stats} />
             </div>
