@@ -1,9 +1,10 @@
-import { useState, useCallback, useEffect } from 'react';
-import { Loader2, Mic, MicOff, Square, ChevronUp, ChevronDown } from 'lucide-react';
+import { useState, useCallback, useEffect, type CSSProperties } from 'react';
+import { Loader2, Mic, MicOff, Square, ChevronUp, ChevronDown, GripHorizontal } from 'lucide-react';
 import { useVoiceControl } from '@/hooks/use-voice-control';
 import { useLYFEOS } from '@/lib/context';
 import { useNovaActions } from '@/hooks/use-nova-actions';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useDraggable } from '@/hooks/use-draggable';
 
 interface VoiceCommandResponse {
   speech: string;
@@ -14,6 +15,7 @@ interface VoiceCommandResponse {
 export default function VoiceOverlay() {
   const { activeChatSessionId, chatSessions, aiCompanionName } = useLYFEOS();
   const { executeToolActions } = useNovaActions();
+  const { elementRef, position, dragHandleProps, resetPosition } = useDraggable();
 
   const [showOverlay, setShowOverlay] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -79,13 +81,14 @@ export default function VoiceOverlay() {
       setShowOverlay(false);
       setTranscript('');
       setFeedback('');
+      resetPosition();
     } else {
       setShowOverlay(true);
       setTranscript('');
       setFeedback('');
       startListening();
     }
-  }, [showOverlay, isListening, stopListening, startListening]);
+  }, [showOverlay, isListening, stopListening, startListening, resetPosition]);
 
   const handleStop = useCallback(() => {
     if (isListening) {
@@ -94,7 +97,8 @@ export default function VoiceOverlay() {
     setShowOverlay(false);
     setTranscript('');
     setFeedback('');
-  }, [isListening, stopListening]);
+    resetPosition();
+  }, [isListening, stopListening, resetPosition]);
 
   const handlePauseResume = useCallback(() => {
     if (isListening) {
@@ -116,28 +120,41 @@ export default function VoiceOverlay() {
 
   if (!isSupported || !showOverlay) return null;
 
+  const containerStyle: CSSProperties = position
+    ? { position: 'fixed', left: position.x, top: position.y, right: 'auto', bottom: 'auto', zIndex: 50 }
+    : {};
+
+  const statusIndicator = isProcessing ? (
+    <>
+      <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />
+      <span className="text-xs font-mono text-primary">{aiCompanionName || 'NOVA'} thinking...</span>
+    </>
+  ) : isListening ? (
+    <>
+      <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+      <span className="text-xs font-mono text-primary">Listening...</span>
+    </>
+  ) : (
+    <>
+      <div className="w-2 h-2 rounded-full bg-muted-foreground" />
+      <span className="text-xs font-mono text-muted-foreground">Paused</span>
+    </>
+  );
+
   if (isCollapsed) {
     return (
-      <div className="fixed inset-x-0 top-16 z-50 flex justify-center px-4 pt-2 pointer-events-none">
-        <div className="bg-card rounded-xl px-4 py-2 neon-border max-w-sm w-full pointer-events-auto shadow-[0_0_20px_rgba(0,224,255,0.2)]">
+      <div
+        className={position ? '' : 'fixed inset-x-0 top-16 z-50 flex justify-center px-4 pt-2 pointer-events-none'}
+        style={position ? { ...containerStyle, width: 'auto' } : {}}
+      >
+        <div
+          ref={elementRef}
+          className="bg-card rounded-xl px-4 py-2 neon-border max-w-sm w-full pointer-events-auto shadow-[0_0_20px_rgba(0,224,255,0.2)]"
+        >
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {isProcessing ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />
-                  <span className="text-xs font-mono text-primary">{aiCompanionName || 'NOVA'} thinking...</span>
-                </>
-              ) : isListening ? (
-                <>
-                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                  <span className="text-xs font-mono text-primary">Listening...</span>
-                </>
-              ) : (
-                <>
-                  <div className="w-2 h-2 rounded-full bg-muted-foreground" />
-                  <span className="text-xs font-mono text-muted-foreground">Paused</span>
-                </>
-              )}
+            <div className="flex items-center gap-2 mr-2" {...dragHandleProps}>
+              <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground/50" />
+              {statusIndicator}
             </div>
             <div className="flex items-center gap-1">
               <button
@@ -170,26 +187,18 @@ export default function VoiceOverlay() {
   }
 
   return (
-    <div className="fixed inset-x-0 top-16 z-50 flex justify-center px-4 pt-2 pointer-events-none">
-      <div className="bg-card rounded-xl p-4 neon-border max-w-sm w-full pointer-events-auto shadow-[0_0_20px_rgba(0,224,255,0.2)]">
+    <div
+      className={position ? '' : 'fixed inset-x-0 top-16 z-50 flex justify-center px-4 pt-2 pointer-events-none'}
+      style={position ? { ...containerStyle, width: 'auto' } : {}}
+    >
+      <div
+        ref={elementRef}
+        className="bg-card rounded-xl p-4 neon-border max-w-sm w-full pointer-events-auto shadow-[0_0_20px_rgba(0,224,255,0.2)]"
+      >
         <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            {isProcessing ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />
-                <span className="text-xs font-mono text-primary">{aiCompanionName || 'NOVA'} thinking...</span>
-              </>
-            ) : isListening ? (
-              <>
-                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                <span className="text-xs font-mono text-primary">Listening...</span>
-              </>
-            ) : (
-              <>
-                <div className="w-2 h-2 rounded-full bg-muted-foreground" />
-                <span className="text-xs font-mono text-muted-foreground">Paused</span>
-              </>
-            )}
+          <div className="flex items-center gap-2" {...dragHandleProps}>
+            <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground/50" />
+            {statusIndicator}
           </div>
           <div className="flex items-center gap-1">
             <button

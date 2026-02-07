@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
-import { Pause, Play, Square } from "lucide-react";
+import { useState, useEffect, useCallback, type CSSProperties } from "react";
+import { Pause, Play, Square, GripHorizontal } from "lucide-react";
+import { useDraggable } from "@/hooks/use-draggable";
 
 interface MissionTimerProps {
   timerStartedAt: number | null;
@@ -12,6 +13,7 @@ interface MissionTimerProps {
 
 export default function MissionTimer({ timerStartedAt, timerPausedElapsed, timerIsPaused, onEnd, onPauseResume, missionTitle }: MissionTimerProps) {
   const [displaySeconds, setDisplaySeconds] = useState(0);
+  const { elementRef, position, dragHandleProps } = useDraggable();
 
   const getElapsed = useCallback(() => {
     if (timerIsPaused || !timerStartedAt) {
@@ -62,16 +64,29 @@ export default function MissionTimer({ timerStartedAt, timerPausedElapsed, timer
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   };
 
+  const containerStyle: CSSProperties = position
+    ? { position: 'fixed', left: position.x, top: position.y, right: 'auto', bottom: 'auto', zIndex: 50 }
+    : {};
+
   return (
-    <div className="bg-card rounded-xl p-3 border border-primary/40 shadow-[0_0_20px_rgba(0,224,255,0.2)]">
+    <div
+      ref={elementRef}
+      className="bg-card rounded-xl p-3 border border-primary/40 shadow-[0_0_20px_rgba(0,224,255,0.2)]"
+      style={containerStyle}
+    >
       <div className="flex items-center justify-between">
-        <div className="flex flex-col gap-0.5 min-w-0 mr-3">
-          {missionTitle && (
-            <span className="text-xs text-muted-foreground truncate">{missionTitle}</span>
-          )}
-          <span className={`font-mono text-2xl font-bold tracking-wider ${timerIsPaused ? "text-muted-foreground" : "text-primary"}`}>
-            {formatTime(displaySeconds)}
-          </span>
+        <div className="flex items-center gap-2 min-w-0 mr-3">
+          <div {...dragHandleProps} className="shrink-0 flex items-center">
+            <GripHorizontal className="h-4 w-4 text-muted-foreground/50" />
+          </div>
+          <div className="flex flex-col gap-0.5 min-w-0">
+            {missionTitle && (
+              <span className="text-xs text-muted-foreground truncate">{missionTitle}</span>
+            )}
+            <span className={`font-mono text-2xl font-bold tracking-wider ${timerIsPaused ? "text-muted-foreground" : "text-primary"}`}>
+              {formatTime(displaySeconds)}
+            </span>
+          </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
