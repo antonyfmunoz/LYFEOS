@@ -108,7 +108,7 @@ export default function MissionLogSystem() {
   return (
     <div className="glassmorphic rounded-xl p-4 neon-border">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-orbitron">Mission Log</h2>
+        <h2 className="text-xl font-orbitron">Missions</h2>
         <Badge variant="outline" className="bg-primary/10 text-primary px-2 py-1 font-mono">
           XP: {xp}
         </Badge>

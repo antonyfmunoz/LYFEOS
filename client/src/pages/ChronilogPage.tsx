@@ -181,25 +181,25 @@ export default function ChronilogPage() {
   const [categories, setCategories] = useState<CategoryItem[]>([
     { 
       id: "missions", 
-      title: "Mission Log", 
+      title: "Missions", 
       icon: <CheckSquare className="h-5 w-5 text-primary" />,
       description: "A detailed history of all your completed and active missions. Track your progress and revisit past achievements."
     },
     { 
       id: "journal", 
-      title: "Journal Log", 
+      title: "Journal", 
       icon: <BookOpen className="h-5 w-5 text-primary" />,
       description: "Your daily reflections, thoughts, and personal entries. Review past journal logs to track your growth over time."
     },
     { 
       id: "knowledge", 
-      title: "Knowledge Vault", 
+      title: "Knowledge", 
       icon: <GraduationCap className="h-5 w-5 text-primary" />,
       description: "Your personal library of notes, documents, and saved knowledge. Store and organize information for easy retrieval."
     },
     { 
       id: "goals", 
-      title: "Goals & Vision", 
+      title: "Vision", 
       icon: <Target className="h-5 w-5 text-primary" />,
       description: "Long-term goals and vision board. Set objectives, track milestones, and align your daily actions with your bigger picture."
     }

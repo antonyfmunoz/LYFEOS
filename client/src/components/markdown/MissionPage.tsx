@@ -142,7 +142,7 @@ export default function MissionPage({ slug, id, onBack }: MissionPageProps) {
       <div className="flex justify-between pt-4 border-t border-slate-700/50">
         <Button variant="outline" onClick={handleBack}>
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Mission Log
+          Back to Missions
         </Button>
         
         <Button onClick={handleSave}>

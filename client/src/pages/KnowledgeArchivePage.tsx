@@ -32,7 +32,7 @@ interface AuthorGroup {
 }
 
 export default function KnowledgeArchivePage() {
-  usePageTitle('Knowledge Vault');
+  usePageTitle('Knowledge');
 
   const { user } = useAuth();
   const [, navigate] = useLocation();
@@ -186,7 +186,7 @@ export default function KnowledgeArchivePage() {
         </Button>
       </div>
       <div className="mb-6">
-        <h1 className="text-2xl font-orbitron mb-1">Knowledge Vault</h1>
+        <h1 className="text-2xl font-orbitron mb-1">Knowledge</h1>
         <p className="text-[#7DAAB2]">Research log entries organized by author and source material</p>
       </div>
 

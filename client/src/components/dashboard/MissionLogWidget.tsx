@@ -216,7 +216,7 @@ export default function MissionLogWidget({
             <div className="relative mb-6">
               <h2 className="text-xl font-orbitron text-[#dff9ff] flex items-center">
                 <Calendar className="h-5 w-5 text-primary mr-2" />
-                <span>Mission Log</span>
+                <span>Missions</span>
               </h2>
               <Button
                 variant="outline"
@@ -305,7 +305,7 @@ export default function MissionLogWidget({
             <div className="relative mb-6">
               <h2 className="text-xl font-orbitron text-[#dff9ff] flex items-center">
                 <Calendar className="h-5 w-5 text-primary mr-2" />
-                <span>Mission Log</span>
+                <span>Missions</span>
               </h2>
               <Button
                 variant="outline"

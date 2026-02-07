@@ -22,7 +22,7 @@ interface GoalTimeframe {
 
 export default function GoalsArchivePage() {
   // Set the page title
-  usePageTitle('Goals & Vision Archive');
+  usePageTitle('Vision');
 
   // Get mission pages from context
   const { missionPages } = useLYFEOS();
@@ -183,7 +183,7 @@ export default function GoalsArchivePage() {
       
       <div className="mb-6 flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-orbitron mb-1">Goals & Vision Archive</h1>
+          <h1 className="text-2xl font-orbitron mb-1">Vision</h1>
           <p className="text-[#7DAAB2]">Document your life vision and goals at different time horizons</p>
         </div>
         <Button 

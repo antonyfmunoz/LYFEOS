@@ -115,7 +115,7 @@ function MissionCard({ mission }: { mission: Quest }) {
 }
 
 export default function MissionArchivePage() {
-  usePageTitle('Mission Log');
+  usePageTitle('Missions');
 
   const { quests } = useLYFEOS();
   const [, navigate] = useLocation();
@@ -271,7 +271,7 @@ export default function MissionArchivePage() {
       </div>
       
       <div className="mb-6">
-        <h1 className="text-2xl font-orbitron mb-1">Mission Log</h1>
+        <h1 className="text-2xl font-orbitron mb-1">Missions</h1>
         <p className="text-[#7DAAB2]">Review your completed missions from previous days</p>
       </div>
       

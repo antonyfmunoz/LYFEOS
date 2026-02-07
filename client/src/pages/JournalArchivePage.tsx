@@ -200,7 +200,7 @@ function LogCard({ log }: { log: DailyLog }) {
 }
 
 export default function JournalArchivePage() {
-  usePageTitle('Journal Log');
+  usePageTitle('Journal');
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set());
@@ -335,7 +335,7 @@ export default function JournalArchivePage() {
       </div>
       
       <div className="mb-6">
-        <h1 className="text-2xl font-orbitron mb-1">Journal Log</h1>
+        <h1 className="text-2xl font-orbitron mb-1">Journal</h1>
         <p className="text-[#7DAAB2]">Your daily logs organized by date - energy, intentions, data, and reflections</p>
       </div>
       
