@@ -38,6 +38,13 @@ export default function RootLayout({ children }: RootLayoutProps) {
                   onEnd={endMissionTimer}
                   onPauseResume={pauseResumeTimer}
                   missionTitle={activeTimerQuest.title}
+                  missionDescription={activeTimerQuest.description}
+                  missionCategory={activeTimerQuest.category}
+                  missionXP={activeTimerQuest.experienceReward}
+                  missionEnergyCost={activeTimerQuest.energyCost}
+                  missionAttentionCost={activeTimerQuest.attentionCost}
+                  missionTimeCost={activeTimerQuest.timeCost}
+                  missionDifficulty={activeTimerQuest.difficulty}
                 />
               </div>
             )}
@@ -51,6 +58,13 @@ export default function RootLayout({ children }: RootLayoutProps) {
                   onEnd={endMissionTimer}
                   onPauseResume={pauseResumeTimer}
                   missionTitle={activeTimerQuest.title}
+                  missionDescription={activeTimerQuest.description}
+                  missionCategory={activeTimerQuest.category}
+                  missionXP={activeTimerQuest.experienceReward}
+                  missionEnergyCost={activeTimerQuest.energyCost}
+                  missionAttentionCost={activeTimerQuest.attentionCost}
+                  missionTimeCost={activeTimerQuest.timeCost}
+                  missionDifficulty={activeTimerQuest.difficulty}
                 />
               </div>
             )}

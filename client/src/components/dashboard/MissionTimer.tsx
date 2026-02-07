@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Pause, Play, Square, GripHorizontal } from "lucide-react";
+import { Pause, Play, Square, ChevronUp, ChevronDown, GripHorizontal, Swords, Zap, Brain, Clock } from "lucide-react";
 import { useDraggable } from "@/hooks/use-draggable";
 
 interface MissionTimerProps {
@@ -9,10 +9,32 @@ interface MissionTimerProps {
   onEnd: (elapsedSeconds: number) => void;
   onPauseResume: () => void;
   missionTitle?: string;
+  missionDescription?: string;
+  missionCategory?: string;
+  missionXP?: number;
+  missionEnergyCost?: number;
+  missionAttentionCost?: number;
+  missionTimeCost?: number;
+  missionDifficulty?: string;
 }
 
-export default function MissionTimer({ timerStartedAt, timerPausedElapsed, timerIsPaused, onEnd, onPauseResume }: MissionTimerProps) {
+export default function MissionTimer({
+  timerStartedAt,
+  timerPausedElapsed,
+  timerIsPaused,
+  onEnd,
+  onPauseResume,
+  missionTitle,
+  missionDescription,
+  missionCategory,
+  missionXP,
+  missionEnergyCost,
+  missionAttentionCost,
+  missionTimeCost,
+  missionDifficulty,
+}: MissionTimerProps) {
   const [displaySeconds, setDisplaySeconds] = useState(0);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const { elementRef, dragStyle, dragHandleProps } = useDraggable();
 
   const getElapsed = useCallback(() => {
@@ -64,34 +86,128 @@ export default function MissionTimer({ timerStartedAt, timerPausedElapsed, timer
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   };
 
+  const timerDisplay = (
+    <span className={`font-mono text-sm font-bold tracking-wider ${timerIsPaused ? "text-muted-foreground" : "text-primary"}`}>
+      {formatTime(displaySeconds)}
+    </span>
+  );
+
+  const actionButtons = (
+    <>
+      <button
+        className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+        onClick={onPauseResume}
+        title={timerIsPaused ? "Resume" : "Pause"}
+      >
+        {timerIsPaused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+      </button>
+      <button
+        className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+        onClick={handleEnd}
+        title="Stop timer"
+      >
+        <Square className="h-3 w-3" />
+      </button>
+    </>
+  );
+
+  if (isCollapsed) {
+    return (
+      <div
+        ref={elementRef}
+        className="bg-card rounded-xl px-4 py-2 neon-border shadow-[0_0_20px_rgba(0,224,255,0.2)]"
+        style={dragStyle}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 min-w-0 mr-2" {...dragHandleProps}>
+            <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+            <Swords className="h-3.5 w-3.5 text-primary shrink-0" />
+            {timerDisplay}
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            {actionButtons}
+            <button
+              className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+              onClick={() => setIsCollapsed(false)}
+              title="Expand"
+            >
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={elementRef}
-      className="bg-card rounded-xl px-4 py-2 border border-primary/40 shadow-[0_0_20px_rgba(0,224,255,0.2)]"
+      className="bg-card rounded-xl p-4 neon-border shadow-[0_0_20px_rgba(0,224,255,0.2)]"
       style={dragStyle}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 min-w-0 mr-2">
-          <div {...dragHandleProps} className="shrink-0 flex items-center">
-            <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground/50" />
-          </div>
-          <span className={`font-mono text-sm font-bold tracking-wider ${timerIsPaused ? "text-muted-foreground" : "text-primary"}`}>
-            {formatTime(displaySeconds)}
-          </span>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2" {...dragHandleProps}>
+          <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground/50" />
+          <Swords className="h-3.5 w-3.5 text-primary" />
+          <span className="text-xs font-mono text-primary">Mission Active</span>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1">
+          {actionButtons}
           <button
-            className="h-6 w-6 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center justify-center"
-            onClick={onPauseResume}
+            className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+            onClick={() => setIsCollapsed(true)}
+            title="Collapse"
           >
-            {timerIsPaused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+            <ChevronUp className="h-3.5 w-3.5" />
           </button>
-          <button
-            className="h-6 w-6 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center justify-center"
-            onClick={handleEnd}
-          >
-            <Square className="h-3.5 w-3.5" />
-          </button>
+        </div>
+      </div>
+
+      <div className="mb-3">
+        <div className="flex items-center gap-2 mb-1">
+          <h3 className="text-sm font-bold text-foreground truncate">{missionTitle || "Untitled Mission"}</h3>
+          {missionCategory && (
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 shrink-0 capitalize">
+              {missionCategory}
+            </span>
+          )}
+        </div>
+        {missionDescription && (
+          <p className="text-xs text-muted-foreground line-clamp-2">{missionDescription}</p>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div className={`font-mono text-2xl font-bold tracking-wider ${timerIsPaused ? "text-muted-foreground" : "text-primary"}`}>
+          {formatTime(displaySeconds)}
+        </div>
+        {missionDifficulty && (
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/5 text-muted-foreground border border-primary/10 capitalize">
+            {missionDifficulty}
+          </span>
+        )}
+      </div>
+
+      <div className="mt-3 border-t border-primary/10 pt-2">
+        <div className="flex items-center gap-3 text-[10px] font-mono text-muted-foreground">
+          {missionXP != null && missionXP > 0 && (
+            <span className="text-primary">+{missionXP} XP</span>
+          )}
+          {missionEnergyCost != null && missionEnergyCost > 0 && (
+            <span className="flex items-center gap-0.5">
+              <Zap className="h-2.5 w-2.5" /> -{missionEnergyCost}% ET
+            </span>
+          )}
+          {missionAttentionCost != null && missionAttentionCost > 0 && (
+            <span className="flex items-center gap-0.5">
+              <Brain className="h-2.5 w-2.5" /> -{missionAttentionCost}% AT
+            </span>
+          )}
+          {missionTimeCost != null && missionTimeCost > 0 && (
+            <span className="flex items-center gap-0.5">
+              <Clock className="h-2.5 w-2.5" /> -{missionTimeCost}% TT
+            </span>
+          )}
         </div>
       </div>
     </div>
