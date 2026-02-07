@@ -1,4 +1,3 @@
-import React from "react";
 import { Link } from "wouter";
 import { ArrowLeft, BarChart, CheckCircle, Target, Calendar, Layers, Settings } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
@@ -23,36 +22,11 @@ export default function EfficiencyDetailPage() {
   const systemUsageScore = stats.efficiencyScore;
   
   const efficiencyMetrics = [
-    { 
-      name: "Task Completion", 
-      score: taskCompletionScore, 
-      icon: CheckCircle, 
-      description: `${computedStats?.completedMissions ?? 0} of ${computedStats?.totalMissions ?? 0} missions completed`,
-    },
-    { 
-      name: "Active Missions", 
-      score: activeMissionsScore, 
-      icon: Target, 
-      description: `${activeMissions} missions currently in progress`,
-    },
-    { 
-      name: "Consistency", 
-      score: consistencyScore, 
-      icon: Calendar, 
-      description: `${stats.streakDays} day streak (target: 30 days)`,
-    },
-    { 
-      name: "Mission Balance", 
-      score: missionBalanceScore, 
-      icon: Layers, 
-      description: `${uniqueCategories} of ${totalPossibleCategories} categories used`,
-    },
-    { 
-      name: "System Usage", 
-      score: systemUsageScore, 
-      icon: Settings, 
-      description: `Overall system efficiency score`,
-    },
+    { name: "Task Completion", score: taskCompletionScore, icon: CheckCircle },
+    { name: "Active Missions", score: activeMissionsScore, icon: Target },
+    { name: "Consistency", score: consistencyScore, icon: Calendar },
+    { name: "Mission Balance", score: missionBalanceScore, icon: Layers },
+    { name: "System Usage", score: systemUsageScore, icon: Settings },
   ];
   
   return (
@@ -69,7 +43,6 @@ export default function EfficiencyDetailPage() {
         <h1 className="text-3xl font-orbitron">System Efficiency</h1>
       </div>
       
-      {/* Current Efficiency */}
       <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30">
         <h2 className="font-orbitron text-xl mb-4 text-primary">Overall Efficiency</h2>
         <div className="flex items-center justify-between">
@@ -101,7 +74,6 @@ export default function EfficiencyDetailPage() {
         </div>
       </div>
       
-      {/* Efficiency Components */}
       <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30">
         <div className="flex justify-between items-center mb-4">
           <h2 className="font-orbitron text-xl text-primary">Efficiency Components</h2>
@@ -121,7 +93,6 @@ export default function EfficiencyDetailPage() {
                   </span>
                 </div>
               </div>
-              <p className="text-muted-foreground text-sm">{metric.description}</p>
               <div className="w-full bg-muted/30 h-1.5 rounded-full overflow-hidden">
                 <div 
                   className="h-full rounded-full bg-primary"

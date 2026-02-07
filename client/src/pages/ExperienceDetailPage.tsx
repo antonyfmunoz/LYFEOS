@@ -1,4 +1,3 @@
-import React from "react";
 import { Link } from "wouter";
 import { ArrowLeft, Award, Star, Target, Flame, Zap } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
@@ -21,19 +20,20 @@ export default function ExperienceDetailPage() {
   const streakPct = totalActivity > 0 && streakDays > 0 ? Math.max(100 - completedPct - activePct, 0) : 0;
   
   const experienceSources = [
-    { source: "Completed Missions", percentage: completedPct, icon: Target, detail: `${completedMissions} missions` },
-    { source: "Active Missions", percentage: activePct, icon: Zap, detail: `${activeMissions} in progress` },
-    { source: "Streak Bonus", percentage: streakPct, icon: Flame, detail: streakDays > 0 ? `${streakDays} day streak` : "No active streak" },
+    { source: "Completed Missions", percentage: completedPct, icon: Target },
+    { source: "Active Missions", percentage: activePct, icon: Zap },
+    { source: "Streak Bonus", percentage: streakPct, icon: Flame },
   ];
   
   const currentXP = stats.experience.current;
   const maxXP = stats.experience.max;
   const currentLevel = stats.experience.level;
-  const xpProgress = maxXP > 0 ? (currentXP / maxXP) * 100 : 0;
-  const xpToNextLevel = maxXP - currentXP;
+  const xpProgress = maxXP > 0 ? Math.round((currentXP / maxXP) * 100) : 0;
   
   const avgXpPerMission = completedMissions > 0 ? totalXpFromCompleted / completedMissions : 25;
-  const estimatedMissions = avgXpPerMission > 0 ? Math.ceil(xpToNextLevel / avgXpPerMission) : 0;
+  const xpToNextLevel = maxXP - currentXP;
+  const estimatedMissionsToLevel = avgXpPerMission > 0 ? Math.ceil(xpToNextLevel / avgXpPerMission) : 0;
+  const forecastPct = estimatedMissionsToLevel > 0 ? Math.min(Math.round((1 / estimatedMissionsToLevel) * 100), 100) : 0;
   
   return (
     <div className="mx-auto max-w-4xl py-8">
@@ -49,39 +49,37 @@ export default function ExperienceDetailPage() {
         <h1 className="text-3xl font-orbitron">Experience</h1>
       </div>
       
-      {/* Current Experience Status */}
       <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30">
         <h2 className="font-orbitron text-xl mb-4 text-primary">Current Level Progress</h2>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[#7DAAB2] mb-1">Level {currentLevel} progression</p>
+            <p className="text-muted-foreground mb-1">Level {currentLevel} progression</p>
             <div className="flex items-baseline">
-              <span className="text-white text-5xl font-mono">{currentXP}</span>
-              <span className="text-[#7DAAB2] ml-3 text-lg">/ {maxXP} XP</span>
+              <span className="text-white text-5xl font-mono">{xpProgress}</span>
+              <span className="text-muted-foreground ml-2 text-2xl">%</span>
             </div>
           </div>
-          <div className="bg-[#001E26] border border-primary/20 rounded-md p-4">
-            <p className="text-[#7DAAB2] text-sm mb-1">Next level</p>
+          <div className="bg-background/50 border border-primary/20 rounded-md p-4">
+            <p className="text-muted-foreground text-sm mb-1">Next level</p>
             <div className="flex items-center">
               <Star className="h-5 w-5 mr-2 text-primary" />
               <span className="text-white">Level {currentLevel + 1}</span>
             </div>
-            <p className="text-primary text-xs mt-1">{xpToNextLevel} XP needed</p>
+            <p className="text-primary text-xs mt-1">{100 - xpProgress}% remaining</p>
           </div>
         </div>
-        <div className="mt-4 w-full bg-[#060F13] h-2 rounded-full overflow-hidden">
+        <div className="mt-4 w-full bg-muted/30 h-2 rounded-full overflow-hidden">
           <div 
             className="bg-gradient-to-r from-primary/50 to-primary h-full rounded-full"
             style={{ width: `${xpProgress}%` }}
           ></div>
         </div>
         <div className="flex justify-between mt-1">
-          <span className="text-xs text-[#7DAAB2]">Current: {currentXP} XP</span>
-          <span className="text-xs text-[#7DAAB2]">Target: {maxXP} XP</span>
+          <span className="text-xs text-muted-foreground">Progress: {xpProgress}%</span>
+          <span className="text-xs text-muted-foreground">Target: 100%</span>
         </div>
       </div>
       
-      {/* Experience Sources */}
       <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30">
         <div className="flex justify-between items-center mb-4">
           <h2 className="font-orbitron text-xl text-primary">Experience Sources</h2>
@@ -94,10 +92,7 @@ export default function ExperienceDetailPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <source.icon className="h-5 w-5 mr-2 text-primary" />
-                    <div>
-                      <h3 className="text-white">{source.source}</h3>
-                      <p className="text-muted-foreground text-xs">{source.detail}</p>
-                    </div>
+                    <h3 className="text-white">{source.source}</h3>
                   </div>
                   <div>
                     <span className="px-3 py-1 rounded-md text-sm bg-primary/20 text-primary">
@@ -105,7 +100,7 @@ export default function ExperienceDetailPage() {
                     </span>
                   </div>
                 </div>
-                <div className="w-full bg-[#060F13] h-1.5 rounded-full overflow-hidden">
+                <div className="w-full bg-muted/30 h-1.5 rounded-full overflow-hidden">
                   <div 
                     className="h-full rounded-full bg-primary"
                     style={{ width: `${source.percentage}%` }}
@@ -115,18 +110,17 @@ export default function ExperienceDetailPage() {
             ))}
           </div>
           
-          <div className="bg-[#001E26] border border-primary/20 rounded-xl p-4">
+          <div className="bg-background/50 border border-primary/20 rounded-xl p-4">
             <h3 className="text-primary font-orbitron mb-3">Level Up Forecast</h3>
             <div className="space-y-4">
-              <p className="text-[#7DAAB2] text-sm">
-                You need approximately <span className="text-primary font-semibold">{estimatedMissions} missions</span> to reach Level {currentLevel + 1}.
+              <p className="text-muted-foreground text-sm">
+                Each mission contributes approximately <span className="text-primary font-semibold">{forecastPct}%</span> toward your next level.
               </p>
-              <p className="text-[#7DAAB2] text-sm">
-                Average XP per mission: <span className="text-primary font-semibold">{Math.round(avgXpPerMission)} XP</span>
-                {completedMissions === 0 && " (estimated)"}
+              <p className="text-muted-foreground text-sm">
+                Completion rate: <span className="text-primary font-semibold">{Math.round(computedStats?.completionRate ?? 0)}%</span> of all missions
               </p>
-              <p className="text-[#7DAAB2] text-sm">
-                Total XP earned from missions: <span className="text-primary font-semibold">{totalXpFromCompleted} XP</span>
+              <p className="text-muted-foreground text-sm">
+                Overall XP progress: <span className="text-primary font-semibold">{xpProgress}%</span> to Level {currentLevel + 1}
               </p>
             </div>
           </div>
