@@ -219,7 +219,25 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
               <div className="border-t border-primary/10 pt-2 space-y-1">
                 {category && category !== "general" && category !== "onboarding" && (
                   <p className="text-muted-foreground text-xs">
-                    <span className="text-primary font-mono capitalize">{category}</span> — Mission category, auto-assigned by AI based on title and description.
+                    <span className="text-primary font-mono capitalize">{category}</span> — {
+                      ({
+                        work: 'Professional tasks, projects, and job-related responsibilities.',
+                        health: 'Medical care, wellness checkups, and overall well-being.',
+                        fitness: 'Exercise, workouts, physical training, and movement goals.',
+                        finance: 'Budgeting, saving, investing, and money management.',
+                        learning: 'Education, studying, courses, and skill development.',
+                        creative: 'Art, music, writing, design, and creative expression.',
+                        social: 'Relationships, events, gatherings, and interpersonal connections.',
+                        personal: 'Self-care, errands, and individual life management.',
+                        mindset: 'Mental health, meditation, mindfulness, and inner growth.',
+                        career: 'Long-term professional growth, networking, and advancement.',
+                        nutrition: 'Meal planning, diet, cooking, and food choices.',
+                        recovery: 'Rest, rehabilitation, stress relief, and recharging.',
+                        planning: 'Strategy, organization, scheduling, and goal-setting.',
+                        spiritual: 'Faith, purpose, reflection, and spiritual practices.',
+                        household: 'Home maintenance, cleaning, chores, and living space.',
+                      } as Record<string, string>)[category] || 'Auto-classified mission category.'
+                    }
                   </p>
                 )}
                 <p className="text-muted-foreground text-xs">
