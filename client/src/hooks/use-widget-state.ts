@@ -13,7 +13,11 @@ function getCachedValue(widgetId: string): boolean | undefined {
 export function useWidgetState(widgetId: string, defaultOpen: boolean = true): [boolean, (open: boolean) => void] {
   const initialValue = getCachedValue(widgetId);
   const [isOpen, setIsOpenLocal] = useState(initialValue ?? defaultOpen);
-  const initialized = useRef(initialValue !== undefined);
+  const isOpenRef = useRef(isOpen);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
 
   const { data: allStates } = useQuery<Record<string, boolean>>({
     queryKey: ["/api/widget-states"],
@@ -21,14 +25,17 @@ export function useWidgetState(widgetId: string, defaultOpen: boolean = true): [
   });
 
   useEffect(() => {
-    if (!initialized.current && allStates && widgetId in allStates) {
-      setIsOpenLocal(allStates[widgetId]);
-      initialized.current = true;
+    if (allStates && widgetId in allStates) {
+      const serverValue = allStates[widgetId];
+      if (serverValue !== isOpenRef.current) {
+        setIsOpenLocal(serverValue);
+      }
     }
   }, [allStates, widgetId]);
 
   const setIsOpen = useCallback((open: boolean) => {
     setIsOpenLocal(open);
+    isOpenRef.current = open;
     queryClient.setQueryData<Record<string, boolean>>(["/api/widget-states"], (prev) => ({
       ...prev,
       [widgetId]: open,

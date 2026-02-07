@@ -829,7 +829,7 @@ You must respond with ONLY a valid JSON object (no markdown, no code fences) wit
 
 RULES:
 - For navigation: match the user's intent to the closest page. "open" or "show" can mean navigation too.
-- For widgets: when user says "open/expand/show [widget name]" set open:true, "close/collapse/hide [widget name]" set open:false. Match by name loosely (e.g. "energy" -> "dashboard.energy-log", "data" or "data log" -> "dashboard.data-entry-log", "research" -> "dashboard.research-log", "reflection" -> "dashboard.reflection-log", "intention" -> "dashboard.intention-setter").
+- For widgets: when user says "open/expand/show [widget name]" set open:true, "close/collapse/hide [widget name]" set open:false. Match by name loosely (e.g. "energy" -> "dashboard.energy-log", "data" or "data log" -> "dashboard.data-entry-log", "research" -> "dashboard.research-log", "reflection" -> "dashboard.reflection-log", "intention" -> "dashboard.intention-setter"). When toggling a widget, ALSO include a navigate action to /dashboard first so the user sees the widget change.
 - For missions: match by title similarity. Use the mission ID as the target.
 - For timer commands: pause, resume, stop/end timer.
 - If the command is conversational or a question (not an action), set type to "none" and put your conversational answer in "speech".

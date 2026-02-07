@@ -59,11 +59,12 @@ export default function VoiceControlButton() {
           break;
 
         case 'toggle_widget':
-          queryClient.setQueryData<Record<string, boolean>>(["/api/widget-states"], (prev) => ({
-            ...prev,
-            [action.target!]: action.open !== false,
-          }));
-          queryClient.invalidateQueries({ queryKey: ["/api/widget-states"] });
+          if (action.target) {
+            queryClient.setQueryData<Record<string, boolean>>(["/api/widget-states"], (prev) => ({
+              ...prev,
+              [action.target!]: action.open !== false,
+            }));
+          }
           break;
 
         case 'complete_mission':
