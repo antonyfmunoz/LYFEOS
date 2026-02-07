@@ -4,7 +4,7 @@ import { usePageTitle } from "@/hooks/use-page-title";
 import { 
   Send, ChevronRight, Edit2, Check, X,
   PlusCircle, Trash2, MessageSquare, MoreVertical, Menu,
-  Volume2, VolumeX
+  Volume2, VolumeX, Mic
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
@@ -524,6 +524,14 @@ export default function AIPage() {
                   }
                 }}
               />
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('toggle-voice-control'))}
+                className="absolute right-12 bottom-2 h-8 w-8 rounded border bg-card/50 border-primary/30 text-primary hover:bg-primary/20 transition-colors inline-flex items-center justify-center"
+                title="Voice input"
+              >
+                <Mic className="h-4 w-4" />
+              </button>
               <button 
                 type="submit"
                 disabled={!inputText.trim()}
