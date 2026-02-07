@@ -15,6 +15,43 @@ const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
   return res.status(401).json({ error: "Authentication required" });
 };
 
+const AI_RATE_LIMIT = 20;
+const AI_RATE_WINDOW_MS = 60 * 1000;
+const aiRequestCounts = new Map<number, { count: number; windowStart: number }>();
+
+function checkAIRateLimit(userId: number): boolean {
+  const now = Date.now();
+  const entry = aiRequestCounts.get(userId);
+  if (!entry || now - entry.windowStart > AI_RATE_WINDOW_MS) {
+    aiRequestCounts.set(userId, { count: 1, windowStart: now });
+    return true;
+  }
+  if (entry.count >= AI_RATE_LIMIT) {
+    return false;
+  }
+  entry.count++;
+  return true;
+}
+
+function getRateLimitRemaining(userId: number): number {
+  const now = Date.now();
+  const entry = aiRequestCounts.get(userId);
+  if (!entry || now - entry.windowStart > AI_RATE_WINDOW_MS) return AI_RATE_LIMIT;
+  return Math.max(0, AI_RATE_LIMIT - entry.count);
+}
+
+const aiRateLimiter = (req: Request, res: Response, next: NextFunction) => {
+  const userId = req.session?.userId;
+  if (!userId) return next();
+  if (!checkAIRateLimit(userId)) {
+    const remaining = getRateLimitRemaining(userId);
+    res.setHeader("X-RateLimit-Remaining", remaining.toString());
+    return res.status(429).json({ error: "Slow down — you've hit the AI request limit. Try again in a minute." });
+  }
+  res.setHeader("X-RateLimit-Remaining", getRateLimitRemaining(userId).toString());
+  next();
+};
+
 function buildSystemPrompt(user: any, stats: any, profile: any, missions: any[], conversationHistory?: { role: string; content: string; conversationTitle?: string; createdAt: Date }[]): string {
   const activeMissions = missions.filter(m => !m.completed && !m.deletedAt);
   const completedMissions = missions.filter(m => m.completed && !m.deletedAt);
@@ -426,7 +463,7 @@ export function registerChatRoutes(app: Express): void {
     }
   });
 
-  app.post("/api/conversations/:id/messages", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/conversations/:id/messages", isAuthenticated, aiRateLimiter, async (req: Request, res: Response) => {
     try {
       const conversationId = parseInt(req.params.id);
       const userId = req.session.userId!;
@@ -540,7 +577,7 @@ export function registerChatRoutes(app: Express): void {
     }
   });
 
-  app.post("/api/stat-tips", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/stat-tips", isAuthenticated, aiRateLimiter, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
       const { statType } = req.body;
@@ -603,7 +640,7 @@ Provide 3 concise, personalized, actionable tips to help them improve this stat.
     }
   });
 
-  app.post("/api/stat-tips/all", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/stat-tips/all", isAuthenticated, aiRateLimiter, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
 
@@ -733,7 +770,7 @@ Return ONLY the JSON, no other text.`;
     }
   });
 
-  app.post("/api/voice-command", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/voice-command", isAuthenticated, aiRateLimiter, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
       const { transcript } = req.body;
@@ -860,7 +897,7 @@ RULES:
     }
   });
 
-  app.post("/api/mission-stat-suggest", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/mission-stat-suggest", isAuthenticated, aiRateLimiter, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
       const { title, description, difficulty } = req.body;

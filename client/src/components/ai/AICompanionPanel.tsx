@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useLYFEOS } from "../../lib/context";
-import { Edit2, Check, X } from "lucide-react";
+import { Edit2, Check, X, Volume2, VolumeX } from "lucide-react";
 
 export default function AICompanionPanel() {
   const { messages, sendMessage, aiCompanionName, setAICompanionName } = useLYFEOS();
@@ -8,13 +8,38 @@ export default function AICompanionPanel() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(aiCompanionName);
   const nameInputRef = useRef<HTMLInputElement>(null);
-  
-  // Focus the name input field when entering edit mode
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+
   useEffect(() => {
     if (isEditingName && nameInputRef.current) {
       nameInputRef.current.focus();
     }
   }, [isEditingName]);
+
+  const toggleTTS = useCallback((messageId: string, text: string) => {
+    if (speakingMessageId === messageId) {
+      window.speechSynthesis.cancel();
+      setSpeakingMessageId(null);
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const plainText = text.replace(/[#*_~`>\-\[\]()!|]/g, '').replace(/\n+/g, '. ');
+    const utterance = new SpeechSynthesisUtterance(plainText);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v => v.lang.startsWith('en') && v.name.includes('Female')) 
+      || voices.find(v => v.lang.startsWith('en'));
+    if (preferred) utterance.voice = preferred;
+    utterance.onend = () => setSpeakingMessageId(null);
+    utterance.onerror = () => setSpeakingMessageId(null);
+    setSpeakingMessageId(messageId);
+    window.speechSynthesis.speak(utterance);
+  }, [speakingMessageId]);
+
+  useEffect(() => {
+    return () => { window.speechSynthesis.cancel(); };
+  }, []);
   
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +56,6 @@ export default function AICompanionPanel() {
           <h2 className="font-orbitron text-lg">AI COMPANION</h2>
         </div>
         
-        {/* AI Companion Name Editor */}
         <div className="flex items-center">
           {isEditingName ? (
             <div className="flex items-center w-full">
@@ -101,6 +125,19 @@ export default function AICompanionPanel() {
                   <div className="text-xs text-[#36F1CD] mb-1 font-semibold">{aiCompanionName}</div>
                 )}
                 <p>{message.content}</p>
+                {message.sender === 'ai' && (
+                  <button
+                    onClick={() => toggleTTS(message.id, message.content)}
+                    className="mt-1.5 text-muted-foreground hover:text-primary transition-colors p-0.5"
+                    title={speakingMessageId === message.id ? "Stop reading" : "Read aloud"}
+                  >
+                    {speakingMessageId === message.id ? (
+                      <VolumeX className="h-3 w-3" />
+                    ) : (
+                      <Volume2 className="h-3 w-3" />
+                    )}
+                  </button>
+                )}
               </div>
               
               {message.sender === 'user' && (

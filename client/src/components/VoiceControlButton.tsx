@@ -117,11 +117,10 @@ export default function VoiceControlButton() {
     setTranscript(finalTranscript);
 
     try {
-      const res = await apiRequest("/api/voice-command", {
+      const data = await apiRequest<VoiceCommandResponse>("/api/voice-command", {
         method: "POST",
         body: JSON.stringify({ transcript: finalTranscript }),
       });
-      const data: VoiceCommandResponse = await res.json();
 
       if (data.actions && data.actions.length > 0) {
         executeActions(data.actions);

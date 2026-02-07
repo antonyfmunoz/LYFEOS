@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useLYFEOS } from "../lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { 
   Send, ChevronRight, Edit2, Check, X,
-  PlusCircle, Trash2, MessageSquare, MoreVertical, Menu
+  PlusCircle, Trash2, MessageSquare, MoreVertical, Menu,
+  Volume2, VolumeX
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,32 @@ export default function AIPage() {
   const nameInputRef = useRef<HTMLInputElement>(null);
   const editChatInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+
+  const toggleTTS = useCallback((messageId: string, text: string) => {
+    if (speakingMessageId === messageId) {
+      window.speechSynthesis.cancel();
+      setSpeakingMessageId(null);
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const plainText = text.replace(/[#*_~`>\-\[\]()!|]/g, '').replace(/\n+/g, '. ');
+    const utterance = new SpeechSynthesisUtterance(plainText);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v => v.lang.startsWith('en') && v.name.includes('Female')) 
+      || voices.find(v => v.lang.startsWith('en'));
+    if (preferred) utterance.voice = preferred;
+    utterance.onend = () => setSpeakingMessageId(null);
+    utterance.onerror = () => setSpeakingMessageId(null);
+    setSpeakingMessageId(messageId);
+    window.speechSynthesis.speak(utterance);
+  }, [speakingMessageId]);
+
+  useEffect(() => {
+    return () => { window.speechSynthesis.cancel(); };
+  }, []);
   const isMobile = useIsMobile();
   
   // Get active chat session
@@ -428,9 +455,24 @@ export default function AIPage() {
                         ) : (
                           <p className="text-sm">{message.content}</p>
                         )}
-                        <p className="text-xs text-muted-foreground mt-2 text-right">
-                          {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </p>
+                        <div className="flex items-center justify-between mt-2">
+                          {message.sender === 'ai' ? (
+                            <button
+                              onClick={() => toggleTTS(message.id, message.content)}
+                              className="text-muted-foreground hover:text-primary transition-colors p-0.5"
+                              title={speakingMessageId === message.id ? "Stop reading" : "Read aloud"}
+                            >
+                              {speakingMessageId === message.id ? (
+                                <VolumeX className="h-3.5 w-3.5" />
+                              ) : (
+                                <Volume2 className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                          ) : <span />}
+                          <p className="text-xs text-muted-foreground text-right">
+                            {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
                       </div>
                       
                       {message.sender === 'user' && (
