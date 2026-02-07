@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
-import { Archive, Calendar, ChevronDown, ChevronRight, ArrowLeft, BookOpen, Target, Brain, CheckCircle, AlertCircle, GraduationCap, Search } from "lucide-react";
+import { Archive, Calendar, ChevronDown, ChevronRight, ArrowLeft, BookOpen, Target, Brain, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { getLocalDateString } from "@/lib/utils";
@@ -166,9 +166,9 @@ function LogCard({ log }: { log: DailyLog }) {
             icon={Calendar}
             title="Daily Reflection Log"
             fields={[
-              { label: 'What Went Well', value: log.wentWell, labelIcon: <CheckCircle className="h-3 w-3 text-primary" /> },
-              { label: 'Could Be Better', value: log.couldBeBetter, labelIcon: <AlertCircle className="h-3 w-3 text-primary" /> },
-              { label: 'What I Learned', value: log.learned, labelIcon: <GraduationCap className="h-3 w-3 text-primary" /> },
+              { label: 'What Went Well', value: log.wentWell },
+              { label: 'Could Be Better', value: log.couldBeBetter },
+              { label: 'What I Learned', value: log.learned },
             ]}
           />
 
