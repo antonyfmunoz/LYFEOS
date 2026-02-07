@@ -4,11 +4,14 @@ import { Quest } from "../../lib/types";
 import { Trash2, Calendar, Clock, Bell, Edit3, Info, Timer, Undo2, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-interface DragItem {
+export const QUEST_DND_TYPE = 'QUEST_ITEM';
+
+export interface DragItem {
   index: number;
-  id: number;
+  id: number | string;
   type: string;
   section: string;
+  quest: Quest;
 }
 
 interface QuestItemProps {
@@ -52,12 +55,13 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
   const dragHandleRef = useRef<HTMLDivElement>(null);
 
   const [{ handlerId }, drop] = useDrop({
-    accept: `QUEST_ITEM_${section}`,
+    accept: QUEST_DND_TYPE,
     collect(monitor: any) {
       return { handlerId: monitor.getHandlerId() };
     },
     hover(item: DragItem, monitor: any) {
       if (!ref.current) return;
+      if (item.section !== section) return;
       const dragIndex = item.index;
       const hoverIndex = index;
       if (dragIndex === hoverIndex) return;
@@ -73,8 +77,8 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
   });
 
   const [{ isDragging }, drag, preview] = useDrag({
-    type: `QUEST_ITEM_${section}`,
-    item: () => ({ id: quest.id, index, section, type: `QUEST_ITEM_${section}` }),
+    type: QUEST_DND_TYPE,
+    item: () => ({ id: quest.id, index, section, type: QUEST_DND_TYPE, quest }),
     collect: (monitor: any) => ({
       isDragging: monitor.isDragging(),
     }),
