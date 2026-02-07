@@ -25,6 +25,7 @@ Preferred communication style: Simple, everyday language.
 - **Session Management**: express-session with secure cookie configuration
 - **Password Hashing**: bcrypt for secure password storage
 - **AI Integration**: Anthropic Claude Sonnet 4.5 via Replit AI Integrations (no API key required, billed to credits)
+- **Voice Control**: AI-powered voice commands via Web Speech API + NOVA AI orchestration (`POST /api/voice-command`). Supports navigation, widget toggle, mission management, timer control, and conversational queries. NOVA interprets natural language and returns structured JSON actions.
 - **File Uploads**: Multer for handling media uploads
 
 ### Data Storage
