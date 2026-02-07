@@ -15,13 +15,9 @@ export default function EnergyDetailPage() {
   const totalEnergyCost = computedStats?.totalEnergyCost ?? 0;
   const categoryBreakdown = computedStats?.categoryBreakdown ?? {};
   
-  const allocationTotal = energyAllocated + energyRemaining;
-  const allocatedPct = allocationTotal > 0 ? Math.round((energyAllocated / allocationTotal) * 100) : 0;
-  const remainingPct = allocationTotal > 0 ? Math.round((energyRemaining / allocationTotal) * 100) : 0;
-  
   const energyAllocation = [
-    { name: "Missions (Allocated)", value: energyAllocated, pct: allocatedPct, description: `${totalEnergyCost} total energy cost across all missions`, icon: Target },
-    { name: "Remaining", value: energyRemaining, pct: remainingPct, description: "Available energy points", icon: Battery },
+    { name: "Missions (Allocated)", value: energyAllocated, description: `${totalEnergyCost} total energy cost across all missions`, icon: Target },
+    { name: "Remaining", value: energyRemaining, description: "Available energy points", icon: Battery },
   ];
   
   const categoryEntries = Object.entries(categoryBreakdown as Record<string, { total: number; completed: number }>);
@@ -91,13 +87,13 @@ export default function EnergyDetailPage() {
                 <div className="w-full bg-muted/30 h-2 rounded-full overflow-hidden">
                   <div 
                     className="bg-primary h-full rounded-full" 
-                    style={{ width: `${item.pct}%` }}
+                    style={{ width: `${stats.energyPoints.max > 0 ? (item.value / stats.energyPoints.max) * 100 : 0}%` }}
                   ></div>
                 </div>
               </div>
               <div className="col-span-1 flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">{item.description}</span>
-                <span className="ml-2 font-mono text-primary">{item.pct}%</span>
+                <span className="ml-2 font-mono text-primary">{item.value}</span>
               </div>
             </div>
           ))}
