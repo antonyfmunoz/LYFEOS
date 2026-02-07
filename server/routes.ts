@@ -848,9 +848,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pronounCap = "They";
       const pronounPoss = "their";
       
-      const prompt = `Generate a powerful character affirmation (200-300 words) for a person named "${displayName}". Write in third person using they/them pronouns.
+      const prompt = `Generate a powerful character affirmation (200-300 words) for a person named "${displayName}". Write in second person, speaking directly to them using "you" and "your".
 
-The affirmation should be written like an epic character description, encoding their identity, values, vision, and destiny.
+The affirmation should be written as if you are speaking directly to this person about who they are — powerful, certain, and declarative.
 
 Key details about this person:
 - Primary Archetype: ${archetypePrimary} (their dominant energy and approach to life)
@@ -861,16 +861,16 @@ Key details about this person:
 - Desired Emotion: ${desiredEmotion || "flow"}
 
 Structure the affirmation as:
-1. Opening identity statement (who they are at their core)
-2. Their values and how they embody them
-3. Their vision and what they're creating
-4. Their strengths and traits
-5. Their destiny and impact
+1. Opening identity statement (who you are at your core)
+2. Your values and how you embody them
+3. Your vision and what you're creating
+4. Your strengths and traits
+5. Your destiny and impact
 
-Tone: Powerful, certain, declarative (NOT aspirational). Write as if this is already who they are.
+Tone: Powerful, certain, declarative (NOT aspirational). Write as if this is already who they are. Do NOT use any emojis.
 
 Example structure:
-"${displayName} is a sovereign creator of reality, aligned with vision, integrity, and growth. Each day, ${pronoun} expands in clarity, discipline, and creativity..."
+"You are a sovereign creator of reality, aligned with vision, integrity, and growth. Each day, you expand in clarity, discipline, and creativity..."
 
 Generate the complete affirmation now:`;
 

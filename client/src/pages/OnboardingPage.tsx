@@ -36,21 +36,21 @@ interface ArchetypeScores {
 
 const AGE_RANGES = ["18-24", "25-34", "35-44", "45-54", "55-64", "65+"];
 const LIFE_STAGES = [
-  { label: "Awakening", emoji: "✨", description: "Just starting your journey" },
-  { label: "Building", emoji: "🏗️", description: "Actively constructing your path" },
-  { label: "Mastering", emoji: "🏆", description: "Refining your expertise" },
-  { label: "Leading", emoji: "🚀", description: "Guiding others forward" },
+  { label: "Awakening", description: "Just starting your journey" },
+  { label: "Building", description: "Actively constructing your path" },
+  { label: "Mastering", description: "Refining your expertise" },
+  { label: "Leading", description: "Guiding others forward" },
 ];
 
 const ROLE_ARCHETYPES = [
-  { label: "Leader", emoji: "👑" },
-  { label: "Creator", emoji: "🎨" },
-  { label: "Athlete", emoji: "🏃" },
-  { label: "Healer", emoji: "🌿" },
-  { label: "Visionary", emoji: "🔭" },
-  { label: "Artist", emoji: "🎭" },
-  { label: "Teacher", emoji: "📚" },
-  { label: "Builder", emoji: "🛠️" },
+  { label: "Leader" },
+  { label: "Creator" },
+  { label: "Athlete" },
+  { label: "Healer" },
+  { label: "Visionary" },
+  { label: "Artist" },
+  { label: "Teacher" },
+  { label: "Builder" },
 ];
 
 const DESIRED_EMOTIONS = ["Achievement", "Freedom", "Mastery", "Impact", "Love", "Adventure"];
@@ -257,7 +257,7 @@ function EmojiGridSelect({
   onChange,
   columns = 2
 }: { 
-  options: { label: string; emoji: string; description?: string }[]; 
+  options: { label: string; description?: string }[]; 
   value: string; 
   onChange: (val: string) => void;
   columns?: number;
@@ -274,8 +274,8 @@ function EmojiGridSelect({
               : "bg-card/30 border-primary/20 hover:border-primary/50"
           }`}
         >
-          <span className="text-3xl">{option.emoji}</span>
           <span className="text-sm font-medium">{option.label}</span>
+          {option.description && <span className="text-xs text-muted-foreground">{option.description}</span>}
         </button>
       ))}
     </div>
