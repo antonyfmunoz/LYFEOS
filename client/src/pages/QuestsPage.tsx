@@ -430,9 +430,10 @@ export default function QuestsPage() {
           if (!open) setCreateFormData(defaultFormData);
         }}>
           <DialogTrigger asChild>
-            <button className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5">
+            <Button variant="ghost" className="text-muted-foreground hover:text-primary hover:bg-primary/10 text-xs font-mono px-2 py-1 h-auto inline-flex items-center gap-1.5">
+              <Plus className="h-3 w-3" />
               Create Mission
-            </button>
+            </Button>
           </DialogTrigger>
           <DialogContent 
             className="glassmorphic border-primary/30 w-full h-full max-w-full max-h-full left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:max-w-lg sm:max-h-[90vh] sm:h-auto sm:rounded-lg overflow-y-auto"

@@ -517,7 +517,7 @@ export default function KanbanBoardPage() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 hover:bg-primary hover:text-background" 
+            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10" 
             onClick={() => navigate('/kanban')}
           >
             <ArrowLeft className="h-4 w-4" />
@@ -529,7 +529,7 @@ export default function KanbanBoardPage() {
             <p>The requested board was not found. Please select another board.</p>
             <button 
               onClick={() => navigate('/kanban')} 
-              className="mt-4 flex items-center gap-2 text-primary border border-primary/50 px-4 py-2 rounded-md hover:bg-primary hover:text-background transition-all"
+              className="mt-4 flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10 px-4 py-2 rounded-md transition-all"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to Boards
@@ -792,7 +792,7 @@ export default function KanbanBoardPage() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 hover:bg-primary hover:text-background" 
+              className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10" 
               onClick={() => navigate('/kanban')}
             >
               <ArrowLeft className="h-4 w-4" />

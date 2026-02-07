@@ -263,7 +263,7 @@ export default function MissionArchivePage() {
         <Button 
           variant="ghost" 
           size="icon" 
-          className="h-8 w-8 hover:bg-primary hover:text-background" 
+          className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10" 
           onClick={() => navigate('/chronilog')}
         >
           <ArrowLeft className="h-4 w-4" />

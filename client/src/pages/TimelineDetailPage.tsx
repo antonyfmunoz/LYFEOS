@@ -332,7 +332,7 @@ export default function TimelineDetailPage() {
         <Button 
           variant="ghost" 
           size="icon" 
-          className="h-8 w-8 hover:bg-primary hover:text-background mr-3" 
+          className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 mr-3" 
           onClick={goBack}
         >
           <ArrowLeft className="h-4 w-4" />
@@ -437,7 +437,7 @@ export default function TimelineDetailPage() {
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-8 w-8 hover:bg-primary hover:text-background mr-2" 
+            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10 mr-2" 
             onClick={goBack}
           >
             <ArrowLeft className="h-4 w-4" />

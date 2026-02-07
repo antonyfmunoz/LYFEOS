@@ -139,7 +139,7 @@ export default function EnhancedMissionPage() {
         <Button 
           variant="ghost" 
           size="sm" 
-          className="rounded-full w-8 h-8 p-0" 
+          className="rounded-full w-8 h-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10" 
           onClick={() => navigate('/chronilog')}
         >
           <ArrowLeft className="h-4 w-4" />
