@@ -33,6 +33,21 @@ export function useWidgetState(widgetId: string, defaultOpen: boolean = true): [
     }
   }, [allStates, widgetId]);
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && detail.widgetId === widgetId) {
+        const newValue = detail.open as boolean;
+        if (newValue !== isOpenRef.current) {
+          setIsOpenLocal(newValue);
+          isOpenRef.current = newValue;
+        }
+      }
+    };
+    window.addEventListener("widget-state-changed", handler);
+    return () => window.removeEventListener("widget-state-changed", handler);
+  }, [widgetId]);
+
   const setIsOpen = useCallback((open: boolean) => {
     setIsOpenLocal(open);
     isOpenRef.current = open;

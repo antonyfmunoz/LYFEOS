@@ -60,9 +60,13 @@ export default function VoiceControlButton() {
 
         case 'toggle_widget':
           if (action.target) {
+            const openVal = action.open !== false;
             queryClient.setQueryData<Record<string, boolean>>(["/api/widget-states"], (prev) => ({
               ...prev,
-              [action.target!]: action.open !== false,
+              [action.target!]: openVal,
+            }));
+            window.dispatchEvent(new CustomEvent("widget-state-changed", {
+              detail: { widgetId: action.target, open: openVal },
             }));
           }
           break;
