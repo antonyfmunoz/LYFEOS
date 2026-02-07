@@ -157,6 +157,18 @@ export default function RegisterPage() {
       return;
     }
     
+    if (!trimmedFirstName) {
+      setError("First name is required");
+      setIsLoading(false);
+      return;
+    }
+    
+    if (!trimmedLastName) {
+      setError("Last name is required");
+      setIsLoading(false);
+      return;
+    }
+    
     if (!trimmedPassword) {
       setError("Password is required");
       setIsLoading(false);
@@ -279,6 +291,7 @@ export default function RegisterPage() {
                 onChange={(e) => setFirstName(e.target.value)}
                 className="w-full bg-transparent border-primary/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-primary/30"
                 placeholder="First name"
+                required
               />
             </div>
             <div className="space-y-2">
@@ -290,6 +303,7 @@ export default function RegisterPage() {
                 onChange={(e) => setLastName(e.target.value)}
                 className="w-full bg-transparent border-primary/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-primary/30"
                 placeholder="Last name"
+                required
               />
             </div>
           </div>
