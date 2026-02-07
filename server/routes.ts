@@ -1161,6 +1161,13 @@ Generate the complete affirmation now:`;
         return res.status(400).json({ error: "Invalid user ID" });
       }
       
+      // Purge terminated missions older than 24 hours on app load
+      try {
+        await storage.purgeExpiredArchivedQuests();
+      } catch (purgeError) {
+        console.error("Error purging expired archived quests:", purgeError);
+      }
+      
       // Auto-convert any unconverted todoIdeas from past days into quests
       try {
         const now = new Date();
