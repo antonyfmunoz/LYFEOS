@@ -98,7 +98,7 @@ export default function VoiceControlButton() {
         onClick={toggleListening}
         className={`fixed bottom-24 right-4 z-50 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg ${
           isListening
-            ? 'bg-primary text-primary-foreground shadow-[0_0_15px_var(--primary)] animate-pulse'
+            ? 'bg-primary text-primary-foreground shadow-[0_0_15px_var(--primary)]'
             : 'glassmorphic border border-primary/30 text-primary hover:border-primary/60 hover:shadow-[0_0_10px_var(--primary-glow-light)]'
         }`}
         title="Voice Control (AI-powered)"

@@ -383,6 +383,15 @@ const tools: Anthropic.Messages.Tool[] = [
       properties: {},
       required: []
     }
+  },
+  {
+    name: "stop_affirmation",
+    description: "Stop the currently playing affirmation audio. Use when user says 'stop affirmation', 'stop talking', 'stop playing', 'silence', 'shut up', 'be quiet', 'stop the voice'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: []
+    }
   }
 ];
 
@@ -612,6 +621,10 @@ Write a 2-3 paragraph affirmation in second person ("You are..."). Make it power
 
       case "end_timer": {
         return JSON.stringify({ success: true, action: "end_timer", message: "Timer ended." });
+      }
+
+      case "stop_affirmation": {
+        return JSON.stringify({ success: true, action: "stop_affirmation", message: "Affirmation playback stopped." });
       }
 
       default:

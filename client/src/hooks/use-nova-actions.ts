@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { useLYFEOS } from '@/lib/context';
-import { queryClient } from '@/lib/queryClient';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 
 export interface NovaToolAction {
   success?: boolean;
@@ -53,6 +53,10 @@ export function useNovaActions() {
           window.dispatchEvent(new CustomEvent("widget-state-changed", {
             detail: { widgetId: toolAction.widgetId, open: openVal },
           }));
+          apiRequest("/api/widget-states", {
+            method: "PUT",
+            body: JSON.stringify({ widgetId: toolAction.widgetId, isOpen: openVal }),
+          }).catch(() => {});
           navigate('/dashboard');
         }
         break;
@@ -87,6 +91,17 @@ export function useNovaActions() {
 
       case 'update_daily_log': {
         queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+        queryClient.invalidateQueries({ predicate: (query) => {
+          const key = query.queryKey;
+          return Array.isArray(key) && key.some(k => typeof k === 'string' && k.includes('daily-log'));
+        }});
+        break;
+      }
+
+      case 'stop_affirmation': {
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+        }
         break;
       }
 
