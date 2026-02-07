@@ -116,8 +116,8 @@ export default function VoiceOverlay() {
   if (!isSupported || !showOverlay) return null;
 
   return (
-    <div className="fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-2 pointer-events-none">
-      <div className="glassmorphic rounded-xl p-4 neon-border max-w-sm w-full pointer-events-auto shadow-[0_0_20px_rgba(0,224,255,0.2)]">
+    <div className="fixed inset-x-0 top-16 z-50 flex justify-center px-4 pt-2 pointer-events-none">
+      <div className="bg-card rounded-xl p-4 neon-border max-w-sm w-full pointer-events-auto shadow-[0_0_20px_rgba(0,224,255,0.2)]">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             {isProcessing ? (
