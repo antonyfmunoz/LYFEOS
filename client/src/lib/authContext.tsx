@@ -26,7 +26,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (identifier: string, password: string) => Promise<void>;
-  register: (username: string, password: string) => Promise<void>;
+  register: (username: string, password: string, extraData?: { firstName?: string; lastName?: string; email?: string; displayName?: string }) => Promise<void>;
   logout: () => void;
   loginWithGoogle: () => Promise<void>;
   handleOAuthRedirect: () => Promise<void>;
@@ -252,12 +252,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (username: string, password: string) => {
+  const register = async (username: string, password: string, extraData?: { firstName?: string; lastName?: string; email?: string; displayName?: string }) => {
     try {
       setIsLoading(true);
       console.log("Attempting to register with:", username);
       
-      // Ensure username and password are properly trimmed
       const trimmedUsername = username.trim();
       const trimmedPassword = password.trim();
       
@@ -271,7 +270,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
       
-      // Make the registration request
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: {
@@ -280,9 +278,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ 
           username: trimmedUsername, 
           password: trimmedPassword,
-          termsAccepted: true // This is required by the backend
+          termsAccepted: true,
+          ...(extraData || {}),
         }),
-        credentials: "include" // Important for maintaining session cookies
+        credentials: "include"
       });
       
       console.log("Register response status:", response.status);

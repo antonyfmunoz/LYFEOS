@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { ArrowLeft, Clock, ArrowUpRight, Timer, Coffee, Calendar, Briefcase } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
+import AIStatTip from "@/components/stats/AIStatTip";
 
 export default function TimeDetailPage() {
   // Set page title
@@ -10,6 +11,8 @@ export default function TimeDetailPage() {
   
   // Get stats from context
   const { stats } = useLYFEOS();
+  
+  const primaryColor = stats.primaryColor || "#00e0ff";
   
   // Time allocation in hours
   const timeAllocation = [
@@ -149,6 +152,8 @@ export default function TimeDetailPage() {
           </li>
         </ul>
       </div>
+      
+      <AIStatTip statType="time" primaryColor={primaryColor} />
     </div>
   );
 }

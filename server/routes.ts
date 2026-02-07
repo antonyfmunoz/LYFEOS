@@ -301,6 +301,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         username: userData.username,
         password: hashedPassword,
         displayName: userData.displayName,
+        firstName: userData.firstName || null,
+        lastName: userData.lastName || null,
         title: userData.title,
         email: userData.email || null,
         authProvider: userData.authProvider || 'email',
@@ -622,6 +624,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Ensure the password cannot be updated through this endpoint
       const { 
         displayName, 
+        firstName,
+        lastName,
         bio, 
         avatarColor, 
         title, 
@@ -631,6 +635,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create update object with only specified fields
       const updateData: any = {};
       if (displayName !== undefined) updateData.displayName = displayName;
+      if (firstName !== undefined) updateData.firstName = firstName;
+      if (lastName !== undefined) updateData.lastName = lastName;
       if (bio !== undefined) updateData.bio = bio;
       if (avatarColor !== undefined) updateData.avatarColor = avatarColor;
       if (title !== undefined) updateData.title = title;

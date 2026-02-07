@@ -4,6 +4,7 @@ import { ArrowLeft, Award, ArrowUpRight, Star, Target, BookMarked, FileText } fr
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { cn } from "@/lib/utils";
+import AIStatTip from "@/components/stats/AIStatTip";
 
 export default function ExperienceDetailPage() {
   // Set page title
@@ -149,6 +150,8 @@ export default function ExperienceDetailPage() {
           </li>
         </ul>
       </div>
+      
+      <AIStatTip statType="experience" primaryColor={primaryColor} />
     </div>
   );
 }

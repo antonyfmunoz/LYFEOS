@@ -112,6 +112,8 @@ interface UserProfile {
   id: number;
   username: string;
   displayName?: string;
+  firstName?: string;
+  lastName?: string;
   bio?: string;
   title?: string;
   profilePicture?: string;
@@ -133,6 +135,8 @@ export default function ProfilePage() {
     id: user?.id || 0,
     username: username,
     displayName: "",
+    firstName: "",
+    lastName: "",
     bio: "",
     title: "",
     profilePicture: "",
@@ -951,10 +955,11 @@ export default function ProfilePage() {
   };
 
   const handleSave = () => {
+    const computedDisplayName = [profileData.firstName, profileData.lastName].filter(Boolean).join(" ") || profileData.displayName;
     updateProfileMutation.mutate({
-      displayName: profileData.displayName,
-      bio: profileData.bio,
-      title: profileData.title,
+      displayName: computedDisplayName,
+      firstName: profileData.firstName,
+      lastName: profileData.lastName,
       profilePicture: profileData.profilePicture,
     });
   };
@@ -1158,68 +1163,55 @@ export default function ProfilePage() {
               <h2 className="text-xl font-orbitron text-foreground mb-1">
                 {profileData.displayName || username}
               </h2>
-              
-              {profileData.title && (
-                <p className="text-primary text-sm mb-3 font-medium">{profileData.title}</p>
-              )}
             </div>
             
             {isEditing ? (
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="displayName" className="flex items-center gap-2 mb-2">
+                  <Label className="flex items-center gap-2 mb-2">
                     <User className="h-4 w-4 text-primary" />
-                    Display Name
+                    Username (Display Name)
                   </Label>
                   <Input
-                    id="displayName"
-                    name="displayName"
-                    value={profileData.displayName || ""}
-                    onChange={handleInputChange}
-                    placeholder="Enter your display name"
-                    className="bg-background/50 border-primary/30 focus:border-primary/50"
+                    value={username}
+                    disabled
+                    className="bg-background/50 border-primary/30 opacity-60 cursor-not-allowed"
                   />
                 </div>
                 
-                <div>
-                  <Label htmlFor="title" className="flex items-center gap-2 mb-2">
-                    <Terminal className="h-4 w-4 text-primary" />
-                    Title
-                  </Label>
-                  <Input
-                    id="title"
-                    name="title"
-                    value={profileData.title || ""}
-                    onChange={handleInputChange}
-                    placeholder="e.g. Adventurer, Developer, Explorer"
-                    className="bg-background/50 border-primary/30 focus:border-primary/50"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="bio" className="flex items-center gap-2 mb-2">
-                    <FileText className="h-4 w-4 text-primary" />
-                    Bio
-                  </Label>
-                  <Textarea
-                    id="bio"
-                    name="bio"
-                    value={profileData.bio || ""}
-                    onChange={handleInputChange}
-                    placeholder="Write a short bio about yourself"
-                    className="bg-background/50 border-primary/30 focus:border-primary/50 resize-none min-h-[120px]"
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="firstName" className="flex items-center gap-2 mb-2">
+                      <User className="h-4 w-4 text-primary" />
+                      First Name
+                    </Label>
+                    <Input
+                      id="firstName"
+                      name="firstName"
+                      value={profileData.firstName || ""}
+                      onChange={handleInputChange}
+                      placeholder="First name"
+                      className="bg-background/50 border-primary/30 focus:border-primary/50"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName" className="flex items-center gap-2 mb-2">
+                      <User className="h-4 w-4 text-primary" />
+                      Last Name
+                    </Label>
+                    <Input
+                      id="lastName"
+                      name="lastName"
+                      value={profileData.lastName || ""}
+                      onChange={handleInputChange}
+                      placeholder="Last name"
+                      className="bg-background/50 border-primary/30 focus:border-primary/50"
+                    />
+                  </div>
                 </div>
               </div>
             ) : (
-              <>
-                {profileData.bio && (
-                  <div className="p-4 bg-background/30 border border-primary/10 rounded-md mb-4 text-muted-foreground">
-                    <h3 className="text-md font-orbitron text-foreground mb-2">Bio</h3>
-                    {profileData.bio}
-                  </div>
-                )}
-              </>
+              <></>
             )}
             
             {/* Account Settings Section */}

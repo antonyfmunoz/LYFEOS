@@ -206,8 +206,12 @@ export default function RegisterPage() {
       }));
       
       console.log("Registering user with username:", trimmedUsername);
-      // Register with username and password
-      await register(trimmedUsername, trimmedPassword);
+      await register(trimmedUsername, trimmedPassword, {
+        firstName: trimmedFirstName,
+        lastName: trimmedLastName,
+        email: trimmedEmail,
+        displayName: trimmedDisplayName || trimmedUsername,
+      });
       
       console.log("Registration successful, redirecting to onboarding");
       // The redirection should happen in the authContext, but as a fallback:

@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { ArrowLeft, Heart, ArrowUpRight, Activity, Utensils, Dumbbell, Brain } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
+import AIStatTip from "@/components/stats/AIStatTip";
 
 export default function HealthDetailPage() {
   // Set page title
@@ -10,6 +11,8 @@ export default function HealthDetailPage() {
   
   // Get stats from context
   const { stats } = useLYFEOS();
+  
+  const primaryColor = stats.primaryColor || "#00e0ff";
   
   // Health metrics
   const healthMetrics = [
@@ -133,6 +136,8 @@ export default function HealthDetailPage() {
           ))}
         </ul>
       </div>
+      
+      <AIStatTip statType="health" primaryColor={primaryColor} />
     </div>
   );
 }

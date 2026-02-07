@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { ArrowLeft, ArrowUpRight, BrainCircuit, Focus, BookOpen, Palette, Clock } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
+import AIStatTip from "@/components/stats/AIStatTip";
 
 export default function AttentionDetailPage() {
   // Set page title
@@ -10,6 +11,8 @@ export default function AttentionDetailPage() {
   
   // Get stats from context
   const { stats } = useLYFEOS();
+  
+  const primaryColor = stats.primaryColor || "#00e0ff";
   
   // Attention allocation
   const attentionAllocation = [
@@ -133,6 +136,8 @@ export default function AttentionDetailPage() {
           ))}
         </ul>
       </div>
+      
+      <AIStatTip statType="attention" primaryColor={primaryColor} />
     </div>
   );
 }

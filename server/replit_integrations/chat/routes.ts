@@ -539,4 +539,67 @@ export function registerChatRoutes(app: Express): void {
       }
     }
   });
+
+  app.post("/api/stat-tips", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { statType } = req.body;
+
+      const validTypes = ["experience", "energy", "health", "time", "attention", "efficiency", "streak"];
+      if (!validTypes.includes(statType)) {
+        return res.status(400).json({ error: "Invalid stat type" });
+      }
+
+      const user = await storage.getUser(userId);
+      const stats = await storage.getUserStats(userId);
+      const missions = await storage.getQuests(userId);
+
+      if (!user || !stats) {
+        return res.status(404).json({ error: "User data not found" });
+      }
+
+      const activeMissions = missions.filter((m: any) => !m.completed && !m.deletedAt);
+      const completedMissions = missions.filter((m: any) => m.completed && !m.deletedAt);
+
+      const statContextMap: Record<string, string> = {
+        experience: `XP: ${stats.experienceCurrent}/${stats.experienceMax}, Level: ${stats.level}, Active missions: ${activeMissions.length}, Completed missions: ${completedMissions.length}`,
+        energy: `Energy: ${stats.energyPointsCurrent}/${stats.energyPointsMax}, Level: ${stats.level}, Active missions: ${activeMissions.length}`,
+        health: `Health: ${stats.healthPointsCurrent}/${stats.healthPointsMax}, Level: ${stats.level}, Streak: ${stats.streakDays} days`,
+        time: `Time Tokens: ${stats.timeTokensCurrent}/${stats.timeTokensMax}, Active missions: ${activeMissions.length}, Level: ${stats.level}`,
+        attention: `Attention Tokens: ${stats.attentionTokensCurrent}/${stats.attentionTokensMax}, Active missions: ${activeMissions.length}, Level: ${stats.level}`,
+        efficiency: `Efficiency Score: ${stats.efficiencyScore || 0}%, Active missions: ${activeMissions.length}, Completed: ${completedMissions.length}, Streak: ${stats.streakDays} days`,
+        streak: `Current Streak: ${stats.streakDays} days, Level: ${stats.level}, Completed missions: ${completedMissions.length}`,
+      };
+
+      const statLabelMap: Record<string, string> = {
+        experience: "Experience Points (XP) and Leveling",
+        energy: "Energy Tokens",
+        health: "Health Points",
+        time: "Time Tokens",
+        attention: "Attention Tokens",
+        efficiency: "System Efficiency",
+        streak: "Streak Tracking",
+      };
+
+      const prompt = `You are NOVA, an AI life coach inside LYFEOS, a gamified life operating system. The user "${user.displayName || user.username}" is viewing their ${statLabelMap[statType]} stats page.
+
+Their current data: ${statContextMap[statType]}
+
+Provide 3 concise, personalized, actionable tips to help them improve this stat. Each tip should be 1-2 sentences max. Base your advice on their actual numbers. Be direct, motivating, and specific. No emojis. Format each tip on its own line, numbered 1-3.`;
+
+      const response = await anthropic.messages.create({
+        model: "claude-sonnet-4-5",
+        max_tokens: 512,
+        messages: [{ role: "user", content: prompt }],
+      });
+
+      const textBlock = response.content.find(b => b.type === "text");
+      const tip = textBlock ? textBlock.text : "Keep pushing forward. Every small action compounds into massive progress.";
+
+      res.json({ tip, statType });
+    } catch (error) {
+      console.error("Error generating stat tip:", error);
+      res.status(500).json({ error: "Failed to generate tip" });
+    }
+  });
 }

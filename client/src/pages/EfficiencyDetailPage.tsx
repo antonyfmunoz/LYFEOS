@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { ArrowLeft, BarChart, ArrowUpRight, BarChart2, CheckCircle, FileCog, Brain, Calendar } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
+import AIStatTip from "@/components/stats/AIStatTip";
 
 export default function EfficiencyDetailPage() {
   // Set page title
@@ -10,6 +11,8 @@ export default function EfficiencyDetailPage() {
   
   // Get stats from context
   const { stats } = useLYFEOS();
+  
+  const primaryColor = stats.primaryColor || "#00e0ff";
   
   // Define efficiency metrics
   const efficiencyMetrics = [
@@ -145,6 +148,8 @@ export default function EfficiencyDetailPage() {
           ))}
         </ul>
       </div>
+      
+      <AIStatTip statType="efficiency" primaryColor={primaryColor} />
     </div>
   );
 }

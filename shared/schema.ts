@@ -10,10 +10,12 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   displayName: text("display_name"),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
   bio: text("bio"),
-  avatarColor: text("avatar_color").default("#00e0ff"), // Default primary cyan color
+  avatarColor: text("avatar_color").default("#00e0ff"),
   title: text("title").default("COMMANDER"),
-  profilePicture: text("profile_picture"), // Base64 encoded image or URL
+  profilePicture: text("profile_picture"),
   
   // New V2 fields
   email: text("email"), // Email (or blank if using OAuth)
@@ -453,6 +455,8 @@ export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
   displayName: true,
+  firstName: true,
+  lastName: true,
   bio: true,
   avatarColor: true,
   title: true,

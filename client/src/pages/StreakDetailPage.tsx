@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { ArrowLeft, Calendar, Trophy, ArrowUpRight, CheckCircle2 } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
+import AIStatTip from "@/components/stats/AIStatTip";
 
 export default function StreakDetailPage() {
   // Set page title
@@ -10,6 +11,8 @@ export default function StreakDetailPage() {
   
   // Get stats from context
   const { stats } = useLYFEOS();
+  
+  const primaryColor = stats.primaryColor || "#00e0ff";
   
   // Calculate streak milestones
   const streakMilestones = [
@@ -135,6 +138,8 @@ export default function StreakDetailPage() {
           </li>
         </ul>
       </div>
+      
+      <AIStatTip statType="streak" primaryColor={primaryColor} />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { ArrowLeft, Zap, Activity, ArrowUpRight, Battery, Flame, Coffee } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
+import AIStatTip from "@/components/stats/AIStatTip";
 
 export default function EnergyDetailPage() {
   // Set page title
@@ -10,6 +11,8 @@ export default function EnergyDetailPage() {
   
   // Get stats from context
   const { stats } = useLYFEOS();
+  
+  const primaryColor = stats.primaryColor || "#00e0ff";
   
   // Sample energy data across the day
   const energyTimeline = [
@@ -158,6 +161,8 @@ export default function EnergyDetailPage() {
           </li>
         </ul>
       </div>
+      
+      <AIStatTip statType="energy" primaryColor={primaryColor} />
     </div>
   );
 }
