@@ -160,18 +160,18 @@ export default function VoiceOverlay() {
                 {isListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
               </button>
               <button
-                onClick={() => setIsCollapsed(false)}
-                className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                title="Expand"
-              >
-                <ChevronDown className="h-3.5 w-3.5" />
-              </button>
-              <button
                 onClick={handleStop}
                 className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
                 title="Stop and close"
               >
                 <Square className="h-3 w-3" />
+              </button>
+              <button
+                onClick={() => setIsCollapsed(false)}
+                className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                title="Expand"
+              >
+                <ChevronDown className="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
@@ -202,18 +202,18 @@ export default function VoiceOverlay() {
               {isListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
             </button>
             <button
-              onClick={() => setIsCollapsed(true)}
-              className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-              title="Collapse"
-            >
-              <ChevronUp className="h-3.5 w-3.5" />
-            </button>
-            <button
               onClick={handleStop}
               className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
               title="Stop and close"
             >
               <Square className="h-3 w-3" />
+            </button>
+            <button
+              onClick={() => setIsCollapsed(true)}
+              className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+              title="Collapse"
+            >
+              <ChevronUp className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
