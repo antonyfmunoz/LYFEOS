@@ -92,12 +92,6 @@ export default function AIPage() {
       setAICompanionName(nameInput);
       setIsEditingName(false);
       
-      // Show toast on name change
-      toast({
-        title: "AI Assistant Updated",
-        description: `Your AI assistant is now named ${nameInput}`,
-        className: "bg-background border border-primary text-foreground",
-      });
     }
   };
   

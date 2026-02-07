@@ -22,7 +22,7 @@ function buildSystemPrompt(user: any, stats: any, profile: any, missions: any[],
 
   const todayStr = new Date().toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-  return `You are NOVA, the user's personal AI assistant inside LYFEOS — a gamified life operating system. You are intelligent, supportive, direct, and motivating. You speak with a futuristic but warm tone, like a trusted advisor in a sci-fi world. Keep responses concise and actionable.
+  return `You are NOVA, the user's personal AI assistant. You are intelligent, supportive, direct, and motivating. You speak with a futuristic but warm tone, like a trusted advisor in a sci-fi world. Keep responses concise and actionable.
 
 TODAY: ${todayStr} (PST timezone)
 
@@ -581,7 +581,7 @@ export function registerChatRoutes(app: Express): void {
         streak: "Streak Tracking",
       };
 
-      const prompt = `You are NOVA, an AI life coach inside LYFEOS, a gamified life operating system. The user "${user.displayName || user.username}" is viewing their ${statLabelMap[statType]} stats page.
+      const prompt = `You are NOVA, the user's personal AI life coach. The user "${user.displayName || user.username}" is viewing their ${statLabelMap[statType]} stats page.
 
 Their current data: ${statContextMap[statType]}
 
@@ -630,7 +630,7 @@ Efficiency: ${stats.efficiencyScore || 0}%, Streak: ${stats.streakDays} days
 Active missions: ${activeMissions.length}, Completed missions: ${completedMissions.length}
 Total energy allocated to missions: ${totalEnergyCost}, Total time allocated: ${totalTimeCost}, Total attention allocated: ${totalAttentionCost}`;
 
-      const prompt = `You are NOVA, an AI life coach inside LYFEOS, a gamified life operating system.
+      const prompt = `You are NOVA, the user's personal AI life coach.
 
 User data:
 ${allContext}
@@ -743,7 +743,7 @@ Return ONLY the JSON, no other text.`;
         return res.status(404).json({ error: "Stats not found" });
       }
 
-      const prompt = `You are NOVA, an AI assistant for LYFEOS, a gamified life operating system. A user is creating a mission and needs realistic stat cost suggestions.
+      const prompt = `You are NOVA, the user's personal AI assistant. A user is creating a mission and needs realistic stat cost suggestions.
 
 Mission details:
 - Title: "${title}"

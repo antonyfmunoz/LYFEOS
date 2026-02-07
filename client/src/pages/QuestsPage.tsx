@@ -337,7 +337,7 @@ export default function QuestsPage() {
   };
 
   const handleCreateMission = async () => {
-    if (!createFormData.title.trim() || !createFormData.startDate || !createFormData.startTime || !createFormData.endDate || !createFormData.endTime) return;
+    if (!createFormData.title.trim() || !createFormData.description.trim() || !createFormData.startDate || !createFormData.startTime || !createFormData.endDate || !createFormData.endTime) return;
     
     setIsSubmitting(true);
     try {
@@ -455,7 +455,7 @@ export default function QuestsPage() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="create-description">Description</Label>
+                <Label htmlFor="create-description">Description <span className="text-primary">*</span></Label>
                 <Textarea
                   id="create-description"
                   placeholder="What needs to be done?"
@@ -593,7 +593,7 @@ export default function QuestsPage() {
               <button 
                 onClick={handleCreateMission} 
                 className="w-full mt-4 text-sm font-mono px-4 py-2.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center"
-                disabled={!createFormData.title.trim() || !createFormData.startDate || !createFormData.startTime || !createFormData.endDate || !createFormData.endTime || isSubmitting}
+                disabled={!createFormData.title.trim() || !createFormData.description.trim() || !createFormData.startDate || !createFormData.startTime || !createFormData.endDate || !createFormData.endTime || isSubmitting}
               >
                 {isSubmitting ? "Creating..." : "Create Mission"}
               </button>

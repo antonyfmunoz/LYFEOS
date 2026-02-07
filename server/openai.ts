@@ -25,7 +25,7 @@ export async function generateAIResponse(prompt: string): Promise<string> {
       messages: [
         {
           role: "system",
-          content: "You are a helpful AI assistant named NOVA, part of the LYFEOS application. You help the user organize their life, manage tasks, and provide insights. Keep responses helpful, concise, and positive. Your answers should be between 2-4 sentences unless the user needs a more detailed response."
+          content: "You are a helpful AI assistant named NOVA. You help the user organize their life, manage tasks, and provide insights. Keep responses helpful, concise, and positive. Your answers should be between 2-4 sentences unless the user needs a more detailed response."
         },
         {
           role: "user",
