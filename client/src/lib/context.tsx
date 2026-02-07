@@ -811,15 +811,6 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const setAICompanionName = (name: string) => {
     setAICompanionNameState(name);
     
-    // Show toast notification
-    toast({
-      title: "AI Assistant Updated",
-      description: `AI Assistant name set to ${name}`,
-      variant: "default",
-      className: "bg-background/80 border border-primary text-foreground",
-      duration: 3000,
-    });
-    
     if (isAuthenticated && user) {
       try {
         fetch(`/api/users/${user.id}/ai-assistant-name`, {

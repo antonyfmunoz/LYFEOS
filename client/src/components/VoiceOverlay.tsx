@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { X, Loader2, Mic, MicOff, Square } from 'lucide-react';
+import { Loader2, Mic, MicOff, Square } from 'lucide-react';
 import { useVoiceControl } from '@/hooks/use-voice-control';
 import { useLYFEOS } from '@/lib/context';
 import { useNovaActions } from '@/hooks/use-nova-actions';
@@ -116,70 +116,67 @@ export default function VoiceOverlay() {
   if (!isSupported || !showOverlay) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-36 z-50 flex justify-center px-4 pointer-events-none">
-      <div className="glassmorphic rounded-xl p-4 neon-border max-w-sm w-full pointer-events-auto shadow-[0_0_20px_rgba(0,224,255,0.2)]">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            {isProcessing ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />
-                <span className="text-xs font-mono text-primary">{aiCompanionName || 'NOVA'} thinking...</span>
-              </>
-            ) : isListening ? (
-              <>
-                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                <span className="text-xs font-mono text-primary">Listening...</span>
-              </>
-            ) : (
-              <>
-                <div className="w-2 h-2 rounded-full bg-muted-foreground" />
-                <span className="text-xs font-mono text-muted-foreground">Paused</span>
-              </>
+    <div className="fixed top-0 inset-x-0 z-50 px-4 pt-2 pb-2 pointer-events-none">
+      <div className="max-w-2xl mx-auto pointer-events-auto">
+        <div className="bg-card rounded-xl p-3 border border-primary/40 shadow-[0_0_20px_rgba(0,224,255,0.2)]">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 min-w-0 mr-3">
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
+                  <div className="flex flex-col gap-0.5 min-w-0">
+                    <span className="text-xs text-muted-foreground truncate">{aiCompanionName || 'NOVA'} Voice</span>
+                    <span className="text-sm font-mono text-primary">Processing...</span>
+                  </div>
+                </>
+              ) : isListening ? (
+                <>
+                  <div className="w-3 h-3 rounded-full bg-primary animate-pulse shrink-0" />
+                  <div className="flex flex-col gap-0.5 min-w-0">
+                    <span className="text-xs text-muted-foreground truncate">{aiCompanionName || 'NOVA'} Voice</span>
+                    <span className="text-sm font-mono text-primary">Listening...</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="w-3 h-3 rounded-full bg-muted-foreground shrink-0" />
+                  <div className="flex flex-col gap-0.5 min-w-0">
+                    <span className="text-xs text-muted-foreground truncate">{aiCompanionName || 'NOVA'} Voice</span>
+                    <span className="text-sm font-mono text-muted-foreground">Paused</span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {(transcript || feedback) && (
+              <div className="flex-1 min-w-0 mr-3">
+                {transcript && !feedback && (
+                  <p className="text-sm text-foreground truncate">"{transcript}"</p>
+                )}
+                {feedback && (
+                  <p className="text-sm text-primary truncate">{feedback}</p>
+                )}
+              </div>
             )}
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handlePauseResume}
+                disabled={isProcessing}
+                className="h-8 w-8 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center justify-center disabled:opacity-40"
+                title={isListening ? "Pause dictation" : "Resume dictation"}
+              >
+                {isListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+              </button>
+              <button
+                onClick={handleStop}
+                className="h-8 w-8 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center justify-center"
+                title="Stop and close"
+              >
+                <Square className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={handlePauseResume}
-              disabled={isProcessing}
-              className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-40"
-              title={isListening ? "Pause dictation" : "Resume dictation"}
-            >
-              {isListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
-            </button>
-            <button
-              onClick={handleStop}
-              className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
-              title="Stop and close"
-            >
-              <Square className="h-3 w-3" />
-            </button>
-          </div>
-        </div>
-
-        {transcript && !feedback && (
-          <p className="text-sm text-foreground font-medium mb-1">"{transcript}"</p>
-        )}
-
-        {feedback && (
-          <p className="text-sm text-primary font-medium mb-1">{feedback}</p>
-        )}
-
-        {!feedback && !transcript && isListening && !isProcessing && (
-          <p className="text-xs text-muted-foreground">
-            Speak naturally — {aiCompanionName || 'NOVA'} understands everything. Try "play my affirmation" or "schedule a meeting tomorrow"
-          </p>
-        )}
-
-        {!isListening && !isProcessing && !feedback && !transcript && (
-          <p className="text-xs text-muted-foreground">
-            Dictation paused. Tap the mic to resume or stop to close.
-          </p>
-        )}
-
-        <div className="mt-2 border-t border-primary/10 pt-2">
-          <p className="text-[10px] text-muted-foreground font-mono leading-relaxed">
-            Full control: Navigate, widgets, missions, timers, daily log, affirmations, calendar, themes
-          </p>
         </div>
       </div>
     </div>
