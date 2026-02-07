@@ -733,6 +733,133 @@ Return ONLY the JSON, no other text.`;
     }
   });
 
+  app.post("/api/voice-command", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { transcript } = req.body;
+
+      if (!transcript || typeof transcript !== "string") {
+        return res.status(400).json({ error: "Transcript is required" });
+      }
+
+      const [user, stats, missions] = await Promise.all([
+        storage.getUser(userId),
+        storage.getUserStats(userId),
+        storage.getQuests(userId),
+      ]);
+
+      const activeMissions = (missions || []).filter((m: any) => !m.completed && !m.deletedAt);
+
+      const voiceSystemPrompt = `You are NOVA, an AI voice assistant for LYFEOS (a gamified life operating system). The user just spoke a voice command. Interpret their intent and respond with a JSON object describing the action to take.
+
+USER: ${user?.displayName || user?.username || 'Commander'} (Level ${stats?.level || 1})
+
+ACTIVE MISSIONS:
+${activeMissions.map((m: any) => `- [ID:${m.id}] "${m.title}"`).join('\n') || 'None'}
+
+AVAILABLE DASHBOARD WIDGETS (can be opened/collapsed):
+- "dashboard.data-entry-log" (Daily Data Log)
+- "dashboard.research-log" (Daily Research Log)
+- "dashboard.reflection-log" (Daily Reflection Log)
+- "dashboard.intention-setter" (Daily Intention Log)
+- "dashboard.energy-log" (Daily Energy Log)
+
+AVAILABLE PAGES:
+- /dashboard (Dashboard/Home)
+- /missions (Missions)
+- /ai (AI/NOVA Chat)
+- /chronilog (Chronilog)
+- /profile (Profile/Settings)
+- /journal-log (Journal)
+- /chronilog/timeline (Timeline)
+- /knowledge-vault (Knowledge Vault)
+- /goals-archive (Goals/Vision)
+
+You must respond with ONLY a valid JSON object (no markdown, no code fences) with these fields:
+{
+  "actions": [
+    {
+      "type": "navigate" | "toggle_widget" | "complete_mission" | "start_mission" | "pause_timer" | "resume_timer" | "end_timer" | "create_mission" | "none",
+      "target": "route path or widget ID or mission ID",
+      "open": true/false (only for toggle_widget),
+      "title": "mission title" (only for create_mission),
+      "description": "mission description" (only for create_mission)
+    }
+  ],
+  "speech": "A brief spoken response to say back to the user (1-2 sentences max, no emojis)",
+  "understood": true/false
+}
+
+RULES:
+- For navigation: match the user's intent to the closest page. "open" or "show" can mean navigation too.
+- For widgets: when user says "open/expand/show [widget name]" set open:true, "close/collapse/hide [widget name]" set open:false. Match by name loosely (e.g. "energy" -> "dashboard.energy-log", "data" or "data log" -> "dashboard.data-entry-log", "research" -> "dashboard.research-log", "reflection" -> "dashboard.reflection-log", "intention" -> "dashboard.intention-setter").
+- For missions: match by title similarity. Use the mission ID as the target.
+- For timer commands: pause, resume, stop/end timer.
+- If the command is conversational or a question (not an action), set type to "none" and put your conversational answer in "speech".
+- Multiple actions can be returned in the actions array.
+- Keep speech responses concise and futuristic-sounding.`;
+
+      const response = await anthropic.messages.create({
+        model: "claude-sonnet-4-5",
+        max_tokens: 512,
+        messages: [
+          { role: "user", content: `Voice command: "${transcript}"` }
+        ],
+        system: voiceSystemPrompt,
+      });
+
+      const textBlock = response.content.find(b => b.type === "text");
+      const rawText = textBlock ? textBlock.text.trim() : '{"actions":[],"speech":"I didn\'t catch that.","understood":false}';
+
+      try {
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { actions: [], speech: "I didn't understand that.", understood: false };
+
+        for (const action of parsed.actions || []) {
+          if (action.type === "toggle_widget" && action.target) {
+            const widgetId = action.target;
+            const isOpen = action.open !== false;
+            await storage.setWidgetState(userId, widgetId, isOpen);
+          }
+          if (action.type === "complete_mission" && action.target) {
+            const missionId = parseInt(action.target);
+            if (!isNaN(missionId)) {
+              const quest = await storage.getQuest(missionId);
+              if (quest && quest.userId === userId && !quest.completed) {
+                await storage.toggleQuestCompletion(missionId);
+              }
+            }
+          }
+          if (action.type === "create_mission" && action.title) {
+            const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+            await storage.createQuest({
+              userId,
+              title: action.title,
+              description: action.description || "",
+              category: "general",
+              difficulty: "D",
+              energyCost: 1,
+              attentionCost: 0,
+              timeCost: 0,
+              experienceReward: 10,
+              startDate: today,
+              endDate: null,
+              dueDate: null,
+              completed: false,
+            });
+          }
+        }
+
+        res.json(parsed);
+      } catch (parseError) {
+        res.json({ actions: [], speech: rawText.substring(0, 200), understood: true });
+      }
+    } catch (error) {
+      console.error("Error processing voice command:", error);
+      res.status(500).json({ error: "Failed to process voice command" });
+    }
+  });
+
   app.post("/api/mission-stat-suggest", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;

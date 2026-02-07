@@ -1,16 +1,30 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
-import { Mic, MicOff, X } from 'lucide-react';
-import { useVoiceControl, VoiceCommand } from '@/hooks/use-voice-control';
+import { Mic, MicOff, X, Loader2 } from 'lucide-react';
+import { useVoiceControl } from '@/hooks/use-voice-control';
 import { useLYFEOS } from '@/lib/context';
 import { useToast } from '@/hooks/use-toast';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+
+interface VoiceAction {
+  type: string;
+  target?: string;
+  open?: boolean;
+  title?: string;
+  description?: string;
+}
+
+interface VoiceCommandResponse {
+  actions: VoiceAction[];
+  speech: string;
+  understood: boolean;
+}
 
 export default function VoiceControlButton() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const {
     quests,
-    toggleQuestCompletion,
     startMissionTimer,
     pauseResumeTimer,
     endMissionTimer,
@@ -23,97 +37,111 @@ export default function VoiceControlButton() {
   const [showOverlay, setShowOverlay] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [feedback, setFeedback] = useState('');
-  const [feedbackTimeout, setFeedbackTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const showFeedback = useCallback((message: string) => {
+  const showFeedback = useCallback((message: string, duration = 3500) => {
     setFeedback(message);
-    if (feedbackTimeout) clearTimeout(feedbackTimeout);
-    const t = setTimeout(() => {
+    if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+    feedbackTimeoutRef.current = setTimeout(() => {
       setFeedback('');
       setShowOverlay(false);
-    }, 2500);
-    setFeedbackTimeout(t);
-  }, [feedbackTimeout]);
+    }, duration);
+  }, []);
 
-  const handleCommand = useCallback((command: VoiceCommand) => {
-    switch (command.action) {
-      case 'navigate': {
-        if (command.target?.startsWith('/')) {
-          navigate(command.target);
-          showFeedback(`Navigating to ${command.target.replace('/', '').replace(/-/g, ' ')}`);
-        } else {
-          showFeedback(`I didn't recognize "${command.target}" as a page`);
+  const executeActions = useCallback((actions: VoiceAction[]) => {
+    for (const action of actions) {
+      switch (action.type) {
+        case 'navigate':
+          if (action.target?.startsWith('/')) {
+            navigate(action.target);
+          }
+          break;
+
+        case 'toggle_widget':
+          queryClient.setQueryData<Record<string, boolean>>(["/api/widget-states"], (prev) => ({
+            ...prev,
+            [action.target!]: action.open !== false,
+          }));
+          queryClient.invalidateQueries({ queryKey: ["/api/widget-states"] });
+          break;
+
+        case 'complete_mission':
+          queryClient.invalidateQueries({ queryKey: ["/api/quests"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/user-stats"] });
+          break;
+
+        case 'create_mission':
+          queryClient.invalidateQueries({ queryKey: ["/api/quests"] });
+          break;
+
+        case 'start_mission': {
+          const targetId = action.target;
+          const mission = targetId
+            ? quests.find(q => String(q.id) === String(targetId))
+            : null;
+          if (mission) {
+            startMissionTimer(mission);
+          }
+          break;
         }
-        break;
-      }
 
-      case 'complete_mission': {
-        const target = command.target?.toLowerCase() || '';
-        const mission = quests.find(q =>
-          !q.completed && q.title.toLowerCase().includes(target)
-        );
-        if (mission) {
-          toggleQuestCompletion(mission.id);
-          showFeedback(`Completed: ${mission.title}`);
-        } else {
-          showFeedback(`No active mission matching "${command.target}"`);
-        }
-        break;
-      }
+        case 'pause_timer':
+          if (activeTimerQuest && !timerIsPaused) {
+            pauseResumeTimer();
+          }
+          break;
 
-      case 'start_mission': {
-        const target = command.target?.toLowerCase() || '';
-        const mission = quests.find(q =>
-          !q.completed && q.title.toLowerCase().includes(target)
-        );
-        if (mission) {
-          startMissionTimer(mission);
-          showFeedback(`Started timer: ${mission.title}`);
-        } else {
-          showFeedback(`No active mission matching "${command.target}"`);
-        }
-        break;
-      }
+        case 'resume_timer':
+          if (activeTimerQuest && timerIsPaused) {
+            pauseResumeTimer();
+          }
+          break;
 
-      case 'pause_timer': {
-        if (activeTimerQuest && !timerIsPaused) {
-          pauseResumeTimer();
-          showFeedback('Timer paused');
-        } else {
-          showFeedback('No active timer to pause');
-        }
-        break;
-      }
+        case 'end_timer':
+          if (activeTimerQuest && timerStartedAt) {
+            const elapsed = Math.floor((Date.now() - timerStartedAt) / 1000) + (timerPausedElapsed || 0);
+            endMissionTimer(elapsed);
+          }
+          break;
 
-      case 'resume_timer': {
-        if (activeTimerQuest && timerIsPaused) {
-          pauseResumeTimer();
-          showFeedback('Timer resumed');
-        } else {
-          showFeedback('No paused timer to resume');
-        }
-        break;
+        case 'none':
+        default:
+          break;
       }
-
-      case 'end_timer': {
-        if (activeTimerQuest && timerStartedAt) {
-          const elapsed = Math.floor((Date.now() - timerStartedAt) / 1000) + (timerPausedElapsed || 0);
-          endMissionTimer(elapsed);
-          showFeedback('Timer stopped');
-        } else {
-          showFeedback('No active timer');
-        }
-        break;
-      }
-
-      default:
-        showFeedback(`Try: "Go to dashboard" or "Complete [mission name]"`);
-        break;
     }
-  }, [quests, toggleQuestCompletion, startMissionTimer, pauseResumeTimer, endMissionTimer, activeTimerQuest, timerIsPaused, navigate, showFeedback]);
+  }, [quests, startMissionTimer, pauseResumeTimer, endMissionTimer, activeTimerQuest, timerIsPaused, timerStartedAt, timerPausedElapsed, navigate]);
+
+  const handleCommand = useCallback(async (finalTranscript: string) => {
+    setIsProcessing(true);
+    setTranscript(finalTranscript);
+
+    try {
+      const res = await apiRequest("/api/voice-command", {
+        method: "POST",
+        body: JSON.stringify({ transcript: finalTranscript }),
+      });
+      const data: VoiceCommandResponse = await res.json();
+
+      if (data.actions && data.actions.length > 0) {
+        executeActions(data.actions);
+      }
+
+      showFeedback(data.speech || "Command processed.", 4000);
+    } catch (error) {
+      console.error("Voice command error:", error);
+      showFeedback("Connection issue. Try again.");
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [executeActions, showFeedback]);
+
+  const onVoiceCommand = useCallback((command: { raw: string }) => {
+    handleCommand(command.raw);
+  }, [handleCommand]);
 
   const { isListening, isSupported, toggleListening } = useVoiceControl({
-    onCommand: handleCommand,
+    onCommand: onVoiceCommand,
     onTranscript: setTranscript,
   });
 
@@ -127,9 +155,9 @@ export default function VoiceControlButton() {
 
   useEffect(() => {
     return () => {
-      if (feedbackTimeout) clearTimeout(feedbackTimeout);
+      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
     };
-  }, [feedbackTimeout]);
+  }, []);
 
   if (!isSupported) return null;
 
@@ -142,7 +170,7 @@ export default function VoiceControlButton() {
             ? 'bg-primary text-primary-foreground shadow-[0_0_15px_var(--primary)] animate-pulse'
             : 'glassmorphic border border-primary/30 text-primary hover:border-primary/60 hover:shadow-[0_0_10px_var(--primary-glow-light)]'
         }`}
-        title="Voice Control"
+        title="Voice Control (AI-powered)"
       >
         {isListening ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
       </button>
@@ -152,13 +180,18 @@ export default function VoiceControlButton() {
           <div className="glassmorphic rounded-xl p-4 neon-border max-w-sm w-full pointer-events-auto shadow-[0_0_20px_rgba(0,224,255,0.2)]">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                {isListening ? (
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />
+                    <span className="text-xs font-mono text-primary">NOVA thinking...</span>
+                  </>
+                ) : isListening ? (
                   <>
                     <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                     <span className="text-xs font-mono text-primary">Listening...</span>
                   </>
                 ) : (
-                  <span className="text-xs font-mono text-muted-foreground">Voice Control</span>
+                  <span className="text-xs font-mono text-muted-foreground">NOVA Voice</span>
                 )}
               </div>
               <button
@@ -177,15 +210,15 @@ export default function VoiceControlButton() {
               <p className="text-sm text-primary font-medium mb-1">{feedback}</p>
             )}
 
-            {!feedback && !transcript && isListening && (
+            {!feedback && !transcript && isListening && !isProcessing && (
               <p className="text-xs text-muted-foreground">
-                Say a command like "Go to missions" or "Complete [mission name]"
+                Speak naturally — NOVA understands context. Try "open the energy log" or "how am I doing?"
               </p>
             )}
 
             <div className="mt-2 border-t border-primary/10 pt-2">
               <p className="text-[10px] text-muted-foreground font-mono leading-relaxed">
-                Navigate: "Go to [page]" | Missions: "Complete/Start [name]" | Timer: "Pause/Resume/Stop"
+                AI-powered: Navigate, control widgets, manage missions, ask questions
               </p>
             </div>
           </div>
