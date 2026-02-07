@@ -1,10 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Mic, MicOff, X, Loader2 } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 import { useVoiceControl } from '@/hooks/use-voice-control';
 import { useLYFEOS } from '@/lib/context';
 import { useNovaActions } from '@/hooks/use-nova-actions';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import { useLocation } from 'wouter';
 
 interface VoiceCommandResponse {
   speech: string;
@@ -15,14 +14,11 @@ interface VoiceCommandResponse {
 export default function VoiceControlButton() {
   const { activeChatSessionId, chatSessions, aiCompanionName } = useLYFEOS();
   const { executeToolActions } = useNovaActions();
-  const [location] = useLocation();
 
   const [showOverlay, setShowOverlay] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [feedback, setFeedback] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-
-  const isOnAIPage = location === '/ai';
 
   const showFeedback = useCallback((message: string) => {
     setFeedback(message);
@@ -111,20 +107,6 @@ export default function VoiceControlButton() {
 
   return (
     <>
-      {isOnAIPage && (
-        <button
-          onClick={handleToggleVoice}
-          className={`fixed bottom-24 right-4 z-50 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg ${
-            showOverlay
-              ? 'bg-primary text-primary-foreground shadow-[0_0_15px_var(--primary)]'
-              : 'glassmorphic border border-primary/30 text-primary hover:border-primary/60 hover:shadow-[0_0_10px_var(--primary-glow-light)]'
-          }`}
-          title="Voice Control (AI-powered)"
-        >
-          {showOverlay ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
-        </button>
-      )}
-
       {showOverlay && (
         <div className="fixed inset-x-0 bottom-36 z-50 flex justify-center px-4 pointer-events-none">
           <div className="glassmorphic rounded-xl p-4 neon-border max-w-sm w-full pointer-events-auto shadow-[0_0_20px_rgba(0,224,255,0.2)]">
