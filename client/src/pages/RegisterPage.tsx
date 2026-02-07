@@ -231,7 +231,7 @@ export default function RegisterPage() {
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label htmlFor="username" className="block text-sm text-muted-foreground">USERNAME</label>
+            <label htmlFor="username" className="block text-sm text-muted-foreground">USERNAME (DISPLAY NAME)</label>
             <Input 
               type="text" 
               id="username"
