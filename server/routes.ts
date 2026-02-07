@@ -1471,6 +1471,14 @@ Generate the complete affirmation now:`;
       
       const validatedData = updateQuestSchema.parse(req.body);
       
+      // Normalize empty strings to null for date/time fields
+      const dateFields = ['startDate', 'startTime', 'endDate', 'endTime'] as const;
+      for (const field of dateFields) {
+        if (field in validatedData && validatedData[field] === '') {
+          (validatedData as any)[field] = null;
+        }
+      }
+      
       // Auto-calculate attention and time costs if dates/times are being updated
       const startDate = validatedData.startDate ?? quest.startDate;
       const startTime = validatedData.startTime ?? quest.startTime;
