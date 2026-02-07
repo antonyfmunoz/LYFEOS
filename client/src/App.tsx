@@ -37,6 +37,7 @@ import MissionArchivePage from "./pages/MissionArchivePage";
 import RitualsArchivePage from "./pages/RitualsArchivePage";
 import KnowledgeArchivePage from "./pages/KnowledgeArchivePage";
 import GoalsArchivePage from "./pages/GoalsArchivePage";
+import VoiceOverlay from "./components/VoiceOverlay";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -422,6 +423,7 @@ function App() {
           <ThemeProvider>
             <DndProvider backend={HTML5Backend}>
               <Router />
+              <VoiceOverlay />
               <Toaster />
             </DndProvider>
           </ThemeProvider>
