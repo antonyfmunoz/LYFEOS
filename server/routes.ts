@@ -4000,18 +4000,17 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
       
       const { date } = req.query;
       
-      // Build the query step by step to avoid type errors
-      const baseQuery = db.select().from(userDailyLogs);
-      
-      // Apply filters
-      const filteredQuery = date 
-        ? baseQuery.where(and(eq(userDailyLogs.userId, userId), eq(userDailyLogs.date, date as string)))
-        : baseQuery.where(eq(userDailyLogs.userId, userId));
-        
-      // Apply ordering
-      const query = filteredQuery.orderBy(desc(userDailyLogs.date));
-      
-      const logs = await query;
+      let logs;
+      if (date) {
+        logs = await db.select().from(userDailyLogs)
+          .where(and(eq(userDailyLogs.userId, userId), eq(userDailyLogs.date, date as string)))
+          .orderBy(desc(userDailyLogs.id))
+          .limit(1);
+      } else {
+        logs = await db.select().from(userDailyLogs)
+          .where(eq(userDailyLogs.userId, userId))
+          .orderBy(desc(userDailyLogs.date));
+      }
       return res.status(200).json({ logs });
     } catch (error) {
       console.error("Error fetching daily logs:", error);
@@ -4029,15 +4028,10 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
       
       const { 
         date, yesterdayXp, todayPrimaryMission, optionalBoostsShown, boostsData,
-        // Energy log fields
         wakeTime, sleepTime, mentalState, physicalState, emotionalState,
-        // Intention log fields
         gratitude, tomorrowGoals, annualGoals, thoughts,
-        // Data log fields
         contentConsumed, research, todoIdeas,
-        // Research log fields
         sourceAuthor, sourceMaterial, researchNote, revisionNote, executionNote,
-        // Reflection log fields
         wentWell, couldBeBetter, learned
       } = req.body;
       
@@ -4045,149 +4039,119 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
         return res.status(400).json({ error: "Date is required" });
       }
       
-      // Check if a log already exists for this date
-      const existingLog = await db.select()
-        .from(userDailyLogs)
-        .where(and(
-          eq(userDailyLogs.userId, userId),
-          eq(userDailyLogs.date, date)
-        ));
+      const result = await db.insert(userDailyLogs).values({
+        userId,
+        date,
+        yesterdayXp: yesterdayXp || 0,
+        todayPrimaryMission: todayPrimaryMission || null,
+        optionalBoostsShown: optionalBoostsShown || false,
+        boostsData: boostsData || {},
+        wakeTime: wakeTime || null,
+        sleepTime: sleepTime || null,
+        mentalState: mentalState ?? 5,
+        physicalState: physicalState ?? 5,
+        emotionalState: emotionalState ?? 5,
+        gratitude: gratitude || null,
+        tomorrowGoals: tomorrowGoals || null,
+        annualGoals: annualGoals || null,
+        thoughts: thoughts || null,
+        contentConsumed: contentConsumed || null,
+        research: research || null,
+        todoIdeas: todoIdeas || null,
+        sourceAuthor: sourceAuthor || null,
+        sourceMaterial: sourceMaterial || null,
+        researchNote: researchNote || null,
+        revisionNote: revisionNote || null,
+        executionNote: executionNote || null,
+        wentWell: wentWell || null,
+        couldBeBetter: couldBeBetter || null,
+        learned: learned || null,
+      }).onConflictDoUpdate({
+        target: [userDailyLogs.userId, userDailyLogs.date],
+        set: {
+          ...(yesterdayXp !== undefined && { yesterdayXp }),
+          ...(todayPrimaryMission !== undefined && { todayPrimaryMission }),
+          ...(optionalBoostsShown !== undefined && { optionalBoostsShown }),
+          ...(boostsData !== undefined && { boostsData }),
+          ...(wakeTime !== undefined && { wakeTime }),
+          ...(sleepTime !== undefined && { sleepTime }),
+          ...(mentalState !== undefined && { mentalState }),
+          ...(physicalState !== undefined && { physicalState }),
+          ...(emotionalState !== undefined && { emotionalState }),
+          ...(gratitude !== undefined && { gratitude }),
+          ...(tomorrowGoals !== undefined && { tomorrowGoals }),
+          ...(annualGoals !== undefined && { annualGoals }),
+          ...(thoughts !== undefined && { thoughts }),
+          ...(contentConsumed !== undefined && { contentConsumed }),
+          ...(research !== undefined && { research }),
+          ...(todoIdeas !== undefined && { todoIdeas }),
+          ...(sourceAuthor !== undefined && { sourceAuthor }),
+          ...(sourceMaterial !== undefined && { sourceMaterial }),
+          ...(researchNote !== undefined && { researchNote }),
+          ...(revisionNote !== undefined && { revisionNote }),
+          ...(executionNote !== undefined && { executionNote }),
+          ...(wentWell !== undefined && { wentWell }),
+          ...(couldBeBetter !== undefined && { couldBeBetter }),
+          ...(learned !== undefined && { learned }),
+        },
+      }).returning();
       
-      if (existingLog.length > 0) {
-        // Update the existing log with all fields
-        await db.update(userDailyLogs)
-          .set({
-            yesterdayXp: yesterdayXp !== undefined ? yesterdayXp : existingLog[0].yesterdayXp,
-            todayPrimaryMission: todayPrimaryMission || existingLog[0].todayPrimaryMission,
-            optionalBoostsShown: optionalBoostsShown !== undefined ? optionalBoostsShown : existingLog[0].optionalBoostsShown,
-            boostsData: boostsData || existingLog[0].boostsData,
-            // Energy log fields
-            wakeTime: wakeTime !== undefined ? wakeTime : existingLog[0].wakeTime,
-            sleepTime: sleepTime !== undefined ? sleepTime : existingLog[0].sleepTime,
-            mentalState: mentalState !== undefined ? mentalState : existingLog[0].mentalState,
-            physicalState: physicalState !== undefined ? physicalState : existingLog[0].physicalState,
-            emotionalState: emotionalState !== undefined ? emotionalState : existingLog[0].emotionalState,
-            // Intention log fields
-            gratitude: gratitude !== undefined ? gratitude : existingLog[0].gratitude,
-            tomorrowGoals: tomorrowGoals !== undefined ? tomorrowGoals : existingLog[0].tomorrowGoals,
-            annualGoals: annualGoals !== undefined ? annualGoals : existingLog[0].annualGoals,
-            thoughts: thoughts !== undefined ? thoughts : existingLog[0].thoughts,
-            // Data log fields
-            contentConsumed: contentConsumed !== undefined ? contentConsumed : existingLog[0].contentConsumed,
-            research: research !== undefined ? research : existingLog[0].research,
-            todoIdeas: todoIdeas !== undefined ? todoIdeas : existingLog[0].todoIdeas,
-            // Research log fields
-            sourceAuthor: sourceAuthor !== undefined ? sourceAuthor : existingLog[0].sourceAuthor,
-            sourceMaterial: sourceMaterial !== undefined ? sourceMaterial : existingLog[0].sourceMaterial,
-            researchNote: researchNote !== undefined ? researchNote : existingLog[0].researchNote,
-            revisionNote: revisionNote !== undefined ? revisionNote : existingLog[0].revisionNote,
-            executionNote: executionNote !== undefined ? executionNote : existingLog[0].executionNote,
-            // Reflection log fields
-            wentWell: wentWell !== undefined ? wentWell : existingLog[0].wentWell,
-            couldBeBetter: couldBeBetter !== undefined ? couldBeBetter : existingLog[0].couldBeBetter,
-            learned: learned !== undefined ? learned : existingLog[0].learned
-          })
-          .where(eq(userDailyLogs.id, existingLog[0].id));
-          
-        const updatedLog = await db.select().from(userDailyLogs).where(eq(userDailyLogs.id, existingLog[0].id));
-        return res.status(200).json({ log: updatedLog[0], message: "Daily log updated successfully" });
-      } else {
-        // Create a new log
-        const newLog = await db.insert(userDailyLogs).values({
-          userId: userId,
-          date,
-          yesterdayXp: yesterdayXp || 0,
-          todayPrimaryMission,
-          optionalBoostsShown,
-          boostsData: boostsData || {},
-          // Energy log fields
-          wakeTime: wakeTime || null,
-          sleepTime: sleepTime || null,
-          mentalState: mentalState || 5,
-          physicalState: physicalState || 5,
-          emotionalState: emotionalState || 5,
-          // Intention log fields
-          gratitude: gratitude || null,
-          tomorrowGoals: tomorrowGoals || null,
-          annualGoals: annualGoals || null,
-          thoughts: thoughts || null,
-          // Data log fields
-          contentConsumed: contentConsumed || null,
-          research: research || null,
-          todoIdeas: todoIdeas || null,
-          // Research log fields
-          sourceAuthor: sourceAuthor || null,
-          sourceMaterial: sourceMaterial || null,
-          researchNote: researchNote || null,
-          revisionNote: revisionNote || null,
-          executionNote: executionNote || null,
-          // Reflection log fields
-          wentWell: wentWell || null,
-          couldBeBetter: couldBeBetter || null,
-          learned: learned || null
-        }).returning();
+      const savedLog = result[0];
+      
+      // Convert previous day's todoIdeas into upcoming missions (quests)
+      try {
+        const [year, month, day] = date.split('-').map(Number);
+        const previousDay = new Date(year, month - 1, day - 1);
+        const previousDateStr = `${previousDay.getFullYear()}-${String(previousDay.getMonth() + 1).padStart(2, '0')}-${String(previousDay.getDate()).padStart(2, '0')}`;
+        const todayMidnight = new Date(year, month - 1, day, 0, 0, 0, 0);
         
-        // Convert previous day's todoIdeas into upcoming missions (quests)
-        try {
-          // Calculate previous day's date in local format (YYYY-MM-DD)
-          // Parse the date components directly to avoid timezone conversion issues
-          const [year, month, day] = date.split('-').map(Number);
-          const previousDay = new Date(year, month - 1, day - 1); // month is 0-indexed
-          const previousDateStr = `${previousDay.getFullYear()}-${String(previousDay.getMonth() + 1).padStart(2, '0')}-${String(previousDay.getDate()).padStart(2, '0')}`;
+        const previousLogs = await db.select()
+          .from(userDailyLogs)
+          .where(and(
+            eq(userDailyLogs.userId, userId),
+            eq(userDailyLogs.date, previousDateStr)
+          ));
+        
+        if (previousLogs.length > 0 && previousLogs[0].todoIdeas && !previousLogs[0].todosConverted) {
+          const todoIdeasText = previousLogs[0].todoIdeas;
+          const todoLines = todoIdeasText
+            .split('\n')
+            .map((line: string) => line.trim())
+            .filter((line: string) => line.length > 0);
           
-          // Create midnight timestamp for today (so missions appear as created at start of day)
-          const todayMidnight = new Date(year, month - 1, day, 0, 0, 0, 0);
+          const existingQuests = await db.select({ title: questsTable.title })
+            .from(questsTable)
+            .where(eq(questsTable.userId, userId));
+          const existingTitles = new Set(existingQuests.map(q => q.title.toLowerCase().trim()));
           
-          // Fetch previous day's log
-          const previousLogs = await db.select()
-            .from(userDailyLogs)
-            .where(and(
-              eq(userDailyLogs.userId, userId),
-              eq(userDailyLogs.date, previousDateStr)
-            ));
-          
-          if (previousLogs.length > 0 && previousLogs[0].todoIdeas && !previousLogs[0].todosConverted) {
-            const todoIdeasText = previousLogs[0].todoIdeas;
-            const todoLines = todoIdeasText
-              .split('\n')
-              .map((line: string) => line.trim())
-              .filter((line: string) => line.length > 0);
-            
-            const existingQuests = await db.select({ title: questsTable.title })
-              .from(questsTable)
-              .where(eq(questsTable.userId, userId));
-            const existingTitles = new Set(existingQuests.map(q => q.title.toLowerCase().trim()));
-            
-            let created = 0;
-            for (const todoLine of todoLines) {
-              if (!existingTitles.has(todoLine.toLowerCase().trim())) {
-                await storage.createQuest({
-                  userId,
-                  title: todoLine,
-                  description: `Auto-created from To-Do Ideas on ${previousDateStr}`,
-                  category: 'todo',
-                  completed: false,
-                  experienceReward: 50,
-                  createdAt: todayMidnight
-                });
-                existingTitles.add(todoLine.toLowerCase().trim());
-                created++;
-              }
+          let created = 0;
+          for (const todoLine of todoLines) {
+            if (!existingTitles.has(todoLine.toLowerCase().trim())) {
+              await storage.createQuest({
+                userId,
+                title: todoLine,
+                description: `Auto-created from To-Do Ideas on ${previousDateStr}`,
+                category: 'todo',
+                completed: false,
+                experienceReward: 50,
+                createdAt: todayMidnight
+              });
+              existingTitles.add(todoLine.toLowerCase().trim());
+              created++;
             }
-            
-            await db.update(userDailyLogs)
-              .set({ todosConverted: true })
-              .where(eq(userDailyLogs.id, previousLogs[0].id));
-            
-            console.log(`Created ${created}/${todoLines.length} quests from previous day's todoIdeas for user ${userId} (${todoLines.length - created} duplicates skipped)`);
           }
-        } catch (todoError) {
-          // Don't fail the log creation if todo conversion fails
-          console.error("Error converting todoIdeas to quests:", todoError);
+          
+          await db.update(userDailyLogs)
+            .set({ todosConverted: true })
+            .where(eq(userDailyLogs.id, previousLogs[0].id));
+          
+          console.log(`Created ${created}/${todoLines.length} quests from previous day's todoIdeas for user ${userId} (${todoLines.length - created} duplicates skipped)`);
         }
-        
-        return res.status(201).json({ log: newLog[0] });
+      } catch (todoError) {
+        console.error("Error converting todoIdeas to quests:", todoError);
       }
+      
+      return res.status(200).json({ log: savedLog, message: "Daily log saved successfully" });
     } catch (error) {
       console.error("Error creating daily log:", error);
       return res.status(500).json({ error: "Failed to create daily log" });

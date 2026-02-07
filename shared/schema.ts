@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, varchar, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, varchar, uuid, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -239,7 +239,9 @@ export const userDailyLogs = pgTable("user_daily_logs", {
   couldBeBetter: text("could_be_better"), // What could be better
   learned: text("learned"), // What I learned today
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  uniqueIndex("user_daily_logs_user_date_idx").on(table.userId, table.date),
+]);
 
 // User Integrations Table (Connected Apps)
 export const userIntegrations = pgTable("user_integrations", {
