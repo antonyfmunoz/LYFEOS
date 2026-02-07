@@ -1417,9 +1417,9 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       // Get or create the database conversation
       const dbConversationId = await getOrCreateDbConversation(sessionId, title);
       
-      // Create AI message ID (message will be added when first content arrives)
       const aiMessageId = `msg-ai-${Date.now()}`;
       let aiMessageAdded = false;
+      let hasToolActions = false;
       
       // Make streaming API call to get AI response
       const response = await fetch(`/api/conversations/${dbConversationId}/messages`, {
@@ -1448,12 +1448,19 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.slice(6));
+                
+                if (data.toolAction) {
+                  hasToolActions = true;
+                  refetchQuests();
+                  queryClient.invalidateQueries({ queryKey: ['/api/profile'] });
+                  queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
+                  queryClient.invalidateQueries({ queryKey: ['/api/events'] });
+                }
+                
                 if (data.content) {
                   fullContent += data.content;
                   
-                  // Add AI message on first content chunk, then update it for subsequent chunks
                   if (!aiMessageAdded) {
-                    // First chunk - add the AI message
                     const aiMessage: AIMessage = {
                       id: aiMessageId,
                       sender: 'ai',
@@ -1480,7 +1487,6 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
                     
                     aiMessageAdded = true;
                   } else {
-                    // Subsequent chunks - update the existing AI message
                     setChatSessions((prev) => 
                       prev.map((session) => {
                         if (session.id === sessionId) {
@@ -1508,6 +1514,13 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
                       );
                     }
                   }
+                }
+                
+                if (data.done && hasToolActions) {
+                  refetchQuests();
+                  queryClient.invalidateQueries({ queryKey: ['/api/profile'] });
+                  queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
+                  queryClient.invalidateQueries({ queryKey: ['/api/events'] });
                 }
               } catch {
                 // Ignore parse errors for incomplete chunks

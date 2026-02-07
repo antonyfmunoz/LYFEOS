@@ -50,7 +50,10 @@ import {
   Phone,
   Lock,
   Eye,
-  EyeOff
+  EyeOff,
+  Play,
+  Pause,
+  Repeat
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -153,6 +156,64 @@ export default function ProfilePage() {
   
   // State for affirmation regeneration
   const [isGeneratingAffirmation, setIsGeneratingAffirmation] = useState(false);
+  const [isPlayingAffirmation, setIsPlayingAffirmation] = useState(false);
+  const [isLoopingAffirmation, setIsLoopingAffirmation] = useState(false);
+  const loopingRef = React.useRef(false);
+  const affirmationTextRef = React.useRef("");
+
+  useEffect(() => {
+    loopingRef.current = isLoopingAffirmation;
+  }, [isLoopingAffirmation]);
+
+  const stopAffirmationPlayback = useCallback(() => {
+    window.speechSynthesis.cancel();
+    setIsPlayingAffirmation(false);
+  }, []);
+
+  const speakAffirmation = useCallback((text: string) => {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+    
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(v => v.name.includes('Google') && v.lang.startsWith('en')) 
+      || voices.find(v => v.lang.startsWith('en'));
+    if (preferredVoice) utterance.voice = preferredVoice;
+    
+    utterance.onend = () => {
+      if (loopingRef.current) {
+        setTimeout(() => speakAffirmation(text), 500);
+      } else {
+        setIsPlayingAffirmation(false);
+      }
+    };
+    
+    utterance.onerror = () => {
+      setIsPlayingAffirmation(false);
+    };
+    
+    window.speechSynthesis.speak(utterance);
+  }, []);
+
+  const toggleAffirmationPlayback = useCallback((text: string) => {
+    if (!('speechSynthesis' in window)) return;
+    if (isPlayingAffirmation) {
+      stopAffirmationPlayback();
+    } else {
+      affirmationTextRef.current = text;
+      setIsPlayingAffirmation(true);
+      speakAffirmation(text);
+    }
+  }, [isPlayingAffirmation, stopAffirmationPlayback, speakAffirmation]);
+
+  useEffect(() => {
+    return () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
   
   // Account settings state
   const [accountEmail, setAccountEmail] = useState("");
@@ -605,7 +666,43 @@ export default function ProfilePage() {
                 {affirmation}
               </p>
             </div>
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => toggleAffirmationPlayback(affirmation)}
+                  className={`text-xs font-mono px-2 py-1 rounded border transition-colors inline-flex items-center gap-1.5 ${
+                    isPlayingAffirmation 
+                      ? 'bg-primary/30 border-primary text-primary' 
+                      : 'bg-primary/20 border-primary/50 text-primary hover:bg-primary/30'
+                  }`}
+                >
+                  {isPlayingAffirmation ? (
+                    <>
+                      <Pause className="h-3 w-3" />
+                      Pause
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-3 w-3" />
+                      Play
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setIsLoopingAffirmation(!isLoopingAffirmation);
+                  }}
+                  className={`text-xs font-mono px-2 py-1 rounded border transition-colors inline-flex items-center gap-1.5 ${
+                    isLoopingAffirmation 
+                      ? 'bg-primary/30 border-primary text-primary' 
+                      : 'bg-card/50 border-primary/30 text-muted-foreground hover:text-primary hover:bg-primary/10'
+                  }`}
+                  title={isLoopingAffirmation ? "Loop is ON" : "Loop is OFF"}
+                >
+                  <Repeat className="h-3 w-3" />
+                  Loop
+                </button>
+              </div>
               <button
                 onClick={handleGenerateAffirmation}
                 disabled={isGeneratingAffirmation}
