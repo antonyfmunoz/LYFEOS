@@ -115,7 +115,7 @@ export default function MissionTimer({
     return (
       <div
         ref={elementRef}
-        className="bg-card rounded-xl px-4 py-2 neon-border shadow-[0_0_20px_rgba(0,224,255,0.2)]"
+        className="bg-card rounded-xl px-4 py-2 neon-border max-w-sm w-full shadow-[0_0_20px_rgba(0,224,255,0.2)]"
         style={dragStyle}
       >
         <div className="flex items-center justify-between">
@@ -142,7 +142,7 @@ export default function MissionTimer({
   return (
     <div
       ref={elementRef}
-      className="bg-card rounded-xl p-4 neon-border shadow-[0_0_20px_rgba(0,224,255,0.2)]"
+      className="bg-card rounded-xl p-4 neon-border max-w-sm w-full shadow-[0_0_20px_rgba(0,224,255,0.2)]"
       style={dragStyle}
     >
       <div className="flex items-center justify-between mb-3">
