@@ -1,23 +1,29 @@
 import React from "react";
 import { Link } from "wouter";
-import { ArrowLeft, BrainCircuit, Focus, BookOpen, Palette, Clock } from "lucide-react";
+import { ArrowLeft, BrainCircuit, Focus, Target, Clock } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import AIStatTip from "@/components/stats/AIStatTip";
 
 export default function AttentionDetailPage() {
-  // Set page title
   usePageTitle("Attention Tokens - LYFEOS");
   
-  // Get stats from context
-  const { stats } = useLYFEOS();
+  const { stats, computedStats } = useLYFEOS();
   
-  // Attention allocation
+  const totalAttentionCost = computedStats?.totalAttentionCost ?? 0;
+  const unallocatedAttention = stats.attentionTokens.current;
+  const totalMax = stats.attentionTokens.max;
+  const categoryBreakdown = computedStats?.categoryBreakdown ?? {};
+  
+  const totalUsed = totalMax - unallocatedAttention;
+  const missionsPct = totalMax > 0 ? Math.round((totalAttentionCost / totalMax) * 100) : 0;
+  const unallocatedPct = totalMax > 0 ? Math.round((unallocatedAttention / totalMax) * 100) : 0;
+  
+  const categoryEntries = Object.entries(categoryBreakdown as Record<string, { total: number; completed: number }>);
+  
   const attentionAllocation = [
-    { category: "Deep Work", percentage: 40, icon: Focus },
-    { category: "Learning", percentage: 25, icon: BookOpen },
-    { category: "Creative", percentage: 20, icon: Palette },
-    { category: "Unallocated", percentage: 15, icon: Clock },
+    { category: "Missions", percentage: missionsPct, value: totalAttentionCost, icon: Target },
+    { category: "Unallocated", percentage: unallocatedPct, value: unallocatedAttention, icon: Clock },
   ];
   
   return (
@@ -30,13 +36,13 @@ export default function AttentionDetailPage() {
       </div>
       
       <div className="mb-8 flex items-center">
-        <BrainCircuit className="h-8 w-8 mr-3 text-primary" /> {/* Indigo (Third Eye) */}
+        <BrainCircuit className="h-8 w-8 mr-3 text-primary" />
         <h1 className="text-3xl font-orbitron">Attention Tokens</h1>
       </div>
       
       {/* Current Attention Status */}
-      <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30"> {/* Indigo (Third Eye) */}
-        <h2 className="font-orbitron text-xl mb-4 text-primary">Attention Capacity</h2> {/* Indigo (Third Eye) */}
+      <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30">
+        <h2 className="font-orbitron text-xl mb-4 text-primary">Attention Capacity</h2>
         <div className="flex items-center justify-between">
           <div>
             <p className="text-muted-foreground mb-1">Focus and cognitive allocation</p>
@@ -48,16 +54,16 @@ export default function AttentionDetailPage() {
           <div className="bg-background/50 border border-primary/20 rounded-md p-4">
             <p className="text-muted-foreground text-sm mb-1">Focus state</p>
             <div className="flex items-center">
-              <Focus className="h-5 w-5 mr-2 text-primary" /> {/* Indigo (Third Eye) */}
-              <span className="text-white">{Math.round((stats.attentionTokens.current / stats.attentionTokens.max) * 100)}%</span>
+              <Focus className="h-5 w-5 mr-2 text-primary" />
+              <span className="text-white">{totalMax > 0 ? Math.round((stats.attentionTokens.current / totalMax) * 100) : 0}%</span>
             </div>
-            <p className="text-primary text-xs mt-1">Mental clarity</p> {/* Indigo (Third Eye) */}
+            <p className="text-primary text-xs mt-1">Mental clarity</p>
           </div>
         </div>
         <div className="mt-4 w-full bg-muted/30 h-2 rounded-full overflow-hidden">
           <div 
             className="bg-gradient-to-r from-primary/50 to-primary h-full rounded-full"
-            style={{ width: `${(stats.attentionTokens.current / stats.attentionTokens.max) * 100}%` }}
+            style={{ width: `${totalMax > 0 ? (stats.attentionTokens.current / totalMax) * 100 : 0}%` }}
           ></div>
         </div>
         <div className="flex justify-between mt-1">
@@ -67,9 +73,9 @@ export default function AttentionDetailPage() {
       </div>
       
       {/* Attention Allocation */}
-      <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30"> {/* Indigo (Third Eye) */}
+      <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="font-orbitron text-xl text-primary">Attention Allocation</h2> {/* Indigo (Third Eye) */}
+          <h2 className="font-orbitron text-xl text-primary">Attention Allocation</h2>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -78,7 +84,7 @@ export default function AttentionDetailPage() {
               <div key={item.category} className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <item.icon className="h-5 w-5 mr-2 text-primary" /> {/* Indigo (Third Eye) */}
+                    <item.icon className="h-5 w-5 mr-2 text-primary" />
                     <h3 className="text-white">{item.category}</h3>
                   </div>
                   <div>
@@ -89,25 +95,45 @@ export default function AttentionDetailPage() {
                 </div>
                 <div className="w-full bg-muted/30 h-1.5 rounded-full overflow-hidden">
                   <div 
-                    className="h-full rounded-full bg-primary" /* Indigo (Third Eye) */
+                    className="h-full rounded-full bg-primary"
                     style={{ width: `${item.percentage}%` }}
                   ></div>
                 </div>
               </div>
             ))}
+            
+            {categoryEntries.length > 0 && (
+              <div className="border-t border-primary/20 pt-4 mt-4">
+                <h4 className="text-muted-foreground text-sm mb-3">By Mission Category</h4>
+                {categoryEntries.map(([category, data]) => (
+                  <div key={category} className="flex items-center justify-between py-2">
+                    <span className="text-white capitalize">{category}</span>
+                    <span className="text-primary text-sm">{data.total} missions</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           
           <div className="bg-background/50 border border-primary/20 rounded-xl p-4">
-            <h3 className="text-primary font-orbitron mb-3">Focus Insights</h3> {/* Indigo (Third Eye) */}
+            <h3 className="text-primary font-orbitron mb-3">Focus Insights</h3>
             <div className="space-y-4">
               <p className="text-muted-foreground text-sm">
-                Your attention is primarily allocated to deep work activities, which is ideal for productivity.
+                {totalAttentionCost > 0 
+                  ? `You have ${totalAttentionCost} attention tokens committed to active missions.`
+                  : "No attention tokens are currently allocated to missions."
+                }
               </p>
               <p className="text-muted-foreground text-sm">
-                Consider increasing your learning allocation to 30% to maximize knowledge acquisition during your peak focus hours.
+                {unallocatedPct > 50
+                  ? `${unallocatedPct}% of your attention capacity is available, giving you flexibility for new tasks.`
+                  : unallocatedPct > 20
+                  ? `${unallocatedPct}% attention reserve remaining. Consider prioritizing before taking on new tasks.`
+                  : `Only ${unallocatedPct}% attention remaining. Focus on completing current missions before adding new ones.`
+                }
               </p>
               <p className="text-muted-foreground text-sm">
-                Your unallocated attention reserve is at 15%, which provides flexibility for unexpected tasks.
+                Total attention capacity: <span className="text-primary font-semibold">{totalMax}</span> tokens
               </p>
             </div>
           </div>

@@ -1,32 +1,26 @@
 import React from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Zap, Activity, Battery, Flame, Coffee } from "lucide-react";
+import { ArrowLeft, Zap, Activity, Battery, Target } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import AIStatTip from "@/components/stats/AIStatTip";
 
 export default function EnergyDetailPage() {
-  // Set page title
   usePageTitle("Energy Tokens - LYFEOS");
   
-  // Get stats from context
-  const { stats } = useLYFEOS();
+  const { stats, computedStats } = useLYFEOS();
   
-  // Sample energy data across the day
-  const energyTimeline = [
-    { time: "6 AM", level: 75, label: "Morning" },
-    { time: "12 PM", level: 65, label: "Midday" },
-    { time: "6 PM", level: 45, label: "Evening" },
-    { time: "Now", level: stats.energyPoints.current, label: "Current" },
+  const energyAllocated = computedStats?.energyAllocated ?? 0;
+  const energyRemaining = stats.energyPoints.current;
+  const totalEnergyCost = computedStats?.totalEnergyCost ?? 0;
+  const categoryBreakdown = computedStats?.categoryBreakdown ?? {};
+  
+  const energyAllocation = [
+    { name: "Missions (Allocated)", value: energyAllocated, description: `${totalEnergyCost} total energy cost across all missions`, icon: Target },
+    { name: "Remaining", value: energyRemaining, description: "Available energy points", icon: Battery },
   ];
   
-  // Sample energy sources
-  const energySources = [
-    { name: "Sleep Quality", score: 80, description: "7.5 hours at 92% efficiency", icon: Battery },
-    { name: "Nutrition", score: 75, description: "3 balanced meals, good hydration", icon: Flame },
-    { name: "Movement", score: 65, description: "Light activity throughout the day", icon: Activity },
-    { name: "Mental Rest", score: 60, description: "Meditation and breaks", icon: Coffee },
-  ];
+  const categoryEntries = Object.entries(categoryBreakdown as Record<string, { total: number; completed: number }>);
   
   return (
     <div className="mx-auto max-w-4xl py-8">
@@ -38,13 +32,13 @@ export default function EnergyDetailPage() {
       </div>
       
       <div className="mb-8 flex items-center">
-        <Zap className="h-8 w-8 mr-3 text-primary" /> {/* Orange (Sacral) */}
+        <Zap className="h-8 w-8 mr-3 text-primary" />
         <h1 className="text-3xl font-orbitron">Energy Tokens</h1>
       </div>
       
       {/* Current Energy Level */}
-      <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30"> {/* Orange (Sacral) */}
-        <h2 className="font-orbitron text-xl mb-4 text-primary">Current Energy Level</h2> {/* Orange (Sacral) */}
+      <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30">
+        <h2 className="font-orbitron text-xl mb-4 text-primary">Current Energy Level</h2>
         <div className="flex items-center justify-between">
           <div>
             <p className="text-muted-foreground mb-1">Cognitive and physical capacity</p>
@@ -54,12 +48,12 @@ export default function EnergyDetailPage() {
             </div>
           </div>
           <div className="bg-background/50 border border-primary/20 rounded-md p-4">
-            <p className="text-muted-foreground text-sm mb-1">Optimal level</p>
+            <p className="text-muted-foreground text-sm mb-1">Allocated to missions</p>
             <div className="flex items-center">
-              <Battery className="h-5 w-5 mr-2 text-primary" /> {/* Orange (Sacral) */}
-              <span className="text-white">85+</span>
+              <Activity className="h-5 w-5 mr-2 text-primary" />
+              <span className="text-white">{energyAllocated}</span>
             </div>
-            <p className="text-primary text-xs mt-1">Peak performance</p> {/* Orange (Sacral) */}
+            <p className="text-primary text-xs mt-1">Energy committed</p>
           </div>
         </div>
         <div className="mt-4 w-full bg-muted/30 h-2 rounded-full overflow-hidden">
@@ -74,68 +68,65 @@ export default function EnergyDetailPage() {
         </div>
       </div>
       
-      {/* Energy Timeline */}
-      <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30"> {/* Orange (Sacral) */}
+      {/* Energy Allocation */}
+      <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="font-orbitron text-xl text-primary">Energy Timeline</h2> {/* Orange (Sacral) */}
+          <h2 className="font-orbitron text-xl text-primary">Energy Allocation</h2>
         </div>
         
         <div className="space-y-6">
-          {energyTimeline.map((timepoint) => (
-            <div key={timepoint.time} className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <span className="w-16 font-mono text-primary">{timepoint.time}</span> {/* Orange (Sacral) */}
-                  <h3 className="text-white ml-2">{timepoint.label}</h3>
+          {energyAllocation.map((item) => (
+            <div key={item.name} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+              <div className="flex items-center col-span-1">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3">
+                  <item.icon className="h-5 w-5 text-primary" />
                 </div>
-                <div>
-                  <span className={`px-3 py-1 rounded-md text-sm bg-primary/20 text-primary`}>
-                    {timepoint.level}%
-                  </span>
+                <h3 className="text-white">{item.name}</h3>
+              </div>
+              <div className="col-span-2">
+                <div className="w-full bg-muted/30 h-2 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-primary h-full rounded-full" 
+                    style={{ width: `${stats.energyPoints.max > 0 ? (item.value / stats.energyPoints.max) * 100 : 0}%` }}
+                  ></div>
                 </div>
               </div>
-              <div className="w-full bg-muted/30 h-1.5 rounded-full overflow-hidden">
-                <div 
-                  className={`h-full rounded-full bg-primary`} /* Orange (Sacral) */
-                  style={{ width: `${timepoint.level}%` }}
-                ></div>
+              <div className="col-span-1 flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">{item.description}</span>
+                <span className="ml-2 font-mono text-primary">{item.value}</span>
               </div>
             </div>
           ))}
         </div>
       </div>
       
-      {/* Energy Sources */}
-      <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30"> {/* Orange (Sacral) */}
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="font-orbitron text-xl text-primary">Energy Sources</h2> {/* Orange (Sacral) */}
-        </div>
-        
-        <div className="space-y-6">
-          {energySources.map((source) => (
-            <div key={source.name} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-              <div className="flex items-center col-span-1">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3"> {/* Orange (Sacral) */}
-                  <source.icon className="h-5 w-5 text-primary" /> {/* Orange (Sacral) */}
+      {/* Energy by Category */}
+      {categoryEntries.length > 0 && (
+        <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="font-orbitron text-xl text-primary">Energy by Mission Category</h2>
+          </div>
+          
+          <div className="space-y-4">
+            {categoryEntries.map(([category, data]) => (
+              <div key={category} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-white capitalize">{category}</h3>
+                  <span className="px-3 py-1 rounded-md text-sm bg-primary/20 text-primary">
+                    {data.completed}/{data.total} completed
+                  </span>
                 </div>
-                <h3 className="text-white">{source.name}</h3>
-              </div>
-              <div className="col-span-2">
-                <div className="w-full bg-muted/30 h-2 rounded-full overflow-hidden">
+                <div className="w-full bg-muted/30 h-1.5 rounded-full overflow-hidden">
                   <div 
-                    className="bg-primary h-full rounded-full" 
-                    style={{ width: `${source.score}%` }}
+                    className="h-full rounded-full bg-primary"
+                    style={{ width: `${data.total > 0 ? (data.completed / data.total) * 100 : 0}%` }}
                   ></div>
                 </div>
               </div>
-              <div className="col-span-1 flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">{source.description}</span>
-                <span className="ml-2 font-mono text-primary">{source.score}%</span> {/* Orange (Sacral) */}
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
       
       <AIStatTip statType="energy" />
     </div>

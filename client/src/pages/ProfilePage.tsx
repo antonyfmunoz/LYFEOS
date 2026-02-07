@@ -487,14 +487,6 @@ export default function ProfilePage() {
       });
       
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
-      
-      toast({
-        title: "Affirmation Generated",
-        description: "Your character affirmation has been created.",
-        variant: "default",
-        className: "bg-background/80 border border-primary text-foreground",
-        duration: 3000,
-      });
     } catch (error) {
       console.error("Error generating affirmation:", error);
       toast({

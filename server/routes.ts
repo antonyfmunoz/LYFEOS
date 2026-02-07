@@ -856,7 +856,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const prompt = `Generate a powerful character affirmation (200-300 words) for a person named "${displayName}". Write in second person, speaking directly to them using "you" and "your".
 
-The affirmation should be written as if you are speaking directly to this person about who they are — powerful, certain, and declarative.
+The affirmation should be written as if you are speaking directly to this person about who they are — powerful, certain, and declarative. Do NOT include any title, header, or greeting line like "# Your Affirmation" — start directly with the affirmation content itself.
 
 Key details about this person:
 - Primary Archetype: ${archetypePrimary} (their dominant energy and approach to life)

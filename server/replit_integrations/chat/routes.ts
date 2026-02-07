@@ -602,4 +602,189 @@ Provide 3 concise, personalized, actionable tips to help them improve this stat.
       res.status(500).json({ error: "Failed to generate tip" });
     }
   });
+
+  app.post("/api/stat-tips/all", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+
+      const user = await storage.getUser(userId);
+      const stats = await storage.getUserStats(userId);
+      const missions = await storage.getQuests(userId);
+
+      if (!user || !stats) {
+        return res.status(404).json({ error: "User data not found" });
+      }
+
+      const activeMissions = missions.filter((m: any) => !m.completed && !m.deletedAt);
+      const completedMissions = missions.filter((m: any) => m.completed && !m.deletedAt);
+
+      const totalEnergyCost = activeMissions.reduce((sum: number, m: any) => sum + (m.energyCost || 0), 0);
+      const totalTimeCost = activeMissions.reduce((sum: number, m: any) => sum + (m.timeCost || 0), 0);
+      const totalAttentionCost = activeMissions.reduce((sum: number, m: any) => sum + (m.attentionCost || 0), 0);
+
+      const allContext = `User: ${user.displayName || user.username}
+Level: ${stats.level}, Total XP: ${stats.experienceCurrent}/${stats.experienceMax}
+Energy: ${stats.energyPointsCurrent}/${stats.energyPointsMax}, Health: ${stats.healthPointsCurrent}/${stats.healthPointsMax}
+Time Tokens: ${stats.timeTokensCurrent}/${stats.timeTokensMax}, Attention Tokens: ${stats.attentionTokensCurrent}/${stats.attentionTokensMax}
+Efficiency: ${stats.efficiencyScore || 0}%, Streak: ${stats.streakDays} days
+Active missions: ${activeMissions.length}, Completed missions: ${completedMissions.length}
+Total energy allocated to missions: ${totalEnergyCost}, Total time allocated: ${totalTimeCost}, Total attention allocated: ${totalAttentionCost}`;
+
+      const prompt = `You are NOVA, an AI life coach inside LYFEOS, a gamified life operating system.
+
+User data:
+${allContext}
+
+Generate personalized tips for ALL 7 stat categories. For each category, provide exactly 3 concise, actionable tips (1-2 sentences each). Base advice on their actual numbers. Be direct, motivating, specific. No emojis.
+
+Format your response as JSON with this exact structure:
+{"experience":["tip1","tip2","tip3"],"energy":["tip1","tip2","tip3"],"health":["tip1","tip2","tip3"],"time":["tip1","tip2","tip3"],"attention":["tip1","tip2","tip3"],"efficiency":["tip1","tip2","tip3"],"streak":["tip1","tip2","tip3"]}
+
+Return ONLY the JSON, no other text.`;
+
+      const response = await anthropic.messages.create({
+        model: "claude-sonnet-4-5",
+        max_tokens: 2048,
+        messages: [{ role: "user", content: prompt }],
+      });
+
+      const textBlock = response.content.find(b => b.type === "text");
+      const rawText = textBlock ? textBlock.text.trim() : "{}";
+
+      try {
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        const tips = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+        res.json({ tips });
+      } catch {
+        res.json({ tips: {} });
+      }
+    } catch (error) {
+      console.error("Error generating all stat tips:", error);
+      res.status(500).json({ error: "Failed to generate tips" });
+    }
+  });
+
+  app.get("/api/computed-stats", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+
+      const stats = await storage.getUserStats(userId);
+      const missions = await storage.getQuests(userId);
+      const events = await storage.getEvents(userId);
+
+      if (!stats) {
+        return res.status(404).json({ error: "Stats not found" });
+      }
+
+      const activeMissions = missions.filter((m: any) => !m.completed && !m.deletedAt);
+      const completedMissions = missions.filter((m: any) => m.completed && !m.deletedAt);
+      const totalMissions = missions.filter((m: any) => !m.deletedAt);
+
+      const totalEnergyCost = activeMissions.reduce((sum: number, m: any) => sum + (m.energyCost || 0), 0);
+      const totalTimeCost = activeMissions.reduce((sum: number, m: any) => sum + (m.timeCost || 0), 0);
+      const totalAttentionCost = activeMissions.reduce((sum: number, m: any) => sum + (m.attentionCost || 0), 0);
+      const totalXpFromCompleted = completedMissions.reduce((sum: number, m: any) => sum + (m.experienceReward || 0), 0);
+
+      const completionRate = totalMissions.length > 0 ? Math.round((completedMissions.length / totalMissions.length) * 100) : 0;
+
+      const difficultyBreakdown: Record<string, number> = {};
+      totalMissions.forEach((m: any) => {
+        const d = m.difficulty || "D";
+        difficultyBreakdown[d] = (difficultyBreakdown[d] || 0) + 1;
+      });
+
+      const categoryBreakdown: Record<string, { total: number; completed: number }> = {};
+      totalMissions.forEach((m: any) => {
+        const cat = m.category || "general";
+        if (!categoryBreakdown[cat]) categoryBreakdown[cat] = { total: 0, completed: 0 };
+        categoryBreakdown[cat].total++;
+        if (m.completed) categoryBreakdown[cat].completed++;
+      });
+
+      const eventCategoryHours: Record<string, number> = {};
+      (events || []).forEach((e: any) => {
+        const cat = e.category || "personal";
+        const dur = parseFloat(e.duration) || 1;
+        eventCategoryHours[cat] = (eventCategoryHours[cat] || 0) + dur;
+      });
+
+      res.json({
+        activeMissions: activeMissions.length,
+        completedMissions: completedMissions.length,
+        totalMissions: totalMissions.length,
+        completionRate,
+        totalEnergyCost,
+        totalTimeCost,
+        totalAttentionCost,
+        totalXpFromCompleted,
+        difficultyBreakdown,
+        categoryBreakdown,
+        eventCategoryHours,
+        energyAllocated: totalEnergyCost,
+        energyRemaining: (stats.energyPointsMax || 10) - (stats.energyPointsCurrent || 0),
+        timeAllocated: totalTimeCost,
+        timeRemaining: stats.timeTokensCurrent || 0,
+        attentionAllocated: totalAttentionCost,
+        attentionRemaining: stats.attentionTokensCurrent || 0,
+      });
+    } catch (error) {
+      console.error("Error computing stats:", error);
+      res.status(500).json({ error: "Failed to compute stats" });
+    }
+  });
+
+  app.post("/api/mission-stat-suggest", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { title, description, difficulty } = req.body;
+
+      const stats = await storage.getUserStats(userId);
+      if (!stats) {
+        return res.status(404).json({ error: "Stats not found" });
+      }
+
+      const prompt = `You are NOVA, an AI assistant for LYFEOS, a gamified life operating system. A user is creating a mission and needs realistic stat cost suggestions.
+
+Mission details:
+- Title: "${title}"
+- Description: "${description || "No description provided"}"
+- Difficulty: ${difficulty || "D"} (S=hardest, A=hard, B=medium, C=easy, D=easiest)
+
+User's current stats:
+- Energy: ${stats.energyPointsCurrent}/${stats.energyPointsMax}
+- Time Tokens: ${stats.timeTokensCurrent}/${stats.timeTokensMax}
+- Attention Tokens: ${stats.attentionTokensCurrent}/${stats.attentionTokensMax}
+- Level: ${stats.level}
+
+Based on the mission title, description, and difficulty, suggest realistic stat costs and XP reward. Consider:
+- D difficulty: 1 energy, 0-1 time, 0-1 attention, 5-15 XP
+- C difficulty: 1-2 energy, 1 time, 1 attention, 15-25 XP
+- B difficulty: 2-3 energy, 1-2 time, 1-2 attention, 25-50 XP
+- A difficulty: 3-4 energy, 2-3 time, 2-3 attention, 50-100 XP
+- S difficulty: 4-5 energy, 3-5 time, 3-5 attention, 100-250 XP
+
+Return ONLY a JSON object with these fields:
+{"energyCost":number,"timeCost":number,"attentionCost":number,"experienceReward":number,"reasoning":"brief 1-sentence explanation"}`;
+
+      const response = await anthropic.messages.create({
+        model: "claude-sonnet-4-5",
+        max_tokens: 256,
+        messages: [{ role: "user", content: prompt }],
+      });
+
+      const textBlock = response.content.find(b => b.type === "text");
+      const rawText = textBlock ? textBlock.text.trim() : "{}";
+
+      try {
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        const suggestion = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+        res.json(suggestion);
+      } catch {
+        res.json({ energyCost: 1, timeCost: 0, attentionCost: 0, experienceReward: 10, reasoning: "Default values applied." });
+      }
+    } catch (error) {
+      console.error("Error suggesting mission stats:", error);
+      res.status(500).json({ error: "Failed to suggest stats" });
+    }
+  });
 }

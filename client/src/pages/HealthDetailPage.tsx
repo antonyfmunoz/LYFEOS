@@ -1,46 +1,48 @@
 import React from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Heart, Activity, Utensils, Dumbbell, Brain } from "lucide-react";
+import { ArrowLeft, Heart, Activity, Target, Flame, BarChart, Settings } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import AIStatTip from "@/components/stats/AIStatTip";
 
 export default function HealthDetailPage() {
-  // Set page title
   usePageTitle("Health Points - LYFEOS");
   
-  // Get stats from context
-  const { stats } = useLYFEOS();
+  const { stats, computedStats } = useLYFEOS();
   
-  // Health metrics
+  const completedMissions = computedStats?.completedMissions ?? 0;
+  const categoryBreakdown = computedStats?.categoryBreakdown ?? {};
+  const uniqueCategories = Object.keys(categoryBreakdown).length;
+  
+  const activityScore = Math.min(Math.round((completedMissions / 10) * 100), 100);
+  const consistencyScore = Math.min(Math.round((stats.streakDays / 30) * 100), 100);
+  const missionBalanceScore = Math.min(Math.round((uniqueCategories / 5) * 100), 100);
+  const systemUsageScore = stats.efficiencyScore;
+  
   const healthMetrics = [
     { 
-      name: "Sleep", 
-      score: 78, 
-      description: "Sleep quality and duration", 
-      icon: Activity,
-      tips: "Create a consistent sleep schedule and avoid screens 1 hour before bedtime."
+      name: "Activity Level", 
+      score: activityScore, 
+      description: `${completedMissions} missions completed`, 
+      icon: Target,
     },
     { 
-      name: "Nutrition", 
-      score: 82, 
-      description: "Dietary balance and hydration", 
-      icon: Utensils,
-      tips: "Focus on whole foods and maintain consistent meal timing."
+      name: "Consistency", 
+      score: consistencyScore, 
+      description: `${stats.streakDays} day streak`, 
+      icon: Flame,
     },
     { 
-      name: "Physical", 
-      score: 70, 
-      description: "Exercise and movement", 
-      icon: Dumbbell,
-      tips: "Aim for 30 minutes of moderate activity daily with 2-3 strength sessions weekly."
+      name: "Mission Balance", 
+      score: missionBalanceScore, 
+      description: `${uniqueCategories} categories active`, 
+      icon: BarChart,
     },
     { 
-      name: "Mental", 
-      score: 85, 
-      description: "Stress and cognitive health", 
-      icon: Brain,
-      tips: "Practice 10 minutes of mindfulness daily and take regular mental breaks."
+      name: "System Usage", 
+      score: systemUsageScore, 
+      description: `${systemUsageScore}% efficiency`, 
+      icon: Settings,
     },
   ];
   
@@ -54,13 +56,13 @@ export default function HealthDetailPage() {
       </div>
       
       <div className="mb-8 flex items-center">
-        <Heart className="h-8 w-8 mr-3 text-primary" /> {/* Red (Root) */}
+        <Heart className="h-8 w-8 mr-3 text-primary" />
         <h1 className="text-3xl font-orbitron">Health Points</h1>
       </div>
       
       {/* Current Health Status */}
-      <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30"> {/* Red (Root) */}
-        <h2 className="font-orbitron text-xl mb-4 text-primary">Current Health Status</h2> {/* Red (Root) */}
+      <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30">
+        <h2 className="font-orbitron text-xl mb-4 text-primary">Current Health Status</h2>
         <div className="flex items-center justify-between">
           <div>
             <p className="text-muted-foreground mb-1">Physical and mental wellness</p>
@@ -72,10 +74,10 @@ export default function HealthDetailPage() {
           <div className="bg-background/50 border border-primary/20 rounded-md p-4">
             <p className="text-muted-foreground text-sm mb-1">Wellness target</p>
             <div className="flex items-center">
-              <Activity className="h-5 w-5 mr-2 text-primary" /> {/* Red (Root) */}
+              <Activity className="h-5 w-5 mr-2 text-primary" />
               <span className="text-white">90+</span>
             </div>
-            <p className="text-primary text-xs mt-1">Optimal health</p> {/* Red (Root) */}
+            <p className="text-primary text-xs mt-1">Optimal health</p>
           </div>
         </div>
         <div className="mt-4 w-full bg-muted/30 h-2 rounded-full overflow-hidden">
@@ -91,9 +93,9 @@ export default function HealthDetailPage() {
       </div>
       
       {/* Health Components */}
-      <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30"> {/* Red (Root) */}
+      <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="font-orbitron text-xl text-primary">Health Components</h2> {/* Red (Root) */}
+          <h2 className="font-orbitron text-xl text-primary">Health Components</h2>
         </div>
         
         <div className="space-y-6">
@@ -101,7 +103,7 @@ export default function HealthDetailPage() {
             <div key={metric.name} className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <metric.icon className="h-5 w-5 mr-2 text-primary" /> {/* Red (Root) */}
+                  <metric.icon className="h-5 w-5 mr-2 text-primary" />
                   <h3 className="text-white">{metric.name}</h3>
                 </div>
                 <div>

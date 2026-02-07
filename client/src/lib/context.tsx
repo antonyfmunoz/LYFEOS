@@ -298,6 +298,9 @@ interface LYFEOSContextType {
   endMissionTimer: (elapsedSeconds: number) => void;
   restartMissionTimer: (questId?: string) => void;
   pauseResumeTimer: () => void;
+  statTips: Record<string, string[]>;
+  statTipsLoading: boolean;
+  computedStats: any;
 }
 
 // Create the context
@@ -338,6 +341,9 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const [timerStartedAt, setTimerStartedAt] = useState<number | null>(null);
   const [timerPausedElapsed, setTimerPausedElapsed] = useState<number>(0);
   const [timerIsPaused, setTimerIsPaused] = useState(false);
+  const [statTips, setStatTips] = useState<Record<string, string[]>>({});
+  const [statTipsLoading, setStatTipsLoading] = useState(false);
+  const [computedStats, setComputedStats] = useState<any>(null);
   
   // Function to update user stats
   const updateUserStats = (newStats: UserStats) => {
@@ -547,6 +553,41 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       };
       
       fetchStats();
+
+      const fetchComputedStats = async () => {
+        try {
+          const response = await fetch("/api/computed-stats", { credentials: "include" });
+          if (response.ok) {
+            const data = await response.json();
+            setComputedStats(data);
+          }
+        } catch (error) {
+          console.error("Failed to fetch computed stats:", error);
+        }
+      };
+      fetchComputedStats();
+
+      const fetchAllTips = async () => {
+        setStatTipsLoading(true);
+        try {
+          const response = await fetch("/api/stat-tips/all", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+          });
+          if (response.ok) {
+            const data = await response.json();
+            if (data.tips) {
+              setStatTips(data.tips);
+            }
+          }
+        } catch (error) {
+          console.error("Failed to fetch stat tips:", error);
+        } finally {
+          setStatTipsLoading(false);
+        }
+      };
+      fetchAllTips();
     }
   }, [isAuthenticated, user]);
   
@@ -2164,7 +2205,10 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         resumeMissionTimer,
         endMissionTimer,
         restartMissionTimer,
-        pauseResumeTimer
+        pauseResumeTimer,
+        statTips,
+        statTipsLoading,
+        computedStats
       }}
     >
       {children}

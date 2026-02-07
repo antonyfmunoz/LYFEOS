@@ -1,38 +1,39 @@
 import React from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Award, Star, Target, BookMarked, FileText } from "lucide-react";
+import { ArrowLeft, Award, Star, Target, Flame, Zap } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
-import { cn } from "@/lib/utils";
 import AIStatTip from "@/components/stats/AIStatTip";
 
 export default function ExperienceDetailPage() {
-  // Set page title
   usePageTitle("Experience - LYFEOS");
   
-  // Get stats from context
-  const { stats } = useLYFEOS();
+  const { stats, computedStats } = useLYFEOS();
   
-  // Get primary color from settings
-  const primaryColor = stats.primaryColor || "#00e0ff";
+  const completedMissions = computedStats?.completedMissions ?? 0;
+  const activeMissions = computedStats?.activeMissions ?? 0;
+  const totalXpFromCompleted = computedStats?.totalXpFromCompleted ?? 0;
+  const streakDays = stats.streakDays;
   
-  // Experience sources
+  const totalActivity = completedMissions + activeMissions + (streakDays > 0 ? 1 : 0);
+  const completedPct = totalActivity > 0 ? Math.round((completedMissions / totalActivity) * 100) : 0;
+  const activePct = totalActivity > 0 ? Math.round((activeMissions / totalActivity) * 100) : 0;
+  const streakPct = totalActivity > 0 && streakDays > 0 ? Math.max(100 - completedPct - activePct, 0) : 0;
+  
   const experienceSources = [
-    { source: "Completed Missions", percentage: 60, icon: Target },
-    { source: "Daily Logs", percentage: 20, icon: FileText },
-    { source: "Streaks", percentage: 15, icon: Star },
-    { source: "Chronilog", percentage: 5, icon: BookMarked },
+    { source: "Completed Missions", percentage: completedPct, icon: Target, detail: `${completedMissions} missions` },
+    { source: "Active Missions", percentage: activePct, icon: Zap, detail: `${activeMissions} in progress` },
+    { source: "Streak Bonus", percentage: streakPct, icon: Flame, detail: streakDays > 0 ? `${streakDays} day streak` : "No active streak" },
   ];
   
-  // Level up requirements calculations
   const currentXP = stats.experience.current;
   const maxXP = stats.experience.max;
   const currentLevel = stats.experience.level;
-  const xpProgress = (currentXP / maxXP) * 100;
+  const xpProgress = maxXP > 0 ? (currentXP / maxXP) * 100 : 0;
   const xpToNextLevel = maxXP - currentXP;
   
-  // Calculate estimated missions to level up (assuming average 25 XP per mission)
-  const estimatedMissions = Math.ceil(xpToNextLevel / 25);
+  const avgXpPerMission = completedMissions > 0 ? totalXpFromCompleted / completedMissions : 25;
+  const estimatedMissions = avgXpPerMission > 0 ? Math.ceil(xpToNextLevel / avgXpPerMission) : 0;
   
   return (
     <div className="mx-auto max-w-4xl py-8">
@@ -93,7 +94,10 @@ export default function ExperienceDetailPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <source.icon className="h-5 w-5 mr-2 text-primary" />
-                    <h3 className="text-white">{source.source}</h3>
+                    <div>
+                      <h3 className="text-white">{source.source}</h3>
+                      <p className="text-muted-foreground text-xs">{source.detail}</p>
+                    </div>
                   </div>
                   <div>
                     <span className="px-3 py-1 rounded-md text-sm bg-primary/20 text-primary">
@@ -118,10 +122,11 @@ export default function ExperienceDetailPage() {
                 You need approximately <span className="text-primary font-semibold">{estimatedMissions} missions</span> to reach Level {currentLevel + 1}.
               </p>
               <p className="text-[#7DAAB2] text-sm">
-                Maintaining a daily streak provides a 15% XP bonus to all completed activities.
+                Average XP per mission: <span className="text-primary font-semibold">{Math.round(avgXpPerMission)} XP</span>
+                {completedMissions === 0 && " (estimated)"}
               </p>
               <p className="text-[#7DAAB2] text-sm">
-                Completing the daily log consistently adds 20 XP per day, which can significantly accelerate your progress.
+                Total XP earned from missions: <span className="text-primary font-semibold">{totalXpFromCompleted} XP</span>
               </p>
             </div>
           </div>

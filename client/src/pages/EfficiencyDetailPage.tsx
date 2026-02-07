@@ -1,60 +1,59 @@
 import React from "react";
 import { Link } from "wouter";
-import { ArrowLeft, BarChart, BarChart2, CheckCircle, FileCog, Brain, Calendar } from "lucide-react";
+import { ArrowLeft, BarChart, CheckCircle, Target, Calendar, Layers, Settings } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import AIStatTip from "@/components/stats/AIStatTip";
 
 export default function EfficiencyDetailPage() {
-  // Set page title
   usePageTitle("System Efficiency - LYFEOS");
   
-  // Get stats from context
-  const { stats } = useLYFEOS();
+  const { stats, computedStats } = useLYFEOS();
   
-  // Define efficiency metrics
+  const completionRate = computedStats?.completionRate ?? 0;
+  const activeMissions = computedStats?.activeMissions ?? 0;
+  const categoryBreakdown = computedStats?.categoryBreakdown ?? {};
+  const uniqueCategories = Object.keys(categoryBreakdown).length;
+  const totalPossibleCategories = 5;
+  
+  const taskCompletionScore = Math.round(completionRate);
+  const activeMissionsScore = Math.min(Math.round((activeMissions / 10) * 100), 100);
+  const consistencyScore = Math.min(Math.round((stats.streakDays / 30) * 100), 100);
+  const missionBalanceScore = Math.min(Math.round((uniqueCategories / totalPossibleCategories) * 100), 100);
+  const systemUsageScore = stats.efficiencyScore;
+  
   const efficiencyMetrics = [
     { 
       name: "Task Completion", 
-      score: 85, 
+      score: taskCompletionScore, 
       icon: CheckCircle, 
-      description: "Percentage of scheduled tasks that were completed on time.",
-      tips: "Create smaller, achievable tasks to maintain momentum and increase completion rates."
+      description: `${computedStats?.completedMissions ?? 0} of ${computedStats?.totalMissions ?? 0} missions completed`,
     },
     { 
-      name: "Data Quality", 
-      score: 72, 
-      icon: FileCog, 
-      description: "Measures how comprehensive and consistent your logging and note-taking is.",
-      tips: "Set up templates for common entries to ensure consistency in your data logging."
-    },
-    { 
-      name: "Feature Utilization", 
-      score: 80, 
-      icon: BarChart2, 
-      description: "Your usage of LYFEOS features compared to optimal patterns.",
-      tips: "Experiment with all available features to find which ones provide the most value for you."
-    },
-    { 
-      name: "Cognitive Balance", 
-      score: 77, 
-      icon: Brain, 
-      description: "Balance between focus sessions, rest periods, and learning activities.",
-      tips: "Try the Pomodoro technique (25 min work, 5 min rest) to improve cognitive balance."
+      name: "Active Missions", 
+      score: activeMissionsScore, 
+      icon: Target, 
+      description: `${activeMissions} missions currently in progress`,
     },
     { 
       name: "Consistency", 
-      score: 92, 
+      score: consistencyScore, 
       icon: Calendar, 
-      description: "How regularly you interact with the system and maintain your data.",
-      tips: "Build LYFEOS check-ins into your daily routine at consistent times for best results."
+      description: `${stats.streakDays} day streak (target: 30 days)`,
+    },
+    { 
+      name: "Mission Balance", 
+      score: missionBalanceScore, 
+      icon: Layers, 
+      description: `${uniqueCategories} of ${totalPossibleCategories} categories used`,
+    },
+    { 
+      name: "System Usage", 
+      score: systemUsageScore, 
+      icon: Settings, 
+      description: `Overall system efficiency score`,
     },
   ];
-  
-  // Calculate the average efficiency score
-  const calculatedEfficiency = Math.round(
-    efficiencyMetrics.reduce((total, metric) => total + metric.score, 0) / efficiencyMetrics.length
-  );
   
   return (
     <div className="mx-auto max-w-4xl py-8">
@@ -66,13 +65,13 @@ export default function EfficiencyDetailPage() {
       </div>
       
       <div className="mb-8 flex items-center">
-        <BarChart className="h-8 w-8 mr-3 text-primary" /> {/* Yellow (Solar Plexus) */}
+        <BarChart className="h-8 w-8 mr-3 text-primary" />
         <h1 className="text-3xl font-orbitron">System Efficiency</h1>
       </div>
       
       {/* Current Efficiency */}
-      <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30"> {/* Yellow (Solar Plexus) */}
-        <h2 className="font-orbitron text-xl mb-4 text-primary">Overall Efficiency</h2> {/* Yellow (Solar Plexus) */}
+      <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30">
+        <h2 className="font-orbitron text-xl mb-4 text-primary">Overall Efficiency</h2>
         <div className="flex items-center justify-between">
           <div>
             <p className="text-muted-foreground mb-1">System optimization score</p>
@@ -84,7 +83,7 @@ export default function EfficiencyDetailPage() {
           <div className="bg-background/50 border border-primary/20 rounded-md p-4">
             <p className="text-muted-foreground text-sm mb-1">Target</p>
             <div className="flex items-center">
-              <BarChart className="h-5 w-5 mr-2 text-primary" /> {/* Yellow (Solar Plexus) */}
+              <BarChart className="h-5 w-5 mr-2 text-primary" />
               <span className="text-white">95%</span>
             </div>
             <p className="text-primary text-xs mt-1">Optimal performance</p>
@@ -103,9 +102,9 @@ export default function EfficiencyDetailPage() {
       </div>
       
       {/* Efficiency Components */}
-      <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30"> {/* Yellow (Solar Plexus) */}
+      <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="font-orbitron text-xl text-primary">Efficiency Components</h2> {/* Yellow (Solar Plexus) */}
+          <h2 className="font-orbitron text-xl text-primary">Efficiency Components</h2>
         </div>
         
         <div className="space-y-6">
