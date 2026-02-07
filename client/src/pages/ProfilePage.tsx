@@ -414,13 +414,6 @@ export default function ProfilePage() {
       infoDescription: "Your personal affirmation or mantra. Set a message that motivates and reminds you of your purpose every time you visit your profile."
     },
     {
-      id: 'stats',
-      title: "Player Stats",
-      icon: <BarChart4 className="h-5 w-5 text-primary" />,
-      defaultOpen: true,
-      infoDescription: "Overview of your current resource levels — XP, energy, health, time tokens, and attention tokens. These stats reflect your daily activity and progress."
-    },
-    {
       id: 'settings',
       title: "Settings",
       icon: <Settings className="h-5 w-5 text-primary" />,
@@ -755,8 +748,6 @@ export default function ProfilePage() {
   // Render widget content based on id
   const renderWidgetContent = (widgetId: string) => {
     switch (widgetId) {
-      case 'stats':
-        return <CompactStatsWidget stats={stats} />;
       case 'player-record':
         return renderPlayerRecord();
       case 'player-affirmation':
@@ -1392,6 +1383,10 @@ export default function ProfilePage() {
             
             {/* Player Stats in Profile Widget */}
             <div className="mt-6 pt-6 border-t border-primary/20">
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart4 className="h-5 w-5 text-primary" />
+                <h3 className="text-lg font-bold text-foreground tracking-wide">Player Stats</h3>
+              </div>
               <CompactStatsWidget stats={stats} />
             </div>
             
