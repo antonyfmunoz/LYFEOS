@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Award, ArrowUpRight, Star, Target, BookMarked, FileText } from "lucide-react";
+import { ArrowLeft, Award, Star, Target, BookMarked, FileText } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { cn } from "@/lib/utils";
@@ -128,30 +128,7 @@ export default function ExperienceDetailPage() {
         </div>
       </div>
       
-      {/* XP Growth Tips */}
-      <div className="glassmorphic rounded-xl p-6 border border-primary/30">
-        <h2 className="font-orbitron text-xl mb-4 text-primary">XP Growth Strategies</h2>
-        <ul className="space-y-3">
-          <li className="flex">
-            <ArrowUpRight className="h-5 w-5 mr-2 text-primary flex-shrink-0" />
-            <span className="text-[#7DAAB2]">Complete at least 3 missions per day for optimal XP accumulation.</span>
-          </li>
-          <li className="flex">
-            <ArrowUpRight className="h-5 w-5 mr-2 text-primary flex-shrink-0" />
-            <span className="text-[#7DAAB2]">Maintain a streak of at least 7 days to increase the XP bonus multiplier.</span>
-          </li>
-          <li className="flex">
-            <ArrowUpRight className="h-5 w-5 mr-2 text-primary flex-shrink-0" />
-            <span className="text-[#7DAAB2]">Create detailed Chronilog entries to earn additional experience points.</span>
-          </li>
-          <li className="flex">
-            <ArrowUpRight className="h-5 w-5 mr-2 text-primary flex-shrink-0" />
-            <span className="text-[#7DAAB2]">Log your daily activities consistently to maintain a steady XP growth rate.</span>
-          </li>
-        </ul>
-      </div>
-      
-      <AIStatTip statType="experience" primaryColor={primaryColor} />
+      <AIStatTip statType="experience" />
     </div>
   );
 }

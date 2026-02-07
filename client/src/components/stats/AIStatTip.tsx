@@ -1,75 +1,90 @@
-import { useState } from "react";
-import { Brain, RefreshCw, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowUpRight, Loader2, RefreshCw } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+
+const STAT_TITLES: Record<string, string> = {
+  experience: "XP Growth Strategies",
+  energy: "Energy Optimization Tips",
+  health: "Wellness Recommendations",
+  time: "Time Management Tips",
+  attention: "Focus Enhancement Techniques",
+  efficiency: "Efficiency Tips",
+  streak: "Streak Tips",
+};
 
 interface AIStatTipProps {
   statType: "experience" | "energy" | "health" | "time" | "attention" | "efficiency" | "streak";
-  primaryColor?: string;
 }
 
-export default function AIStatTip({ statType, primaryColor = "#00e0ff" }: AIStatTipProps) {
-  const [tip, setTip] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasLoaded, setHasLoaded] = useState(false);
+export default function AIStatTip({ statType }: AIStatTipProps) {
+  const [tips, setTips] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
 
-  const fetchTip = async () => {
+  const fetchTips = async () => {
     setIsLoading(true);
+    setHasError(false);
     try {
       const result = await apiRequest<{ tip: string }>("/api/stat-tips", {
         method: "POST",
         body: JSON.stringify({ statType }),
       });
-      setTip(result.tip);
-      setHasLoaded(true);
+      const parsed = result.tip
+        .split(/\n/)
+        .map((line: string) => line.replace(/^\d+[\.\)]\s*/, "").trim())
+        .filter((line: string) => line.length > 0);
+      setTips(parsed);
     } catch (error) {
-      console.error("Failed to fetch stat tip:", error);
-      setTip("Unable to generate tips right now. Please try again later.");
-      setHasLoaded(true);
+      console.error("Failed to fetch stat tips:", error);
+      setHasError(true);
     } finally {
       setIsLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchTips();
+  }, [statType]);
+
+  const title = STAT_TITLES[statType] || "Tips";
+
   return (
-    <div className="mt-6 p-4 bg-card/30 border border-primary/20 rounded-lg">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <Brain className="h-4 w-4" style={{ color: primaryColor }} />
-          <h3 className="text-sm font-orbitron text-foreground">NOVA AI Tips</h3>
-        </div>
-        <button
-          onClick={fetchTip}
-          disabled={isLoading}
-          className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center gap-1.5"
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="h-3 w-3 animate-spin" />
-              Analyzing...
-            </>
-          ) : hasLoaded ? (
-            <>
-              <RefreshCw className="h-3 w-3" />
-              Refresh
-            </>
-          ) : (
-            <>
-              <Brain className="h-3 w-3" />
-              Get Tips
-            </>
-          )}
-        </button>
+    <div className="glassmorphic rounded-xl p-6 border border-primary/30">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-orbitron text-xl text-primary">{title}</h2>
+        {!isLoading && (
+          <button
+            onClick={fetchTips}
+            className="text-muted-foreground hover:text-primary transition-colors p-1"
+            title="Refresh tips"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
+        )}
       </div>
-      
-      {tip ? (
-        <div className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
-          {tip}
+
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-muted-foreground py-4">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          <span className="text-sm">Generating personalized tips...</span>
         </div>
-      ) : !isLoading ? (
-        <p className="text-xs text-muted-foreground/60">
-          Click "Get Tips" for personalized AI-powered recommendations based on your stats.
+      ) : hasError ? (
+        <p className="text-sm text-muted-foreground">
+          Unable to load tips right now.{" "}
+          <button onClick={fetchTips} className="text-primary hover:underline">
+            Try again
+          </button>
         </p>
-      ) : null}
+      ) : (
+        <ul className="space-y-3">
+          {tips.map((tip, index) => (
+            <li key={index} className="flex">
+              <ArrowUpRight className="h-5 w-5 mr-2 text-primary flex-shrink-0" />
+              <span className="text-muted-foreground">{tip}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

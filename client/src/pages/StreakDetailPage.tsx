@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Calendar, Trophy, ArrowUpRight, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Calendar, Trophy, CheckCircle2 } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import AIStatTip from "@/components/stats/AIStatTip";
@@ -11,8 +11,6 @@ export default function StreakDetailPage() {
   
   // Get stats from context
   const { stats } = useLYFEOS();
-  
-  const primaryColor = stats.primaryColor || "#00e0ff";
   
   // Calculate streak milestones
   const streakMilestones = [
@@ -116,30 +114,7 @@ export default function StreakDetailPage() {
         </div>
       </div>
       
-      {/* Usage Tips */}
-      <div className="glassmorphic rounded-xl p-6 border border-primary/30"> {/* Green (Heart) */}
-        <h2 className="font-orbitron text-xl mb-4 text-primary">Streak Tips</h2> {/* Green (Heart) */}
-        <ul className="space-y-3">
-          <li className="flex">
-            <ArrowUpRight className="h-5 w-5 mr-2 text-primary flex-shrink-0" />
-            <span className="text-muted-foreground">Log in at least once every 24 hours to maintain your streak.</span>
-          </li>
-          <li className="flex">
-            <ArrowUpRight className="h-5 w-5 mr-2 text-primary flex-shrink-0" />
-            <span className="text-muted-foreground">Complete at least one mission per day to maximize streak benefits.</span>
-          </li>
-          <li className="flex">
-            <ArrowUpRight className="h-5 w-5 mr-2 text-primary flex-shrink-0" />
-            <span className="text-muted-foreground">Longer streaks contribute to your overall efficiency score.</span>
-          </li>
-          <li className="flex">
-            <ArrowUpRight className="h-5 w-5 mr-2 text-primary flex-shrink-0" />
-            <span className="text-muted-foreground">Set a daily reminder to check in with LYFEOS and maintain your streak.</span>
-          </li>
-        </ul>
-      </div>
-      
-      <AIStatTip statType="streak" primaryColor={primaryColor} />
+      <AIStatTip statType="streak" />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Clock, ArrowUpRight, Timer, Coffee, Calendar, Briefcase } from "lucide-react";
+import { ArrowLeft, Clock, Timer, Coffee, Calendar, Briefcase } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import AIStatTip from "@/components/stats/AIStatTip";
@@ -11,8 +11,6 @@ export default function TimeDetailPage() {
   
   // Get stats from context
   const { stats } = useLYFEOS();
-  
-  const primaryColor = stats.primaryColor || "#00e0ff";
   
   // Time allocation in hours
   const timeAllocation = [
@@ -130,30 +128,7 @@ export default function TimeDetailPage() {
         </div>
       </div>
       
-      {/* Time Management Tips */}
-      <div className="glassmorphic rounded-xl p-6 border border-primary/30"> {/* Cyan (Throat) */}
-        <h2 className="font-orbitron text-xl mb-4 text-primary">Time Management Tips</h2> {/* Cyan (Throat) */}
-        <ul className="space-y-3">
-          <li className="flex">
-            <ArrowUpRight className="h-5 w-5 mr-2 text-primary flex-shrink-0" /> {/* Cyan (Throat) */}
-            <span className="text-muted-foreground">Batch similar tasks together to minimize context switching and maximize efficiency.</span>
-          </li>
-          <li className="flex">
-            <ArrowUpRight className="h-5 w-5 mr-2 text-primary flex-shrink-0" /> {/* Cyan (Throat) */}
-            <span className="text-muted-foreground">Use time blocking to allocate specific hours for deep work, meetings, and personal time.</span>
-          </li>
-          <li className="flex">
-            <ArrowUpRight className="h-5 w-5 mr-2 text-primary flex-shrink-0" /> {/* Cyan (Throat) */}
-            <span className="text-muted-foreground">Schedule buffer time between activities to prevent back-to-back commitments.</span>
-          </li>
-          <li className="flex">
-            <ArrowUpRight className="h-5 w-5 mr-2 text-primary flex-shrink-0" /> {/* Cyan (Throat) */}
-            <span className="text-muted-foreground">Prioritize tasks using the Eisenhower Matrix (urgent/important) to allocate time effectively.</span>
-          </li>
-        </ul>
-      </div>
-      
-      <AIStatTip statType="time" primaryColor={primaryColor} />
+      <AIStatTip statType="time" />
     </div>
   );
 }

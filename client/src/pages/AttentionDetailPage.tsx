@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "wouter";
-import { ArrowLeft, ArrowUpRight, BrainCircuit, Focus, BookOpen, Palette, Clock } from "lucide-react";
+import { ArrowLeft, BrainCircuit, Focus, BookOpen, Palette, Clock } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import AIStatTip from "@/components/stats/AIStatTip";
@@ -12,22 +12,12 @@ export default function AttentionDetailPage() {
   // Get stats from context
   const { stats } = useLYFEOS();
   
-  const primaryColor = stats.primaryColor || "#00e0ff";
-  
   // Attention allocation
   const attentionAllocation = [
     { category: "Deep Work", percentage: 40, icon: Focus },
     { category: "Learning", percentage: 25, icon: BookOpen },
     { category: "Creative", percentage: 20, icon: Palette },
     { category: "Unallocated", percentage: 15, icon: Clock },
-  ];
-  
-  // Focus techniques
-  const focusTechniques = [
-    "Time blocking: Schedule specific time blocks for focused work without interruptions.",
-    "Pomodoro technique: Work in 25-minute focused sprints with 5-minute breaks.",
-    "Digital minimalism: Remove distractions by closing unnecessary apps and notifications.",
-    "Mindful transitions: Take a moment to reset between different types of tasks.",
   ];
   
   return (
@@ -124,20 +114,7 @@ export default function AttentionDetailPage() {
         </div>
       </div>
       
-      {/* Focus Techniques */}
-      <div className="glassmorphic rounded-xl p-6 border border-primary/30"> {/* Indigo (Third Eye) */}
-        <h2 className="font-orbitron text-xl mb-4 text-primary">Focus Enhancement Techniques</h2> {/* Indigo (Third Eye) */}
-        <ul className="space-y-3">
-          {focusTechniques.map((technique, index) => (
-            <li key={index} className="flex">
-              <ArrowUpRight className="h-5 w-5 mr-2 text-primary flex-shrink-0" /> {/* Indigo (Third Eye) */}
-              <span className="text-muted-foreground">{technique}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-      
-      <AIStatTip statType="attention" primaryColor={primaryColor} />
+      <AIStatTip statType="attention" />
     </div>
   );
 }

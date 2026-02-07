@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "wouter";
-import { ArrowLeft, BarChart, ArrowUpRight, BarChart2, CheckCircle, FileCog, Brain, Calendar } from "lucide-react";
+import { ArrowLeft, BarChart, BarChart2, CheckCircle, FileCog, Brain, Calendar } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import AIStatTip from "@/components/stats/AIStatTip";
@@ -11,8 +11,6 @@ export default function EfficiencyDetailPage() {
   
   // Get stats from context
   const { stats } = useLYFEOS();
-  
-  const primaryColor = stats.primaryColor || "#00e0ff";
   
   // Define efficiency metrics
   const efficiencyMetrics = [
@@ -136,20 +134,7 @@ export default function EfficiencyDetailPage() {
         </div>
       </div>
       
-      {/* Improvement Tips */}
-      <div className="glassmorphic rounded-xl p-6 border border-primary/30"> {/* Yellow (Solar Plexus) */}
-        <h2 className="font-orbitron text-xl mb-4 text-primary">Efficiency Tips</h2> {/* Yellow (Solar Plexus) */}
-        <ul className="space-y-3">
-          {efficiencyMetrics.map((metric) => (
-            <li key={`tip-${metric.name}`} className="flex">
-              <ArrowUpRight className="h-5 w-5 mr-2 text-primary flex-shrink-0" />
-              <span className="text-muted-foreground">{metric.tips}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-      
-      <AIStatTip statType="efficiency" primaryColor={primaryColor} />
+      <AIStatTip statType="efficiency" />
     </div>
   );
 }

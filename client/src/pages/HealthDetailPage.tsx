@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Heart, ArrowUpRight, Activity, Utensils, Dumbbell, Brain } from "lucide-react";
+import { ArrowLeft, Heart, Activity, Utensils, Dumbbell, Brain } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import AIStatTip from "@/components/stats/AIStatTip";
@@ -11,8 +11,6 @@ export default function HealthDetailPage() {
   
   // Get stats from context
   const { stats } = useLYFEOS();
-  
-  const primaryColor = stats.primaryColor || "#00e0ff";
   
   // Health metrics
   const healthMetrics = [
@@ -124,20 +122,7 @@ export default function HealthDetailPage() {
         </div>
       </div>
       
-      {/* Wellness Recommendations */}
-      <div className="glassmorphic rounded-xl p-6 border border-primary/30"> {/* Red (Root) */}
-        <h2 className="font-orbitron text-xl mb-4 text-primary">Wellness Recommendations</h2> {/* Red (Root) */}
-        <ul className="space-y-3">
-          {healthMetrics.map((metric) => (
-            <li key={`tip-${metric.name}`} className="flex">
-              <ArrowUpRight className="h-5 w-5 mr-2 text-primary flex-shrink-0" /> {/* Red (Root) */}
-              <span className="text-muted-foreground">{metric.tips}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-      
-      <AIStatTip statType="health" primaryColor={primaryColor} />
+      <AIStatTip statType="health" />
     </div>
   );
 }

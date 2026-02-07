@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "wouter";
-import { ArrowLeft, Zap, Activity, ArrowUpRight, Battery, Flame, Coffee } from "lucide-react";
+import { ArrowLeft, Zap, Activity, Battery, Flame, Coffee } from "lucide-react";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import AIStatTip from "@/components/stats/AIStatTip";
@@ -11,8 +11,6 @@ export default function EnergyDetailPage() {
   
   // Get stats from context
   const { stats } = useLYFEOS();
-  
-  const primaryColor = stats.primaryColor || "#00e0ff";
   
   // Sample energy data across the day
   const energyTimeline = [
@@ -139,30 +137,7 @@ export default function EnergyDetailPage() {
         </div>
       </div>
       
-      {/* Optimization Tips */}
-      <div className="glassmorphic rounded-xl p-6 border border-primary/30"> {/* Orange (Sacral) */}
-        <h2 className="font-orbitron text-xl mb-4 text-primary">Energy Optimization Tips</h2> {/* Orange (Sacral) */}
-        <ul className="space-y-3">
-          <li className="flex">
-            <ArrowUpRight className="h-5 w-5 mr-2 text-primary flex-shrink-0" /> {/* Orange (Sacral) */}
-            <span className="text-muted-foreground">Take short 5-minute movement breaks every hour during focused work periods.</span>
-          </li>
-          <li className="flex">
-            <ArrowUpRight className="h-5 w-5 mr-2 text-primary flex-shrink-0" /> {/* Orange (Sacral) */}
-            <span className="text-muted-foreground">Prioritize complex, high-energy tasks during your peak energy hours.</span>
-          </li>
-          <li className="flex">
-            <ArrowUpRight className="h-5 w-5 mr-2 text-primary flex-shrink-0" /> {/* Orange (Sacral) */}
-            <span className="text-muted-foreground">Stay hydrated - aim for at least 2 liters of water throughout your day.</span>
-          </li>
-          <li className="flex">
-            <ArrowUpRight className="h-5 w-5 mr-2 text-primary flex-shrink-0" /> {/* Orange (Sacral) */}
-            <span className="text-muted-foreground">Schedule a 20-minute power nap if your energy drops significantly in the afternoon.</span>
-          </li>
-        </ul>
-      </div>
-      
-      <AIStatTip statType="energy" primaryColor={primaryColor} />
+      <AIStatTip statType="energy" />
     </div>
   );
 }
