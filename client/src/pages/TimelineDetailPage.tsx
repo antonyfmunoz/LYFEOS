@@ -186,7 +186,7 @@ This item represents an important entry in your life timeline. Each item in your
 
 export default function TimelineDetailPage() {
   const [, navigate] = useLocation();
-  const [match, params] = useRoute("/chronilog/timeline/:id");
+  const [match, params] = useRoute("/timeline/:id");
   const { missionPages, events, quests, messages } = useLYFEOS();
   const [item, setItem] = useState<TimelineItem | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -196,7 +196,7 @@ export default function TimelineDetailPage() {
   
   useEffect(() => {
     if (!match || !params) {
-      navigate('/chronilog/timeline');
+      navigate('/timeline');
       return;
     }
     
@@ -286,7 +286,7 @@ export default function TimelineDetailPage() {
       setItem(foundItem);
     } else {
       // If item not found, redirect back to timeline
-      navigate('/chronilog/timeline');
+      navigate('/timeline');
     }
   }, [match, params, navigate, missionPages, events, quests, messages]);
   
@@ -294,14 +294,14 @@ export default function TimelineDetailPage() {
   const goBack = () => {
     // Always navigate directly to the timeline page
     // This ensures consistent behavior regardless of how user reached this page
-    navigate('/chronilog/timeline');
+    navigate('/timeline');
   };
   
   // Set up history state when component mounts
   useEffect(() => {
     // Update the history state to track where we came from
     window.history.replaceState(
-      { previous: '/chronilog/timeline' }, 
+      { previous: '/timeline' }, 
       '', 
       window.location.pathname
     );

@@ -8,7 +8,7 @@ const TimelineWidget = () => {
   const [, navigate] = useLocation();
   
   const navigateToFullTimeline = () => {
-    navigate('/chronilog/timeline');
+    navigate('/timeline');
   };
 
   return (

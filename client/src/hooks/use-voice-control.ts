@@ -29,7 +29,7 @@ const NAV_ALIASES: Record<string, string> = {
   profile: '/profile',
   settings: '/profile',
   journal: '/journal-log',
-  timeline: '/chronilog/timeline',
+  timeline: '/timeline',
   knowledge: '/knowledge-vault',
   goals: '/goals-archive',
   vision: '/goals-archive',

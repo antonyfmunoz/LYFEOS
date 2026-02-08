@@ -284,7 +284,7 @@ const tools: Anthropic.Messages.Tool[] = [
     input_schema: {
       type: "object" as const,
       properties: {
-        route: { type: "string", description: "Route path: '/dashboard', '/missions', '/ai', '/chronilog', '/profile', '/journal-log', '/chronilog/timeline', '/knowledge-vault', '/goals-archive'" }
+        route: { type: "string", description: "Route path: '/dashboard', '/missions', '/ai', '/chronilog', '/profile', '/journal-log', '/timeline', '/knowledge-vault', '/goals-archive'" }
       },
       required: ["route"]
     }
