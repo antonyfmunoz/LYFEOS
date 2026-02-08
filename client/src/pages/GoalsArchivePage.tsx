@@ -201,37 +201,35 @@ export default function GoalsArchivePage() {
         </Button>
       </div>
 
-      {profileData && (profileData.vision10YearLegacy || profileData.vision5Year || profileData.vision90Day) && (
-        <div className="space-y-3 mb-6">
-          {profileData.vision10YearLegacy && (
-            <div className="glassmorphic rounded-xl p-4 border border-primary/20">
-              <div className="flex items-center gap-2 mb-2">
-                <Eye className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-medium text-primary uppercase tracking-wider">Legacy Vision</h3>
-              </div>
-              <p className="text-sm text-muted-foreground leading-relaxed">{profileData.vision10YearLegacy}</p>
-            </div>
-          )}
-          {profileData.vision5Year && (
-            <div className="glassmorphic rounded-xl p-4 border border-primary/20">
-              <div className="flex items-center gap-2 mb-2">
-                <Compass className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-medium text-primary uppercase tracking-wider">5-Year Vision</h3>
-              </div>
-              <p className="text-sm text-muted-foreground leading-relaxed">{profileData.vision5Year}</p>
-            </div>
-          )}
-          {profileData.vision90Day && (
-            <div className="glassmorphic rounded-xl p-4 border border-primary/20">
-              <div className="flex items-center gap-2 mb-2">
-                <Flame className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-medium text-primary uppercase tracking-wider">90-Day Vision</h3>
-              </div>
-              <p className="text-sm text-muted-foreground leading-relaxed">{profileData.vision90Day}</p>
-            </div>
-          )}
+      <div className="space-y-3 mb-6">
+        <div className="glassmorphic rounded-xl p-4 border border-primary/20">
+          <div className="flex items-center gap-2 mb-2">
+            <Eye className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-medium text-primary uppercase tracking-wider">Legacy Vision</h3>
+          </div>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {profileData?.vision10YearLegacy || "Not set yet — complete your onboarding missions to define your legacy vision."}
+          </p>
         </div>
-      )}
+        <div className="glassmorphic rounded-xl p-4 border border-primary/20">
+          <div className="flex items-center gap-2 mb-2">
+            <Compass className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-medium text-primary uppercase tracking-wider">5-Year Vision</h3>
+          </div>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {profileData?.vision5Year || "Not set yet — complete your onboarding missions to define your 5-year vision."}
+          </p>
+        </div>
+        <div className="glassmorphic rounded-xl p-4 border border-primary/20">
+          <div className="flex items-center gap-2 mb-2">
+            <Flame className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-medium text-primary uppercase tracking-wider">90-Day Vision</h3>
+          </div>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {profileData?.vision90Day || "Not set yet — complete your onboarding missions to define your 90-day vision."}
+          </p>
+        </div>
+      </div>
       
       {goalCategories.some(category => category.entries.length > 0) ? (
         <div className="space-y-4">
