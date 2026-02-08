@@ -1496,6 +1496,11 @@ ${questData.description ? `Description: ${questData.description}` : ''}`
     notificationEnabled: true,
     notificationTime: true,
     notifications: true,
+    isRitualized: true,
+    repeatFrequency: true,
+    repeatInterval: true,
+    repeatDays: true,
+    repeatEndDate: true,
   }).partial();
 
   app.patch("/api/quests/reorder", isAuthenticated, async (req: Request, res: Response) => {
