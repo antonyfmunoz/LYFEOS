@@ -47,6 +47,10 @@ let schedulerInterval: ReturnType<typeof setInterval> | null = null;
 
 export function startNotificationScheduler() {
   if (schedulerInterval) return;
+  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+    console.warn("VAPID keys not configured - notification scheduler disabled");
+    return;
+  }
   console.log("Notification scheduler started (checking every 60s)");
   schedulerInterval = setInterval(checkAndSendNotifications, 60_000);
   checkAndSendNotifications();
