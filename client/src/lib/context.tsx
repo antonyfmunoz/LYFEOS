@@ -909,6 +909,10 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
           className: "bg-background/80 border border-primary text-foreground",
           duration: 1500,
         });
+        
+        if (currentQuest.isRitualized) {
+          await refetchQuests();
+        }
       }
     } catch (error) {
       // Revert on error
