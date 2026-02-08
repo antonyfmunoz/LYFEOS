@@ -445,6 +445,10 @@ export default function DashboardPage() {
   
   useEffect(() => {
     const handler = () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
       updateEnergyLog({ lastPopulatedFingerprint: '' });
       updateIntentionLog({ lastPopulatedFingerprint: '' });
       updateDataLog({ lastPopulatedFingerprint: '' });
@@ -556,15 +560,54 @@ export default function DashboardPage() {
   // Debounce timer ref for daily log saves
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
+  const isAllLogsLoaded = energyLog.isLoaded && intentionLog.isLoaded && dataLog.isLoaded && reflectionLogState.isLoaded;
+
+  useEffect(() => {
+    const flushHandler = async () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+      if (isDirtyRef.current && isAllLogsLoaded) {
+        const currentFingerprint = loadedRecordFingerprintRef.current;
+        const dataToSave: Partial<DailyReflection> = {
+          wakeTime: energyLog.wakeTime,
+          sleepTime: energyLog.sleepTime,
+          mentalState: energyLog.mentalState,
+          physicalState: energyLog.physicalState,
+          emotionalState: energyLog.emotionalState,
+          gratitude: intentionLog.gratitude,
+          tomorrowGoals: intentionLog.tomorrowGoals,
+          annualGoals: intentionLog.annualGoals,
+          thoughts: intentionLog.thoughts,
+          contentConsumed: dataLog.contentConsumed,
+          research: dataLog.research,
+          sourceAuthor: dataLog.sourceAuthor,
+          sourceMaterial: dataLog.sourceMaterial,
+          researchNote: dataLog.researchNote,
+          revisionNote: dataLog.revisionNote,
+          executionNote: dataLog.executionNote,
+          todoIdeas: dataLog.todoIdeas,
+          wentWell: reflectionLogState.wentWell,
+          couldBeBetter: reflectionLogState.couldBeBetter,
+          learned: reflectionLogState.learned,
+        };
+        try {
+          await saveDailyLogMutation.mutateAsync({ ...dataToSave, _expectedFingerprint: currentFingerprint || undefined });
+        } catch (e) {
+          console.error("Flush save failed:", e);
+        }
+      }
+    };
+    window.addEventListener("nova-flush-pending-save", flushHandler);
+    return () => window.removeEventListener("nova-flush-pending-save", flushHandler);
+  }, [energyLog, intentionLog, dataLog, reflectionLogState, saveDailyLogMutation, isAllLogsLoaded]);
+
   // Define field categories
   const energyLogFields = ['mentalState', 'physicalState', 'emotionalState', 'wakeTime', 'sleepTime'];
   const intentionLogFields = ['gratitude', 'tomorrowGoals', 'annualGoals', 'thoughts'];
   const dataLogFields = ['contentConsumed', 'research', 'sourceAuthor', 'sourceMaterial', 'researchNote', 'revisionNote', 'executionNote', 'todoIdeas'];
   const reflectionLogFields = ['wentWell', 'couldBeBetter', 'learned'];
-  
-  // Check if all logs are loaded (so we can safely save without overwriting)
-  // All logs must be loaded before we allow saving to prevent partial data overwrites
-  const isAllLogsLoaded = energyLog.isLoaded && intentionLog.isLoaded && dataLog.isLoaded && reflectionLogState.isLoaded;
   
   // Update reflection and auto-save all fields
   const updateReflection = (field: keyof DailyReflection, value: any) => {

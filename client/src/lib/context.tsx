@@ -1429,6 +1429,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   
   // Send a message in a specific chat session
   const sendMessageInSession = async (sessionId: string, content: string) => {
+    window.dispatchEvent(new CustomEvent("nova-flush-pending-save"));
+
     // Add user message immediately to UI
     const userMessage: AIMessage = {
       id: `msg-user-${Date.now()}`,

@@ -40,6 +40,9 @@ export default function VoiceOverlay() {
     setTranscript(finalTranscript);
 
     try {
+      window.dispatchEvent(new CustomEvent("nova-flush-pending-save"));
+      await new Promise(resolve => setTimeout(resolve, 300));
+
       const conversationId = getDbConversationId();
       const data = await apiRequest<VoiceCommandResponse>("/api/voice-command", {
         method: "POST",

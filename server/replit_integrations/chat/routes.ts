@@ -307,7 +307,7 @@ const tools: Anthropic.Messages.Tool[] = [
   },
   {
     name: "update_daily_log",
-    description: "Update fields in the user's daily log for today. Use when user wants to log their mental/physical/emotional state, gratitude, thoughts, goals, reflections, wake/sleep time, research notes, etc.",
+    description: "Update fields in the user's daily log for today. Text fields will be APPENDED to existing content (not replaced). Only provide the NEW text to add. Use when user wants to log their mental/physical/emotional state, gratitude, thoughts, goals, reflections, wake/sleep time, research notes, etc.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -316,21 +316,21 @@ const tools: Anthropic.Messages.Tool[] = [
         emotionalState: { type: "number", description: "Emotional state rating 1-10" },
         wakeTime: { type: "string", description: "Wake time in HH:MM format" },
         sleepTime: { type: "string", description: "Sleep time in HH:MM format" },
-        gratitude: { type: "string", description: "What user is grateful for" },
-        tomorrowGoals: { type: "string", description: "Goals for tomorrow" },
-        annualGoals: { type: "string", description: "Annual goals reminder" },
-        thoughts: { type: "string", description: "Free-form thoughts/intentions" },
-        contentConsumed: { type: "string", description: "Information consumed today" },
-        todoIdeas: { type: "string", description: "Ideas for future todos" },
+        gratitude: { type: "string", description: "New gratitude entry to ADD (will be appended on a new line)" },
+        tomorrowGoals: { type: "string", description: "New goal to ADD (will be appended on a new line)" },
+        annualGoals: { type: "string", description: "New annual goal to ADD (will be appended on a new line)" },
+        thoughts: { type: "string", description: "New thought to ADD (will be appended on a new line)" },
+        contentConsumed: { type: "string", description: "New content entry to ADD (will be appended on a new line)" },
+        todoIdeas: { type: "string", description: "New to-do idea to ADD (will be appended on a new line)" },
         sourceAuthor: { type: "string", description: "Source author name" },
         sourceMaterial: { type: "string", description: "Source material reference" },
-        researchNote: { type: "string", description: "Research note" },
-        revisionNote: { type: "string", description: "Revision and summary note" },
-        executionNote: { type: "string", description: "Execution note" },
-        wentWell: { type: "string", description: "What went well today" },
-        couldBeBetter: { type: "string", description: "What could be better" },
-        learned: { type: "string", description: "What was learned today" },
-        todayPrimaryMission: { type: "string", description: "Today's primary mission/focus" }
+        researchNote: { type: "string", description: "New research note to ADD (will be appended on a new line)" },
+        revisionNote: { type: "string", description: "New revision note to ADD (will be appended on a new line)" },
+        executionNote: { type: "string", description: "New execution note to ADD (will be appended on a new line)" },
+        wentWell: { type: "string", description: "New entry to ADD (will be appended on a new line)" },
+        couldBeBetter: { type: "string", description: "New entry to ADD (will be appended on a new line)" },
+        learned: { type: "string", description: "New entry to ADD (will be appended on a new line)" },
+        todayPrimaryMission: { type: "string", description: "Today's primary mission/focus (replaces existing)" }
       },
       required: []
     }
@@ -581,8 +581,28 @@ Write a 2-3 paragraph affirmation in second person ("You are..."). Make it power
         const { ...logUpdates } = input;
         const todayDate = new Date(today + 'T00:00:00');
         const todayLog = await storage.getUserDailyLogByDate(userId, todayDate);
+
+        const appendableFields = [
+          'gratitude', 'tomorrowGoals', 'annualGoals', 'thoughts',
+          'contentConsumed', 'todoIdeas', 'researchNote', 'revisionNote',
+          'executionNote', 'wentWell', 'couldBeBetter', 'learned'
+        ];
+
         if (todayLog) {
-          await storage.updateUserDailyLog(todayLog.id, logUpdates);
+          const mergedUpdates: Record<string, any> = {};
+          for (const [key, newValue] of Object.entries(logUpdates)) {
+            if (appendableFields.includes(key) && typeof newValue === 'string') {
+              const existing = (todayLog as any)[key] as string | null;
+              if (existing && existing.trim().length > 0) {
+                mergedUpdates[key] = existing.trimEnd() + '\n' + newValue;
+              } else {
+                mergedUpdates[key] = newValue;
+              }
+            } else {
+              mergedUpdates[key] = newValue;
+            }
+          }
+          await storage.updateUserDailyLog(todayLog.id, mergedUpdates);
         } else {
           await storage.createUserDailyLog({ userId, date: today, ...logUpdates });
         }
