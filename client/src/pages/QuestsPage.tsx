@@ -1249,6 +1249,7 @@ export default function QuestsPage() {
                                         planning: 'Strategy, organization, scheduling, and goal-setting.',
                                         spiritual: 'Faith, purpose, reflection, and spiritual practices.',
                                         household: 'Home maintenance, cleaning, chores, and living space.',
+                                        event: 'Scheduled occasions, celebrations, and milestone events.',
                                       } as Record<string, string>)[quest.category] || 'Auto-classified mission category.'
                                     }
                                   </p>
