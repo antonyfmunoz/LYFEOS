@@ -913,6 +913,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         if (currentQuest.isRitualized) {
           await refetchQuests();
         }
+      } else if (!completed && currentQuest.isRitualized) {
+        await refetchQuests();
       }
     } catch (error) {
       // Revert on error

@@ -727,8 +727,23 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    // If quest was uncompleted, refund the resources
+    // If quest was uncompleted, refund the resources and remove generated ritual child
     if (quest.completed && !updatedQuest.completed) {
+      if (quest.isRitualized && quest.repeatFrequency) {
+        const parentId = quest.parentRitualId || quest.id;
+        const childQuests = await db.select().from(quests).where(
+          and(
+            eq(quests.parentRitualId, parentId),
+            eq(quests.completed, false),
+            isNull(quests.deletedAt)
+          )
+        );
+        const child = childQuests.find(c => c.id !== quest.id);
+        if (child) {
+          await db.delete(quests).where(eq(quests.id, child.id));
+        }
+      }
+
       const userStats = await this.getUserStats(updatedQuest.userId);
       const userProfileData = await this.getUserProfile(updatedQuest.userId);
       
