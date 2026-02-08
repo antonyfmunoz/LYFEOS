@@ -660,21 +660,24 @@ export default function DashboardPage() {
   const reflectionLogFields = ['wentWell', 'couldBeBetter', 'learned'];
   
   // Update reflection and auto-save all fields
+  // Uses a short setTimeout to let React flush state updates before reading latestLogsRef
   const handleBlurSave = useCallback(() => {
     if (!isDirtyRef.current || !isAllLogsLoaded) return;
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = null;
     }
-    const currentFingerprint = loadedRecordFingerprintRef.current;
-    const savePromise = saveDailyLogMutation.mutateAsync({ ...buildSavePayload(), _expectedFingerprint: currentFingerprint || undefined })
-      .catch(e => console.error("Blur save failed:", e))
-      .finally(() => {
-        if (pendingSavePromiseRef.current === savePromise) {
-          pendingSavePromiseRef.current = null;
-        }
-      });
-    pendingSavePromiseRef.current = savePromise;
+    setTimeout(() => {
+      const currentFingerprint = loadedRecordFingerprintRef.current;
+      const savePromise = saveDailyLogMutation.mutateAsync({ ...buildSavePayload(), _expectedFingerprint: currentFingerprint || undefined })
+        .catch(e => console.error("Blur save failed:", e))
+        .finally(() => {
+          if (pendingSavePromiseRef.current === savePromise) {
+            pendingSavePromiseRef.current = null;
+          }
+        });
+      pendingSavePromiseRef.current = savePromise;
+    }, 50);
   }, [isAllLogsLoaded, buildSavePayload, saveDailyLogMutation]);
 
   const updateReflection = (field: keyof DailyReflection, value: any) => {
@@ -739,6 +742,8 @@ export default function DashboardPage() {
   };
   
   const [expandedArchivedEntries, setExpandedArchivedEntries] = useState(false);
+  const [collapsedNotes, setCollapsedNotes] = useState<Record<string, boolean>>({});
+  const toggleNoteCollapse = (noteKey: string) => setCollapsedNotes(prev => ({ ...prev, [noteKey]: !prev[noteKey] }));
 
   const handleNewResearchEntry = useCallback(() => {
     if (!isAllLogsLoaded || !loadedRecordFingerprintRef.current) {
@@ -1077,45 +1082,66 @@ export default function DashboardPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm flex items-center text-[#7DAAB2]">
+              <button
+                type="button"
+                onClick={() => toggleNoteCollapse('researchNote')}
+                className="text-sm flex items-center text-[#7DAAB2] w-full cursor-pointer hover:text-primary transition-colors"
+              >
                 <Search className="h-4 w-4 text-primary" />
-                <span className="ml-2">Research Note</span>
-              </label>
-              <MarkdownEditor
-                placeholder="Document your research findings, observations, and raw notes..."
-                value={reflection.researchNote}
-                onChange={(value) => updateReflection("researchNote", value)}
-                onBlur={handleBlurSave}
-                minHeight="80px"
-              />
+                <span className="ml-2 flex-1 text-left">Research Note</span>
+                {collapsedNotes.researchNote ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronUp className="h-4 w-4 text-primary" />}
+              </button>
+              {!collapsedNotes.researchNote && (
+                <MarkdownEditor
+                  placeholder="Document your research findings, observations, and raw notes..."
+                  value={reflection.researchNote}
+                  onChange={(value) => updateReflection("researchNote", value)}
+                  onBlur={handleBlurSave}
+                  minHeight="80px"
+                />
+              )}
             </div>
             
             <div className="space-y-2">
-              <label className="text-sm flex items-center text-[#7DAAB2]">
+              <button
+                type="button"
+                onClick={() => toggleNoteCollapse('revisionNote')}
+                className="text-sm flex items-center text-[#7DAAB2] w-full cursor-pointer hover:text-primary transition-colors"
+              >
                 <FileText className="h-4 w-4 text-primary" />
-                <span className="ml-2">Revision & Summary Note</span>
-              </label>
-              <MarkdownEditor
-                placeholder="Summarize key takeaways, revise earlier findings, and consolidate insights..."
-                value={reflection.revisionNote}
-                onChange={(value) => updateReflection("revisionNote", value)}
-                onBlur={handleBlurSave}
-                minHeight="80px"
-              />
+                <span className="ml-2 flex-1 text-left">Summary Note</span>
+                {collapsedNotes.revisionNote ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronUp className="h-4 w-4 text-primary" />}
+              </button>
+              {!collapsedNotes.revisionNote && (
+                <MarkdownEditor
+                  placeholder="Summarize key takeaways, revise earlier findings, and consolidate insights..."
+                  value={reflection.revisionNote}
+                  onChange={(value) => updateReflection("revisionNote", value)}
+                  onBlur={handleBlurSave}
+                  minHeight="80px"
+                />
+              )}
             </div>
             
             <div className="space-y-2">
-              <label className="text-sm flex items-center text-[#7DAAB2]">
+              <button
+                type="button"
+                onClick={() => toggleNoteCollapse('executionNote')}
+                className="text-sm flex items-center text-[#7DAAB2] w-full cursor-pointer hover:text-primary transition-colors"
+              >
                 <Play className="h-4 w-4 text-primary" />
-                <span className="ml-2">Execution Note</span>
-              </label>
-              <MarkdownEditor
-                placeholder="Plan next steps, action items, and implementation details..."
-                value={reflection.executionNote}
-                onChange={(value) => updateReflection("executionNote", value)}
-                onBlur={handleBlurSave}
-                minHeight="80px"
-              />
+                <span className="ml-2 flex-1 text-left">Execution Note</span>
+                {collapsedNotes.executionNote ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronUp className="h-4 w-4 text-primary" />}
+              </button>
+              {!collapsedNotes.executionNote && (
+                <MarkdownEditor
+                  placeholder="Plan next steps, action items, and implementation details..."
+                  value={reflection.executionNote}
+                  onChange={(value) => updateReflection("executionNote", value)}
+                  onBlur={handleBlurSave}
+                  minHeight="80px"
+                />
+              )}
             </div>
           </div>
         );

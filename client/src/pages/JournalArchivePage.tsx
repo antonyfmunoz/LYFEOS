@@ -178,7 +178,7 @@ function LogCard({ log }: { log: DailyLog }) {
               { label: 'Source Author', value: log.sourceAuthor },
               { label: 'Source Material', value: log.sourceMaterial },
               { label: 'Research Note', value: log.researchNote },
-              { label: 'Revision & Summary Note', value: log.revisionNote },
+              { label: 'Summary Note', value: log.revisionNote },
               { label: 'Execution Note', value: log.executionNote },
             ]}
           />
@@ -194,7 +194,7 @@ function LogCard({ log }: { log: DailyLog }) {
                     { label: 'Source Author', value: entry.sourceAuthor || null },
                     { label: 'Source Material', value: entry.sourceMaterial || null },
                     { label: 'Research Note', value: entry.researchNote || null },
-                    { label: 'Revision & Summary Note', value: entry.revisionNote || null },
+                    { label: 'Summary Note', value: entry.revisionNote || null },
                     { label: 'Execution Note', value: entry.executionNote || null },
                   ]}
                 />
