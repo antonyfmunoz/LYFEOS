@@ -234,10 +234,22 @@ export default function QuestsPage() {
       return q.startDate <= today;
     });
     
+    const sevenDaysFromNow = (() => {
+      const d = new Date();
+      d.setDate(d.getDate() + 7);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    })();
+    
     const upcomingItems = active.filter(q => {
       if (q.category === 'todo') return false;
       if (!q.startDate) return false;
-      return q.startDate > today;
+      return q.startDate > today && q.startDate <= sevenDaysFromNow;
+    });
+    
+    const archivedFutureItems = active.filter(q => {
+      if (q.category === 'todo') return false;
+      if (!q.startDate) return false;
+      return q.startDate > sevenDaysFromNow;
     });
     
     const sortByOrder = (a: Quest, b: Quest) => ((a as any).sortOrder ?? 0) - ((b as any).sortOrder ?? 0);
@@ -245,7 +257,7 @@ export default function QuestsPage() {
       todayMissions: todayItems.sort(sortByOrder),
       upcomingMissions: upcomingItems.sort(sortByOrder),
       completedMissions: completed.sort(sortByOrder),
-      inboxMissions: inboxItems.sort(sortByOrder),
+      inboxMissions: [...inboxItems, ...archivedFutureItems].sort(sortByOrder),
     };
   }, [quests, today]);
 
