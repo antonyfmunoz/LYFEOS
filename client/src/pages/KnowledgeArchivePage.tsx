@@ -1,10 +1,13 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
 import { Archive, ChevronDown, ChevronRight, BookOpen, FileText, Search, Play, Link2, ArrowLeft, Calendar, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
+import { useToast } from "@/hooks/use-toast";
 
 interface DailyLog {
   id: number;
@@ -16,14 +19,17 @@ interface DailyLog {
   executionNote: string | null;
 }
 
+interface EntryData {
+  date: string;
+  logId: number;
+  researchNote: string | null;
+  revisionNote: string | null;
+  executionNote: string | null;
+}
+
 interface SourceEntry {
   sourceMaterial: string;
-  entries: Array<{
-    date: string;
-    researchNote: string | null;
-    revisionNote: string | null;
-    executionNote: string | null;
-  }>;
+  entries: EntryData[];
 }
 
 interface AuthorGroup {
@@ -120,6 +126,47 @@ export default function KnowledgeArchivePage() {
     });
   };
 
+  const { toast } = useToast();
+  const [editedNotes, setEditedNotes] = useState<Record<string, string>>({});
+  const saveTimeoutRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  const updateNoteMutation = useMutation({
+    mutationFn: async ({ date, field, value }: { date: string; field: string; value: string }) => {
+      const response = await fetch(`/api/users/${user?.id}/daily-logs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ date, [field]: value }),
+      });
+      if (!response.ok) throw new Error('Failed to save');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'daily-logs', 'knowledge'] });
+    },
+  });
+
+  const handleNoteEdit = useCallback((noteKey: string, date: string, field: string, value: string) => {
+    setEditedNotes(prev => ({ ...prev, [noteKey]: value }));
+    if (saveTimeoutRef.current[noteKey]) {
+      clearTimeout(saveTimeoutRef.current[noteKey]);
+    }
+    saveTimeoutRef.current[noteKey] = setTimeout(() => {
+      updateNoteMutation.mutate({ date, field, value });
+    }, 1000);
+  }, [updateNoteMutation]);
+
+  const handleNoteBlurSave = useCallback((noteKey: string, date: string, field: string) => {
+    if (saveTimeoutRef.current[noteKey]) {
+      clearTimeout(saveTimeoutRef.current[noteKey]);
+      delete saveTimeoutRef.current[noteKey];
+    }
+    const value = editedNotes[noteKey];
+    if (value !== undefined) {
+      updateNoteMutation.mutate({ date, field, value });
+    }
+  }, [editedNotes, updateNoteMutation]);
+
   const authorGroups: AuthorGroup[] = useMemo(() => {
     if (!logsData?.logs) return [];
 
@@ -127,12 +174,7 @@ export default function KnowledgeArchivePage() {
       log => log.sourceAuthor || log.sourceMaterial || log.researchNote || log.revisionNote || log.executionNote
     );
 
-    const authorMap: Record<string, Record<string, Array<{
-      date: string;
-      researchNote: string | null;
-      revisionNote: string | null;
-      executionNote: string | null;
-    }>>> = {};
+    const authorMap: Record<string, Record<string, EntryData[]>> = {};
 
     researchLogs.forEach(log => {
       const author = log.sourceAuthor?.trim() || 'Unknown Author';
@@ -146,6 +188,7 @@ export default function KnowledgeArchivePage() {
 
       authorMap[author][source].push({
         date: log.date,
+        logId: log.id,
         researchNote: log.researchNote,
         revisionNote: log.revisionNote,
         executionNote: log.executionNote,
@@ -327,6 +370,7 @@ export default function KnowledgeArchivePage() {
                             <div className="px-3 pb-3 pt-2 space-y-3 border-t border-slate-700/20">
                               {source.entries.map((entry, idx) => {
                                 const entryKey = `${sourceKey}::${entry.date}::${idx}`;
+                                const fieldMap: Record<string, string> = { research: 'researchNote', revision: 'revisionNote', execution: 'executionNote' };
                                 const noteTypes = [
                                   { key: 'research', label: 'Research Note', icon: Search, content: entry.researchNote },
                                   { key: 'revision', label: 'Summary Note', icon: FileText, content: entry.revisionNote },
@@ -343,6 +387,7 @@ export default function KnowledgeArchivePage() {
                                     {noteTypes.map(({ key, label, icon: Icon, content }) => {
                                       const noteKey = `${entryKey}::${key}`;
                                       const isNoteExpanded = expandedNotes.has(noteKey);
+                                      const editValue = editedNotes[noteKey] !== undefined ? editedNotes[noteKey] : (content || '');
                                       return (
                                         <div key={key}>
                                           <div
@@ -358,9 +403,15 @@ export default function KnowledgeArchivePage() {
                                             <span className="text-xs text-primary/80">{label}</span>
                                           </div>
                                           {isNoteExpanded && (
-                                            <p className={`text-sm whitespace-pre-wrap pl-6 pt-1 ${content ? 'text-foreground/90' : 'text-muted-foreground/50 italic'}`}>
-                                              {content || 'No content yet'}
-                                            </p>
+                                            <div className="pl-5 pt-1">
+                                              <MarkdownEditor
+                                                placeholder={`Add your ${label.toLowerCase()} here...`}
+                                                value={editValue}
+                                                onChange={(value) => handleNoteEdit(noteKey, entry.date, fieldMap[key], value)}
+                                                onBlur={() => handleNoteBlurSave(noteKey, entry.date, fieldMap[key])}
+                                                minHeight="60px"
+                                              />
+                                            </div>
                                           )}
                                         </div>
                                       );
