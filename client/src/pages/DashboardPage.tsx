@@ -581,6 +581,7 @@ export default function DashboardPage() {
   
   // Debounce timer ref for daily log saves
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const blurSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pendingSavePromiseRef = useRef<Promise<void> | null>(null);
   const awaitingNovaRefreshRef = useRef(false);
   
@@ -667,7 +668,11 @@ export default function DashboardPage() {
       clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = null;
     }
-    setTimeout(() => {
+    if (blurSaveTimeoutRef.current) {
+      clearTimeout(blurSaveTimeoutRef.current);
+    }
+    blurSaveTimeoutRef.current = setTimeout(() => {
+      blurSaveTimeoutRef.current = null;
       const currentFingerprint = loadedRecordFingerprintRef.current;
       const savePromise = saveDailyLogMutation.mutateAsync({ ...buildSavePayload(), _expectedFingerprint: currentFingerprint || undefined })
         .catch(e => console.error("Blur save failed:", e))
@@ -783,6 +788,11 @@ export default function DashboardPage() {
 
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+    if (blurSaveTimeoutRef.current) {
+      clearTimeout(blurSaveTimeoutRef.current);
+      blurSaveTimeoutRef.current = null;
     }
 
     const currentFingerprint = loadedRecordFingerprintRef.current;
