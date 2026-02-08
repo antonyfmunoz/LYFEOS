@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
-import { Pause, Play, Square, ChevronUp, ChevronDown, GripHorizontal, Swords, Zap, Brain, Clock } from "lucide-react";
+import { Pause, Play, Square, ChevronUp, ChevronDown, GripHorizontal, Swords, Zap, Brain, Clock, Coffee } from "lucide-react";
 import { useDraggable } from "@/hooks/use-draggable";
 
 interface MissionTimerProps {
   timerStartedAt: number | null;
   timerPausedElapsed: number;
   timerIsPaused: boolean;
+  isOnBreak: boolean;
+  breakStartedAt: number | null;
+  breakElapsed: number;
   onEnd: (elapsedSeconds: number) => void;
   onPauseResume: () => void;
   missionTitle?: string;
@@ -22,6 +25,9 @@ export default function MissionTimer({
   timerStartedAt,
   timerPausedElapsed,
   timerIsPaused,
+  isOnBreak,
+  breakStartedAt,
+  breakElapsed,
   onEnd,
   onPauseResume,
   missionTitle,
@@ -34,6 +40,7 @@ export default function MissionTimer({
   missionDifficulty,
 }: MissionTimerProps) {
   const [displaySeconds, setDisplaySeconds] = useState(0);
+  const [breakDisplaySeconds, setBreakDisplaySeconds] = useState(0);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { elementRef, dragStyle, dragHandleProps } = useDraggable();
 
@@ -44,20 +51,34 @@ export default function MissionTimer({
     return timerPausedElapsed + Math.floor((Date.now() - timerStartedAt) / 1000);
   }, [timerStartedAt, timerPausedElapsed, timerIsPaused]);
 
+  const getBreakElapsed = useCallback(() => {
+    if (!breakStartedAt) {
+      return breakElapsed;
+    }
+    return breakElapsed + Math.floor((Date.now() - breakStartedAt) / 1000);
+  }, [breakStartedAt, breakElapsed]);
+
   useEffect(() => {
     setDisplaySeconds(getElapsed());
-    if (timerIsPaused) return;
+    setBreakDisplaySeconds(getBreakElapsed());
+    if (timerIsPaused && !isOnBreak) return;
 
     const interval = setInterval(() => {
-      setDisplaySeconds(getElapsed());
+      if (!timerIsPaused) {
+        setDisplaySeconds(getElapsed());
+      }
+      if (isOnBreak) {
+        setBreakDisplaySeconds(getBreakElapsed());
+      }
     }, 1000);
     return () => clearInterval(interval);
-  }, [getElapsed, timerIsPaused]);
+  }, [getElapsed, getBreakElapsed, timerIsPaused, isOnBreak]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         setDisplaySeconds(getElapsed());
+        setBreakDisplaySeconds(getBreakElapsed());
       }
     };
     const handleBeforeUnload = () => {
@@ -70,7 +91,7 @@ export default function MissionTimer({
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [getElapsed, onEnd]);
+  }, [getElapsed, getBreakElapsed, onEnd]);
 
   const handleEnd = () => {
     onEnd(getElapsed());
@@ -86,20 +107,35 @@ export default function MissionTimer({
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   };
 
-  const timerDisplay = (
-    <span className={`font-mono text-sm font-bold tracking-wider ${timerIsPaused ? "text-muted-foreground" : "text-primary"}`}>
+  const borderColor = isOnBreak ? "border-emerald-500/30" : "border-primary/30";
+  const shadowColor = isOnBreak ? "shadow-[0_0_20px_rgba(16,185,129,0.2)]" : "shadow-[0_0_20px_rgba(0,224,255,0.2)]";
+  const accentColor = isOnBreak ? "text-emerald-400" : "text-primary";
+  const bgAccent = isOnBreak ? "bg-emerald-500/10" : "bg-primary/10";
+
+  const focusTimerDisplay = (
+    <span className={`font-mono text-sm font-bold tracking-wider ${isOnBreak ? "text-muted-foreground" : "text-primary"}`}>
       {formatTime(displaySeconds)}
     </span>
   );
 
+  const breakTimerDisplay = (breakDisplaySeconds > 0 || isOnBreak) ? (
+    <span className={`font-mono text-sm font-bold tracking-wider ${isOnBreak ? "text-emerald-400" : "text-muted-foreground"}`}>
+      {formatTime(breakDisplaySeconds)}
+    </span>
+  ) : null;
+
   const actionButtons = (
     <>
       <button
-        className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+        className={`h-6 w-6 rounded flex items-center justify-center transition-colors ${
+          isOnBreak 
+            ? "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10" 
+            : "text-muted-foreground hover:text-primary hover:bg-primary/10"
+        }`}
         onClick={onPauseResume}
-        title={timerIsPaused ? "Resume" : "Pause"}
+        title={isOnBreak ? "Resume Focus" : "Take Break"}
       >
-        {timerIsPaused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+        {isOnBreak ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
       </button>
       <button
         className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
@@ -115,14 +151,29 @@ export default function MissionTimer({
     return (
       <div
         ref={elementRef}
-        className="bg-card rounded-xl px-4 py-2 neon-border max-w-sm w-full shadow-[0_0_20px_rgba(0,224,255,0.2)]"
+        className={`bg-card rounded-xl px-4 py-2 neon-border max-w-sm w-full ${shadowColor}`}
         style={dragStyle}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0 mr-2" {...dragHandleProps}>
             <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
-            <Swords className="h-3.5 w-3.5 text-primary shrink-0" />
-            {timerDisplay}
+            {isOnBreak ? (
+              <Coffee className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+            ) : (
+              <Swords className="h-3.5 w-3.5 text-primary shrink-0" />
+            )}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <Swords className="h-2.5 w-2.5 text-primary/60" />
+                {focusTimerDisplay}
+              </div>
+              {breakTimerDisplay && (
+                <div className="flex items-center gap-1">
+                  <Coffee className="h-2.5 w-2.5 text-emerald-400/60" />
+                  {breakTimerDisplay}
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
             {actionButtons}
@@ -142,14 +193,20 @@ export default function MissionTimer({
   return (
     <div
       ref={elementRef}
-      className="bg-card rounded-xl p-4 neon-border max-w-sm w-full shadow-[0_0_20px_rgba(0,224,255,0.2)]"
+      className={`bg-card rounded-xl p-4 neon-border max-w-sm w-full ${shadowColor}`}
       style={dragStyle}
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2" {...dragHandleProps}>
           <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground/50" />
-          <Swords className="h-3.5 w-3.5 text-primary" />
-          {timerDisplay}
+          {isOnBreak ? (
+            <Coffee className="h-3.5 w-3.5 text-emerald-400" />
+          ) : (
+            <Swords className="h-3.5 w-3.5 text-primary" />
+          )}
+          <span className={`text-[10px] font-mono font-bold uppercase tracking-widest ${accentColor}`}>
+            {isOnBreak ? "Break" : "Focus"}
+          </span>
         </div>
         <div className="flex items-center gap-1">
           {actionButtons}
@@ -163,15 +220,32 @@ export default function MissionTimer({
         </div>
       </div>
 
+      <div className="flex items-center gap-3 mb-2">
+        <div className={`flex items-center gap-1.5 px-2 py-1 rounded ${isOnBreak ? "bg-muted/30" : "bg-primary/10 border border-primary/20"}`}>
+          <Swords className={`h-3 w-3 ${isOnBreak ? "text-muted-foreground" : "text-primary"}`} />
+          <span className={`font-mono text-lg font-bold tracking-wider ${isOnBreak ? "text-muted-foreground" : "text-primary"}`}>
+            {formatTime(displaySeconds)}
+          </span>
+        </div>
+        {(breakDisplaySeconds > 0 || isOnBreak) && (
+          <div className={`flex items-center gap-1.5 px-2 py-1 rounded ${isOnBreak ? "bg-emerald-500/10 border border-emerald-500/20" : "bg-muted/30"}`}>
+            <Coffee className={`h-3 w-3 ${isOnBreak ? "text-emerald-400" : "text-muted-foreground"}`} />
+            <span className={`font-mono text-lg font-bold tracking-wider ${isOnBreak ? "text-emerald-400" : "text-muted-foreground"}`}>
+              {formatTime(breakDisplaySeconds)}
+            </span>
+          </div>
+        )}
+      </div>
+
       <div className="flex items-center gap-2 flex-wrap mb-1">
         <span className="text-xs font-bold text-foreground truncate">{missionTitle || "Untitled Mission"}</span>
         {missionCategory && (
-          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 shrink-0 capitalize">
+          <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${bgAccent} ${accentColor} border ${isOnBreak ? "border-emerald-500/20" : "border-primary/20"} shrink-0 capitalize`}>
             {missionCategory}
           </span>
         )}
         {missionDifficulty && (
-          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 shrink-0 capitalize">
+          <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${bgAccent} ${accentColor} border ${isOnBreak ? "border-emerald-500/20" : "border-primary/20"} shrink-0 capitalize`}>
             {missionDifficulty}
           </span>
         )}
@@ -181,14 +255,14 @@ export default function MissionTimer({
         <p className="text-xs text-muted-foreground line-clamp-1 mb-1">{missionDescription}</p>
       )}
 
-      <div className="mt-2 border-t border-primary/10 pt-2">
-        <div className="flex items-center gap-3 text-[10px] font-mono text-primary">
+      <div className={`mt-2 border-t ${isOnBreak ? "border-emerald-500/10" : "border-primary/10"} pt-2`}>
+        <div className={`flex items-center gap-3 text-[10px] font-mono ${accentColor}`}>
           {missionXP != null && missionXP > 0 && (
-            <span className="text-primary">+{missionXP} XP</span>
+            <span>+{missionXP} XP</span>
           )}
           {missionEnergyCost != null && missionEnergyCost > 0 && (
             <span className="flex items-center gap-0.5">
-              <Zap className="h-2.5 w-2.5" /> -{((missionEnergyCost / 1440) * 100).toFixed(1)}% ET
+              <Zap className="h-2.5 w-2.5" /> -{((missionEnergyCost / 1440) * 100).toFixed(1)}% EP
             </span>
           )}
           {missionAttentionCost != null && missionAttentionCost > 0 && (
