@@ -4415,6 +4415,11 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
       if (!parsed.success) {
         return res.status(400).json({ error: "author is required" });
       }
+      const existing = await storage.getDismissedKnowledge(userId);
+      const alreadyDismissed = existing.find(e => e.author === parsed.data.author && e.sourceMaterial === (parsed.data.sourceMaterial ?? null));
+      if (alreadyDismissed) {
+        return res.json(alreadyDismissed);
+      }
       const entry = await storage.dismissKnowledgeEntry({ userId, author: parsed.data.author, sourceMaterial: parsed.data.sourceMaterial ?? null });
       return res.json(entry);
     } catch (error) {

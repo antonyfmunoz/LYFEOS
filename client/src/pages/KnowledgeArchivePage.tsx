@@ -65,7 +65,7 @@ export default function KnowledgeArchivePage() {
       return apiRequest('/api/dismissed-knowledge', { method: 'POST', body: JSON.stringify(params) });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/dismissed-knowledge'] });
+      queryClient.refetchQueries({ queryKey: ['/api/dismissed-knowledge'] });
     },
   });
 
