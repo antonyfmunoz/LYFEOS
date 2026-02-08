@@ -234,6 +234,7 @@ export const userDailyLogs = pgTable("user_daily_logs", {
   researchNote: text("research_note"), // Research note
   revisionNote: text("revision_note"), // Revision & summary note
   executionNote: text("execution_note"), // Execution note
+  researchEntries: jsonb("research_entries").default([]), // Array of archived research entries for multiple entries per day
   todosConverted: boolean("todos_converted").default(false), // Whether todoIdeas have been converted to quests
   // Reflection log fields
   wentWell: text("went_well"), // What went well today
