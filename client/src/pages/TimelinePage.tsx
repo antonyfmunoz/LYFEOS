@@ -1,10 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { ArrowLeft, CalendarClock, Milestone, CalendarDays, ChevronRight, ChevronDown, Calendar } from 'lucide-react';
+import { ArrowLeft, CalendarClock, Milestone, CalendarDays, ZoomIn, ZoomOut, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLYFEOS } from '@/lib/context';
 import { usePageTitle } from '@/hooks/use-page-title';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 type TimelineItemType = 'mission' | 'event';
 
@@ -17,6 +16,21 @@ interface TimelineItem {
   type: TimelineItemType;
 }
 
+type ZoomLevel = 'life' | 'year' | 'month' | 'week' | 'day';
+
+const ZOOM_LEVELS: ZoomLevel[] = ['life', 'year', 'month', 'week', 'day'];
+const ZOOM_LABELS: Record<ZoomLevel, string> = {
+  life: 'Life',
+  year: 'Year',
+  month: 'Month',
+  week: 'Week',
+  day: 'Day',
+};
+
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTH_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 function getDescriptionFromContent(content: string): string {
   if (!content) return '';
   const cleanContent = content
@@ -28,10 +42,8 @@ function getDescriptionFromContent(content: string): string {
     .replace(/`{1,3}[^`]*`{1,3}/g, '');
   const sentences = cleanContent.split(/[.!?]+/);
   const firstSentences = sentences.slice(0, 2).join('. ');
-  if (firstSentences.length <= 150) {
-    return firstSentences.trim() || '';
-  }
-  return firstSentences.substring(0, 147).trim() + '...';
+  if (firstSentences.length <= 120) return firstSentences.trim() || '';
+  return firstSentences.substring(0, 117).trim() + '...';
 }
 
 function getWeekNumber(date: Date): number {
@@ -39,6 +51,15 @@ function getWeekNumber(date: Date): number {
   const diff = date.getTime() - startOfYear.getTime();
   const oneDay = 86400000;
   return Math.ceil((diff / oneDay + startOfYear.getDay() + 1) / 7);
+}
+
+function getWeekStart(year: number, weekNum: number): Date {
+  const jan1 = new Date(year, 0, 1);
+  const dayOfWeek = jan1.getDay();
+  const firstMonday = new Date(year, 0, 1 + ((1 - dayOfWeek + 7) % 7));
+  const weekStart = new Date(firstMonday);
+  weekStart.setDate(weekStart.getDate() + (weekNum - 1) * 7);
+  return weekStart;
 }
 
 function formatTime(timeStr: string): string {
@@ -50,31 +71,13 @@ function formatTime(timeStr: string): string {
   return `${hour12}:${minutes} ${ampm}`;
 }
 
-interface DayGroup {
-  dayKey: string;
-  dayLabel: string;
-  dayNum: number;
+interface TimelineNode {
+  key: string;
+  label: string;
+  sublabel?: string;
+  count: number;
   items: TimelineItem[];
-}
-
-interface WeekGroup {
-  weekNum: number;
-  weekLabel: string;
-  days: DayGroup[];
-}
-
-interface MonthGroup {
-  monthKey: string;
-  monthName: string;
-  monthNum: number;
-  weeks: WeekGroup[];
-  totalItems: number;
-}
-
-interface YearGroup {
-  year: number;
-  months: MonthGroup[];
-  totalItems: number;
+  drillValue?: { year?: number; month?: number; week?: number; day?: number };
 }
 
 export default function TimelinePage() {
@@ -83,39 +86,11 @@ export default function TimelinePage() {
   const [, navigate] = useLocation();
   const { missionPages, events, quests } = useLYFEOS();
 
-  const [expandedYears, setExpandedYears] = useState<Set<number>>(new Set());
-  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
-  const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
-  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
-
-  const toggleYear = (year: number) => {
-    setExpandedYears(prev => {
-      const next = new Set(prev);
-      if (next.has(year)) next.delete(year); else next.add(year);
-      return next;
-    });
-  };
-  const toggleMonth = (key: string) => {
-    setExpandedMonths(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
-    });
-  };
-  const toggleWeek = (key: string) => {
-    setExpandedWeeks(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
-    });
-  };
-  const toggleDay = (key: string) => {
-    setExpandedDays(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
-    });
-  };
+  const [zoomLevel, setZoomLevel] = useState<ZoomLevel>('life');
+  const [focusYear, setFocusYear] = useState<number | null>(null);
+  const [focusMonth, setFocusMonth] = useState<number | null>(null);
+  const [focusWeek, setFocusWeek] = useState<number | null>(null);
+  const [focusDay, setFocusDay] = useState<number | null>(null);
 
   const timelineItems: TimelineItem[] = useMemo(() => {
     const items: TimelineItem[] = [];
@@ -163,110 +138,196 @@ export default function TimelinePage() {
     return items;
   }, [missionPages, events, quests]);
 
-  const hierarchicalData: YearGroup[] = useMemo(() => {
+  const nodes: TimelineNode[] = useMemo(() => {
     if (timelineItems.length === 0) return [];
 
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    switch (zoomLevel) {
+      case 'life': {
+        const byYear: Record<number, TimelineItem[]> = {};
+        timelineItems.forEach(item => {
+          const year = item.rawDate.getFullYear();
+          if (!byYear[year]) byYear[year] = [];
+          byYear[year].push(item);
+        });
+        return Object.keys(byYear)
+          .map(Number)
+          .sort((a, b) => b - a)
+          .map(year => ({
+            key: `year-${year}`,
+            label: String(year),
+            count: byYear[year].length,
+            items: byYear[year],
+            drillValue: { year },
+          }));
+      }
 
-    const yearMap: Record<number, Record<string, Record<string, Record<string, TimelineItem[]>>>> = {};
+      case 'year': {
+        if (focusYear === null) return [];
+        const filtered = timelineItems.filter(i => i.rawDate.getFullYear() === focusYear);
+        const byMonth: Record<number, TimelineItem[]> = {};
+        filtered.forEach(item => {
+          const month = item.rawDate.getMonth();
+          if (!byMonth[month]) byMonth[month] = [];
+          byMonth[month].push(item);
+        });
+        return Object.keys(byMonth)
+          .map(Number)
+          .sort((a, b) => b - a)
+          .map(month => ({
+            key: `month-${month}`,
+            label: MONTH_FULL[month],
+            sublabel: String(focusYear),
+            count: byMonth[month].length,
+            items: byMonth[month],
+            drillValue: { year: focusYear, month },
+          }));
+      }
 
-    timelineItems.forEach(item => {
-      const d = item.rawDate;
-      const year = d.getFullYear();
-      const month = d.getMonth();
-      const monthKey = `${year}-${month}`;
-      const weekNum = getWeekNumber(d);
-      const weekKey = `${year}-W${weekNum}`;
-      const dayKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
-      if (!yearMap[year]) yearMap[year] = {};
-      if (!yearMap[year][monthKey]) yearMap[year][monthKey] = {};
-      if (!yearMap[year][monthKey][weekKey]) yearMap[year][monthKey][weekKey] = {};
-      if (!yearMap[year][monthKey][weekKey][dayKey]) yearMap[year][monthKey][weekKey][dayKey] = [];
-      yearMap[year][monthKey][weekKey][dayKey].push(item);
-    });
-
-    const years: YearGroup[] = Object.keys(yearMap)
-      .map(Number)
-      .sort((a, b) => b - a)
-      .map(year => {
-        const monthEntries = yearMap[year];
-        let yearTotal = 0;
-
-        const months: MonthGroup[] = Object.keys(monthEntries)
-          .sort((a, b) => {
-            const aNum = parseInt(a.split('-')[1]);
-            const bNum = parseInt(b.split('-')[1]);
-            return bNum - aNum;
-          })
-          .map(monthKey => {
-            const weekEntries = monthEntries[monthKey];
-            const monthNum = parseInt(monthKey.split('-')[1]);
-            let monthTotal = 0;
-
-            const weeks: WeekGroup[] = Object.keys(weekEntries)
-              .sort((a, b) => {
-                const aW = parseInt(a.split('W')[1]);
-                const bW = parseInt(b.split('W')[1]);
-                return bW - aW;
-              })
-              .map(weekKey => {
-                const dayEntries = weekEntries[weekKey];
-                const weekNum = parseInt(weekKey.split('W')[1]);
-
-                const days: DayGroup[] = Object.keys(dayEntries)
-                  .sort((a, b) => b.localeCompare(a))
-                  .map(dayKey => {
-                    const dayItems = dayEntries[dayKey]
-                      .sort((a, b) => {
-                        if (a.time < b.time) return -1;
-                        if (a.time > b.time) return 1;
-                        return 0;
-                      });
-
-                    monthTotal += dayItems.length;
-
-                    const parts = dayKey.split('-').map(Number);
-                    const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
-                    const dayName = dayNames[dateObj.getDay()];
-                    const monthName = monthNames[dateObj.getMonth()];
-
-                    return {
-                      dayKey,
-                      dayLabel: `${dayName}, ${monthName} ${parts[2]}`,
-                      dayNum: parts[2],
-                      items: dayItems,
-                    };
-                  });
-
-                return {
-                  weekNum,
-                  weekLabel: `Week ${weekNum}`,
-                  days,
-                };
-              });
-
-            yearTotal += monthTotal;
-
+      case 'month': {
+        if (focusYear === null || focusMonth === null) return [];
+        const filtered = timelineItems.filter(i =>
+          i.rawDate.getFullYear() === focusYear && i.rawDate.getMonth() === focusMonth
+        );
+        const byWeek: Record<number, TimelineItem[]> = {};
+        filtered.forEach(item => {
+          const week = getWeekNumber(item.rawDate);
+          if (!byWeek[week]) byWeek[week] = [];
+          byWeek[week].push(item);
+        });
+        const monthStart = new Date(focusYear, focusMonth, 1);
+        const monthEnd = new Date(focusYear, focusMonth + 1, 0);
+        return Object.keys(byWeek)
+          .map(Number)
+          .sort((a, b) => b - a)
+          .map(week => {
+            const rawWeekStart = getWeekStart(focusYear, week);
+            const rawWeekEnd = new Date(rawWeekStart);
+            rawWeekEnd.setDate(rawWeekEnd.getDate() + 6);
+            const clampedStart = rawWeekStart < monthStart ? monthStart : rawWeekStart;
+            const clampedEnd = rawWeekEnd > monthEnd ? monthEnd : rawWeekEnd;
             return {
-              monthKey,
-              monthName: monthNames[monthNum],
-              monthNum,
-              weeks,
-              totalItems: monthTotal,
+              key: `week-${week}`,
+              label: `Week ${week}`,
+              sublabel: `${MONTH_NAMES[clampedStart.getMonth()]} ${clampedStart.getDate()} - ${MONTH_NAMES[clampedEnd.getMonth()]} ${clampedEnd.getDate()}`,
+              count: byWeek[week].length,
+              items: byWeek[week],
+              drillValue: { year: focusYear, month: focusMonth, week },
             };
           });
+      }
 
-        return {
-          year,
-          months,
-          totalItems: yearTotal,
-        };
-      });
+      case 'week': {
+        if (focusYear === null || focusMonth === null || focusWeek === null) return [];
+        const filtered = timelineItems.filter(i =>
+          i.rawDate.getFullYear() === focusYear &&
+          i.rawDate.getMonth() === focusMonth &&
+          getWeekNumber(i.rawDate) === focusWeek
+        );
+        const byDay: Record<number, TimelineItem[]> = {};
+        filtered.forEach(item => {
+          const day = item.rawDate.getDate();
+          if (!byDay[day]) byDay[day] = [];
+          byDay[day].push(item);
+        });
+        return Object.keys(byDay)
+          .map(Number)
+          .sort((a, b) => b - a)
+          .map(day => {
+            const dateObj = new Date(focusYear, focusMonth, day);
+            return {
+              key: `day-${day}`,
+              label: `${DAY_NAMES[dateObj.getDay()]}, ${MONTH_NAMES[focusMonth]} ${day}`,
+              count: byDay[day].length,
+              items: byDay[day],
+              drillValue: { year: focusYear, month: focusMonth, week: focusWeek, day },
+            };
+          });
+      }
 
-    return years;
-  }, [timelineItems]);
+      case 'day': {
+        if (focusYear === null || focusMonth === null || focusDay === null) return [];
+        const filtered = timelineItems.filter(i =>
+          i.rawDate.getFullYear() === focusYear &&
+          i.rawDate.getMonth() === focusMonth &&
+          i.rawDate.getDate() === focusDay
+        ).sort((a, b) => a.time.localeCompare(b.time));
+        return filtered.map(item => ({
+          key: item.id,
+          label: item.title,
+          sublabel: formatTime(item.time) || undefined,
+          count: 0,
+          items: [item],
+        }));
+      }
+
+      default:
+        return [];
+    }
+  }, [timelineItems, zoomLevel, focusYear, focusMonth, focusWeek, focusDay]);
+
+  const handleNodeClick = useCallback((node: TimelineNode) => {
+    if (zoomLevel === 'day') return;
+
+    const zoomIdx = ZOOM_LEVELS.indexOf(zoomLevel);
+    const nextZoom = ZOOM_LEVELS[zoomIdx + 1];
+    if (!nextZoom || !node.drillValue) return;
+
+    if (node.drillValue.year !== undefined) setFocusYear(node.drillValue.year);
+    if (node.drillValue.month !== undefined) setFocusMonth(node.drillValue.month);
+    if (node.drillValue.week !== undefined) setFocusWeek(node.drillValue.week);
+    if (node.drillValue.day !== undefined) setFocusDay(node.drillValue.day);
+
+    setZoomLevel(nextZoom);
+  }, [zoomLevel]);
+
+  const handleZoomOut = useCallback(() => {
+    const zoomIdx = ZOOM_LEVELS.indexOf(zoomLevel);
+    if (zoomIdx <= 0) return;
+    const prevZoom = ZOOM_LEVELS[zoomIdx - 1];
+
+    if (prevZoom === 'life') {
+      setFocusYear(null);
+      setFocusMonth(null);
+      setFocusWeek(null);
+      setFocusDay(null);
+    } else if (prevZoom === 'year') {
+      setFocusMonth(null);
+      setFocusWeek(null);
+      setFocusDay(null);
+    } else if (prevZoom === 'month') {
+      setFocusWeek(null);
+      setFocusDay(null);
+    } else if (prevZoom === 'week') {
+      setFocusDay(null);
+    }
+
+    setZoomLevel(prevZoom);
+  }, [zoomLevel]);
+
+  const handleZoomIn = useCallback(() => {
+    const zoomIdx = ZOOM_LEVELS.indexOf(zoomLevel);
+    if (zoomIdx >= ZOOM_LEVELS.length - 1) return;
+    if (nodes.length > 0 && nodes[0].drillValue) {
+      handleNodeClick(nodes[0]);
+    }
+  }, [zoomLevel, nodes, handleNodeClick]);
+
+  const getBreadcrumb = () => {
+    const parts: string[] = [];
+    if (focusYear !== null) parts.push(String(focusYear));
+    if (focusMonth !== null) parts.push(MONTH_FULL[focusMonth]);
+    if (focusWeek !== null) parts.push(`Week ${focusWeek}`);
+    if (focusDay !== null && focusMonth !== null) {
+      const dateObj = new Date(focusYear!, focusMonth, focusDay);
+      parts.push(`${DAY_NAMES[dateObj.getDay()]} ${focusDay}`);
+    }
+    return parts;
+  };
+
+  const breadcrumb = getBreadcrumb();
+  const zoomIdx = ZOOM_LEVELS.indexOf(zoomLevel);
+  const canZoomIn = zoomIdx < ZOOM_LEVELS.length - 1 && nodes.length > 0;
+  const canZoomOut = zoomIdx > 0;
 
   return (
     <div className="pb-20">
@@ -281,151 +342,180 @@ export default function TimelinePage() {
         </Button>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-4">
         <h1 className="text-2xl font-orbitron mb-1">Timeline</h1>
         <p className="text-[#7DAAB2]">Your complete journey through time</p>
       </div>
 
-      {hierarchicalData.length > 0 ? (
-        <div className="space-y-3">
-          {hierarchicalData.map(yearGroup => (
-            <Collapsible
-              key={yearGroup.year}
-              open={expandedYears.has(yearGroup.year)}
-              onOpenChange={() => toggleYear(yearGroup.year)}
+      <div className="glassmorphic rounded-xl neon-border p-3 mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={!canZoomOut}
+            onClick={handleZoomOut}
+            className="h-8 w-8 p-0 text-primary hover:bg-primary/10 disabled:opacity-30"
+          >
+            <ZoomOut className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={!canZoomIn}
+            onClick={handleZoomIn}
+            className="h-8 w-8 p-0 text-primary hover:bg-primary/10 disabled:opacity-30"
+          >
+            <ZoomIn className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          {ZOOM_LEVELS.map((level, idx) => (
+            <div
+              key={level}
+              className={`text-[10px] font-mono px-2 py-1 rounded-full transition-all ${
+                idx === zoomIdx
+                  ? 'bg-primary text-primary-foreground'
+                  : idx < zoomIdx
+                  ? 'bg-primary/20 text-primary cursor-pointer hover:bg-primary/30'
+                  : 'bg-muted/30 text-muted-foreground'
+              }`}
+              onClick={() => {
+                if (idx < zoomIdx) {
+                  const targetLevel = ZOOM_LEVELS[idx];
+                  if (targetLevel === 'life') {
+                    setFocusYear(null); setFocusMonth(null); setFocusWeek(null); setFocusDay(null);
+                  } else if (targetLevel === 'year') {
+                    setFocusMonth(null); setFocusWeek(null); setFocusDay(null);
+                  } else if (targetLevel === 'month') {
+                    setFocusWeek(null); setFocusDay(null);
+                  } else if (targetLevel === 'week') {
+                    setFocusDay(null);
+                  }
+                  setZoomLevel(targetLevel);
+                }
+              }}
             >
-              <CollapsibleTrigger asChild>
-                <div className="glassmorphic rounded-xl p-4 neon-border cursor-pointer hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition flex items-center gap-3">
-                  {expandedYears.has(yearGroup.year) ? (
-                    <ChevronDown className="h-5 w-5 text-primary flex-shrink-0" />
-                  ) : (
-                    <ChevronRight className="h-5 w-5 text-primary flex-shrink-0" />
-                  )}
-                  <Calendar className="h-5 w-5 text-primary flex-shrink-0" />
-                  <span className="text-lg font-orbitron text-[#D6F4FF]">{yearGroup.year}</span>
-                  <span className="ml-auto text-xs text-primary font-mono">
-                    {yearGroup.totalItems} {yearGroup.totalItems === 1 ? 'entry' : 'entries'}
-                  </span>
-                </div>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="pl-4 mt-2 space-y-2">
-                  {yearGroup.months.map(monthGroup => (
-                    <Collapsible
-                      key={monthGroup.monthKey}
-                      open={expandedMonths.has(monthGroup.monthKey)}
-                      onOpenChange={() => toggleMonth(monthGroup.monthKey)}
-                    >
-                      <CollapsibleTrigger asChild>
-                        <div className="glassmorphic rounded-lg p-3 cursor-pointer hover:shadow-[0_0_5px_rgba(0,224,255,0.2)] transition flex items-center gap-3">
-                          {expandedMonths.has(monthGroup.monthKey) ? (
-                            <ChevronDown className="h-4 w-4 text-primary flex-shrink-0" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4 text-primary flex-shrink-0" />
+              {ZOOM_LABELS[level]}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {breadcrumb.length > 0 && (
+        <div className="flex items-center gap-1.5 mb-4 text-xs text-[#7DAAB2] font-mono flex-wrap">
+          <span
+            className="cursor-pointer hover:text-primary transition-colors"
+            onClick={() => {
+              setZoomLevel('life');
+              setFocusYear(null); setFocusMonth(null); setFocusWeek(null); setFocusDay(null);
+            }}
+          >
+            Life
+          </span>
+          {breadcrumb.map((part, idx) => (
+            <span key={idx} className="flex items-center gap-1.5">
+              <span className="text-primary/40">/</span>
+              <span
+                className={idx < breadcrumb.length - 1 ? 'cursor-pointer hover:text-primary transition-colors' : 'text-foreground'}
+                onClick={() => {
+                  if (idx >= breadcrumb.length - 1) return;
+                  const targetZoom = ZOOM_LEVELS[idx + 1];
+                  if (targetZoom === 'year') {
+                    setFocusMonth(null); setFocusWeek(null); setFocusDay(null);
+                  } else if (targetZoom === 'month') {
+                    setFocusWeek(null); setFocusDay(null);
+                  } else if (targetZoom === 'week') {
+                    setFocusDay(null);
+                  }
+                  setZoomLevel(targetZoom);
+                }}
+              >
+                {part}
+              </span>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {nodes.length > 0 ? (
+        <div className="relative pl-6">
+          <div className="absolute left-[11px] top-3 bottom-3 w-[2px] bg-gradient-to-b from-primary/60 via-primary/30 to-primary/10" />
+
+          <div className="space-y-1">
+            {nodes.map((node, idx) => (
+              <div key={node.key} className="relative">
+                <div
+                  className={`absolute left-[-19px] top-4 w-3 h-3 rounded-full border-2 border-primary z-10 transition-all ${
+                    zoomLevel === 'day'
+                      ? 'bg-primary shadow-[0_0_6px_rgba(0,224,255,0.5)]'
+                      : node.count > 0
+                      ? 'bg-primary shadow-[0_0_6px_rgba(0,224,255,0.5)]'
+                      : 'bg-background'
+                  }`}
+                />
+
+                {zoomLevel === 'day' ? (
+                  <div className="ml-2 py-2 pl-3 rounded-lg bg-background/10 border border-primary/10 hover:border-primary/30 transition-all">
+                    <div className="flex items-start gap-2">
+                      <div className="mt-0.5 flex-shrink-0">
+                        {node.items[0]?.type === 'mission' ? (
+                          <Milestone className="h-3.5 w-3.5 text-primary" />
+                        ) : (
+                          <CalendarDays className="h-3.5 w-3.5 text-primary" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          {node.sublabel && (
+                            <span className="text-[10px] font-mono text-primary/70">{node.sublabel}</span>
                           )}
-                          <CalendarClock className="h-4 w-4 text-primary flex-shrink-0" />
-                          <span className="text-sm font-medium text-[#D6F4FF]">{monthGroup.monthName}</span>
-                          <span className="ml-auto text-xs text-primary font-mono">
-                            {monthGroup.totalItems} {monthGroup.totalItems === 1 ? 'entry' : 'entries'}
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary capitalize">
+                            {node.items[0]?.type}
                           </span>
                         </div>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <div className="pl-4 mt-2 space-y-2">
-                          {monthGroup.weeks.map(weekGroup => (
-                            <Collapsible
-                              key={`${monthGroup.monthKey}-W${weekGroup.weekNum}`}
-                              open={expandedWeeks.has(`${monthGroup.monthKey}-W${weekGroup.weekNum}`)}
-                              onOpenChange={() => toggleWeek(`${monthGroup.monthKey}-W${weekGroup.weekNum}`)}
-                            >
-                              <CollapsibleTrigger asChild>
-                                <div className="rounded-lg p-2.5 cursor-pointer hover:bg-primary/5 transition flex items-center gap-3 border border-primary/10">
-                                  {expandedWeeks.has(`${monthGroup.monthKey}-W${weekGroup.weekNum}`) ? (
-                                    <ChevronDown className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-                                  ) : (
-                                    <ChevronRight className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-                                  )}
-                                  <span className="text-xs font-mono text-[#7DAAB2]">{weekGroup.weekLabel}</span>
-                                  <span className="ml-auto text-[10px] text-primary/70 font-mono">
-                                    {weekGroup.days.reduce((sum, d) => sum + d.items.length, 0)} {weekGroup.days.reduce((sum, d) => sum + d.items.length, 0) === 1 ? 'entry' : 'entries'}
-                                  </span>
-                                </div>
-                              </CollapsibleTrigger>
-                              <CollapsibleContent>
-                                <div className="pl-4 mt-1.5 space-y-1.5">
-                                  {weekGroup.days.map(dayGroup => (
-                                    <Collapsible
-                                      key={dayGroup.dayKey}
-                                      open={expandedDays.has(dayGroup.dayKey)}
-                                      onOpenChange={() => toggleDay(dayGroup.dayKey)}
-                                    >
-                                      <CollapsibleTrigger asChild>
-                                        <div className="rounded-lg p-2 cursor-pointer hover:bg-primary/5 transition flex items-center gap-2 border border-primary/5">
-                                          {expandedDays.has(dayGroup.dayKey) ? (
-                                            <ChevronDown className="h-3 w-3 text-primary flex-shrink-0" />
-                                          ) : (
-                                            <ChevronRight className="h-3 w-3 text-primary flex-shrink-0" />
-                                          )}
-                                          <span className="text-xs text-[#D6F4FF]">{dayGroup.dayLabel}</span>
-                                          <span className="ml-auto text-[10px] text-primary/70 font-mono">
-                                            {dayGroup.items.length}
-                                          </span>
-                                        </div>
-                                      </CollapsibleTrigger>
-                                      <CollapsibleContent>
-                                        <div className="pl-3 mt-1 space-y-1.5 relative">
-                                          <div className="absolute left-1 top-0 bottom-0 w-px bg-primary/20" />
-                                          {dayGroup.items.map(item => (
-                                            <div
-                                              key={item.id}
-                                              className="pl-4 py-2 rounded-lg bg-background/10 border border-primary/10 hover:border-primary/30 transition-all"
-                                            >
-                                              <div className="flex items-start gap-2">
-                                                <div className="mt-0.5 flex-shrink-0">
-                                                  {item.type === 'mission' ? (
-                                                    <Milestone className="h-3.5 w-3.5 text-primary" />
-                                                  ) : (
-                                                    <CalendarDays className="h-3.5 w-3.5 text-primary" />
-                                                  )}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                  <div className="flex items-center gap-2">
-                                                    {item.time && item.time !== '00:00' && (
-                                                      <span className="text-[10px] font-mono text-primary/70">{formatTime(item.time)}</span>
-                                                    )}
-                                                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary capitalize">
-                                                      {item.type}
-                                                    </span>
-                                                  </div>
-                                                  <h4 className="text-sm font-medium text-foreground mt-0.5 truncate">{item.title}</h4>
-                                                  {item.description && (
-                                                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{item.description}</p>
-                                                  )}
-                                                </div>
-                                              </div>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </CollapsibleContent>
-                                    </Collapsible>
-                                  ))}
-                                </div>
-                              </CollapsibleContent>
-                            </Collapsible>
-                          ))}
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  ))}
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          ))}
+                        <h4 className="text-sm font-medium text-foreground mt-0.5 truncate">{node.label}</h4>
+                        {node.items[0]?.description && (
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{node.items[0].description}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className="ml-2 py-3 px-4 glassmorphic rounded-xl cursor-pointer hover:shadow-[0_0_8px_rgba(0,224,255,0.2)] transition-all group border border-primary/10 hover:border-primary/30"
+                    onClick={() => handleNodeClick(node)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-base font-orbitron text-foreground group-hover:text-primary transition-colors">
+                          {node.label}
+                        </h3>
+                        {node.sublabel && (
+                          <p className="text-[11px] text-[#7DAAB2] font-mono mt-0.5">{node.sublabel}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                          {node.count} {node.count === 1 ? 'entry' : 'entries'}
+                        </span>
+                        <ChevronDown className="h-4 w-4 text-primary/50 group-hover:text-primary transition-colors -rotate-90" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <div className="glassmorphic rounded-xl p-8 neon-border text-center">
           <CalendarClock className="h-8 w-8 text-primary/50 mx-auto mb-3" />
-          <p className="text-muted-foreground">No timeline entries yet. Complete missions and create events to build your life timeline.</p>
+          <p className="text-muted-foreground">
+            {zoomLevel === 'life'
+              ? 'No timeline entries yet. Complete missions and create events to build your life timeline.'
+              : 'No entries at this time level. Zoom out to see more.'}
+          </p>
         </div>
       )}
     </div>

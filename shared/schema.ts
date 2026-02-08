@@ -99,6 +99,7 @@ export const userProfile = pgTable("user_profile", {
   vision90Day: text("vision_90_day"),
   vision18Month: text("vision_18_month"),
   vision5Year: text("vision_5_year"),
+  vision10Year: text("vision_10_year"),
   vision10YearLegacy: text("vision_10_year_legacy"),
   currentGoals: jsonb("current_goals").default([]), // Array of current goals
   

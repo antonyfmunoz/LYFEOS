@@ -87,6 +87,7 @@ Primary Craft: ${profile?.primaryCraft || 'Not set'}
 90-Day Vision: ${profile?.vision90Day || 'Not set'}
 18-Month Vision: ${profile?.vision18Month || 'Not set'}
 5-Year Vision: ${profile?.vision5Year || 'Not set'}
+10-Year Vision: ${profile?.vision10Year || 'Not set'}
 10-Year Legacy: ${profile?.vision10YearLegacy || 'Not set'}
 Current Goals: ${JSON.stringify(profile?.currentGoals || [])}
 
@@ -238,6 +239,7 @@ const tools: Anthropic.Messages.Tool[] = [
         vision90Day: { type: "string", description: "90-day vision" },
         vision18Month: { type: "string", description: "18-month vision" },
         vision5Year: { type: "string", description: "5-year vision" },
+        vision10Year: { type: "string", description: "10-year vision" },
         vision10YearLegacy: { type: "string", description: "10-year legacy vision" },
         idealDay: { type: "string", description: "Description of ideal day" },
         lockedHabit: { type: "string", description: "Most important locked habit" },
