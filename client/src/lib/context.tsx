@@ -707,6 +707,12 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             notificationTime: quest.notificationTime || null,
             notifications: quest.notifications || [],
             difficulty: quest.difficulty || "D",
+            isRitualized: quest.isRitualized || false,
+            repeatFrequency: quest.repeatFrequency || null,
+            repeatInterval: quest.repeatInterval || null,
+            repeatDays: quest.repeatDays || null,
+            repeatEndDate: quest.repeatEndDate || null,
+            parentRitualId: quest.parentRitualId || null,
           }));
           setQuests(transformedQuests);
         }
@@ -937,6 +943,11 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         notificationTime: questData.notificationTime || null,
         notifications: questData.notifications || [],
         completed: false,
+        isRitualized: questData.isRitualized || false,
+        repeatFrequency: questData.repeatFrequency || null,
+        repeatInterval: questData.repeatInterval || null,
+        repeatDays: questData.repeatDays || null,
+        repeatEndDate: questData.repeatEndDate || null,
       }),
     });
     
@@ -964,6 +975,12 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       notificationTime: quest.notificationTime,
       notifications: quest.notifications || [],
       difficulty: quest.difficulty || "D",
+      isRitualized: quest.isRitualized || false,
+      repeatFrequency: quest.repeatFrequency || null,
+      repeatInterval: quest.repeatInterval || null,
+      repeatDays: quest.repeatDays || null,
+      repeatEndDate: quest.repeatEndDate || null,
+      parentRitualId: quest.parentRitualId || null,
     };
     
     setQuests((prev) => [...prev, newQuest]);
@@ -1004,6 +1021,12 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       notificationTime: quest.notificationTime,
       notifications: quest.notifications || [],
       difficulty: quest.difficulty || "D",
+      isRitualized: quest.isRitualized || false,
+      repeatFrequency: quest.repeatFrequency || null,
+      repeatInterval: quest.repeatInterval || null,
+      repeatDays: quest.repeatDays || null,
+      repeatEndDate: quest.repeatEndDate || null,
+      parentRitualId: quest.parentRitualId || null,
     };
     
     setQuests((prev) => prev.map((q) => (q.id === id ? updatedQuest : q)));
