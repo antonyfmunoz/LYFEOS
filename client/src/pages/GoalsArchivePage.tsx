@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { useAuth } from "@/lib/authContext";
 import { useLYFEOS } from "@/lib/context";
-import { Archive, Calendar, Clock, Tag, ChevronDown, ChevronRight, FilePlus2, Target, Rocket, ArrowLeft } from "lucide-react";
+import { Archive, Calendar, Clock, Tag, ChevronDown, ChevronRight, FilePlus2, Target, Rocket, ArrowLeft, Eye, Compass, Flame } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 
@@ -21,12 +23,16 @@ interface GoalTimeframe {
 }
 
 export default function GoalsArchivePage() {
-  // Set the page title
   usePageTitle('Vision');
 
-  // Get mission pages from context
+  const { user } = useAuth();
   const { missionPages } = useLYFEOS();
   const [, navigate] = useLocation();
+
+  const { data: profileData } = useQuery<any>({
+    queryKey: ["/api/profile"],
+    enabled: !!user?.id,
+  });
 
   // Track expanded folders
   const [expandedFolders, setExpandedFolders] = useState<string[]>(['vision']);
@@ -194,6 +200,38 @@ export default function GoalsArchivePage() {
           <span>New Goals</span>
         </Button>
       </div>
+
+      {profileData && (profileData.vision10YearLegacy || profileData.vision5Year || profileData.vision90Day) && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {profileData.vision10YearLegacy && (
+            <div className="glassmorphic rounded-xl p-4 border border-amber-500/30 bg-amber-500/5">
+              <div className="flex items-center gap-2 mb-3">
+                <Eye className="h-4 w-4 text-amber-400" />
+                <h3 className="text-sm font-semibold text-amber-400 uppercase tracking-wider">Legacy Vision</h3>
+              </div>
+              <p className="text-sm text-foreground/80 leading-relaxed">{profileData.vision10YearLegacy}</p>
+            </div>
+          )}
+          {profileData.vision5Year && (
+            <div className="glassmorphic rounded-xl p-4 border border-purple-500/30 bg-purple-500/5">
+              <div className="flex items-center gap-2 mb-3">
+                <Compass className="h-4 w-4 text-purple-400" />
+                <h3 className="text-sm font-semibold text-purple-400 uppercase tracking-wider">5-Year Vision</h3>
+              </div>
+              <p className="text-sm text-foreground/80 leading-relaxed">{profileData.vision5Year}</p>
+            </div>
+          )}
+          {profileData.vision90Day && (
+            <div className="glassmorphic rounded-xl p-4 border border-cyan-500/30 bg-cyan-500/5">
+              <div className="flex items-center gap-2 mb-3">
+                <Flame className="h-4 w-4 text-cyan-400" />
+                <h3 className="text-sm font-semibold text-cyan-400 uppercase tracking-wider">90-Day Vision</h3>
+              </div>
+              <p className="text-sm text-foreground/80 leading-relaxed">{profileData.vision90Day}</p>
+            </div>
+          )}
+        </div>
+      )}
       
       {goalCategories.some(category => category.entries.length > 0) ? (
         <div className="space-y-4">
