@@ -68,11 +68,11 @@ const defaultFormData: MissionFormData = {
 };
 
 const DIFFICULTY_RANKS = [
-  { value: "D", label: "D — Easy (1x XP)" },
-  { value: "C", label: "C — Moderate (1.5x XP)" },
-  { value: "B", label: "B — Hard (2x XP)" },
-  { value: "A", label: "A — Very Hard (3x XP)" },
-  { value: "S", label: "S — Extreme (5x XP)" },
+  { value: "D", label: "D — Easy" },
+  { value: "C", label: "C — Moderate" },
+  { value: "B", label: "B — Hard" },
+  { value: "A", label: "A — Very Hard" },
+  { value: "S", label: "S — Extreme" },
 ];
 
 const MISSION_CATEGORIES = [
@@ -84,6 +84,7 @@ const MISSION_CATEGORIES = [
   { value: "social", label: "Social & Relationships" },
   { value: "creative", label: "Creative" },
   { value: "mindfulness", label: "Mindfulness & Wellness" },
+  { value: "event", label: "Event" },
 ];
 
 function DroppableSection({ section, onDropQuest, children, className }: { section: string; onDropQuest: (item: DragItem, targetSection: string) => void; children: React.ReactNode; className?: string }) {
@@ -494,7 +495,8 @@ export default function QuestsPage() {
                     id="create-difficulty"
                     value={createFormData.difficulty}
                     onChange={(e) => setCreateFormData(prev => ({ ...prev, difficulty: e.target.value }))}
-                    className="flex h-10 w-full rounded-md border border-primary/30 bg-background/50 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    className="flex h-10 w-full rounded-md border border-input bg-background/50 border-primary/30 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none"
+                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='hsl(var(--primary))' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
                   >
                     {DIFFICULTY_RANKS.map(r => (
                       <option key={r.value} value={r.value}>{r.label}</option>
@@ -507,7 +509,8 @@ export default function QuestsPage() {
                     id="create-category"
                     value={createFormData.category}
                     onChange={(e) => setCreateFormData(prev => ({ ...prev, category: e.target.value }))}
-                    className="flex h-10 w-full rounded-md border border-primary/30 bg-background/50 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    className="flex h-10 w-full rounded-md border border-input bg-background/50 border-primary/30 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none"
+                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='hsl(var(--primary))' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
                   >
                     {MISSION_CATEGORIES.map(c => (
                       <option key={c.value} value={c.value}>{c.label}</option>
@@ -681,7 +684,8 @@ export default function QuestsPage() {
                   id="edit-difficulty"
                   value={editFormData.difficulty}
                   onChange={(e) => setEditFormData(prev => ({ ...prev, difficulty: e.target.value }))}
-                  className="flex h-10 w-full rounded-md border border-primary/30 bg-background/50 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  className="flex h-10 w-full rounded-md border border-input bg-background/50 border-primary/30 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none"
+                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='hsl(var(--primary))' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
                 >
                   {DIFFICULTY_RANKS.map(r => (
                     <option key={r.value} value={r.value}>{r.label}</option>
@@ -694,7 +698,8 @@ export default function QuestsPage() {
                   id="edit-category"
                   value={editFormData.category}
                   onChange={(e) => setEditFormData(prev => ({ ...prev, category: e.target.value }))}
-                  className="flex h-10 w-full rounded-md border border-primary/30 bg-background/50 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  className="flex h-10 w-full rounded-md border border-input bg-background/50 border-primary/30 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none"
+                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='hsl(var(--primary))' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
                 >
                   {MISSION_CATEGORIES.map(c => (
                     <option key={c.value} value={c.value}>{c.label}</option>
