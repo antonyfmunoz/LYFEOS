@@ -1257,11 +1257,11 @@ export default function QuestsPage() {
                                 {(quest.difficulty || 'D') && (
                                   <p className="text-muted-foreground text-xs">
                                     <span className="text-primary font-mono">Rank {quest.difficulty || 'D'}</span> — {
-                                      quest.difficulty === 'S' ? 'Extreme effort. 5x XP multiplier.' :
-                                      quest.difficulty === 'A' ? 'High effort. 3x XP multiplier.' :
-                                      quest.difficulty === 'B' ? 'Moderate effort. 2x XP multiplier.' :
-                                      quest.difficulty === 'C' ? 'Light effort. 1.5x XP multiplier.' :
-                                      'Minimal effort. 1x XP multiplier.'
+                                      quest.difficulty === 'S' ? 'Extreme effort. Multi-day or life-changing.' :
+                                      quest.difficulty === 'A' ? 'High effort. Significant commitment.' :
+                                      quest.difficulty === 'B' ? 'Moderate effort. Requires focus and planning.' :
+                                      quest.difficulty === 'C' ? 'Light effort. Simple but requires attention.' :
+                                      'Minimal effort. Quick and easy.'
                                     }
                                   </p>
                                 )}

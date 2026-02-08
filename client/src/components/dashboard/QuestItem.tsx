@@ -243,11 +243,11 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
                 )}
                 <p className="text-muted-foreground text-xs">
                   <span className="text-primary font-mono">Rank {difficulty || 'D'}</span> — {
-                    (difficulty || 'D') === 'S' ? 'Extreme effort. Multi-day or life-changing. 5x XP multiplier.' :
-                    (difficulty || 'D') === 'A' ? 'High effort. Significant commitment. 3x XP multiplier.' :
-                    (difficulty || 'D') === 'B' ? 'Moderate effort. Requires focus and planning. 2x XP multiplier.' :
-                    (difficulty || 'D') === 'C' ? 'Light effort. Simple but requires attention. 1.5x XP multiplier.' :
-                    'Minimal effort. Quick and easy. 1x XP multiplier.'
+                    (difficulty || 'D') === 'S' ? 'Extreme effort. Multi-day or life-changing.' :
+                    (difficulty || 'D') === 'A' ? 'High effort. Significant commitment.' :
+                    (difficulty || 'D') === 'B' ? 'Moderate effort. Requires focus and planning.' :
+                    (difficulty || 'D') === 'C' ? 'Light effort. Simple but requires attention.' :
+                    'Minimal effort. Quick and easy.'
                   }
                 </p>
               </div>
