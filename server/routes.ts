@@ -1171,8 +1171,9 @@ Generate the complete affirmation now:`;
       
       // Auto-convert any unconverted todoIdeas from past days into quests
       try {
-        const now = new Date();
-        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const clientTz = req.query.tz as string || 'UTC';
+        const nowInTz = new Date(new Date().toLocaleString('en-US', { timeZone: clientTz }));
+        const todayStr = `${nowInTz.getFullYear()}-${String(nowInTz.getMonth() + 1).padStart(2, '0')}-${String(nowInTz.getDate()).padStart(2, '0')}`;
         
         const unconvertedLogs = await db.select()
           .from(userDailyLogs)

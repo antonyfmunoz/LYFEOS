@@ -682,7 +682,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     if (!user?.id) return;
     try {
       console.log("Refetching quests for user:", user.id);
-      const response = await fetch(`/api/users/${user.id}/quests`);
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const response = await fetch(`/api/users/${user.id}/quests?tz=${encodeURIComponent(tz)}`);
       if (response.ok) {
         const data = await response.json();
         if (data.quests && Array.isArray(data.quests)) {
