@@ -61,20 +61,6 @@ const initialChatSessions: ChatSession[] = [
     createdAt: new Date(),
     updatedAt: new Date(),
   },
-  {
-    id: "chat2",
-    title: "Project Planning",
-    messages: [
-      {
-        id: "msg2",
-        sender: "ai",
-        content: "Let's organize your projects efficiently. I can help break down complex tasks into manageable steps.",
-        timestamp: new Date(),
-      }
-    ],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  }
 ];
 
 // Initial AI messages (for backward compatibility)

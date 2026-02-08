@@ -47,7 +47,7 @@ export const chatStorage: IChatStorage = {
       })
       .from(messages)
       .innerJoin(conversations, eq(messages.conversationId, conversations.id))
-      .where(eq(conversations.userId, userId))
+      .where(and(eq(conversations.userId, userId), isNull(conversations.deletedAt)))
       .orderBy(desc(messages.createdAt))
       .limit(200);
     return results.reverse();
