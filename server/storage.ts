@@ -71,6 +71,7 @@ export interface IStorage {
   createQuest(quest: InsertQuest): Promise<Quest>;
   updateQuest(id: number, quest: Partial<InsertQuest>): Promise<Quest>;
   toggleQuestCompletion(id: number): Promise<{ quest: Quest; statsUpdated: boolean; levelUp: boolean }>;
+  generateNextRitualOccurrence(quest: Quest): Promise<Quest | null>;
   deleteQuest(id: number): Promise<void>;
   getArchivedQuests(userId: number): Promise<Quest[]>;
   restoreQuest(id: number): Promise<Quest>;
@@ -713,6 +714,10 @@ export class DatabaseStorage implements IStorage {
         console.log(`Quest completed: duration=${durationHours}h, energyCost=${energyCost}, xp=${quest.experienceReward}`);
         console.log(`Stats updated: time=${newTimeTokens}, attention=${newAttentionTokens}, energy=${newEnergyPoints}, xp=${newExperience}, level=${newLevel}`);
       }
+      
+      if (quest.isRitualized && quest.repeatFrequency) {
+        await this.generateNextRitualOccurrence(quest);
+      }
     }
     
     // If quest was uncompleted, refund the resources
@@ -759,6 +764,123 @@ export class DatabaseStorage implements IStorage {
     return { quest: updatedQuest, statsUpdated, levelUp };
   }
   
+  async generateNextRitualOccurrence(quest: Quest): Promise<Quest | null> {
+    if (!quest.isRitualized || !quest.repeatFrequency) return null;
+    
+    const interval = quest.repeatInterval || 1;
+    const freq = quest.repeatFrequency;
+    
+    const parseDateTime = (dateStr: string | null, timeStr: string | null): Date => {
+      const d = dateStr ? new Date(dateStr + 'T00:00:00') : new Date();
+      if (timeStr) {
+        const [h, m] = timeStr.split(':').map(Number);
+        if (!isNaN(h) && !isNaN(m)) {
+          d.setHours(h, m, 0, 0);
+        }
+      }
+      return d;
+    };
+    
+    const formatDate = (date: Date): string => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    };
+    
+    const formatTime = (date: Date): string => {
+      const h = String(date.getHours()).padStart(2, '0');
+      const m = String(date.getMinutes()).padStart(2, '0');
+      return `${h}:${m}`;
+    };
+    
+    const startDt = parseDateTime(quest.startDate, quest.startTime);
+    const endDt = parseDateTime(quest.endDate, quest.endTime);
+    const durationMs = endDt.getTime() - startDt.getTime();
+    
+    let nextStartDt: Date;
+    
+    if (freq === 'hourly') {
+      nextStartDt = new Date(startDt.getTime());
+      nextStartDt.setHours(nextStartDt.getHours() + interval);
+    } else if (freq === 'weekly' && quest.repeatDays && quest.repeatDays.length > 0) {
+      const dayMap: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+      const targetDays = quest.repeatDays.map(d => dayMap[d]).filter(d => d !== undefined).sort((a, b) => a - b);
+      
+      const currentDayOfWeek = startDt.getDay();
+      const laterDays = targetDays.filter(d => d > currentDayOfWeek);
+      
+      if (laterDays.length > 0) {
+        const nextDayOfWeek = laterDays[0];
+        const daysToAdd = nextDayOfWeek - currentDayOfWeek;
+        nextStartDt = new Date(startDt.getTime());
+        nextStartDt.setDate(nextStartDt.getDate() + daysToAdd);
+      } else {
+        const nextDayOfWeek = targetDays[0];
+        const daysToAdd = (7 * interval) - currentDayOfWeek + nextDayOfWeek;
+        nextStartDt = new Date(startDt.getTime());
+        nextStartDt.setDate(nextStartDt.getDate() + daysToAdd);
+      }
+    } else {
+      nextStartDt = new Date(startDt.getTime());
+      switch (freq) {
+        case 'daily':
+          nextStartDt.setDate(nextStartDt.getDate() + interval);
+          break;
+        case 'weekly':
+          nextStartDt.setDate(nextStartDt.getDate() + (interval * 7));
+          break;
+        case 'monthly':
+          nextStartDt.setMonth(nextStartDt.getMonth() + interval);
+          break;
+        case 'yearly':
+          nextStartDt.setFullYear(nextStartDt.getFullYear() + interval);
+          break;
+      }
+    }
+    
+    const nextEndDt = new Date(nextStartDt.getTime() + durationMs);
+    
+    if (quest.repeatEndDate) {
+      const endLimit = new Date(quest.repeatEndDate + 'T23:59:59');
+      if (nextStartDt > endLimit) {
+        return null;
+      }
+    }
+    
+    const nextStartDateStr = formatDate(nextStartDt);
+    const nextEndDateStr = formatDate(nextEndDt);
+    const nextStartTimeStr = freq === 'hourly' ? formatTime(nextStartDt) : quest.startTime;
+    const nextEndTimeStr = freq === 'hourly' ? formatTime(nextEndDt) : quest.endTime;
+    
+    const newQuest = await this.createQuest({
+      userId: quest.userId,
+      title: quest.title,
+      description: quest.description,
+      experienceReward: quest.experienceReward,
+      difficulty: quest.difficulty,
+      category: quest.category,
+      startDate: nextStartDateStr,
+      startTime: nextStartTimeStr,
+      endDate: nextEndDateStr,
+      endTime: nextEndTimeStr,
+      notificationEnabled: quest.notificationEnabled,
+      notificationTime: quest.notificationTime,
+      notifications: quest.notifications,
+      isRitualized: true,
+      repeatFrequency: quest.repeatFrequency,
+      repeatInterval: quest.repeatInterval,
+      repeatDays: quest.repeatDays,
+      repeatEndDate: quest.repeatEndDate,
+      parentRitualId: quest.parentRitualId || quest.id,
+      energyCost: quest.energyCost,
+      attentionCost: quest.attentionCost,
+      timeCost: quest.timeCost,
+    });
+    
+    return newQuest;
+  }
+
   async deleteQuest(id: number): Promise<void> {
     await db.update(quests).set({ deletedAt: new Date() }).where(eq(quests.id, id));
   }

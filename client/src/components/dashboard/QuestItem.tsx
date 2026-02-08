@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import { Quest } from "../../lib/types";
-import { Trash2, Calendar, Clock, Bell, Edit3, Info, Timer, Undo2, GripVertical } from "lucide-react";
+import { Trash2, Calendar, Clock, Bell, Edit3, Info, Timer, Undo2, GripVertical, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const QUEST_DND_TYPE = 'QUEST_ITEM';
@@ -118,8 +118,11 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
           <div className="flex justify-between items-start">
             <h3 className={`font-medium ${completed ? "text-muted-foreground line-through" : ""}`}>
               {title.replace(/^Onboarding:\s*/, '')}
+              {quest.isRitualized && (
+                <Repeat className="inline-block ml-1.5 h-3 w-3 text-primary opacity-70" />
+              )}
               {notificationEnabled && (
-                <Bell className="inline-block ml-2 h-3 w-3 text-primary opacity-70" />
+                <Bell className="inline-block ml-1.5 h-3 w-3 text-primary opacity-70" />
               )}
             </h3>
             <div className="flex items-center gap-1 flex-shrink-0 ml-2">

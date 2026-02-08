@@ -26,7 +26,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Zap, Star, Bell, Edit3, X, ChevronDown, ChevronRight, Target, Calendar, Clock, CheckCircle2, GraduationCap, Inbox, Info, Archive, Undo2 } from "lucide-react";
+import { Plus, Zap, Star, Bell, Edit3, X, ChevronDown, ChevronRight, Target, Calendar, Clock, CheckCircle2, GraduationCap, Inbox, Info, Archive, Undo2, Repeat } from "lucide-react";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Quest, QuestNotification } from "@/lib/types";
@@ -53,6 +53,11 @@ interface MissionFormData {
   endDate: string;
   endTime: string;
   notifications: QuestNotification[];
+  isRitualized: boolean;
+  repeatFrequency: string;
+  repeatInterval: number;
+  repeatDays: string[];
+  repeatEndDate: string;
 }
 
 const defaultFormData: MissionFormData = {
@@ -66,7 +71,30 @@ const defaultFormData: MissionFormData = {
   endDate: "",
   endTime: "",
   notifications: [],
+  isRitualized: false,
+  repeatFrequency: "daily",
+  repeatInterval: 1,
+  repeatDays: [],
+  repeatEndDate: "",
 };
+
+const REPEAT_FREQUENCIES = [
+  { value: "hourly", label: "Hourly" },
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+  { value: "yearly", label: "Yearly" },
+];
+
+const DAYS_OF_WEEK = [
+  { value: "mon", label: "Mon" },
+  { value: "tue", label: "Tue" },
+  { value: "wed", label: "Wed" },
+  { value: "thu", label: "Thu" },
+  { value: "fri", label: "Fri" },
+  { value: "sat", label: "Sat" },
+  { value: "sun", label: "Sun" },
+];
 
 const DIFFICULTY_RANKS = [
   { value: "D", label: "D — Easy" },
@@ -354,6 +382,11 @@ export default function QuestsPage() {
       endDate: quest.endDate || "",
       endTime: quest.endTime || "",
       notifications: quest.notifications || [],
+      isRitualized: quest.isRitualized || false,
+      repeatFrequency: quest.repeatFrequency || "daily",
+      repeatInterval: quest.repeatInterval || 1,
+      repeatDays: quest.repeatDays || [],
+      repeatEndDate: quest.repeatEndDate || "",
     });
     setIsEditOpen(true);
   };
@@ -376,6 +409,11 @@ export default function QuestsPage() {
         notificationEnabled: createFormData.notifications.length > 0,
         notificationTime: null,
         notifications: createFormData.notifications,
+        isRitualized: createFormData.isRitualized,
+        repeatFrequency: createFormData.isRitualized ? createFormData.repeatFrequency : null,
+        repeatInterval: createFormData.isRitualized ? createFormData.repeatInterval : null,
+        repeatDays: createFormData.isRitualized && createFormData.repeatFrequency === "weekly" ? createFormData.repeatDays : null,
+        repeatEndDate: createFormData.isRitualized && createFormData.repeatEndDate ? createFormData.repeatEndDate : null,
       });
       
       setCreateFormData(defaultFormData);
@@ -405,6 +443,11 @@ export default function QuestsPage() {
         notificationEnabled: editFormData.notifications.length > 0,
         notificationTime: null,
         notifications: editFormData.notifications,
+        isRitualized: editFormData.isRitualized,
+        repeatFrequency: editFormData.isRitualized ? editFormData.repeatFrequency : null,
+        repeatInterval: editFormData.isRitualized ? editFormData.repeatInterval : null,
+        repeatDays: editFormData.isRitualized && editFormData.repeatFrequency === "weekly" ? editFormData.repeatDays : null,
+        repeatEndDate: editFormData.isRitualized && editFormData.repeatEndDate ? editFormData.repeatEndDate : null,
       });
       
       setEditFormData(defaultFormData);
@@ -623,10 +666,104 @@ export default function QuestsPage() {
                 )}
               </div>
               
+              <div className="glassmorphic rounded-lg p-4 border border-primary/20">
+                <div className="flex items-center justify-between mb-3">
+                  <Label className="flex items-center gap-2">
+                    <Repeat className="h-4 w-4" />
+                    Ritualize (Repeat)
+                  </Label>
+                  <Switch
+                    checked={createFormData.isRitualized}
+                    onCheckedChange={(checked) => setCreateFormData(prev => ({ ...prev, isRitualized: checked }))}
+                  />
+                </div>
+                
+                {createFormData.isRitualized && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Frequency</Label>
+                        <Select value={createFormData.repeatFrequency} onValueChange={(val) => setCreateFormData(prev => ({ ...prev, repeatFrequency: val }))}>
+                          <SelectTrigger className="bg-background/50 border-primary/30 h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {REPEAT_FREQUENCIES.map(f => (
+                              <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Every</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min={1}
+                            max={99}
+                            value={createFormData.repeatInterval}
+                            onChange={(e) => setCreateFormData(prev => ({ ...prev, repeatInterval: Math.max(1, parseInt(e.target.value) || 1) }))}
+                            className="bg-background/50 border-primary/30 h-9 w-16"
+                          />
+                          <span className="text-xs text-muted-foreground">
+                            {createFormData.repeatFrequency === "hourly" ? "hr(s)" :
+                             createFormData.repeatFrequency === "daily" ? "day(s)" :
+                             createFormData.repeatFrequency === "weekly" ? "wk(s)" :
+                             createFormData.repeatFrequency === "monthly" ? "mo(s)" : "yr(s)"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {createFormData.repeatFrequency === "weekly" && (
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Repeat on</Label>
+                        <div className="flex gap-1">
+                          {DAYS_OF_WEEK.map(day => (
+                            <button
+                              key={day.value}
+                              type="button"
+                              className={`text-xs font-mono px-2 py-1.5 rounded border transition-colors ${
+                                createFormData.repeatDays.includes(day.value)
+                                  ? "bg-primary/30 border-primary text-primary"
+                                  : "bg-background/30 border-primary/20 text-muted-foreground hover:bg-primary/10"
+                              }`}
+                              onClick={() => {
+                                setCreateFormData(prev => ({
+                                  ...prev,
+                                  repeatDays: prev.repeatDays.includes(day.value)
+                                    ? prev.repeatDays.filter(d => d !== day.value)
+                                    : [...prev.repeatDays, day.value]
+                                }));
+                              }}
+                            >
+                              {day.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">End Date (optional)</Label>
+                      <DatePicker
+                        value={createFormData.repeatEndDate}
+                        onChange={(date) => setCreateFormData(prev => ({ ...prev, repeatEndDate: date }))}
+                        placeholder="Repeats forever"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {createFormData.isRitualized && createFormData.repeatFrequency === "weekly" && createFormData.repeatDays.length === 0 && (
+                <p className="text-xs text-destructive">Please select at least one day for weekly repeat.</p>
+              )}
+
               <button 
                 onClick={handleCreateMission} 
                 className="w-full mt-4 text-sm font-mono px-4 py-2.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center"
-                disabled={!createFormData.title.trim() || !createFormData.description.trim() || !createFormData.startDate || !createFormData.startTime || !createFormData.endDate || !createFormData.endTime || isSubmitting}
+                disabled={!createFormData.title.trim() || !createFormData.description.trim() || !createFormData.startDate || !createFormData.startTime || !createFormData.endDate || !createFormData.endTime || isSubmitting || (createFormData.isRitualized && createFormData.repeatFrequency === "weekly" && createFormData.repeatDays.length === 0)}
               >
                 {isSubmitting ? "Creating..." : "Create Mission"}
               </button>
@@ -810,10 +947,104 @@ export default function QuestsPage() {
               )}
             </div>
             
+            <div className="glassmorphic rounded-lg p-4 border border-primary/20">
+              <div className="flex items-center justify-between mb-3">
+                <Label className="flex items-center gap-2">
+                  <Repeat className="h-4 w-4" />
+                  Ritualize (Repeat)
+                </Label>
+                <Switch
+                  checked={editFormData.isRitualized}
+                  onCheckedChange={(checked) => setEditFormData(prev => ({ ...prev, isRitualized: checked }))}
+                />
+              </div>
+              
+              {editFormData.isRitualized && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Frequency</Label>
+                      <Select value={editFormData.repeatFrequency} onValueChange={(val) => setEditFormData(prev => ({ ...prev, repeatFrequency: val }))}>
+                        <SelectTrigger className="bg-background/50 border-primary/30 h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {REPEAT_FREQUENCIES.map(f => (
+                            <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Every</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min={1}
+                          max={99}
+                          value={editFormData.repeatInterval}
+                          onChange={(e) => setEditFormData(prev => ({ ...prev, repeatInterval: Math.max(1, parseInt(e.target.value) || 1) }))}
+                          className="bg-background/50 border-primary/30 h-9 w-16"
+                        />
+                        <span className="text-xs text-muted-foreground">
+                          {editFormData.repeatFrequency === "hourly" ? "hr(s)" :
+                           editFormData.repeatFrequency === "daily" ? "day(s)" :
+                           editFormData.repeatFrequency === "weekly" ? "wk(s)" :
+                           editFormData.repeatFrequency === "monthly" ? "mo(s)" : "yr(s)"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {editFormData.repeatFrequency === "weekly" && (
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Repeat on</Label>
+                      <div className="flex gap-1">
+                        {DAYS_OF_WEEK.map(day => (
+                          <button
+                            key={day.value}
+                            type="button"
+                            className={`text-xs font-mono px-2 py-1.5 rounded border transition-colors ${
+                              editFormData.repeatDays.includes(day.value)
+                                ? "bg-primary/30 border-primary text-primary"
+                                : "bg-background/30 border-primary/20 text-muted-foreground hover:bg-primary/10"
+                            }`}
+                            onClick={() => {
+                              setEditFormData(prev => ({
+                                ...prev,
+                                repeatDays: prev.repeatDays.includes(day.value)
+                                  ? prev.repeatDays.filter(d => d !== day.value)
+                                  : [...prev.repeatDays, day.value]
+                              }));
+                            }}
+                          >
+                            {day.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">End Date (optional)</Label>
+                    <DatePicker
+                      value={editFormData.repeatEndDate}
+                      onChange={(date) => setEditFormData(prev => ({ ...prev, repeatEndDate: date }))}
+                      placeholder="Repeats forever"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {editFormData.isRitualized && editFormData.repeatFrequency === "weekly" && editFormData.repeatDays.length === 0 && (
+              <p className="text-xs text-destructive">Please select at least one day for weekly repeat.</p>
+            )}
+
             <button 
               onClick={handleUpdateMission} 
               className="w-full mt-4 text-sm font-mono px-4 py-2.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center"
-              disabled={!editFormData.title.trim() || !editFormData.startDate || !editFormData.startTime || !editFormData.endDate || !editFormData.endTime || isSubmitting}
+              disabled={!editFormData.title.trim() || !editFormData.startDate || !editFormData.startTime || !editFormData.endDate || !editFormData.endTime || isSubmitting || (editFormData.isRitualized && editFormData.repeatFrequency === "weekly" && editFormData.repeatDays.length === 0)}
             >
               {isSubmitting ? "Updating..." : "Update Mission"}
             </button>

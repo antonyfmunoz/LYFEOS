@@ -278,6 +278,12 @@ export const quests = pgTable("quests", {
   notificationTime: text("notification_time"), // format: "HH:MM" or minutes before like "-15", "-30", "-60" (legacy)
   notifications: jsonb("notifications").default([]), // Array of { date: "YYYY-MM-DD", time: "HH:MM" }
   difficulty: text("difficulty").default("D"), // S, A, B, C, D ranks
+  isRitualized: boolean("is_ritualized").default(false),
+  repeatFrequency: text("repeat_frequency"), // "hourly", "daily", "weekly", "monthly", "yearly"
+  repeatInterval: integer("repeat_interval").default(1), // every X hours/days/weeks/months/years
+  repeatDays: text("repeat_days").array(), // for weekly: ["mon","tue","wed","thu","fri","sat","sun"]
+  repeatEndDate: text("repeat_end_date"), // format: "YYYY-MM-DD", null means forever
+  parentRitualId: integer("parent_ritual_id"), // links generated instances back to the original ritual
   sortOrder: integer("sort_order").default(0),
   deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -514,6 +520,12 @@ export const insertQuestSchema = createInsertSchema(quests).pick({
   notificationTime: true,
   notifications: true,
   difficulty: true,
+  isRitualized: true,
+  repeatFrequency: true,
+  repeatInterval: true,
+  repeatDays: true,
+  repeatEndDate: true,
+  parentRitualId: true,
   createdAt: true,
   sortOrder: true,
   deletedAt: true,

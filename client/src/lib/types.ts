@@ -59,6 +59,12 @@ export interface Quest {
   notificationTime?: string | null;
   notifications?: QuestNotification[];
   difficulty?: string;
+  isRitualized?: boolean;
+  repeatFrequency?: string | null;
+  repeatInterval?: number | null;
+  repeatDays?: string[] | null;
+  repeatEndDate?: string | null;
+  parentRitualId?: number | null;
   deletedAt?: string | null;
 }
 

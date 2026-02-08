@@ -43,7 +43,7 @@ Preferred communication style: Simple, everyday language.
 - **Users**: Core account with profile, avatar, auth provider tracking
 - **UserStats**: Gamification stats (XP, level, energy, health, time tokens, attention tokens, streaks)
 - **UserProfile**: Onboarding data (archetype, flow style, motivations)
-- **Quests**: Task/mission system with XP rewards
+- **Quests**: Task/mission system with XP rewards, supports ritualized (recurring) missions with hourly/daily/weekly/monthly/yearly repeat patterns
 - **CalendarEvents**: Scheduling and time-blocking
 - **MissionPages**: Markdown-based mission documentation
 - **KanbanBoards/Columns/Tasks**: Project management
