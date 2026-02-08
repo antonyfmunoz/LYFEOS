@@ -329,9 +329,9 @@ export default function KnowledgeArchivePage() {
                                 const entryKey = `${sourceKey}::${entry.date}::${idx}`;
                                 const noteTypes = [
                                   { key: 'research', label: 'Research Note', icon: Search, content: entry.researchNote },
-                                  { key: 'revision', label: 'Revision & Summary Note', icon: FileText, content: entry.revisionNote },
+                                  { key: 'revision', label: 'Summary Note', icon: FileText, content: entry.revisionNote },
                                   { key: 'execution', label: 'Execution Note', icon: Play, content: entry.executionNote },
-                                ].filter(n => n.content);
+                                ];
 
                                 return (
                                   <div key={idx} className="p-3 rounded-lg bg-card/30 border border-slate-700/20 space-y-1.5">
@@ -358,7 +358,9 @@ export default function KnowledgeArchivePage() {
                                             <span className="text-xs text-primary/80">{label}</span>
                                           </div>
                                           {isNoteExpanded && (
-                                            <p className="text-sm whitespace-pre-wrap text-foreground/90 pl-6 pt-1">{content}</p>
+                                            <p className={`text-sm whitespace-pre-wrap pl-6 pt-1 ${content ? 'text-foreground/90' : 'text-muted-foreground/50 italic'}`}>
+                                              {content || 'No content yet'}
+                                            </p>
                                           )}
                                         </div>
                                       );
