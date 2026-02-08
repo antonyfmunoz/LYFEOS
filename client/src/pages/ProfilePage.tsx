@@ -130,6 +130,7 @@ export default function ProfilePage() {
   const queryClient = useQueryClient();
 
   const [isEditing, setIsEditing] = useState(false);
+  const [editUsername, setEditUsername] = useState(username);
   const [isProfileOpen, setIsProfileOpen] = useWidgetState("profile.details", true);
   const [profileData, setProfileData] = useState<UserProfile>({
     id: user?.id || 0,
@@ -349,21 +350,18 @@ export default function ProfilePage() {
         body: JSON.stringify(data),
       });
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "profile"] });
+      if (data?.username) {
+        setEditUsername(data.username);
+      }
       setIsEditing(false);
-      toast({
-        title: "Profile Updated",
-        description: "Your profile has been updated successfully.",
-        variant: "default",
-        className: "bg-background/80 border border-primary text-foreground",
-        duration: 3000,
-      });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      const message = error?.message || "Failed to update profile. Please try again.";
       toast({
         title: "Error",
-        description: "Failed to update profile. Please try again.",
+        description: message,
         variant: "destructive",
       });
       console.error("Failed to update profile:", error);
@@ -400,18 +398,18 @@ export default function ProfilePage() {
   // Define widgets for drag and drop functionality
   const [widgets, setWidgets] = useState<WidgetData[]>([
     {
-      id: 'player-record',
-      title: "Player Record",
-      icon: <FileText className="h-5 w-5 text-primary" />,
-      defaultOpen: true,
-      infoDescription: "Your personal bio and background story. This is your player identity card — edit it to define who you are in the system."
-    },
-    {
       id: 'stats',
       title: "Player Stats",
       icon: <BarChart4 className="h-5 w-5 text-primary" />,
       defaultOpen: true,
       infoDescription: "Overview of your current resource levels — XP, energy, health, time tokens, and attention tokens. These stats reflect your daily activity and progress."
+    },
+    {
+      id: 'player-record',
+      title: "Player Record",
+      icon: <FileText className="h-5 w-5 text-primary" />,
+      defaultOpen: true,
+      infoDescription: "Your personal bio and background story. This is your player identity card — edit it to define who you are in the system."
     },
     {
       id: 'player-affirmation',
@@ -764,133 +762,8 @@ export default function ProfilePage() {
       case 'settings':
         return (
           <>
-            {/* Dark Theme toggle */}
-            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="material-icons text-primary text-sm">dark_mode</span>
-                <Label className="text-sm text-foreground">Dark Theme</Label>
-              </div>
-              <p className="text-xs text-muted-foreground mb-3">
-                Toggle between light and dark interface mode.
-              </p>
-              <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
-                <div className="flex items-center">
-                  <span className="material-icons text-primary text-sm mr-2">dark_mode</span>
-                  <span className="text-sm">Dark Theme</span>
-                </div>
-                <button 
-                  onClick={() => {
-                    toggleDarkMode();
-                  }}
-                  className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
-                    stats.darkThemeEnabled ? 'bg-primary/30' : 'bg-card'
-                  }`}
-                  aria-pressed={stats.darkThemeEnabled}
-                  role="switch"
-                >
-                  <div 
-                    className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
-                      stats.darkThemeEnabled ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
-                    }`}
-                  ></div>
-                </button>
-              </div>
-            </div>
-            
-            {/* Notifications toggle */}
-            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="material-icons text-primary text-sm">notifications</span>
-                <Label className="text-sm text-foreground">Notifications</Label>
-              </div>
-              <p className="text-xs text-muted-foreground mb-3">
-                Enable or disable system notifications.
-              </p>
-              <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
-                <div className="flex items-center">
-                  <span className="material-icons text-primary text-sm mr-2">notifications</span>
-                  <span className="text-sm">Notifications</span>
-                </div>
-                <button 
-                  onClick={async () => {
-                    if (!user?.id) return;
-                    
-                    const newValue = !stats.notificationsEnabled;
-                    
-                    try {
-                      const response = await fetch(`/api/users/${user.id}/stats`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ notificationsEnabled: newValue }),
-                        credentials: "include"
-                      });
-                      
-                      if (!response.ok) throw new Error("Failed to update setting");
-                      
-                      updateUserStats({
-                        ...stats,
-                        notificationsEnabled: newValue,
-                      });
-                    } catch (error) {
-                      console.error("Error updating notification settings:", error);
-                    }
-                  }}
-                  className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
-                    stats.notificationsEnabled ? 'bg-primary/30' : 'bg-card'
-                  }`}
-                  aria-pressed={stats.notificationsEnabled}
-                  role="switch"
-                >
-                  <div 
-                    className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
-                      stats.notificationsEnabled ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
-                    }`}
-                  ></div>
-                </button>
-              </div>
-            </div>
-            
-            {/* Primary Theme Color Selector */}
-            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Paintbrush className="h-4 w-4 text-primary" />
-                <Label className="text-sm text-foreground">UI Theme Color</Label>
-              </div>
-              <p className="text-xs text-muted-foreground mb-3">
-                Select your preferred interface color.
-              </p>
-              <div className="grid grid-cols-4 gap-2">
-                {STAT_COLORS.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    className={`w-8 h-8 rounded-md transition-all ${
-                      stats.primaryColor === color 
-                        ? 'ring-2 ring-offset-2 ring-offset-background ring-primary scale-110' 
-                        : 'ring-1 ring-primary/20 hover:scale-105'
-                    }`}
-                    style={{ backgroundColor: color }}
-                    onClick={() => handlePrimaryColorChange(color)}
-                    aria-label={`Select theme color ${color}`}
-                  >
-                    {stats.primaryColor === color && (
-                      <span className="flex items-center justify-center text-background text-xs">
-                        <span className="material-icons" style={{ fontSize: '16px' }}>check</span>
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-              <div className="flex items-center mt-3 gap-2">
-                <span className="block w-3 h-3 rounded-full animate-pulse" style={{ backgroundColor: stats.primaryColor || "#00e0ff" }}></span>
-                <p className="text-xs text-muted-foreground">
-                  Current color: {stats.primaryColor || "#00e0ff"}
-                </p>
-              </div>
-            </div>
-            
             {/* Account Settings */}
-            <div className="p-4 border border-primary/10 rounded-lg bg-background/40">
+            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Lock className="h-4 w-4 text-primary" />
@@ -1072,6 +945,131 @@ export default function ProfilePage() {
                 </div>
               )}
             </div>
+            
+            {/* Dark Theme toggle */}
+            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="material-icons text-primary text-sm">dark_mode</span>
+                <Label className="text-sm text-foreground">Dark Theme</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Toggle between light and dark interface mode.
+              </p>
+              <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
+                <div className="flex items-center">
+                  <span className="material-icons text-primary text-sm mr-2">dark_mode</span>
+                  <span className="text-sm">Dark Theme</span>
+                </div>
+                <button 
+                  onClick={() => {
+                    toggleDarkMode();
+                  }}
+                  className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
+                    stats.darkThemeEnabled ? 'bg-primary/30' : 'bg-card'
+                  }`}
+                  aria-pressed={stats.darkThemeEnabled}
+                  role="switch"
+                >
+                  <div 
+                    className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
+                      stats.darkThemeEnabled ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
+                    }`}
+                  ></div>
+                </button>
+              </div>
+            </div>
+            
+            {/* Notifications toggle */}
+            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="material-icons text-primary text-sm">notifications</span>
+                <Label className="text-sm text-foreground">Notifications</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Enable or disable system notifications.
+              </p>
+              <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
+                <div className="flex items-center">
+                  <span className="material-icons text-primary text-sm mr-2">notifications</span>
+                  <span className="text-sm">Notifications</span>
+                </div>
+                <button 
+                  onClick={async () => {
+                    if (!user?.id) return;
+                    
+                    const newValue = !stats.notificationsEnabled;
+                    
+                    try {
+                      const response = await fetch(`/api/users/${user.id}/stats`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ notificationsEnabled: newValue }),
+                        credentials: "include"
+                      });
+                      
+                      if (!response.ok) throw new Error("Failed to update setting");
+                      
+                      updateUserStats({
+                        ...stats,
+                        notificationsEnabled: newValue,
+                      });
+                    } catch (error) {
+                      console.error("Error updating notification settings:", error);
+                    }
+                  }}
+                  className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
+                    stats.notificationsEnabled ? 'bg-primary/30' : 'bg-card'
+                  }`}
+                  aria-pressed={stats.notificationsEnabled}
+                  role="switch"
+                >
+                  <div 
+                    className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
+                      stats.notificationsEnabled ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
+                    }`}
+                  ></div>
+                </button>
+              </div>
+            </div>
+            
+            {/* Primary Theme Color Selector */}
+            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Paintbrush className="h-4 w-4 text-primary" />
+                <Label className="text-sm text-foreground">UI Theme Color</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Select your preferred interface color.
+              </p>
+              <div className="grid grid-cols-4 gap-2">
+                {STAT_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    className={`w-8 h-8 rounded-md transition-all ${
+                      stats.primaryColor === color 
+                        ? 'ring-2 ring-offset-2 ring-offset-background ring-primary scale-110' 
+                        : 'ring-1 ring-primary/20 hover:scale-105'
+                    }`}
+                    style={{ backgroundColor: color }}
+                    onClick={() => handlePrimaryColorChange(color)}
+                    aria-label={`Select theme color ${color}`}
+                  >
+                    {stats.primaryColor === color && (
+                      <span className="flex items-center justify-center text-background text-xs">
+                        <span className="material-icons" style={{ fontSize: '16px' }}>check</span>
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center mt-3 gap-2">
+                <span className="block w-3 h-3 rounded-full animate-pulse" style={{ backgroundColor: stats.primaryColor || "#00e0ff" }}></span>
+                <p className="text-xs text-muted-foreground">
+                  Current color: {stats.primaryColor || "#00e0ff"}
+                </p>
+              </div>
+            </div>
           </>
         );
       default:
@@ -1114,22 +1112,26 @@ export default function ProfilePage() {
 
   const handleSave = () => {
     const computedDisplayName = [profileData.firstName, profileData.lastName].filter(Boolean).join(" ") || profileData.displayName;
-    updateProfileMutation.mutate({
+    const mutationData: any = {
       displayName: computedDisplayName,
       firstName: profileData.firstName,
       lastName: profileData.lastName,
       profilePicture: profileData.profilePicture,
-    });
+    };
+    if (editUsername && editUsername !== username) {
+      mutationData.username = editUsername;
+    }
+    updateProfileMutation.mutate(mutationData);
   };
 
   const handleCancel = () => {
-    // Reset to original data
     if (profileFromApi) {
       setProfileData({
         ...profileData,
         ...profileFromApi,
       });
     }
+    setEditUsername(username);
     setIsEditing(false);
   };
 
@@ -1328,12 +1330,13 @@ export default function ProfilePage() {
                 <div>
                   <Label className="flex items-center gap-2 mb-2">
                     <User className="h-4 w-4 text-primary" />
-                    Username (Display Name)
+                    Username
                   </Label>
                   <Input
-                    value={username}
-                    disabled
-                    className="bg-background/50 border-primary/30 opacity-60 cursor-not-allowed"
+                    value={editUsername}
+                    onChange={(e) => setEditUsername(e.target.value)}
+                    placeholder="Enter username"
+                    className="bg-background/50 border-primary/30 focus:border-primary/50"
                   />
                 </div>
                 

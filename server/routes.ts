@@ -622,8 +622,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/users/:userId/profile", isOwner, async (req: Request, res: Response) => {
     const userId = parseInt(req.params.userId);
     try {
-      // Ensure the password cannot be updated through this endpoint
       const { 
+        username,
         displayName, 
         firstName,
         lastName,
@@ -633,8 +633,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         profilePicture
       } = req.body;
       
-      // Create update object with only specified fields
+      if (username !== undefined) {
+        const trimmed = username.trim();
+        if (trimmed.length < 3) {
+          return res.status(400).json({ error: "Username must be at least 3 characters." });
+        }
+        const existing = await storage.getUserByUsername(trimmed);
+        if (existing && existing.id !== userId) {
+          return res.status(409).json({ error: "Username is already taken." });
+        }
+      }
+      
       const updateData: any = {};
+      if (username !== undefined) updateData.username = username.trim();
       if (displayName !== undefined) updateData.displayName = displayName;
       if (firstName !== undefined) updateData.firstName = firstName;
       if (lastName !== undefined) updateData.lastName = lastName;
