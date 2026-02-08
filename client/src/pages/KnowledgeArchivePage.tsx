@@ -62,7 +62,7 @@ export default function KnowledgeArchivePage() {
 
   const dismissMutation = useMutation({
     mutationFn: async (params: { author: string; sourceMaterial?: string | null }) => {
-      return apiRequest('POST', '/api/dismissed-knowledge', params);
+      return apiRequest('/api/dismissed-knowledge', { method: 'POST', body: JSON.stringify(params) });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/dismissed-knowledge'] });
