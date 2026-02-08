@@ -26,7 +26,7 @@ export default function GoalsArchivePage() {
   usePageTitle('Vision');
 
   const { user } = useAuth();
-  const { missionPages } = useLYFEOS();
+  const { missionPages, createMissionPage } = useLYFEOS();
   const [, navigate] = useLocation();
 
   const { data: profileData } = useQuery<any>({
@@ -152,7 +152,7 @@ export default function GoalsArchivePage() {
     const title = `Annual Goals ${new Date().getFullYear()}`;
     const slug = title.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-');
     
-    const newPage = useLYFEOS().createMissionPage({
+    createMissionPage({
       title,
       slug,
       content: `# ${title}\n\n## Vision Statement\n\nWrite your vision for this year...\n\n## Goals\n\n### Career\n- [ ] Goal 1\n- [ ] Goal 2\n\n### Health & Fitness\n- [ ] Goal 1\n- [ ] Goal 2\n\n### Relationships\n- [ ] Goal 1\n- [ ] Goal 2\n\n### Personal Development\n- [ ] Goal 1\n- [ ] Goal 2\n\n## Key Metrics\n\n- Metric 1: Target value\n- Metric 2: Target value\n\n## Review Schedule\n\n- Monthly review date: 1st of each month\n- Quarterly deep review: End of each quarter`,
@@ -202,32 +202,32 @@ export default function GoalsArchivePage() {
       </div>
 
       {profileData && (profileData.vision10YearLegacy || profileData.vision5Year || profileData.vision90Day) && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="space-y-3 mb-6">
           {profileData.vision10YearLegacy && (
-            <div className="glassmorphic rounded-xl p-4 border border-amber-500/30 bg-amber-500/5">
-              <div className="flex items-center gap-2 mb-3">
-                <Eye className="h-4 w-4 text-amber-400" />
-                <h3 className="text-sm font-semibold text-amber-400 uppercase tracking-wider">Legacy Vision</h3>
+            <div className="glassmorphic rounded-xl p-4 border border-primary/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Eye className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-medium text-primary uppercase tracking-wider">Legacy Vision</h3>
               </div>
-              <p className="text-sm text-foreground/80 leading-relaxed">{profileData.vision10YearLegacy}</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">{profileData.vision10YearLegacy}</p>
             </div>
           )}
           {profileData.vision5Year && (
-            <div className="glassmorphic rounded-xl p-4 border border-purple-500/30 bg-purple-500/5">
-              <div className="flex items-center gap-2 mb-3">
-                <Compass className="h-4 w-4 text-purple-400" />
-                <h3 className="text-sm font-semibold text-purple-400 uppercase tracking-wider">5-Year Vision</h3>
+            <div className="glassmorphic rounded-xl p-4 border border-primary/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Compass className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-medium text-primary uppercase tracking-wider">5-Year Vision</h3>
               </div>
-              <p className="text-sm text-foreground/80 leading-relaxed">{profileData.vision5Year}</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">{profileData.vision5Year}</p>
             </div>
           )}
           {profileData.vision90Day && (
-            <div className="glassmorphic rounded-xl p-4 border border-cyan-500/30 bg-cyan-500/5">
-              <div className="flex items-center gap-2 mb-3">
-                <Flame className="h-4 w-4 text-cyan-400" />
-                <h3 className="text-sm font-semibold text-cyan-400 uppercase tracking-wider">90-Day Vision</h3>
+            <div className="glassmorphic rounded-xl p-4 border border-primary/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Flame className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-medium text-primary uppercase tracking-wider">90-Day Vision</h3>
               </div>
-              <p className="text-sm text-foreground/80 leading-relaxed">{profileData.vision90Day}</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">{profileData.vision90Day}</p>
             </div>
           )}
         </div>
