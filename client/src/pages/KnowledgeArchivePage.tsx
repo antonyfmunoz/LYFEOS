@@ -55,6 +55,7 @@ export default function KnowledgeArchivePage() {
   });
 
   const [dismissedKeys, setDismissedKeys] = useState<Set<string>>(new Set());
+  const [dismissedLoaded, setDismissedLoaded] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -70,8 +71,11 @@ export default function KnowledgeArchivePage() {
           }
         });
         setDismissedKeys(keys);
+        setDismissedLoaded(true);
       })
-      .catch(() => {});
+      .catch(() => {
+        setDismissedLoaded(true);
+      });
   }, [user?.id]);
 
   const dismissEntry = useCallback((author: string, sourceMaterial?: string | null) => {
@@ -203,7 +207,7 @@ export default function KnowledgeArchivePage() {
     return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  if (isLoading) {
+  if (isLoading || !dismissedLoaded) {
     return (
       <div className="flex items-center justify-center py-16">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
