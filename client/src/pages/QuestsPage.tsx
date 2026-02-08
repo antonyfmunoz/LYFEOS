@@ -45,6 +45,8 @@ interface MissionFormData {
   title: string;
   description: string;
   experienceReward: number;
+  difficulty: string;
+  category: string;
   startDate: string;
   startTime: string;
   endDate: string;
@@ -56,12 +58,33 @@ const defaultFormData: MissionFormData = {
   title: "",
   description: "",
   experienceReward: 10,
+  difficulty: "D",
+  category: "general",
   startDate: "",
   startTime: "",
   endDate: "",
   endTime: "",
   notifications: [],
 };
+
+const DIFFICULTY_RANKS = [
+  { value: "D", label: "D — Easy (1x XP)" },
+  { value: "C", label: "C — Moderate (1.5x XP)" },
+  { value: "B", label: "B — Hard (2x XP)" },
+  { value: "A", label: "A — Very Hard (3x XP)" },
+  { value: "S", label: "S — Extreme (5x XP)" },
+];
+
+const MISSION_CATEGORIES = [
+  { value: "general", label: "General" },
+  { value: "health", label: "Health & Fitness" },
+  { value: "career", label: "Career & Work" },
+  { value: "learning", label: "Learning & Growth" },
+  { value: "finance", label: "Finance" },
+  { value: "social", label: "Social & Relationships" },
+  { value: "creative", label: "Creative" },
+  { value: "mindfulness", label: "Mindfulness & Wellness" },
+];
 
 function DroppableSection({ section, onDropQuest, children, className }: { section: string; onDropQuest: (item: DragItem, targetSection: string) => void; children: React.ReactNode; className?: string }) {
   const dropRef = useRef<HTMLDivElement>(null);
@@ -322,6 +345,8 @@ export default function QuestsPage() {
       title: quest.title,
       description: quest.description,
       experienceReward: quest.experienceReward,
+      difficulty: quest.difficulty || "D",
+      category: quest.category || "general",
       startDate: quest.startDate || "",
       startTime: quest.startTime || "",
       endDate: quest.endDate || "",
@@ -340,6 +365,8 @@ export default function QuestsPage() {
         title: createFormData.title.trim(),
         description: createFormData.description.trim() || "No description",
         experienceReward: createFormData.experienceReward,
+        difficulty: createFormData.difficulty,
+        category: createFormData.category,
         startDate: createFormData.startDate || null,
         startTime: createFormData.startTime || null,
         endDate: createFormData.endDate || null,
@@ -367,6 +394,8 @@ export default function QuestsPage() {
         title: editFormData.title.trim(),
         description: editFormData.description.trim() || "No description",
         experienceReward: editFormData.experienceReward,
+        difficulty: editFormData.difficulty,
+        category: editFormData.category,
         startDate: editFormData.startDate || null,
         startTime: editFormData.startTime || null,
         endDate: editFormData.endDate || null,
@@ -456,6 +485,35 @@ export default function QuestsPage() {
                   onChange={(e) => setCreateFormData(prev => ({ ...prev, description: e.target.value }))}
                   className="bg-background/50 border-primary/30 min-h-[80px]"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="create-difficulty">Difficulty Rank</Label>
+                  <select
+                    id="create-difficulty"
+                    value={createFormData.difficulty}
+                    onChange={(e) => setCreateFormData(prev => ({ ...prev, difficulty: e.target.value }))}
+                    className="flex h-10 w-full rounded-md border border-primary/30 bg-background/50 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  >
+                    {DIFFICULTY_RANKS.map(r => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="create-category">Category</Label>
+                  <select
+                    id="create-category"
+                    value={createFormData.category}
+                    onChange={(e) => setCreateFormData(prev => ({ ...prev, category: e.target.value }))}
+                    className="flex h-10 w-full rounded-md border border-primary/30 bg-background/50 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  >
+                    {MISSION_CATEGORIES.map(c => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -614,6 +672,35 @@ export default function QuestsPage() {
                 onChange={(e) => setEditFormData(prev => ({ ...prev, description: e.target.value }))}
                 className="bg-background/50 border-primary/30 min-h-[80px]"
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-difficulty">Difficulty Rank</Label>
+                <select
+                  id="edit-difficulty"
+                  value={editFormData.difficulty}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, difficulty: e.target.value }))}
+                  className="flex h-10 w-full rounded-md border border-primary/30 bg-background/50 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/50"
+                >
+                  {DIFFICULTY_RANKS.map(r => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-category">Category</Label>
+                <select
+                  id="edit-category"
+                  value={editFormData.category}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, category: e.target.value }))}
+                  className="flex h-10 w-full rounded-md border border-primary/30 bg-background/50 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/50"
+                >
+                  {MISSION_CATEGORIES.map(c => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

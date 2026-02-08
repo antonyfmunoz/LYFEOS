@@ -2,19 +2,32 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
-function getCachedValue(widgetId: string): boolean | undefined {
-  const cached = queryClient.getQueryData<Record<string, boolean>>(["/api/widget-states"]);
-  if (cached && widgetId in cached) {
-    return cached[widgetId];
+const STORAGE_KEY = "lyfeos-widget-states";
+
+function readLocalStates(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
   }
-  return undefined;
+}
+
+function writeLocalState(widgetId: string, isOpen: boolean) {
+  try {
+    const states = readLocalStates();
+    states[widgetId] = isOpen;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(states));
+  } catch {}
 }
 
 export function useWidgetState(widgetId: string, defaultOpen: boolean = true): [boolean, (open: boolean) => void] {
-  const initialValue = getCachedValue(widgetId);
-  const [isOpen, setIsOpenLocal] = useState(initialValue ?? defaultOpen);
+  const localStates = readLocalStates();
+  const initialValue = widgetId in localStates ? localStates[widgetId] : defaultOpen;
+  const [isOpen, setIsOpenLocal] = useState(initialValue);
   const isOpenRef = useRef(isOpen);
   const lastLocalChangeRef = useRef(0);
+  const hasSyncedFromServerRef = useRef(false);
 
   useEffect(() => {
     isOpenRef.current = isOpen;
@@ -23,15 +36,19 @@ export function useWidgetState(widgetId: string, defaultOpen: boolean = true): [
   const { data: allStates } = useQuery<Record<string, boolean>>({
     queryKey: ["/api/widget-states"],
     staleTime: Infinity,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {
-    if (allStates && widgetId in allStates) {
+    if (allStates && widgetId in allStates && !hasSyncedFromServerRef.current) {
+      hasSyncedFromServerRef.current = true;
       const serverValue = allStates[widgetId];
-      const timeSinceLocalChange = Date.now() - lastLocalChangeRef.current;
-      if (serverValue !== isOpenRef.current && timeSinceLocalChange > 2000) {
+      const local = readLocalStates();
+      if (!(widgetId in local)) {
         setIsOpenLocal(serverValue);
         isOpenRef.current = serverValue;
+        writeLocalState(widgetId, serverValue);
       }
     }
   }, [allStates, widgetId]);
@@ -45,6 +62,7 @@ export function useWidgetState(widgetId: string, defaultOpen: boolean = true): [
         if (newValue !== isOpenRef.current) {
           setIsOpenLocal(newValue);
           isOpenRef.current = newValue;
+          writeLocalState(widgetId, newValue);
         }
       }
     };
@@ -56,6 +74,7 @@ export function useWidgetState(widgetId: string, defaultOpen: boolean = true): [
     lastLocalChangeRef.current = Date.now();
     setIsOpenLocal(open);
     isOpenRef.current = open;
+    writeLocalState(widgetId, open);
     queryClient.setQueryData<Record<string, boolean>>(["/api/widget-states"], (prev) => ({
       ...prev,
       [widgetId]: open,

@@ -182,7 +182,7 @@ export default function MissionTimer({
       )}
 
       <div className="mt-2 border-t border-primary/10 pt-2">
-        <div className="flex items-center gap-3 text-[10px] font-mono text-muted-foreground">
+        <div className="flex items-center gap-3 text-[10px] font-mono text-primary">
           {missionXP != null && missionXP > 0 && (
             <span className="text-primary">+{missionXP} XP</span>
           )}
