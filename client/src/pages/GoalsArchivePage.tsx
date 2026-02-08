@@ -7,7 +7,6 @@ import { useLYFEOS } from "@/lib/context";
 import { useWidgetState } from "@/hooks/use-widget-state";
 import { Archive, Calendar, Clock, Tag, ChevronDown, ChevronRight, FilePlus2, Target, Rocket, ArrowLeft, Eye, Compass, Flame } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "@/hooks/use-toast";
 
 interface GoalTimeframe {
@@ -207,51 +206,66 @@ export default function GoalsArchivePage() {
         </Button>
       </div>
 
-      <div className="space-y-2 mb-6">
-        <Collapsible open={legacyOpen} onOpenChange={setLegacyOpen}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors group">
-            <div className="flex items-center gap-2">
-              <Eye className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-foreground">Legacy Vision</span>
+      <div className="space-y-6 mb-6">
+        <div className="glassmorphic rounded-xl neon-border overflow-hidden">
+          <div 
+            className="p-3 flex items-center justify-between cursor-pointer border-b border-primary/20 hover:bg-primary/5 transition-colors"
+            onClick={() => setLegacyOpen(!legacyOpen)}
+          >
+            <div className="flex items-center">
+              <Eye className="h-5 w-5 mr-2 text-primary" />
+              <h2 className="text-lg font-orbitron text-foreground">Legacy Vision</h2>
             </div>
-            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${legacyOpen ? 'rotate-180' : ''}`} />
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="p-3 pt-2">
+            <div className="text-primary">
+              <ChevronDown className={`h-5 w-5 transition-transform ${legacyOpen ? 'rotate-180' : ''}`} />
+            </div>
+          </div>
+          {legacyOpen && (
+            <div className="p-4">
               <span className="text-sm text-foreground">{profileData?.vision10YearLegacy || "\u2014"}</span>
             </div>
-          </CollapsibleContent>
-        </Collapsible>
+          )}
+        </div>
 
-        <Collapsible open={fiveYearOpen} onOpenChange={setFiveYearOpen}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors group">
-            <div className="flex items-center gap-2">
-              <Compass className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-foreground">5-Year Vision</span>
+        <div className="glassmorphic rounded-xl neon-border overflow-hidden">
+          <div 
+            className="p-3 flex items-center justify-between cursor-pointer border-b border-primary/20 hover:bg-primary/5 transition-colors"
+            onClick={() => setFiveYearOpen(!fiveYearOpen)}
+          >
+            <div className="flex items-center">
+              <Compass className="h-5 w-5 mr-2 text-primary" />
+              <h2 className="text-lg font-orbitron text-foreground">5-Year Vision</h2>
             </div>
-            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${fiveYearOpen ? 'rotate-180' : ''}`} />
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="p-3 pt-2">
+            <div className="text-primary">
+              <ChevronDown className={`h-5 w-5 transition-transform ${fiveYearOpen ? 'rotate-180' : ''}`} />
+            </div>
+          </div>
+          {fiveYearOpen && (
+            <div className="p-4">
               <span className="text-sm text-foreground">{profileData?.vision5Year || "\u2014"}</span>
             </div>
-          </CollapsibleContent>
-        </Collapsible>
+          )}
+        </div>
 
-        <Collapsible open={ninetyDayOpen} onOpenChange={setNinetyDayOpen}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors group">
-            <div className="flex items-center gap-2">
-              <Flame className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-foreground">90-Day Vision</span>
+        <div className="glassmorphic rounded-xl neon-border overflow-hidden">
+          <div 
+            className="p-3 flex items-center justify-between cursor-pointer border-b border-primary/20 hover:bg-primary/5 transition-colors"
+            onClick={() => setNinetyDayOpen(!ninetyDayOpen)}
+          >
+            <div className="flex items-center">
+              <Flame className="h-5 w-5 mr-2 text-primary" />
+              <h2 className="text-lg font-orbitron text-foreground">90-Day Vision</h2>
             </div>
-            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${ninetyDayOpen ? 'rotate-180' : ''}`} />
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="p-3 pt-2">
+            <div className="text-primary">
+              <ChevronDown className={`h-5 w-5 transition-transform ${ninetyDayOpen ? 'rotate-180' : ''}`} />
+            </div>
+          </div>
+          {ninetyDayOpen && (
+            <div className="p-4">
               <span className="text-sm text-foreground">{profileData?.vision90Day || "\u2014"}</span>
             </div>
-          </CollapsibleContent>
-        </Collapsible>
+          )}
+        </div>
       </div>
 
       {goalCategories.some(category => category.entries.length > 0) && (
