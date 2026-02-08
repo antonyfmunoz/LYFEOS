@@ -290,6 +290,9 @@ interface LYFEOSContextType {
   timerStartedAt: number | null;
   timerPausedElapsed: number;
   timerIsPaused: boolean;
+  isOnBreak: boolean;
+  breakStartedAt: number | null;
+  breakElapsed: number;
   startMissionTimer: (quest: Quest) => void;
   resumeMissionTimer: (quest: Quest) => void;
   endMissionTimer: (elapsedSeconds: number) => void;
@@ -338,6 +341,9 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const [timerStartedAt, setTimerStartedAt] = useState<number | null>(null);
   const [timerPausedElapsed, setTimerPausedElapsed] = useState<number>(0);
   const [timerIsPaused, setTimerIsPaused] = useState(false);
+  const [isOnBreak, setIsOnBreak] = useState(false);
+  const [breakStartedAt, setBreakStartedAt] = useState<number | null>(null);
+  const [breakElapsed, setBreakElapsed] = useState(0);
   const [statTips, setStatTips] = useState<Record<string, string[]>>({});
   const [statTipsLoading, setStatTipsLoading] = useState(false);
   const [computedStats, setComputedStats] = useState<any>(null);
@@ -2128,6 +2134,9 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     setTimerStartedAt(null);
     setTimerPausedElapsed(0);
     setTimerIsPaused(false);
+    setIsOnBreak(false);
+    setBreakStartedAt(null);
+    setBreakElapsed(0);
   };
 
   const restartMissionTimer = (questId?: string) => {
@@ -2143,12 +2152,21 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       setTimerStartedAt(null);
       setTimerPausedElapsed(0);
       setTimerIsPaused(false);
+      setIsOnBreak(false);
+      setBreakStartedAt(null);
+      setBreakElapsed(0);
     }
   };
 
   const pauseResumeTimer = () => {
     if (!activeTimerQuest) return;
-    if (timerIsPaused) {
+    if (isOnBreak) {
+      const currentBreakElapsed = breakStartedAt
+        ? breakElapsed + Math.floor((Date.now() - breakStartedAt) / 1000)
+        : breakElapsed;
+      setBreakElapsed(currentBreakElapsed);
+      setBreakStartedAt(null);
+      setIsOnBreak(false);
       setTimerStartedAt(Date.now());
       setTimerIsPaused(false);
     } else if (timerStartedAt) {
@@ -2156,6 +2174,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       setTimerPausedElapsed(elapsed);
       setTimerStartedAt(null);
       setTimerIsPaused(true);
+      setIsOnBreak(true);
+      setBreakStartedAt(Date.now());
     }
   };
 
@@ -2228,6 +2248,9 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         timerStartedAt,
         timerPausedElapsed,
         timerIsPaused,
+        isOnBreak,
+        breakStartedAt,
+        breakElapsed,
         startMissionTimer,
         resumeMissionTimer,
         endMissionTimer,
