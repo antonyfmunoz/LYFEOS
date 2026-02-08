@@ -145,11 +145,11 @@ export default function MissionTimer({
       className="bg-card rounded-xl p-4 neon-border max-w-sm w-full shadow-[0_0_20px_rgba(0,224,255,0.2)]"
       style={dragStyle}
     >
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2" {...dragHandleProps}>
           <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground/50" />
           <Swords className="h-3.5 w-3.5 text-primary" />
-          <span className="text-xs font-mono text-primary">Mission Active</span>
+          {timerDisplay}
         </div>
         <div className="flex items-center gap-1">
           {actionButtons}
@@ -163,32 +163,25 @@ export default function MissionTimer({
         </div>
       </div>
 
-      <div className="mb-3">
-        <div className="flex items-center gap-2 mb-1">
-          <h3 className="text-sm font-bold text-foreground truncate">{missionTitle || "Untitled Mission"}</h3>
-          {missionCategory && (
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 shrink-0 capitalize">
-              {missionCategory}
-            </span>
-          )}
-        </div>
-        {missionDescription && (
-          <p className="text-xs text-muted-foreground line-clamp-2">{missionDescription}</p>
+      <div className="flex items-center gap-2 flex-wrap mb-1">
+        <span className="text-xs font-bold text-foreground truncate">{missionTitle || "Untitled Mission"}</span>
+        {missionCategory && (
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 shrink-0 capitalize">
+            {missionCategory}
+          </span>
         )}
-      </div>
-
-      <div className="flex items-center justify-between">
-        <div className={`font-mono text-2xl font-bold tracking-wider ${timerIsPaused ? "text-muted-foreground" : "text-primary"}`}>
-          {formatTime(displaySeconds)}
-        </div>
         {missionDifficulty && (
-          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/5 text-muted-foreground border border-primary/10 capitalize">
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 shrink-0 capitalize">
             {missionDifficulty}
           </span>
         )}
       </div>
 
-      <div className="mt-3 border-t border-primary/10 pt-2">
+      {missionDescription && (
+        <p className="text-xs text-muted-foreground line-clamp-1 mb-1">{missionDescription}</p>
+      )}
+
+      <div className="mt-2 border-t border-primary/10 pt-2">
         <div className="flex items-center gap-3 text-[10px] font-mono text-muted-foreground">
           {missionXP != null && missionXP > 0 && (
             <span className="text-primary">+{missionXP} XP</span>
