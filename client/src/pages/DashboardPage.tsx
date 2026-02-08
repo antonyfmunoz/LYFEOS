@@ -3,9 +3,10 @@ import ReactDOM from 'react-dom';
 import { 
   Calendar, BarChart, CalendarDays, Clock, Brain, AlarmClock, 
   MoonStar, Smile, HeartPulse, Book, BookOpen, ListChecks, 
-  Zap, Target as TargetIcon, ChevronDown, Check, Search, FileText, Play, Link2
+  Zap, Target as TargetIcon, ChevronDown, Check, Search, FileText, Play, Link2,
+  Plus, Archive, ChevronUp
 } from 'lucide-react';
-import { useLYFEOS } from '@/lib/context';
+import { useLYFEOS, type ResearchEntry } from '@/lib/context';
 import { useAuth } from '@/lib/authContext';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { UserStats } from '@/lib/types';
@@ -51,6 +52,7 @@ interface DailyReflection {
   revisionNote: string;
   executionNote: string;
   todoIdeas: string;
+  researchEntries: ResearchEntry[];
   wentWell: string;
   couldBeBetter: string;
   learned: string;
@@ -226,6 +228,7 @@ export default function DashboardPage() {
     revisionNote: dataLog.revisionNote,
     executionNote: dataLog.executionNote,
     todoIdeas: dataLog.todoIdeas,
+    researchEntries: dataLog.researchEntries,
     // Reflection log fields
     wentWell: reflectionLogState.wentWell,
     couldBeBetter: reflectionLogState.couldBeBetter,
@@ -339,6 +342,7 @@ export default function DashboardPage() {
           revisionNote: logs.dataLog.revisionNote,
           executionNote: logs.dataLog.executionNote,
           todoIdeas: logs.dataLog.todoIdeas,
+          researchEntries: logs.dataLog.researchEntries,
           wentWell: logs.reflectionLog.wentWell,
           couldBeBetter: logs.reflectionLog.couldBeBetter,
           learned: logs.reflectionLog.learned,
@@ -424,6 +428,7 @@ export default function DashboardPage() {
           revisionNote: dailyLogData.revisionNote ?? "",
           executionNote: dailyLogData.executionNote ?? "",
           todoIdeas: dailyLogData.todoIdeas ?? "",
+          researchEntries: (dailyLogData.researchEntries as any[]) || [],
           isLoaded: true,
           lastPopulatedFingerprint: dataFingerprint,
         });
@@ -604,6 +609,7 @@ export default function DashboardPage() {
       revisionNote: d.revisionNote,
       executionNote: d.executionNote,
       todoIdeas: d.todoIdeas,
+      researchEntries: d.researchEntries,
       wentWell: r.wentWell,
       couldBeBetter: r.couldBeBetter,
       learned: r.learned,
@@ -715,6 +721,7 @@ export default function DashboardPage() {
         revisionNote: field === 'revisionNote' ? value : dataLog.revisionNote,
         executionNote: field === 'executionNote' ? value : dataLog.executionNote,
         todoIdeas: field === 'todoIdeas' ? value : dataLog.todoIdeas,
+        researchEntries: dataLog.researchEntries,
         // Reflection log fields
         wentWell: field === 'wentWell' ? value : reflectionLogState.wentWell,
         couldBeBetter: field === 'couldBeBetter' ? value : reflectionLogState.couldBeBetter,
@@ -731,6 +738,64 @@ export default function DashboardPage() {
     }
   };
   
+  const [expandedArchivedEntries, setExpandedArchivedEntries] = useState(false);
+
+  const handleNewResearchEntry = useCallback(() => {
+    if (!isAllLogsLoaded || !loadedRecordFingerprintRef.current) {
+      toast({ title: "Please wait", description: "Your data is still loading. Try again in a moment.", variant: "destructive" });
+      return;
+    }
+
+    const hasContent = dataLog.sourceAuthor.trim() || dataLog.sourceMaterial.trim() || 
+      dataLog.researchNote.trim() || dataLog.revisionNote.trim() || dataLog.executionNote.trim();
+    
+    if (!hasContent) {
+      toast({ title: "Nothing to save", description: "Fill in at least one research field before creating a new entry.", variant: "destructive" });
+      return;
+    }
+
+    const newEntry: ResearchEntry = {
+      sourceAuthor: dataLog.sourceAuthor,
+      sourceMaterial: dataLog.sourceMaterial,
+      researchNote: dataLog.researchNote,
+      revisionNote: dataLog.revisionNote,
+      executionNote: dataLog.executionNote,
+      savedAt: new Date().toISOString(),
+    };
+
+    const updatedEntries = [...dataLog.researchEntries, newEntry];
+
+    updateDataLog({
+      researchEntries: updatedEntries,
+      sourceAuthor: "",
+      sourceMaterial: "",
+      researchNote: "",
+      revisionNote: "",
+      executionNote: "",
+    });
+
+    isDirtyRef.current = true;
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    const currentFingerprint = loadedRecordFingerprintRef.current;
+    const saveData = {
+      ...buildSavePayload(),
+      researchEntries: updatedEntries,
+      sourceAuthor: "",
+      sourceMaterial: "",
+      researchNote: "",
+      revisionNote: "",
+      executionNote: "",
+      _expectedFingerprint: currentFingerprint || undefined,
+    };
+    
+    saveDailyLogMutation.mutate(saveData);
+    toast({ title: "Entry saved", description: `Research entry #${updatedEntries.length} archived. Start a new one!` });
+  }, [dataLog, updateDataLog, buildSavePayload, saveDailyLogMutation, toast, isAllLogsLoaded]);
+
   // Render state selector (1-10 scale)
   const renderStateSelector = (
     state: number,
@@ -915,6 +980,72 @@ export default function DashboardPage() {
       case 'research-log':
         return (
           <div className="space-y-4">
+            {dataLog.researchEntries.length > 0 && (
+              <div className="space-y-2">
+                <button
+                  onClick={() => setExpandedArchivedEntries(!expandedArchivedEntries)}
+                  className="w-full flex items-center justify-between p-2.5 rounded-lg border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Archive className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium text-primary">
+                      {dataLog.researchEntries.length} saved {dataLog.researchEntries.length === 1 ? 'entry' : 'entries'} today
+                    </span>
+                  </div>
+                  {expandedArchivedEntries ? (
+                    <ChevronUp className="h-4 w-4 text-primary" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-primary" />
+                  )}
+                </button>
+                
+                {expandedArchivedEntries && (
+                  <div className="space-y-2 pl-2 border-l-2 border-primary/20">
+                    {dataLog.researchEntries.map((entry, idx) => (
+                      <div key={idx} className="p-3 rounded-lg border border-primary/10 bg-card/50 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-mono text-primary">Entry #{idx + 1}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(entry.savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        {entry.sourceAuthor && (
+                          <div className="text-xs"><span className="text-muted-foreground">Author:</span> <span className="text-foreground">{entry.sourceAuthor}</span></div>
+                        )}
+                        {entry.sourceMaterial && (
+                          <div className="text-xs"><span className="text-muted-foreground">Source:</span> <span className="text-foreground">{entry.sourceMaterial}</span></div>
+                        )}
+                        {entry.researchNote && (
+                          <div className="text-xs"><span className="text-muted-foreground">Research:</span> <span className="text-foreground line-clamp-2">{entry.researchNote}</span></div>
+                        )}
+                        {entry.revisionNote && (
+                          <div className="text-xs"><span className="text-muted-foreground">Revision:</span> <span className="text-foreground line-clamp-2">{entry.revisionNote}</span></div>
+                        )}
+                        {entry.executionNote && (
+                          <div className="text-xs"><span className="text-muted-foreground">Execution:</span> <span className="text-foreground line-clamp-2">{entry.executionNote}</span></div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground font-mono">
+                {dataLog.researchEntries.length > 0 
+                  ? `Entry #${dataLog.researchEntries.length + 1}` 
+                  : "Current Entry"}
+              </span>
+              <button
+                onClick={handleNewResearchEntry}
+                className="flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded-lg border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                New Entry
+              </button>
+            </div>
+
             <div className="space-y-2">
               <label className="text-sm flex items-center text-[#7DAAB2]">
                 <BookOpen className="h-4 w-4 text-primary" />

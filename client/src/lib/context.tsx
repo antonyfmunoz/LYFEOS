@@ -92,6 +92,15 @@ export interface IntentionLogData {
   lastPopulatedFingerprint: string | null;
 }
 
+export interface ResearchEntry {
+  sourceAuthor: string;
+  sourceMaterial: string;
+  researchNote: string;
+  revisionNote: string;
+  executionNote: string;
+  savedAt: string;
+}
+
 export interface DataLogData {
   contentConsumed: string;
   research: string;
@@ -101,6 +110,7 @@ export interface DataLogData {
   revisionNote: string;
   executionNote: string;
   todoIdeas: string;
+  researchEntries: ResearchEntry[];
   isLoaded: boolean;
   lastPopulatedFingerprint: string | null;
 }
@@ -141,6 +151,7 @@ const initialDataLog: DataLogData = {
   revisionNote: "",
   executionNote: "",
   todoIdeas: "",
+  researchEntries: [],
   isLoaded: false,
   lastPopulatedFingerprint: null,
 };

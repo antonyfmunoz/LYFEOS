@@ -28,6 +28,14 @@ interface DailyLog {
   researchNote: string | null;
   revisionNote: string | null;
   executionNote: string | null;
+  researchEntries: Array<{
+    sourceAuthor: string;
+    sourceMaterial: string;
+    researchNote: string;
+    revisionNote: string;
+    executionNote: string;
+    savedAt: string;
+  }> | null;
   todoIdeas: string | null;
   wentWell: string | null;
   couldBeBetter: string | null;
@@ -165,7 +173,7 @@ function LogCard({ log }: { log: DailyLog }) {
 
           <LogSection
             icon={Search}
-            title="Daily Research Log"
+            title={`Daily Research Log${log.researchEntries && log.researchEntries.length > 0 ? ` (${log.researchEntries.length} archived)` : ''}`}
             fields={[
               { label: 'Source Author', value: log.sourceAuthor },
               { label: 'Source Material', value: log.sourceMaterial },
@@ -174,6 +182,25 @@ function LogCard({ log }: { log: DailyLog }) {
               { label: 'Execution Note', value: log.executionNote },
             ]}
           />
+
+          {log.researchEntries && log.researchEntries.length > 0 && (
+            <div className="ml-4 space-y-2">
+              {log.researchEntries.map((entry, idx) => (
+                <LogSection
+                  key={idx}
+                  icon={Search}
+                  title={`Research Entry #${idx + 1} (${new Date(entry.savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`}
+                  fields={[
+                    { label: 'Source Author', value: entry.sourceAuthor || null },
+                    { label: 'Source Material', value: entry.sourceMaterial || null },
+                    { label: 'Research Note', value: entry.researchNote || null },
+                    { label: 'Revision & Summary Note', value: entry.revisionNote || null },
+                    { label: 'Execution Note', value: entry.executionNote || null },
+                  ]}
+                />
+              ))}
+            </div>
+          )}
 
           <LogSection
             icon={Calendar}
