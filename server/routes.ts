@@ -4143,6 +4143,7 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
         gratitude, tomorrowGoals, annualGoals, thoughts,
         contentConsumed, research, todoIdeas,
         sourceAuthor, sourceMaterial, researchNote, revisionNote, executionNote,
+        researchEntries,
         wentWell, couldBeBetter, learned
       } = req.body;
       
@@ -4174,6 +4175,7 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
         researchNote: researchNote || null,
         revisionNote: revisionNote || null,
         executionNote: executionNote || null,
+        researchEntries: researchEntries || [],
         wentWell: wentWell || null,
         couldBeBetter: couldBeBetter || null,
         learned: learned || null,
@@ -4201,6 +4203,7 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
           ...(researchNote !== undefined && { researchNote }),
           ...(revisionNote !== undefined && { revisionNote }),
           ...(executionNote !== undefined && { executionNote }),
+          ...(researchEntries !== undefined && { researchEntries }),
           ...(wentWell !== undefined && { wentWell }),
           ...(couldBeBetter !== undefined && { couldBeBetter }),
           ...(learned !== undefined && { learned }),
