@@ -78,13 +78,13 @@ const DIFFICULTY_RANKS = [
 
 const MISSION_CATEGORIES = [
   { value: "general", label: "General" },
-  { value: "health", label: "Health & Fitness" },
-  { value: "career", label: "Career & Work" },
-  { value: "learning", label: "Learning & Growth" },
+  { value: "health", label: "Health" },
+  { value: "career", label: "Career" },
+  { value: "learning", label: "Learning" },
   { value: "finance", label: "Finance" },
-  { value: "social", label: "Social & Relationships" },
+  { value: "social", label: "Social" },
   { value: "creative", label: "Creative" },
-  { value: "mindfulness", label: "Mindfulness & Wellness" },
+  { value: "mindfulness", label: "Mindfulness" },
   { value: "event", label: "Event" },
 ];
 
