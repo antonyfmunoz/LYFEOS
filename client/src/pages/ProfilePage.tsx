@@ -100,7 +100,7 @@ function PersistentProfileSection({ section }: { section: { id: string; title: s
 const STAT_COLORS = [
   "#00e0ff", // cyan - Time Tokens (Throat Chakra)
   "#f56565", // red - Health Points (Root Chakra)
-  "#ed8936", // orange - Energy Tokens (Sacral Chakra)
+  "#ed8936", // orange - Energy Points (Sacral Chakra)
   "#ecc94b", // yellow - Efficiency (Solar Plexus Chakra)
   "#48bb78", // green - Streak (Heart Chakra)
   "#4299e1", // blue - General/Primary

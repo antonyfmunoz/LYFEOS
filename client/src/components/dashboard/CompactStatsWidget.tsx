@@ -222,7 +222,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           </div>
         </div>
         
-        {/* Energy Tokens */}
+        {/* Energy Points */}
         <div className="stat-block rounded-lg p-2 border border-primary/20 relative">
           <StatInfoDialog
             trigger={
@@ -236,10 +236,10 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
                 <Info className="h-3 w-3" />
               </button>
             }
-            title="Energy Tokens (ET)"
+            title="Energy Points (EP)"
             titleColor="text-primary"
-            description="ET represents your creative energy and vitality resources."
-            additionalInfo="Use ET to power creative tasks and maintain high productivity."
+            description="EP represents your creative energy and vitality resources."
+            additionalInfo="Use EP to power creative tasks and maintain high productivity."
             statType="energy"
           />
           

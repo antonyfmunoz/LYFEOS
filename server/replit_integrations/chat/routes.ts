@@ -874,7 +874,7 @@ export function registerChatRoutes(app: Express): void {
 
       const statLabelMap: Record<string, string> = {
         experience: "Experience Points (XP) and Leveling",
-        energy: "Energy Tokens",
+        energy: "Energy Points",
         health: "Health Points",
         time: "Time Tokens",
         attention: "Attention Tokens",

@@ -243,7 +243,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
           </div>
         </Link>
         
-        {/* Energy Tokens */}
+        {/* Energy Points */}
         <Link href="/energy">
           <div className="stat-block group hover:bg-primary/10 hover:border-primary/40 rounded-lg p-3 transition-all cursor-pointer border border-primary/20 relative">
             <StatInfoDialog
@@ -255,9 +255,9 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
                   <Info className="h-4 w-4" />
                 </button>
               }
-              title="Energy Tokens"
+              title="Energy Points"
               titleColor="text-primary"
-              description="Measures your mental and physical energy levels. Rest, nutrition, and wellness activities increase your Energy Tokens."
+              description="Measures your mental and physical energy levels. Rest, nutrition, and wellness activities increase your Energy Points."
               additionalInfo="Higher energy enables you to tackle more challenging tasks effectively and sustain focus throughout the day."
               statType="energy"
             />

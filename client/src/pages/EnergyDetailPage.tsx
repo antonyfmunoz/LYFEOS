@@ -5,7 +5,7 @@ import { usePageTitle } from "@/hooks/use-page-title";
 import AIStatTip from "@/components/stats/AIStatTip";
 
 export default function EnergyDetailPage() {
-  usePageTitle("Energy Tokens - LYFEOS");
+  usePageTitle("Energy Points - LYFEOS");
   
   const { stats, computedStats } = useLYFEOS();
   
@@ -34,7 +34,7 @@ export default function EnergyDetailPage() {
       
       <div className="mb-8 flex items-center">
         <Zap className="h-8 w-8 mr-3 text-primary" />
-        <h1 className="text-3xl font-orbitron">Energy Tokens</h1>
+        <h1 className="text-3xl font-orbitron">Energy Points</h1>
       </div>
       
       <div className="glassmorphic rounded-xl p-6 mb-6 border border-primary/30">

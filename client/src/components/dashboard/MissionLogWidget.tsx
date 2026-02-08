@@ -97,7 +97,7 @@ export default function MissionLogWidget({
             <div className="flex space-x-4 text-sm mt-2">
               <div className="flex items-center text-primary">
                 <Zap className="h-4 w-4 mr-1" />
-                <span>-5 Energy Tokens</span>
+                <span>-5 Energy Points</span>
               </div>
               <div className="flex items-center text-primary">
                 <Award className="h-4 w-4 mr-1" />
@@ -434,7 +434,7 @@ export default function MissionLogWidget({
                 <div className="flex space-x-4 pt-2">
                   <div className="flex items-center text-primary">
                     <Zap className="h-4 w-4 mr-1" />
-                    <span className="text-sm">-5 Energy Tokens</span>
+                    <span className="text-sm">-5 Energy Points</span>
                   </div>
                   <div className="flex items-center text-primary">
                     <Award className="h-4 w-4 mr-1" />
