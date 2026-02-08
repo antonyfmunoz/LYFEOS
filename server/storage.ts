@@ -22,7 +22,8 @@ import {
   progressTrackers, type ProgressTracker, type InsertProgressTracker,
   mediaItems, type MediaItem, type InsertMediaItem,
   mediaAlbums, type MediaAlbum, type InsertMediaAlbum,
-  widgetStates, type WidgetStates
+  widgetStates, type WidgetStates,
+  pushSubscriptions, type PushSubscription, type InsertPushSubscription
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, isNull, isNotNull, gt, lt } from "drizzle-orm";
@@ -76,6 +77,12 @@ export interface IStorage {
   getArchivedQuests(userId: number): Promise<Quest[]>;
   restoreQuest(id: number): Promise<Quest>;
   purgeExpiredArchivedQuests(): Promise<void>;
+  
+  // Push Subscription methods
+  getPushSubscriptions(userId: number): Promise<PushSubscription[]>;
+  savePushSubscription(sub: InsertPushSubscription): Promise<PushSubscription>;
+  deletePushSubscription(endpoint: string): Promise<void>;
+  getAllPushSubscriptionsForNotification(): Promise<{ subscription: PushSubscription; quests: Quest[] }[]>;
   
   // AI Message methods
   getMessages(userId: number): Promise<AIMessage[]>;
@@ -911,6 +918,71 @@ export class DatabaseStorage implements IStorage {
     );
   }
   
+  // Push Subscription methods
+  async getPushSubscriptions(userId: number): Promise<PushSubscription[]> {
+    return db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
+  }
+  
+  async savePushSubscription(sub: InsertPushSubscription): Promise<PushSubscription> {
+    const existing = await db.select().from(pushSubscriptions)
+      .where(and(eq(pushSubscriptions.userId, sub.userId), eq(pushSubscriptions.endpoint, sub.endpoint)));
+    
+    if (existing.length > 0) {
+      const [updated] = await db.update(pushSubscriptions)
+        .set({ p256dh: sub.p256dh, auth: sub.auth })
+        .where(eq(pushSubscriptions.id, existing[0].id))
+        .returning();
+      return updated;
+    }
+    
+    const [newSub] = await db.insert(pushSubscriptions).values(sub).returning();
+    return newSub;
+  }
+  
+  async deletePushSubscription(endpoint: string): Promise<void> {
+    await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
+  }
+  
+  async getAllPushSubscriptionsForNotification(): Promise<{ subscription: PushSubscription; quests: Quest[] }[]> {
+    const allSubs = await db.select().from(pushSubscriptions);
+    const results: { subscription: PushSubscription; quests: Quest[] }[] = [];
+    
+    const now = new Date();
+    const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
+    const nowDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const nowTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const futureTimeStr = `${String(fiveMinutesFromNow.getHours()).padStart(2, '0')}:${String(fiveMinutesFromNow.getMinutes()).padStart(2, '0')}`;
+    
+    for (const sub of allSubs) {
+      const userQuests = await db.select().from(quests).where(
+        and(
+          eq(quests.userId, sub.userId),
+          eq(quests.completed, false),
+          eq(quests.notificationEnabled, true),
+          isNull(quests.deletedAt)
+        )
+      );
+      
+      const dueQuests = userQuests.filter(q => {
+        if (q.notifications && Array.isArray(q.notifications)) {
+          return (q.notifications as { date: string; time: string }[]).some(n => {
+            return n.date === nowDateStr && n.time >= nowTimeStr && n.time <= futureTimeStr;
+          });
+        }
+        if (q.startDate === nowDateStr && q.startTime && q.startTime >= nowTimeStr && q.startTime <= futureTimeStr) {
+          return true;
+        }
+        return false;
+      });
+      
+      if (dueQuests.length > 0) {
+        results.push({ subscription: sub, quests: dueQuests });
+      }
+    }
+    
+    return results;
+  }
+
   // AI Message methods
   async getMessages(userId: number): Promise<AIMessage[]> {
     return db.select().from(aiMessages).where(eq(aiMessages.userId, userId));

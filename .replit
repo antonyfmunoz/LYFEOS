@@ -44,3 +44,10 @@ waitForPort = 5000
 
 [agent]
 integrations = ["javascript_anthropic_ai_integrations:2.0.0"]
+
+[userenv]
+
+[userenv.shared]
+VAPID_PUBLIC_KEY = "BIWkpYdQk7cHuG-yJr8MvEnc0BocUbPW5KTq1K33m3ouS_HUOwp1J4UTprMAlgxKhJddc-dBJtshivYFg33n4Vw"
+VAPID_PRIVATE_KEY = "g_oNf7mA_D2hpHto-B0yBuccwoZVk3lkcrEXhS8Of6Y"
+VAPID_SUBJECT = "mailto:lyfeos@replit.app"

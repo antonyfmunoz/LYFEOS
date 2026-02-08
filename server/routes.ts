@@ -9,6 +9,7 @@ import { z } from "zod";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import Anthropic from "@anthropic-ai/sdk";
+import webpush from "web-push";
 import { 
   insertUserSchema, 
   insertQuestSchema, 
@@ -1514,6 +1515,92 @@ ${questData.description ? `Description: ${questData.description}` : ''}`
       return res.status(200).json({ success: true });
     } catch (error) {
       console.error("Error reordering quests:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Push Notification routes
+  if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    webpush.setVapidDetails(
+      process.env.VAPID_SUBJECT || 'mailto:lyfeos@replit.app',
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY
+    );
+  }
+
+  app.get("/api/push/vapid-public-key", (_req: Request, res: Response) => {
+    res.json({ publicKey: process.env.VAPID_PUBLIC_KEY || '' });
+  });
+
+  app.post("/api/push/subscribe", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { endpoint, keys } = req.body;
+      if (!endpoint || !keys?.p256dh || !keys?.auth) {
+        return res.status(400).json({ error: "Invalid push subscription" });
+      }
+      
+      const sub = await storage.savePushSubscription({
+        userId: req.session.userId!,
+        endpoint,
+        p256dh: keys.p256dh,
+        auth: keys.auth,
+      });
+      
+      return res.status(200).json({ success: true, id: sub.id });
+    } catch (error) {
+      console.error("Error saving push subscription:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/push/subscribe", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { endpoint } = req.body;
+      if (!endpoint) {
+        return res.status(400).json({ error: "Endpoint required" });
+      }
+      await storage.deletePushSubscription(endpoint);
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("Error removing push subscription:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/push/test", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const subs = await storage.getPushSubscriptions(req.session.userId!);
+      if (subs.length === 0) {
+        return res.status(400).json({ error: "No push subscriptions found. Enable notifications first." });
+      }
+      
+      const payload = JSON.stringify({
+        title: "LYFEOS",
+        body: "Push notifications are working! You'll receive mission reminders here.",
+        tag: "test-notification",
+        url: "/quests"
+      });
+      
+      const results = await Promise.allSettled(
+        subs.map(sub => 
+          webpush.sendNotification({
+            endpoint: sub.endpoint,
+            keys: { p256dh: sub.p256dh, auth: sub.auth }
+          }, payload)
+        )
+      );
+      
+      const failed = results.filter(r => r.status === 'rejected');
+      for (const fail of failed) {
+        if ((fail as PromiseRejectedResult).reason?.statusCode === 410) {
+          const idx = results.indexOf(fail);
+          await storage.deletePushSubscription(subs[idx].endpoint);
+        }
+      }
+      
+      return res.status(200).json({ success: true, sent: results.length - failed.length });
+    } catch (error) {
+      console.error("Error sending test push:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });

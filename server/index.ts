@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import session from "express-session";
 import { db } from "./db";
+import { startNotificationScheduler } from "./notificationScheduler";
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
@@ -82,6 +83,7 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    startNotificationScheduler();
   });
 
   // Graceful shutdown handling to properly release port
