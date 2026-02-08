@@ -594,7 +594,7 @@ Write a 2-3 paragraph affirmation in second person ("You are..."). Make it power
             if (appendableFields.includes(key) && typeof newValue === 'string') {
               const existing = (todayLog as any)[key] as string | null;
               if (existing && existing.trim().length > 0) {
-                mergedUpdates[key] = existing.trimEnd() + '\n' + newValue;
+                mergedUpdates[key] = existing.trimEnd() + '\n\n' + newValue;
               } else {
                 mergedUpdates[key] = newValue;
               }
