@@ -14,6 +14,7 @@ export function useWidgetState(widgetId: string, defaultOpen: boolean = true): [
   const initialValue = getCachedValue(widgetId);
   const [isOpen, setIsOpenLocal] = useState(initialValue ?? defaultOpen);
   const isOpenRef = useRef(isOpen);
+  const lastLocalChangeRef = useRef(0);
 
   useEffect(() => {
     isOpenRef.current = isOpen;
@@ -27,8 +28,10 @@ export function useWidgetState(widgetId: string, defaultOpen: boolean = true): [
   useEffect(() => {
     if (allStates && widgetId in allStates) {
       const serverValue = allStates[widgetId];
-      if (serverValue !== isOpenRef.current) {
+      const timeSinceLocalChange = Date.now() - lastLocalChangeRef.current;
+      if (serverValue !== isOpenRef.current && timeSinceLocalChange > 2000) {
         setIsOpenLocal(serverValue);
+        isOpenRef.current = serverValue;
       }
     }
   }, [allStates, widgetId]);
@@ -38,6 +41,7 @@ export function useWidgetState(widgetId: string, defaultOpen: boolean = true): [
       const detail = (e as CustomEvent).detail;
       if (detail && detail.widgetId === widgetId) {
         const newValue = detail.open as boolean;
+        lastLocalChangeRef.current = Date.now();
         if (newValue !== isOpenRef.current) {
           setIsOpenLocal(newValue);
           isOpenRef.current = newValue;
@@ -49,6 +53,7 @@ export function useWidgetState(widgetId: string, defaultOpen: boolean = true): [
   }, [widgetId]);
 
   const setIsOpen = useCallback((open: boolean) => {
+    lastLocalChangeRef.current = Date.now();
     setIsOpenLocal(open);
     isOpenRef.current = open;
     queryClient.setQueryData<Record<string, boolean>>(["/api/widget-states"], (prev) => ({

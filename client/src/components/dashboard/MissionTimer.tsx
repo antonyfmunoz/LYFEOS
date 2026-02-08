@@ -188,17 +188,17 @@ export default function MissionTimer({
           )}
           {missionEnergyCost != null && missionEnergyCost > 0 && (
             <span className="flex items-center gap-0.5">
-              <Zap className="h-2.5 w-2.5" /> -{missionEnergyCost}% ET
+              <Zap className="h-2.5 w-2.5" /> -{((missionEnergyCost / 1440) * 100).toFixed(1)}% ET
             </span>
           )}
           {missionAttentionCost != null && missionAttentionCost > 0 && (
             <span className="flex items-center gap-0.5">
-              <Brain className="h-2.5 w-2.5" /> -{missionAttentionCost}% AT
+              <Brain className="h-2.5 w-2.5" /> -{((missionAttentionCost / 1440) * 100).toFixed(1)}% AT
             </span>
           )}
           {missionTimeCost != null && missionTimeCost > 0 && (
             <span className="flex items-center gap-0.5">
-              <Clock className="h-2.5 w-2.5" /> -{missionTimeCost}% TT
+              <Clock className="h-2.5 w-2.5" /> -{((missionTimeCost / 1440) * 100).toFixed(1)}% TT
             </span>
           )}
         </div>

@@ -559,7 +559,7 @@ export default function DashboardPage() {
   // Define field categories
   const energyLogFields = ['mentalState', 'physicalState', 'emotionalState', 'wakeTime', 'sleepTime'];
   const intentionLogFields = ['gratitude', 'tomorrowGoals', 'annualGoals', 'thoughts'];
-  const dataLogFields = ['contentConsumed', 'research', 'sourceMaterial', 'researchNote', 'revisionNote', 'executionNote', 'todoIdeas'];
+  const dataLogFields = ['contentConsumed', 'research', 'sourceAuthor', 'sourceMaterial', 'researchNote', 'revisionNote', 'executionNote', 'todoIdeas'];
   const reflectionLogFields = ['wentWell', 'couldBeBetter', 'learned'];
   
   // Check if all logs are loaded (so we can safely save without overwriting)
