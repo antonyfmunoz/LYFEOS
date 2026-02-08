@@ -390,12 +390,11 @@ export default function DashboardPage() {
       
       // Mark which record we loaded - saves will only be allowed for this fingerprint
       loadedRecordFingerprintRef.current = dataFingerprint;
-      // Reset dirty flag - fresh load means no unsaved user changes yet
-      isDirtyRef.current = false;
       
       // Check if this is actual data or the "no data" marker
       if (!dailyLogData._noData) {
-        // Data exists in database - populate all global contexts
+        // Data exists in database - populate all global contexts and reset dirty flag
+        isDirtyRef.current = false;
         updateEnergyLog({
           mentalState: dailyLogData.mentalState ?? 5,
           physicalState: dailyLogData.physicalState ?? 5,
@@ -433,7 +432,26 @@ export default function DashboardPage() {
           lastPopulatedFingerprint: dataFingerprint,
         });
       } else {
-        // No data - just mark all as loaded
+        // No data in DB - mark all as loaded but check if user already typed content locally
+        const hasLocalEdits = 
+          dataLog.todoIdeas !== "" || dataLog.contentConsumed !== "" || dataLog.researchNote !== "" ||
+          dataLog.revisionNote !== "" || dataLog.executionNote !== "" || dataLog.sourceAuthor !== "" ||
+          dataLog.sourceMaterial !== "" || dataLog.research !== "" ||
+          intentionLog.gratitude !== "" || intentionLog.tomorrowGoals !== "" ||
+          intentionLog.annualGoals !== "" || intentionLog.thoughts !== "" ||
+          reflectionLogState.wentWell !== "" || reflectionLogState.couldBeBetter !== "" ||
+          reflectionLogState.learned !== "" ||
+          (energyLog.wakeTime !== "" && energyLog.wakeTime !== "06:00") ||
+          (energyLog.sleepTime !== "" && energyLog.sleepTime !== "22:00") ||
+          energyLog.mentalState !== 5 || energyLog.physicalState !== 5 || energyLog.emotionalState !== 5;
+        
+        if (hasLocalEdits) {
+          isDirtyRef.current = true;
+          console.log("Preserving local edits that were entered before DB load");
+        } else {
+          isDirtyRef.current = false;
+        }
+        
         updateEnergyLog({ isLoaded: true, lastPopulatedFingerprint: dataFingerprint });
         updateIntentionLog({ isLoaded: true, lastPopulatedFingerprint: dataFingerprint });
         updateDataLog({ isLoaded: true, lastPopulatedFingerprint: dataFingerprint });
@@ -562,6 +580,46 @@ export default function DashboardPage() {
   
   const isAllLogsLoaded = energyLog.isLoaded && intentionLog.isLoaded && dataLog.isLoaded && reflectionLogState.isLoaded;
 
+  const latestLogsRef = useRef({ energyLog, intentionLog, dataLog, reflectionLogState });
+  latestLogsRef.current = { energyLog, intentionLog, dataLog, reflectionLogState };
+
+  const buildSavePayload = useCallback((): Partial<DailyReflection> => {
+    const { energyLog: e, intentionLog: i, dataLog: d, reflectionLogState: r } = latestLogsRef.current;
+    return {
+      wakeTime: e.wakeTime,
+      sleepTime: e.sleepTime,
+      mentalState: e.mentalState,
+      physicalState: e.physicalState,
+      emotionalState: e.emotionalState,
+      gratitude: i.gratitude,
+      tomorrowGoals: i.tomorrowGoals,
+      annualGoals: i.annualGoals,
+      thoughts: i.thoughts,
+      contentConsumed: d.contentConsumed,
+      research: d.research,
+      sourceAuthor: d.sourceAuthor,
+      sourceMaterial: d.sourceMaterial,
+      researchNote: d.researchNote,
+      revisionNote: d.revisionNote,
+      executionNote: d.executionNote,
+      todoIdeas: d.todoIdeas,
+      wentWell: r.wentWell,
+      couldBeBetter: r.couldBeBetter,
+      learned: r.learned,
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isAllLogsLoaded && isDirtyRef.current && !saveTimeoutRef.current) {
+      console.log("Logs loaded with pending local edits - scheduling save");
+      saveTimeoutRef.current = setTimeout(() => {
+        saveTimeoutRef.current = null;
+        const currentFingerprint = loadedRecordFingerprintRef.current;
+        saveDailyLogMutation.mutate({ ...buildSavePayload(), _expectedFingerprint: currentFingerprint || undefined });
+      }, 500);
+    }
+  }, [isAllLogsLoaded, buildSavePayload, saveDailyLogMutation]);
+
   useEffect(() => {
     const flushHandler = async () => {
       if (saveTimeoutRef.current) {
@@ -570,30 +628,8 @@ export default function DashboardPage() {
       }
       if (isDirtyRef.current && isAllLogsLoaded) {
         const currentFingerprint = loadedRecordFingerprintRef.current;
-        const dataToSave: Partial<DailyReflection> = {
-          wakeTime: energyLog.wakeTime,
-          sleepTime: energyLog.sleepTime,
-          mentalState: energyLog.mentalState,
-          physicalState: energyLog.physicalState,
-          emotionalState: energyLog.emotionalState,
-          gratitude: intentionLog.gratitude,
-          tomorrowGoals: intentionLog.tomorrowGoals,
-          annualGoals: intentionLog.annualGoals,
-          thoughts: intentionLog.thoughts,
-          contentConsumed: dataLog.contentConsumed,
-          research: dataLog.research,
-          sourceAuthor: dataLog.sourceAuthor,
-          sourceMaterial: dataLog.sourceMaterial,
-          researchNote: dataLog.researchNote,
-          revisionNote: dataLog.revisionNote,
-          executionNote: dataLog.executionNote,
-          todoIdeas: dataLog.todoIdeas,
-          wentWell: reflectionLogState.wentWell,
-          couldBeBetter: reflectionLogState.couldBeBetter,
-          learned: reflectionLogState.learned,
-        };
         try {
-          await saveDailyLogMutation.mutateAsync({ ...dataToSave, _expectedFingerprint: currentFingerprint || undefined });
+          await saveDailyLogMutation.mutateAsync({ ...buildSavePayload(), _expectedFingerprint: currentFingerprint || undefined });
         } catch (e) {
           console.error("Flush save failed:", e);
         }
@@ -601,7 +637,7 @@ export default function DashboardPage() {
     };
     window.addEventListener("nova-flush-pending-save", flushHandler);
     return () => window.removeEventListener("nova-flush-pending-save", flushHandler);
-  }, [energyLog, intentionLog, dataLog, reflectionLogState, saveDailyLogMutation, isAllLogsLoaded]);
+  }, [saveDailyLogMutation, isAllLogsLoaded, buildSavePayload]);
 
   // Define field categories
   const energyLogFields = ['mentalState', 'physicalState', 'emotionalState', 'wakeTime', 'sleepTime'];
