@@ -368,14 +368,17 @@ export default function DashboardPage() {
   useEffect(() => {
     // Only run when query has successfully completed (not loading)
     if (isDailyLogSuccess && !isLoadingDailyLog && dailyLogData) {
-      // Create a fingerprint using the record id (stable identifier for the database record)
-      // This ensures we only populate once per database record, avoiding stale data issues
       const dataFingerprint = dailyLogData._noData 
         ? `nodata-${todayDateStr}` 
         : `record-${dailyLogData.id}-${todayDateStr}`;
       
-      // Skip if we've already populated from this exact database record (uses global context tracking)
-      if (energyLog.lastPopulatedFingerprint === dataFingerprint) {
+      const isNovaRefresh = awaitingNovaRefreshRef.current;
+      if (isNovaRefresh) {
+        awaitingNovaRefreshRef.current = false;
+        console.log("NOVA refresh detected - forcing re-populate from DB");
+      }
+      
+      if (!isNovaRefresh && energyLog.lastPopulatedFingerprint === dataFingerprint) {
         return;
       }
       
@@ -467,17 +470,13 @@ export default function DashboardPage() {
         clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = null;
       }
-      updateEnergyLog({ lastPopulatedFingerprint: '' });
-      updateIntentionLog({ lastPopulatedFingerprint: '' });
-      updateDataLog({ lastPopulatedFingerprint: '' });
-      updateReflectionLogState({ lastPopulatedFingerprint: '' });
-      loadedRecordFingerprintRef.current = null;
+      awaitingNovaRefreshRef.current = true;
       isDirtyRef.current = false;
       refetchDailyLog();
     };
     window.addEventListener("nova-daily-log-updated", handler);
     return () => window.removeEventListener("nova-daily-log-updated", handler);
-  }, [refetchDailyLog, updateEnergyLog, updateIntentionLog, updateDataLog, updateReflectionLogState]);
+  }, [refetchDailyLog]);
 
   // Track previous auth state to detect login events
   // Initialize with current auth state to avoid false "login" detection on component remount
@@ -578,6 +577,7 @@ export default function DashboardPage() {
   // Debounce timer ref for daily log saves
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pendingSavePromiseRef = useRef<Promise<void> | null>(null);
+  const awaitingNovaRefreshRef = useRef(false);
   
   const isAllLogsLoaded = energyLog.isLoaded && intentionLog.isLoaded && dataLog.isLoaded && reflectionLogState.isLoaded;
 
