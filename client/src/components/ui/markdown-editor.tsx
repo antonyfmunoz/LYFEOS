@@ -6,6 +6,7 @@ import { Edit2, Save, CheckSquare } from 'lucide-react';
 interface MarkdownEditorProps {
   value: string;
   onChange: (value: string) => void;
+  onBlur?: () => void;
   placeholder?: string;
   className?: string;
   minHeight?: string;
@@ -15,6 +16,7 @@ interface MarkdownEditorProps {
 export function MarkdownEditor({
   value,
   onChange,
+  onBlur,
   placeholder = "",
   className = "",
   minHeight = "100px",
@@ -50,10 +52,11 @@ export function MarkdownEditor({
     setIsEditing(true);
   };
 
-  // Toggle to read mode
+  // Toggle to read mode and trigger blur save
   const handleSaveClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsEditing(false);
+    onBlur?.();
   };
 
   // Handle double-clicking on the read view to edit
@@ -80,8 +83,10 @@ export function MarkdownEditor({
       insertTaskCheckbox();
     } else if (e.key === 'Escape') {
       setIsEditing(false);
+      onBlur?.();
     } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       setIsEditing(false);
+      onBlur?.();
     }
     // No bullet functionality
   };
@@ -163,11 +168,14 @@ export function MarkdownEditor({
     }, 0);
   };
 
-  // Detect clicks outside to exit edit mode
+  // Detect clicks outside to exit edit mode and trigger blur save
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
-        setIsEditing(false);
+        if (isEditing) {
+          setIsEditing(false);
+          onBlur?.();
+        }
       }
     };
     
@@ -175,7 +183,7 @@ export function MarkdownEditor({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [isEditing, onBlur]);
 
   return (
     <div 

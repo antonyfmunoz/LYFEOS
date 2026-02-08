@@ -577,6 +577,7 @@ export default function DashboardPage() {
   
   // Debounce timer ref for daily log saves
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingSavePromiseRef = useRef<Promise<void> | null>(null);
   
   const isAllLogsLoaded = energyLog.isLoaded && intentionLog.isLoaded && dataLog.isLoaded && reflectionLogState.isLoaded;
 
@@ -621,10 +622,16 @@ export default function DashboardPage() {
   }, [isAllLogsLoaded, buildSavePayload, saveDailyLogMutation]);
 
   useEffect(() => {
-    const flushHandler = async () => {
+    const flushHandler = async (event: Event) => {
+      const onComplete = (event as CustomEvent)?.detail?.onComplete;
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = null;
+      }
+      if (pendingSavePromiseRef.current) {
+        try {
+          await pendingSavePromiseRef.current;
+        } catch (_) {}
       }
       if (isDirtyRef.current && isAllLogsLoaded) {
         const currentFingerprint = loadedRecordFingerprintRef.current;
@@ -634,6 +641,7 @@ export default function DashboardPage() {
           console.error("Flush save failed:", e);
         }
       }
+      onComplete?.();
     };
     window.addEventListener("nova-flush-pending-save", flushHandler);
     return () => window.removeEventListener("nova-flush-pending-save", flushHandler);
@@ -646,6 +654,23 @@ export default function DashboardPage() {
   const reflectionLogFields = ['wentWell', 'couldBeBetter', 'learned'];
   
   // Update reflection and auto-save all fields
+  const handleBlurSave = useCallback(() => {
+    if (!isDirtyRef.current || !isAllLogsLoaded) return;
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+    const currentFingerprint = loadedRecordFingerprintRef.current;
+    const savePromise = saveDailyLogMutation.mutateAsync({ ...buildSavePayload(), _expectedFingerprint: currentFingerprint || undefined })
+      .catch(e => console.error("Blur save failed:", e))
+      .finally(() => {
+        if (pendingSavePromiseRef.current === savePromise) {
+          pendingSavePromiseRef.current = null;
+        }
+      });
+    pendingSavePromiseRef.current = savePromise;
+  }, [isAllLogsLoaded, buildSavePayload, saveDailyLogMutation]);
+
   const updateReflection = (field: keyof DailyReflection, value: any) => {
     // Update the appropriate global context based on field type
     if (energyLogFields.includes(field)) {
@@ -805,6 +830,7 @@ export default function DashboardPage() {
                 placeholder="Capture your wins, positive moments, and things you're proud of..."
                 value={reflection.wentWell}
                 onChange={(value) => updateReflection("wentWell", value)}
+                onBlur={handleBlurSave}
                 minHeight="80px"
               />
             </div>
@@ -818,6 +844,7 @@ export default function DashboardPage() {
                 placeholder="Areas for improvement, challenges faced, or things to do differently..."
                 value={reflection.couldBeBetter}
                 onChange={(value) => updateReflection("couldBeBetter", value)}
+                onBlur={handleBlurSave}
                 minHeight="80px"
               />
             </div>
@@ -831,6 +858,7 @@ export default function DashboardPage() {
                 placeholder="Key insights, lessons, or realizations from today..."
                 value={reflection.learned}
                 onChange={(value) => updateReflection("learned", value)}
+                onBlur={handleBlurSave}
                 minHeight="80px"
               />
             </div>
@@ -849,6 +877,7 @@ export default function DashboardPage() {
                   placeholder="Capture your thoughts, ideas and discoveries here..."
                   value={reflection.thoughts}
                   onChange={(value) => updateReflection("thoughts", value)}
+                  onBlur={handleBlurSave}
                   minHeight="80px"
                 />
               </div>
@@ -862,6 +891,7 @@ export default function DashboardPage() {
                   placeholder="Articles, books, or videos you consumed today..."
                   value={reflection.contentConsumed}
                   onChange={(value) => updateReflection("contentConsumed", value)}
+                  onBlur={handleBlurSave}
                   minHeight="80px"
                 />
               </div>
@@ -876,6 +906,7 @@ export default function DashboardPage() {
                 placeholder="Things you want to remember to do later..."
                 value={reflection.todoIdeas}
                 onChange={(value) => updateReflection("todoIdeas", value)}
+                onBlur={handleBlurSave}
                 minHeight="60px"
               />
             </div>
@@ -894,6 +925,7 @@ export default function DashboardPage() {
                 placeholder="Author name..."
                 value={reflection.sourceAuthor}
                 onChange={(e) => updateReflection("sourceAuthor", e.target.value)}
+                onBlur={handleBlurSave}
                 className="w-full bg-background/50 border border-primary/20 rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50"
               />
             </div>
@@ -908,6 +940,7 @@ export default function DashboardPage() {
                 placeholder="URL, book title, article, video, or reference..."
                 value={reflection.sourceMaterial}
                 onChange={(e) => updateReflection("sourceMaterial", e.target.value)}
+                onBlur={handleBlurSave}
                 className="w-full bg-background/50 border border-primary/20 rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50"
               />
             </div>
@@ -921,6 +954,7 @@ export default function DashboardPage() {
                 placeholder="Document your research findings, observations, and raw notes..."
                 value={reflection.researchNote}
                 onChange={(value) => updateReflection("researchNote", value)}
+                onBlur={handleBlurSave}
                 minHeight="80px"
               />
             </div>
@@ -934,6 +968,7 @@ export default function DashboardPage() {
                 placeholder="Summarize key takeaways, revise earlier findings, and consolidate insights..."
                 value={reflection.revisionNote}
                 onChange={(value) => updateReflection("revisionNote", value)}
+                onBlur={handleBlurSave}
                 minHeight="80px"
               />
             </div>
@@ -947,6 +982,7 @@ export default function DashboardPage() {
                 placeholder="Plan next steps, action items, and implementation details..."
                 value={reflection.executionNote}
                 onChange={(value) => updateReflection("executionNote", value)}
+                onBlur={handleBlurSave}
                 minHeight="80px"
               />
             </div>
@@ -965,6 +1001,7 @@ export default function DashboardPage() {
                   placeholder="What three things are you most grateful for today?"
                   value={reflection.gratitude}
                   onChange={(value) => updateReflection("gratitude", value)}
+                  onBlur={handleBlurSave}
                   minHeight="80px"
                 />
               </div>
@@ -980,6 +1017,7 @@ export default function DashboardPage() {
                   placeholder="What three things do you want to accomplish tomorrow?"
                   value={reflection.tomorrowGoals}
                   onChange={(value) => updateReflection("tomorrowGoals", value)}
+                  onBlur={handleBlurSave}
                   minHeight="60px"
                 />
               </div>
@@ -995,6 +1033,7 @@ export default function DashboardPage() {
                   placeholder="What are your three big targets for the year?"
                   value={reflection.annualGoals}
                   onChange={(value) => updateReflection("annualGoals", value)}
+                  onBlur={handleBlurSave}
                   minHeight="80px"
                 />
               </div>
