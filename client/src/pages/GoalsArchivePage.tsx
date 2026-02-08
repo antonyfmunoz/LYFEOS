@@ -4,8 +4,10 @@ import { useQuery } from "@tanstack/react-query";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
 import { useLYFEOS } from "@/lib/context";
+import { useWidgetState } from "@/hooks/use-widget-state";
 import { Archive, Calendar, Clock, Tag, ChevronDown, ChevronRight, FilePlus2, Target, Rocket, ArrowLeft, Eye, Compass, Flame } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "@/hooks/use-toast";
 
 interface GoalTimeframe {
@@ -33,6 +35,10 @@ export default function GoalsArchivePage() {
     queryKey: ["/api/profile"],
     enabled: !!user?.id,
   });
+
+  const [legacyOpen, setLegacyOpen] = useWidgetState('goals.legacy-vision', false);
+  const [fiveYearOpen, setFiveYearOpen] = useWidgetState('goals.5year-vision', false);
+  const [ninetyDayOpen, setNinetyDayOpen] = useWidgetState('goals.90day-vision', false);
 
   // Track expanded folders
   const [expandedFolders, setExpandedFolders] = useState<string[]>(['vision']);
@@ -201,37 +207,54 @@ export default function GoalsArchivePage() {
         </Button>
       </div>
 
-      <div className="space-y-3 mb-6">
-        <div className="glassmorphic rounded-xl p-4 border border-primary/20">
-          <div className="flex items-center gap-2 mb-2">
-            <Eye className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-medium text-primary uppercase tracking-wider">Legacy Vision</h3>
-          </div>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {profileData?.vision10YearLegacy || "Not set yet — complete your onboarding missions to define your legacy vision."}
-          </p>
-        </div>
-        <div className="glassmorphic rounded-xl p-4 border border-primary/20">
-          <div className="flex items-center gap-2 mb-2">
-            <Compass className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-medium text-primary uppercase tracking-wider">5-Year Vision</h3>
-          </div>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {profileData?.vision5Year || "Not set yet — complete your onboarding missions to define your 5-year vision."}
-          </p>
-        </div>
-        <div className="glassmorphic rounded-xl p-4 border border-primary/20">
-          <div className="flex items-center gap-2 mb-2">
-            <Flame className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-medium text-primary uppercase tracking-wider">90-Day Vision</h3>
-          </div>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {profileData?.vision90Day || "Not set yet — complete your onboarding missions to define your 90-day vision."}
-          </p>
-        </div>
+      <div className="space-y-2 mb-6">
+        <Collapsible open={legacyOpen} onOpenChange={setLegacyOpen}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors group">
+            <div className="flex items-center gap-2">
+              <Eye className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium text-foreground">Legacy Vision</span>
+            </div>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${legacyOpen ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="p-3 pt-2">
+              <span className="text-sm text-foreground">{profileData?.vision10YearLegacy || "\u2014"}</span>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+
+        <Collapsible open={fiveYearOpen} onOpenChange={setFiveYearOpen}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors group">
+            <div className="flex items-center gap-2">
+              <Compass className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium text-foreground">5-Year Vision</span>
+            </div>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${fiveYearOpen ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="p-3 pt-2">
+              <span className="text-sm text-foreground">{profileData?.vision5Year || "\u2014"}</span>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+
+        <Collapsible open={ninetyDayOpen} onOpenChange={setNinetyDayOpen}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors group">
+            <div className="flex items-center gap-2">
+              <Flame className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium text-foreground">90-Day Vision</span>
+            </div>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${ninetyDayOpen ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="p-3 pt-2">
+              <span className="text-sm text-foreground">{profileData?.vision90Day || "\u2014"}</span>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       </div>
-      
-      {goalCategories.some(category => category.entries.length > 0) ? (
+
+      {goalCategories.some(category => category.entries.length > 0) && (
         <div className="space-y-4">
           {goalCategories.map((category) => (
             <div key={category.timeframe} className="glassmorphic rounded-xl overflow-hidden border border-slate-700/50">
@@ -257,72 +280,51 @@ export default function GoalsArchivePage() {
               
               {expandedFolders.includes(category.timeframe) && (
                 <div className="px-4 pb-4 space-y-3 pt-2 border-t border-slate-700/50">
-                  {category.entries.length > 0 ? (
-                    category.entries
-                      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-                      .map((entry) => (
-                        <div 
-                          key={entry.id}
-                          className="p-3 rounded-lg bg-card/30 hover:bg-card/50 transition-colors border border-slate-700/30 cursor-pointer"
-                          onClick={() => navigate(`/mission-page/${entry.slug}`)}
-                        >
-                          <div className="flex justify-between items-center mb-2">
-                            <div className="flex items-center">
-                              {category.timeframe === 'vision' ? (
-                                <Rocket className="h-4 w-4 text-emerald-400 mr-2" />
-                              ) : (
-                                <Target className="h-4 w-4 text-emerald-400 mr-2" />
-                              )}
-                              <h3 className="font-medium">{entry.title}</h3>
-                            </div>
-                            <div className="flex items-center">
-                              <Clock className="h-3 w-3 mr-1 text-[#7DAAB2]" />
-                              <span className="text-xs text-[#7DAAB2] font-mono">
-                                {new Date(entry.updatedAt).toLocaleDateString()}
-                              </span>
-                            </div>
+                  {category.entries
+                    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+                    .map((entry) => (
+                      <div 
+                        key={entry.id}
+                        className="p-3 rounded-lg bg-card/30 hover:bg-card/50 transition-colors border border-slate-700/30 cursor-pointer"
+                        onClick={() => navigate(`/mission-page/${entry.slug}`)}
+                      >
+                        <div className="flex justify-between items-center mb-2">
+                          <div className="flex items-center">
+                            {category.timeframe === 'vision' ? (
+                              <Rocket className="h-4 w-4 text-emerald-400 mr-2" />
+                            ) : (
+                              <Target className="h-4 w-4 text-emerald-400 mr-2" />
+                            )}
+                            <h3 className="font-medium">{entry.title}</h3>
                           </div>
-                          
-                          {/* Tags */}
-                          <div className="flex flex-wrap gap-2 mb-2">
-                            {entry.tags.map((tag, idx) => (
-                              <div key={idx} className="text-xs px-2 py-0.5 rounded-full bg-slate-700/50 text-slate-300 flex items-center">
-                                <Tag className="h-3 w-3 mr-1" />
-                                {tag}
-                              </div>
-                            ))}
+                          <div className="flex items-center">
+                            <Clock className="h-3 w-3 mr-1 text-[#7DAAB2]" />
+                            <span className="text-xs text-[#7DAAB2] font-mono">
+                              {new Date(entry.updatedAt).toLocaleDateString()}
+                            </span>
                           </div>
-                          
-                          <p className="text-sm text-[#7DAAB2] line-clamp-2">
-                            {entry.content.length > 150 
-                              ? entry.content.substring(0, 150) + '...' 
-                              : entry.content}
-                          </p>
                         </div>
-                      ))
-                  ) : (
-                    <div className="text-center py-6">
-                      <p className="text-[#7DAAB2]">No {category.title.toLowerCase()} found.</p>
-                    </div>
-                  )}
+                        
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {entry.tags.map((tag, idx) => (
+                            <div key={idx} className="text-xs px-2 py-0.5 rounded-full bg-slate-700/50 text-slate-300 flex items-center">
+                              <Tag className="h-3 w-3 mr-1" />
+                              {tag}
+                            </div>
+                          ))}
+                        </div>
+                        
+                        <p className="text-sm text-[#7DAAB2] line-clamp-2">
+                          {entry.content.length > 150 
+                            ? entry.content.substring(0, 150) + '...' 
+                            : entry.content}
+                        </p>
+                      </div>
+                    ))}
                 </div>
               )}
             </div>
           ))}
-        </div>
-      ) : (
-        <div className="text-center py-16 glassmorphic rounded-xl border border-primary/20 flex flex-col items-center justify-center">
-          <Archive className="h-16 w-16 text-primary/40 mb-4" />
-          <h3 className="text-xl font-medium mb-2">No Goals Documents Yet</h3>
-          <p className="text-[#7DAAB2] mb-4 max-w-md">
-            Document your life vision and set goals at different time horizons to guide your personal development journey.
-          </p>
-          <Button 
-            onClick={createNewGoalEntry}
-            className="bg-primary/10 hover:bg-primary/20 text-primary border border-primary/50"
-          >
-            Create Your First Goals
-          </Button>
         </div>
       )}
     </div>
