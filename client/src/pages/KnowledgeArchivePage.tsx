@@ -1,11 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useLocation } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
 import { Archive, ChevronDown, ChevronRight, BookOpen, FileText, Search, Play, Link2, ArrowLeft, Calendar, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface DailyLog {
   id: number;
@@ -55,22 +54,40 @@ export default function KnowledgeArchivePage() {
     enabled: !!user?.id,
   });
 
-  const { data: dismissedData } = useQuery<Array<{ id: number; author: string; sourceMaterial: string | null }>>({
-    queryKey: ['/api/dismissed-knowledge'],
-    enabled: !!user?.id,
-  });
+  const [dismissedKeys, setDismissedKeys] = useState<Set<string>>(new Set());
 
-  const dismissMutation = useMutation({
-    mutationFn: async (params: { author: string; sourceMaterial?: string | null }) => {
-      return apiRequest<{ id: number; author: string; sourceMaterial: string | null }>('/api/dismissed-knowledge', { method: 'POST', body: JSON.stringify(params) });
-    },
-    onSuccess: (newEntry) => {
-      queryClient.setQueryData<Array<{ id: number; author: string; sourceMaterial: string | null }>>(
-        ['/api/dismissed-knowledge'],
-        (old) => [...(old || []), newEntry]
-      );
-    },
-  });
+  useEffect(() => {
+    if (!user?.id) return;
+    fetch('/api/dismissed-knowledge', { credentials: 'include' })
+      .then(res => res.json())
+      .then((data: Array<{ author: string; sourceMaterial: string | null }>) => {
+        const keys = new Set<string>();
+        data.forEach(d => {
+          if (d.sourceMaterial) {
+            keys.add(`${d.author}::${d.sourceMaterial}`);
+          } else {
+            keys.add(`author::${d.author}`);
+          }
+        });
+        setDismissedKeys(keys);
+      })
+      .catch(() => {});
+  }, [user?.id]);
+
+  const dismissEntry = useCallback((author: string, sourceMaterial?: string | null) => {
+    const key = sourceMaterial ? `${author}::${sourceMaterial}` : `author::${author}`;
+    setDismissedKeys(prev => {
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+    fetch('/api/dismissed-knowledge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ author, sourceMaterial: sourceMaterial ?? null }),
+    }).catch(() => {});
+  }, []);
 
   const toggleAuthor = (author: string) => {
     setExpandedAuthors(prev => {
@@ -99,21 +116,6 @@ export default function KnowledgeArchivePage() {
     });
   };
 
-  const dismissedSet = useMemo(() => {
-    const set = new Set<string>();
-    dismissedData?.forEach(d => {
-      if (d.sourceMaterial) {
-        set.add(`${d.author}::${d.sourceMaterial}`);
-      } else {
-        set.add(`author::${d.author}`);
-      }
-    });
-    return set;
-  }, [dismissedData]);
-
-  const isSourceDismissed = (author: string, source: string) => dismissedSet.has(`${author}::${source}`);
-  const isAuthorDismissed = (author: string) => dismissedSet.has(`author::${author}`);
-
   const authorGroups: AuthorGroup[] = useMemo(() => {
     if (!logsData?.logs) return [];
 
@@ -132,8 +134,8 @@ export default function KnowledgeArchivePage() {
       const author = log.sourceAuthor?.trim() || 'Unknown Author';
       const source = log.sourceMaterial?.trim() || 'Untitled Source';
 
-      if (isAuthorDismissed(author)) return;
-      if (isSourceDismissed(author, source)) return;
+      if (dismissedKeys.has(`author::${author}`)) return;
+      if (dismissedKeys.has(`${author}::${source}`)) return;
 
       if (!authorMap[author]) authorMap[author] = {};
       if (!authorMap[author][source]) authorMap[author][source] = [];
@@ -161,7 +163,7 @@ export default function KnowledgeArchivePage() {
             entries: authorMap[author][source].sort((a, b) => b.date.localeCompare(a.date)),
           })),
       }));
-  }, [logsData, dismissedSet]);
+  }, [logsData, dismissedKeys]);
 
   const filteredGroups = useMemo(() => {
     if (!searchQuery.trim()) return authorGroups;
@@ -271,7 +273,7 @@ export default function KnowledgeArchivePage() {
                       title={`Hide all entries by ${group.author}`}
                       onClick={(e) => {
                         e.stopPropagation();
-                        dismissMutation.mutate({ author: group.author });
+                        dismissEntry(group.author);
                       }}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -309,7 +311,7 @@ export default function KnowledgeArchivePage() {
                                 title={`Hide "${source.sourceMaterial}"`}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  dismissMutation.mutate({ author: group.author, sourceMaterial: source.sourceMaterial });
+                                  dismissEntry(group.author, source.sourceMaterial);
                                 }}
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
