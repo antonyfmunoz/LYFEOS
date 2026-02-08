@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
-import { Archive, ChevronDown, ChevronRight, BookOpen, FileText, Search, Play, Link2, ArrowLeft, Calendar } from "lucide-react";
+import { Archive, ChevronDown, ChevronRight, BookOpen, FileText, Search, Play, Link2, ArrowLeft, Calendar, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface DailyLog {
   id: number;
@@ -54,6 +55,20 @@ export default function KnowledgeArchivePage() {
     enabled: !!user?.id,
   });
 
+  const { data: dismissedData } = useQuery<Array<{ id: number; author: string; sourceMaterial: string | null }>>({
+    queryKey: ['/api/dismissed-knowledge'],
+    enabled: !!user?.id,
+  });
+
+  const dismissMutation = useMutation({
+    mutationFn: async (params: { author: string; sourceMaterial?: string | null }) => {
+      return apiRequest('POST', '/api/dismissed-knowledge', params);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/dismissed-knowledge'] });
+    },
+  });
+
   const toggleAuthor = (author: string) => {
     setExpandedAuthors(prev => {
       const next = new Set(prev);
@@ -81,6 +96,21 @@ export default function KnowledgeArchivePage() {
     });
   };
 
+  const dismissedSet = useMemo(() => {
+    const set = new Set<string>();
+    dismissedData?.forEach(d => {
+      if (d.sourceMaterial) {
+        set.add(`${d.author}::${d.sourceMaterial}`);
+      } else {
+        set.add(`author::${d.author}`);
+      }
+    });
+    return set;
+  }, [dismissedData]);
+
+  const isSourceDismissed = (author: string, source: string) => dismissedSet.has(`${author}::${source}`);
+  const isAuthorDismissed = (author: string) => dismissedSet.has(`author::${author}`);
+
   const authorGroups: AuthorGroup[] = useMemo(() => {
     if (!logsData?.logs) return [];
 
@@ -98,6 +128,9 @@ export default function KnowledgeArchivePage() {
     researchLogs.forEach(log => {
       const author = log.sourceAuthor?.trim() || 'Unknown Author';
       const source = log.sourceMaterial?.trim() || 'Untitled Source';
+
+      if (isAuthorDismissed(author)) return;
+      if (isSourceDismissed(author, source)) return;
 
       if (!authorMap[author]) authorMap[author] = {};
       if (!authorMap[author][source]) authorMap[author][source] = [];
@@ -125,7 +158,7 @@ export default function KnowledgeArchivePage() {
             entries: authorMap[author][source].sort((a, b) => b.date.localeCompare(a.date)),
           })),
       }));
-  }, [logsData]);
+  }, [logsData, dismissedSet]);
 
   const filteredGroups = useMemo(() => {
     if (!searchQuery.trim()) return authorGroups;
@@ -226,9 +259,21 @@ export default function KnowledgeArchivePage() {
                     <BookOpen className="h-4 w-4 text-primary flex-shrink-0" />
                     <h2 className="text-base font-medium">{group.author}</h2>
                   </div>
-                  <span className="text-xs text-[#7DAAB2] px-2 py-1 bg-slate-800/50 rounded-full">
-                    {sourceCount} {sourceCount === 1 ? 'source' : 'sources'} · {entryCount} {entryCount === 1 ? 'entry' : 'entries'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-[#7DAAB2] px-2 py-1 bg-slate-800/50 rounded-full">
+                      {sourceCount} {sourceCount === 1 ? 'source' : 'sources'} · {entryCount} {entryCount === 1 ? 'entry' : 'entries'}
+                    </span>
+                    <button
+                      className="p-1.5 rounded-md hover:bg-red-500/20 text-muted-foreground hover:text-red-400 transition-colors"
+                      title={`Hide all entries by ${group.author}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        dismissMutation.mutate({ author: group.author });
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
 
                 {isAuthorExpanded && (
@@ -252,9 +297,21 @@ export default function KnowledgeArchivePage() {
                               <Link2 className="h-3.5 w-3.5 text-primary/70 flex-shrink-0" />
                               <span className="text-sm">{source.sourceMaterial}</span>
                             </div>
-                            <span className="text-xs text-[#7DAAB2] px-1.5 py-0.5 bg-slate-800/50 rounded">
-                              {source.entries.length}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs text-[#7DAAB2] px-1.5 py-0.5 bg-slate-800/50 rounded">
+                                {source.entries.length}
+                              </span>
+                              <button
+                                className="p-1 rounded-md hover:bg-red-500/20 text-muted-foreground hover:text-red-400 transition-colors"
+                                title={`Hide "${source.sourceMaterial}"`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  dismissMutation.mutate({ author: group.author, sourceMaterial: source.sourceMaterial });
+                                }}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           </div>
 
                           {isSourceExpanded && (

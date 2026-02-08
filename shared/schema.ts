@@ -1139,6 +1139,22 @@ export type InsertConversation = z.infer<typeof insertConversationSchema>;
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 
+export const dismissedKnowledge = pgTable("dismissed_knowledge", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  author: text("author").notNull(),
+  sourceMaterial: text("source_material"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertDismissedKnowledgeSchema = createInsertSchema(dismissedKnowledge).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type DismissedKnowledge = typeof dismissedKnowledge.$inferSelect;
+export type InsertDismissedKnowledge = z.infer<typeof insertDismissedKnowledgeSchema>;
+
 export const widgetStates = pgTable("widget_states", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id).unique(),

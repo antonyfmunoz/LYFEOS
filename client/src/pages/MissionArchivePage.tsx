@@ -32,16 +32,29 @@ interface DayData {
   missions: Quest[];
 }
 
+interface WeekData {
+  weekKey: string;
+  weekLabel: string;
+  weekNum: number;
+  days: DayData[];
+}
+
 interface MonthData {
   monthKey: string;
   monthName: string;
   monthNum: number;
-  days: DayData[];
+  weeks: WeekData[];
 }
 
 interface YearData {
   year: string;
   months: MonthData[];
+}
+
+function getWeekOfMonth(date: Date): number {
+  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+  const firstDayOfWeek = firstDay.getDay();
+  return Math.ceil((date.getDate() + firstDayOfWeek) / 7);
 }
 
 function MissionCard({ mission }: { mission: Quest }) {
@@ -193,8 +206,10 @@ export default function MissionArchivePage() {
       });
   }, [quests]);
 
+  const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
+
   const hierarchicalData = useMemo((): YearData[] => {
-    const yearMap: { [year: string]: { [monthKey: string]: { [dayKey: string]: Quest[] } } } = {};
+    const yearMap: { [year: string]: { [monthKey: string]: { [weekKey: string]: { [dayKey: string]: Quest[] } } } } = {};
     
     archivedMissions.forEach(mission => {
       const completedDate = new Date(mission.completedAt!);
@@ -203,17 +218,14 @@ export default function MissionArchivePage() {
       const monthKey = `${year}-${String(monthNum + 1).padStart(2, '0')}`;
       const dayNum = completedDate.getDate();
       const dayKey = `${year}-${String(monthNum + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+      const weekNum = getWeekOfMonth(completedDate);
+      const weekKey = `${monthKey}-W${weekNum}`;
       
-      if (!yearMap[year]) {
-        yearMap[year] = {};
-      }
-      if (!yearMap[year][monthKey]) {
-        yearMap[year][monthKey] = {};
-      }
-      if (!yearMap[year][monthKey][dayKey]) {
-        yearMap[year][monthKey][dayKey] = [];
-      }
-      yearMap[year][monthKey][dayKey].push(mission);
+      if (!yearMap[year]) yearMap[year] = {};
+      if (!yearMap[year][monthKey]) yearMap[year][monthKey] = {};
+      if (!yearMap[year][monthKey][weekKey]) yearMap[year][monthKey][weekKey] = {};
+      if (!yearMap[year][monthKey][weekKey][dayKey]) yearMap[year][monthKey][weekKey][dayKey] = [];
+      yearMap[year][monthKey][weekKey][dayKey].push(mission);
     });
     
     const years: YearData[] = Object.keys(yearMap)
@@ -225,28 +237,24 @@ export default function MissionArchivePage() {
             const monthNum = parseInt(monthKey.split('-')[1]) - 1;
             const monthName = new Date(parseInt(year), monthNum, 1).toLocaleDateString('en-US', { month: 'long' });
             
-            const days: DayData[] = Object.keys(yearMap[year][monthKey])
+            const weeks: WeekData[] = Object.keys(yearMap[year][monthKey])
               .sort((a, b) => b.localeCompare(a))
-              .map(dayKey => {
-                const [, , dayStr] = dayKey.split('-');
-                const dayNum = parseInt(dayStr);
-                const sampleDate = new Date(parseInt(year), monthNum, dayNum);
-                const weekday = sampleDate.toLocaleDateString('en-US', { weekday: 'long' });
-                const displayLabel = `${weekday}, ${monthName} ${dayNum}`;
-                
-                return {
-                  dayKey,
-                  displayLabel,
-                  missions: yearMap[year][monthKey][dayKey]
-                };
+              .map(weekKey => {
+                const weekNum = parseInt(weekKey.split('-W')[1]);
+                const days: DayData[] = Object.keys(yearMap[year][monthKey][weekKey])
+                  .sort((a, b) => b.localeCompare(a))
+                  .map(dayKey => {
+                    const [, , dayStr] = dayKey.split('-');
+                    const dayNum = parseInt(dayStr);
+                    const sampleDate = new Date(parseInt(year), monthNum, dayNum);
+                    const weekday = sampleDate.toLocaleDateString('en-US', { weekday: 'long' });
+                    const displayLabel = `${weekday}, ${monthName} ${dayNum}`;
+                    return { dayKey, displayLabel, missions: yearMap[year][monthKey][weekKey][dayKey] };
+                  });
+                return { weekKey, weekLabel: `Week ${weekNum}`, weekNum, days };
               });
             
-            return {
-              monthKey,
-              monthName,
-              monthNum,
-              days
-            };
+            return { monthKey, monthName, monthNum, weeks };
           });
         
         return { year, months };
@@ -279,6 +287,18 @@ export default function MissionArchivePage() {
     });
   };
 
+  const toggleWeek = (weekKey: string) => {
+    setExpandedWeeks(prev => {
+      const next = new Set(prev);
+      if (next.has(weekKey)) {
+        next.delete(weekKey);
+      } else {
+        next.add(weekKey);
+      }
+      return next;
+    });
+  };
+
   const toggleDay = (dayKey: string) => {
     setExpandedDays(prev => {
       const next = new Set(prev);
@@ -294,8 +314,10 @@ export default function MissionArchivePage() {
   const countMissionsInYear = (yearData: YearData) => {
     let count = 0;
     yearData.months.forEach(month => {
-      month.days.forEach(day => {
-        count += day.missions.length;
+      month.weeks.forEach(week => {
+        week.days.forEach(day => {
+          count += day.missions.length;
+        });
       });
     });
     return count;
@@ -303,7 +325,17 @@ export default function MissionArchivePage() {
 
   const countMissionsInMonth = (monthData: MonthData) => {
     let count = 0;
-    monthData.days.forEach(day => {
+    monthData.weeks.forEach(week => {
+      week.days.forEach(day => {
+        count += day.missions.length;
+      });
+    });
+    return count;
+  };
+
+  const countMissionsInWeek = (weekData: WeekData) => {
+    let count = 0;
+    weekData.days.forEach(day => {
       count += day.missions.length;
     });
     return count;
@@ -382,24 +414,25 @@ export default function MissionArchivePage() {
                           
                           <CollapsibleContent>
                             <div className="ml-6 mt-2 space-y-2">
-                              {monthData.days.map((dayData) => {
-                                const isDayExpanded = expandedDays.has(dayData.dayKey);
+                              {monthData.weeks.map((weekData) => {
+                                const isWeekExpanded = expandedWeeks.has(weekData.weekKey);
+                                const weekMissionCount = countMissionsInWeek(weekData);
                                 
                                 return (
-                                  <Collapsible key={dayData.dayKey} open={isDayExpanded} onOpenChange={() => toggleDay(dayData.dayKey)}>
+                                  <Collapsible key={weekData.weekKey} open={isWeekExpanded} onOpenChange={() => toggleWeek(weekData.weekKey)}>
                                     <CollapsibleTrigger asChild>
                                       <div className="glassmorphic rounded-xl p-3 cursor-pointer hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition border border-primary/10 bg-primary/3">
                                         <div className="flex items-center justify-between">
                                           <div className="flex items-center gap-3">
-                                            {isDayExpanded ? (
+                                            {isWeekExpanded ? (
                                               <ChevronDown className="h-4 w-4 text-primary" />
                                             ) : (
                                               <ChevronRight className="h-4 w-4 text-primary" />
                                             )}
-                                            <h4 className="text-base">{dayData.displayLabel}</h4>
+                                            <h4 className="text-base">{weekData.weekLabel}</h4>
                                           </div>
                                           <span className="text-xs text-[#7DAAB2] px-2 py-1 bg-slate-800/50 rounded-full">
-                                            {dayData.missions.length} {dayData.missions.length === 1 ? 'mission' : 'missions'}
+                                            {weekMissionCount} {weekMissionCount === 1 ? 'mission' : 'missions'}
                                           </span>
                                         </div>
                                       </div>
@@ -407,9 +440,39 @@ export default function MissionArchivePage() {
                                     
                                     <CollapsibleContent>
                                       <div className="ml-6 mt-2 space-y-2">
-                                        {dayData.missions.map((mission) => (
-                                          <MissionCard key={mission.id} mission={mission} />
-                                        ))}
+                                        {weekData.days.map((dayData) => {
+                                          const isDayExpanded = expandedDays.has(dayData.dayKey);
+                                          
+                                          return (
+                                            <Collapsible key={dayData.dayKey} open={isDayExpanded} onOpenChange={() => toggleDay(dayData.dayKey)}>
+                                              <CollapsibleTrigger asChild>
+                                                <div className="glassmorphic rounded-xl p-3 cursor-pointer hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition border border-primary/5 bg-primary/2">
+                                                  <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                      {isDayExpanded ? (
+                                                        <ChevronDown className="h-3.5 w-3.5 text-primary" />
+                                                      ) : (
+                                                        <ChevronRight className="h-3.5 w-3.5 text-primary" />
+                                                      )}
+                                                      <h5 className="text-sm">{dayData.displayLabel}</h5>
+                                                    </div>
+                                                    <span className="text-xs text-[#7DAAB2] px-2 py-1 bg-slate-800/50 rounded-full">
+                                                      {dayData.missions.length} {dayData.missions.length === 1 ? 'mission' : 'missions'}
+                                                    </span>
+                                                  </div>
+                                                </div>
+                                              </CollapsibleTrigger>
+                                              
+                                              <CollapsibleContent>
+                                                <div className="ml-6 mt-2 space-y-2">
+                                                  {dayData.missions.map((mission) => (
+                                                    <MissionCard key={mission.id} mission={mission} />
+                                                  ))}
+                                                </div>
+                                              </CollapsibleContent>
+                                            </Collapsible>
+                                          );
+                                        })}
                                       </div>
                                     </CollapsibleContent>
                                   </Collapsible>

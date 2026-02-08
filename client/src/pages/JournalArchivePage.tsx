@@ -41,16 +41,29 @@ interface DayData {
   log: DailyLog;
 }
 
+interface WeekData {
+  weekKey: string;
+  weekLabel: string;
+  weekNum: number;
+  days: DayData[];
+}
+
 interface MonthData {
   monthKey: string;
   monthName: string;
   monthNum: number;
-  days: DayData[];
+  weeks: WeekData[];
 }
 
 interface YearData {
   year: string;
   months: MonthData[];
+}
+
+function getWeekOfMonth(date: Date): number {
+  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+  const firstDayOfWeek = firstDay.getDay();
+  return Math.ceil((date.getDate() + firstDayOfWeek) / 7);
 }
 
 interface LogField {
@@ -223,11 +236,13 @@ export default function JournalArchivePage() {
     return new Date(year, month - 1, day);
   };
 
+  const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
+
   const hierarchicalData = useMemo((): YearData[] => {
     if (!logsData?.logs) return [];
     
     const today = getLocalDateString();
-    const yearMap: { [year: string]: { [monthKey: string]: { [dayKey: string]: DailyLog } } } = {};
+    const yearMap: { [year: string]: { [monthKey: string]: { [weekKey: string]: { [dayKey: string]: DailyLog } } } } = {};
     
     logsData.logs.filter(log => log.date !== today).forEach(log => {
       const date = parseLocalDate(log.date);
@@ -236,14 +251,13 @@ export default function JournalArchivePage() {
       const monthKey = `${year}-${String(monthNum + 1).padStart(2, '0')}`;
       const dayNum = date.getDate();
       const dayKey = `${year}-${String(monthNum + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+      const weekNum = getWeekOfMonth(date);
+      const weekKey = `${monthKey}-W${weekNum}`;
       
-      if (!yearMap[year]) {
-        yearMap[year] = {};
-      }
-      if (!yearMap[year][monthKey]) {
-        yearMap[year][monthKey] = {};
-      }
-      yearMap[year][monthKey][dayKey] = log;
+      if (!yearMap[year]) yearMap[year] = {};
+      if (!yearMap[year][monthKey]) yearMap[year][monthKey] = {};
+      if (!yearMap[year][monthKey][weekKey]) yearMap[year][monthKey][weekKey] = {};
+      yearMap[year][monthKey][weekKey][dayKey] = log;
     });
     
     const years: YearData[] = Object.keys(yearMap)
@@ -255,28 +269,24 @@ export default function JournalArchivePage() {
             const monthNum = parseInt(monthKey.split('-')[1]) - 1;
             const monthName = new Date(parseInt(year), monthNum, 1).toLocaleDateString('en-US', { month: 'long' });
             
-            const days: DayData[] = Object.keys(yearMap[year][monthKey])
+            const weeks: WeekData[] = Object.keys(yearMap[year][monthKey])
               .sort((a, b) => b.localeCompare(a))
-              .map(dayKey => {
-                const [, , dayStr] = dayKey.split('-');
-                const dayNum = parseInt(dayStr);
-                const sampleDate = new Date(parseInt(year), monthNum, dayNum);
-                const weekday = sampleDate.toLocaleDateString('en-US', { weekday: 'long' });
-                const displayLabel = `${weekday}, ${monthName} ${dayNum}`;
-                
-                return {
-                  dayKey,
-                  displayLabel,
-                  log: yearMap[year][monthKey][dayKey]
-                };
+              .map(weekKey => {
+                const weekNum = parseInt(weekKey.split('-W')[1]);
+                const days: DayData[] = Object.keys(yearMap[year][monthKey][weekKey])
+                  .sort((a, b) => b.localeCompare(a))
+                  .map(dayKey => {
+                    const [, , dayStr] = dayKey.split('-');
+                    const dayNum = parseInt(dayStr);
+                    const sampleDate = new Date(parseInt(year), monthNum, dayNum);
+                    const weekday = sampleDate.toLocaleDateString('en-US', { weekday: 'long' });
+                    const displayLabel = `${weekday}, ${monthName} ${dayNum}`;
+                    return { dayKey, displayLabel, log: yearMap[year][monthKey][weekKey][dayKey] };
+                  });
+                return { weekKey, weekLabel: `Week ${weekNum}`, weekNum, days };
               });
             
-            return {
-              monthKey,
-              monthName,
-              monthNum,
-              days
-            };
+            return { monthKey, monthName, monthNum, weeks };
           });
         
         return { year, months };
@@ -309,16 +319,34 @@ export default function JournalArchivePage() {
     });
   };
 
+  const toggleWeek = (weekKey: string) => {
+    setExpandedWeeks(prev => {
+      const next = new Set(prev);
+      if (next.has(weekKey)) {
+        next.delete(weekKey);
+      } else {
+        next.add(weekKey);
+      }
+      return next;
+    });
+  };
+
   const countEntriesInYear = (yearData: YearData) => {
     let count = 0;
     yearData.months.forEach(month => {
-      count += month.days.length;
+      month.weeks.forEach(week => {
+        count += week.days.length;
+      });
     });
     return count;
   };
 
   const countEntriesInMonth = (monthData: MonthData) => {
-    return monthData.days.length;
+    let count = 0;
+    monthData.weeks.forEach(week => {
+      count += week.days.length;
+    });
+    return count;
   };
 
   return (
@@ -398,9 +426,39 @@ export default function JournalArchivePage() {
                           
                           <CollapsibleContent>
                             <div className="ml-6 mt-2 space-y-2">
-                              {monthData.days.map((dayData) => (
-                                <LogCard key={dayData.dayKey} log={dayData.log} />
-                              ))}
+                              {monthData.weeks.map((weekData) => {
+                                const isWeekExpanded = expandedWeeks.has(weekData.weekKey);
+                                
+                                return (
+                                  <Collapsible key={weekData.weekKey} open={isWeekExpanded} onOpenChange={() => toggleWeek(weekData.weekKey)}>
+                                    <CollapsibleTrigger asChild>
+                                      <div className="glassmorphic rounded-xl p-3 cursor-pointer hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition border border-primary/10 bg-primary/3">
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center gap-3">
+                                            {isWeekExpanded ? (
+                                              <ChevronDown className="h-4 w-4 text-primary" />
+                                            ) : (
+                                              <ChevronRight className="h-4 w-4 text-primary" />
+                                            )}
+                                            <h4 className="text-base">{weekData.weekLabel}</h4>
+                                          </div>
+                                          <span className="text-xs text-[#7DAAB2] px-2 py-1 bg-slate-800/50 rounded-full">
+                                            {weekData.days.length} {weekData.days.length === 1 ? 'entry' : 'entries'}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </CollapsibleTrigger>
+                                    
+                                    <CollapsibleContent>
+                                      <div className="ml-6 mt-2 space-y-2">
+                                        {weekData.days.map((dayData) => (
+                                          <LogCard key={dayData.dayKey} log={dayData.log} />
+                                        ))}
+                                      </div>
+                                    </CollapsibleContent>
+                                  </Collapsible>
+                                );
+                              })}
                             </div>
                           </CollapsibleContent>
                         </Collapsible>

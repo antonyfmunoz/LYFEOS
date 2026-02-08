@@ -23,7 +23,8 @@ import {
   mediaItems, type MediaItem, type InsertMediaItem,
   mediaAlbums, type MediaAlbum, type InsertMediaAlbum,
   widgetStates, type WidgetStates,
-  pushSubscriptions, type PushSubscription, type InsertPushSubscription
+  pushSubscriptions, type PushSubscription, type InsertPushSubscription,
+  dismissedKnowledge, type DismissedKnowledge, type InsertDismissedKnowledge
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, isNull, isNotNull, gt, lt } from "drizzle-orm";
@@ -222,6 +223,10 @@ export interface IStorage {
   
   getWidgetStates(userId: number): Promise<Record<string, boolean>>;
   setWidgetState(userId: number, widgetId: string, isOpen: boolean): Promise<Record<string, boolean>>;
+
+  getDismissedKnowledge(userId: number): Promise<DismissedKnowledge[]>;
+  dismissKnowledgeEntry(entry: InsertDismissedKnowledge): Promise<DismissedKnowledge>;
+  undismissKnowledgeEntry(id: number, userId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1840,6 +1845,21 @@ export class DatabaseStorage implements IStorage {
       await db.insert(widgetStates).values({ userId, states: newStates });
       return newStates;
     }
+  }
+
+  async getDismissedKnowledge(userId: number): Promise<DismissedKnowledge[]> {
+    return db.select().from(dismissedKnowledge).where(eq(dismissedKnowledge.userId, userId));
+  }
+
+  async dismissKnowledgeEntry(entry: InsertDismissedKnowledge): Promise<DismissedKnowledge> {
+    const [result] = await db.insert(dismissedKnowledge).values(entry).returning();
+    return result;
+  }
+
+  async undismissKnowledgeEntry(id: number, userId: number): Promise<void> {
+    await db.delete(dismissedKnowledge).where(
+      and(eq(dismissedKnowledge.id, id), eq(dismissedKnowledge.userId, userId))
+    );
   }
 }
 

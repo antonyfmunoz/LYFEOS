@@ -4396,6 +4396,46 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
     }
   });
 
+  app.get("/api/dismissed-knowledge", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const entries = await storage.getDismissedKnowledge(userId);
+      return res.json(entries);
+    } catch (error) {
+      console.error("Error fetching dismissed knowledge:", error);
+      return res.status(500).json({ error: "Failed to fetch dismissed knowledge" });
+    }
+  });
+
+  app.post("/api/dismissed-knowledge", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const schema = z.object({ author: z.string().min(1), sourceMaterial: z.string().nullable().optional() });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "author is required" });
+      }
+      const entry = await storage.dismissKnowledgeEntry({ userId, author: parsed.data.author, sourceMaterial: parsed.data.sourceMaterial ?? null });
+      return res.json(entry);
+    } catch (error) {
+      console.error("Error dismissing knowledge entry:", error);
+      return res.status(500).json({ error: "Failed to dismiss knowledge entry" });
+    }
+  });
+
+  app.delete("/api/dismissed-knowledge/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+      await storage.undismissKnowledgeEntry(id, userId);
+      return res.json({ success: true });
+    } catch (error) {
+      console.error("Error undismissing knowledge entry:", error);
+      return res.status(500).json({ error: "Failed to undismiss knowledge entry" });
+    }
+  });
+
   // Register AI Chat routes
   registerChatRoutes(app);
 
