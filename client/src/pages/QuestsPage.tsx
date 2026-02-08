@@ -18,6 +18,7 @@ import { Switch } from "@/components/ui/switch";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -490,32 +491,30 @@ export default function QuestsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="create-difficulty">Difficulty Rank</Label>
-                  <select
-                    id="create-difficulty"
-                    value={createFormData.difficulty}
-                    onChange={(e) => setCreateFormData(prev => ({ ...prev, difficulty: e.target.value }))}
-                    className="flex h-10 w-full rounded-md border border-input bg-background/50 border-primary/30 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none"
-                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='hsl(var(--primary))' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
-                  >
-                    {DIFFICULTY_RANKS.map(r => (
-                      <option key={r.value} value={r.value}>{r.label}</option>
-                    ))}
-                  </select>
+                  <Label>Difficulty Rank</Label>
+                  <Select value={createFormData.difficulty} onValueChange={(val) => setCreateFormData(prev => ({ ...prev, difficulty: val }))}>
+                    <SelectTrigger className="bg-background/50 border-primary/30">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DIFFICULTY_RANKS.map(r => (
+                        <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="create-category">Category</Label>
-                  <select
-                    id="create-category"
-                    value={createFormData.category}
-                    onChange={(e) => setCreateFormData(prev => ({ ...prev, category: e.target.value }))}
-                    className="flex h-10 w-full rounded-md border border-input bg-background/50 border-primary/30 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none"
-                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='hsl(var(--primary))' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
-                  >
-                    {MISSION_CATEGORIES.map(c => (
-                      <option key={c.value} value={c.value}>{c.label}</option>
-                    ))}
-                  </select>
+                  <Label>Category</Label>
+                  <Select value={createFormData.category} onValueChange={(val) => setCreateFormData(prev => ({ ...prev, category: val }))}>
+                    <SelectTrigger className="bg-background/50 border-primary/30">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MISSION_CATEGORIES.map(c => (
+                        <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -679,32 +678,30 @@ export default function QuestsPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-difficulty">Difficulty Rank</Label>
-                <select
-                  id="edit-difficulty"
-                  value={editFormData.difficulty}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, difficulty: e.target.value }))}
-                  className="flex h-10 w-full rounded-md border border-input bg-background/50 border-primary/30 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none"
-                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='hsl(var(--primary))' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
-                >
-                  {DIFFICULTY_RANKS.map(r => (
-                    <option key={r.value} value={r.value}>{r.label}</option>
-                  ))}
-                </select>
+                <Label>Difficulty Rank</Label>
+                <Select value={editFormData.difficulty} onValueChange={(val) => setEditFormData(prev => ({ ...prev, difficulty: val }))}>
+                  <SelectTrigger className="bg-background/50 border-primary/30">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DIFFICULTY_RANKS.map(r => (
+                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-category">Category</Label>
-                <select
-                  id="edit-category"
-                  value={editFormData.category}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, category: e.target.value }))}
-                  className="flex h-10 w-full rounded-md border border-input bg-background/50 border-primary/30 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none"
-                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='hsl(var(--primary))' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
-                >
-                  {MISSION_CATEGORIES.map(c => (
-                    <option key={c.value} value={c.value}>{c.label}</option>
-                  ))}
-                </select>
+                <Label>Category</Label>
+                <Select value={editFormData.category} onValueChange={(val) => setEditFormData(prev => ({ ...prev, category: val }))}>
+                  <SelectTrigger className="bg-background/50 border-primary/30">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MISSION_CATEGORIES.map(c => (
+                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
