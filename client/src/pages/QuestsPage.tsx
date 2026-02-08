@@ -225,8 +225,8 @@ export default function QuestsPage() {
       return completedLocalDate === today;
     });
     
-    // Inbox missions: missions created from to-do ideas (category='todo')
-    const inboxItems = active.filter(q => q.category === 'todo');
+    // Inbox missions: exclude todo items (those only show on dashboard To-Do Ideas widget)
+    const inboxItems: Quest[] = [];
     
     const todayItems = active.filter(q => {
       if (q.category === 'todo') return false;
