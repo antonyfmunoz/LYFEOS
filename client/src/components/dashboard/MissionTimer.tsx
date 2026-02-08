@@ -107,11 +107,6 @@ export default function MissionTimer({
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   };
 
-  const borderColor = isOnBreak ? "border-emerald-500/30" : "border-primary/30";
-  const shadowColor = isOnBreak ? "shadow-[0_0_20px_rgba(16,185,129,0.2)]" : "shadow-[0_0_20px_rgba(0,224,255,0.2)]";
-  const accentColor = isOnBreak ? "text-emerald-400" : "text-primary";
-  const bgAccent = isOnBreak ? "bg-emerald-500/10" : "bg-primary/10";
-
   const focusTimerDisplay = (
     <span className={`font-mono text-sm font-bold tracking-wider ${isOnBreak ? "text-muted-foreground" : "text-primary"}`}>
       {formatTime(displaySeconds)}
@@ -119,7 +114,7 @@ export default function MissionTimer({
   );
 
   const breakTimerDisplay = (breakDisplaySeconds > 0 || isOnBreak) ? (
-    <span className={`font-mono text-sm font-bold tracking-wider ${isOnBreak ? "text-emerald-400" : "text-muted-foreground"}`}>
+    <span className={`font-mono text-sm font-bold tracking-wider ${isOnBreak ? "text-primary" : "text-muted-foreground"}`}>
       {formatTime(breakDisplaySeconds)}
     </span>
   ) : null;
@@ -127,11 +122,7 @@ export default function MissionTimer({
   const actionButtons = (
     <>
       <button
-        className={`h-6 w-6 rounded flex items-center justify-center transition-colors ${
-          isOnBreak 
-            ? "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10" 
-            : "text-muted-foreground hover:text-primary hover:bg-primary/10"
-        }`}
+        className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
         onClick={onPauseResume}
         title={isOnBreak ? "Resume Focus" : "Take Break"}
       >
@@ -151,14 +142,14 @@ export default function MissionTimer({
     return (
       <div
         ref={elementRef}
-        className={`bg-card rounded-xl px-4 py-2 neon-border max-w-sm w-full ${shadowColor}`}
+        className="bg-card rounded-xl px-4 py-2 neon-border max-w-sm w-full shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)]"
         style={dragStyle}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0 mr-2" {...dragHandleProps}>
             <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
             {isOnBreak ? (
-              <Coffee className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+              <Coffee className="h-3.5 w-3.5 text-primary shrink-0" />
             ) : (
               <Swords className="h-3.5 w-3.5 text-primary shrink-0" />
             )}
@@ -169,7 +160,7 @@ export default function MissionTimer({
               </div>
               {breakTimerDisplay && (
                 <div className="flex items-center gap-1">
-                  <Coffee className="h-2.5 w-2.5 text-emerald-400/60" />
+                  <Coffee className="h-2.5 w-2.5 text-primary/60" />
                   {breakTimerDisplay}
                 </div>
               )}
@@ -193,18 +184,18 @@ export default function MissionTimer({
   return (
     <div
       ref={elementRef}
-      className={`bg-card rounded-xl p-4 neon-border max-w-sm w-full ${shadowColor}`}
+      className="bg-card rounded-xl p-4 neon-border max-w-sm w-full shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)]"
       style={dragStyle}
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2" {...dragHandleProps}>
           <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground/50" />
           {isOnBreak ? (
-            <Coffee className="h-3.5 w-3.5 text-emerald-400" />
+            <Coffee className="h-3.5 w-3.5 text-primary" />
           ) : (
             <Swords className="h-3.5 w-3.5 text-primary" />
           )}
-          <span className={`text-[10px] font-mono font-bold uppercase tracking-widest ${accentColor}`}>
+          <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-primary">
             {isOnBreak ? "Break" : "Focus"}
           </span>
         </div>
@@ -228,9 +219,9 @@ export default function MissionTimer({
           </span>
         </div>
         {(breakDisplaySeconds > 0 || isOnBreak) && (
-          <div className={`flex items-center gap-1.5 px-2 py-1 rounded ${isOnBreak ? "bg-emerald-500/10 border border-emerald-500/20" : "bg-muted/30"}`}>
-            <Coffee className={`h-3 w-3 ${isOnBreak ? "text-emerald-400" : "text-muted-foreground"}`} />
-            <span className={`font-mono text-lg font-bold tracking-wider ${isOnBreak ? "text-emerald-400" : "text-muted-foreground"}`}>
+          <div className={`flex items-center gap-1.5 px-2 py-1 rounded ${isOnBreak ? "bg-primary/10 border border-primary/20" : "bg-muted/30"}`}>
+            <Coffee className={`h-3 w-3 ${isOnBreak ? "text-primary" : "text-muted-foreground"}`} />
+            <span className={`font-mono text-lg font-bold tracking-wider ${isOnBreak ? "text-primary" : "text-muted-foreground"}`}>
               {formatTime(breakDisplaySeconds)}
             </span>
           </div>
@@ -240,12 +231,12 @@ export default function MissionTimer({
       <div className="flex items-center gap-2 flex-wrap mb-1">
         <span className="text-xs font-bold text-foreground truncate">{missionTitle || "Untitled Mission"}</span>
         {missionCategory && (
-          <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${bgAccent} ${accentColor} border ${isOnBreak ? "border-emerald-500/20" : "border-primary/20"} shrink-0 capitalize`}>
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 shrink-0 capitalize">
             {missionCategory}
           </span>
         )}
         {missionDifficulty && (
-          <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${bgAccent} ${accentColor} border ${isOnBreak ? "border-emerald-500/20" : "border-primary/20"} shrink-0 capitalize`}>
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 shrink-0 capitalize">
             {missionDifficulty}
           </span>
         )}
@@ -255,8 +246,8 @@ export default function MissionTimer({
         <p className="text-xs text-muted-foreground line-clamp-1 mb-1">{missionDescription}</p>
       )}
 
-      <div className={`mt-2 border-t ${isOnBreak ? "border-emerald-500/10" : "border-primary/10"} pt-2`}>
-        <div className={`flex items-center gap-3 text-[10px] font-mono ${accentColor}`}>
+      <div className="mt-2 border-t border-primary/10 pt-2">
+        <div className="flex items-center gap-3 text-[10px] font-mono text-primary">
           {missionXP != null && missionXP > 0 && (
             <span>+{missionXP} XP</span>
           )}
