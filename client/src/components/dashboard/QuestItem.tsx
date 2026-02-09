@@ -309,7 +309,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
               )}
             </div>
           )}
-          {completed && onUndo && (
+          {completed && onUndo && category !== "onboarding" && (
             <button
               className="mt-2 text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5"
               onClick={(e) => {
