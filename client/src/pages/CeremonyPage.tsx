@@ -3,7 +3,6 @@ import { useLocation } from "wouter";
 import { usePageTitle } from "@/hooks/use-page-title";
 
 export default function CeremonyPage() {
-  usePageTitle("System Online");
   const [, navigate] = useLocation();
   const [phase, setPhase] = useState(0);
   const [statsLoaded, setStatsLoaded] = useState({
@@ -15,7 +14,17 @@ export default function CeremonyPage() {
     efficiency: false,
   });
 
+  const ceremonyMode = localStorage.getItem("lyfeos-ceremony-mode") || "init";
+  const isUpdate = ceremonyMode === "update";
+  
+  usePageTitle(isUpdate ? "System Updated" : "System Online");
+
   useEffect(() => {
+    const resumeData = localStorage.getItem("lyfeos-onboarding-resume");
+    const destination = resumeData ? "/onboarding" : "/dashboard";
+    
+    localStorage.removeItem("lyfeos-ceremony-mode");
+
     const phases = [
       { delay: 500, action: () => setPhase(1) },
       { delay: 1200, action: () => setStatsLoaded(prev => ({ ...prev, level: true })) },
@@ -25,7 +34,7 @@ export default function CeremonyPage() {
       { delay: 3200, action: () => setStatsLoaded(prev => ({ ...prev, attention: true })) },
       { delay: 3700, action: () => setStatsLoaded(prev => ({ ...prev, efficiency: true })) },
       { delay: 4700, action: () => setPhase(2) },
-      { delay: 6700, action: () => navigate("/dashboard") },
+      { delay: 6700, action: () => navigate(destination) },
     ];
 
     const timeouts = phases.map(({ delay, action }) => 
@@ -42,13 +51,17 @@ export default function CeremonyPage() {
       <div className="relative z-10 text-center space-y-8">
         {phase === 0 && (
           <div className="animate-pulse">
-            <p className="text-primary font-mono text-lg tracking-widest">INITIATING SYSTEM...</p>
+            <p className="text-primary font-mono text-lg tracking-widest">
+              {isUpdate ? "UPDATING SYSTEM..." : "INITIATING SYSTEM..."}
+            </p>
           </div>
         )}
         
         {phase === 1 && (
           <div className="space-y-6 animate-fade-in">
-            <p className="text-primary font-mono text-sm tracking-wider mb-8">LOADING PLAYER STATS</p>
+            <p className="text-primary font-mono text-sm tracking-wider mb-8">
+              {isUpdate ? "SYNCING PLAYER STATS" : "LOADING PLAYER STATS"}
+            </p>
             
             <div className="space-y-4 w-80">
               <StatBar label="LEVEL" loaded={statsLoaded.level} value="1" />
@@ -66,7 +79,7 @@ export default function CeremonyPage() {
             <div className="relative">
               <div className="absolute inset-0 bg-primary/20 blur-3xl animate-pulse" />
               <h1 className="relative text-4xl md:text-6xl font-bold text-primary tracking-widest">
-                SYSTEM ONLINE
+                {isUpdate ? "SYSTEM UPDATED" : "SYSTEM ONLINE"}
               </h1>
             </div>
             <p className="text-muted-foreground font-mono text-sm animate-fade-in">

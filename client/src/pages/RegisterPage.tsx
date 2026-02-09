@@ -203,6 +203,8 @@ export default function RegisterPage() {
         step: 1
       }));
       
+      localStorage.setItem("lyfeos-primary-color", selectedColor);
+      
       console.log("Registering user with username:", trimmedUsername);
       await register(trimmedUsername, trimmedPassword, {
         firstName: trimmedFirstName,

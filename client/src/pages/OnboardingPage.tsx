@@ -565,6 +565,19 @@ export default function OnboardingPage() {
   const [completedOnboardingMissions, setCompletedOnboardingMissions] = useState<number[]>([]);
   
   useEffect(() => {
+    const resumeData = localStorage.getItem("lyfeos-onboarding-resume");
+    if (resumeData) {
+      try {
+        const { mission, step } = JSON.parse(resumeData);
+        if (typeof mission === "number" && mission >= 0 && mission <= 7) {
+          setCurrentMission(mission);
+          setCurrentStep(step || 0);
+        }
+      } catch {}
+      localStorage.removeItem("lyfeos-onboarding-resume");
+      return;
+    }
+    
     const params = new URLSearchParams(window.location.search);
     const missionParam = params.get("mission");
     if (missionParam !== null) {
@@ -793,9 +806,9 @@ export default function OnboardingPage() {
       await saveMissionData(currentMission);
       
       if (currentMission === 0) {
-        await completeOnboarding(false);
+        await generateAndNavigateToCeremony(true);
       } else if (currentMission === MISSIONS.length - 1) {
-        await completeOnboarding(true);
+        await generateAndNavigateToCeremony(false);
       } else {
         setShowMissionComplete(true);
       }
@@ -813,16 +826,38 @@ export default function OnboardingPage() {
     navigate("/dashboard");
   };
 
-  const handleContinueToNextMission = () => {
+  const handleContinueToNextMission = async () => {
     setShowMissionComplete(false);
-    setCurrentMission(currentMission + 1);
-    setCurrentStep(0);
+    await generateAndNavigateToCeremony(false);
   };
 
   const handleSkipToSystem = async () => {
     setShowMissionComplete(false);
-    await saveMissionData(currentMission);
-    await completeOnboarding(currentMission >= 7);
+    localStorage.removeItem("lyfeos-pending-onboarding");
+    localStorage.setItem("lyfeos-ceremony-mode", "update");
+    localStorage.removeItem("lyfeos-onboarding-resume");
+    
+    setIsLoading(true);
+    setIsGeneratingAffirmation(true);
+    
+    try {
+      await apiRequest("/api/profile", {
+        method: "PATCH",
+        body: JSON.stringify({ onboardingCompleted: true }),
+      });
+      await generateAffirmationRequest();
+      navigate("/ceremony");
+    } catch (error) {
+      console.error("Error completing onboarding:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save your profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+      setIsGeneratingAffirmation(false);
+    }
   };
   
   const getMissionProfileData = (missionId: number): Record<string, any> => {
@@ -917,47 +952,70 @@ export default function OnboardingPage() {
     }
   };
 
-  const completeOnboarding = async (generateAffirmation: boolean = false) => {
+  const generateAffirmationRequest = async () => {
+    const archetypeResults = getArchetypeResults();
+    const affirmationData = await apiRequest<{ affirmation: string }>("/api/profile/generate-affirmation", {
+      method: "POST",
+      body: JSON.stringify({
+        displayName: user?.username || "Player",
+        archetypePrimary: archetypeResults.primary,
+        archetypeSecondary: archetypeResults.secondary,
+        coreValues: coreValues.slice(0, 3),
+        vision5Year,
+        primaryCraft,
+        desiredEmotion,
+      }),
+    });
+    
+    await apiRequest("/api/profile", {
+      method: "PATCH",
+      body: JSON.stringify({
+        characterAffirmation: affirmationData.affirmation,
+      }),
+    });
+  };
+
+  const generateAndNavigateToCeremony = async (isFirstMission: boolean) => {
     setIsLoading(true);
-    if (generateAffirmation) setIsGeneratingAffirmation(true);
+    setIsGeneratingAffirmation(true);
     
     try {
-      await apiRequest("/api/profile", {
-        method: "PATCH",
-        body: JSON.stringify({ onboardingCompleted: true }),
-      });
-      
-      if (generateAffirmation) {
-        const archetypeResults = getArchetypeResults();
-        const affirmationData = await apiRequest<{ affirmation: string }>("/api/profile/generate-affirmation", {
-          method: "POST",
-          body: JSON.stringify({
-            displayName: user?.username || "Player",
-            archetypePrimary: archetypeResults.primary,
-            archetypeSecondary: archetypeResults.secondary,
-            coreValues: coreValues.slice(0, 3),
-            vision5Year,
-            primaryCraft,
-            desiredEmotion,
-          }),
-        });
-        
+      if (isFirstMission) {
         await apiRequest("/api/profile", {
           method: "PATCH",
-          body: JSON.stringify({
-            characterAffirmation: affirmationData.affirmation,
-          }),
+          body: JSON.stringify({ onboardingCompleted: true }),
         });
       }
       
-      localStorage.removeItem("lyfeos-pending-onboarding");
+      await generateAffirmationRequest();
+      
+      if (isFirstMission) {
+        localStorage.removeItem("lyfeos-pending-onboarding");
+      }
+      
+      localStorage.setItem("lyfeos-ceremony-mode", isFirstMission ? "init" : "update");
+      
+      if (currentMission < MISSIONS.length - 1) {
+        localStorage.setItem("lyfeos-onboarding-resume", JSON.stringify({
+          mission: currentMission + 1,
+          step: 0
+        }));
+      } else {
+        localStorage.removeItem("lyfeos-onboarding-resume");
+        localStorage.removeItem("lyfeos-pending-onboarding");
+        await apiRequest("/api/profile", {
+          method: "PATCH",
+          body: JSON.stringify({ onboardingCompleted: true }),
+        });
+      }
+      
       navigate("/ceremony");
       
     } catch (error) {
-      console.error("Error completing onboarding:", error);
+      console.error("Error generating affirmation:", error);
       toast({
         title: "Error",
-        description: "Failed to save your profile. Please try again.",
+        description: "Failed to generate affirmation. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -1191,12 +1249,17 @@ export default function OnboardingPage() {
   }
 
   if (isGeneratingAffirmation) {
+    const isFirstMission = currentMission === 0;
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
         <div className="text-center space-y-4">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-          <h2 className="text-xl font-medium">Generating Your Character Affirmation...</h2>
-          <p className="text-muted-foreground">Our AI is crafting your personalized narrative</p>
+          <h2 className="text-xl font-medium">
+            {isFirstMission ? "Generating" : "Updating"} Your Character Affirmation...
+          </h2>
+          <p className="text-muted-foreground">
+            {isFirstMission ? "Our AI is crafting your personalized narrative" : "Our AI is refining your personalized narrative"}
+          </p>
         </div>
       </div>
     );
