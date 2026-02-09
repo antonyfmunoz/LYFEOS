@@ -49,10 +49,10 @@ export default function CeremonyPage() {
             <p className="text-primary font-mono text-sm tracking-wider mb-8">LOADING PLAYER STATS</p>
             
             <div className="space-y-4 w-80">
-              <StatBar label="ENERGY TOKENS" loaded={statsLoaded.energy} color="text-green-400" />
-              <StatBar label="HEALTH POINTS" loaded={statsLoaded.health} color="text-red-400" />
-              <StatBar label="TIME TOKENS" loaded={statsLoaded.time} color="text-blue-400" />
-              <StatBar label="ATTENTION TOKENS" loaded={statsLoaded.attention} color="text-purple-400" />
+              <StatBar label="ENERGY TOKENS" loaded={statsLoaded.energy} color="text-primary" />
+              <StatBar label="HEALTH POINTS" loaded={statsLoaded.health} color="text-primary" />
+              <StatBar label="TIME TOKENS" loaded={statsLoaded.time} color="text-primary" />
+              <StatBar label="ATTENTION TOKENS" loaded={statsLoaded.attention} color="text-primary" />
               <StatBar label="EXPERIENCE" loaded={statsLoaded.xp} color="text-primary" />
             </div>
           </div>

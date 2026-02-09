@@ -40,12 +40,10 @@ export default function RegisterPage() {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
-  // Force apply theme when component mounts
   useEffect(() => {
-    if (primaryColor) {
-      console.log("Applying primary color on register page:", primaryColor);
-      // Get the saved color from localStorage if it exists
-      const savedColor = localStorage.getItem('lyfeos-primary-color') || primaryColor;
+    const colorToApply = selectedColor || localStorage.getItem('lyfeos-primary-color') || primaryColor;
+    if (colorToApply) {
+      const savedColor = colorToApply;
       
       // Apply the color with all necessary CSS variables
       const hexToHSL = (hex: string): string => {
@@ -109,7 +107,7 @@ export default function RegisterPage() {
         document.documentElement.style.setProperty('--primary-shadow', `rgba(${r}, ${g}, ${b}, 0.7)`);
       }
     }
-  }, [primaryColor]);
+  }, [primaryColor, selectedColor]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -348,7 +346,10 @@ export default function RegisterPage() {
                   type="button"
                   className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform ${selectedColor === color ? 'ring-2 ring-foreground scale-110' : ''}`}
                   style={{ backgroundColor: color }}
-                  onClick={() => setSelectedColor(color)}
+                  onClick={() => {
+                    setSelectedColor(color);
+                    localStorage.setItem('lyfeos-primary-color', color);
+                  }}
                 >
                   {selectedColor === color && <Check className="h-4 w-4 text-white" />}
                 </button>

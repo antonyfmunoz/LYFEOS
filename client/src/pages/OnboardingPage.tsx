@@ -712,13 +712,14 @@ export default function OnboardingPage() {
       setCurrentStep(currentStep + 1);
     } else {
       await saveCompletedMission(currentMission);
+      await saveMissionData(currentMission);
       
       if (currentMission === 0) {
-        await completeOnboarding();
-      } else if (currentMission < MISSIONS.length - 1) {
-        setShowMissionComplete(true);
+        await completeOnboarding(false);
+      } else if (currentMission === MISSIONS.length - 1) {
+        await completeOnboarding(true);
       } else {
-        await completeOnboarding();
+        setShowMissionComplete(true);
       }
     }
   };
@@ -741,107 +742,134 @@ export default function OnboardingPage() {
 
   const handleSkipToSystem = async () => {
     setShowMissionComplete(false);
-    await completeOnboarding();
+    await saveMissionData(currentMission);
+    await completeOnboarding(currentMission >= 7);
   };
   
-  const completeOnboarding = async () => {
-    setIsLoading(true);
-    setIsGeneratingAffirmation(true);
-    
-    try {
-      const archetypeResults = getArchetypeResults();
-      
-      const profileData = {
-        ageRange,
-        location,
-        timezone,
-        lifeStage,
-        archetypePrimary: archetypeResults.primary,
-        archetypeSecondary: archetypeResults.secondary,
-        archetypeShadow: archetypeResults.shadow,
-        archetypeScores: archetypeResults.scores,
-        primaryValues: coreValues.slice(0, 3),
-        supportingValues: coreValues.slice(3),
-        desiredEmotion,
-        coreBelief,
-        limitingBelief,
-        empoweringBelief,
-        strengths,
-        weaknesses,
-        selfStandards,
-        traitToReprogram,
-        desiredTrait,
-        vision90Day,
-        vision90DayMetric,
-        vision18Month,
-        vision18MonthMetric,
-        vision5Year,
-        vision10YearLegacy,
-        legacyMetric,
-        mortalityInsights: { reflection: mortalityReflection },
-        lifeDomains,
-        primaryCraft,
-        primaryCraftWhy,
-        knowledgeAreas: knowledgeAreas.split(",").map(s => s.trim()).filter(Boolean),
-        skillsToAcquire: skillsToAcquire.split(",").map(s => s.trim()).filter(Boolean),
-        learningStyle: { preference: learningPreference },
-        practiceCadence: { hoursPerWeek: practiceHours },
-        weeklyCapacity: { hours: weeklyCapacity },
-        energyDrains,
-        physicalEnvironment,
-        physicalEnvironmentImpact,
-        financialPosition: { income: financialIncome, savings: financialSavings },
-        financialConstraints,
-        moneyConfidence: { score: moneyConfidenceScore },
-        moneyRelationship,
-        healthBaseline: { sleep: sleepHours, exercise: exerciseFrequency, nutrition: nutritionApproach },
-        habits: habitsToReprogram,
-        traitsToCultivate,
-        emotionsToCultivate,
-        copingPractices,
-        copingEssential,
-        dominantInstinct: { type: dominantInstinctType },
-        decisionMakingStyles,
-        decisionMakingPrimary,
-        shadowPatterns: { pattern: shadowPatternText },
-        upbringing,
-        culturalContext,
-        keyExperiences: { experience: keyExperiences },
-        relationshipDrains,
-        idealDay,
-        morningRituals,
-        eveningRituals,
-        groundingRitual,
-        boundaries,
-        lockedHabit,
-        yearlyCycles: yearlyCyclesText.split("\n").filter(Boolean),
-        onboardingCompleted: true,
-      };
-      
-      await apiRequest("/api/profile", {
-        method: "PATCH",
-        body: JSON.stringify(profileData),
-      });
-      
-      const affirmationData = await apiRequest<{ affirmation: string }>("/api/profile/generate-affirmation", {
-        method: "POST",
-        body: JSON.stringify({
-          displayName: user?.username || "Player",
+  const getMissionProfileData = (missionId: number): Record<string, any> => {
+    switch (missionId) {
+      case 0:
+        return { ageRange, location, timezone };
+      case 1: {
+        const archetypeResults = getArchetypeResults();
+        return {
           archetypePrimary: archetypeResults.primary,
           archetypeSecondary: archetypeResults.secondary,
-          coreValues: coreValues.slice(0, 3),
-          vision5Year,
-          primaryCraft,
+          archetypeShadow: archetypeResults.shadow,
+          archetypeScores: archetypeResults.scores,
+        };
+      }
+      case 2:
+        return {
+          lifeStage,
+          primaryValues: coreValues.slice(0, 3),
+          supportingValues: coreValues.slice(3),
           desiredEmotion,
-        }),
-      });
-      
+          coreBelief,
+          limitingBelief,
+          empoweringBelief,
+          strengths,
+          weaknesses,
+          selfStandards,
+          traitToReprogram,
+          desiredTrait,
+          vision90Day,
+          vision90DayMetric,
+          vision18Month,
+          vision18MonthMetric,
+          vision5Year,
+          vision10YearLegacy,
+          legacyMetric,
+          mortalityInsights: { reflection: mortalityReflection },
+          lifeDomains,
+        };
+      case 3:
+        return {
+          primaryCraft,
+          primaryCraftWhy,
+          knowledgeAreas: knowledgeAreas.split(",").map(s => s.trim()).filter(Boolean),
+          skillsToAcquire: skillsToAcquire.split(",").map(s => s.trim()).filter(Boolean),
+          learningStyle: { preference: learningPreference },
+          practiceCadence: { hoursPerWeek: practiceHours },
+        };
+      case 4:
+        return {
+          weeklyCapacity: { hours: weeklyCapacity },
+          energyDrains,
+          physicalEnvironment,
+          physicalEnvironmentImpact,
+          financialPosition: { income: financialIncome, savings: financialSavings },
+          financialConstraints,
+          moneyConfidence: { score: moneyConfidenceScore },
+          moneyRelationship,
+        };
+      case 5:
+        return {
+          healthBaseline: { sleep: sleepHours, exercise: exerciseFrequency, nutrition: nutritionApproach },
+          habits: habitsToReprogram,
+          traitsToCultivate,
+          emotionsToCultivate,
+          copingPractices,
+          copingEssential,
+          dominantInstinct: { type: dominantInstinctType },
+          decisionMakingStyles,
+          decisionMakingPrimary,
+          shadowPatterns: { pattern: shadowPatternText },
+        };
+      case 6:
+        return {
+          upbringing,
+          culturalContext,
+          keyExperiences: { experience: keyExperiences },
+          relationshipDrains,
+        };
+      case 7:
+        return {
+          idealDay,
+          morningRituals,
+          eveningRituals,
+          groundingRitual,
+          boundaries,
+          lockedHabit,
+          yearlyCycles: yearlyCyclesText.split("\n").filter(Boolean),
+        };
+      default:
+        return {};
+    }
+  };
+
+  const completeOnboarding = async (generateAffirmation: boolean = false) => {
+    setIsLoading(true);
+    if (generateAffirmation) setIsGeneratingAffirmation(true);
+    
+    try {
       await apiRequest("/api/profile", {
         method: "PATCH",
-        body: JSON.stringify({
-          characterAffirmation: affirmationData.affirmation,
-        }),
+        body: JSON.stringify({ onboardingCompleted: true }),
       });
+      
+      if (generateAffirmation) {
+        const archetypeResults = getArchetypeResults();
+        const affirmationData = await apiRequest<{ affirmation: string }>("/api/profile/generate-affirmation", {
+          method: "POST",
+          body: JSON.stringify({
+            displayName: user?.username || "Player",
+            archetypePrimary: archetypeResults.primary,
+            archetypeSecondary: archetypeResults.secondary,
+            coreValues: coreValues.slice(0, 3),
+            vision5Year,
+            primaryCraft,
+            desiredEmotion,
+          }),
+        });
+        
+        await apiRequest("/api/profile", {
+          method: "PATCH",
+          body: JSON.stringify({
+            characterAffirmation: affirmationData.affirmation,
+          }),
+        });
+      }
       
       navigate("/ceremony");
       
@@ -855,6 +883,20 @@ export default function OnboardingPage() {
     } finally {
       setIsLoading(false);
       setIsGeneratingAffirmation(false);
+    }
+  };
+
+  const saveMissionData = async (missionId: number) => {
+    try {
+      const data = getMissionProfileData(missionId);
+      if (Object.keys(data).length > 0) {
+        await apiRequest("/api/profile", {
+          method: "PATCH",
+          body: JSON.stringify(data),
+        });
+      }
+    } catch (error) {
+      console.error(`Error saving mission ${missionId} data:`, error);
     }
   };
   
@@ -878,14 +920,16 @@ export default function OnboardingPage() {
         return (
           <div className="space-y-4">
             <h2 className="text-2xl font-orbitron font-bold text-center">Confirm your timezone</h2>
-            <p className="text-center text-primary font-medium text-lg">{timezone}</p>
-            <p className="text-sm text-muted-foreground text-center">Auto-detected. Override below if incorrect:</p>
-            <Input
+            <p className="text-sm text-muted-foreground text-center">Auto-detected as <span className="text-primary font-medium">{Intl.DateTimeFormat().resolvedOptions().timeZone}</span>. Change below if needed:</p>
+            <select
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
-              placeholder="e.g., America/New_York"
-              className="max-w-md mx-auto bg-card/30 border-primary/20"
-            />
+              className="w-full max-w-md mx-auto block rounded-lg border border-primary/20 bg-card/30 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              {Intl.supportedValuesOf("timeZone").map((tz) => (
+                <option key={tz} value={tz}>{tz.replace(/_/g, " ")}</option>
+              ))}
+            </select>
           </div>
         );
       default:
