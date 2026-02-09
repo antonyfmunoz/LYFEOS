@@ -558,6 +558,9 @@ export default function OnboardingPage() {
   }, [user, authLoading, navigate]);
   
   const [currentMission, setCurrentMission] = useState(0);
+  const [continuedPastMission0, setContinuedPastMission0] = useState(() => {
+    return localStorage.getItem("lyfeos-continued-past-mission0") === "true";
+  });
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingAffirmation, setIsGeneratingAffirmation] = useState(false);
@@ -941,12 +944,37 @@ export default function OnboardingPage() {
     }
   };
 
-  const handleStop = () => {
-    handleSkipToSystem();
+  const handleStop = async () => {
+    if (continuedPastMission0 && currentMission > 0) {
+      handleSkipToSystem();
+    } else {
+      localStorage.removeItem("lyfeos-pending-onboarding");
+      localStorage.removeItem("lyfeos-onboarding-resume");
+      localStorage.removeItem("lyfeos-ceremony-mode");
+      localStorage.removeItem("lyfeos-continued-past-mission0");
+      try {
+        await apiRequest("/api/profile", {
+          method: "PATCH",
+          body: JSON.stringify({ onboardingCompleted: true }),
+        });
+        navigate("/");
+      } catch (error) {
+        console.error("Error completing onboarding:", error);
+        toast({
+          title: "Error",
+          description: "Failed to save your profile. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
   };
 
   const handleContinueToNextMission = () => {
     setShowMissionComplete(false);
+    if (currentMission === 0) {
+      setContinuedPastMission0(true);
+      localStorage.setItem("lyfeos-continued-past-mission0", "true");
+    }
     setCurrentMission(currentMission + 1);
     setCurrentStep(0);
   };
@@ -956,6 +984,7 @@ export default function OnboardingPage() {
     localStorage.removeItem("lyfeos-pending-onboarding");
     localStorage.setItem("lyfeos-ceremony-mode", currentMission === 0 ? "init" : "update");
     localStorage.removeItem("lyfeos-onboarding-resume");
+    localStorage.removeItem("lyfeos-continued-past-mission0");
     
     setIsLoading(true);
     setIsGeneratingAffirmation(true);
