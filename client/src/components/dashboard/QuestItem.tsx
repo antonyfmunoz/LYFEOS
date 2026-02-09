@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import { Quest } from "../../lib/types";
-import { Trash2, Calendar, Clock, Bell, Edit3, Info, Timer, Undo2, GripVertical, Repeat } from "lucide-react";
+import { Trash2, Calendar, Clock, Bell, Edit3, Info, Timer, Undo2, GripVertical, Repeat, Coffee } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const QUEST_DND_TYPE = 'QUEST_ITEM';
@@ -28,6 +28,7 @@ interface QuestItemProps {
   onRestart?: (questId: string) => void;
   onMoveQuest?: (dragIndex: number, hoverIndex: number) => void;
   elapsedSeconds?: number;
+  breakSeconds?: number;
   isTimerActive?: boolean;
   timerBlocked?: boolean;
 }
@@ -42,7 +43,7 @@ function formatElapsed(totalSeconds: number) {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-export default function QuestItem({ quest, index, section, onToggle, onDelete, onEdit, onStart, onResume, onDone, onUndo, onRestart, onMoveQuest, elapsedSeconds, isTimerActive, timerBlocked }: QuestItemProps) {
+export default function QuestItem({ quest, index, section, onToggle, onDelete, onEdit, onStart, onResume, onDone, onUndo, onRestart, onMoveQuest, elapsedSeconds, breakSeconds, isTimerActive, timerBlocked }: QuestItemProps) {
   const [showDescription, setShowDescription] = useState(false);
   const { title, description, completed, energyCost, attentionCost, timeCost, experienceReward, startDate, startTime, endDate, endTime, notificationEnabled, difficulty, category } = quest;
 
@@ -170,9 +171,9 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
             </div>
           </div>
           <div className={`flex items-center gap-3 mt-1 flex-wrap ${completed ? "opacity-50" : ""}`}>
-            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((attentionCost ?? 0) / 1440) * 100).toFixed(1)}% AT</span>
-            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((timeCost ?? 0) / 1440) * 100).toFixed(1)}% TT</span>
-            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((energyCost ?? 0) / 1440) * 100).toFixed(1)}% EP</span>
+            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((attentionCost ?? 0) / 1440) * 100).toFixed(0)}% AT</span>
+            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((timeCost ?? 0) / 1440) * 100).toFixed(0)}% TT</span>
+            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((energyCost ?? 0) / 1440) * 100).toFixed(0)}% EP</span>
             <span className="text-primary text-xs font-mono whitespace-nowrap">+{adjustedXp} XP</span>
           </div>
           {hasSchedule && (
@@ -207,9 +208,17 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
             </div>
           )}
           {elapsedSeconds !== undefined && elapsedSeconds > 0 && !isTimerActive && (
-            <div className="flex items-center gap-1.5 mt-1.5">
-              <Timer className={`h-3 w-3 ${completed ? "text-muted-foreground" : "text-primary"}`} />
-              <span className={`text-xs font-mono ${completed ? "text-muted-foreground" : "text-primary"}`}>{formatElapsed(elapsedSeconds)}</span>
+            <div className="flex items-center gap-3 mt-1.5">
+              <div className="flex items-center gap-1.5">
+                <Timer className={`h-3 w-3 ${completed ? "text-muted-foreground" : "text-primary"}`} />
+                <span className={`text-xs font-mono ${completed ? "text-muted-foreground" : "text-primary"}`}>{formatElapsed(elapsedSeconds)}</span>
+              </div>
+              {breakSeconds !== undefined && breakSeconds > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <Coffee className={`h-3 w-3 ${completed ? "text-muted-foreground" : "text-muted-foreground"}`} />
+                  <span className={`text-xs font-mono ${completed ? "text-muted-foreground" : "text-muted-foreground"}`}>{formatElapsed(breakSeconds)}</span>
+                </div>
+              )}
             </div>
           )}
           {showDescription && (

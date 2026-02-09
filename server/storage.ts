@@ -816,16 +816,17 @@ export class DatabaseStorage implements IStorage {
     
     // If quest was just completed, update all user stats
     if (!quest.completed && updatedQuest.completed) {
+      const isEvent = quest.category === 'event';
       const userStats = await this.getUserStats(updatedQuest.userId);
       const userProfileData = await this.getUserProfile(updatedQuest.userId);
       
       if (userStats) {
         const energyCost = quest.energyCost || 1;
         
-        // Calculate new stat values (deduct resources based on energy cost, add XP)
-        const newTimeTokens = Math.max(0, userStats.timeTokensCurrent - energyCost);
-        const newAttentionTokens = Math.max(0, userStats.attentionTokensCurrent - energyCost);
-        const newEnergyPoints = Math.max(0, userStats.energyPointsCurrent - energyCost);
+        // Event category missions skip stat deduction (tokens + energy) but still gain XP
+        const newTimeTokens = isEvent ? userStats.timeTokensCurrent : Math.max(0, userStats.timeTokensCurrent - energyCost);
+        const newAttentionTokens = isEvent ? userStats.attentionTokensCurrent : Math.max(0, userStats.attentionTokensCurrent - energyCost);
+        const newEnergyPoints = isEvent ? userStats.energyPointsCurrent : Math.max(0, userStats.energyPointsCurrent - energyCost);
         
         // Difficulty rank XP multipliers: D=1x, C=1.5x, B=2x, A=3x, S=5x
         const difficultyMultipliers: Record<string, number> = { D: 1, C: 1.5, B: 2, A: 3, S: 5 };
@@ -845,8 +846,8 @@ export class DatabaseStorage implements IStorage {
           levelUp = true;
         }
         
-        // Track energy used today for health calculation
-        const previousDayEnergyUsed = (userStats.previousDayEnergyUsed || 0) + energyCost;
+        // Track energy used today for health calculation (skip for events)
+        const previousDayEnergyUsed = isEvent ? (userStats.previousDayEnergyUsed || 0) : (userStats.previousDayEnergyUsed || 0) + energyCost;
         
         // Update all user stats
         await this.updateUserStats(updatedQuest.userId, {
@@ -870,7 +871,7 @@ export class DatabaseStorage implements IStorage {
         
         statsUpdated = true;
         
-        console.log(`Quest completed: energyCost=${energyCost}, xp=${quest.experienceReward}`);
+        console.log(`Quest completed: energyCost=${energyCost}, xp=${quest.experienceReward}, isEvent=${isEvent}`);
         console.log(`Stats updated: time=${newTimeTokens}, attention=${newAttentionTokens}, energy=${newEnergyPoints}, xp=${newExperience}, level=${newLevel}`);
       }
       
@@ -896,22 +897,23 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
+      const isEventUndo = quest.category === 'event';
       const userStats = await this.getUserStats(updatedQuest.userId);
       const userProfileData = await this.getUserProfile(updatedQuest.userId);
       
       if (userStats) {
         const energyCost = quest.energyCost || 1;
         
-        // Refund resources based on energy cost (cap at max values)
-        const newTimeTokens = Math.min(userStats.timeTokensMax, userStats.timeTokensCurrent + energyCost);
-        const newAttentionTokens = Math.min(userStats.attentionTokensMax, userStats.attentionTokensCurrent + energyCost);
-        const newEnergyPoints = Math.min(userStats.energyPointsMax, userStats.energyPointsCurrent + energyCost);
+        // Refund resources based on energy cost (skip for events since they weren't deducted)
+        const newTimeTokens = isEventUndo ? userStats.timeTokensCurrent : Math.min(userStats.timeTokensMax, userStats.timeTokensCurrent + energyCost);
+        const newAttentionTokens = isEventUndo ? userStats.attentionTokensCurrent : Math.min(userStats.attentionTokensMax, userStats.attentionTokensCurrent + energyCost);
+        const newEnergyPoints = isEventUndo ? userStats.energyPointsCurrent : Math.min(userStats.energyPointsMax, userStats.energyPointsCurrent + energyCost);
         
         // Deduct XP (but don't go below 0 - we don't de-level to keep progression simple)
         const newExperience = Math.max(0, userStats.experienceCurrent - quest.experienceReward);
         
-        // Reduce today's tracked energy usage when uncompleting
-        const previousDayEnergyUsed = Math.max(0, (userStats.previousDayEnergyUsed || 0) - energyCost);
+        // Reduce today's tracked energy usage when uncompleting (skip for events)
+        const previousDayEnergyUsed = isEventUndo ? (userStats.previousDayEnergyUsed || 0) : Math.max(0, (userStats.previousDayEnergyUsed || 0) - energyCost);
         
         await this.updateUserStats(updatedQuest.userId, {
           timeTokensCurrent: newTimeTokens,

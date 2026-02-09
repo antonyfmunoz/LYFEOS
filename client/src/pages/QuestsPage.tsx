@@ -150,7 +150,7 @@ export default function QuestsPage() {
   usePageTitle('Missions');
   const [, navigate] = useLocation();
   
-  const { quests, toggleQuestCompletion, createQuest, updateQuest, deleteQuest, refetchQuests, activeTimerQuest, missionElapsedTimes, startMissionTimer, resumeMissionTimer, restartMissionTimer } = useLYFEOS();
+  const { quests, toggleQuestCompletion, createQuest, updateQuest, deleteQuest, refetchQuests, activeTimerQuest, missionElapsedTimes, missionBreakTimes, startMissionTimer, resumeMissionTimer, restartMissionTimer } = useLYFEOS();
   const { user } = useAuth();
   const { toast } = useToast();
   const pushNotifs = usePushNotifications();
@@ -1124,6 +1124,7 @@ export default function QuestsPage() {
                     onRestart={restartMissionTimer}
                     onMoveQuest={(dragIdx, hoverIdx) => moveMission("today", dragIdx, hoverIdx)}
                     elapsedSeconds={missionElapsedTimes[quest.id]}
+                    breakSeconds={missionBreakTimes[quest.id]}
                     isTimerActive={activeTimerQuest?.id === quest.id}
                     timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
                   />
@@ -1189,6 +1190,7 @@ export default function QuestsPage() {
                       onRestart={restartMissionTimer}
                       onMoveQuest={(dragIdx, hoverIdx) => moveMission("upcoming", dragIdx, hoverIdx)}
                       elapsedSeconds={missionElapsedTimes[quest.id]}
+                      breakSeconds={missionBreakTimes[quest.id]}
                       isTimerActive={activeTimerQuest?.id === quest.id}
                       timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
                     />
@@ -1250,6 +1252,7 @@ export default function QuestsPage() {
                     onUndo={() => handleUndoMission(quest)}
                     onMoveQuest={(dragIdx, hoverIdx) => moveMission("completed", dragIdx, hoverIdx)}
                     elapsedSeconds={missionElapsedTimes[quest.id]}
+                    breakSeconds={missionBreakTimes[quest.id]}
                   />
                 ))
               ) : (
@@ -1325,9 +1328,9 @@ export default function QuestsPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-3 mt-1 flex-wrap">
-                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{((mission.duration / 1440) * 100).toFixed(1)}% AT</span>
-                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{((mission.duration / 1440) * 100).toFixed(1)}% TT</span>
-                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{((mission.duration / 1440) * 100).toFixed(1)}% EP</span>
+                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{((mission.duration / 1440) * 100).toFixed(0)}% AT</span>
+                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{((mission.duration / 1440) * 100).toFixed(0)}% TT</span>
+                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{((mission.duration / 1440) * 100).toFixed(0)}% EP</span>
                             <span className="text-primary text-xs font-mono whitespace-nowrap">+{adjustedXp} XP</span>
                           </div>
                           <div className="flex items-center gap-1 text-xs mt-1 text-muted-foreground">
@@ -1369,6 +1372,7 @@ export default function QuestsPage() {
                     onRestart={restartMissionTimer}
                     onMoveQuest={(dragIdx, hoverIdx) => moveMission("inbox", dragIdx, hoverIdx)}
                     elapsedSeconds={missionElapsedTimes[quest.id]}
+                    breakSeconds={missionBreakTimes[quest.id]}
                     isTimerActive={activeTimerQuest?.id === quest.id}
                     timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
                   />
@@ -1471,9 +1475,9 @@ export default function QuestsPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-3 mt-1 flex-wrap opacity-50">
-                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((quest.attentionCost ?? 0) / 1440) * 100).toFixed(1)}% AT</span>
-                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((quest.timeCost ?? 0) / 1440) * 100).toFixed(1)}% TT</span>
-                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((quest.energyCost ?? 0) / 1440) * 100).toFixed(1)}% EP</span>
+                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((quest.attentionCost ?? 0) / 1440) * 100).toFixed(0)}% AT</span>
+                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((quest.timeCost ?? 0) / 1440) * 100).toFixed(0)}% TT</span>
+                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((quest.energyCost ?? 0) / 1440) * 100).toFixed(0)}% EP</span>
                             <span className="text-primary text-xs font-mono whitespace-nowrap">+{adjustedXp} XP</span>
                             <span className="text-muted-foreground text-xs">{hoursLeft}h left</span>
                           </div>

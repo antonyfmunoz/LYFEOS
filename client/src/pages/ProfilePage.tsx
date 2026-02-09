@@ -123,8 +123,8 @@ export default function ProfilePage() {
   // Set the page title
   usePageTitle('Profile');
   
-  const { username, stats, updateUserStats } = useLYFEOS();
-  const { setPrimaryColor, toggleDarkMode } = useTheme();
+  const { username, stats, updateUserStats, setPrimaryColor: setContextPrimaryColor } = useLYFEOS();
+  const { setPrimaryColor: setThemePrimaryColor, toggleDarkMode } = useTheme();
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1082,8 +1082,8 @@ export default function ProfilePage() {
   
   // Function to handle theme color changes
   const handlePrimaryColorChange = (color: string) => {
-    // Use the context function to update the primary color
-    setPrimaryColor(color);
+    setThemePrimaryColor(color);
+    setContextPrimaryColor(color);
   };
 
   // File upload handler

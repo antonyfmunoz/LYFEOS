@@ -116,14 +116,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         setIsDarkMode(stats.darkThemeEnabled);
       }
       
-      const defaultColor = "#00e0ff";
-      if (savedColor && (!stats.primaryColor || stats.primaryColor === defaultColor) && savedColor !== defaultColor) {
+      if (stats.primaryColor) {
+        setPrimaryColorState(stats.primaryColor);
+      } else if (savedColor) {
         setPrimaryColorState(savedColor);
         if (updateUserStats) {
           updateUserStats({ ...stats, primaryColor: savedColor });
         }
-      } else if (stats.primaryColor) {
-        setPrimaryColorState(stats.primaryColor);
       }
     } else if (savedColor) {
       setPrimaryColorState(savedColor);
@@ -198,8 +197,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // Set primary color function
   const setPrimaryColor = (color: string) => {
     setPrimaryColorState(color);
+    localStorage.setItem('lyfeos-primary-color', color);
     
-    // If user is logged in, update the database
     if (stats && updateUserStats) {
       updateUserStats({
         ...stats,

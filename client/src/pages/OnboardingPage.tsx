@@ -1385,7 +1385,7 @@ export default function OnboardingPage() {
             <Button 
               variant="outline" 
               onClick={handleStop} 
-              className="bg-card/50 border-destructive/30 hover:bg-destructive/10 text-destructive hover:text-destructive"
+              className="bg-card/50 border-primary/30 hover:bg-primary/10 text-primary hover:text-primary"
             >
               <X className="h-4 w-4 mr-2" />
               Stop
