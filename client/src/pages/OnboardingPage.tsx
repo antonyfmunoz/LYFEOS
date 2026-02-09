@@ -804,14 +804,7 @@ export default function OnboardingPage() {
     } else {
       await saveCompletedMission(currentMission);
       await saveMissionData(currentMission);
-      
-      if (currentMission === 0) {
-        await generateAndNavigateToCeremony(true);
-      } else if (currentMission === MISSIONS.length - 1) {
-        await generateAndNavigateToCeremony(false);
-      } else {
-        setShowMissionComplete(true);
-      }
+      setShowMissionComplete(true);
     }
   };
   
@@ -826,15 +819,16 @@ export default function OnboardingPage() {
     navigate("/dashboard");
   };
 
-  const handleContinueToNextMission = async () => {
+  const handleContinueToNextMission = () => {
     setShowMissionComplete(false);
-    await generateAndNavigateToCeremony(false);
+    setCurrentMission(currentMission + 1);
+    setCurrentStep(0);
   };
 
   const handleSkipToSystem = async () => {
     setShowMissionComplete(false);
     localStorage.removeItem("lyfeos-pending-onboarding");
-    localStorage.setItem("lyfeos-ceremony-mode", "update");
+    localStorage.setItem("lyfeos-ceremony-mode", currentMission === 0 ? "init" : "update");
     localStorage.removeItem("lyfeos-onboarding-resume");
     
     setIsLoading(true);
@@ -957,7 +951,7 @@ export default function OnboardingPage() {
     const affirmationData = await apiRequest<{ affirmation: string }>("/api/profile/generate-affirmation", {
       method: "POST",
       body: JSON.stringify({
-        displayName: user?.username || "Player",
+        displayName: [(userProfile as any)?.firstName, (userProfile as any)?.lastName].filter(Boolean).join(" ") || user?.username || "Player",
         archetypePrimary: archetypeResults.primary,
         archetypeSecondary: archetypeResults.secondary,
         coreValues: coreValues.slice(0, 3),
@@ -975,54 +969,6 @@ export default function OnboardingPage() {
     });
   };
 
-  const generateAndNavigateToCeremony = async (isFirstMission: boolean) => {
-    setIsLoading(true);
-    setIsGeneratingAffirmation(true);
-    
-    try {
-      if (isFirstMission) {
-        await apiRequest("/api/profile", {
-          method: "PATCH",
-          body: JSON.stringify({ onboardingCompleted: true }),
-        });
-      }
-      
-      await generateAffirmationRequest();
-      
-      if (isFirstMission) {
-        localStorage.removeItem("lyfeos-pending-onboarding");
-      }
-      
-      localStorage.setItem("lyfeos-ceremony-mode", isFirstMission ? "init" : "update");
-      
-      if (currentMission < MISSIONS.length - 1) {
-        localStorage.setItem("lyfeos-onboarding-resume", JSON.stringify({
-          mission: currentMission + 1,
-          step: 0
-        }));
-      } else {
-        localStorage.removeItem("lyfeos-onboarding-resume");
-        localStorage.removeItem("lyfeos-pending-onboarding");
-        await apiRequest("/api/profile", {
-          method: "PATCH",
-          body: JSON.stringify({ onboardingCompleted: true }),
-        });
-      }
-      
-      navigate("/ceremony");
-      
-    } catch (error) {
-      console.error("Error generating affirmation:", error);
-      toast({
-        title: "Error",
-        description: "Failed to generate affirmation. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-      setIsGeneratingAffirmation(false);
-    }
-  };
 
   const saveMissionData = async (missionId: number) => {
     try {
@@ -1224,7 +1170,7 @@ export default function OnboardingPage() {
               <p className="text-3xl font-orbitron text-primary mb-4">+{mission.xp} XP</p>
               <p className="text-muted-foreground mb-6">{mission.title} completed successfully.</p>
               
-              {currentMission < MISSIONS.length - 1 && (
+              {currentMission < MISSIONS.length - 1 ? (
                 <div className="space-y-3">
                   <Button 
                     onClick={handleContinueToNextMission}
@@ -1239,6 +1185,16 @@ export default function OnboardingPage() {
                   >
                     Skip to LYFEOS
                   </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <Button 
+                    onClick={handleSkipToSystem}
+                    className="w-full bg-primary/20 border border-primary text-primary hover:bg-primary/30"
+                  >
+                    Initialize System
+                    <ChevronRight className="h-4 w-4 ml-2" />
+                  </Button>
                 </div>
               )}
             </CardContent>
