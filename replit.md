@@ -50,6 +50,16 @@ Preferred communication style: Simple, everyday language.
 - **Documents/Folders**: Note-taking and knowledge base
 - **Contacts/Spreadsheets/Canvases/Graphs**: Additional productivity tools
 
+### Player Stats System
+- **All stats start at 100/100** (Energy Points, Health Points, Time Tokens, Attention Tokens)
+- **Energy Points**: Subtracted by mission energy cost on completion, reset to max daily
+- **Time Tokens**: Subtracted by mission energy cost on completion, reset to max daily
+- **Attention Tokens**: Subtracted by mission energy cost on completion, reset to max daily
+- **Health Points**: Calculated from daily log ratings (mental + physical + emotional state, each 1-10). Average scaled to max HP. Updated whenever daily log is saved.
+- **Efficiency Score**: Daily metric (0-100) calculated as: 40% today's mission completion rate + 30% token allocation effectiveness (cost of completed vs all missions) + 30% token utilization rate (tokens used vs max)
+- **Daily Reset**: All tokens (energy, time, attention) reset to max at midnight via server-side processLoginStreak + client-side interval sync
+- All resources are refunded when uncompleting a mission
+
 ### XP and Leveling System
 - Exponential growth curve with tiered multipliers
 - Levels 1-10: Light growth (1.0372x)

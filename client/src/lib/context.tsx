@@ -8,20 +8,20 @@ import { getLocalDateString } from "./utils";
 // Initial stats data
 const initialStats: UserStats = {
   attentionTokens: {
-    current: 10,
-    max: 10,
+    current: 100,
+    max: 100,
   },
   timeTokens: {
-    current: 10,
-    max: 10,
+    current: 100,
+    max: 100,
   },
   energyPoints: {
-    current: 10,
-    max: 10,
+    current: 100,
+    max: 100,
   },
   healthPoints: {
-    current: 10,
-    max: 10,
+    current: 100,
+    max: 100,
   },
   experience: {
     current: 0,
@@ -1733,28 +1733,40 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  // Reset time tokens daily (simulation)
+  // Reset all daily tokens (energy, time, attention) at midnight and sync with server
   useEffect(() => {
-    const resetTimeTokens = () => {
+    const resetDailyTokens = async () => {
       setStats((prev) => ({
         ...prev,
-        timeTokens: {
-          ...prev.timeTokens,
-          current: prev.timeTokens.max,
-        },
+        timeTokens: { ...prev.timeTokens, current: prev.timeTokens.max },
+        attentionTokens: { ...prev.attentionTokens, current: prev.attentionTokens.max },
+        energyPoints: { ...prev.energyPoints, current: prev.energyPoints.max },
       }));
+      // Sync with server to ensure consistency
+      if (user) {
+        try {
+          const res = await fetch(`/api/users/${user.id}/stats`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.stats) {
+              setStats(data.stats);
+            }
+          }
+        } catch (e) {
+          console.log("Failed to sync stats after midnight reset");
+        }
+      }
     };
     
-    // Check time every hour
     const interval = setInterval(() => {
       const now = new Date();
-      if (now.getHours() === 0 && now.getMinutes() === 0) {
-        resetTimeTokens();
+      if (now.getHours() === 0 && now.getMinutes() < 1) {
+        resetDailyTokens();
       }
-    }, 60 * 60 * 1000);
+    }, 60 * 1000); // Check every minute
     
     return () => clearInterval(interval);
-  }, []);
+  }, [user]);
 
   // Kanban Task Methods
   // Kanban board functions

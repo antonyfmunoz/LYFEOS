@@ -295,14 +295,16 @@ export class DatabaseStorage implements IStorage {
     // Create default stats for the new user
     await this.createUserStats({
       userId: user.id,
-      timeTokensCurrent: 10,
-      timeTokensMax: 10,
-      energyPointsCurrent: 10,
-      energyPointsMax: 10,
-      healthPointsCurrent: 10,
-      healthPointsMax: 10,
+      timeTokensCurrent: 100,
+      timeTokensMax: 100,
+      energyPointsCurrent: 100,
+      energyPointsMax: 100,
+      healthPointsCurrent: 100,
+      healthPointsMax: 100,
+      attentionTokensCurrent: 100,
+      attentionTokensMax: 100,
       experienceCurrent: 0,
-      experienceMax: 1000, // Level 1 threshold is 1000 XP
+      experienceMax: 1000,
       level: 1
     });
     
@@ -410,25 +412,86 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    await this.updateUserStats(userId, {
+    const updateData: any = {
       streakDays: newStreak,
       lastActiveDate: todayStr
-    });
+    };
+    
+    // Reset daily tokens and energy at the start of each new day
+    if (isNewDay) {
+      updateData.timeTokensCurrent = stats.timeTokensMax;
+      updateData.attentionTokensCurrent = stats.attentionTokensMax;
+      updateData.energyPointsCurrent = stats.energyPointsMax;
+      updateData.previousDayEnergyUsed = 0;
+    }
+    
+    await this.updateUserStats(userId, updateData);
     
     return { streakDays: newStreak, isNewDay };
   }
   
+  async recalculateHealthPoints(userId: number, mentalState: number, physicalState: number, emotionalState: number): Promise<void> {
+    const stats = await this.getUserStats(userId);
+    if (!stats) return;
+    
+    // Average the three ratings (each 1-10), scale to max HP (percentage of max)
+    const avgRating = (mentalState + physicalState + emotionalState) / 3;
+    const newHP = Math.round((avgRating / 10) * stats.healthPointsMax);
+    
+    await this.updateUserStats(userId, {
+      healthPointsCurrent: Math.max(0, Math.min(stats.healthPointsMax, newHP))
+    });
+  }
+  
   async calculateEfficiency(userId: number): Promise<number> {
+    const stats = await this.getUserStats(userId);
+    if (!stats) return 0;
+    
     const allQuests = await this.getQuests(userId);
-    if (allQuests.length === 0) {
+    
+    // Scope to today's quests (by startDate or completedAt)
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    
+    const todaysQuests = allQuests.filter(q => {
+      if (q.startDate === todayStr) return true;
+      if (q.completedAt) {
+        const completedDate = new Date(q.completedAt);
+        const completedStr = `${completedDate.getFullYear()}-${String(completedDate.getMonth() + 1).padStart(2, '0')}-${String(completedDate.getDate()).padStart(2, '0')}`;
+        return completedStr === todayStr;
+      }
+      return false;
+    });
+    
+    if (todaysQuests.length === 0) {
+      await this.updateUserStats(userId, { efficiencyScore: 0 });
       return 0;
     }
     
-    const completedQuests = allQuests.filter(q => q.completed);
-    const efficiency = Math.round((completedQuests.length / allQuests.length) * 100);
+    // Component 1: Daily mission completion rate (40% weight)
+    const completedToday = todaysQuests.filter(q => q.completed);
+    const completionRate = completedToday.length / todaysQuests.length;
+    
+    // Component 2: Token allocation effectiveness (30% weight)
+    // Ratio of energy cost in completed vs all today's missions
+    const totalCostAll = todaysQuests.reduce((sum, q) => sum + (q.energyCost || 1), 0);
+    const totalCostCompleted = completedToday.reduce((sum, q) => sum + (q.energyCost || 1), 0);
+    const allocationEfficiency = totalCostAll > 0 ? totalCostCompleted / totalCostAll : 0;
+    
+    // Component 3: Token utilization (30% weight)
+    // How much of today's available tokens have been used
+    const totalTokensMax = stats.energyPointsMax + stats.timeTokensMax + stats.attentionTokensMax;
+    const totalTokensCurrent = stats.energyPointsCurrent + stats.timeTokensCurrent + stats.attentionTokensCurrent;
+    const tokensUsed = totalTokensMax - totalTokensCurrent;
+    const utilizationRate = totalTokensMax > 0 ? Math.min(1, tokensUsed / totalTokensMax) : 0;
+    
+    // Weighted formula: 40% completion + 30% allocation + 30% utilization
+    const efficiency = Math.round(
+      (completionRate * 40) + (allocationEfficiency * 30) + (utilizationRate * 30)
+    );
     
     await this.updateUserStats(userId, {
-      efficiencyScore: efficiency
+      efficiencyScore: Math.max(0, Math.min(100, efficiency))
     });
     
     return efficiency;
@@ -672,12 +735,11 @@ export class DatabaseStorage implements IStorage {
       const userProfileData = await this.getUserProfile(updatedQuest.userId);
       
       if (userStats) {
-        const durationHours = calculateDurationHours(quest.startTime, quest.endTime);
         const energyCost = quest.energyCost || 1;
         
-        // Calculate new stat values (deduct resources, add XP)
-        const newTimeTokens = Math.max(0, userStats.timeTokensCurrent - durationHours);
-        const newAttentionTokens = Math.max(0, userStats.attentionTokensCurrent - durationHours);
+        // Calculate new stat values (deduct resources based on energy cost, add XP)
+        const newTimeTokens = Math.max(0, userStats.timeTokensCurrent - energyCost);
+        const newAttentionTokens = Math.max(0, userStats.attentionTokensCurrent - energyCost);
         const newEnergyPoints = Math.max(0, userStats.energyPointsCurrent - energyCost);
         
         // Difficulty rank XP multipliers: D=1x, C=1.5x, B=2x, A=3x, S=5x
@@ -723,7 +785,7 @@ export class DatabaseStorage implements IStorage {
         
         statsUpdated = true;
         
-        console.log(`Quest completed: duration=${durationHours}h, energyCost=${energyCost}, xp=${quest.experienceReward}`);
+        console.log(`Quest completed: energyCost=${energyCost}, xp=${quest.experienceReward}`);
         console.log(`Stats updated: time=${newTimeTokens}, attention=${newAttentionTokens}, energy=${newEnergyPoints}, xp=${newExperience}, level=${newLevel}`);
       }
       
@@ -753,12 +815,11 @@ export class DatabaseStorage implements IStorage {
       const userProfileData = await this.getUserProfile(updatedQuest.userId);
       
       if (userStats) {
-        const durationHours = calculateDurationHours(quest.startTime, quest.endTime);
         const energyCost = quest.energyCost || 1;
         
-        // Refund resources (cap at max values)
-        const newTimeTokens = Math.min(userStats.timeTokensMax, userStats.timeTokensCurrent + durationHours);
-        const newAttentionTokens = Math.min(userStats.attentionTokensMax, userStats.attentionTokensCurrent + durationHours);
+        // Refund resources based on energy cost (cap at max values)
+        const newTimeTokens = Math.min(userStats.timeTokensMax, userStats.timeTokensCurrent + energyCost);
+        const newAttentionTokens = Math.min(userStats.attentionTokensMax, userStats.attentionTokensCurrent + energyCost);
         const newEnergyPoints = Math.min(userStats.energyPointsMax, userStats.energyPointsCurrent + energyCost);
         
         // Deduct XP (but don't go below 0 - we don't de-level to keep progression simple)

@@ -317,16 +317,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createUserStats({
         userId: user.id,
         experienceCurrent: 0,
-        experienceMax: 1000, // Level 1 threshold is 1000 XP, scaling to ~1M at level 100
+        experienceMax: 1000,
         level: 1,
-        timeTokensCurrent: 10,
-        timeTokensMax: 10,
-        energyPointsCurrent: 10,
-        energyPointsMax: 10,
-        healthPointsCurrent: 10,
-        healthPointsMax: 10,
-        attentionTokensCurrent: 10,
-        attentionTokensMax: 10,
+        timeTokensCurrent: 100,
+        timeTokensMax: 100,
+        energyPointsCurrent: 100,
+        energyPointsMax: 100,
+        healthPointsCurrent: 100,
+        healthPointsMax: 100,
+        attentionTokensCurrent: 100,
+        attentionTokensMax: 100,
         streakDays: 0,
         efficiencyScore: 0,
         aiAssistantName: "NOVA"
@@ -472,16 +472,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.createUserStats({
           userId: user.id,
           experienceCurrent: 0,
-          experienceMax: 1000, // Level 1 threshold is 1000 XP, scaling to ~1M at level 100
+          experienceMax: 1000,
           level: 1,
-          timeTokensCurrent: 10,
-          timeTokensMax: 10,
-          energyPointsCurrent: 10,
-          energyPointsMax: 10,
-          healthPointsCurrent: 10,
-          healthPointsMax: 10,
-          attentionTokensCurrent: 10,
-          attentionTokensMax: 10,
+          timeTokensCurrent: 100,
+          timeTokensMax: 100,
+          energyPointsCurrent: 100,
+          energyPointsMax: 100,
+          healthPointsCurrent: 100,
+          healthPointsMax: 100,
+          attentionTokensCurrent: 100,
+          attentionTokensMax: 100,
           streakDays: 0,
           efficiencyScore: 0,
           aiAssistantName: "NOVA"
@@ -4265,6 +4265,12 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
         console.error("Error converting todoIdeas to quests:", todoError);
       }
       
+      // Recalculate Health Points based on mental/physical/emotional ratings
+      const finalMental = savedLog.mentalState ?? 5;
+      const finalPhysical = savedLog.physicalState ?? 5;
+      const finalEmotional = savedLog.emotionalState ?? 5;
+      await storage.recalculateHealthPoints(userId, finalMental, finalPhysical, finalEmotional);
+      
       return res.status(200).json({ log: savedLog, message: "Daily log saved successfully" });
     } catch (error) {
       console.error("Error creating daily log:", error);
@@ -4341,6 +4347,13 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
           .where(eq(userDailyLogs.id, existingLog[0].id));
           
         const updatedLog = await db.select().from(userDailyLogs).where(eq(userDailyLogs.id, existingLog[0].id));
+        
+        // Recalculate Health Points when mental/physical/emotional ratings change
+        if (mentalState !== undefined || physicalState !== undefined || emotionalState !== undefined) {
+          const log = updatedLog[0];
+          await storage.recalculateHealthPoints(userId, log.mentalState ?? 5, log.physicalState ?? 5, log.emotionalState ?? 5);
+        }
+        
         return res.status(200).json({ log: updatedLog[0], message: "Daily log updated successfully" });
       } else {
         // Create a new log if it doesn't exist
