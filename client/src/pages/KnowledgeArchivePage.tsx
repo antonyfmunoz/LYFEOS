@@ -9,6 +9,15 @@ import { Button } from "@/components/ui/button";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { useToast } from "@/hooks/use-toast";
 
+interface ArchivedResearchEntry {
+  sourceAuthor?: string;
+  sourceMaterial?: string;
+  researchNote?: string;
+  revisionNote?: string;
+  executionNote?: string;
+  savedAt?: string;
+}
+
 interface DailyLog {
   id: number;
   date: string;
@@ -17,11 +26,13 @@ interface DailyLog {
   researchNote: string | null;
   revisionNote: string | null;
   executionNote: string | null;
+  researchEntries?: ArchivedResearchEntry[];
 }
 
 interface EntryData {
   date: string;
   logId: number;
+  entryIndex?: number;
   researchNote: string | null;
   revisionNote: string | null;
   executionNote: string | null;
@@ -170,29 +181,44 @@ export default function KnowledgeArchivePage() {
   const authorGroups: AuthorGroup[] = useMemo(() => {
     if (!logsData?.logs) return [];
 
-    const researchLogs = logsData.logs.filter(
-      log => log.sourceAuthor || log.sourceMaterial || log.researchNote || log.revisionNote || log.executionNote
-    );
-
     const authorMap: Record<string, Record<string, EntryData[]>> = {};
 
-    researchLogs.forEach(log => {
-      const author = log.sourceAuthor?.trim() || 'Unknown Author';
-      const source = log.sourceMaterial?.trim() || 'Untitled Source';
-
+    const addToMap = (author: string, source: string, entry: EntryData) => {
       if (dismissedKeys.has(`author::${author}`)) return;
       if (dismissedKeys.has(`${author}::${source}`)) return;
-
       if (!authorMap[author]) authorMap[author] = {};
       if (!authorMap[author][source]) authorMap[author][source] = [];
+      authorMap[author][source].push(entry);
+    };
 
-      authorMap[author][source].push({
-        date: log.date,
-        logId: log.id,
-        researchNote: log.researchNote,
-        revisionNote: log.revisionNote,
-        executionNote: log.executionNote,
-      });
+    logsData.logs.forEach(log => {
+      if (log.sourceAuthor || log.sourceMaterial || log.researchNote || log.revisionNote || log.executionNote) {
+        const author = log.sourceAuthor?.trim() || 'Unknown Author';
+        const source = log.sourceMaterial?.trim() || 'Untitled Source';
+        addToMap(author, source, {
+          date: log.date,
+          logId: log.id,
+          researchNote: log.researchNote,
+          revisionNote: log.revisionNote,
+          executionNote: log.executionNote,
+        });
+      }
+
+      if (log.researchEntries && Array.isArray(log.researchEntries)) {
+        log.researchEntries.forEach((entry, idx) => {
+          if (!entry.sourceAuthor && !entry.sourceMaterial && !entry.researchNote && !entry.revisionNote && !entry.executionNote) return;
+          const author = entry.sourceAuthor?.trim() || 'Unknown Author';
+          const source = entry.sourceMaterial?.trim() || 'Untitled Source';
+          addToMap(author, source, {
+            date: log.date,
+            logId: log.id,
+            entryIndex: idx,
+            researchNote: entry.researchNote || null,
+            revisionNote: entry.revisionNote || null,
+            executionNote: entry.executionNote || null,
+          });
+        });
+      }
     });
 
     return Object.keys(authorMap)
