@@ -136,7 +136,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
               >
                 <Info className="h-3.5 w-3.5" />
               </button>
-              {onEdit && (
+              {onEdit && category !== "onboarding" && (
                 <button
                   className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
                   onClick={(e) => {
