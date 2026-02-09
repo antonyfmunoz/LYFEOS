@@ -7,23 +7,27 @@ export default function CeremonyPage() {
   const [, navigate] = useLocation();
   const [phase, setPhase] = useState(0);
   const [statsLoaded, setStatsLoaded] = useState({
+    level: false,
     energy: false,
     health: false,
     time: false,
     attention: false,
     xp: false,
+    efficiency: false,
   });
 
   useEffect(() => {
     const phases = [
       { delay: 500, action: () => setPhase(1) },
-      { delay: 1500, action: () => setStatsLoaded(prev => ({ ...prev, energy: true })) },
-      { delay: 2000, action: () => setStatsLoaded(prev => ({ ...prev, health: true })) },
-      { delay: 2500, action: () => setStatsLoaded(prev => ({ ...prev, time: true })) },
-      { delay: 3000, action: () => setStatsLoaded(prev => ({ ...prev, attention: true })) },
-      { delay: 3500, action: () => setStatsLoaded(prev => ({ ...prev, xp: true })) },
-      { delay: 4500, action: () => setPhase(2) },
-      { delay: 6500, action: () => navigate("/dashboard") },
+      { delay: 1200, action: () => setStatsLoaded(prev => ({ ...prev, level: true })) },
+      { delay: 1700, action: () => setStatsLoaded(prev => ({ ...prev, energy: true })) },
+      { delay: 2200, action: () => setStatsLoaded(prev => ({ ...prev, health: true })) },
+      { delay: 2700, action: () => setStatsLoaded(prev => ({ ...prev, time: true })) },
+      { delay: 3200, action: () => setStatsLoaded(prev => ({ ...prev, attention: true })) },
+      { delay: 3700, action: () => setStatsLoaded(prev => ({ ...prev, xp: true })) },
+      { delay: 4200, action: () => setStatsLoaded(prev => ({ ...prev, efficiency: true })) },
+      { delay: 5200, action: () => setPhase(2) },
+      { delay: 7200, action: () => navigate("/dashboard") },
     ];
 
     const timeouts = phases.map(({ delay, action }) => 
@@ -49,11 +53,13 @@ export default function CeremonyPage() {
             <p className="text-primary font-mono text-sm tracking-wider mb-8">LOADING PLAYER STATS</p>
             
             <div className="space-y-4 w-80">
-              <StatBar label="ENERGY TOKENS" loaded={statsLoaded.energy} color="text-primary" />
-              <StatBar label="HEALTH POINTS" loaded={statsLoaded.health} color="text-primary" />
-              <StatBar label="TIME TOKENS" loaded={statsLoaded.time} color="text-primary" />
-              <StatBar label="ATTENTION TOKENS" loaded={statsLoaded.attention} color="text-primary" />
-              <StatBar label="EXPERIENCE" loaded={statsLoaded.xp} color="text-primary" />
+              <StatBar label="LEVEL" loaded={statsLoaded.level} value="1" />
+              <StatBar label="ENERGY POINTS" loaded={statsLoaded.energy} value="100 / 100" />
+              <StatBar label="HEALTH POINTS" loaded={statsLoaded.health} value="100 / 100" />
+              <StatBar label="TIME TOKENS" loaded={statsLoaded.time} value="100 / 100" />
+              <StatBar label="ATTENTION TOKENS" loaded={statsLoaded.attention} value="100 / 100" />
+              <StatBar label="EXPERIENCE" loaded={statsLoaded.xp} value="0 XP" />
+              <StatBar label="EFFICIENCY SCORE" loaded={statsLoaded.efficiency} value="0%" />
             </div>
           </div>
         )}
@@ -100,13 +106,13 @@ export default function CeremonyPage() {
   );
 }
 
-function StatBar({ label, loaded, color }: { label: string; loaded: boolean; color: string }) {
+function StatBar({ label, loaded, value }: { label: string; loaded: boolean; value: string }) {
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-xs font-mono">
-        <span className={loaded ? color : "text-muted-foreground"}>{label}</span>
-        <span className={loaded ? color : "text-muted-foreground"}>
-          {loaded ? "100%" : "..."}
+        <span className={loaded ? "text-primary" : "text-muted-foreground"}>{label}</span>
+        <span className={loaded ? "text-primary" : "text-muted-foreground"}>
+          {loaded ? value : "..."}
         </span>
       </div>
       <div className="h-2 bg-muted/30 rounded-full overflow-hidden">

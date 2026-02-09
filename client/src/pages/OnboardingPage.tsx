@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight, Check, Loader2, Zap } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, Loader2, Zap, X, ChevronDown } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -206,6 +206,84 @@ const SCENARIO_OPTIONS: Record<number, { text: string; archetype: Archetype }[]>
     { text: "Guide them through transformation", archetype: "alchemist" },
   ],
 };
+
+function TimezoneDropdown({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const allTimezones = Intl.supportedValuesOf("timeZone");
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
+        buttonRef.current && !buttonRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+        setSearch("");
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && searchRef.current) {
+      searchRef.current.focus();
+    }
+  }, [isOpen]);
+
+  const filtered = search
+    ? allTimezones.filter(tz => tz.toLowerCase().includes(search.toLowerCase()))
+    : allTimezones;
+
+  return (
+    <div className="relative max-w-md mx-auto">
+      <button
+        ref={buttonRef}
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between rounded-lg border border-primary/20 bg-card/30 backdrop-blur px-4 py-3 text-sm text-foreground font-mono hover:border-primary/50 transition-colors"
+      >
+        <span>{value.replace(/_/g, " ")}</span>
+        <ChevronDown className={`h-4 w-4 text-primary transition-transform ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+      {isOpen && (
+        <div
+          ref={dropdownRef}
+          className="absolute z-50 w-full mt-1 rounded-xl border border-primary/30 bg-card/95 backdrop-blur shadow-[0_0_20px_var(--primary-bg-subtle)] overflow-hidden"
+        >
+          <div className="p-2 border-b border-primary/10">
+            <input
+              ref={searchRef}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search timezone..."
+              className="w-full bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground font-mono px-2 py-1"
+            />
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {filtered.map((tz) => (
+              <button
+                key={tz}
+                onClick={() => { onChange(tz); setIsOpen(false); setSearch(""); }}
+                className={`w-full text-left px-4 py-2 text-sm font-mono hover:bg-primary/20 transition-colors ${
+                  tz === value ? "bg-primary/10 text-primary" : "text-foreground"
+                }`}
+              >
+                {tz.replace(/_/g, " ")}
+              </button>
+            ))}
+            {filtered.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-3">No matching timezones</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function DotNavigation({ current, total }: { current: number; total: number }) {
   return (
@@ -727,11 +805,11 @@ export default function OnboardingPage() {
   const handlePrevious = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
-    } else if (currentMission > 0) {
-      const prevMission = currentMission - 1;
-      setCurrentMission(prevMission);
-      setCurrentStep(getMaxSteps(prevMission) - 1);
     }
+  };
+
+  const handleStop = () => {
+    navigate("/dashboard");
   };
 
   const handleContinueToNextMission = () => {
@@ -921,16 +999,7 @@ export default function OnboardingPage() {
           <div className="space-y-4">
             <h2 className="text-2xl font-orbitron font-bold text-center">Confirm your timezone</h2>
             <p className="text-sm text-muted-foreground text-center">Auto-detected as <span className="text-primary font-medium">{Intl.DateTimeFormat().resolvedOptions().timeZone}</span>. Change below if needed:</p>
-            <select
-              value={timezone}
-              onChange={(e) => setTimezone(e.target.value)}
-              className="w-full max-w-md mx-auto block rounded-lg border border-primary/20 bg-card/30 backdrop-blur px-4 py-3 text-sm text-foreground font-mono appearance-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50"
-              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
-            >
-              {Intl.supportedValuesOf("timeZone").map((tz) => (
-                <option key={tz} value={tz} className="bg-card text-foreground">{tz.replace(/_/g, " ")}</option>
-              ))}
-            </select>
+            <TimezoneDropdown value={timezone} onChange={setTimezone} />
           </div>
         );
       default:
@@ -1165,6 +1234,15 @@ export default function OnboardingPage() {
         <div className="max-w-lg mx-auto flex justify-between items-center">
           {currentMission === 0 && currentStep === 0 ? (
             <div />
+          ) : currentStep === 0 && currentMission > 0 ? (
+            <Button 
+              variant="outline" 
+              onClick={handleStop} 
+              className="bg-card/50 border-destructive/30 hover:bg-destructive/10 text-destructive hover:text-destructive"
+            >
+              <X className="h-4 w-4 mr-2" />
+              Stop
+            </Button>
           ) : (
             <Button 
               variant="outline" 
