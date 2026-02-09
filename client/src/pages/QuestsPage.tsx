@@ -1474,13 +1474,15 @@ export default function QuestsPage() {
                               </button>
                             </div>
                           </div>
-                          <div className="flex items-center gap-3 mt-1 flex-wrap opacity-50">
-                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((quest.attentionCost ?? 0) / 1440) * 100).toFixed(0)}% AT</span>
-                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((quest.timeCost ?? 0) / 1440) * 100).toFixed(0)}% TT</span>
-                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((quest.energyCost ?? 0) / 1440) * 100).toFixed(0)}% EP</span>
-                            <span className="text-primary text-xs font-mono whitespace-nowrap">+{adjustedXp} XP</span>
-                            <span className="text-muted-foreground text-xs">{hoursLeft}h left</span>
-                          </div>
+                          {quest.category !== "event" && (
+                            <div className="flex items-center gap-3 mt-1 flex-wrap opacity-50">
+                              <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((quest.attentionCost ?? 0) / 1440) * 100).toFixed(0)}% AT</span>
+                              <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((quest.timeCost ?? 0) / 1440) * 100).toFixed(0)}% TT</span>
+                              <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((quest.energyCost ?? 0) / 1440) * 100).toFixed(0)}% EP</span>
+                              <span className="text-primary text-xs font-mono whitespace-nowrap">+{adjustedXp} XP</span>
+                              <span className="text-muted-foreground text-xs">{hoursLeft}h left</span>
+                            </div>
+                          )}
                           {terminatedInfoOpen[quest.id] && (
                             <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 opacity-60 space-y-2">
                               {quest.description && (

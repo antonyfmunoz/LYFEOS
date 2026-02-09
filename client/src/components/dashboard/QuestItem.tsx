@@ -170,12 +170,14 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
               )}
             </div>
           </div>
-          <div className={`flex items-center gap-3 mt-1 flex-wrap ${completed ? "opacity-50" : ""}`}>
-            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((attentionCost ?? 0) / 1440) * 100).toFixed(0)}% AT</span>
-            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((timeCost ?? 0) / 1440) * 100).toFixed(0)}% TT</span>
-            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((energyCost ?? 0) / 1440) * 100).toFixed(0)}% EP</span>
-            <span className="text-primary text-xs font-mono whitespace-nowrap">+{adjustedXp} XP</span>
-          </div>
+          {category !== "event" && (
+            <div className={`flex items-center gap-3 mt-1 flex-wrap ${completed ? "opacity-50" : ""}`}>
+              <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((attentionCost ?? 0) / 1440) * 100).toFixed(0)}% AT</span>
+              <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((timeCost ?? 0) / 1440) * 100).toFixed(0)}% TT</span>
+              <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((energyCost ?? 0) / 1440) * 100).toFixed(0)}% EP</span>
+              <span className="text-primary text-xs font-mono whitespace-nowrap">+{adjustedXp} XP</span>
+            </div>
+          )}
           {hasSchedule && (
             <div className={`flex items-center gap-1 text-xs mt-1 flex-wrap ${completed ? "opacity-50" : "text-muted-foreground"}`}>
               {startDate && (
