@@ -112,18 +112,19 @@ function Router() {
   // Track the authentication state to detect changes
   const wasAuthenticated = React.useRef<boolean | null>(null);
   
-  // Track if we are in the process of logging in
-  const isLoginTransition = React.useRef<boolean>(false);
+  // Track if we are in the process of logging in (use state so effects re-trigger)
+  const [isLoginTransition, setIsLoginTransition] = React.useState(false);
   
   // Check if we're in a login transition (the period right after login before session is fully established)
   useEffect(() => {
     if (wasAuthenticated.current === false && isAuthenticated === true) {
       console.log("Login detected - entering transition state");
-      isLoginTransition.current = true;
+      setIsLoginTransition(true);
       
-      // After a delay, exit the transition state
+      // After a delay, exit the transition state and allow route protection to run
       const timer = setTimeout(() => {
-        isLoginTransition.current = false;
+        routeRedirectRef.current = null;
+        setIsLoginTransition(false);
         console.log("Login transition complete");
       }, 500);
       
@@ -140,7 +141,7 @@ function Router() {
     }
     
     // Skip route protection during login transition
-    if (isLoginTransition.current) {
+    if (isLoginTransition) {
       console.log("In login transition - skipping route protection");
       return;
     }
@@ -204,7 +205,7 @@ function Router() {
       routeRedirectRef.current = currentPath;
       navigate('/login', { replace: true });
     }
-  }, [isAuthenticated, isLoading, navigate]);
+  }, [isAuthenticated, isLoading, isLoginTransition, navigate]);
 
   return (
     <Switch>
