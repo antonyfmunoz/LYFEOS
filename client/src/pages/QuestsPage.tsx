@@ -1407,7 +1407,7 @@ export default function QuestsPage() {
                             className="mt-2 text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40"
                             onClick={(e) => {
                               e.stopPropagation();
-                              navigate('/onboarding');
+                              navigate(`/onboarding?mission=${mission.id}`);
                             }}
                           >
                             Start

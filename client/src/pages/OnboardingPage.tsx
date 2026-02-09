@@ -13,14 +13,14 @@ import { toast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const MISSIONS = [
-  { id: 0, title: "Access & Quickstart", questions: 7, xp: 100 },
+  { id: 0, title: "Access & Quickstart", questions: 3, xp: 100 },
   { id: 1, title: "Archetype Calibration", questions: 54, xp: 150 },
-  { id: 2, title: "Identity & Direction", questions: 7, xp: 75 },
+  { id: 2, title: "Identity & Direction", questions: 20, xp: 75 },
   { id: 3, title: "Craft & Mastery", questions: 6, xp: 60 },
-  { id: 4, title: "Capacity & Constraints", questions: 5, xp: 55 },
-  { id: 5, title: "Baselines & States", questions: 8, xp: 70 },
-  { id: 6, title: "History & Roots", questions: 4, xp: 50 },
-  { id: 7, title: "Systems & Rituals", questions: 5, xp: 65 },
+  { id: 4, title: "Capacity & Constraints", questions: 9, xp: 55 },
+  { id: 5, title: "Baselines & States", questions: 14, xp: 70 },
+  { id: 6, title: "History & Roots", questions: 5, xp: 50 },
+  { id: 7, title: "Systems & Rituals", questions: 7, xp: 65 },
 ];
 
 type Archetype = "warrior" | "architect" | "creator" | "monarch" | "oracle" | "alchemist";
@@ -42,17 +42,6 @@ const LIFE_STAGES = [
   { label: "Leading", description: "Guiding others forward" },
 ];
 
-const ROLE_ARCHETYPES = [
-  { label: "Leader" },
-  { label: "Creator" },
-  { label: "Athlete" },
-  { label: "Healer" },
-  { label: "Visionary" },
-  { label: "Artist" },
-  { label: "Teacher" },
-  { label: "Builder" },
-];
-
 const DESIRED_EMOTIONS = ["Achievement", "Freedom", "Mastery", "Impact", "Love", "Adventure"];
 
 const CORE_VALUES = [
@@ -60,14 +49,6 @@ const CORE_VALUES = [
   "Connection", "Family", "Health", "Wealth", "Wisdom",
   "Service", "Leadership", "Excellence", "Balance", "Joy",
   "Peace", "Power", "Love", "Purpose", "Authenticity"
-];
-
-const THRIVE_SLIDERS = [
-  { id: "pace", left: "Fast-Paced", right: "Methodical" },
-  { id: "structure", left: "Structured", right: "Flexible" },
-  { id: "risk", left: "Risk-Averse", right: "Risk-Seeking" },
-  { id: "learning", left: "Visual Learner", right: "Hands-on Learner" },
-  { id: "work", left: "Solo Worker", right: "Collaborative" },
 ];
 
 const ARCHETYPE_QUESTIONS = [
@@ -225,12 +206,6 @@ const SCENARIO_OPTIONS: Record<number, { text: string; archetype: Archetype }[]>
     { text: "Guide them through transformation", archetype: "alchemist" },
   ],
 };
-
-const SETUP_MISSIONS = [
-  { id: "archetype", title: "Complete Your Archetype", description: "Dive deeper into your chosen path" },
-  { id: "rituals", title: "Set Up Your Rituals", description: "Create daily routines for success" },
-  { id: "future", title: "Design Your Future Self", description: "Visualize who you're becoming" },
-];
 
 function DotNavigation({ current, total }: { current: number; total: number }) {
   return (
@@ -435,9 +410,19 @@ export default function OnboardingPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingAffirmation, setIsGeneratingAffirmation] = useState(false);
   const [showMissionComplete, setShowMissionComplete] = useState(false);
-  const [showSetupChoice, setShowSetupChoice] = useState(false);
-  const [selectedSetupMission, setSelectedSetupMission] = useState("");
   const [completedOnboardingMissions, setCompletedOnboardingMissions] = useState<number[]>([]);
+  
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const missionParam = params.get("mission");
+    if (missionParam !== null) {
+      const missionNum = parseInt(missionParam, 10);
+      if (!isNaN(missionNum) && missionNum >= 0 && missionNum <= 7) {
+        setCurrentMission(missionNum);
+        setCurrentStep(0);
+      }
+    }
+  }, []);
   
   useEffect(() => {
     if (userProfile) {
@@ -450,21 +435,28 @@ export default function OnboardingPage() {
   const [location, setLocation] = useState("");
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [lifeStage, setLifeStage] = useState("");
-  const [roleArchetype, setRoleArchetype] = useState("");
-  const [thriveStyles, setThriveStyles] = useState<Record<string, number>>({
-    pace: 50, structure: 50, risk: 50, learning: 50, work: 50
-  });
-  const [coreMotivation, setCoreMotivation] = useState("");
-  const [customMotivation, setCustomMotivation] = useState("");
   
   const [archetypeAnswers, setArchetypeAnswers] = useState<Record<number, number | Archetype>>({});
   
   const [coreValues, setCoreValues] = useState<string[]>([]);
   const [desiredEmotion, setDesiredEmotion] = useState("");
+  const [coreBelief, setCoreBelief] = useState("");
+  const [limitingBelief, setLimitingBelief] = useState("");
+  const [empoweringBelief, setEmpoweringBelief] = useState("");
+  const [strengths, setStrengths] = useState<string[]>([]);
+  const [weaknesses, setWeaknesses] = useState<string[]>([]);
+  const [selfStandards, setSelfStandards] = useState("");
+  const [traitToReprogram, setTraitToReprogram] = useState("");
+  const [desiredTrait, setDesiredTrait] = useState("");
   const [vision90Day, setVision90Day] = useState("");
+  const [vision90DayMetric, setVision90DayMetric] = useState("");
   const [vision18Month, setVision18Month] = useState("");
+  const [vision18MonthMetric, setVision18MonthMetric] = useState("");
   const [vision5Year, setVision5Year] = useState("");
   const [vision10YearLegacy, setVision10YearLegacy] = useState("");
+  const [legacyMetric, setLegacyMetric] = useState("");
+  const [mortalityReflection, setMortalityReflection] = useState("");
+  const [lifeDomains, setLifeDomains] = useState<string[]>([]);
   
   const [primaryCraft, setPrimaryCraft] = useState("");
   const [primaryCraftWhy, setPrimaryCraftWhy] = useState("");
@@ -476,28 +468,38 @@ export default function OnboardingPage() {
   const [weeklyCapacity, setWeeklyCapacity] = useState(40);
   const [energyDrains, setEnergyDrains] = useState<string[]>([]);
   const [physicalEnvironment, setPhysicalEnvironment] = useState("");
+  const [physicalEnvironmentImpact, setPhysicalEnvironmentImpact] = useState("");
   const [financialIncome, setFinancialIncome] = useState("");
   const [financialSavings, setFinancialSavings] = useState("");
+  const [financialConstraints, setFinancialConstraints] = useState<string[]>([]);
+  const [moneyConfidenceScore, setMoneyConfidenceScore] = useState(5);
+  const [moneyRelationship, setMoneyRelationship] = useState("");
   
   const [sleepHours, setSleepHours] = useState(7);
   const [exerciseFrequency, setExerciseFrequency] = useState("");
   const [nutritionApproach, setNutritionApproach] = useState("");
   const [habitsToReprogram, setHabitsToReprogram] = useState<string[]>([]);
   const [traitsToCultivate, setTraitsToCultivate] = useState<string[]>([]);
-  const [coreBelief, setCoreBelief] = useState("");
-  const [limitingBelief, setLimitingBelief] = useState("");
-  const [empoweringBelief, setEmpoweringBelief] = useState("");
+  const [emotionsToCultivate, setEmotionsToCultivate] = useState<string[]>([]);
+  const [copingPractices, setCopingPractices] = useState("");
+  const [copingEssential, setCopingEssential] = useState("");
+  const [dominantInstinctType, setDominantInstinctType] = useState("");
+  const [decisionMakingStyles, setDecisionMakingStyles] = useState<string[]>([]);
+  const [decisionMakingPrimary, setDecisionMakingPrimary] = useState("");
   
   const [shadowPatternText, setShadowPatternText] = useState("");
   const [upbringing, setUpbringing] = useState("");
   const [culturalContext, setCulturalContext] = useState("");
   const [keyExperiences, setKeyExperiences] = useState("");
+  const [relationshipDrains, setRelationshipDrains] = useState("");
   
   const [idealDay, setIdealDay] = useState("");
   const [morningRituals, setMorningRituals] = useState<string[]>([]);
   const [eveningRituals, setEveningRituals] = useState<string[]>([]);
   const [groundingRitual, setGroundingRitual] = useState("");
   const [boundaries, setBoundaries] = useState({ techOffTime: "", workHours: "" });
+  const [lockedHabit, setLockedHabit] = useState("");
+  const [yearlyCyclesText, setYearlyCyclesText] = useState("");
   
   const calculateArchetypeScores = (): ArchetypeScores => {
     const scores: ArchetypeScores = {
@@ -557,12 +559,11 @@ export default function OnboardingPage() {
         try {
           const questTitle = `Onboarding: ${mission.title}`;
           
-          // Check if this onboarding quest already exists to prevent duplicates
           const existingQuest = quests.find(q => q.title === questTitle && q.completed);
           if (existingQuest) {
             console.log("Onboarding quest already exists, skipping creation:", questTitle);
           } else {
-            const timeStr = now.toTimeString().slice(0, 5); // HH:MM format
+            const timeStr = now.toTimeString().slice(0, 5);
             const questData = {
               userId: user.id,
               title: questTitle,
@@ -594,7 +595,6 @@ export default function OnboardingPage() {
       
       if (profileResponse.ok) {
         setCompletedOnboardingMissions(prev => [...(prev || []), missionId].filter((v, i, a) => a.indexOf(v) === i));
-        // Invalidate profile cache so QuestsPage gets updated completedOnboardingMissions
         queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       }
     } catch (error: any) {
@@ -607,27 +607,23 @@ export default function OnboardingPage() {
   
   function getMaxSteps(missionId: number) {
     switch (missionId) {
-      case 0: return 7; // Welcome, Life Stage, Role, Thrive Styles, Motivation, Setup Choice, Final
+      case 0: return 3;
       case 1: return ARCHETYPE_QUESTIONS.length;
-      case 2: return 7;
+      case 2: return 20;
       case 3: return 6;
-      case 4: return 5;
-      case 5: return 8;
-      case 6: return 4;
-      case 7: return 5;
+      case 4: return 9;
+      case 5: return 14;
+      case 6: return 5;
+      case 7: return 7;
       default: return 1;
     }
   }
   
   const canProceed = () => {
     if (currentMission === 0) {
-      if (currentStep === 0) return true; // Welcome screen
-      if (currentStep === 1) return lifeStage !== "";
-      if (currentStep === 2) return roleArchetype !== "";
-      if (currentStep === 3) return true; // Thrive sliders always have values
-      if (currentStep === 4) return coreMotivation !== "" || customMotivation !== "";
-      if (currentStep === 5) return true; // Setup choice
-      if (currentStep === 6) return true; // Final step
+      if (currentStep === 0) return ageRange !== "";
+      if (currentStep === 1) return true;
+      if (currentStep === 2) return timezone !== "";
     }
     if (currentMission === 1) {
       return archetypeAnswers[ARCHETYPE_QUESTIONS[currentStep]?.id] !== undefined;
@@ -641,11 +637,9 @@ export default function OnboardingPage() {
     if (currentStep < maxSteps - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      // Mission complete - save the completed mission
       await saveCompletedMission(currentMission);
       
       if (currentMission === 0) {
-        // After Mission 0 (quickstart), show system online
         await completeOnboarding();
       } else if (currentMission < MISSIONS.length - 1) {
         setShowMissionComplete(true);
@@ -688,9 +682,6 @@ export default function OnboardingPage() {
         location,
         timezone,
         lifeStage,
-        roleArchetype,
-        thriveStyles,
-        coreMotivation: coreMotivation || customMotivation,
         archetypePrimary: archetypeResults.primary,
         archetypeSecondary: archetypeResults.secondary,
         archetypeShadow: archetypeResults.shadow,
@@ -698,10 +689,23 @@ export default function OnboardingPage() {
         primaryValues: coreValues.slice(0, 3),
         supportingValues: coreValues.slice(3),
         desiredEmotion,
+        coreBelief,
+        limitingBelief,
+        empoweringBelief,
+        strengths,
+        weaknesses,
+        selfStandards,
+        traitToReprogram,
+        desiredTrait,
         vision90Day,
+        vision90DayMetric,
         vision18Month,
+        vision18MonthMetric,
         vision5Year,
         vision10YearLegacy,
+        legacyMetric,
+        mortalityInsights: { reflection: mortalityReflection },
+        lifeDomains,
         primaryCraft,
         primaryCraftWhy,
         knowledgeAreas: knowledgeAreas.split(",").map(s => s.trim()).filter(Boolean),
@@ -711,22 +715,32 @@ export default function OnboardingPage() {
         weeklyCapacity: { hours: weeklyCapacity },
         energyDrains,
         physicalEnvironment,
+        physicalEnvironmentImpact,
         financialPosition: { income: financialIncome, savings: financialSavings },
+        financialConstraints,
+        moneyConfidence: { score: moneyConfidenceScore },
+        moneyRelationship,
         healthBaseline: { sleep: sleepHours, exercise: exerciseFrequency, nutrition: nutritionApproach },
         habits: habitsToReprogram,
         traitsToCultivate,
-        coreBelief,
-        limitingBelief,
-        empoweringBelief,
+        emotionsToCultivate,
+        copingPractices,
+        copingEssential,
+        dominantInstinct: { type: dominantInstinctType },
+        decisionMakingStyles,
+        decisionMakingPrimary,
         shadowPatterns: { pattern: shadowPatternText },
         upbringing,
         culturalContext,
         keyExperiences: { experience: keyExperiences },
+        relationshipDrains,
         idealDay,
         morningRituals,
         eveningRituals,
         groundingRitual,
         boundaries,
+        lockedHabit,
+        yearlyCycles: yearlyCyclesText.split("\n").filter(Boolean),
         onboardingCompleted: true,
       };
       
@@ -770,131 +784,40 @@ export default function OnboardingPage() {
     }
   };
   
-  // Render Mission 0 - Quickstart with old UI style
   const renderMission0 = () => {
     switch (currentStep) {
       case 0:
         return (
-          <div className="text-center space-y-6">
-            <h2 className="text-3xl font-orbitron font-bold">Welcome to<br/>LYFEOS</h2>
-            <p className="text-muted-foreground">Your journey to mastery begins now.</p>
-            <div className="flex justify-center py-4">
-              <div className="text-5xl text-primary">✦</div>
-            </div>
-            <p className="text-sm">Hello, {user?.username}. Let's set up your operating system.</p>
+          <div className="space-y-4">
+            <h2 className="text-2xl font-orbitron font-bold text-center">What's your age range?</h2>
+            <ChipSelect options={AGE_RANGES} value={ageRange} onChange={(val) => setAgeRange(val as string)} />
           </div>
         );
       case 1:
         return (
           <div className="space-y-4">
-            <h2 className="text-2xl font-orbitron font-bold text-center">Where Are You Starting From?</h2>
-            <EmojiGridSelect 
-              options={LIFE_STAGES} 
-              value={lifeStage} 
-              onChange={setLifeStage}
-              columns={2}
+            <h2 className="text-2xl font-orbitron font-bold text-center">Where are you located?</h2>
+            <p className="text-sm text-muted-foreground text-center">Optional</p>
+            <Input
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="City, Country..."
+              className="max-w-md mx-auto bg-card/30 border-primary/20"
             />
-            <p className="text-sm text-muted-foreground text-center mt-4">
-              Select the stage that best describes your current life phase
-            </p>
           </div>
         );
       case 2:
         return (
           <div className="space-y-4">
-            <h2 className="text-2xl font-orbitron font-bold text-center">Where Do You Want to Go?</h2>
-            <EmojiGridSelect 
-              options={ROLE_ARCHETYPES} 
-              value={roleArchetype} 
-              onChange={setRoleArchetype}
-              columns={2}
+            <h2 className="text-2xl font-orbitron font-bold text-center">Confirm your timezone</h2>
+            <p className="text-center text-primary font-medium text-lg">{timezone}</p>
+            <p className="text-sm text-muted-foreground text-center">Auto-detected. Override below if incorrect:</p>
+            <Input
+              value={timezone}
+              onChange={(e) => setTimezone(e.target.value)}
+              placeholder="e.g., America/New_York"
+              className="max-w-md mx-auto bg-card/30 border-primary/20"
             />
-            <p className="text-sm text-muted-foreground text-center mt-4">
-              Choose the role archetype that resonates with your aspirations
-            </p>
-          </div>
-        );
-      case 3:
-        return (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-orbitron font-bold text-center">How Do You Thrive Best?</h2>
-            <div className="space-y-6 max-w-md mx-auto">
-              {THRIVE_SLIDERS.map((slider) => (
-                <GradientSlider
-                  key={slider.id}
-                  value={thriveStyles[slider.id]}
-                  onChange={(val) => setThriveStyles({ ...thriveStyles, [slider.id]: val })}
-                  left={slider.left}
-                  right={slider.right}
-                />
-              ))}
-            </div>
-          </div>
-        );
-      case 4:
-        return (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-orbitron font-bold text-center">What's Your Core Motivation?</h2>
-            <ChipSelect 
-              options={DESIRED_EMOTIONS} 
-              value={coreMotivation} 
-              onChange={(val) => setCoreMotivation(val as string)} 
-            />
-            <div className="mt-6 max-w-md mx-auto">
-              <p className="text-sm text-muted-foreground mb-2">Or define your own motivation:</p>
-              <Input
-                value={customMotivation}
-                onChange={(e) => setCustomMotivation(e.target.value)}
-                placeholder="Enter custom motivation..."
-                className="bg-card/30 border-primary/20"
-              />
-            </div>
-          </div>
-        );
-      case 5:
-        return (
-          <div className="space-y-6">
-            <div className="flex items-center gap-3">
-              <Zap className="h-6 w-6 text-primary" />
-              <h2 className="text-2xl font-orbitron font-bold">Your First Setup Mission</h2>
-            </div>
-            <p className="text-muted-foreground text-center">Choose one initial mission to kickstart your journey:</p>
-            <div className="space-y-3">
-              {SETUP_MISSIONS.map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => setSelectedSetupMission(m.id)}
-                  className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                    selectedSetupMission === m.id
-                      ? "bg-primary/20 border-primary shadow-[0_0_15px_rgba(0,224,255,0.3)]"
-                      : "bg-card/30 border-primary/20 hover:border-primary/50"
-                  }`}
-                >
-                  <h3 className="font-semibold">{m.title}</h3>
-                  <p className="text-sm text-muted-foreground">{m.description}</p>
-                </button>
-              ))}
-            </div>
-            <button 
-              onClick={() => setCurrentStep(6)}
-              className="text-primary text-sm hover:underline block text-center w-full"
-            >
-              Skip for now
-            </button>
-          </div>
-        );
-      case 6:
-        return (
-          <div className="text-center space-y-6">
-            <h2 className="text-2xl font-orbitron font-bold">SYSTEM ONLINE</h2>
-            <div className="w-24 h-24 rounded-full bg-primary/20 border-2 border-primary mx-auto flex items-center justify-center">
-              <span className="text-4xl">✦</span>
-            </div>
-            <p className="text-3xl font-orbitron text-primary">+{mission.xp} XP</p>
-            <p className="text-muted-foreground">
-              Your personal growth operating system is now initialized and ready.
-            </p>
-            <p className="text-sm text-muted-foreground">Command center access granted.</p>
           </div>
         );
       default:
@@ -932,10 +855,23 @@ export default function OnboardingPage() {
       case 0: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What life stage are you in?</h3><EmojiGridSelect options={LIFE_STAGES} value={lifeStage} onChange={setLifeStage} columns={2} /></div>);
       case 1: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Select your core values (up to 5)</h3><ChipSelect options={CORE_VALUES} value={coreValues} onChange={(val) => { const values = val as string[]; if (values.length <= 5) setCoreValues(values); }} multiple /></div>);
       case 2: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What emotion do you want to feel most?</h3><ChipSelect options={DESIRED_EMOTIONS} value={desiredEmotion} onChange={(val) => setDesiredEmotion(val as string)} /></div>);
-      case 3: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What does success look like in 90 days?</h3><Textarea value={vision90Day} onChange={(e) => setVision90Day(e.target.value)} placeholder="Describe your 90-day vision..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
-      case 4: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's the headline of your life in 18 months?</h3><Input value={vision18Month} onChange={(e) => setVision18Month(e.target.value)} placeholder="My 18-month headline..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
-      case 5: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Who are you in 5 years?</h3><Textarea value={vision5Year} onChange={(e) => setVision5Year(e.target.value)} placeholder="Describe your 5-year self..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
-      case 6: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What legacy do you want to leave?</h3><Textarea value={vision10YearLegacy} onChange={(e) => setVision10YearLegacy(e.target.value)} placeholder="Describe your lifetime legacy..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 3: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your core belief about yourself?</h3><Input value={coreBelief} onChange={(e) => setCoreBelief(e.target.value)} placeholder="I believe I am..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 4: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What limiting belief holds you back?</h3><Input value={limitingBelief} onChange={(e) => setLimitingBelief(e.target.value)} placeholder="I can't because..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 5: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What empowering belief will you adopt?</h3><Input value={empoweringBelief} onChange={(e) => setEmpoweringBelief(e.target.value)} placeholder="I am capable of..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 6: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What are your top strengths?</h3><ChipSelect options={["Discipline", "Creativity", "Leadership", "Analytical", "Communication", "Adaptability", "Empathy", "Resilience", "Strategic Thinking", "Problem Solving"]} value={strengths} onChange={(val) => setStrengths(val as string[])} multiple /></div>);
+      case 7: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What are your key weaknesses?</h3><ChipSelect options={["Procrastination", "Overthinking", "Impatience", "Perfectionism", "Indecisiveness", "People-Pleasing", "Self-Doubt", "Distraction"]} value={weaknesses} onChange={(val) => setWeaknesses(val as string[])} multiple /></div>);
+      case 8: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What standards do you hold for yourself?</h3><Textarea value={selfStandards} onChange={(e) => setSelfStandards(e.target.value)} placeholder="The standards I live by..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 9: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What trait do you want to reprogram?</h3><Input value={traitToReprogram} onChange={(e) => setTraitToReprogram(e.target.value)} placeholder="A trait to change..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 10: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What trait do you want to develop?</h3><Input value={desiredTrait} onChange={(e) => setDesiredTrait(e.target.value)} placeholder="A trait to cultivate..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 11: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What does success look like in 90 days?</h3><Textarea value={vision90Day} onChange={(e) => setVision90Day(e.target.value)} placeholder="Describe your 90-day vision..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 12: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">How will you measure your 90-day progress?</h3><Input value={vision90DayMetric} onChange={(e) => setVision90DayMetric(e.target.value)} placeholder="Key metric or milestone..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 13: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's the headline of your life in 18 months?</h3><Input value={vision18Month} onChange={(e) => setVision18Month(e.target.value)} placeholder="My 18-month headline..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 14: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">How will you know you've reached 18-month vision?</h3><Input value={vision18MonthMetric} onChange={(e) => setVision18MonthMetric(e.target.value)} placeholder="Key indicator..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 15: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Who are you in 5 years?</h3><Textarea value={vision5Year} onChange={(e) => setVision5Year(e.target.value)} placeholder="Describe your 5-year self..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 16: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What legacy do you want to leave?</h3><Textarea value={vision10YearLegacy} onChange={(e) => setVision10YearLegacy(e.target.value)} placeholder="Describe your lifetime legacy..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 17: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">How will your legacy be measured?</h3><Input value={legacyMetric} onChange={(e) => setLegacyMetric(e.target.value)} placeholder="Legacy metric..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 18: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">If you had 5 years to live, what would change?</h3><Textarea value={mortalityReflection} onChange={(e) => setMortalityReflection(e.target.value)} placeholder="What would you do differently..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 19: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Rank your life domains by priority</h3><p className="text-xs text-muted-foreground text-center">Select in order of importance to you</p><ChipSelect options={["Health", "Career", "Relationships", "Finance", "Spirituality", "Creativity", "Learning", "Adventure", "Family", "Community"]} value={lifeDomains} onChange={(val) => setLifeDomains(val as string[])} multiple /></div>);
       default: return null;
     }
   };
@@ -957,8 +893,12 @@ export default function OnboardingPage() {
       case 0: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your weekly capacity (hours)?</h3><div className="max-w-md mx-auto"><input type="range" min="10" max="80" value={weeklyCapacity} onChange={(e) => setWeeklyCapacity(parseInt(e.target.value))} className="w-full accent-primary" /><p className="text-center text-primary font-medium">{weeklyCapacity} hours/week</p></div></div>);
       case 1: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What drains your energy?</h3><ChipSelect options={["Meetings", "Admin Tasks", "Conflict", "Uncertainty", "Multitasking", "Perfectionism", "Social Obligations", "Poor Sleep"]} value={energyDrains} onChange={(val) => setEnergyDrains(val as string[])} multiple /></div>);
       case 2: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Describe your physical environment</h3><Textarea value={physicalEnvironment} onChange={(e) => setPhysicalEnvironment(e.target.value)} placeholder="Where do you work, live, create..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
-      case 3: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your income situation?</h3><Input value={financialIncome} onChange={(e) => setFinancialIncome(e.target.value)} placeholder="Describe your income..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
-      case 4: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your savings situation?</h3><Input value={financialSavings} onChange={(e) => setFinancialSavings(e.target.value)} placeholder="Describe your savings..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 3: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">How does your environment impact your productivity?</h3><Textarea value={physicalEnvironmentImpact} onChange={(e) => setPhysicalEnvironmentImpact(e.target.value)} placeholder="How your space affects your work..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 4: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your income situation?</h3><Input value={financialIncome} onChange={(e) => setFinancialIncome(e.target.value)} placeholder="Describe your income..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 5: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your savings situation?</h3><Input value={financialSavings} onChange={(e) => setFinancialSavings(e.target.value)} placeholder="Describe your savings..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 6: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What financial constraints limit you?</h3><ChipSelect options={["Debt", "Low Income", "High Expenses", "No Savings", "Unstable Income", "Dependents", "Student Loans", "Medical Costs"]} value={financialConstraints} onChange={(val) => setFinancialConstraints(val as string[])} multiple /></div>);
+      case 7: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Rate your money confidence (1-10)</h3><div className="max-w-md mx-auto"><input type="range" min="1" max="10" value={moneyConfidenceScore} onChange={(e) => setMoneyConfidenceScore(parseInt(e.target.value))} className="w-full accent-primary" /><p className="text-center text-primary font-medium">{moneyConfidenceScore} / 10</p></div></div>);
+      case 8: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Describe your relationship with money</h3><Textarea value={moneyRelationship} onChange={(e) => setMoneyRelationship(e.target.value)} placeholder="How do you relate to money..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       default: return null;
     }
   };
@@ -973,6 +913,12 @@ export default function OnboardingPage() {
       case 5: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your core belief about yourself?</h3><Input value={coreBelief} onChange={(e) => setCoreBelief(e.target.value)} placeholder="I believe I am..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       case 6: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What limiting belief holds you back?</h3><Input value={limitingBelief} onChange={(e) => setLimitingBelief(e.target.value)} placeholder="I can't because..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       case 7: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What empowering belief will you adopt?</h3><Input value={empoweringBelief} onChange={(e) => setEmpoweringBelief(e.target.value)} placeholder="I am capable of..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 8: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What emotions do you want to cultivate?</h3><ChipSelect options={["Joy", "Peace", "Gratitude", "Confidence", "Love", "Excitement", "Serenity", "Passion"]} value={emotionsToCultivate} onChange={(val) => setEmotionsToCultivate(val as string[])} multiple /></div>);
+      case 9: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What coping practices work for you?</h3><Textarea value={copingPractices} onChange={(e) => setCopingPractices(e.target.value)} placeholder="Practices that help you cope..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 10: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What is essential for you to cope with stress?</h3><Input value={copingEssential} onChange={(e) => setCopingEssential(e.target.value)} placeholder="The one thing you need..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 11: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What is your dominant instinct?</h3><ChipSelect options={["Self-Preservation", "Social", "Sexual/Creative", "Intellectual"]} value={dominantInstinctType} onChange={(val) => setDominantInstinctType(val as string)} /></div>);
+      case 12: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">How do you make decisions?</h3><ChipSelect options={["Intuitive", "Analytical", "Collaborative", "Impulsive", "Deliberate", "Emotional", "Data-Driven"]} value={decisionMakingStyles} onChange={(val) => setDecisionMakingStyles(val as string[])} multiple /></div>);
+      case 13: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your primary decision-making style?</h3><ChipSelect options={["Intuitive", "Analytical", "Collaborative", "Impulsive", "Deliberate", "Emotional", "Data-Driven"]} value={decisionMakingPrimary} onChange={(val) => setDecisionMakingPrimary(val as string)} /></div>);
       default: return null;
     }
   };
@@ -983,6 +929,7 @@ export default function OnboardingPage() {
       case 1: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Describe your upbringing</h3><Textarea value={upbringing} onChange={(e) => setUpbringing(e.target.value)} placeholder="How were you raised..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       case 2: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What cultural expectations shaped you?</h3><Textarea value={culturalContext} onChange={(e) => setCulturalContext(e.target.value)} placeholder="Cultural influences..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       case 3: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What key experiences shaped you?</h3><Textarea value={keyExperiences} onChange={(e) => setKeyExperiences(e.target.value)} placeholder="Significant life experiences..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 4: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What relationships drain your energy?</h3><Textarea value={relationshipDrains} onChange={(e) => setRelationshipDrains(e.target.value)} placeholder="Relationships that take more than they give..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       default: return null;
     }
   };
@@ -994,6 +941,8 @@ export default function OnboardingPage() {
       case 2: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What evening rituals do you practice?</h3><ChipSelect options={["Reflection", "Reading", "Stretching", "Planning Tomorrow", "Digital Detox", "Gratitude", "Meditation", "Journaling"]} value={eveningRituals} onChange={(val) => setEveningRituals(val as string[])} multiple /></div>);
       case 3: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your grounding ritual?</h3><Input value={groundingRitual} onChange={(e) => setGroundingRitual(e.target.value)} placeholder="What brings you back to center..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       case 4: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Set your boundaries</h3><div className="max-w-md mx-auto space-y-3"><div><label className="text-sm text-muted-foreground">Tech off-time</label><Input value={boundaries.techOffTime} onChange={(e) => setBoundaries({ ...boundaries, techOffTime: e.target.value })} placeholder="e.g., 9 PM - 7 AM" className="bg-card/30 border-primary/20" /></div><div><label className="text-sm text-muted-foreground">Work hours</label><Input value={boundaries.workHours} onChange={(e) => setBoundaries({ ...boundaries, workHours: e.target.value })} placeholder="e.g., 9 AM - 6 PM" className="bg-card/30 border-primary/20" /></div></div></div>);
+      case 5: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's one habit you've locked in?</h3><Input value={lockedHabit} onChange={(e) => setLockedHabit(e.target.value)} placeholder="A habit that's non-negotiable..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 6: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What yearly cycles do you follow?</h3><Textarea value={yearlyCyclesText} onChange={(e) => setYearlyCyclesText(e.target.value)} placeholder="One per line: seasonal rhythms, annual events..." className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       default: return null;
     }
   };
@@ -1012,7 +961,6 @@ export default function OnboardingPage() {
     }
   };
 
-  // Mission Complete Screen
   if (showMissionComplete) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
@@ -1083,7 +1031,6 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
       <div className="text-center pt-6 pb-4">
         <h1 className="text-4xl font-orbitron font-bold">
           <span className="text-foreground">LYFE</span>
@@ -1092,7 +1039,6 @@ export default function OnboardingPage() {
         <p className="text-muted-foreground text-sm">Your personal life operating system</p>
       </div>
       
-      {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center px-4 pb-4">
         <Card className="w-full max-w-lg border-primary/30 bg-card/50 backdrop-blur shadow-[0_0_30px_rgba(0,224,255,0.1)]">
           <CardContent className="p-6">
@@ -1102,7 +1048,6 @@ export default function OnboardingPage() {
         </Card>
       </div>
       
-      {/* Footer Navigation */}
       <div className="p-4">
         <div className="max-w-lg mx-auto flex justify-between items-center">
           {currentMission === 0 && currentStep === 0 ? (
@@ -1125,7 +1070,7 @@ export default function OnboardingPage() {
           >
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
-            ) : currentMission === 0 && currentStep === 6 ? (
+            ) : currentMission === 0 && currentStep === 2 ? (
               <>Enter LYFEOS<ChevronRight className="h-4 w-4 ml-2" /></>
             ) : currentMission === MISSIONS.length - 1 && currentStep === totalSteps - 1 ? (
               <>Initialize System<ChevronRight className="h-4 w-4 ml-2" /></>
