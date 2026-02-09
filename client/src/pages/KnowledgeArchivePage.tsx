@@ -400,7 +400,7 @@ export default function KnowledgeArchivePage() {
                       <div className="flex items-center gap-1.5 group/author min-w-0">
                         <h2 className="text-base font-medium truncate">{group.author}</h2>
                         <button
-                          className="p-1 rounded hover:bg-primary/20 text-muted-foreground opacity-0 group-hover/author:opacity-100 transition-opacity flex-shrink-0"
+                          className="p-1 rounded hover:bg-primary/20 text-muted-foreground flex-shrink-0"
                           title="Edit author name"
                           onClick={e => { e.stopPropagation(); startEditing('author', group.author); }}
                         >
@@ -460,7 +460,7 @@ export default function KnowledgeArchivePage() {
                                 <div className="flex items-center gap-1.5 group/source min-w-0">
                                   <span className="text-sm truncate">{source.sourceMaterial}</span>
                                   <button
-                                    className="p-1 rounded hover:bg-primary/20 text-muted-foreground opacity-0 group-hover/source:opacity-100 transition-opacity flex-shrink-0"
+                                    className="p-1 rounded hover:bg-primary/20 text-muted-foreground flex-shrink-0"
                                     title="Edit source material"
                                     onClick={e => { e.stopPropagation(); startEditing('source', source.sourceMaterial, group.author); }}
                                   >
