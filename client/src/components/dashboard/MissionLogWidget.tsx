@@ -262,7 +262,7 @@ export default function MissionLogWidget({
                               {event.title}
                             </h3>
                             <div className="flex items-center">
-                              <span className="text-primary text-xs font-mono mr-2">-5 ET</span>
+                              <span className="text-primary text-xs font-mono mr-2">-5 EP</span>
                               <span className="text-primary text-xs font-mono mr-2">+15 XP</span>
                               <Button
                                 variant="ghost"
@@ -348,7 +348,7 @@ export default function MissionLogWidget({
                               {event.title}
                             </h3>
                             <div className="flex items-center">
-                              <span className="text-primary text-xs font-mono mr-2">-5 ET</span>
+                              <span className="text-primary text-xs font-mono mr-2">-5 EP</span>
                               <span className="text-primary text-xs font-mono mr-2">+15 XP</span>
                               <Button
                                 variant="ghost"

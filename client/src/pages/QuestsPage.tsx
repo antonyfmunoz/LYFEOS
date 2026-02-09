@@ -1325,9 +1325,9 @@ export default function QuestsPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-3 mt-1 flex-wrap">
-                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{((mission.duration / 1440) * 100).toFixed(1)}% ET</span>
                             <span className="text-primary text-xs font-mono whitespace-nowrap">-{((mission.duration / 1440) * 100).toFixed(1)}% AT</span>
                             <span className="text-primary text-xs font-mono whitespace-nowrap">-{((mission.duration / 1440) * 100).toFixed(1)}% TT</span>
+                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{((mission.duration / 1440) * 100).toFixed(1)}% EP</span>
                             <span className="text-primary text-xs font-mono whitespace-nowrap">+{adjustedXp} XP</span>
                           </div>
                           <div className="flex items-center gap-1 text-xs mt-1 text-muted-foreground">
@@ -1471,9 +1471,9 @@ export default function QuestsPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-3 mt-1 flex-wrap opacity-50">
-                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((quest.energyCost ?? 0) / 1440) * 100).toFixed(1)}% ET</span>
                             <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((quest.attentionCost ?? 0) / 1440) * 100).toFixed(1)}% AT</span>
                             <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((quest.timeCost ?? 0) / 1440) * 100).toFixed(1)}% TT</span>
+                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((quest.energyCost ?? 0) / 1440) * 100).toFixed(1)}% EP</span>
                             <span className="text-primary text-xs font-mono whitespace-nowrap">+{adjustedXp} XP</span>
                             <span className="text-muted-foreground text-xs">{hoursLeft}h left</span>
                           </div>

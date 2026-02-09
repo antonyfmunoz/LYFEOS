@@ -290,7 +290,7 @@ export default function EnhancedMissionWidget({
                         {mission.title}
                       </h3>
                       <div className="flex items-center mr-8">
-                        <span className="text-primary text-xs font-mono mr-2">-5 ET</span>
+                        <span className="text-primary text-xs font-mono mr-2">-5 EP</span>
                         <span className="text-primary text-xs font-mono mr-2">+{mission.xpValue} XP</span>
                       </div>
                     </div>
@@ -336,7 +336,7 @@ export default function EnhancedMissionWidget({
                           {event.title}
                         </h3>
                         <div className="flex items-center mr-8">
-                          <span className="text-primary text-xs font-mono mr-2">-5 ET</span>
+                          <span className="text-primary text-xs font-mono mr-2">-5 EP</span>
                           <span className="text-primary text-xs font-mono mr-2">+15 XP</span>
                         </div>
                       </div>

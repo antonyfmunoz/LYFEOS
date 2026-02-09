@@ -170,9 +170,9 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
             </div>
           </div>
           <div className={`flex items-center gap-3 mt-1 flex-wrap ${completed ? "opacity-50" : ""}`}>
-            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((energyCost ?? 0) / 1440) * 100).toFixed(1)}% ET</span>
             <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((attentionCost ?? 0) / 1440) * 100).toFixed(1)}% AT</span>
             <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((timeCost ?? 0) / 1440) * 100).toFixed(1)}% TT</span>
+            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((energyCost ?? 0) / 1440) * 100).toFixed(1)}% EP</span>
             <span className="text-primary text-xs font-mono whitespace-nowrap">+{adjustedXp} XP</span>
           </div>
           {hasSchedule && (
