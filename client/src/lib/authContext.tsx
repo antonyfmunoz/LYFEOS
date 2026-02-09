@@ -355,6 +355,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Continue despite error - user is already authenticated client-side
       }
       
+      // Set loading to false BEFORE navigation so onboarding page renders immediately
+      setIsLoading(false);
+      
+      // Clear widget states for new users so all widgets start open with their defaults
+      localStorage.removeItem("lyfeos-widget-states");
+      
       // Handle redirection based on isNewUser flag (should always be true for registration)
       if (data.isNewUser) {
         console.log("New user detected, redirecting to onboarding");
@@ -374,9 +380,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           variant: "destructive",
         });
       }
-      throw error;
-    } finally {
       setIsLoading(false);
+      throw error;
     }
   };
 
