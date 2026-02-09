@@ -435,6 +435,9 @@ export class DatabaseStorage implements IStorage {
           eq(userDailyLogs.date, yesterdayStr)
         ));
       
+      // HP resets to max at midnight (like Time/Attention Tokens)
+      updateData.healthPointsCurrent = stats.healthPointsMax;
+      
       if (yesterdayLogs.length > 0) {
         const log = yesterdayLogs[0];
         const mental = log.mentalState ?? 5;
@@ -442,15 +445,11 @@ export class DatabaseStorage implements IStorage {
         const emotional = log.emotionalState ?? 5;
         const avgRating = (mental + physical + emotional) / 3;
         
-        // Both HP and EP are calculated the same way: average rating scaled to max
-        const newHP = Math.round((avgRating / 10) * stats.healthPointsMax);
+        // EP is calculated from yesterday's log ratings
         const newEP = Math.round((avgRating / 10) * stats.energyPointsMax);
-        
-        updateData.healthPointsCurrent = Math.max(0, Math.min(stats.healthPointsMax, newHP));
         updateData.energyPointsCurrent = Math.max(0, Math.min(stats.energyPointsMax, newEP));
       } else {
-        // No log from yesterday — reset both to max
-        updateData.healthPointsCurrent = stats.healthPointsMax;
+        // No log from yesterday — reset EP to max
         updateData.energyPointsCurrent = stats.energyPointsMax;
       }
     }
