@@ -23,6 +23,11 @@ export const users = pgTable("users", {
   authProvider: text("auth_provider").default("email"), // ("email", "google", "apple", "facebook")
   firebaseUid: text("firebase_uid"), // Firebase UID for Firebase-authenticated users
   termsAccepted: boolean("terms_accepted").default(false),
+  emailVerified: boolean("email_verified").default(false),
+  emailVerificationToken: text("email_verification_token"),
+  emailVerificationExpiry: timestamp("email_verification_expiry"),
+  passwordResetToken: text("password_reset_token"),
+  passwordResetExpiry: timestamp("password_reset_expiry"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   lastLoginAt: timestamp("last_login_at"),
 });

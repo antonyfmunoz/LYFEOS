@@ -38,6 +38,9 @@ import RitualsArchivePage from "./pages/RitualsArchivePage";
 import KnowledgeArchivePage from "./pages/KnowledgeArchivePage";
 import GoalsArchivePage from "./pages/GoalsArchivePage";
 import VoiceOverlay from "./components/VoiceOverlay";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -208,6 +211,9 @@ function Router() {
       {/* Public routes */}
       <Route path="/login" component={LoginPage} />
       <Route path="/register" component={RegisterPage} />
+      <Route path="/verify-email" component={VerifyEmailPage} />
+      <Route path="/forgot-password" component={ForgotPasswordPage} />
+      <Route path="/reset-password" component={ResetPasswordPage} />
       
       {/* Onboarding route - requires auth but has special handling */}
       <Route path="/onboarding" component={OnboardingPage} />

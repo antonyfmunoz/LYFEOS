@@ -7,8 +7,10 @@ import { userDailyLogs, quests as questsTable } from "@shared/schema";
 import { registerChatRoutes } from "./replit_integrations/chat";
 import { z } from "zod";
 import bcrypt from "bcrypt";
+import crypto from "crypto";
 import multer from "multer";
 import Anthropic from "@anthropic-ai/sdk";
+import { sendVerificationEmail, sendPasswordResetEmail } from "./email";
 import webpush from "web-push";
 import { 
   insertUserSchema, 
@@ -285,6 +287,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Username and password are required" });
       }
       
+      if (userData.email && !z.string().email().safeParse(userData.email).success) {
+        return res.status(400).json({ error: "Invalid email format" });
+      }
+
       const existingUser = await storage.getUserByUsername(userData.username);
       
       if (existingUser) {
@@ -364,7 +370,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         optionalBoostsShown: false
       });
       
-      // Create session
+      if (userData.email) {
+        const verificationToken = crypto.randomBytes(32).toString('hex');
+        const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        await storage.setEmailVerificationToken(user.id, verificationToken, expiry);
+        sendVerificationEmail(userData.email, verificationToken, userData.firstName).catch(err => {
+          console.error("Failed to send verification email:", err);
+        });
+      }
+
       req.session.userId = user.id;
       req.session.username = user.username;
       
@@ -433,6 +447,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  app.get("/api/auth/verify-email", async (req: Request, res: Response) => {
+    try {
+      const token = req.query.token as string;
+      if (!token) {
+        return res.status(400).json({ error: "Verification token is required" });
+      }
+      if (!/^[a-f0-9]{64}$/.test(token)) {
+        return res.status(400).json({ error: "Invalid verification token" });
+      }
+      const user = await storage.verifyEmail(token);
+      if (!user) {
+        return res.status(400).json({ error: "Invalid or expired verification link" });
+      }
+      return res.json({ success: true, message: "Email verified successfully" });
+    } catch (error) {
+      console.error("Email verification error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/auth/resend-verification", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      if (user.emailVerified) return res.json({ message: "Email already verified" });
+      if (!user.email) return res.status(400).json({ error: "No email address on file" });
+
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+      const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      await storage.setEmailVerificationToken(userId, verificationToken, expiry);
+      const sent = await sendVerificationEmail(user.email, verificationToken, user.firstName || undefined);
+      if (!sent) return res.status(500).json({ error: "Failed to send verification email" });
+      return res.json({ success: true, message: "Verification email sent" });
+    } catch (error) {
+      console.error("Resend verification error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/auth/forgot-password", async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+      if (!email) return res.status(400).json({ error: "Email is required" });
+      if (!z.string().email().safeParse(email).success) {
+        return res.status(400).json({ error: "Invalid email format" });
+      }
+
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.json({ success: true, message: "If an account with that email exists, a reset link has been sent." });
+      }
+
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const expiry = new Date(Date.now() + 60 * 60 * 1000);
+      await storage.setPasswordResetToken(user.id, resetToken, expiry);
+      await sendPasswordResetEmail(email, resetToken, user.firstName || undefined);
+
+      return res.json({ success: true, message: "If an account with that email exists, a reset link has been sent." });
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/auth/reset-password", async (req: Request, res: Response) => {
+    try {
+      const { token, newPassword } = req.body;
+      if (!token || !newPassword) {
+        return res.status(400).json({ error: "Token and new password are required" });
+      }
+      if (!/^[a-f0-9]{64}$/.test(token)) {
+        return res.status(400).json({ error: "Invalid reset token" });
+      }
+      if (newPassword.length < 6) {
+        return res.status(400).json({ error: "Password must be at least 6 characters" });
+      }
+
+      const user = await storage.getUserByResetToken(token);
+      if (!user) {
+        return res.status(400).json({ error: "Invalid or expired reset link" });
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await storage.updateUserPassword(user.id, hashedPassword);
+      await storage.clearPasswordResetToken(user.id);
+
+      return res.json({ success: true, message: "Password reset successfully" });
+    } catch (error) {
+      console.error("Reset password error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Firebase authentication handler
   app.post("/api/auth/firebase", async (req: Request, res: Response) => {
     try {
@@ -604,6 +712,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // USER PROFILE ROUTES
   app.get("/api/users/:userId/profile", isOwner, async (req: Request, res: Response) => {
     const userId = parseInt(req.params.userId);
+    if (isNaN(userId)) return res.status(400).json({ error: "Invalid ID" });
     try {
       const user = await storage.getUser(userId);
       if (!user) {
@@ -621,6 +730,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.patch("/api/users/:userId/profile", isOwner, async (req: Request, res: Response) => {
     const userId = parseInt(req.params.userId);
+    if (isNaN(userId)) return res.status(400).json({ error: "Invalid ID" });
     try {
       const { 
         username,
@@ -671,6 +781,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Specific endpoint for UserProfile schema (not user)
   app.patch("/api/users/:userId/user-profile", isOwner, async (req: Request, res: Response) => {
     const userId = parseInt(req.params.userId);
+    if (isNaN(userId)) return res.status(400).json({ error: "Invalid ID" });
     try {
       // Parse the update data
       const { 
@@ -3448,6 +3559,7 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
   app.get("/api/users/:userId/integrations", isOwner, async (req: Request, res: Response) => {
     try {
       const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) return res.status(400).json({ error: "Invalid ID" });
       const integrations = await storage.getUserIntegrations(userId);
       
       // For security, don't return tokens in the response
@@ -3588,6 +3700,7 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
   app.get("/api/users/:userId/progress-trackers", isOwner, async (req: Request, res: Response) => {
     try {
       const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) return res.status(400).json({ error: "Invalid ID" });
       const progressTrackers = await storage.getProgressTrackersByUserId(userId);
       res.json({ progressTrackers });
     } catch (error) {
@@ -3701,6 +3814,7 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
   app.get("/api/users/:userId/media-items", isOwner, async (req: Request, res: Response) => {
     try {
       const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) return res.status(400).json({ error: "Invalid ID" });
       const mediaItems = await storage.getMediaItemsByUserId(userId);
       res.json({ mediaItems });
     } catch (error) {
@@ -3906,6 +4020,7 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
   app.get("/api/users/:userId/media-albums", isOwner, async (req: Request, res: Response) => {
     try {
       const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) return res.status(400).json({ error: "Invalid ID" });
       const mediaAlbums = await storage.getMediaAlbumsByUserId(userId);
       res.json({ mediaAlbums });
     } catch (error) {

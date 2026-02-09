@@ -80,6 +80,9 @@ app.get("/api/health", (_req: Request, res: Response) => {
 
 app.use("/api/auth/register", createRateLimiter(5, 60 * 1000));
 app.use("/api/auth/login", createRateLimiter(10, 60 * 1000));
+app.use("/api/auth/forgot-password", createRateLimiter(3, 60 * 1000));
+app.use("/api/auth/reset-password", createRateLimiter(5, 60 * 1000));
+app.use("/api/auth/resend-verification", createRateLimiter(3, 60 * 1000));
 app.use("/api/profile/generate-affirmation", createRateLimiter(5, 60 * 1000));
 app.use("/api/voice-command", createRateLimiter(20, 60 * 1000));
 app.use("/api", createRateLimiter(100, 60 * 1000, true));
