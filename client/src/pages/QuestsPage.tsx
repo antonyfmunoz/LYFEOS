@@ -1314,9 +1314,6 @@ export default function QuestsPage() {
                           <div className="flex justify-between items-start">
                             <h3 className="font-medium">{mission.title}</h3>
                             <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                              <span className="h-6 w-6 inline-flex items-center justify-center text-[10px] font-mono rounded border bg-primary/20 border-primary/50 text-primary">
-                                {mission.difficulty}
-                              </span>
                               {mission.description && (
                                 <button
                                   className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
@@ -1452,14 +1449,6 @@ export default function QuestsPage() {
                           <div className="flex justify-between items-start">
                             <h3 className="font-medium line-through text-muted-foreground">{quest.title}</h3>
                             <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                              {quest.category && quest.category !== "general" && quest.category !== "onboarding" && (
-                                <span className="text-[10px] font-mono h-6 px-1.5 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary opacity-50 capitalize">
-                                  {quest.category}
-                                </span>
-                              )}
-                              <span className="text-[10px] font-mono h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary opacity-50">
-                                {quest.difficulty || 'D'}
-                              </span>
                               <button
                                 className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors opacity-50 hover:opacity-100"
                                 onClick={() => setTerminatedInfoOpen(prev => ({ ...prev, [quest.id]: !prev[quest.id] }))}

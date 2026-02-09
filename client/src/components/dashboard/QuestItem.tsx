@@ -127,14 +127,6 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
               )}
             </h3>
             <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-              {category && category !== "general" && category !== "onboarding" && (
-                <span className={`text-[10px] font-mono h-6 px-1.5 inline-flex items-center justify-center rounded border ${difficultyStyle} ${completed ? "opacity-50" : ""} capitalize`}>
-                  {category}
-                </span>
-              )}
-              <span className={`text-[10px] font-mono h-6 w-6 inline-flex items-center justify-center rounded border ${difficultyStyle} ${completed ? "opacity-50" : ""}`}>
-                {difficulty || 'D'}
-              </span>
               <button
                 className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
                 onClick={(e) => {
