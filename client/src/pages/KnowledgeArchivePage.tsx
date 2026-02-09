@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
-import { Archive, ChevronDown, ChevronRight, BookOpen, FileText, Search, Play, Link2, ArrowLeft, Calendar, Trash2 } from "lucide-react";
+import { Archive, ChevronDown, ChevronRight, BookOpen, FileText, Search, Play, Link2, ArrowLeft, Calendar, Trash2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { useToast } from "@/hooks/use-toast";
@@ -178,6 +178,53 @@ export default function KnowledgeArchivePage() {
     }
   }, [editedNotes, updateNoteMutation]);
 
+  const [editingField, setEditingField] = useState<{ type: 'author' | 'source'; oldValue: string; parentAuthor?: string } | null>(null);
+  const [editingValue, setEditingValue] = useState('');
+  const editInputRef = useRef<HTMLInputElement>(null);
+
+  const renameFieldMutation = useMutation({
+    mutationFn: async ({ field, oldValue, newValue, scopeAuthor }: { field: 'sourceAuthor' | 'sourceMaterial'; oldValue: string; newValue: string; scopeAuthor?: string }) => {
+      const response = await fetch(`/api/users/${user?.id}/daily-logs/rename-research-field`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ field, oldValue, newValue, scopeAuthor }),
+      });
+      if (!response.ok) throw new Error('Failed to rename');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'daily-logs', 'knowledge'] });
+      setEditingField(null);
+      setEditingValue('');
+    },
+  });
+
+  const startEditing = useCallback((type: 'author' | 'source', oldValue: string, parentAuthor?: string) => {
+    setEditingField({ type, oldValue, parentAuthor });
+    setEditingValue(oldValue);
+    setTimeout(() => editInputRef.current?.focus(), 50);
+  }, []);
+
+  const confirmEdit = useCallback(() => {
+    if (!editingField || !editingValue.trim() || editingValue.trim() === editingField.oldValue) {
+      setEditingField(null);
+      setEditingValue('');
+      return;
+    }
+    renameFieldMutation.mutate({
+      field: editingField.type === 'author' ? 'sourceAuthor' : 'sourceMaterial',
+      oldValue: editingField.oldValue,
+      newValue: editingValue.trim(),
+      scopeAuthor: editingField.type === 'source' ? editingField.parentAuthor : undefined,
+    });
+  }, [editingField, editingValue, renameFieldMutation]);
+
+  const cancelEdit = useCallback(() => {
+    setEditingField(null);
+    setEditingValue('');
+  }, []);
+
   const authorGroups: AuthorGroup[] = useMemo(() => {
     if (!logsData?.logs) return [];
 
@@ -331,14 +378,36 @@ export default function KnowledgeArchivePage() {
                   className="p-4 flex items-center justify-between cursor-pointer hover:bg-card/40 transition-colors"
                   onClick={() => toggleAuthor(authorKey)}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
                     {isAuthorExpanded ? (
                       <ChevronDown className="h-5 w-5 text-primary flex-shrink-0" />
                     ) : (
                       <ChevronRight className="h-5 w-5 text-primary flex-shrink-0" />
                     )}
                     <BookOpen className="h-4 w-4 text-primary flex-shrink-0" />
-                    <h2 className="text-base font-medium">{group.author}</h2>
+                    {editingField?.type === 'author' && editingField.oldValue === group.author ? (
+                      <div className="flex items-center gap-1.5 flex-1 min-w-0" onClick={e => e.stopPropagation()}>
+                        <input
+                          ref={editInputRef}
+                          className="bg-background/80 border border-primary/40 rounded px-2 py-0.5 text-base font-medium flex-1 min-w-0 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                          value={editingValue}
+                          onChange={e => setEditingValue(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') confirmEdit(); if (e.key === 'Escape') cancelEdit(); }}
+                          onBlur={confirmEdit}
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 group/author min-w-0">
+                        <h2 className="text-base font-medium truncate">{group.author}</h2>
+                        <button
+                          className="p-1 rounded hover:bg-primary/20 text-muted-foreground opacity-0 group-hover/author:opacity-100 transition-opacity flex-shrink-0"
+                          title="Edit author name"
+                          onClick={e => { e.stopPropagation(); startEditing('author', group.author); }}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-[#7DAAB2] px-2 py-1 bg-slate-800/50 rounded-full">
@@ -369,14 +438,36 @@ export default function KnowledgeArchivePage() {
                             className="px-3 py-2.5 flex items-center justify-between cursor-pointer hover:bg-card/40 transition-colors bg-card/20"
                             onClick={() => toggleSource(sourceKey)}
                           >
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
                               {isSourceExpanded ? (
                                 <ChevronDown className="h-4 w-4 text-primary/70 flex-shrink-0" />
                               ) : (
                                 <ChevronRight className="h-4 w-4 text-primary/70 flex-shrink-0" />
                               )}
                               <Link2 className="h-3.5 w-3.5 text-primary/70 flex-shrink-0" />
-                              <span className="text-sm">{source.sourceMaterial}</span>
+                              {editingField?.type === 'source' && editingField.oldValue === source.sourceMaterial && editingField.parentAuthor === group.author ? (
+                                <div className="flex items-center gap-1.5 flex-1 min-w-0" onClick={e => e.stopPropagation()}>
+                                  <input
+                                    ref={editInputRef}
+                                    className="bg-background/80 border border-primary/40 rounded px-2 py-0.5 text-sm flex-1 min-w-0 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                                    value={editingValue}
+                                    onChange={e => setEditingValue(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter') confirmEdit(); if (e.key === 'Escape') cancelEdit(); }}
+                                    onBlur={confirmEdit}
+                                  />
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1.5 group/source min-w-0">
+                                  <span className="text-sm truncate">{source.sourceMaterial}</span>
+                                  <button
+                                    className="p-1 rounded hover:bg-primary/20 text-muted-foreground opacity-0 group-hover/source:opacity-100 transition-opacity flex-shrink-0"
+                                    title="Edit source material"
+                                    onClick={e => { e.stopPropagation(); startEditing('source', source.sourceMaterial, group.author); }}
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              )}
                             </div>
                             <div className="flex items-center gap-1.5">
                               <span className="text-xs text-[#7DAAB2] px-1.5 py-0.5 bg-slate-800/50 rounded">

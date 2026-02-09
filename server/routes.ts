@@ -4410,6 +4410,64 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
     }
   });
 
+  app.patch("/api/users/:userId/daily-logs/rename-research-field", isOwner, async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) return res.status(400).json({ error: "Invalid user ID" });
+
+      const schema = z.object({
+        field: z.enum(["sourceAuthor", "sourceMaterial"]),
+        oldValue: z.string(),
+        newValue: z.string().min(1),
+        scopeAuthor: z.string().optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid request", details: parsed.error });
+
+      const { field, oldValue, newValue, scopeAuthor } = parsed.data;
+
+      const allLogs = await db.select().from(userDailyLogs).where(eq(userDailyLogs.userId, userId));
+
+      let updatedCount = 0;
+      for (const log of allLogs) {
+        let needsUpdate = false;
+        const updates: Record<string, any> = {};
+
+        const logAuthor = (log as any).sourceAuthor;
+        const matchesScope = !scopeAuthor || field === 'sourceAuthor' || logAuthor === scopeAuthor;
+
+        if ((log as any)[field] === oldValue && matchesScope) {
+          updates[field] = newValue;
+          needsUpdate = true;
+        }
+
+        const entries = Array.isArray((log as any).researchEntries) ? [...(log as any).researchEntries] : [];
+        let entriesChanged = false;
+        for (let i = 0; i < entries.length; i++) {
+          const entryMatchesScope = !scopeAuthor || field === 'sourceAuthor' || entries[i].sourceAuthor === scopeAuthor;
+          if (entries[i][field] === oldValue && entryMatchesScope) {
+            entries[i] = { ...entries[i], [field]: newValue };
+            entriesChanged = true;
+          }
+        }
+        if (entriesChanged) {
+          updates.researchEntries = entries;
+          needsUpdate = true;
+        }
+
+        if (needsUpdate) {
+          await db.update(userDailyLogs).set(updates).where(eq(userDailyLogs.id, log.id));
+          updatedCount++;
+        }
+      }
+
+      return res.json({ success: true, updatedCount });
+    } catch (error) {
+      console.error("Error renaming research field:", error);
+      return res.status(500).json({ error: "Failed to rename" });
+    }
+  });
+
   app.get("/api/dismissed-knowledge", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
