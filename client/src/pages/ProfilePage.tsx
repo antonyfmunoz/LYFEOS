@@ -38,7 +38,6 @@ import {
   RefreshCw,
   Sparkles,
   Brain,
-  Target,
   BookOpen,
   FolderKanban,
   Heart,
@@ -534,6 +533,7 @@ export default function ProfilePage() {
           { label: "Shadow Archetype", value: profile.archetypeShadow },
           { label: "Primary Instincts", value: formatValue(profile.primaryInstincts) },
           { label: "Key Drivers", value: formatValue(profile.keyDrivers) },
+          { label: "Life Stage", value: profile.lifeStage },
         ]
       },
       {
@@ -545,21 +545,8 @@ export default function ProfilePage() {
           { label: "Primary Values", value: formatValue(profile.primaryValues) },
           { label: "Strengths", value: formatValue(profile.strengths) },
           { label: "Weaknesses", value: formatValue(profile.weaknesses) },
-          { label: "Trait to Develop", value: profile.desiredTrait },
-        ]
-      },
-      {
-        id: "vision",
-        title: "Vision & Goals",
-        icon: <Target className="h-4 w-4 text-primary" />,
-        items: [
-          { label: "Life Stage", value: profile.lifeStage },
           { label: "Desired Emotion", value: profile.desiredEmotion },
-          { label: "90-Day Vision", value: profile.vision90Day },
-          { label: "18-Month Vision", value: profile.vision18Month },
-          { label: "5-Year Vision", value: profile.vision5Year },
-          { label: "10-Year Vision", value: profile.vision10Year },
-          { label: "Legacy Vision", value: profile.vision10YearLegacy },
+          { label: "Trait to Develop", value: profile.desiredTrait },
         ]
       },
       {
