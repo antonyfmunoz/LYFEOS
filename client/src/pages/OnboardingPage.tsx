@@ -866,7 +866,6 @@ export default function OnboardingPage() {
         return (
           <div className="space-y-4">
             <h2 className="text-2xl font-orbitron font-bold text-center">Where are you located?</h2>
-            <p className="text-sm text-muted-foreground text-center">Optional</p>
             <LocationAutosuggest value={location} onChange={setLocation} />
           </div>
         );
