@@ -34,78 +34,83 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md space-y-6">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold" style={{ color: "var(--primary-hex, #00e0ff)" }}>LYFEOS</h1>
-          <p className="text-muted-foreground mt-2 text-sm">Life Operating System</p>
-        </div>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
+      <div className="text-center mb-8">
+        <h1 className="text-4xl text-primary font-orbitron mb-2">LYFE<span className="text-foreground">OS</span></h1>
+        <p className="text-muted-foreground">Your personal life operating system</p>
+      </div>
 
-        {submitted ? (
-          <div className="bg-card border border-border rounded-xl p-8 text-center space-y-4">
-            <Mail className="w-12 h-12 mx-auto text-primary" />
-            <h2 className="text-xl font-semibold text-foreground">Check your email</h2>
-            <p className="text-muted-foreground text-sm">
-              If an account exists with that email, we've sent a password reset link. Check your inbox and spam folder.
-            </p>
+      {submitted ? (
+        <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-primary/40 text-center space-y-4"
+             style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
+          <Mail className="w-12 h-12 mx-auto text-primary" />
+          <h2 className="text-xl font-orbitron text-foreground">Check your email</h2>
+          <p className="text-muted-foreground text-sm">
+            If an account exists with that email, we've sent a password reset link. Check your inbox and spam folder.
+          </p>
+          <div className="pt-2">
             <Link href="/login">
-              <span className="inline-flex items-center gap-2 text-sm text-primary hover:underline cursor-pointer mt-4">
+              <span className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition cursor-pointer">
                 <ArrowLeft className="w-4 h-4" />
                 Back to Login
               </span>
             </Link>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="bg-card border border-border rounded-xl p-8 space-y-5">
-            <div className="text-center">
-              <h2 className="text-xl font-semibold text-foreground">Reset your password</h2>
-              <p className="text-muted-foreground text-sm mt-1">
-                Enter the email address associated with your account and we'll send you a reset link.
-              </p>
+        </div>
+      ) : (
+        <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-primary/40"
+             style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
+          <h2 className="text-xl font-orbitron text-center mb-6 text-foreground">Reset Password</h2>
+
+          <p className="text-muted-foreground text-sm text-center mb-6">
+            Enter the email address associated with your account and we'll send you a reset link.
+          </p>
+
+          {error && (
+            <div className="px-3 py-2 rounded bg-red-500/10 border border-red-500/30 text-red-500 text-sm mb-4">
+              {error}
             </div>
+          )}
 
-            {error && (
-              <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
-                {error}
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">Email</label>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <label className="block text-sm text-muted-foreground">EMAIL</label>
               <Input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-transparent border-primary/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-primary/30"
                 placeholder="your@email.com"
                 required
-                className="bg-background"
               />
             </div>
 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3 rounded-lg font-semibold text-sm transition-colors disabled:opacity-50"
-              style={{ backgroundColor: "var(--primary-hex, #00e0ff)", color: "#0a0a1a" }}
+              className="w-full mt-4 text-sm font-mono px-4 py-2.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
-                <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Sending...
+                </>
               ) : (
                 "Send Reset Link"
               )}
             </button>
-
-            <div className="text-center">
-              <Link href="/login">
-                <span className="inline-flex items-center gap-2 text-sm text-primary hover:underline cursor-pointer">
-                  <ArrowLeft className="w-4 h-4" />
-                  Back to Login
-                </span>
-              </Link>
-            </div>
           </form>
-        )}
-      </div>
+
+          <div className="mt-4 text-center">
+            <Link href="/login">
+              <span className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition cursor-pointer">
+                <ArrowLeft className="w-4 h-4" />
+                Back to Login
+              </span>
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

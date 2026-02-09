@@ -49,12 +49,16 @@ export default function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background px-4">
-        <div className="w-full max-w-md text-center space-y-4">
-          <h1 className="text-3xl font-bold" style={{ color: "var(--primary-hex, #00e0ff)" }}>LYFEOS</h1>
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl text-primary font-orbitron mb-2">LYFE<span className="text-foreground">OS</span></h1>
+          <p className="text-muted-foreground">Your personal life operating system</p>
+        </div>
+        <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-primary/40 text-center space-y-4"
+             style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
           <p className="text-foreground">Invalid reset link. Please request a new one.</p>
           <Link href="/forgot-password">
-            <span className="text-primary hover:underline cursor-pointer text-sm">Request New Link</span>
+            <span className="text-primary hover:text-primary/80 transition cursor-pointer text-sm">Request New Link</span>
           </Link>
         </div>
       </div>
@@ -62,43 +66,41 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md space-y-6">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold" style={{ color: "var(--primary-hex, #00e0ff)" }}>LYFEOS</h1>
-          <p className="text-muted-foreground mt-2 text-sm">Life Operating System</p>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
+      <div className="text-center mb-8">
+        <h1 className="text-4xl text-primary font-orbitron mb-2">LYFE<span className="text-foreground">OS</span></h1>
+        <p className="text-muted-foreground">Your personal life operating system</p>
+      </div>
+
+      {success ? (
+        <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-primary/40 text-center space-y-4"
+             style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
+          <CheckCircle className="w-16 h-16 mx-auto text-green-500" />
+          <h2 className="text-xl font-orbitron text-foreground">Password Reset!</h2>
+          <p className="text-muted-foreground text-sm">
+            Your password has been updated successfully. You can now log in with your new password.
+          </p>
+          <button
+            onClick={() => navigate("/login")}
+            className="mt-2 text-sm font-mono px-6 py-2.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center justify-center gap-2"
+          >
+            Go to Login
+          </button>
         </div>
+      ) : (
+        <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-primary/40"
+             style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
+          <h2 className="text-xl font-orbitron text-center mb-6 text-foreground">Set New Password</h2>
 
-        {success ? (
-          <div className="bg-card border border-border rounded-xl p-8 text-center space-y-4">
-            <CheckCircle className="w-16 h-16 mx-auto text-green-500" />
-            <h2 className="text-xl font-semibold text-foreground">Password Reset!</h2>
-            <p className="text-muted-foreground text-sm">
-              Your password has been updated successfully. You can now log in with your new password.
-            </p>
-            <button
-              onClick={() => navigate("/login")}
-              className="px-6 py-3 rounded-lg font-semibold text-sm transition-colors"
-              style={{ backgroundColor: "var(--primary-hex, #00e0ff)", color: "#0a0a1a" }}
-            >
-              Go to Login
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="bg-card border border-border rounded-xl p-8 space-y-5">
-            <div className="text-center">
-              <h2 className="text-xl font-semibold text-foreground">Set new password</h2>
-              <p className="text-muted-foreground text-sm mt-1">Choose a strong password for your account.</p>
+          {error && (
+            <div className="px-3 py-2 rounded bg-red-500/10 border border-red-500/30 text-red-500 text-sm mb-4">
+              {error}
             </div>
+          )}
 
-            {error && (
-              <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-4 py-3">
-                {error}
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">New Password</label>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <label className="block text-sm text-muted-foreground">NEW PASSWORD</label>
               <div className="relative">
                 <Input
                   type={showPassword ? "text" : "password"}
@@ -107,7 +109,7 @@ export default function ResetPasswordPage() {
                   placeholder="At least 6 characters"
                   required
                   minLength={6}
-                  className="bg-background pr-10"
+                  className="w-full bg-transparent border-primary/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-primary/30 pr-10"
                 />
                 <button
                   type="button"
@@ -119,8 +121,8 @@ export default function ResetPasswordPage() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">Confirm Password</label>
+            <div className="space-y-2">
+              <label className="block text-sm text-muted-foreground">CONFIRM PASSWORD</label>
               <Input
                 type={showPassword ? "text" : "password"}
                 value={confirmPassword}
@@ -128,34 +130,36 @@ export default function ResetPasswordPage() {
                 placeholder="Re-enter your password"
                 required
                 minLength={6}
-                className="bg-background"
+                className="w-full bg-transparent border-primary/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-primary/30"
               />
             </div>
 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3 rounded-lg font-semibold text-sm transition-colors disabled:opacity-50"
-              style={{ backgroundColor: "var(--primary-hex, #00e0ff)", color: "#0a0a1a" }}
+              className="w-full mt-4 text-sm font-mono px-4 py-2.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
-                <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Resetting...
+                </>
               ) : (
                 "Reset Password"
               )}
             </button>
-
-            <div className="text-center">
-              <Link href="/login">
-                <span className="inline-flex items-center gap-2 text-sm text-primary hover:underline cursor-pointer">
-                  <ArrowLeft className="w-4 h-4" />
-                  Back to Login
-                </span>
-              </Link>
-            </div>
           </form>
-        )}
-      </div>
+
+          <div className="mt-4 text-center">
+            <Link href="/login">
+              <span className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition cursor-pointer">
+                <ArrowLeft className="w-4 h-4" />
+                Back to Login
+              </span>
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
