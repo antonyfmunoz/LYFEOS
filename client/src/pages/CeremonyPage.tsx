@@ -12,7 +12,6 @@ export default function CeremonyPage() {
     health: false,
     time: false,
     attention: false,
-    xp: false,
     efficiency: false,
   });
 
@@ -24,10 +23,9 @@ export default function CeremonyPage() {
       { delay: 2200, action: () => setStatsLoaded(prev => ({ ...prev, health: true })) },
       { delay: 2700, action: () => setStatsLoaded(prev => ({ ...prev, time: true })) },
       { delay: 3200, action: () => setStatsLoaded(prev => ({ ...prev, attention: true })) },
-      { delay: 3700, action: () => setStatsLoaded(prev => ({ ...prev, xp: true })) },
-      { delay: 4200, action: () => setStatsLoaded(prev => ({ ...prev, efficiency: true })) },
-      { delay: 5200, action: () => setPhase(2) },
-      { delay: 7200, action: () => navigate("/dashboard") },
+      { delay: 3700, action: () => setStatsLoaded(prev => ({ ...prev, efficiency: true })) },
+      { delay: 4700, action: () => setPhase(2) },
+      { delay: 6700, action: () => navigate("/dashboard") },
     ];
 
     const timeouts = phases.map(({ delay, action }) => 
@@ -58,7 +56,6 @@ export default function CeremonyPage() {
               <StatBar label="HEALTH POINTS" loaded={statsLoaded.health} value="100 / 100" />
               <StatBar label="TIME TOKENS" loaded={statsLoaded.time} value="100 / 100" />
               <StatBar label="ATTENTION TOKENS" loaded={statsLoaded.attention} value="100 / 100" />
-              <StatBar label="EXPERIENCE" loaded={statsLoaded.xp} value="0 XP" />
               <StatBar label="EFFICIENCY SCORE" loaded={statsLoaded.efficiency} value="0%" />
             </div>
           </div>
