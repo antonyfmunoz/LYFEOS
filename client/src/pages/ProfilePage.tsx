@@ -70,8 +70,72 @@ function PersistentProfileDraggableWidget({ widgetId, ...props }: Omit<Draggable
   return <DraggableWidget {...props} isOpenProp={isOpen} onOpenChange={setIsOpen} />;
 }
 
-function PersistentProfileSection({ section }: { section: { id: string; title: string; icon: React.ReactNode; items: { label: string; value: any }[] } }) {
+type ProfileFieldItem = {
+  label: string;
+  value: any;
+  rawValue?: any;
+  fieldKey?: string;
+  fieldType?: "text" | "array" | "nested";
+  nestedPath?: string;
+};
+
+function PersistentProfileSection({ section, onSave }: { section: { id: string; title: string; icon: React.ReactNode; items: ProfileFieldItem[] }; onSave?: (updates: Record<string, any>) => Promise<void> }) {
   const [isOpen, setIsOpen] = useWidgetState(`profile.section.${section.id}`, false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValues, setEditValues] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
+
+  const startEditing = () => {
+    const values: Record<string, string> = {};
+    section.items.forEach((item) => {
+      if (item.fieldKey && item.rawValue !== undefined) {
+        const raw = item.rawValue;
+        if (raw === null || raw === undefined) {
+          values[item.fieldKey] = "";
+        } else if (Array.isArray(raw)) {
+          values[item.fieldKey] = raw.join(", ");
+        } else {
+          values[item.fieldKey] = String(raw);
+        }
+      }
+    });
+    setEditValues(values);
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    setEditValues({});
+  };
+
+  const handleSave = async () => {
+    if (!onSave) return;
+    setIsSaving(true);
+    try {
+      const updates: Record<string, any> = {};
+      section.items.forEach((item) => {
+        if (!item.fieldKey) return;
+        const raw = editValues[item.fieldKey] ?? "";
+        if (item.fieldType === "nested" && item.nestedPath) {
+          const parts = item.nestedPath.split(".");
+          const topKey = parts[0];
+          const subKey = parts[1];
+          if (!updates[topKey]) updates[topKey] = {};
+          updates[topKey][subKey] = raw || null;
+        } else if (item.fieldType === "array") {
+          updates[item.fieldKey] = raw ? raw.split(",").map((s: string) => s.trim()).filter(Boolean) : [];
+        } else {
+          updates[item.fieldKey] = raw || null;
+        }
+      });
+      await onSave(updates);
+      setIsEditing(false);
+      setEditValues({});
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors group">
@@ -83,12 +147,41 @@ function PersistentProfileSection({ section }: { section: { id: string; title: s
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="p-3 pt-2 space-y-2">
+          {!isEditing && onSave && (
+            <div className="flex justify-end mb-1">
+              <button onClick={startEditing} className="text-xs font-mono px-2 py-1 rounded border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors inline-flex items-center gap-1">
+                <Edit className="h-3 w-3" />
+                Edit
+              </button>
+            </div>
+          )}
           {section.items.map((item, idx) => (
             <div key={idx} className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-3 py-1 border-b border-primary/5 last:border-0">
               <span className="text-xs text-muted-foreground min-w-[120px]">{item.label}</span>
-              <span className="text-sm text-foreground flex-1">{item.value || "\u2014"}</span>
+              {isEditing && item.fieldKey ? (
+                <Input
+                  value={editValues[item.fieldKey] ?? ""}
+                  onChange={(e) => setEditValues({ ...editValues, [item.fieldKey!]: e.target.value })}
+                  className="h-7 text-sm flex-1"
+                  placeholder={item.fieldType === "array" ? "Comma separated values" : item.label}
+                />
+              ) : (
+                <span className="text-sm text-foreground flex-1">{item.value || "\u2014"}</span>
+              )}
             </div>
           ))}
+          {isEditing && (
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={cancelEditing} className="text-xs font-mono px-3 py-1.5 rounded border border-muted-foreground/30 text-muted-foreground hover:bg-muted/30 transition-colors inline-flex items-center gap-1">
+                <X className="h-3 w-3" />
+                Cancel
+              </button>
+              <button onClick={handleSave} disabled={isSaving} className="text-xs font-mono px-3 py-1.5 rounded border border-primary/50 bg-primary/20 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1 disabled:opacity-50">
+                {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                Save
+              </button>
+            </div>
+          )}
         </div>
       </CollapsibleContent>
     </Collapsible>
@@ -522,18 +615,18 @@ export default function ProfilePage() {
       );
     }
 
-    const sections = [
+    const sections: { id: string; title: string; icon: React.ReactNode; items: ProfileFieldItem[] }[] = [
       {
         id: "identity",
         title: "Identity",
         icon: <User className="h-4 w-4 text-primary" />,
         items: [
-          { label: "Primary Archetype", value: profile.archetypePrimary },
-          { label: "Secondary Archetype", value: profile.archetypeSecondary },
-          { label: "Shadow Archetype", value: profile.archetypeShadow },
-          { label: "Primary Instincts", value: formatValue(profile.primaryInstincts) },
-          { label: "Key Drivers", value: formatValue(profile.keyDrivers) },
-          { label: "Life Stage", value: profile.lifeStage },
+          { label: "Primary Archetype", value: profile.archetypePrimary, rawValue: profile.archetypePrimary, fieldKey: "archetypePrimary", fieldType: "text" },
+          { label: "Secondary Archetype", value: profile.archetypeSecondary, rawValue: profile.archetypeSecondary, fieldKey: "archetypeSecondary", fieldType: "text" },
+          { label: "Shadow Archetype", value: profile.archetypeShadow, rawValue: profile.archetypeShadow, fieldKey: "archetypeShadow", fieldType: "text" },
+          { label: "Primary Instincts", value: formatValue(profile.primaryInstincts), rawValue: profile.primaryInstincts, fieldKey: "primaryInstincts", fieldType: "array" },
+          { label: "Key Drivers", value: formatValue(profile.keyDrivers), rawValue: profile.keyDrivers, fieldKey: "keyDrivers", fieldType: "array" },
+          { label: "Life Stage", value: profile.lifeStage, rawValue: profile.lifeStage, fieldKey: "lifeStage", fieldType: "text" },
         ]
       },
       {
@@ -541,12 +634,12 @@ export default function ProfilePage() {
         title: "Personality",
         icon: <Brain className="h-4 w-4 text-primary" />,
         items: [
-          { label: "Core Belief", value: profile.coreBelief },
-          { label: "Primary Values", value: formatValue(profile.primaryValues) },
-          { label: "Strengths", value: formatValue(profile.strengths) },
-          { label: "Weaknesses", value: formatValue(profile.weaknesses) },
-          { label: "Desired Emotion", value: profile.desiredEmotion },
-          { label: "Trait to Develop", value: profile.desiredTrait },
+          { label: "Core Belief", value: profile.coreBelief, rawValue: profile.coreBelief, fieldKey: "coreBelief", fieldType: "text" },
+          { label: "Primary Values", value: formatValue(profile.primaryValues), rawValue: profile.primaryValues, fieldKey: "primaryValues", fieldType: "array" },
+          { label: "Strengths", value: formatValue(profile.strengths), rawValue: profile.strengths, fieldKey: "strengths", fieldType: "array" },
+          { label: "Weaknesses", value: formatValue(profile.weaknesses), rawValue: profile.weaknesses, fieldKey: "weaknesses", fieldType: "array" },
+          { label: "Desired Emotion", value: profile.desiredEmotion, rawValue: profile.desiredEmotion, fieldKey: "desiredEmotion", fieldType: "text" },
+          { label: "Trait to Develop", value: profile.desiredTrait, rawValue: profile.desiredTrait, fieldKey: "desiredTrait", fieldType: "text" },
         ]
       },
       {
@@ -554,10 +647,10 @@ export default function ProfilePage() {
         title: "Learning & Skills",
         icon: <BookOpen className="h-4 w-4 text-primary" />,
         items: [
-          { label: "Domains of Competence", value: formatValue(profile.domainsOfCompetence) },
-          { label: "Skills to Acquire", value: formatValue(profile.skillsToAcquire) },
-          { label: "Knowledge Areas", value: formatValue(profile.knowledgeAreas) },
-          { label: "Integration Method", value: profile.integrationMethod },
+          { label: "Domains of Competence", value: formatValue(profile.domainsOfCompetence), rawValue: profile.domainsOfCompetence, fieldKey: "domainsOfCompetence", fieldType: "array" },
+          { label: "Skills to Acquire", value: formatValue(profile.skillsToAcquire), rawValue: profile.skillsToAcquire, fieldKey: "skillsToAcquire", fieldType: "array" },
+          { label: "Knowledge Areas", value: formatValue(profile.knowledgeAreas), rawValue: profile.knowledgeAreas, fieldKey: "knowledgeAreas", fieldType: "array" },
+          { label: "Integration Method", value: profile.integrationMethod, rawValue: profile.integrationMethod, fieldKey: "integrationMethod", fieldType: "text" },
         ]
       },
       {
@@ -565,9 +658,9 @@ export default function ProfilePage() {
         title: "Projects & Craft",
         icon: <FolderKanban className="h-4 w-4 text-primary" />,
         items: [
-          { label: "Primary Craft", value: profile.primaryCraft },
-          { label: "Why This Craft", value: profile.primaryCraftWhy },
-          { label: "Active Phase", value: profile.activePhase },
+          { label: "Primary Craft", value: profile.primaryCraft, rawValue: profile.primaryCraft, fieldKey: "primaryCraft", fieldType: "text" },
+          { label: "Why This Craft", value: profile.primaryCraftWhy, rawValue: profile.primaryCraftWhy, fieldKey: "primaryCraftWhy", fieldType: "text" },
+          { label: "Active Phase", value: profile.activePhase, rawValue: profile.activePhase, fieldKey: "activePhase", fieldType: "text" },
           { label: "Current Projects", value: formatValue(profile.currentProjects?.map?.((p: any) => p.name)) },
         ]
       },
@@ -576,10 +669,10 @@ export default function ProfilePage() {
         title: "Health & Body",
         icon: <Heart className="h-4 w-4 text-primary" />,
         items: [
-          { label: "Training Style", value: profile.fitnessMovement?.trainingStyle },
-          { label: "Nutritional Approach", value: profile.nutritionRecovery?.nutritionalApproach },
-          { label: "Energy Patterns", value: profile.healthVitality?.energyPatterns },
-          { label: "Longevity Focus", value: formatValue(profile.healthVitality?.longevityFocus) },
+          { label: "Training Style", value: profile.fitnessMovement?.trainingStyle, rawValue: profile.fitnessMovement?.trainingStyle, fieldKey: "fitnessMovement_trainingStyle", fieldType: "nested", nestedPath: "fitnessMovement.trainingStyle" },
+          { label: "Nutritional Approach", value: profile.nutritionRecovery?.nutritionalApproach, rawValue: profile.nutritionRecovery?.nutritionalApproach, fieldKey: "nutritionRecovery_nutritionalApproach", fieldType: "nested", nestedPath: "nutritionRecovery.nutritionalApproach" },
+          { label: "Energy Patterns", value: profile.healthVitality?.energyPatterns, rawValue: profile.healthVitality?.energyPatterns, fieldKey: "healthVitality_energyPatterns", fieldType: "nested", nestedPath: "healthVitality.energyPatterns" },
+          { label: "Longevity Focus", value: formatValue(profile.healthVitality?.longevityFocus), rawValue: profile.healthVitality?.longevityFocus, fieldKey: "healthVitality_longevityFocus", fieldType: "nested", nestedPath: "healthVitality.longevityFocus" },
         ]
       },
       {
@@ -587,10 +680,10 @@ export default function ProfilePage() {
         title: "Wealth & Work",
         icon: <Wallet className="h-4 w-4 text-primary" />,
         items: [
-          { label: "Career/Vocation", value: profile.careerVocation },
-          { label: "Active Ventures", value: formatValue(profile.activeVentures) },
-          { label: "Weekly Capacity", value: profile.weeklyCapacity?.hours ? `${profile.weeklyCapacity.hours} hours` : "—" },
-          { label: "Physical Environment", value: profile.physicalEnvironment },
+          { label: "Career/Vocation", value: profile.careerVocation, rawValue: profile.careerVocation, fieldKey: "careerVocation", fieldType: "text" },
+          { label: "Active Ventures", value: formatValue(profile.activeVentures), rawValue: profile.activeVentures, fieldKey: "activeVentures", fieldType: "array" },
+          { label: "Weekly Capacity", value: profile.weeklyCapacity?.hours ? `${profile.weeklyCapacity.hours} hours` : "\u2014", rawValue: profile.weeklyCapacity?.hours, fieldKey: "weeklyCapacity_hours", fieldType: "nested", nestedPath: "weeklyCapacity.hours" },
+          { label: "Physical Environment", value: profile.physicalEnvironment, rawValue: profile.physicalEnvironment, fieldKey: "physicalEnvironment", fieldType: "text" },
         ]
       },
       {
@@ -598,11 +691,11 @@ export default function ProfilePage() {
         title: "Performance",
         icon: <Zap className="h-4 w-4 text-primary" />,
         items: [
-          { label: "Collaboration Style", value: profile.collaborationStyle },
-          { label: "Role Orientation", value: profile.roleOrientation },
-          { label: "Decision Style", value: profile.decisionOrientation },
-          { label: "Optimal Environment", value: profile.optimalEnvironment },
-          { label: "Greatest Contribution", value: profile.greatestContribution },
+          { label: "Collaboration Style", value: profile.collaborationStyle, rawValue: profile.collaborationStyle, fieldKey: "collaborationStyle", fieldType: "text" },
+          { label: "Role Orientation", value: profile.roleOrientation, rawValue: profile.roleOrientation, fieldKey: "roleOrientation", fieldType: "text" },
+          { label: "Decision Style", value: profile.decisionOrientation, rawValue: profile.decisionOrientation, fieldKey: "decisionOrientation", fieldType: "text" },
+          { label: "Optimal Environment", value: profile.optimalEnvironment, rawValue: profile.optimalEnvironment, fieldKey: "optimalEnvironment", fieldType: "text" },
+          { label: "Greatest Contribution", value: profile.greatestContribution, rawValue: profile.greatestContribution, fieldKey: "greatestContribution", fieldType: "text" },
         ]
       },
       {
@@ -610,17 +703,39 @@ export default function ProfilePage() {
         title: "Style & Expression",
         icon: <PaletteIcon className="h-4 w-4 text-primary" />,
         items: [
-          { label: "Aesthetic", value: profile.aesthetic },
-          { label: "Signature Expression", value: profile.signatureExpression },
-          { label: "Creative Outlets", value: formatValue(profile.creativeOutlets) },
+          { label: "Aesthetic", value: profile.aesthetic, rawValue: profile.aesthetic, fieldKey: "aesthetic", fieldType: "text" },
+          { label: "Signature Expression", value: profile.signatureExpression, rawValue: profile.signatureExpression, fieldKey: "signatureExpression", fieldType: "text" },
+          { label: "Creative Outlets", value: formatValue(profile.creativeOutlets), rawValue: profile.creativeOutlets, fieldKey: "creativeOutlets", fieldType: "array" },
         ]
       },
     ];
 
+    const handleProfileSectionSave = async (updates: Record<string, any>) => {
+      const patchData: Record<string, any> = {};
+      for (const [key, value] of Object.entries(updates)) {
+        if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+          patchData[key] = { ...(profile[key] || {}), ...value };
+        } else {
+          patchData[key] = value;
+        }
+      }
+      try {
+        await apiRequest("/api/profile", {
+          method: "PATCH",
+          body: JSON.stringify(patchData),
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+        toast({ title: "Saved", description: "Player record updated." });
+      } catch (error) {
+        toast({ title: "Error", description: "Failed to save. Please try again.", variant: "destructive" });
+        throw error;
+      }
+    };
+
     return (
       <div className="space-y-3">
         {sections.map((section) => (
-          <PersistentProfileSection key={section.id} section={section} />
+          <PersistentProfileSection key={section.id} section={section} onSave={handleProfileSectionSave} />
         ))}
       </div>
     );
