@@ -112,9 +112,11 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
       className={`glassmorphic rounded-xl p-4 mb-3 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition neon-border ${isDragging ? "opacity-50" : ""}`}
     >
       <div className="flex items-start">
-        <div ref={dragHandleRef} className="mt-1 cursor-move flex-shrink-0">
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
-        </div>
+        {category !== "onboarding" && (
+          <div ref={dragHandleRef} className="mt-1 cursor-move flex-shrink-0">
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </div>
+        )}
         <div className="ml-2 flex-grow">
           <div className="flex justify-between items-start">
             <h3 className={`font-medium ${completed ? "text-muted-foreground line-through" : ""}`}>
@@ -147,7 +149,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
                   <Edit3 className="h-3.5 w-3.5" />
                 </button>
               )}
-              {onDelete && (
+              {onDelete && category !== "onboarding" && (
                 <Button
                   variant="ghost"
                   size="icon"
