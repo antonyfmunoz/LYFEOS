@@ -596,75 +596,117 @@ export default function OnboardingPage() {
     }
   }, [userProfile]);
   
-  const [ageRange, setAgeRange] = useState("");
-  const [location, setLocation] = useState("");
-  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
-  const [lifeStage, setLifeStage] = useState("");
+  const STORAGE_KEY = "lyfeos-onboarding-answers";
   
-  const [archetypeAnswers, setArchetypeAnswers] = useState<Record<number, number | Archetype>>({});
+  const loadSavedAnswers = () => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  };
   
-  const [coreValues, setCoreValues] = useState<string[]>([]);
-  const [desiredEmotion, setDesiredEmotion] = useState("");
-  const [coreBelief, setCoreBelief] = useState("");
-  const [limitingBelief, setLimitingBelief] = useState("");
-  const [empoweringBelief, setEmpoweringBelief] = useState("");
-  const [strengths, setStrengths] = useState<string[]>([]);
-  const [weaknesses, setWeaknesses] = useState<string[]>([]);
-  const [selfStandards, setSelfStandards] = useState("");
-  const [traitToReprogram, setTraitToReprogram] = useState("");
-  const [desiredTrait, setDesiredTrait] = useState("");
-  const [vision90Day, setVision90Day] = useState("");
-  const [vision90DayMetric, setVision90DayMetric] = useState("");
-  const [vision18Month, setVision18Month] = useState("");
-  const [vision18MonthMetric, setVision18MonthMetric] = useState("");
-  const [vision5Year, setVision5Year] = useState("");
-  const [vision10YearLegacy, setVision10YearLegacy] = useState("");
-  const [legacyMetric, setLegacyMetric] = useState("");
-  const [mortalityReflection, setMortalityReflection] = useState("");
-  const [lifeDomains, setLifeDomains] = useState<string[]>([]);
+  const saved = loadSavedAnswers();
   
-  const [primaryCraft, setPrimaryCraft] = useState("");
-  const [primaryCraftWhy, setPrimaryCraftWhy] = useState("");
-  const [knowledgeAreas, setKnowledgeAreas] = useState("");
-  const [skillsToAcquire, setSkillsToAcquire] = useState("");
-  const [learningPreference, setLearningPreference] = useState("");
-  const [practiceHours, setPracticeHours] = useState(10);
+  const [ageRange, setAgeRange] = useState(saved.ageRange || "");
+  const [location, setLocation] = useState(saved.location || "");
+  const [timezone, setTimezone] = useState(saved.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const [lifeStage, setLifeStage] = useState(saved.lifeStage || "");
   
-  const [weeklyCapacity, setWeeklyCapacity] = useState(40);
-  const [energyDrains, setEnergyDrains] = useState<string[]>([]);
-  const [physicalEnvironment, setPhysicalEnvironment] = useState("");
-  const [physicalEnvironmentImpact, setPhysicalEnvironmentImpact] = useState("");
-  const [financialIncome, setFinancialIncome] = useState("");
-  const [financialSavings, setFinancialSavings] = useState("");
-  const [financialConstraints, setFinancialConstraints] = useState<string[]>([]);
-  const [moneyConfidenceScore, setMoneyConfidenceScore] = useState(5);
-  const [moneyRelationship, setMoneyRelationship] = useState("");
+  const [archetypeAnswers, setArchetypeAnswers] = useState<Record<number, number | Archetype>>(saved.archetypeAnswers || {});
   
-  const [sleepHours, setSleepHours] = useState(7);
-  const [exerciseFrequency, setExerciseFrequency] = useState("");
-  const [nutritionApproach, setNutritionApproach] = useState("");
-  const [habitsToReprogram, setHabitsToReprogram] = useState<string[]>([]);
-  const [traitsToCultivate, setTraitsToCultivate] = useState<string[]>([]);
-  const [emotionsToCultivate, setEmotionsToCultivate] = useState<string[]>([]);
-  const [copingPractices, setCopingPractices] = useState("");
-  const [copingEssential, setCopingEssential] = useState("");
-  const [dominantInstinctType, setDominantInstinctType] = useState("");
-  const [decisionMakingStyles, setDecisionMakingStyles] = useState<string[]>([]);
-  const [decisionMakingPrimary, setDecisionMakingPrimary] = useState("");
+  const [coreValues, setCoreValues] = useState<string[]>(saved.coreValues || []);
+  const [desiredEmotion, setDesiredEmotion] = useState(saved.desiredEmotion || "");
+  const [coreBelief, setCoreBelief] = useState(saved.coreBelief || "");
+  const [limitingBelief, setLimitingBelief] = useState(saved.limitingBelief || "");
+  const [empoweringBelief, setEmpoweringBelief] = useState(saved.empoweringBelief || "");
+  const [strengths, setStrengths] = useState<string[]>(saved.strengths || []);
+  const [weaknesses, setWeaknesses] = useState<string[]>(saved.weaknesses || []);
+  const [selfStandards, setSelfStandards] = useState(saved.selfStandards || "");
+  const [traitToReprogram, setTraitToReprogram] = useState(saved.traitToReprogram || "");
+  const [desiredTrait, setDesiredTrait] = useState(saved.desiredTrait || "");
+  const [vision90Day, setVision90Day] = useState(saved.vision90Day || "");
+  const [vision90DayMetric, setVision90DayMetric] = useState(saved.vision90DayMetric || "");
+  const [vision18Month, setVision18Month] = useState(saved.vision18Month || "");
+  const [vision18MonthMetric, setVision18MonthMetric] = useState(saved.vision18MonthMetric || "");
+  const [vision5Year, setVision5Year] = useState(saved.vision5Year || "");
+  const [vision10YearLegacy, setVision10YearLegacy] = useState(saved.vision10YearLegacy || "");
+  const [legacyMetric, setLegacyMetric] = useState(saved.legacyMetric || "");
+  const [mortalityReflection, setMortalityReflection] = useState(saved.mortalityReflection || "");
+  const [lifeDomains, setLifeDomains] = useState<string[]>(saved.lifeDomains || []);
   
-  const [shadowPatternText, setShadowPatternText] = useState("");
-  const [upbringing, setUpbringing] = useState("");
-  const [culturalContext, setCulturalContext] = useState("");
-  const [keyExperiences, setKeyExperiences] = useState("");
-  const [relationshipDrains, setRelationshipDrains] = useState("");
+  const [primaryCraft, setPrimaryCraft] = useState(saved.primaryCraft || "");
+  const [primaryCraftWhy, setPrimaryCraftWhy] = useState(saved.primaryCraftWhy || "");
+  const [knowledgeAreas, setKnowledgeAreas] = useState(saved.knowledgeAreas || "");
+  const [skillsToAcquire, setSkillsToAcquire] = useState(saved.skillsToAcquire || "");
+  const [learningPreference, setLearningPreference] = useState(saved.learningPreference || "");
+  const [practiceHours, setPracticeHours] = useState(saved.practiceHours ?? 10);
   
-  const [idealDay, setIdealDay] = useState("");
-  const [morningRituals, setMorningRituals] = useState<string[]>([]);
-  const [eveningRituals, setEveningRituals] = useState<string[]>([]);
-  const [groundingRitual, setGroundingRitual] = useState("");
-  const [boundaries, setBoundaries] = useState({ techOffTime: "", workHours: "" });
-  const [lockedHabit, setLockedHabit] = useState("");
-  const [yearlyCyclesText, setYearlyCyclesText] = useState("");
+  const [weeklyCapacity, setWeeklyCapacity] = useState(saved.weeklyCapacity ?? 40);
+  const [energyDrains, setEnergyDrains] = useState<string[]>(saved.energyDrains || []);
+  const [physicalEnvironment, setPhysicalEnvironment] = useState(saved.physicalEnvironment || "");
+  const [physicalEnvironmentImpact, setPhysicalEnvironmentImpact] = useState(saved.physicalEnvironmentImpact || "");
+  const [financialIncome, setFinancialIncome] = useState(saved.financialIncome || "");
+  const [financialSavings, setFinancialSavings] = useState(saved.financialSavings || "");
+  const [financialConstraints, setFinancialConstraints] = useState<string[]>(saved.financialConstraints || []);
+  const [moneyConfidenceScore, setMoneyConfidenceScore] = useState(saved.moneyConfidenceScore ?? 5);
+  const [moneyRelationship, setMoneyRelationship] = useState(saved.moneyRelationship || "");
+  
+  const [sleepHours, setSleepHours] = useState(saved.sleepHours ?? 7);
+  const [exerciseFrequency, setExerciseFrequency] = useState(saved.exerciseFrequency || "");
+  const [nutritionApproach, setNutritionApproach] = useState(saved.nutritionApproach || "");
+  const [habitsToReprogram, setHabitsToReprogram] = useState<string[]>(saved.habitsToReprogram || []);
+  const [traitsToCultivate, setTraitsToCultivate] = useState<string[]>(saved.traitsToCultivate || []);
+  const [emotionsToCultivate, setEmotionsToCultivate] = useState<string[]>(saved.emotionsToCultivate || []);
+  const [copingPractices, setCopingPractices] = useState(saved.copingPractices || "");
+  const [copingEssential, setCopingEssential] = useState(saved.copingEssential || "");
+  const [dominantInstinctType, setDominantInstinctType] = useState(saved.dominantInstinctType || "");
+  const [decisionMakingStyles, setDecisionMakingStyles] = useState<string[]>(saved.decisionMakingStyles || []);
+  const [decisionMakingPrimary, setDecisionMakingPrimary] = useState(saved.decisionMakingPrimary || "");
+  
+  const [shadowPatternText, setShadowPatternText] = useState(saved.shadowPatternText || "");
+  const [upbringing, setUpbringing] = useState(saved.upbringing || "");
+  const [culturalContext, setCulturalContext] = useState(saved.culturalContext || "");
+  const [keyExperiences, setKeyExperiences] = useState(saved.keyExperiences || "");
+  const [relationshipDrains, setRelationshipDrains] = useState(saved.relationshipDrains || "");
+  
+  const [idealDay, setIdealDay] = useState(saved.idealDay || "");
+  const [morningRituals, setMorningRituals] = useState<string[]>(saved.morningRituals || []);
+  const [eveningRituals, setEveningRituals] = useState<string[]>(saved.eveningRituals || []);
+  const [groundingRitual, setGroundingRitual] = useState(saved.groundingRitual || "");
+  const [boundaries, setBoundaries] = useState(saved.boundaries || { techOffTime: "", workHours: "" });
+  const [lockedHabit, setLockedHabit] = useState(saved.lockedHabit || "");
+  const [yearlyCyclesText, setYearlyCyclesText] = useState(saved.yearlyCyclesText || "");
+  
+  useEffect(() => {
+    const data = {
+      ageRange, location, timezone, lifeStage, archetypeAnswers,
+      coreValues, desiredEmotion, coreBelief, limitingBelief, empoweringBelief,
+      strengths, weaknesses, selfStandards, traitToReprogram, desiredTrait,
+      vision90Day, vision90DayMetric, vision18Month, vision18MonthMetric,
+      vision5Year, vision10YearLegacy, legacyMetric, mortalityReflection, lifeDomains,
+      primaryCraft, primaryCraftWhy, knowledgeAreas, skillsToAcquire, learningPreference, practiceHours,
+      weeklyCapacity, energyDrains, physicalEnvironment, physicalEnvironmentImpact,
+      financialIncome, financialSavings, financialConstraints, moneyConfidenceScore, moneyRelationship,
+      sleepHours, exerciseFrequency, nutritionApproach, habitsToReprogram, traitsToCultivate,
+      emotionsToCultivate, copingPractices, copingEssential, dominantInstinctType, decisionMakingStyles, decisionMakingPrimary,
+      shadowPatternText, upbringing, culturalContext, keyExperiences, relationshipDrains,
+      idealDay, morningRituals, eveningRituals, groundingRitual, boundaries, lockedHabit, yearlyCyclesText,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }, [
+    ageRange, location, timezone, lifeStage, archetypeAnswers,
+    coreValues, desiredEmotion, coreBelief, limitingBelief, empoweringBelief,
+    strengths, weaknesses, selfStandards, traitToReprogram, desiredTrait,
+    vision90Day, vision90DayMetric, vision18Month, vision18MonthMetric,
+    vision5Year, vision10YearLegacy, legacyMetric, mortalityReflection, lifeDomains,
+    primaryCraft, primaryCraftWhy, knowledgeAreas, skillsToAcquire, learningPreference, practiceHours,
+    weeklyCapacity, energyDrains, physicalEnvironment, physicalEnvironmentImpact,
+    financialIncome, financialSavings, financialConstraints, moneyConfidenceScore, moneyRelationship,
+    sleepHours, exerciseFrequency, nutritionApproach, habitsToReprogram, traitsToCultivate,
+    emotionsToCultivate, copingPractices, copingEssential, dominantInstinctType, decisionMakingStyles, decisionMakingPrimary,
+    shadowPatternText, upbringing, culturalContext, keyExperiences, relationshipDrains,
+    idealDay, morningRituals, eveningRituals, groundingRitual, boundaries, lockedHabit, yearlyCyclesText,
+  ]);
   
   const calculateArchetypeScores = (): ArchetypeScores => {
     const scores: ArchetypeScores = {
@@ -787,11 +829,96 @@ export default function OnboardingPage() {
   const canProceed = () => {
     if (currentMission === 0) {
       if (currentStep === 0) return ageRange !== "";
-      if (currentStep === 1) return true;
+      if (currentStep === 1) return location.trim() !== "";
       if (currentStep === 2) return timezone !== "";
     }
     if (currentMission === 1) {
       return archetypeAnswers[ARCHETYPE_QUESTIONS[currentStep]?.id] !== undefined;
+    }
+    if (currentMission === 2) {
+      switch (currentStep) {
+        case 0: return lifeStage !== "";
+        case 1: return coreValues.length > 0;
+        case 2: return desiredEmotion !== "";
+        case 3: return coreBelief.trim() !== "";
+        case 4: return limitingBelief.trim() !== "";
+        case 5: return empoweringBelief.trim() !== "";
+        case 6: return strengths.length > 0;
+        case 7: return weaknesses.length > 0;
+        case 8: return selfStandards.trim() !== "";
+        case 9: return traitToReprogram.trim() !== "";
+        case 10: return desiredTrait.trim() !== "";
+        case 11: return vision90Day.trim() !== "";
+        case 12: return vision90DayMetric.trim() !== "";
+        case 13: return vision18Month.trim() !== "";
+        case 14: return vision18MonthMetric.trim() !== "";
+        case 15: return vision5Year.trim() !== "";
+        case 16: return vision10YearLegacy.trim() !== "";
+        case 17: return legacyMetric.trim() !== "";
+        case 18: return mortalityReflection.trim() !== "";
+        case 19: return lifeDomains.length > 0;
+      }
+    }
+    if (currentMission === 3) {
+      switch (currentStep) {
+        case 0: return primaryCraft.trim() !== "";
+        case 1: return primaryCraftWhy.trim() !== "";
+        case 2: return knowledgeAreas.trim() !== "";
+        case 3: return skillsToAcquire.trim() !== "";
+        case 4: return learningPreference !== "";
+        case 5: return true;
+      }
+    }
+    if (currentMission === 4) {
+      switch (currentStep) {
+        case 0: return true;
+        case 1: return energyDrains.length > 0;
+        case 2: return physicalEnvironment.trim() !== "";
+        case 3: return physicalEnvironmentImpact.trim() !== "";
+        case 4: return financialIncome.trim() !== "";
+        case 5: return financialSavings.trim() !== "";
+        case 6: return financialConstraints.length > 0;
+        case 7: return true;
+        case 8: return moneyRelationship.trim() !== "";
+      }
+    }
+    if (currentMission === 5) {
+      switch (currentStep) {
+        case 0: return true;
+        case 1: return exerciseFrequency !== "";
+        case 2: return nutritionApproach !== "";
+        case 3: return habitsToReprogram.length > 0;
+        case 4: return traitsToCultivate.length > 0;
+        case 5: return coreBelief.trim() !== "";
+        case 6: return limitingBelief.trim() !== "";
+        case 7: return empoweringBelief.trim() !== "";
+        case 8: return emotionsToCultivate.length > 0;
+        case 9: return copingPractices.trim() !== "";
+        case 10: return copingEssential.trim() !== "";
+        case 11: return dominantInstinctType !== "";
+        case 12: return decisionMakingStyles.length > 0;
+        case 13: return decisionMakingPrimary !== "";
+      }
+    }
+    if (currentMission === 6) {
+      switch (currentStep) {
+        case 0: return shadowPatternText.trim() !== "";
+        case 1: return upbringing.trim() !== "";
+        case 2: return culturalContext.trim() !== "";
+        case 3: return keyExperiences.trim() !== "";
+        case 4: return relationshipDrains.trim() !== "";
+      }
+    }
+    if (currentMission === 7) {
+      switch (currentStep) {
+        case 0: return idealDay.trim() !== "";
+        case 1: return morningRituals.length > 0;
+        case 2: return eveningRituals.length > 0;
+        case 3: return groundingRitual.trim() !== "";
+        case 4: return boundaries.techOffTime.trim() !== "" && boundaries.workHours.trim() !== "";
+        case 5: return lockedHabit.trim() !== "";
+        case 6: return yearlyCyclesText.trim() !== "";
+      }
     }
     return true;
   };
@@ -815,8 +942,7 @@ export default function OnboardingPage() {
   };
 
   const handleStop = () => {
-    localStorage.removeItem("lyfeos-pending-onboarding");
-    navigate("/dashboard");
+    handleSkipToSystem();
   };
 
   const handleContinueToNextMission = () => {
