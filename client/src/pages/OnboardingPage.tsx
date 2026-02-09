@@ -283,7 +283,7 @@ function LocationAutosuggest({ value, onChange }: { value: string; onChange: (va
         <p className="text-xs text-muted-foreground mt-1 text-center">Searching...</p>
       )}
       {isFocused && suggestions.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 rounded-xl border border-primary/30 bg-card/90 backdrop-blur shadow-[0_0_20px_rgba(0,224,255,0.1)] overflow-hidden max-h-64 overflow-y-auto">
+        <div className="absolute z-50 w-full mt-1 rounded-xl border border-primary/30 bg-card/90 backdrop-blur shadow-[0_0_20px_var(--primary-bg-subtle)] overflow-hidden max-h-64 overflow-y-auto">
           {suggestions.map((loc) => (
             <button
               key={loc}
@@ -319,7 +319,7 @@ function EmojiGridSelect({
           onClick={() => onChange(option.label)}
           className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
             value === option.label
-              ? "bg-primary/20 border-primary shadow-[0_0_15px_rgba(0,224,255,0.3)]"
+              ? "bg-primary/20 border-primary shadow-[0_0_15px_var(--primary-glow-light)]"
               : "bg-card/30 border-primary/20 hover:border-primary/50"
           }`}
         >
@@ -402,7 +402,7 @@ function ChipSelect({
           onClick={() => handleClick(option)}
           className={`px-4 py-2 rounded-xl border-2 transition-all text-sm ${
             isSelected(option)
-              ? "bg-primary/20 text-primary border-primary shadow-[0_0_10px_rgba(0,224,255,0.3)]"
+              ? "bg-primary/20 text-primary border-primary shadow-[0_0_10px_var(--primary-glow-light)]"
               : "bg-card/30 text-foreground border-primary/20 hover:border-primary/50"
           }`}
         >
@@ -422,7 +422,7 @@ function LikertScale({ value, onChange }: { value: number; onChange: (val: numbe
           onClick={() => onChange(num)}
           className={`w-12 h-12 rounded-xl border-2 transition-all font-medium ${
             value === num
-              ? "bg-primary/20 text-primary border-primary shadow-[0_0_10px_rgba(0,224,255,0.3)]"
+              ? "bg-primary/20 text-primary border-primary shadow-[0_0_10px_var(--primary-glow-light)]"
               : "bg-card/30 text-foreground border-primary/20 hover:border-primary/50"
           }`}
         >
@@ -450,7 +450,7 @@ function ScenarioSelect({
           onClick={() => onChange(option.archetype)}
           className={`px-4 py-3 rounded-xl border-2 transition-all text-sm text-left ${
             value === option.archetype
-              ? "bg-primary/20 text-primary border-primary shadow-[0_0_10px_rgba(0,224,255,0.3)]"
+              ? "bg-primary/20 text-primary border-primary shadow-[0_0_10px_var(--primary-glow-light)]"
               : "bg-card/30 text-foreground border-primary/20 hover:border-primary/50"
           }`}
         >
@@ -924,10 +924,11 @@ export default function OnboardingPage() {
             <select
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
-              className="w-full max-w-md mx-auto block rounded-lg border border-primary/20 bg-card/30 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full max-w-md mx-auto block rounded-lg border border-primary/20 bg-card/30 backdrop-blur px-4 py-3 text-sm text-foreground font-mono appearance-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
             >
               {Intl.supportedValuesOf("timeZone").map((tz) => (
-                <option key={tz} value={tz}>{tz.replace(/_/g, " ")}</option>
+                <option key={tz} value={tz} className="bg-card text-foreground">{tz.replace(/_/g, " ")}</option>
               ))}
             </select>
           </div>
@@ -1085,7 +1086,7 @@ export default function OnboardingPage() {
             <p className="text-muted-foreground text-sm">Your personal life operating system</p>
           </div>
           
-          <Card className="w-full max-w-md border-primary/30 bg-card/50 backdrop-blur shadow-[0_0_30px_rgba(0,224,255,0.1)]">
+          <Card className="w-full max-w-md border-primary/30 bg-card/50 backdrop-blur shadow-[0_0_30px_var(--primary-bg-subtle)]">
             <CardContent className="p-8 text-center">
               <h2 className="text-2xl font-orbitron font-bold mb-4">Mission Complete!</h2>
               <div className="w-20 h-20 rounded-full bg-primary/20 border-2 border-primary mx-auto flex items-center justify-center mb-4">
@@ -1152,7 +1153,7 @@ export default function OnboardingPage() {
       </div>
       
       <div className="flex-1 flex flex-col items-center justify-center px-4 pb-4">
-        <Card className="w-full max-w-lg border-primary/30 bg-card/50 backdrop-blur shadow-[0_0_30px_rgba(0,224,255,0.1)]">
+        <Card className="w-full max-w-lg border-primary/30 bg-card/50 backdrop-blur shadow-[0_0_30px_var(--primary-bg-subtle)]">
           <CardContent className="p-6">
             {renderMissionContent()}
             <DotNavigation current={currentStep} total={totalSteps} />

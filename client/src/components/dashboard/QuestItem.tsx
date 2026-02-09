@@ -108,7 +108,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
     <div 
       ref={ref}
       data-handler-id={handlerId}
-      className={`glassmorphic rounded-xl p-4 mb-3 hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition neon-border ${isDragging ? "opacity-50" : ""}`}
+      className={`glassmorphic rounded-xl p-4 mb-3 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition neon-border ${isDragging ? "opacity-50" : ""}`}
     >
       <div className="flex items-start">
         <div ref={dragHandleRef} className="mt-1 cursor-move flex-shrink-0">

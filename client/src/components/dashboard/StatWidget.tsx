@@ -20,7 +20,7 @@ export default function StatWidget({
   const percentage = (current / max) * 100;
   
   return (
-    <Link href={`/${type}`} className="glassmorphic rounded-xl p-4 neon-border hover:shadow-[0_0_10px_rgba(0,224,255,0.5)] transition-shadow duration-300 block">
+    <Link href={`/${type}`} className="glassmorphic rounded-xl p-4 neon-border hover:shadow-[0_0_10px_var(--primary-glow-medium)] transition-shadow duration-300 block">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center">
           <span className={`material-icons ${

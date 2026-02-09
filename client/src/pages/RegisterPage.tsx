@@ -211,13 +211,7 @@ export default function RegisterPage() {
         displayName: trimmedDisplayName || trimmedUsername,
       });
       
-      console.log("Registration successful, redirecting to onboarding");
-      // The redirection should happen in the authContext, but as a fallback:
-      setTimeout(() => {
-        navigate("/onboarding");
-      }, 500);
-      
-      // Navigation to onboarding happens in the authContext after successful registration
+      console.log("Registration successful, authContext handles redirect to onboarding");
     } catch (err: any) {
       console.error("Registration error:", err);
       

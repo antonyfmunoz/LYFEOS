@@ -1367,7 +1367,7 @@ export default function QuestsPage() {
                   return (
                     <div 
                       key={`onboarding-${mission.id}`}
-                      className="glassmorphic rounded-xl p-4 mb-3 hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition neon-border"
+                      className="glassmorphic rounded-xl p-4 mb-3 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition neon-border"
                     >
                       <div className="flex items-start">
                         <div className="ml-2 flex-grow">
@@ -1504,7 +1504,7 @@ export default function QuestsPage() {
                   return (
                     <div 
                       key={quest.id}
-                      className="glassmorphic rounded-xl p-4 mb-3 hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition neon-border opacity-60"
+                      className="glassmorphic rounded-xl p-4 mb-3 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition neon-border opacity-60"
                     >
                       <div className="flex items-start">
                         <div className="ml-2 flex-grow">

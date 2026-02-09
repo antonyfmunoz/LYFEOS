@@ -59,7 +59,7 @@ export default function ChronilogPage() {
         {chronilogCategories.map((category) => (
           <div 
             key={category.id}
-            className="glassmorphic rounded-xl p-6 neon-border hover:shadow-[0_0_10px_rgba(0,224,255,0.5)] transition-shadow duration-300 cursor-pointer"
+            className="glassmorphic rounded-xl p-6 neon-border hover:shadow-[0_0_10px_var(--primary-glow-medium)] transition-shadow duration-300 cursor-pointer"
           >
             <div className="flex items-center mb-3">
               <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 ${

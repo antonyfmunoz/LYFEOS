@@ -148,7 +148,7 @@ export default function VoiceOverlay() {
       <div className="fixed inset-x-0 top-16 z-50 flex justify-center px-4 pt-2 pointer-events-none">
         <div
           ref={elementRef}
-          className="bg-card rounded-xl px-4 py-2 neon-border max-w-sm w-full pointer-events-auto shadow-[0_0_20px_rgba(0,224,255,0.2)]"
+          className="bg-card rounded-xl px-4 py-2 neon-border max-w-sm w-full pointer-events-auto shadow-[0_0_20px_var(--primary-glow-light)]"
           style={dragStyle}
         >
           <div className="flex items-center justify-between">
@@ -190,7 +190,7 @@ export default function VoiceOverlay() {
     <div className="fixed inset-x-0 top-16 z-50 flex justify-center px-4 pt-2 pointer-events-none">
       <div
         ref={elementRef}
-        className="bg-card rounded-xl p-4 neon-border max-w-sm w-full pointer-events-auto shadow-[0_0_20px_rgba(0,224,255,0.2)]"
+        className="bg-card rounded-xl p-4 neon-border max-w-sm w-full pointer-events-auto shadow-[0_0_20px_var(--primary-glow-light)]"
         style={dragStyle}
       >
         <div className="flex items-center justify-between mb-2">

@@ -448,9 +448,9 @@ export default function TimelinePage() {
                 <div
                   className={`absolute left-[-19px] top-4 w-3 h-3 rounded-full border-2 border-primary z-10 transition-all ${
                     zoomLevel === 'day'
-                      ? 'bg-primary shadow-[0_0_6px_rgba(0,224,255,0.5)]'
+                      ? 'bg-primary shadow-[0_0_6px_var(--primary-glow-medium)]'
                       : node.count > 0
-                      ? 'bg-primary shadow-[0_0_6px_rgba(0,224,255,0.5)]'
+                      ? 'bg-primary shadow-[0_0_6px_var(--primary-glow-medium)]'
                       : 'bg-background'
                   }`}
                 />
@@ -483,7 +483,7 @@ export default function TimelinePage() {
                   </div>
                 ) : (
                   <div
-                    className="ml-2 py-3 px-4 glassmorphic rounded-xl cursor-pointer hover:shadow-[0_0_8px_rgba(0,224,255,0.2)] transition-all group border border-primary/10 hover:border-primary/30"
+                    className="ml-2 py-3 px-4 glassmorphic rounded-xl cursor-pointer hover:shadow-[0_0_8px_var(--primary-glow-light)] transition-all group border border-primary/10 hover:border-primary/30"
                     onClick={() => handleNodeClick(node)}
                   >
                     <div className="flex items-center justify-between">

@@ -81,7 +81,7 @@ function MissionCard({ mission }: { mission: Quest }) {
   const hasSchedule = startDate || startTime || endDate || endTime;
   
   return (
-    <div className="glassmorphic rounded-xl p-4 hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition neon-border">
+    <div className="glassmorphic rounded-xl p-4 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition neon-border">
       <div className="flex-grow">
         <div className="flex justify-between items-start">
           <h3 className="font-medium text-muted-foreground line-through">
@@ -368,7 +368,7 @@ export default function MissionArchivePage() {
             return (
               <Collapsible key={yearData.year} open={isYearExpanded} onOpenChange={() => toggleYear(yearData.year)}>
                 <CollapsibleTrigger asChild>
-                  <div className="glassmorphic rounded-xl p-4 cursor-pointer hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition border border-primary/20">
+                  <div className="glassmorphic rounded-xl p-4 cursor-pointer hover:shadow-[0_0_5px_var(--primary-glow-light)] transition border border-primary/20">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         {isYearExpanded ? (
@@ -395,7 +395,7 @@ export default function MissionArchivePage() {
                       return (
                         <Collapsible key={monthData.monthKey} open={isMonthExpanded} onOpenChange={() => toggleMonth(monthData.monthKey)}>
                           <CollapsibleTrigger asChild>
-                            <div className="glassmorphic rounded-xl p-3 cursor-pointer hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition border border-primary/15 bg-primary/5">
+                            <div className="glassmorphic rounded-xl p-3 cursor-pointer hover:shadow-[0_0_5px_var(--primary-glow-light)] transition border border-primary/15 bg-primary/5">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                   {isMonthExpanded ? (
@@ -421,7 +421,7 @@ export default function MissionArchivePage() {
                                 return (
                                   <Collapsible key={weekData.weekKey} open={isWeekExpanded} onOpenChange={() => toggleWeek(weekData.weekKey)}>
                                     <CollapsibleTrigger asChild>
-                                      <div className="glassmorphic rounded-xl p-3 cursor-pointer hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition border border-primary/10 bg-primary/3">
+                                      <div className="glassmorphic rounded-xl p-3 cursor-pointer hover:shadow-[0_0_5px_var(--primary-glow-light)] transition border border-primary/10 bg-primary/3">
                                         <div className="flex items-center justify-between">
                                           <div className="flex items-center gap-3">
                                             {isWeekExpanded ? (
@@ -446,7 +446,7 @@ export default function MissionArchivePage() {
                                           return (
                                             <Collapsible key={dayData.dayKey} open={isDayExpanded} onOpenChange={() => toggleDay(dayData.dayKey)}>
                                               <CollapsibleTrigger asChild>
-                                                <div className="glassmorphic rounded-xl p-3 cursor-pointer hover:shadow-[0_0_5px_rgba(0,224,255,0.3)] transition border border-primary/5 bg-primary/2">
+                                                <div className="glassmorphic rounded-xl p-3 cursor-pointer hover:shadow-[0_0_5px_var(--primary-glow-light)] transition border border-primary/5 bg-primary/2">
                                                   <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-3">
                                                       {isDayExpanded ? (
