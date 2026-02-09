@@ -97,10 +97,16 @@ export const userProfile = pgTable("user_profile", {
   lifeStage: text("life_stage"), // ("Awakening", "Building", "Mastering", "Leading")
   desiredEmotion: text("desired_emotion"), // ("Flow", "Peace", "Joy", "Power", "Love", "Purpose")
   vision90Day: text("vision_90_day"),
+  vision90DayMetric: text("vision_90_day_metric"),
   vision18Month: text("vision_18_month"),
+  vision18MonthMetric: text("vision_18_month_metric"),
   vision5Year: text("vision_5_year"),
+  vision5YearChip: text("vision_5_year_chip"),
   vision10Year: text("vision_10_year"),
   vision10YearLegacy: text("vision_10_year_legacy"),
+  legacyMetric: text("legacy_metric"),
+  mortalityInsights: jsonb("mortality_insights").default({}), // { reflection: "", takeaway: "" }
+  lifeDomains: jsonb("life_domains").default([]), // Ordered array of domain strings
   currentGoals: jsonb("current_goals").default([]), // Array of current goals
   
   // === SECTION 4: LEARNING & SKILLS ===
@@ -133,10 +139,14 @@ export const userProfile = pgTable("user_profile", {
   careerVocation: text("career_vocation"),
   activeVentures: jsonb("active_ventures").default([]),
   financialPosition: jsonb("financial_position").default({}), // { income: "", expenses: "", savings: "", debt: "" }
+  financialConstraints: jsonb("financial_constraints").default([]),
+  moneyConfidence: jsonb("money_confidence").default({}), // { score: 1-10, habitShift: "" }
+  moneyRelationship: text("money_relationship"),
   weeklyCapacity: jsonb("weekly_capacity").default({}), // { hours: X, cap: "" }
   energyDrains: jsonb("energy_drains").default([]),
   resources: jsonb("resources").default({}), // { skills: bool, tools: bool, network: bool, financial: bool, time: bool }
   physicalEnvironment: text("physical_environment"),
+  physicalEnvironmentImpact: text("physical_environment_impact"),
   digitalEnvironment: jsonb("digital_environment").default([]),
   
   // === SECTION 8: PERFORMANCE & CONTRIBUTION ===
@@ -172,8 +182,19 @@ export const userProfile = pgTable("user_profile", {
   // === EMOTIONS & COPING ===
   emotionsToCultivate: jsonb("emotions_to_cultivate").default([]),
   copingPractices: text("coping_practices"),
+  copingEssential: text("coping_essential"),
   traitsToCultivate: jsonb("traits_to_cultivate").default([]),
   beliefSystem: jsonb("belief_system").default({}), // { empowering: [], limiting: [], core: "", strongest: "" }
+  dominantInstinct: jsonb("dominant_instinct").default({}), // { type: "", description: "", influence: "" }
+  decisionMakingStyles: jsonb("decision_making_styles").default([]),
+  decisionMakingPrimary: text("decision_making_primary"),
+  lifeRoles: jsonb("life_roles").default([]),
+  definingRole: text("defining_role"),
+  relationshipDrains: text("relationship_drains"),
+  conflictStyle: text("conflict_style"),
+  moneyMemory: jsonb("money_memory").default({}), // { memory: "", impact: "" }
+  financialSecurity: jsonb("financial_security").default({}), // { reflection: "", eliminate: "" }
+  financialHabits: jsonb("financial_habits").default({}), // { current: [], toReprogram: [] }
   
   // === CHARACTER AFFIRMATION ===
   characterAffirmation: text("character_affirmation"), // AI-generated third-person narrative
