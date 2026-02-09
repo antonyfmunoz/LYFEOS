@@ -957,7 +957,7 @@ export default function OnboardingPage() {
           method: "PATCH",
           body: JSON.stringify({ onboardingCompleted: true }),
         });
-        navigate("/");
+        navigate("/missions");
       } catch (error) {
         console.error("Error completing onboarding:", error);
         toast({
