@@ -1258,7 +1258,7 @@ export default function OnboardingPage() {
             {isFirstMission ? "Generating" : "Updating"} Your Character Affirmation...
           </h2>
           <p className="text-muted-foreground">
-            {isFirstMission ? "Our AI is crafting your personalized narrative" : "Our AI is refining your personalized narrative"}
+            {isFirstMission ? "Your AI is crafting your personalized narrative" : "Your AI is refining your personalized narrative"}
           </p>
         </div>
       </div>
