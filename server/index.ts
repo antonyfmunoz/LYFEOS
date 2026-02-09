@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import session from "express-session";
+import crypto from "crypto";
 import { db } from "./db";
 import { startNotificationScheduler } from "./notificationScheduler";
 
@@ -9,18 +10,63 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
-// Session configuration
+const sessionSecret = process.env.SESSION_SECRET || crypto.randomBytes(64).toString("hex");
+if (!process.env.SESSION_SECRET) {
+  log("WARNING: SESSION_SECRET not set. Using auto-generated secret. Sessions will not persist across restarts. Set SESSION_SECRET in environment variables for production.");
+}
+
 app.use(session({
-  secret: process.env.SESSION_SECRET || "lyfeos-secret-key",
+  secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
   cookie: { 
     secure: process.env.NODE_ENV === "production",
-    httpOnly: true, // Prevents JavaScript from reading the cookie
-    maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
-    sameSite: 'lax' // Provides CSRF protection
+    httpOnly: true,
+    maxAge: 1000 * 60 * 60 * 24 * 7,
+    sameSite: 'lax'
   }
 }));
+
+const rateLimitStore = new Map<string, { count: number; windowStart: number }>();
+
+function createRateLimiter(maxRequests: number, windowMs: number, keyByIpOnly = false) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const ip = req.ip || req.socket.remoteAddress || "unknown";
+    const key = keyByIpOnly ? `global:${ip}` : `${ip}:${req.path}`;
+    const now = Date.now();
+    const entry = rateLimitStore.get(key);
+
+    if (!entry || now - entry.windowStart > windowMs) {
+      rateLimitStore.set(key, { count: 1, windowStart: now });
+      return next();
+    }
+
+    if (entry.count >= maxRequests) {
+      res.set("Retry-After", String(Math.ceil((entry.windowStart + windowMs - now) / 1000)));
+      return res.status(429).json({ error: "Too many requests. Please try again later." });
+    }
+
+    entry.count++;
+    return next();
+  };
+}
+
+setInterval(() => {
+  const now = Date.now();
+  const keys = Array.from(rateLimitStore.keys());
+  for (const key of keys) {
+    const entry = rateLimitStore.get(key);
+    if (entry && now - entry.windowStart > 120000) {
+      rateLimitStore.delete(key);
+    }
+  }
+}, 60000);
+
+app.use("/api/auth/register", createRateLimiter(5, 60 * 1000));
+app.use("/api/auth/login", createRateLimiter(10, 60 * 1000));
+app.use("/api/profile/generate-affirmation", createRateLimiter(5, 60 * 1000));
+app.use("/api/voice-command", createRateLimiter(20, 60 * 1000));
+app.use("/api", createRateLimiter(100, 60 * 1000, true));
 
 app.use((req, res, next) => {
   const start = Date.now();
