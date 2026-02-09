@@ -34,10 +34,16 @@ Preferred communication style: Simple, everyday language.
 - **Schema Location**: `shared/schema.ts` contains all table definitions
 - **Migrations**: Drizzle Kit for database migrations (`migrations/` directory)
 
-### Authentication
+### Authentication & Security
 - **Primary**: Username/password with bcrypt hashing and express-session
 - **OAuth**: Firebase Authentication for Google/Apple/Facebook sign-in (optional)
 - **Session Storage**: Server-side sessions with secure HTTP-only cookies
+- **Email Verification**: SHA-256 hashed tokens with 24-hour expiry, sent via Resend
+- **Password Reset**: SHA-256 hashed tokens with 1-hour expiry, single-use, sent via Resend
+- **Token Security**: All tokens (verification + reset) are hashed with SHA-256 before DB storage; raw tokens only exist in memory and email links
+- **Rate Limiting**: forgot-password (3/min), reset-password (5/min), resend-verification (3/min)
+- **Security Headers**: Helmet middleware with compression and 1MB request size limits
+- **Input Validation**: Zod-based validation on all auth endpoints with format checks
 
 ### Key Data Models
 - **Users**: Core account with profile, avatar, auth provider tracking
