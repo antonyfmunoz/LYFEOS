@@ -144,6 +144,16 @@ function Router() {
     
     const currentPath = window.location.pathname;
     
+    // If a pending-onboarding flag exists, always redirect to /onboarding
+    // This flag is set during registration and cleared when onboarding completes
+    if (isAuthenticated && localStorage.getItem("lyfeos-pending-onboarding") === "true") {
+      if (!currentPath.startsWith('/onboarding')) {
+        console.log('Pending onboarding detected, redirecting to /onboarding');
+        navigate('/onboarding', { replace: true });
+      }
+      return;
+    }
+    
     // Skip if we've already redirected for this path
     if (routeRedirectRef.current === currentPath) {
       return;

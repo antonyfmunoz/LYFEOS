@@ -361,15 +361,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Clear widget states for new users so all widgets start open with their defaults
       localStorage.removeItem("lyfeos-widget-states");
       
-      // Handle redirection based on isNewUser flag (should always be true for registration)
-      if (data.isNewUser) {
-        console.log("New user detected, redirecting to onboarding");
-        navigate("/onboarding", { replace: true });
-      } else {
-        // Fallback if for some reason isNewUser is false (shouldn't happen)
-        console.log("Redirecting to dashboard after registration...");
-        navigate("/dashboard", { replace: true });
-      }
+      // Set a persistent flag so the Router always redirects to /onboarding
+      // even if auth state changes trigger re-renders. Cleared when onboarding completes.
+      localStorage.setItem("lyfeos-pending-onboarding", "true");
+      
+      console.log("New user registered, redirecting to onboarding");
+      navigate("/onboarding", { replace: true });
     } catch (error: any) {
       console.error("Registration error:", error);
       // If the error doesn't have a message property, show a generic error
@@ -407,6 +404,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setFirebaseUser(null);
       localStorage.removeItem("lyfeos_user");
+      localStorage.removeItem("lyfeos-pending-onboarding");
       
       // Sign out from Firebase
       try {

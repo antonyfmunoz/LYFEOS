@@ -556,7 +556,9 @@ export default function ProfilePage() {
           { label: "Life Stage", value: profile.lifeStage },
           { label: "Desired Emotion", value: profile.desiredEmotion },
           { label: "90-Day Vision", value: profile.vision90Day },
+          { label: "18-Month Vision", value: profile.vision18Month },
           { label: "5-Year Vision", value: profile.vision5Year },
+          { label: "10-Year Vision", value: profile.vision10Year },
           { label: "Legacy Vision", value: profile.vision10YearLegacy },
         ]
       },

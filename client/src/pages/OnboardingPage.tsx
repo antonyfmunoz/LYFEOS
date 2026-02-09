@@ -809,6 +809,7 @@ export default function OnboardingPage() {
   };
 
   const handleStop = () => {
+    localStorage.removeItem("lyfeos-pending-onboarding");
     navigate("/dashboard");
   };
 
@@ -949,6 +950,7 @@ export default function OnboardingPage() {
         });
       }
       
+      localStorage.removeItem("lyfeos-pending-onboarding");
       navigate("/ceremony");
       
     } catch (error) {
