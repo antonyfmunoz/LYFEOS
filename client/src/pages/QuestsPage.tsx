@@ -512,69 +512,6 @@ export default function QuestsPage() {
         </div>
         
         <div className="flex items-center gap-2">
-          {pushNotifs.isSupported && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className={`relative ${pushNotifs.isSubscribed ? 'text-primary' : 'text-muted-foreground'}`}>
-                  {pushNotifs.isSubscribed ? <BellRing className="h-5 w-5" /> : <Bell className="h-5 w-5" />}
-                  {pushNotifs.isSubscribed && (
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full" />
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-72 glassmorphic border-primary/20" align="end">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium text-sm">Push Notifications</h4>
-                    <Switch
-                      checked={pushNotifs.isSubscribed}
-                      disabled={pushNotifs.loading}
-                      onCheckedChange={async (checked) => {
-                        if (checked) {
-                          const ok = await pushNotifs.subscribe();
-                          toast({
-                            title: ok ? "Notifications enabled" : "Could not enable notifications",
-                            description: ok ? "You'll receive mission reminders on this device." : "Please allow notifications in your browser settings.",
-                          });
-                        } else {
-                          await pushNotifs.unsubscribe();
-                          toast({ title: "Notifications disabled" });
-                        }
-                      }}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {pushNotifs.isSubscribed 
-                      ? "You'll get reminders for missions with notifications set." 
-                      : "Enable to receive mission reminders even when the app is closed."}
-                  </p>
-                  {pushNotifs.isSubscribed && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full text-xs"
-                      disabled={pushNotifs.loading}
-                      onClick={async () => {
-                        const ok = await pushNotifs.sendTestNotification();
-                        toast({
-                          title: ok ? "Test notification sent!" : "Failed to send test",
-                          description: ok ? "Check your notifications." : "Try again later.",
-                        });
-                      }}
-                    >
-                      <BellRing className="h-3 w-3 mr-1" />
-                      Send Test Notification
-                    </Button>
-                  )}
-                  {pushNotifs.permission === 'denied' && (
-                    <p className="text-xs text-destructive">
-                      Notifications are blocked. Please enable them in your browser settings.
-                    </p>
-                  )}
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
           
         <Dialog open={isCreateOpen} onOpenChange={(open) => {
           setIsCreateOpen(open);
