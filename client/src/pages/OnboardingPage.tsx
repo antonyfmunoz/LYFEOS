@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/authContext";
 import { useLYFEOS } from "@/lib/context";
@@ -226,46 +226,48 @@ function DotNavigation({ current, total }: { current: number; total: number }) {
   );
 }
 
-const MAJOR_LOCATIONS = [
-  "New York, USA", "Los Angeles, USA", "Chicago, USA", "Houston, USA", "Phoenix, USA",
-  "San Francisco, USA", "Seattle, USA", "Miami, USA", "Boston, USA", "Denver, USA",
-  "Austin, USA", "Atlanta, USA", "Dallas, USA", "Portland, USA", "San Diego, USA",
-  "Nashville, USA", "Charlotte, USA", "Washington DC, USA", "Philadelphia, USA",
-  "Minneapolis, USA", "Detroit, USA", "Las Vegas, USA", "Orlando, USA", "Honolulu, USA",
-  "London, UK", "Manchester, UK", "Birmingham, UK", "Edinburgh, UK", "Glasgow, UK",
-  "Toronto, Canada", "Vancouver, Canada", "Montreal, Canada", "Calgary, Canada", "Ottawa, Canada",
-  "Sydney, Australia", "Melbourne, Australia", "Brisbane, Australia", "Perth, Australia",
-  "Auckland, New Zealand", "Wellington, New Zealand",
-  "Paris, France", "Lyon, France", "Marseille, France",
-  "Berlin, Germany", "Munich, Germany", "Hamburg, Germany", "Frankfurt, Germany",
-  "Amsterdam, Netherlands", "Rotterdam, Netherlands",
-  "Madrid, Spain", "Barcelona, Spain",
-  "Rome, Italy", "Milan, Italy",
-  "Lisbon, Portugal", "Porto, Portugal",
-  "Dublin, Ireland", "Stockholm, Sweden", "Oslo, Norway", "Copenhagen, Denmark", "Helsinki, Finland",
-  "Zurich, Switzerland", "Vienna, Austria", "Prague, Czech Republic", "Warsaw, Poland",
-  "Budapest, Hungary", "Bucharest, Romania", "Athens, Greece", "Istanbul, Turkey",
-  "Tokyo, Japan", "Osaka, Japan", "Kyoto, Japan",
-  "Seoul, South Korea", "Busan, South Korea",
-  "Beijing, China", "Shanghai, China", "Shenzhen, China", "Hong Kong, China", "Guangzhou, China",
-  "Taipei, Taiwan", "Singapore", "Kuala Lumpur, Malaysia", "Bangkok, Thailand",
-  "Jakarta, Indonesia", "Manila, Philippines", "Ho Chi Minh City, Vietnam", "Hanoi, Vietnam",
-  "Mumbai, India", "New Delhi, India", "Bangalore, India", "Hyderabad, India", "Chennai, India",
-  "Dubai, UAE", "Abu Dhabi, UAE", "Doha, Qatar", "Riyadh, Saudi Arabia",
-  "Tel Aviv, Israel", "Jerusalem, Israel",
-  "Cairo, Egypt", "Lagos, Nigeria", "Nairobi, Kenya", "Cape Town, South Africa",
-  "Johannesburg, South Africa", "Accra, Ghana", "Addis Ababa, Ethiopia",
-  "Mexico City, Mexico", "Guadalajara, Mexico", "Monterrey, Mexico",
-  "Sao Paulo, Brazil", "Rio de Janeiro, Brazil",
-  "Buenos Aires, Argentina", "Bogota, Colombia", "Lima, Peru", "Santiago, Chile",
-  "San Jose, Costa Rica", "Panama City, Panama",
-];
-
 function LocationAutosuggest({ value, onChange }: { value: string; onChange: (val: string) => void }) {
   const [isFocused, setIsFocused] = useState(false);
-  const suggestions = value.length >= 2
-    ? MAJOR_LOCATIONS.filter(loc => loc.toLowerCase().includes(value.toLowerCase())).slice(0, 8)
-    : [];
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (value.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+
+    setIsSearching(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(value)}&format=json&addressdetails=1&limit=8&featuretype=city`,
+          { headers: { "Accept-Language": "en" } }
+        );
+        if (!res.ok) throw new Error("fetch failed");
+        const data = await res.json();
+        const locations = data
+          .map((item: any) => {
+            const city = item.address?.city || item.address?.town || item.address?.village || item.address?.municipality || item.name;
+            const state = item.address?.state;
+            const country = item.address?.country;
+            const parts = [city, state, country].filter(Boolean);
+            return parts.join(", ");
+          })
+          .filter((loc: string, i: number, arr: string[]) => arr.indexOf(loc) === i);
+        setSuggestions(locations);
+      } catch {
+        setSuggestions([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 350);
+
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [value]);
 
   return (
     <div className="relative max-w-md mx-auto">
@@ -273,17 +275,20 @@ function LocationAutosuggest({ value, onChange }: { value: string; onChange: (va
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onFocus={() => setIsFocused(true)}
-        onBlur={() => setTimeout(() => setIsFocused(false), 150)}
+        onBlur={() => setTimeout(() => setIsFocused(false), 200)}
         placeholder="Start typing your city..."
         className="bg-card/30 border-primary/20"
       />
+      {isSearching && value.length >= 2 && (
+        <p className="text-xs text-muted-foreground mt-1 text-center">Searching...</p>
+      )}
       {isFocused && suggestions.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 rounded-xl border border-primary/30 bg-card/90 backdrop-blur shadow-[0_0_20px_rgba(0,224,255,0.1)] overflow-hidden">
+        <div className="absolute z-50 w-full mt-1 rounded-xl border border-primary/30 bg-card/90 backdrop-blur shadow-[0_0_20px_rgba(0,224,255,0.1)] overflow-hidden max-h-64 overflow-y-auto">
           {suggestions.map((loc) => (
             <button
               key={loc}
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => { onChange(loc); setIsFocused(false); }}
+              onClick={() => { onChange(loc); setIsFocused(false); setSuggestions([]); }}
               className="w-full text-left px-4 py-2.5 text-sm hover:bg-primary/20 transition-colors border-b border-primary/10 last:border-b-0"
             >
               {loc}
