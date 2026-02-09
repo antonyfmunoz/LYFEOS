@@ -502,15 +502,6 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       document.documentElement.style.setProperty('--primary-shadow', `rgba(${r}, ${g}, ${b}, 0.3)`);
     }
     
-    // Show toast notification
-    toast({
-      title: "Theme Color Updated",
-      description: `UI theme color has been updated`,
-      variant: "default",
-      className: "bg-background/80 border border-primary text-foreground",
-      duration: 3000,
-    });
-    
     // Update in database if user is authenticated
     if (isAuthenticated && user) {
       try {

@@ -725,7 +725,6 @@ export default function ProfilePage() {
           body: JSON.stringify(patchData),
         });
         queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
-        toast({ title: "Saved", description: "Player record updated." });
       } catch (error) {
         toast({ title: "Error", description: "Failed to save. Please try again.", variant: "destructive" });
         throw error;
