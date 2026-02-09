@@ -808,7 +808,6 @@ export default function DashboardPage() {
     };
     
     saveDailyLogMutation.mutate(saveData);
-    toast({ title: "Entry saved", description: `Research entry #${updatedEntries.length} archived. Start a new one!` });
   }, [dataLog, updateDataLog, buildSavePayload, saveDailyLogMutation, toast, isAllLogsLoaded]);
 
   // Render state selector (1-10 scale)

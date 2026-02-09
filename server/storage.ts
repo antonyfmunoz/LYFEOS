@@ -417,12 +417,42 @@ export class DatabaseStorage implements IStorage {
       lastActiveDate: todayStr
     };
     
-    // Reset daily tokens and energy at the start of each new day
+    // Reset daily tokens and recalculate HP/EP from yesterday's log at the start of each new day
     if (isNewDay) {
       updateData.timeTokensCurrent = stats.timeTokensMax;
       updateData.attentionTokensCurrent = stats.attentionTokensMax;
-      updateData.energyPointsCurrent = stats.energyPointsMax;
       updateData.previousDayEnergyUsed = 0;
+      
+      // Fetch yesterday's daily log to calculate HP and EP
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+      
+      const yesterdayLogs = await db.select()
+        .from(userDailyLogs)
+        .where(and(
+          eq(userDailyLogs.userId, userId),
+          eq(userDailyLogs.date, yesterdayStr)
+        ));
+      
+      if (yesterdayLogs.length > 0) {
+        const log = yesterdayLogs[0];
+        const mental = log.mentalState ?? 5;
+        const physical = log.physicalState ?? 5;
+        const emotional = log.emotionalState ?? 5;
+        const avgRating = (mental + physical + emotional) / 3;
+        
+        // Both HP and EP are calculated the same way: average rating scaled to max
+        const newHP = Math.round((avgRating / 10) * stats.healthPointsMax);
+        const newEP = Math.round((avgRating / 10) * stats.energyPointsMax);
+        
+        updateData.healthPointsCurrent = Math.max(0, Math.min(stats.healthPointsMax, newHP));
+        updateData.energyPointsCurrent = Math.max(0, Math.min(stats.energyPointsMax, newEP));
+      } else {
+        // No log from yesterday — reset both to max
+        updateData.healthPointsCurrent = stats.healthPointsMax;
+        updateData.energyPointsCurrent = stats.energyPointsMax;
+      }
     }
     
     await this.updateUserStats(userId, updateData);

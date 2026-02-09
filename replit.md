@@ -52,10 +52,10 @@ Preferred communication style: Simple, everyday language.
 
 ### Player Stats System
 - **All stats start at 100/100** (Energy Points, Health Points, Time Tokens, Attention Tokens)
-- **Energy Points**: Subtracted by mission energy cost on completion, reset to max daily
+- **Energy Points**: Calculated from yesterday's daily log ratings (mental + physical + emotional, each 1-10) at midnight. Average scaled to max EP. Also subtracted by mission energy cost on completion during the day.
 - **Time Tokens**: Subtracted by mission energy cost on completion, reset to max daily
 - **Attention Tokens**: Subtracted by mission energy cost on completion, reset to max daily
-- **Health Points**: Calculated from daily log ratings (mental + physical + emotional state, each 1-10). Average scaled to max HP. Updated whenever daily log is saved.
+- **Health Points**: Calculated from yesterday's daily log ratings (mental + physical + emotional state, each 1-10) at midnight. Average scaled to max HP. Same formula as EP.
 - **Efficiency Score**: Daily metric (0-100) calculated as: 40% today's mission completion rate + 30% token allocation effectiveness (cost of completed vs all missions) + 30% token utilization rate (tokens used vs max)
 - **Daily Reset**: All tokens (energy, time, attention) reset to max at midnight via server-side processLoginStreak + client-side interval sync
 - All resources are refunded when uncompleting a mission

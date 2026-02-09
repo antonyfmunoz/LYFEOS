@@ -4265,12 +4265,6 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
         console.error("Error converting todoIdeas to quests:", todoError);
       }
       
-      // Recalculate Health Points based on mental/physical/emotional ratings
-      const finalMental = savedLog.mentalState ?? 5;
-      const finalPhysical = savedLog.physicalState ?? 5;
-      const finalEmotional = savedLog.emotionalState ?? 5;
-      await storage.recalculateHealthPoints(userId, finalMental, finalPhysical, finalEmotional);
-      
       return res.status(200).json({ log: savedLog, message: "Daily log saved successfully" });
     } catch (error) {
       console.error("Error creating daily log:", error);
@@ -4347,12 +4341,6 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
           .where(eq(userDailyLogs.id, existingLog[0].id));
           
         const updatedLog = await db.select().from(userDailyLogs).where(eq(userDailyLogs.id, existingLog[0].id));
-        
-        // Recalculate Health Points when mental/physical/emotional ratings change
-        if (mentalState !== undefined || physicalState !== undefined || emotionalState !== undefined) {
-          const log = updatedLog[0];
-          await storage.recalculateHealthPoints(userId, log.mentalState ?? 5, log.physicalState ?? 5, log.emotionalState ?? 5);
-        }
         
         return res.status(200).json({ log: updatedLog[0], message: "Daily log updated successfully" });
       } else {
