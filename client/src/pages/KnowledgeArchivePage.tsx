@@ -181,6 +181,8 @@ export default function KnowledgeArchivePage() {
   const authorGroups: AuthorGroup[] = useMemo(() => {
     if (!logsData?.logs) return [];
 
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+
     const authorMap: Record<string, Record<string, EntryData[]>> = {};
 
     const addToMap = (author: string, source: string, entry: EntryData) => {
@@ -192,7 +194,8 @@ export default function KnowledgeArchivePage() {
     };
 
     logsData.logs.forEach(log => {
-      if (log.sourceAuthor || log.sourceMaterial || log.researchNote || log.revisionNote || log.executionNote) {
+      const isToday = log.date === todayStr;
+      if (!isToday && (log.sourceAuthor || log.sourceMaterial || log.researchNote || log.revisionNote || log.executionNote)) {
         const author = log.sourceAuthor?.trim() || 'Unknown Author';
         const source = log.sourceMaterial?.trim() || 'Untitled Source';
         addToMap(author, source, {

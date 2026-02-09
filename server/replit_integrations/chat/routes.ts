@@ -338,6 +338,15 @@ const tools: Anthropic.Messages.Tool[] = [
     }
   },
   {
+    name: "archive_research_entry",
+    description: "Archive the current research entry in today's daily log and clear the working fields for a new entry. Use when user says 'save research entry', 'new research entry', 'archive research', 'next research entry', 'save entry', or 'new entry'. This moves the current sourceAuthor, sourceMaterial, researchNote, revisionNote, and executionNote into the archived researchEntries array.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: []
+    }
+  },
+  {
     name: "toggle_theme",
     description: "Toggle between dark and light theme. Use when user says 'switch theme', 'dark mode', 'light mode', 'toggle theme'.",
     input_schema: {
@@ -610,6 +619,52 @@ Write a 2-3 paragraph affirmation in second person ("You are..."). Make it power
         }
         const fields = Object.keys(logUpdates).join(", ");
         return JSON.stringify({ success: true, action: "update_daily_log", message: `Daily log updated: ${fields}` });
+      }
+
+      case "archive_research_entry": {
+        const archiveToday = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+        const archiveTodayDate = new Date(archiveToday + 'T00:00:00');
+        let archiveTodayLog = await storage.getUserDailyLogByDate(userId, archiveTodayDate);
+
+        if (!archiveTodayLog) {
+          archiveTodayLog = await storage.createUserDailyLog({ userId, date: archiveToday });
+        }
+
+        if (!archiveTodayLog) {
+          return JSON.stringify({ success: false, message: "Could not access today's daily log." });
+        }
+
+        const { sourceAuthor, sourceMaterial, researchNote, revisionNote, executionNote } = archiveTodayLog as any;
+        if (!sourceAuthor && !sourceMaterial && !researchNote && !revisionNote && !executionNote) {
+          return JSON.stringify({ success: false, message: "No research entry to archive. The current research fields are empty." });
+        }
+
+        const existingEntries = Array.isArray((archiveTodayLog as any).researchEntries) ? (archiveTodayLog as any).researchEntries : [];
+        const archivedEntry = {
+          sourceAuthor: sourceAuthor || '',
+          sourceMaterial: sourceMaterial || '',
+          researchNote: researchNote || '',
+          revisionNote: revisionNote || '',
+          executionNote: executionNote || '',
+          savedAt: new Date().toISOString(),
+        };
+
+        await storage.updateUserDailyLog(archiveTodayLog.id, {
+          researchEntries: [...existingEntries, archivedEntry],
+          sourceAuthor: '',
+          sourceMaterial: '',
+          researchNote: '',
+          revisionNote: '',
+          executionNote: '',
+        } as any);
+
+        const entryNum = existingEntries.length + 1;
+        const source = sourceMaterial || sourceAuthor || 'Untitled';
+        return JSON.stringify({ 
+          success: true, 
+          action: "archive_research_entry",
+          message: `Research entry #${entryNum} ("${source}") archived successfully. Fields cleared for a new entry.`
+        });
       }
 
       case "toggle_theme": {
