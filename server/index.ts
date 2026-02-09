@@ -3,12 +3,24 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import session from "express-session";
 import crypto from "crypto";
+import helmet from "helmet";
+import compression from "compression";
 import { db } from "./db";
 import { startNotificationScheduler } from "./notificationScheduler";
 
 const app = express();
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+
+app.use(compression());
+
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
+
+app.set("trust proxy", 1);
+
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 
 const sessionSecret = process.env.SESSION_SECRET || crypto.randomBytes(64).toString("hex");
 if (!process.env.SESSION_SECRET) {
@@ -61,6 +73,10 @@ setInterval(() => {
     }
   }
 }, 60000);
+
+app.get("/api/health", (_req: Request, res: Response) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
 
 app.use("/api/auth/register", createRateLimiter(5, 60 * 1000));
 app.use("/api/auth/login", createRateLimiter(10, 60 * 1000));
@@ -116,6 +132,10 @@ app.use((req, res, next) => {
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
+    app.use(express.static("dist/public", {
+      maxAge: "1y",
+      immutable: true,
+    }));
     serveStatic(app);
   }
 
