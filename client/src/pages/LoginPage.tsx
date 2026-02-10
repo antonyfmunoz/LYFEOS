@@ -101,14 +101,14 @@ export default function LoginPage() {
         </form>
         
         <div className="mt-4 text-center">
-          <Link href="/forgot-password" className="text-white hover:text-white/80 text-sm transition">
+          <Link href="/forgot-password" className="text-white visited:text-white hover:text-white/80 text-sm transition">
             Forgot your password?
           </Link>
         </div>
         <div className="mt-3 text-center">
           <p className="text-muted-foreground">
             Don't have an account?{" "}
-            <Link href="/register" className="text-white hover:text-white/80 transition">
+            <Link href="/register" className="text-white visited:text-white hover:text-white/80 transition">
               Register
             </Link>
           </p>

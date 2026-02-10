@@ -353,7 +353,7 @@ export default function RegisterPage() {
               className="mt-1 border-white/50 data-[state=checked]:bg-white data-[state=checked]:text-black"
             />
             <label htmlFor="terms" className="text-sm text-muted-foreground cursor-pointer">
-              I agree to the <Link href="/terms" className="text-white hover:text-white/80">Terms of Service</Link> and <Link href="/privacy" className="text-white hover:text-white/80">Privacy Policy</Link>. 
+              I agree to the <Link href="/terms" className="text-white visited:text-white hover:text-white/80">Terms of Service</Link> and <Link href="/privacy" className="text-white visited:text-white hover:text-white/80">Privacy Policy</Link>. 
               Your journey is protected, and your data remains under your control.
             </label>
           </div>
@@ -383,7 +383,7 @@ export default function RegisterPage() {
         <div className="mt-6 text-center">
           <p className="text-muted-foreground">
             Already have an account?{" "}
-            <Link href="/login" className="text-white hover:text-white/80 transition">
+            <Link href="/login" className="text-white visited:text-white hover:text-white/80 transition">
               Login
             </Link>
           </p>

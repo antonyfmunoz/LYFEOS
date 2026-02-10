@@ -152,7 +152,7 @@ export default function ResetPasswordPage() {
 
           <div className="mt-4 text-center">
             <Link href="/login">
-              <span className="inline-flex items-center gap-2 text-sm text-white hover:text-white/80 transition cursor-pointer">
+              <span className="inline-flex items-center gap-2 text-sm text-white visited:text-white hover:text-white/80 transition cursor-pointer">
                 <ArrowLeft className="w-4 h-4" />
                 Back to Login
               </span>
