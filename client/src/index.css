@@ -44,19 +44,19 @@ input[type="range"].theme-slider::-moz-range-thumb {
     --popover-foreground: 0 0% 93% !important;
     
     --primary: var(--primary-hsl, 188 100% 50%) !important;
-    --primary-foreground: 222 47% 5% !important;
+    --primary-foreground: 0 0% 7% !important;
     
     --secondary: 188 80% 35% !important;
-    --secondary-foreground: 192 100% 92% !important;
+    --secondary-foreground: 0 0% 93% !important;
     
     --accent: 188 100% 45% !important;
-    --accent-foreground: 218 48% 12% !important;
+    --accent-foreground: 0 0% 11% !important;
     
     --muted: 0 0% 20% !important;
     --muted-foreground: 0 0% 65% !important;
     
     --destructive: 350 100% 60% !important;
-    --destructive-foreground: 192 100% 92% !important;
+    --destructive-foreground: 0 0% 93% !important;
     
     --border: var(--primary-hsl, 188 100% 50%) / 0.2 !important;
     --input: var(--primary-hsl, 188 100% 50%) / 0.2 !important;
@@ -72,36 +72,36 @@ input[type="range"].theme-slider::-moz-range-thumb {
   
   /* Light Theme */
   .light-theme {
-    --background: 210 40% 96% !important;
-    --foreground: 222 47% 11% !important;
+    --background: 0 0% 96% !important;
+    --foreground: 0 0% 15% !important;
     
     --card: 0 0% 100% !important;
-    --card-foreground: 222 47% 11% !important;
+    --card-foreground: 0 0% 15% !important;
     
     --popover: 0 0% 100% !important;
-    --popover-foreground: 222 47% 11% !important;
+    --popover-foreground: 0 0% 15% !important;
     
     --primary: var(--primary-hsl, 188 95% 40%) !important;
-    --primary-foreground: 210 40% 98% !important;
+    --primary-foreground: 0 0% 98% !important;
     
     --secondary: 188 75% 30% !important;
-    --secondary-foreground: 210 40% 98% !important;
+    --secondary-foreground: 0 0% 98% !important;
     
     --accent: 188 95% 40% !important;
-    --accent-foreground: 210 40% 98% !important;
+    --accent-foreground: 0 0% 98% !important;
     
-    --muted: 210 40% 90% !important;
-    --muted-foreground: 215 16% 47% !important;
+    --muted: 0 0% 90% !important;
+    --muted-foreground: 0 0% 45% !important;
     
     --destructive: 0 84% 60% !important;
-    --destructive-foreground: 210 40% 98% !important;
+    --destructive-foreground: 0 0% 98% !important;
     
-    --border: 214 32% 91% !important;
-    --input: 214 32% 91% !important;
+    --border: 0 0% 91% !important;
+    --input: 0 0% 91% !important;
     --ring: var(--primary-hsl, 188 95% 40%) !important;
     
     /* Custom color variables for light theme */
-    --text-subtle: 210 15% 35% !important;
+    --text-subtle: 0 0% 35% !important;
     --cyan-glow: var(--primary-hsl, 188 100% 35%) !important;
     
     /* Glow variables that derive from primary color */
@@ -124,19 +124,19 @@ input[type="range"].theme-slider::-moz-range-thumb {
     --popover-foreground: 0 0% 93%;
     
     --primary: 188 100% 50%;
-    --primary-foreground: 222 47% 5%;
+    --primary-foreground: 0 0% 7%;
     
     --secondary: 188 80% 35%;
-    --secondary-foreground: 192 100% 92%;
+    --secondary-foreground: 0 0% 93%;
     
     --accent: 188 100% 45%;
-    --accent-foreground: 218 48% 12%;
+    --accent-foreground: 0 0% 11%;
     
     --muted: 0 0% 20%;
     --muted-foreground: 0 0% 65%;
     
     --destructive: 350 100% 60%;
-    --destructive-foreground: 192 100% 92%;
+    --destructive-foreground: 0 0% 93%;
     
     --border: 188 100% 50% / 0.2;
     --input: 188 100% 50% / 0.2;
@@ -165,6 +165,27 @@ input[type="range"].theme-slider::-moz-range-thumb {
     @apply bg-card/70 backdrop-blur-md border border-transparent shadow-md;
   }
   
+/* Dark theme: neutralize hardcoded blue-tinted text colors */
+.dark-theme .text-\[\#7DAAB2\],
+.dark-theme [class*="text-[#7DAAB2]"] {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.dark-theme .text-\[\#D6F4FF\],
+.dark-theme [class*="text-[#D6F4FF]"] {
+  color: hsl(var(--foreground)) !important;
+}
+
+.dark-theme .bg-\[\#00141A\],
+.dark-theme [class*="bg-[#00141A]"] {
+  background-color: hsl(0 0% 9%) !important;
+}
+
+.dark-theme .placeholder\:text-\[\#7DAAB2\]::placeholder,
+.dark-theme [class*="placeholder:text-[#7DAAB2]"]::placeholder {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
 /* Light theme text color overrides */
 .light-theme select {
   color: rgb(51, 65, 85);
@@ -340,7 +361,7 @@ input[type="range"].theme-slider::-moz-range-thumb {
 
 /* Custom styling for time inputs - Dark Theme */
 .dark-theme input[type="time"] {
-  @apply bg-[#00141A] border border-primary/30 text-[#D6F4FF] rounded-md py-2 px-3;
+  @apply bg-neutral-900 border border-primary/30 text-foreground rounded-md py-2 px-3;
   color-scheme: dark;
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -348,12 +369,12 @@ input[type="range"].theme-slider::-moz-range-thumb {
 }
 
 .dark-theme input[type="time"]::-webkit-datetime-edit {
-  @apply text-[#D6F4FF] font-mono;
+  @apply text-foreground font-mono;
   padding: 1px;
 }
 
 .dark-theme input[type="time"]::-webkit-datetime-edit-fields-wrapper {
-  @apply text-[#D6F4FF];
+  @apply text-foreground;
 }
 
 .dark-theme input[type="time"]::-webkit-datetime-edit-text {
@@ -363,7 +384,7 @@ input[type="range"].theme-slider::-moz-range-thumb {
 .dark-theme input[type="time"]::-webkit-datetime-edit-hour-field,
 .dark-theme input[type="time"]::-webkit-datetime-edit-minute-field,
 .dark-theme input[type="time"]::-webkit-datetime-edit-ampm-field {
-  @apply bg-[#001C26] py-0.5 px-1 rounded border border-primary/10;
+  @apply bg-neutral-800 py-0.5 px-1 rounded border border-primary/10;
 }
 
 .dark-theme input[type="time"]::-webkit-calendar-picker-indicator {
@@ -388,7 +409,7 @@ input[type="range"].theme-slider::-moz-range-thumb {
 .dark-theme ::-webkit-calendar-picker,
 .dark-theme ::-webkit-datetime-picker,
 .dark-theme ::-webkit-time-picker-popup {
-  @apply bg-[#001824] border border-primary/30 shadow-[0_0_15px_rgba(0,224,255,0.2)];
+  @apply bg-neutral-900 border border-primary/30 shadow-[0_0_15px_rgba(0,224,255,0.2)];
   color-scheme: dark;
 }
 
@@ -396,7 +417,7 @@ input[type="range"].theme-slider::-moz-range-thumb {
 .dark-theme ::-webkit-time-picker-minute-field,
 .dark-theme ::-webkit-time-picker-ampm-field,
 .dark-theme ::-webkit-time-picker-second-field {
-  @apply bg-[#002637] text-[#D6F4FF] border border-primary/20;
+  @apply bg-neutral-800 text-foreground border border-primary/20;
 }
 
 .dark-theme input[type="time"]::-webkit-calendar-picker-indicator:hover {
@@ -410,7 +431,7 @@ input[type="range"].theme-slider::-moz-range-thumb {
   right: 0;
   height: 100%;
   width: 2.5rem;
-  background: linear-gradient(90deg, rgba(0,28,38,0) 0%, rgba(0,28,38,0.5) 100%);
+  background: linear-gradient(90deg, rgba(23,23,23,0) 0%, rgba(23,23,23,0.5) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -498,7 +519,7 @@ input[type="range"].theme-slider::-moz-range-thumb {
 /* For Firefox */
 @-moz-document url-prefix() {
   .dark-theme input[type="time"] {
-    @apply bg-[#00141A] border border-primary/30 text-[#D6F4FF] py-2 px-3;
+    @apply bg-neutral-900 border border-primary/30 text-foreground py-2 px-3;
     border-radius: 0.375rem;
   }
   
@@ -595,7 +616,7 @@ input[type="range"].theme-slider::-moz-range-thumb {
 .markdown-editor-content {
   min-height: inherit;
   padding: 0.75rem;
-  color: #D6F4FF;
+  color: hsl(var(--foreground));
   width: 100%;
   background: transparent;
   outline: none;
@@ -675,7 +696,7 @@ input[type="range"].theme-slider::-moz-range-thumb {
   border-left: 3px solid var(--primary-color, #00E0FF);
   padding-left: 1em;
   margin-left: 0;
-  color: #7DAAB2;
+  color: hsl(var(--muted-foreground));
 }
 
 .prose table {
@@ -686,7 +707,7 @@ input[type="range"].theme-slider::-moz-range-thumb {
 
 .prose table th, 
 .prose table td {
-  border: 1px solid rgba(125, 170, 178, 0.3);
+  border: 1px solid rgba(160, 160, 160, 0.3);
   padding: 0.5em;
 }
 
@@ -717,7 +738,7 @@ input[type="range"].theme-slider::-moz-range-thumb {
 
 /* Code block syntax highlighting */
 .prose pre {
-  background-color: #001824;
+  background-color: hsl(0 0% 9%);
   border-radius: 0.3em;
   padding: 1em;
   border: 1px solid var(--primary-border-subtle, rgba(0, 224, 255, 0.2));
