@@ -256,7 +256,7 @@ export default function DashboardPage() {
       return data.logs?.[0] || { _noData: true, _confirmed: true };
     },
     enabled: !!user?.id && isAuthenticated,
-    staleTime: 0,
+    staleTime: 30000,
     refetchOnMount: 'always',
     retry: false // Don't retry on auth errors
   });

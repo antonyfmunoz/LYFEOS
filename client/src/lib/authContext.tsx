@@ -207,34 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.user);
       localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
       
-      // Show success message (color is already applied so toast renders in correct theme)
-      toast({
-        title: "Login Successful",
-        description: `Welcome back, ${data.user.username}!`,
-        variant: "default",
-        duration: 1500,
-      });
-      
-      // Wait a moment to ensure the session cookie is properly set
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Verify the session is properly established
-      try {
-        const verifyResponse = await fetch("/api/auth/me", {
-          credentials: "include"
-        });
-        
-        if (verifyResponse.ok) {
-          console.log("Session verified successfully with server");
-        } else {
-          console.warn("Session verification failed - proceeding anyway");
-        }
-      } catch (verifyError) {
-        console.error("Error verifying session:", verifyError);
-        // Continue despite error - user is already authenticated client-side
-      }
-      
-      // Handle redirection based on isNewUser flag
+      // Navigate first, then show toast so it appears on the destination page
       if (data.isNewUser) {
         console.log("New user detected, redirecting to onboarding");
         navigate("/onboarding", { replace: true });
@@ -242,6 +215,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log("Redirecting to dashboard...");
         navigate("/dashboard", { replace: true });
       }
+      
+      // Show toast after navigation so it renders on the new page
+      setTimeout(() => {
+        toast({
+          title: "Login Successful",
+          description: `Welcome back, ${data.user.username}!`,
+          variant: "default",
+          duration: 1500,
+        });
+      }, 100);
     } catch (error: any) {
       console.error("Login error:", error);
       // If the error doesn't have a message property, show a generic error
