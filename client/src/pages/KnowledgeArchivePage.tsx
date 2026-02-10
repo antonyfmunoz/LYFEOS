@@ -328,8 +328,24 @@ export default function KnowledgeArchivePage() {
 
   if (isLoading || !dismissedLoaded) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="pb-20">
+        <div className="mb-6">
+          <div className="h-8 bg-primary/20 rounded w-48 mb-2 animate-pulse"></div>
+          <div className="h-4 bg-primary/10 rounded w-72 animate-pulse"></div>
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="glassmorphic rounded-xl border border-primary/20 p-4 animate-pulse">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-primary/20"></div>
+                <div className="flex-1">
+                  <div className="h-4 bg-primary/20 rounded w-40 mb-2"></div>
+                  <div className="h-3 bg-primary/10 rounded w-24"></div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

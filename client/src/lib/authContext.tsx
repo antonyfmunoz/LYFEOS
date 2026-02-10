@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useLocation } from "wouter";
 import { toast } from "@/hooks/use-toast";
-import { apiRequest } from "./queryClient";
+import { apiRequest, queryClient } from "./queryClient";
 import { auth } from "./firebase";
 import { signInWithGoogle, handleRedirectResult } from "./firebaseAuth";
 import { User as FirebaseUser, onAuthStateChanged, Auth } from "firebase/auth";
 import { applyPrimaryColor } from "./applyPrimaryColor";
+import { getLocalDateString } from "./utils";
 
 interface User {
   id: number;
@@ -207,6 +208,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.user);
       localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
       
+      // Prefetch key data so pages load instantly (keys must match destination page queryKeys)
+      const todayStr = getLocalDateString();
+      queryClient.prefetchQuery({ queryKey: ["/api/profile"] });
+      queryClient.prefetchQuery({ queryKey: ['/api/users', data.user.id, 'daily-logs', todayStr] });
+      queryClient.prefetchQuery({ queryKey: ["/api/users", data.user.id, "profile"] });
+      queryClient.prefetchQuery({ queryKey: ["/api/account"] });
+
       // Navigate first, then show toast so it appears on the destination page
       if (data.isNewUser) {
         console.log("New user detected, redirecting to onboarding");

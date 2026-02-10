@@ -317,8 +317,19 @@ export default function TimelineDetailPage() {
   
   if (!item) {
     return (
-      <div className="flex items-center justify-center h-[50vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      <div className="pb-20">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="h-8 w-8 rounded bg-primary/20 animate-pulse"></div>
+          <div className="h-6 bg-primary/20 rounded w-48 animate-pulse"></div>
+        </div>
+        <div className="glassmorphic rounded-xl border border-primary/20 p-6 animate-pulse">
+          <div className="h-5 bg-primary/20 rounded w-64 mb-4"></div>
+          <div className="space-y-2">
+            <div className="h-4 bg-primary/10 rounded w-full"></div>
+            <div className="h-4 bg-primary/10 rounded w-3/4"></div>
+            <div className="h-4 bg-primary/10 rounded w-1/2"></div>
+          </div>
+        </div>
       </div>
     );
   }

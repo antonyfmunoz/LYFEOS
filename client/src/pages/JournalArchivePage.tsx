@@ -395,8 +395,19 @@ export default function JournalArchivePage() {
       </div>
       
       {isLoading ? (
-        <div className="text-center py-16 glassmorphic rounded-xl border border-primary/20">
-          <div className="animate-pulse text-primary">Loading your journal entries...</div>
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="glassmorphic rounded-xl border border-primary/20 p-4 animate-pulse">
+              <div className="flex items-center gap-3">
+                <div className="h-5 w-5 rounded bg-primary/20"></div>
+                <div className="h-5 bg-primary/20 rounded w-32"></div>
+              </div>
+              <div className="mt-3 ml-8 space-y-2">
+                <div className="h-4 bg-primary/10 rounded w-48"></div>
+                <div className="h-4 bg-primary/10 rounded w-36"></div>
+              </div>
+            </div>
+          ))}
         </div>
       ) : hierarchicalData.length > 0 ? (
         <div className="space-y-3">
