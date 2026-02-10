@@ -169,6 +169,14 @@ input[type="range"].theme-slider::-moz-range-thumb {
     @apply bg-card backdrop-blur-none border border-border/50 shadow-sm;
   }
   
+  .light-theme input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  .light-theme textarea,
+  .light-theme select,
+  .light-theme [role="textbox"],
+  .light-theme .bg-card\/50 {
+    background-color: hsl(220 13% 88%) !important;
+  }
+  
 /* Dark theme: neutralize hardcoded blue-tinted text colors */
 .dark-theme .text-\[\#7DAAB2\],
 .dark-theme [class*="text-[#7DAAB2]"] {
