@@ -154,7 +154,7 @@ input[type="range"].theme-slider::-moz-range-thumb {
   }
 
   a:visited {
-    color: inherit;
+    color: inherit !important;
   }
   
   /* Glassmorphic effect */
