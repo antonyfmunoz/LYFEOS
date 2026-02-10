@@ -49,12 +49,12 @@ export default function ForgotPasswordPage() {
             If an account exists with that email, we've sent a password reset link. Check your inbox and spam folder.
           </p>
           <div className="pt-2">
-            <Link href="/login" className="text-white hover:text-white/80 transition">
+            <span className="text-white auth-link"><Link href="/login" className="hover:opacity-80 transition">
               <span className="inline-flex items-center gap-2 text-sm cursor-pointer">
                 <ArrowLeft className="w-4 h-4" />
                 Back to Login
               </span>
-            </Link>
+            </Link></span>
           </div>
         </div>
       ) : (
@@ -102,12 +102,12 @@ export default function ForgotPasswordPage() {
           </form>
 
           <div className="mt-4 text-center">
-            <Link href="/login" className="text-white hover:text-white/80 transition">
+            <span className="text-white auth-link"><Link href="/login" className="hover:opacity-80 transition">
               <span className="inline-flex items-center gap-2 text-sm cursor-pointer">
                 <ArrowLeft className="w-4 h-4" />
                 Back to Login
               </span>
-            </Link>
+            </Link></span>
           </div>
         </div>
       )}

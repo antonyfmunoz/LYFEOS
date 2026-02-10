@@ -57,9 +57,9 @@ export default function ResetPasswordPage() {
         <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-white/40 text-center space-y-4"
              style={{ boxShadow: "0 0 20px rgba(255, 255, 255, 0.15)" }}>
           <p className="text-white">Invalid reset link. Please request a new one.</p>
-          <Link href="/forgot-password" className="text-white hover:text-white/80 transition">
+          <span className="text-white auth-link"><Link href="/forgot-password" className="hover:opacity-80 transition">
             <span className="cursor-pointer text-sm">Request New Link</span>
-          </Link>
+          </Link></span>
         </div>
       </div>
     );
@@ -151,12 +151,12 @@ export default function ResetPasswordPage() {
           </form>
 
           <div className="mt-4 text-center">
-            <Link href="/login" className="text-white hover:text-white/80 transition">
+            <span className="text-white auth-link"><Link href="/login" className="hover:opacity-80 transition">
               <span className="inline-flex items-center gap-2 text-sm cursor-pointer">
                 <ArrowLeft className="w-4 h-4" />
                 Back to Login
               </span>
-            </Link>
+            </Link></span>
           </div>
         </div>
       )}
