@@ -181,9 +181,17 @@ input[type="range"].theme-slider::-moz-range-thumb {
   background-color: hsl(0 0% 9%) !important;
 }
 
+input::placeholder,
+textarea::placeholder,
+select::placeholder,
+[contenteditable]::placeholder {
+  color: hsl(0 0% 65%) !important;
+  opacity: 1 !important;
+}
+
 .dark-theme .placeholder\:text-\[\#7DAAB2\]::placeholder,
 .dark-theme [class*="placeholder:text-[#7DAAB2]"]::placeholder {
-  color: hsl(var(--muted-foreground)) !important;
+  color: hsl(0 0% 65%) !important;
 }
 
 /* Light theme text color overrides */
