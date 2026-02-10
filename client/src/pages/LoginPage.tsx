@@ -46,8 +46,8 @@ export default function LoginPage() {
         <p className="text-muted-foreground">Your personal life operating system</p>
       </div>
       
-      <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-white/40"
-           style={{ boxShadow: "0 0 20px rgba(255, 255, 255, 0.15)" }}>
+      <div className="w-full max-w-md rounded-xl p-6 border border-white/20 backdrop-blur-md"
+           style={{ backgroundColor: "rgba(38, 38, 42, 0.85)", boxShadow: "0 0 20px rgba(255, 255, 255, 0.08)" }}>
         <h2 className="text-xl font-orbitron text-center mb-6 text-white">Login to LYFEOS</h2>
         
         

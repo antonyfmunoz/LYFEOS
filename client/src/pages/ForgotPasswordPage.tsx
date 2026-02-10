@@ -41,8 +41,8 @@ export default function ForgotPasswordPage() {
       </div>
 
       {submitted ? (
-        <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-white/40 text-center space-y-4"
-             style={{ boxShadow: "0 0 20px rgba(255, 255, 255, 0.15)" }}>
+        <div className="w-full max-w-md rounded-xl p-6 border border-white/20 backdrop-blur-md text-center space-y-4"
+             style={{ backgroundColor: "rgba(38, 38, 42, 0.85)", boxShadow: "0 0 20px rgba(255, 255, 255, 0.08)" }}>
           <Mail className="w-12 h-12 mx-auto text-white" />
           <h2 className="text-xl font-orbitron text-white">Check your email</h2>
           <p className="text-muted-foreground text-sm">
@@ -58,8 +58,8 @@ export default function ForgotPasswordPage() {
           </div>
         </div>
       ) : (
-        <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-white/40"
-             style={{ boxShadow: "0 0 20px rgba(255, 255, 255, 0.15)" }}>
+        <div className="w-full max-w-md rounded-xl p-6 border border-white/20 backdrop-blur-md"
+             style={{ backgroundColor: "rgba(38, 38, 42, 0.85)", boxShadow: "0 0 20px rgba(255, 255, 255, 0.08)" }}>
           <h2 className="text-xl font-orbitron text-center mb-6 text-white">Reset Password</h2>
 
           <p className="text-muted-foreground text-sm text-center mb-6">

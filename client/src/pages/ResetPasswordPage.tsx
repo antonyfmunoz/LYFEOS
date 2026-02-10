@@ -54,8 +54,8 @@ export default function ResetPasswordPage() {
           <h1 className="text-4xl text-white font-orbitron mb-2">LYFEOS</h1>
           <p className="text-muted-foreground">Your personal life operating system</p>
         </div>
-        <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-white/40 text-center space-y-4"
-             style={{ boxShadow: "0 0 20px rgba(255, 255, 255, 0.15)" }}>
+        <div className="w-full max-w-md rounded-xl p-6 border border-white/20 backdrop-blur-md text-center space-y-4"
+             style={{ backgroundColor: "rgba(38, 38, 42, 0.85)", boxShadow: "0 0 20px rgba(255, 255, 255, 0.08)" }}>
           <p className="text-white">Invalid reset link. Please request a new one.</p>
           <span className="text-white auth-link"><Link href="/forgot-password" className="hover:opacity-80 transition">
             <span className="cursor-pointer text-sm">Request New Link</span>
@@ -73,8 +73,8 @@ export default function ResetPasswordPage() {
       </div>
 
       {success ? (
-        <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-white/40 text-center space-y-4"
-             style={{ boxShadow: "0 0 20px rgba(255, 255, 255, 0.15)" }}>
+        <div className="w-full max-w-md rounded-xl p-6 border border-white/20 backdrop-blur-md text-center space-y-4"
+             style={{ backgroundColor: "rgba(38, 38, 42, 0.85)", boxShadow: "0 0 20px rgba(255, 255, 255, 0.08)" }}>
           <CheckCircle className="w-16 h-16 mx-auto text-green-500" />
           <h2 className="text-xl font-orbitron text-white">Password Reset!</h2>
           <p className="text-muted-foreground text-sm">
@@ -88,8 +88,8 @@ export default function ResetPasswordPage() {
           </button>
         </div>
       ) : (
-        <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-white/40"
-             style={{ boxShadow: "0 0 20px rgba(255, 255, 255, 0.15)" }}>
+        <div className="w-full max-w-md rounded-xl p-6 border border-white/20 backdrop-blur-md"
+             style={{ backgroundColor: "rgba(38, 38, 42, 0.85)", boxShadow: "0 0 20px rgba(255, 255, 255, 0.08)" }}>
           <h2 className="text-xl font-orbitron text-center mb-6 text-white">Set New Password</h2>
 
           {error && (
