@@ -97,35 +97,26 @@ export function useTheme() {
 }
 
 // Provider component
+function getInitialTheme(): boolean {
+  const saved = localStorage.getItem('lyfeos-theme');
+  if (saved) return saved === 'dark';
+  return true;
+}
+
+function getInitialColor(): string {
+  return localStorage.getItem('lyfeos-primary-color') || "#00e0ff";
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const { stats, updateUserStats } = useLYFEOS();
-  const [isDarkMode, setIsDarkMode] = useState(true); // Default to dark mode
-  const [primaryColor, setPrimaryColorState] = useState("#00e0ff"); // Default to cyan
+  const [isDarkMode, setIsDarkMode] = useState(getInitialTheme);
+  const [primaryColor, setPrimaryColorState] = useState(getInitialColor);
 
-  // Initialize theme from stats or localStorage when component mounts
   useEffect(() => {
-    const savedTheme = localStorage.getItem('lyfeos-theme');
-    if (savedTheme) {
-      setIsDarkMode(savedTheme === 'dark');
-    }
-    
-    const savedColor = localStorage.getItem('lyfeos-primary-color');
-    
     if (stats) {
-      if (stats.darkThemeEnabled !== undefined) {
-        setIsDarkMode(stats.darkThemeEnabled);
-      }
-      
       if (stats.primaryColor) {
         setPrimaryColorState(stats.primaryColor);
-      } else if (savedColor) {
-        setPrimaryColorState(savedColor);
-        if (updateUserStats) {
-          updateUserStats({ ...stats, primaryColor: savedColor });
-        }
       }
-    } else if (savedColor) {
-      setPrimaryColorState(savedColor);
     }
   }, [stats]);
 

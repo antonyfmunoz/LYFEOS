@@ -75,10 +75,10 @@ input[type="range"].theme-slider::-moz-range-thumb {
     --background: 220 14% 90% !important;
     --foreground: 220 10% 20% !important;
     
-    --card: 220 14% 95% !important;
+    --card: 220 13% 88% !important;
     --card-foreground: 220 10% 20% !important;
     
-    --popover: 220 14% 95% !important;
+    --popover: 220 13% 88% !important;
     --popover-foreground: 220 10% 20% !important;
     
     --primary: var(--primary-hsl, 188 95% 40%) !important;
@@ -163,6 +163,10 @@ input[type="range"].theme-slider::-moz-range-thumb {
   /* Glassmorphic effect */
   .glassmorphic {
     @apply bg-card/70 backdrop-blur-md border border-transparent shadow-md;
+  }
+  
+  .light-theme .glassmorphic {
+    @apply bg-card backdrop-blur-none border border-border/50 shadow-sm;
   }
   
 /* Dark theme: neutralize hardcoded blue-tinted text colors */
