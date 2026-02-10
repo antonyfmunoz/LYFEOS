@@ -83,6 +83,7 @@ export interface IStorage {
   createQuest(quest: InsertQuest): Promise<Quest>;
   updateQuest(id: number, quest: Partial<InsertQuest>): Promise<Quest>;
   toggleQuestCompletion(id: number): Promise<{ quest: Quest; statsUpdated: boolean; levelUp: boolean }>;
+  recalculateXP(userId: number): Promise<{ level: number; experienceCurrent: number; experienceMax: number; totalXP: number }>;
   generateNextRitualOccurrence(quest: Quest): Promise<Quest | null>;
   deleteQuest(id: number): Promise<void>;
   getArchivedQuests(userId: number): Promise<Quest[]>;
@@ -582,6 +583,52 @@ export class DatabaseStorage implements IStorage {
     return efficiency;
   }
   
+  async recalculateXP(userId: number): Promise<{ level: number; experienceCurrent: number; experienceMax: number; totalXP: number }> {
+    const stats = await this.getUserStats(userId);
+    if (!stats) return { level: 1, experienceCurrent: 0, experienceMax: 1000, totalXP: 0 };
+
+    const completedQuests = await db.select().from(quests).where(
+      and(eq(quests.userId, userId), eq(quests.completed, true))
+    );
+
+    const difficultyMultipliers: Record<string, number> = { D: 1, C: 1.5, B: 2, A: 3, S: 5 };
+    let totalXP = 0;
+    for (const q of completedQuests) {
+      const mult = difficultyMultipliers[q.difficulty || 'D'] || 1;
+      totalXP += Math.floor((q.experienceReward || 0) * mult);
+    }
+
+    let level = 1;
+    let experienceMax = 1000;
+    let remaining = totalXP;
+
+    while (remaining >= experienceMax) {
+      remaining -= experienceMax;
+      level += 1;
+      if (level <= 10) {
+        experienceMax = Math.floor(experienceMax * 1.0372);
+      } else if (level <= 50) {
+        experienceMax = Math.floor(experienceMax * 1.0572);
+      } else {
+        experienceMax = Math.floor(experienceMax * 1.0872);
+      }
+    }
+
+    const userProfile = await this.getUserProfile(userId);
+    const profileTotalXP = userProfile?.totalXP || 0;
+    const needsUpdate = stats.experienceCurrent !== remaining || stats.level !== level || stats.experienceMax !== experienceMax || profileTotalXP !== totalXP;
+    if (needsUpdate) {
+      await this.updateUserStats(userId, {
+        experienceCurrent: remaining,
+        level,
+        experienceMax,
+      });
+      await this.updateUserProfile(userId, { totalXP });
+    }
+
+    return { level, experienceCurrent: remaining, experienceMax, totalXP };
+  }
+
   async processDailyHealthUpdate(userId: number): Promise<number> {
     const stats = await this.getUserStats(userId);
     if (!stats) {

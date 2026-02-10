@@ -1033,9 +1033,8 @@ Generate the complete affirmation now:`;
         return res.status(404).json({ error: "User stats not found" });
       }
       
-      // Get user profile to access totalXP
-      const userProfile = await storage.getUserProfile(userId);
-      const totalXP = userProfile?.totalXP || 0;
+      // Recalculate XP from completed missions to ensure consistency
+      const xpData = await storage.recalculateXP(userId);
       
       // Transform database stats into the nested object structure expected by the frontend
       const transformedStats = {
@@ -1056,11 +1055,11 @@ Generate the complete affirmation now:`;
           max: dbStats.healthPointsMax,
         },
         experience: {
-          current: dbStats.experienceCurrent,
-          max: dbStats.experienceMax,
-          level: dbStats.level,
-          totalXP: totalXP,
-          showLevelUp: false // Default to false, will be set to true when needed
+          current: xpData.experienceCurrent,
+          max: xpData.experienceMax,
+          level: xpData.level,
+          totalXP: xpData.totalXP,
+          showLevelUp: false
         },
         streakDays: dbStats.streakDays || 0,
         efficiencyScore: dbStats.efficiencyScore || 0,
