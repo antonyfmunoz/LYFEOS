@@ -190,14 +190,14 @@ function PersistentProfileSection({ section, onSave }: { section: { id: string; 
 
 // Chakra colors for stats (used for theme colors)
 const STAT_COLORS = [
-  "#00e0ff", // cyan - Time Tokens (Throat Chakra)
-  "#f56565", // red - Health Points (Root Chakra)
-  "#ed8936", // orange - Energy Points (Sacral Chakra)
-  "#ecc94b", // yellow - Efficiency (Solar Plexus Chakra)
-  "#48bb78", // green - Streak (Heart Chakra)
-  "#4299e1", // blue - General/Primary
-  "#667eea", // indigo - Attention Tokens (Third Eye Chakra)
-  "#9f7aea", // purple - Experience (Crown Chakra)
+  "#00e0ff",
+  "#f56565",
+  "#ed8936",
+  "#ecc94b",
+  "#48bb78",
+  "#ffffff",
+  "#000000",
+  "#9f7aea",
 ];
 
 interface UserProfile {
@@ -1139,7 +1139,7 @@ export default function ProfilePage() {
             <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
               <div className="flex items-center gap-2 mb-2">
                 <Paintbrush className="h-4 w-4 text-primary" />
-                <Label className="text-sm text-foreground">UI Theme Color</Label>
+                <Label className="text-sm text-foreground">Theme Color</Label>
               </div>
               <p className="text-xs text-muted-foreground mb-3">
                 Select your preferred interface color.
@@ -1153,24 +1153,18 @@ export default function ProfilePage() {
                       stats.primaryColor === color 
                         ? 'ring-2 ring-offset-2 ring-offset-background ring-primary scale-110' 
                         : 'ring-1 ring-primary/20 hover:scale-105'
-                    }`}
+                    } ${color === '#ffffff' || color === '#000000' ? 'border border-muted-foreground/30' : ''}`}
                     style={{ backgroundColor: color }}
                     onClick={() => handlePrimaryColorChange(color)}
                     aria-label={`Select theme color ${color}`}
                   >
                     {stats.primaryColor === color && (
-                      <span className="flex items-center justify-center text-background text-xs">
+                      <span className={`flex items-center justify-center text-xs ${color === '#000000' ? 'text-white' : 'text-background'}`}>
                         <span className="material-icons" style={{ fontSize: '16px' }}>check</span>
                       </span>
                     )}
                   </button>
                 ))}
-              </div>
-              <div className="flex items-center mt-3 gap-2">
-                <span className="block w-3 h-3 rounded-full animate-pulse" style={{ backgroundColor: stats.primaryColor || "#00e0ff" }}></span>
-                <p className="text-xs text-muted-foreground">
-                  Current color: {stats.primaryColor || "#00e0ff"}
-                </p>
               </div>
             </div>
           </>
