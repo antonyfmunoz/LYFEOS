@@ -228,24 +228,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.prefetchQuery({ queryKey: ["/api/users", data.user.id, "profile"] });
       queryClient.prefetchQuery({ queryKey: ["/api/account"] });
 
-      // Navigate after session is confirmed, then show toast on destination page
-      if (data.isNewUser) {
-        console.log("New user detected, redirecting to onboarding");
-        navigate("/onboarding", { replace: true });
-      } else {
-        console.log("Redirecting to dashboard...");
-        navigate("/dashboard", { replace: true });
-      }
+      // Store username for the transition page toast
+      sessionStorage.setItem("login_success_username", data.user.username);
+      sessionStorage.setItem("login_success_new_user", data.isNewUser ? "true" : "false");
       
-      // Show toast after navigation so it renders on the new page
-      setTimeout(() => {
-        toast({
-          title: "Login Successful",
-          description: `Welcome back, ${data.user.username}!`,
-          variant: "default",
-          duration: 1500,
-        });
-      }, 150);
+      // Navigate to transition page — toast shows there, then auto-redirects
+      console.log("Navigating to login success transition...");
+      navigate("/login-success", { replace: true });
     } catch (error: any) {
       console.error("Login error:", error);
       // If the error doesn't have a message property, show a generic error
