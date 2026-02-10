@@ -177,17 +177,33 @@ input[type="range"].theme-slider::-moz-range-thumb {
     background-color: hsl(220 13% 88%) !important;
   }
   
+  .light-theme .dark-theme,
+  .light-theme .dark-theme * {
+    --background: 0 0% 7%;
+    --foreground: 0 0% 93%;
+    --muted-foreground: 0 0% 65%;
+    --card: 0 0% 12%;
+    --border: 0 0% 100% / 0.2;
+    --input: 0 0% 100% / 0.2;
+  }
+
   .light-theme .dark-theme {
     background-color: hsl(0 0% 7%) !important;
     color: hsl(0 0% 93%) !important;
   }
 
-  .light-theme .dark-theme input,
+  .light-theme .dark-theme input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
   .light-theme .dark-theme textarea,
   .light-theme .dark-theme select,
   .light-theme .dark-theme [role="textbox"] {
-    background-color: hsl(0 0% 12%) !important;
+    background-color: transparent !important;
     color: hsl(0 0% 93%) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+  }
+
+  .light-theme .dark-theme input::placeholder,
+  .light-theme .dark-theme textarea::placeholder {
+    color: hsl(0 0% 55%) !important;
   }
 
   .light-theme .dark-theme label,
@@ -197,9 +213,19 @@ input[type="range"].theme-slider::-moz-range-thumb {
   .light-theme .dark-theme h3,
   .light-theme .dark-theme p,
   .light-theme .dark-theme a,
+  .light-theme .dark-theme button,
   .light-theme .dark-theme select,
   .light-theme .dark-theme select option {
     color: hsl(0 0% 93%) !important;
+  }
+
+  .light-theme .dark-theme button {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    border-color: rgba(255, 255, 255, 0.5) !important;
+  }
+
+  .light-theme .dark-theme .text-muted-foreground {
+    color: hsl(0 0% 65%) !important;
   }
   
 /* Dark theme: neutralize hardcoded blue-tinted text colors */
