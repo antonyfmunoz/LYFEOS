@@ -53,7 +53,7 @@ input[type="range"].theme-slider::-moz-range-thumb {
     --accent-foreground: 0 0% 11% !important;
     
     --muted: 0 0% 20% !important;
-    --muted-foreground: 0 0% 65% !important;
+    --muted-foreground: 0 0% 100% !important;
     
     --destructive: 350 100% 60% !important;
     --destructive-foreground: 0 0% 93% !important;
@@ -91,7 +91,7 @@ input[type="range"].theme-slider::-moz-range-thumb {
     --accent-foreground: 0 0% 98% !important;
     
     --muted: 0 0% 90% !important;
-    --muted-foreground: 0 0% 45% !important;
+    --muted-foreground: 0 0% 100% !important;
     
     --destructive: 0 84% 60% !important;
     --destructive-foreground: 0 0% 98% !important;
@@ -133,7 +133,7 @@ input[type="range"].theme-slider::-moz-range-thumb {
     --accent-foreground: 0 0% 11%;
     
     --muted: 0 0% 20%;
-    --muted-foreground: 0 0% 65%;
+    --muted-foreground: 0 0% 100%;
     
     --destructive: 350 100% 60%;
     --destructive-foreground: 0 0% 93%;
