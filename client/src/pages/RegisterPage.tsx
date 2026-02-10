@@ -1,27 +1,25 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/authContext";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { Input } from "@/components/ui/input";
-import { Loader2, Mail, Check } from "lucide-react";
+import { Loader2, Check } from "lucide-react";
 import { useTheme } from "@/lib/themeContext";
 import { Checkbox } from "@/components/ui/checkbox";
 
-// Avatar color options
 const avatarColors = [
-  "#00e0ff", // Default cyan
-  "#f59e0b", // Amber
-  "#10b981", // Emerald
-  "#8b5cf6", // Violet
-  "#ec4899", // Pink
-  "#ef4444", // Red
-  "#06b6d4", // Cyan
-  "#ecc94b", // Yellow
-  "#14b8a6"  // Teal
+  "#00e0ff",
+  "#f59e0b",
+  "#10b981",
+  "#8b5cf6",
+  "#ec4899",
+  "#ef4444",
+  "#06b6d4",
+  "#ecc94b",
+  "#14b8a6"
 ];
 
 export default function RegisterPage() {
-  // Set the page title
   usePageTitle('Register');
   
   const { register } = useAuth();
@@ -45,7 +43,6 @@ export default function RegisterPage() {
     if (colorToApply) {
       const savedColor = colorToApply;
       
-      // Apply the color with all necessary CSS variables
       const hexToHSL = (hex: string): string => {
         hex = hex.replace(/^#/, '');
         const r = parseInt(hex.substring(0, 2), 16) / 255;
@@ -84,7 +81,6 @@ export default function RegisterPage() {
         return { r, g, b };
       };
       
-      // Apply the color
       const hsl = hexToHSL(savedColor);
       document.documentElement.style.setProperty('--primary', hsl);
       document.documentElement.style.setProperty('--primary-hsl', hsl);
@@ -92,7 +88,6 @@ export default function RegisterPage() {
       document.documentElement.style.setProperty('--primary-hex', savedColor);
       document.documentElement.style.setProperty('--primary-color', savedColor);
       
-      // Add RGB variables
       const rgbValues = hexToRGB(savedColor);
       if (rgbValues) {
         const { r, g, b } = rgbValues;
@@ -114,7 +109,6 @@ export default function RegisterPage() {
     setError("");
     setIsLoading(true);
     
-    // Enhanced validation with trimmed values
     const trimmedUsername = username.trim();
     const trimmedEmail = email.trim();
     const trimmedPhone = phone.trim();
@@ -217,7 +211,6 @@ export default function RegisterPage() {
     } catch (err: any) {
       console.error("Registration error:", err);
       
-      // Ensure we display a meaningful error message
       if (!err?.message) {
         setError("Registration failed. Please try again with a different username.");
       } else {
@@ -231,12 +224,12 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
       <div className="text-center mb-8">
-        <h1 className="text-4xl text-primary font-orbitron mb-2">LYFE<span className="text-foreground">OS</span></h1>
+        <h1 className="text-4xl text-white font-orbitron mb-2">LYFE<span className="text-foreground">OS</span></h1>
         <p className="text-muted-foreground">Your personal life operating system</p>
       </div>
       
-      <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-primary/40 animate-fadeIn"
-           style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
+      <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-white/40 animate-fadeIn"
+           style={{ boxShadow: "0 0 20px rgba(255, 255, 255, 0.15)" }}>
         <h2 className="text-xl font-orbitron text-center mb-6 text-foreground">Create Your LYFEOS Account</h2>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -247,7 +240,7 @@ export default function RegisterPage() {
               id="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full bg-transparent border-primary/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-primary/30"
+              className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-white/30"
               placeholder="Choose a username"
               required
             />
@@ -260,7 +253,7 @@ export default function RegisterPage() {
               id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-transparent border-primary/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-primary/30"
+              className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-white/30"
               placeholder="Enter your email"
               required
             />
@@ -273,7 +266,7 @@ export default function RegisterPage() {
               id="phone"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="w-full bg-transparent border-primary/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-primary/30"
+              className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-white/30"
               placeholder="Enter your phone number"
               required
             />
@@ -287,7 +280,7 @@ export default function RegisterPage() {
                 id="firstName"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                className="w-full bg-transparent border-primary/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-primary/30"
+                className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-white/30"
                 placeholder="First name"
                 required
               />
@@ -299,7 +292,7 @@ export default function RegisterPage() {
                 id="lastName"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                className="w-full bg-transparent border-primary/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-primary/30"
+                className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-white/30"
                 placeholder="Last name"
                 required
               />
@@ -313,7 +306,7 @@ export default function RegisterPage() {
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-transparent border-primary/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-primary/30"
+              className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-white/30"
               placeholder="Create a password"
               required
             />
@@ -326,13 +319,12 @@ export default function RegisterPage() {
               id="confirmPassword"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full bg-transparent border-primary/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-primary/30"
+              className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-white/30"
               placeholder="Confirm your password"
               required
             />
           </div>
           
-          {/* Avatar Color Selection */}
           <div className="space-y-2">
             <label className="block text-sm text-muted-foreground">CHOOSE YOUR COLOR</label>
             <div className="flex flex-wrap gap-2 justify-center">
@@ -353,16 +345,15 @@ export default function RegisterPage() {
             </div>
           </div>
           
-          {/* Terms and Privacy Policy */}
           <div className="flex items-start space-x-2 mt-4">
             <Checkbox 
               id="terms" 
               checked={termsAccepted}
               onCheckedChange={(checked) => setTermsAccepted(checked === true)}
-              className="mt-1 border-primary/50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+              className="mt-1 border-white/50 data-[state=checked]:bg-white data-[state=checked]:text-black"
             />
             <label htmlFor="terms" className="text-sm text-muted-foreground cursor-pointer">
-              I agree to the <Link href="/terms" className="text-primary hover:text-primary/80">Terms of Service</Link> and <Link href="/privacy" className="text-primary hover:text-primary/80">Privacy Policy</Link>. 
+              I agree to the <Link href="/terms" className="text-white hover:text-white/80">Terms of Service</Link> and <Link href="/privacy" className="text-white hover:text-white/80">Privacy Policy</Link>. 
               Your journey is protected, and your data remains under your control.
             </label>
           </div>
@@ -375,7 +366,7 @@ export default function RegisterPage() {
           
           <button 
             type="submit"
-            className="w-full mt-4 text-sm font-mono px-4 py-2.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-2"
+            className="w-full mt-4 text-sm font-mono px-4 py-2.5 rounded border bg-white/20 border-white/50 text-white hover:bg-white/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-2"
             disabled={isLoading}
           >
             {isLoading ? (
@@ -392,7 +383,7 @@ export default function RegisterPage() {
         <div className="mt-6 text-center">
           <p className="text-muted-foreground">
             Already have an account?{" "}
-            <Link href="/login" className="text-primary hover:text-primary/80 transition">
+            <Link href="/login" className="text-white hover:text-white/80 transition">
               Login
             </Link>
           </p>

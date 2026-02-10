@@ -51,14 +51,14 @@ export default function ResetPasswordPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
         <div className="text-center mb-8">
-          <h1 className="text-4xl text-primary font-orbitron mb-2">LYFE<span className="text-foreground">OS</span></h1>
+          <h1 className="text-4xl text-white font-orbitron mb-2">LYFE<span className="text-foreground">OS</span></h1>
           <p className="text-muted-foreground">Your personal life operating system</p>
         </div>
-        <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-primary/40 text-center space-y-4"
-             style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
+        <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-white/40 text-center space-y-4"
+             style={{ boxShadow: "0 0 20px rgba(255, 255, 255, 0.15)" }}>
           <p className="text-foreground">Invalid reset link. Please request a new one.</p>
           <Link href="/forgot-password">
-            <span className="text-primary hover:text-primary/80 transition cursor-pointer text-sm">Request New Link</span>
+            <span className="text-white hover:text-white/80 transition cursor-pointer text-sm">Request New Link</span>
           </Link>
         </div>
       </div>
@@ -68,13 +68,13 @@ export default function ResetPasswordPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
       <div className="text-center mb-8">
-        <h1 className="text-4xl text-primary font-orbitron mb-2">LYFE<span className="text-foreground">OS</span></h1>
+        <h1 className="text-4xl text-white font-orbitron mb-2">LYFE<span className="text-foreground">OS</span></h1>
         <p className="text-muted-foreground">Your personal life operating system</p>
       </div>
 
       {success ? (
-        <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-primary/40 text-center space-y-4"
-             style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
+        <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-white/40 text-center space-y-4"
+             style={{ boxShadow: "0 0 20px rgba(255, 255, 255, 0.15)" }}>
           <CheckCircle className="w-16 h-16 mx-auto text-green-500" />
           <h2 className="text-xl font-orbitron text-foreground">Password Reset!</h2>
           <p className="text-muted-foreground text-sm">
@@ -82,14 +82,14 @@ export default function ResetPasswordPage() {
           </p>
           <button
             onClick={() => navigate("/login")}
-            className="mt-2 text-sm font-mono px-6 py-2.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center justify-center gap-2"
+            className="mt-2 text-sm font-mono px-6 py-2.5 rounded border bg-white/20 border-white/50 text-white hover:bg-white/30 transition-colors inline-flex items-center justify-center gap-2"
           >
             Go to Login
           </button>
         </div>
       ) : (
-        <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-primary/40"
-             style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
+        <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-white/40"
+             style={{ boxShadow: "0 0 20px rgba(255, 255, 255, 0.15)" }}>
           <h2 className="text-xl font-orbitron text-center mb-6 text-foreground">Set New Password</h2>
 
           {error && (
@@ -109,7 +109,7 @@ export default function ResetPasswordPage() {
                   placeholder="At least 6 characters"
                   required
                   minLength={6}
-                  className="w-full bg-transparent border-primary/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-primary/30 pr-10"
+                  className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-white/30 pr-10"
                 />
                 <button
                   type="button"
@@ -130,14 +130,14 @@ export default function ResetPasswordPage() {
                 placeholder="Re-enter your password"
                 required
                 minLength={6}
-                className="w-full bg-transparent border-primary/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-primary/30"
+                className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-white/30"
               />
             </div>
 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full mt-4 text-sm font-mono px-4 py-2.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-2"
+              className="w-full mt-4 text-sm font-mono px-4 py-2.5 rounded border bg-white/20 border-white/50 text-white hover:bg-white/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
                 <>
@@ -152,7 +152,7 @@ export default function ResetPasswordPage() {
 
           <div className="mt-4 text-center">
             <Link href="/login">
-              <span className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition cursor-pointer">
+              <span className="inline-flex items-center gap-2 text-sm text-white hover:text-white/80 transition cursor-pointer">
                 <ArrowLeft className="w-4 h-4" />
                 Back to Login
               </span>
