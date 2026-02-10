@@ -437,7 +437,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       const fetchStats = async () => {
         try {
           console.log("Fetching stats for user:", user.id);
-          const response = await fetch(`/api/users/${user.id}/stats`);
+          const response = await fetch(`/api/users/${user.id}/stats`, { credentials: "include" });
           if (response.ok) {
             const data = await response.json();
             const dbStats = data.stats;
@@ -509,7 +509,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       const fetchMissionPages = async () => {
         try {
           console.log("Fetching mission pages for user:", user.id);
-          const response = await fetch(`/api/users/${user.id}/mission-pages`);
+          const response = await fetch(`/api/users/${user.id}/mission-pages`, { credentials: "include" });
           if (response.ok) {
             const data = await response.json();
             if (data.missionPages && Array.isArray(data.missionPages)) {
@@ -550,7 +550,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       const fetchCalendarEvents = async () => {
         try {
           console.log("Fetching calendar events for user:", user.id);
-          const response = await fetch(`/api/users/${user.id}/calendar-events`);
+          const response = await fetch(`/api/users/${user.id}/calendar-events`, { credentials: "include" });
           if (response.ok) {
             const data = await response.json();
             if (data.events && Array.isArray(data.events)) {
@@ -609,7 +609,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     try {
       console.log("Refetching quests for user:", user.id);
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const response = await fetch(`/api/users/${user.id}/quests?tz=${encodeURIComponent(tz)}`);
+      const response = await fetch(`/api/users/${user.id}/quests?tz=${encodeURIComponent(tz)}`, { credentials: "include" });
       if (response.ok) {
         const data = await response.json();
         if (data.quests && Array.isArray(data.quests)) {
@@ -664,7 +664,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       const fetchConversations = async () => {
         try {
           console.log("Fetching conversations for user:", user.id);
-          const response = await fetch('/api/conversations');
+          const response = await fetch('/api/conversations', { credentials: "include" });
           if (response.ok) {
             const conversations = await response.json();
             if (Array.isArray(conversations) && conversations.length > 0) {
@@ -676,7 +676,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
               
               for (const conv of conversations) {
                 // Fetch messages for each conversation
-                const messagesResponse = await fetch(`/api/conversations/${conv.id}`);
+                const messagesResponse = await fetch(`/api/conversations/${conv.id}`, { credentials: "include" });
                 let chatMessages: AIMessage[] = [];
                 
                 if (messagesResponse.ok) {
@@ -737,6 +737,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
           headers: {
             'Content-Type': 'application/json',
           },
+          credentials: "include",
           body: JSON.stringify({ name }),
         })
         .then(response => {
@@ -773,7 +774,19 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     });
     setQuests(updatedQuests);
     
-    // Persist to database
+    // Show mission completed toast IMMEDIATELY (optimistic, before server response)
+    if (completed) {
+      const xpEstimate = Math.floor(currentQuest.experienceReward * ({ D: 1, C: 1.5, B: 2, A: 3, S: 5 }[currentQuest.difficulty || 'D'] || 1));
+      toast({
+        title: "Mission Completed",
+        description: `${currentQuest.title} — +${xpEstimate} XP`,
+        variant: "default",
+        className: "bg-background/80 border border-primary text-foreground",
+        duration: 1500,
+      });
+    }
+    
+    // Persist to database (runs in background after toast)
     try {
       const response = await fetch(`/api/quests/${id}/toggle`, {
         method: "POST",
@@ -782,9 +795,14 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       });
       
       if (!response.ok) {
-        // Revert on failure
         setQuests(quests);
         console.error("Failed to toggle quest completion");
+        toast({
+          title: "Update Failed",
+          description: "Could not save mission status. Please try again.",
+          variant: "destructive",
+          duration: 3000,
+        });
         return;
       }
       
@@ -827,26 +845,18 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         }
       }
       
-      // Show mission completed toast
-      if (completed) {
-        toast({
-          title: "Mission Completed",
-          description: `${currentQuest.title} — +${data.xpAwarded || Math.floor(currentQuest.experienceReward * ({ D: 1, C: 1.5, B: 2, A: 3, S: 5 }[currentQuest.difficulty || 'D'] || 1))} XP`,
-          variant: "default",
-          className: "bg-background/80 border border-primary text-foreground",
-          duration: 1500,
-        });
-        
-        if (currentQuest.isRitualized) {
-          await refetchQuests();
-        }
-      } else if (!completed && currentQuest.isRitualized) {
+      if (currentQuest.isRitualized) {
         await refetchQuests();
       }
     } catch (error) {
-      // Revert on error
       setQuests(quests);
       console.error("Error toggling quest completion:", error);
+      toast({
+        title: "Update Failed",
+        description: "Could not save mission status. Please try again.",
+        variant: "destructive",
+        duration: 3000,
+      });
     }
   };
 
@@ -1004,6 +1014,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       headers: {
         'Content-Type': 'application/json'
       },
+      credentials: "include",
       body: JSON.stringify({
         userId: 1, // This will be replaced with the actual user ID from session
         sender: 'user',
@@ -1337,6 +1348,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     const response = await fetch('/api/conversations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: "include",
       body: JSON.stringify({ title }),
     });
     
@@ -1405,6 +1417,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       const response = await fetch(`/api/conversations/${dbConversationId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: "include",
         body: JSON.stringify({ content }),
       });
       
@@ -1568,7 +1581,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     const dbId = sessionToDbIdMap[id];
     if (dbId) {
       try {
-        const response = await fetch(`/api/conversations/${dbId}`, { method: 'DELETE' });
+        const response = await fetch(`/api/conversations/${dbId}`, { method: 'DELETE', credentials: "include" });
         if (!response.ok) {
           console.error("Failed to delete conversation from database, status:", response.status);
           return false;
@@ -1654,7 +1667,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       // Sync with server to ensure consistency
       if (user) {
         try {
-          const res = await fetch(`/api/users/${user.id}/stats`);
+          const res = await fetch(`/api/users/${user.id}/stats`, { credentials: "include" });
           if (res.ok) {
             const data = await res.json();
             if (data.stats) {
