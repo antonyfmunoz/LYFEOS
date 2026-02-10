@@ -177,6 +177,26 @@ input[type="range"].theme-slider::-moz-range-thumb {
     background-color: hsl(220 13% 88%) !important;
   }
   
+  .light-theme .dark-theme,
+  .light-theme .dark-theme input,
+  .light-theme .dark-theme textarea,
+  .light-theme .dark-theme select,
+  .light-theme .dark-theme [role="textbox"] {
+    background-color: unset !important;
+  }
+  
+  .light-theme .dark-theme label,
+  .light-theme .dark-theme span,
+  .light-theme .dark-theme h1,
+  .light-theme .dark-theme h2,
+  .light-theme .dark-theme h3,
+  .light-theme .dark-theme p,
+  .light-theme .dark-theme select,
+  .light-theme .dark-theme select option {
+    color: unset !important;
+    background-color: unset !important;
+  }
+  
 /* Dark theme: neutralize hardcoded blue-tinted text colors */
 .dark-theme .text-\[\#7DAAB2\],
 .dark-theme [class*="text-[#7DAAB2]"] {
