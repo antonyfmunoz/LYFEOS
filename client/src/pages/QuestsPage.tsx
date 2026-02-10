@@ -228,8 +228,11 @@ export default function QuestsPage() {
     // Inbox missions: missions created from to-do ideas (category='todo')
     const inboxItems = active.filter(q => q.category === 'todo');
     
+    const incompleteOnboardingItems = active.filter(q => q.category === 'onboarding');
+
     const todayItems = active.filter(q => {
       if (q.category === 'todo') return false;
+      if (q.category === 'onboarding') return false;
       if (!q.startDate) return true;
       return q.startDate <= today;
     });
@@ -242,12 +245,14 @@ export default function QuestsPage() {
     
     const upcomingItems = active.filter(q => {
       if (q.category === 'todo') return false;
+      if (q.category === 'onboarding') return false;
       if (!q.startDate) return false;
       return q.startDate > today && q.startDate <= sevenDaysFromNow;
     });
     
     const archivedFutureItems = active.filter(q => {
       if (q.category === 'todo') return false;
+      if (q.category === 'onboarding') return false;
       if (!q.startDate) return false;
       return q.startDate > sevenDaysFromNow;
     });
@@ -257,7 +262,7 @@ export default function QuestsPage() {
       todayMissions: todayItems.sort(sortByOrder),
       upcomingMissions: upcomingItems.sort(sortByOrder),
       completedMissions: completed.sort(sortByOrder),
-      inboxMissions: [...inboxItems, ...archivedFutureItems].sort(sortByOrder),
+      inboxMissions: [...inboxItems, ...archivedFutureItems, ...incompleteOnboardingItems].sort(sortByOrder),
     };
   }, [quests, today]);
 
