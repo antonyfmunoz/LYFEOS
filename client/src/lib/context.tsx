@@ -1655,17 +1655,28 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  // Reset all daily tokens (energy, time, attention) at midnight and sync with server
+  // Reset all daily tokens (energy, time, attention) when a new day is detected
   useEffect(() => {
-    const resetDailyTokens = async () => {
-      setStats((prev) => ({
-        ...prev,
-        timeTokens: { ...prev.timeTokens, current: prev.timeTokens.max },
-        attentionTokens: { ...prev.attentionTokens, current: prev.attentionTokens.max },
-        energyPoints: { ...prev.energyPoints, current: prev.energyPoints.max },
-      }));
-      // Sync with server to ensure consistency
-      if (user) {
+    if (!user) return;
+
+    const getLocalDateStr = () => {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    };
+
+    let lastCheckedDate = getLocalDateStr();
+
+    const checkForNewDay = async () => {
+      const currentDate = getLocalDateStr();
+      if (currentDate !== lastCheckedDate) {
+        console.log("New day detected - syncing stats from server");
+        lastCheckedDate = currentDate;
+        setStats((prev) => ({
+          ...prev,
+          timeTokens: { ...prev.timeTokens, current: prev.timeTokens.max },
+          attentionTokens: { ...prev.attentionTokens, current: prev.attentionTokens.max },
+          energyPoints: { ...prev.energyPoints, current: prev.energyPoints.max },
+        }));
         try {
           const res = await fetch(`/api/users/${user.id}/stats`, { credentials: "include" });
           if (res.ok) {
@@ -1675,19 +1686,26 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             }
           }
         } catch (e) {
-          console.log("Failed to sync stats after midnight reset");
+          console.log("Failed to sync stats after daily reset");
         }
       }
     };
-    
-    const interval = setInterval(() => {
-      const now = new Date();
-      if (now.getHours() === 0 && now.getMinutes() < 1) {
-        resetDailyTokens();
+
+    checkForNewDay();
+
+    const interval = setInterval(checkForNewDay, 60 * 1000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkForNewDay();
       }
-    }, 60 * 1000); // Check every minute
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [user]);
 
   // Kanban Task Methods
