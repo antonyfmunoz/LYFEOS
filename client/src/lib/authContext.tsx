@@ -208,6 +208,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.user);
       localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
       
+      // Wait for session cookie to be fully established before navigating
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Verify session is established
+      try {
+        const verifyResponse = await fetch("/api/auth/me", { credentials: "include" });
+        if (verifyResponse.ok) {
+          console.log("Session verified successfully");
+        }
+      } catch (e) {
+        console.warn("Session verification failed, proceeding anyway");
+      }
+
       // Prefetch key data so pages load instantly (keys must match destination page queryKeys)
       const todayStr = getLocalDateString();
       queryClient.prefetchQuery({ queryKey: ["/api/profile"] });
@@ -215,7 +228,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.prefetchQuery({ queryKey: ["/api/users", data.user.id, "profile"] });
       queryClient.prefetchQuery({ queryKey: ["/api/account"] });
 
-      // Navigate first, then show toast so it appears on the destination page
+      // Navigate after session is confirmed, then show toast on destination page
       if (data.isNewUser) {
         console.log("New user detected, redirecting to onboarding");
         navigate("/onboarding", { replace: true });
@@ -232,7 +245,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           variant: "default",
           duration: 1500,
         });
-      }, 100);
+      }, 150);
     } catch (error: any) {
       console.error("Login error:", error);
       // If the error doesn't have a message property, show a generic error
