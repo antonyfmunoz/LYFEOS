@@ -224,13 +224,13 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
       <div className="text-center mb-8">
-        <h1 className="text-4xl text-white font-orbitron mb-2">LYFE<span className="text-foreground">OS</span></h1>
+        <h1 className="text-4xl text-white font-orbitron mb-2">LYFEOS</h1>
         <p className="text-muted-foreground">Your personal life operating system</p>
       </div>
       
       <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-white/40 animate-fadeIn"
            style={{ boxShadow: "0 0 20px rgba(255, 255, 255, 0.15)" }}>
-        <h2 className="text-xl font-orbitron text-center mb-6 text-foreground">Create Your LYFEOS Account</h2>
+        <h2 className="text-xl font-orbitron text-center mb-6 text-white">Create Your LYFEOS Account</h2>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -240,7 +240,7 @@ export default function RegisterPage() {
               id="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-white/30"
+              className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-white focus-visible:ring-white/30"
               placeholder="Choose a username"
               required
             />
@@ -253,7 +253,7 @@ export default function RegisterPage() {
               id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-white/30"
+              className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-white focus-visible:ring-white/30"
               placeholder="Enter your email"
               required
             />
@@ -266,7 +266,7 @@ export default function RegisterPage() {
               id="phone"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-white/30"
+              className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-white focus-visible:ring-white/30"
               placeholder="Enter your phone number"
               required
             />
@@ -280,7 +280,7 @@ export default function RegisterPage() {
                 id="firstName"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-white/30"
+                className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-white focus-visible:ring-white/30"
                 placeholder="First name"
                 required
               />
@@ -292,7 +292,7 @@ export default function RegisterPage() {
                 id="lastName"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-white/30"
+                className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-white focus-visible:ring-white/30"
                 placeholder="Last name"
                 required
               />
@@ -306,7 +306,7 @@ export default function RegisterPage() {
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-white/30"
+              className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-white focus-visible:ring-white/30"
               placeholder="Create a password"
               required
             />
@@ -319,7 +319,7 @@ export default function RegisterPage() {
               id="confirmPassword"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-white/30"
+              className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-white focus-visible:ring-white/30"
               placeholder="Confirm your password"
               required
             />

@@ -36,7 +36,7 @@ export default function ForgotPasswordPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
       <div className="text-center mb-8">
-        <h1 className="text-4xl text-white font-orbitron mb-2">LYFE<span className="text-foreground">OS</span></h1>
+        <h1 className="text-4xl text-white font-orbitron mb-2">LYFEOS</h1>
         <p className="text-muted-foreground">Your personal life operating system</p>
       </div>
 
@@ -44,7 +44,7 @@ export default function ForgotPasswordPage() {
         <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-white/40 text-center space-y-4"
              style={{ boxShadow: "0 0 20px rgba(255, 255, 255, 0.15)" }}>
           <Mail className="w-12 h-12 mx-auto text-white" />
-          <h2 className="text-xl font-orbitron text-foreground">Check your email</h2>
+          <h2 className="text-xl font-orbitron text-white">Check your email</h2>
           <p className="text-muted-foreground text-sm">
             If an account exists with that email, we've sent a password reset link. Check your inbox and spam folder.
           </p>
@@ -60,7 +60,7 @@ export default function ForgotPasswordPage() {
       ) : (
         <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-white/40"
              style={{ boxShadow: "0 0 20px rgba(255, 255, 255, 0.15)" }}>
-          <h2 className="text-xl font-orbitron text-center mb-6 text-foreground">Reset Password</h2>
+          <h2 className="text-xl font-orbitron text-center mb-6 text-white">Reset Password</h2>
 
           <p className="text-muted-foreground text-sm text-center mb-6">
             Enter the email address associated with your account and we'll send you a reset link.
@@ -79,7 +79,7 @@ export default function ForgotPasswordPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-white/30"
+                className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-white focus-visible:ring-white/30"
                 placeholder="your@email.com"
                 required
               />

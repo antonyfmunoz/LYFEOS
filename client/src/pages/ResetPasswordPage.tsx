@@ -51,12 +51,12 @@ export default function ResetPasswordPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
         <div className="text-center mb-8">
-          <h1 className="text-4xl text-white font-orbitron mb-2">LYFE<span className="text-foreground">OS</span></h1>
+          <h1 className="text-4xl text-white font-orbitron mb-2">LYFEOS</h1>
           <p className="text-muted-foreground">Your personal life operating system</p>
         </div>
         <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-white/40 text-center space-y-4"
              style={{ boxShadow: "0 0 20px rgba(255, 255, 255, 0.15)" }}>
-          <p className="text-foreground">Invalid reset link. Please request a new one.</p>
+          <p className="text-white">Invalid reset link. Please request a new one.</p>
           <Link href="/forgot-password">
             <span className="text-white hover:text-white/80 transition cursor-pointer text-sm">Request New Link</span>
           </Link>
@@ -68,7 +68,7 @@ export default function ResetPasswordPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
       <div className="text-center mb-8">
-        <h1 className="text-4xl text-white font-orbitron mb-2">LYFE<span className="text-foreground">OS</span></h1>
+        <h1 className="text-4xl text-white font-orbitron mb-2">LYFEOS</h1>
         <p className="text-muted-foreground">Your personal life operating system</p>
       </div>
 
@@ -76,7 +76,7 @@ export default function ResetPasswordPage() {
         <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-white/40 text-center space-y-4"
              style={{ boxShadow: "0 0 20px rgba(255, 255, 255, 0.15)" }}>
           <CheckCircle className="w-16 h-16 mx-auto text-green-500" />
-          <h2 className="text-xl font-orbitron text-foreground">Password Reset!</h2>
+          <h2 className="text-xl font-orbitron text-white">Password Reset!</h2>
           <p className="text-muted-foreground text-sm">
             Your password has been updated successfully. You can now log in with your new password.
           </p>
@@ -90,7 +90,7 @@ export default function ResetPasswordPage() {
       ) : (
         <div className="w-full max-w-md glassmorphic rounded-xl p-6 border border-white/40"
              style={{ boxShadow: "0 0 20px rgba(255, 255, 255, 0.15)" }}>
-          <h2 className="text-xl font-orbitron text-center mb-6 text-foreground">Set New Password</h2>
+          <h2 className="text-xl font-orbitron text-center mb-6 text-white">Set New Password</h2>
 
           {error && (
             <div className="px-3 py-2 rounded bg-red-500/10 border border-red-500/30 text-red-500 text-sm mb-4">
@@ -109,12 +109,12 @@ export default function ResetPasswordPage() {
                   placeholder="At least 6 characters"
                   required
                   minLength={6}
-                  className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-white/30 pr-10"
+                  className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-white focus-visible:ring-white/30 pr-10"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -130,7 +130,7 @@ export default function ResetPasswordPage() {
                 placeholder="Re-enter your password"
                 required
                 minLength={6}
-                className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-foreground focus-visible:ring-white/30"
+                className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-white focus-visible:ring-white/30"
               />
             </div>
 
