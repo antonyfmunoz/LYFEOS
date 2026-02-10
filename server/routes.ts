@@ -1028,6 +1028,10 @@ Generate the complete affirmation now:`;
         return res.status(400).json({ error: "Invalid user ID" });
       }
       
+      // Process login streak and daily resets before returning stats
+      // This ensures streak, HP, EP, time tokens, and attention tokens are always current
+      await storage.processLoginStreak(userId);
+      
       const dbStats = await storage.getUserStats(userId);
       if (!dbStats) {
         return res.status(404).json({ error: "User stats not found" });
