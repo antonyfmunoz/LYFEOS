@@ -4,6 +4,7 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "./authContext";
 import { apiRequest, queryClient } from "./queryClient";
 import { getLocalDateString } from "./utils";
+import { applyPrimaryColor } from "./applyPrimaryColor";
 
 // Initial stats data
 const initialStats: UserStats = {
@@ -408,101 +409,14 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     setReflectionLog(initialReflectionLog);
   };
   
-  // Function to set primary color
   const setPrimaryColor = (color: string) => {
-    // Update stats with new primary color
     setStats(prevStats => ({
       ...prevStats,
       primaryColor: color
     }));
     
-    // Function to convert hex to RGB
-    const hexToRGB = (hex: string) => {
-      // Remove the # if present
-      hex = hex.replace(/^#/, '');
-      
-      // Parse the hex values
-      const r = parseInt(hex.substring(0, 2), 16);
-      const g = parseInt(hex.substring(2, 4), 16);
-      const b = parseInt(hex.substring(4, 6), 16);
-      
-      return { r, g, b };
-    };
+    applyPrimaryColor(color);
     
-    // Function to convert hex to HSL
-    const hexToHSL = (hex: string) => {
-      // Remove the # if present
-      hex = hex.replace(/^#/, '');
-      
-      // Parse the hex values
-      let r = parseInt(hex.substring(0, 2), 16) / 255;
-      let g = parseInt(hex.substring(2, 4), 16) / 255;
-      let b = parseInt(hex.substring(4, 6), 16) / 255;
-      
-      // Find min and max values for RGB
-      let max = Math.max(r, g, b);
-      let min = Math.min(r, g, b);
-      
-      // Calculate lightness
-      let l = (max + min) / 2;
-      
-      let h: number, s: number;
-      
-      if (max === min) {
-        // Achromatic
-        h = 0;
-        s = 0;
-      } else {
-        // Calculate saturation
-        s = l > 0.5 ? (max - min) / (2 - max - min) : (max - min) / (max + min);
-        
-        // Calculate hue
-        switch (max) {
-          case r:
-            h = (g - b) / (max - min) + (g < b ? 6 : 0);
-            break;
-          case g:
-            h = (b - r) / (max - min) + 2;
-            break;
-          case b:
-            h = (r - g) / (max - min) + 4;
-            break;
-          default:
-            h = 0;
-        }
-        h /= 6;
-      }
-      
-      // Convert to degrees and percentages
-      h = Math.round(h * 360);
-      s = Math.round(s * 100);
-      l = Math.round(l * 100);
-      
-      return `${h} ${s}% ${l}%`;
-    };
-    
-    // Set HSL value for primary color
-    const hsl = hexToHSL(color);
-    document.documentElement.style.setProperty('--primary', hsl);
-    document.documentElement.style.setProperty('--primary-hsl', hsl);
-    
-    // Set hex color for direct use
-    document.documentElement.style.setProperty('--primary-color', color);
-    
-    // Set RGB values for glow effects
-    const rgbValues = hexToRGB(color);
-    if (rgbValues) {
-      const { r, g, b } = rgbValues;
-      document.documentElement.style.setProperty('--primary-glow-light', `rgba(${r}, ${g}, ${b}, 0.3)`);
-      document.documentElement.style.setProperty('--primary-glow-medium', `rgba(${r}, ${g}, ${b}, 0.5)`);
-      document.documentElement.style.setProperty('--primary-glow-strong', `rgba(${r}, ${g}, ${b}, 0.7)`);
-      document.documentElement.style.setProperty('--primary-bg-subtle', `rgba(${r}, ${g}, ${b}, 0.1)`);
-      document.documentElement.style.setProperty('--primary-bg-light', `rgba(${r}, ${g}, ${b}, 0.2)`);
-      document.documentElement.style.setProperty('--primary-border-subtle', `rgba(${r}, ${g}, ${b}, 0.2)`);
-      document.documentElement.style.setProperty('--primary-shadow', `rgba(${r}, ${g}, ${b}, 0.3)`);
-    }
-    
-    // Update in database if user is authenticated
     if (isAuthenticated && user) {
       try {
         apiRequest(`/api/users/${user.id}/stats`, {
@@ -530,10 +444,12 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             
             if (dbStats) {
               console.log("Stats loaded successfully:", dbStats);
-              // Server now returns data in the format expected by our frontend components
               setStats(dbStats);
               
-              // Set AI assistant name if available
+              if (dbStats.primaryColor) {
+                applyPrimaryColor(dbStats.primaryColor);
+              }
+              
               if (dbStats.aiAssistantName) {
                 setAICompanionNameState(dbStats.aiAssistantName);
               }

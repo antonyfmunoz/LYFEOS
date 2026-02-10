@@ -5,6 +5,7 @@ import { apiRequest } from "./queryClient";
 import { auth } from "./firebase";
 import { signInWithGoogle, handleRedirectResult } from "./firebaseAuth";
 import { User as FirebaseUser, onAuthStateChanged, Auth } from "firebase/auth";
+import { applyPrimaryColor } from "./applyPrimaryColor";
 
 interface User {
   id: number;
@@ -17,6 +18,7 @@ interface AuthResponse {
     username: string;
   };
   isNewUser?: boolean;
+  primaryColor?: string;
   error?: string;
 }
 
@@ -196,11 +198,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Success path
       console.log("Login successful, user data:", data.user);
       
+      // Apply the user's theme color BEFORE showing toast or navigating
+      if (data.primaryColor) {
+        applyPrimaryColor(data.primaryColor);
+      }
+      
       // Update application state
       setUser(data.user);
       localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
       
-      // Show success message
+      // Show success message (color is already applied so toast renders in correct theme)
       toast({
         title: "Login Successful",
         description: `Welcome back, ${data.user.username}!`,
@@ -208,8 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         duration: 1500,
       });
       
-      // CRITICAL FIX: Wait a moment to ensure the session cookie is properly set
-      // This prevents the immediate redirect that's happening after login
+      // Wait a moment to ensure the session cookie is properly set
       await new Promise(resolve => setTimeout(resolve, 300));
       
       // Verify the session is properly established
@@ -498,6 +504,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         const userData = await response.json();
         
+        // Apply the user's theme color BEFORE showing toast or navigating
+        if (userData.primaryColor) {
+          applyPrimaryColor(userData.primaryColor);
+        }
+        
         toast({
           title: "Google Sign-in Successful",
           description: `Welcome${displayName ? `, ${displayName}` : ''}!`,
@@ -506,8 +517,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(userData.user);
         localStorage.setItem("lyfeos_user", JSON.stringify(userData.user));
         
-        // Check if this is a new user (just created) and direct to onboarding
-        // or dashboard based on profile status
         if (userData.isNewUser) {
           console.log("New user detected, redirecting to onboarding");
           navigate("/onboarding");

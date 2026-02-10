@@ -437,9 +437,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userProfile = await storage.getUserProfile(user.id);
       const isNewUser = !userProfile || !userProfile.onboardingCompleted;
       
+      // Fetch primaryColor from user stats so the client can apply it before rendering
+      const userStats = await storage.getUserStats(user.id);
+      
       return res.status(200).json({ 
         user: { id: user.id, username: user.username },
-        isNewUser: isNewUser
+        isNewUser: isNewUser,
+        primaryColor: userStats?.primaryColor || "#00e0ff"
       });
     } catch (error) {
       console.error("Login error:", error);
@@ -650,6 +654,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userProfile = await storage.getUserProfile(user.id);
       const isNewUser = !userProfile || !userProfile.onboardingCompleted;
       
+      // Fetch primaryColor from user stats so the client can apply it before rendering
+      const fbUserStats = await storage.getUserStats(user.id);
+      
       console.log("Firebase login successful for user:", user.username, "isNewUser:", isNewUser);
       return res.status(200).json({ 
         user: { 
@@ -657,7 +664,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           username: user.username,
           displayName: user.displayName 
         },
-        isNewUser: isNewUser
+        isNewUser: isNewUser,
+        primaryColor: fbUserStats?.primaryColor || "#00e0ff"
       });
     } catch (error) {
       console.error("Firebase auth error:", error);
