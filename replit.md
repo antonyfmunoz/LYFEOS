@@ -24,7 +24,7 @@ Preferred communication style: Simple, everyday language.
 - **API Design**: RESTful JSON API with session-based authentication
 - **Session Management**: express-session with secure cookie configuration
 - **Password Hashing**: bcrypt for secure password storage
-- **AI Integration**: Anthropic Claude Sonnet 4.5 via Replit AI Integrations (no API key required, billed to credits)
+- **AI Integration**: Anthropic via Replit AI Integrations (no API key required, billed to credits). Smart model routing: Claude Haiku 4.5 for simple tasks (greetings, commands, stat tips, affirmations, mission stat suggestions) and Claude Sonnet 4.5 for complex reasoning (analysis, planning, advice, detailed questions). Complexity classifier in `server/replit_integrations/chat/routes.ts` selects model based on message content.
 - **Voice Control**: AI-powered voice commands via Web Speech API + NOVA AI orchestration (`POST /api/voice-command`). Supports navigation, widget toggle, mission management, timer control, and conversational queries. NOVA interprets natural language and returns structured JSON actions.
 - **File Uploads**: Multer for handling media uploads
 

@@ -8,6 +8,59 @@ const anthropic = new Anthropic({
   baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
 });
 
+const MODEL_HAIKU = "claude-haiku-4-5";
+const MODEL_SONNET = "claude-sonnet-4-5";
+
+function classifyComplexity(message: string): "simple" | "complex" {
+  const lower = message.toLowerCase().trim();
+
+  const simplePatterns = [
+    /^(hi|hey|hello|sup|yo|what'?s up|good morning|good evening|good night|gm|gn)/,
+    /^(thanks|thank you|ok|okay|got it|cool|nice|great|awesome|perfect|sounds good)/,
+    /^(yes|no|yep|nope|sure|nah)/,
+    /^(who are you|what is your name|what can you do)/,
+    /^(go to|open|show|navigate|take me)/,
+    /^(complete|finish|done with|mark).{0,30}(mission|task|quest)/,
+    /^(delete|remove|terminate).{0,30}(mission|task|quest)/,
+    /^(start|pause|resume|stop|end).{0,20}timer/,
+    /^(toggle|switch|turn on|turn off).{0,20}(theme|dark|light|widget)/,
+    /^(play|read|say).{0,20}affirmation/,
+    /^(stop|silence|shut up|be quiet)/,
+    /^(what|how).{0,10}(level|xp|streak|energy|health|time|attention)/,
+    /^(log|set|update).{0,20}(wake|sleep|mental|physical|emotional|gratitude)/,
+  ];
+
+  for (const pattern of simplePatterns) {
+    if (pattern.test(lower)) return "simple";
+  }
+
+  const complexIndicators = [
+    "analyze", "explain", "why", "how should", "what should", "help me",
+    "plan", "strategy", "think about", "consider", "compare", "evaluate",
+    "break down", "step by step", "in detail", "elaborate", "deep dive",
+    "advice", "recommend", "suggest", "optimize", "improve", "review",
+    "what do you think", "pros and cons", "trade-offs", "prioritize",
+    "create a plan", "help me figure", "what's the best", "how can i",
+    "struggling with", "having trouble", "can't decide", "overwhelmed",
+    "long-term", "big picture", "reflect", "assessment", "feedback",
+  ];
+
+  const complexCount = complexIndicators.filter(ind => lower.includes(ind)).length;
+  if (complexCount >= 1) return "complex";
+
+  if (lower.length > 120) return "complex";
+  if ((lower.match(/\?/g) || []).length >= 2) return "complex";
+
+  if (lower.length < 40) return "simple";
+
+  return "simple";
+}
+
+function selectModel(message: string): string {
+  const complexity = classifyComplexity(message);
+  return complexity === "complex" ? MODEL_SONNET : MODEL_HAIKU;
+}
+
 const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
   if (req.session?.userId) {
     return next();
@@ -566,7 +619,7 @@ async function executeTool(toolName: string, input: any, userId: number): Promis
         const user = await storage.getUser(userId);
         try {
           const affirmationResponse = await anthropic.messages.create({
-            model: "claude-sonnet-4-5",
+            model: MODEL_HAIKU,
             max_tokens: 512,
             messages: [{ role: "user", content: "Generate a powerful, personalized character affirmation." }],
             system: `Generate a deeply personal character affirmation for this person:
@@ -831,8 +884,9 @@ export function registerChatRoutes(app: Express): void {
       while (maxIterations > 0) {
         maxIterations--;
 
+        const chatModel = selectModel(content);
         const response = await anthropic.messages.create({
-          model: "claude-sonnet-4-5",
+          model: chatModel,
           max_tokens: 2048,
           system: systemPrompt,
           messages: currentMessages,
@@ -944,7 +998,7 @@ Their current data: ${statContextMap[statType]}
 Provide 3 concise, personalized, actionable tips to help them improve this stat. Each tip should be 1-2 sentences max. Base your advice on their actual numbers. Be direct, motivating, and specific. No emojis. Format each tip on its own line, numbered 1-3.`;
 
       const response = await anthropic.messages.create({
-        model: "claude-sonnet-4-5",
+        model: MODEL_HAIKU,
         max_tokens: 512,
         messages: [{ role: "user", content: prompt }],
       });
@@ -999,7 +1053,7 @@ Format your response as JSON with this exact structure:
 Return ONLY the JSON, no other text.`;
 
       const response = await anthropic.messages.create({
-        model: "claude-sonnet-4-5",
+        model: MODEL_HAIKU,
         max_tokens: 2048,
         messages: [{ role: "user", content: prompt }],
       });
@@ -1138,8 +1192,9 @@ Return ONLY the JSON, no other text.`;
       while (maxIterations > 0) {
         maxIterations--;
 
+        const voiceModel = selectModel(transcript);
         const response = await anthropic.messages.create({
-          model: "claude-sonnet-4-5",
+          model: voiceModel,
           max_tokens: 512,
           system: voiceSystemPrompt + "\n\nIMPORTANT: This is a VOICE command. Keep your text responses very brief (1-2 sentences). The response will be spoken aloud. Do not use markdown formatting, emojis, or special characters. Be concise and natural-sounding.",
           messages: currentMessages,
@@ -1229,7 +1284,7 @@ Return ONLY a JSON object with these fields:
 {"energyCost":number,"timeCost":number,"attentionCost":number,"experienceReward":number,"reasoning":"brief 1-sentence explanation"}`;
 
       const response = await anthropic.messages.create({
-        model: "claude-sonnet-4-5",
+        model: MODEL_HAIKU,
         max_tokens: 256,
         messages: [{ role: "user", content: prompt }],
       });
