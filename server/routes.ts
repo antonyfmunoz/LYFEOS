@@ -443,6 +443,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/geo/location", async (req: Request, res: Response) => {
+    try {
+      const clientIp = req.headers["x-forwarded-for"]?.toString().split(",")[0]?.trim() || req.ip;
+      
+      const apis = [
+        {
+          url: `http://ip-api.com/json/${clientIp}?fields=city,regionName,country`,
+          parse: (data: any) => ({
+            city: data.city,
+            region: data.regionName,
+            country: data.country,
+            location: [data.city, data.regionName, data.country].filter(Boolean).join(", ")
+          })
+        },
+        {
+          url: `https://ipapi.co/${clientIp}/json/`,
+          parse: (data: any) => ({
+            city: data.city,
+            region: data.region,
+            country: data.country_name,
+            location: [data.city, data.region, data.country_name].filter(Boolean).join(", ")
+          })
+        }
+      ];
+
+      for (const api of apis) {
+        try {
+          const response = await fetch(api.url);
+          if (!response.ok) continue;
+          const data = await response.json();
+          const result = api.parse(data);
+          if (result.location) return res.json(result);
+        } catch {}
+      }
+
+      return res.status(502).json({ error: "Failed to detect location" });
+    } catch (error) {
+      console.error("Geo location error:", error);
+      return res.status(500).json({ error: "Failed to detect location" });
+    }
+  });
+
   app.post("/api/auth/login", async (req: Request, res: Response) => {
     try {
       // Accept either 'username' or 'identifier' field for backward compatibility

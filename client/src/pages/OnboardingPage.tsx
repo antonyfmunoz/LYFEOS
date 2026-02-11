@@ -691,9 +691,9 @@ export default function OnboardingPage() {
   
   const saved = loadSavedAnswers();
   
-  const [birthMonth, setBirthMonth] = useState<number>(saved.birthMonth || 0);
-  const [birthDay, setBirthDay] = useState<number>(saved.birthDay || 0);
-  const [birthYear, setBirthYear] = useState<number>(saved.birthYear || 0);
+  const [birthMonth, setBirthMonth] = useState<number>(0);
+  const [birthDay, setBirthDay] = useState<number>(0);
+  const [birthYear, setBirthYear] = useState<number>(0);
   const [location, setLocation] = useState(saved.location || "");
   const [detectedLocation, setDetectedLocation] = useState("");
   const [timezone, setTimezone] = useState(saved.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
@@ -701,15 +701,13 @@ export default function OnboardingPage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("https://ipapi.co/json/");
+        const res = await fetch("/api/geo/location");
         if (!res.ok) return;
         const data = await res.json();
-        const parts = [data.city, data.region, data.country_name].filter(Boolean);
-        const locationStr = parts.join(", ");
-        if (locationStr) {
-          setDetectedLocation(locationStr);
+        if (data.location) {
+          setDetectedLocation(data.location);
           if (!location) {
-            setLocation(locationStr);
+            setLocation(data.location);
           }
         }
       } catch {}
