@@ -1672,9 +1672,8 @@ export default function OnboardingPage() {
             </Button>
           ) : (
             <Button 
-              variant="outline" 
               onClick={handlePrevious} 
-              className="bg-transparent border-2 border-primary text-primary hover:bg-primary/20"
+              className="bg-transparent border-2 border-primary text-primary hover:bg-primary/20 hover:text-primary"
             >
               <ChevronLeft className="h-4 w-4 mr-2" />
               Back
