@@ -20,6 +20,7 @@ import { DraggableWidget, DraggableWidgetProps } from '@/components/ui/draggable
 import update from 'immutability-helper';
 import { useWidgetState } from '@/hooks/use-widget-state';
 import { LevelUpModal } from '@/components/dashboard/LevelUpModal';
+import DashboardTutorial from '@/components/dashboard/DashboardTutorial';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { getLocalDateString } from '@/lib/utils';
@@ -174,6 +175,22 @@ export default function DashboardPage() {
   
   // Level-up modal state
   const [isLevelUpModalOpen, setIsLevelUpModalOpen] = useState(false);
+  
+  // Tutorial state - show for first-time users
+  const [showTutorial, setShowTutorial] = useState(() => {
+    return !localStorage.getItem("lyfeos-dashboard-tutorial-completed");
+  });
+  
+  const handleTutorialComplete = useCallback(() => {
+    setShowTutorial(false);
+    localStorage.setItem("lyfeos-dashboard-tutorial-completed", "true");
+    if (user?.id) {
+      apiRequest(`/api/users/${user.id}/profile`, {
+        method: "PATCH",
+        body: JSON.stringify({ dashboardTutorialCompleted: true }),
+      }).catch(() => {});
+    }
+  }, [user?.id]);
   
   // Dashboard state
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -1335,6 +1352,7 @@ export default function DashboardPage() {
 
   return (
       <div className="dashboard-container pb-20">
+        <DashboardTutorial isOpen={showTutorial} onComplete={handleTutorialComplete} />
         <DailyInitModal />
         
         {/* Level-up modal - shows when user levels up */}
@@ -1362,7 +1380,7 @@ export default function DashboardPage() {
         />
         
         {/* Date Header - Cinematic HUD Style */}
-        <section className="mb-6">
+        <section className="mb-6" data-tour="date-header">
           <div className="glassmorphic rounded-xl p-3 neon-border">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
               <div className="flex items-center">
@@ -1388,19 +1406,20 @@ export default function DashboardPage() {
         
         {/* Draggable Widget Sections */}
         {widgets.map((widget, index) => (
-          <PersistentDraggableWidget
-            key={widget.id}
-            widgetId={`dashboard.${widget.id}`}
-            id={widget.id}
-            index={index}
-            title={widget.title}
-            icon={widget.icon}
-            moveWidget={moveWidget}
-            defaultOpen={widget.defaultOpen}
-            infoDescription={widget.infoDescription}
-          >
-            {renderWidgetContent(widget.id)}
-          </PersistentDraggableWidget>
+          <div key={widget.id} {...(index === 0 ? { "data-tour": "widget-first" } : {})}>
+            <PersistentDraggableWidget
+              widgetId={`dashboard.${widget.id}`}
+              id={widget.id}
+              index={index}
+              title={widget.title}
+              icon={widget.icon}
+              moveWidget={moveWidget}
+              defaultOpen={widget.defaultOpen}
+              infoDescription={widget.infoDescription}
+            >
+              {renderWidgetContent(widget.id)}
+            </PersistentDraggableWidget>
+          </div>
         ))}
       </div>
   );

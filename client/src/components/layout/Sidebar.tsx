@@ -35,6 +35,7 @@ export default function Sidebar({ currentPage, username }: SidebarProps) {
 
   return (
     <div
+      data-tour="sidebar-nav"
       className={`hidden lg:flex lg:flex-col border-r border-opacity-20 border-primary p-4 glassmorphic transition-all duration-300 ${
         collapsed ? "w-[72px]" : "w-64"
       }`}
