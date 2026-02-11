@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   usePageTitle('Login');
+  localStorage.removeItem("lyfeos_streak_toast_date");
   
   const { login } = useAuth();
   const [identifier, setIdentifier] = useState("");
