@@ -184,7 +184,6 @@ interface DraggableTimelineProps {
 
 const DraggableTimelineWrapper = ({ id, index, moveCategory }: DraggableTimelineProps) => {
   const ref = useRef<HTMLDivElement>(null);
-  const dragHandleRef = useRef<HTMLDivElement>(null);
   
   const [{ handlerId }, drop] = useDrop<DragItem, void, { handlerId: string | symbol | null }>({
     accept: 'CATEGORY',
@@ -219,10 +218,7 @@ const DraggableTimelineWrapper = ({ id, index, moveCategory }: DraggableTimeline
     }),
   });
 
-  preview(drop(ref));
-  if (dragHandleRef.current) {
-    drag(dragHandleRef);
-  }
+  drag(drop(ref));
 
   return (
     <div
@@ -230,13 +226,6 @@ const DraggableTimelineWrapper = ({ id, index, moveCategory }: DraggableTimeline
       className={cn("relative", isDragging && "opacity-50")}
       data-handler-id={handlerId}
     >
-      <div 
-        ref={dragHandleRef}
-        className="absolute top-3 left-3 z-10 cursor-move p-1 rounded hover:bg-primary/10 transition-colors"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <GripVertical className="h-4 w-4 text-muted-foreground" />
-      </div>
       <TimelineWidget />
     </div>
   );
