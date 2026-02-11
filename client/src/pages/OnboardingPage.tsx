@@ -616,6 +616,7 @@ export default function OnboardingPage() {
   }, [user, authLoading, navigate, isPendingRegistration]);
   
   const [currentMission, setCurrentMission] = useState(0);
+  const missionStartTimeRef = useRef<Date>(new Date());
   const [continuedPastMission0, setContinuedPastMission0] = useState(() => {
     return localStorage.getItem("lyfeos-continued-past-mission0") === "true";
   });
@@ -633,6 +634,7 @@ export default function OnboardingPage() {
         if (typeof mission === "number" && mission >= 0 && mission <= 7) {
           setCurrentMission(mission);
           setCurrentStep(step || 0);
+          missionStartTimeRef.current = new Date();
         }
       } catch {}
       localStorage.removeItem("lyfeos-onboarding-resume");
@@ -646,6 +648,7 @@ export default function OnboardingPage() {
       if (!isNaN(missionNum) && missionNum >= 0 && missionNum <= 7) {
         setCurrentMission(missionNum);
         setCurrentStep(0);
+        missionStartTimeRef.current = new Date();
       }
     }
   }, []);
@@ -894,7 +897,10 @@ export default function OnboardingPage() {
           if (existingQuest) {
             console.log("Onboarding quest already exists, skipping creation:", questTitle);
           } else {
-            const timeStr = now.toTimeString().slice(0, 5);
+            const startTime = missionStartTimeRef.current;
+            const startDateStr = `${startTime.getFullYear()}-${String(startTime.getMonth() + 1).padStart(2, '0')}-${String(startTime.getDate()).padStart(2, '0')}`;
+            const startTimeStr = startTime.toTimeString().slice(0, 5);
+            const endTimeStr = now.toTimeString().slice(0, 5);
             const questData = {
               userId: user.id,
               title: questTitle,
@@ -903,11 +909,11 @@ export default function OnboardingPage() {
               completed: true,
               completedAt: now.toISOString(),
               experienceReward: mission.xp,
-              startDate: localDateStr,
-              startTime: timeStr,
+              startDate: startDateStr,
+              startTime: startTimeStr,
               dueDate: localDateStr,
               endDate: localDateStr,
-              endTime: timeStr,
+              endTime: endTimeStr,
             };
             console.log("Creating quest with data:", questData);
             const result = await apiRequest("/api/quests", {
@@ -1101,6 +1107,7 @@ export default function OnboardingPage() {
     }
     setCurrentMission(currentMission + 1);
     setCurrentStep(0);
+    missionStartTimeRef.current = new Date();
   };
 
   const handleSkipToSystem = async () => {
