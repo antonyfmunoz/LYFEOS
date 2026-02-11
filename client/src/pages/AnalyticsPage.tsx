@@ -81,54 +81,6 @@ export default function AnalyticsPage() {
     enabled: !!user,
   });
 
-  if (isLoading || !analytics) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground">Loading analytics...</p>
-        </div>
-      </div>
-    );
-  }
-
-  const { moodTrends, missionCompletionTrend, categoryStats, difficultyStats, summary, weeklyPatterns, streakHistory, personalRecords, tokenEfficiency, sleepWellnessCorrelation } = analytics;
-
-  const categoryData = Object.entries(categoryStats as Record<string, any>).map(([name, data], i) => ({
-    name: name.charAt(0).toUpperCase() + name.slice(1),
-    total: data.total,
-    completed: data.completed,
-    completionRate: data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0,
-    xp: data.totalXp,
-    energy: data.totalEnergy,
-    fill: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
-  }));
-
-  const difficultyData = Object.entries(difficultyStats as Record<string, any>)
-    .sort((a, b) => {
-      const order = ["S", "A", "B", "C", "D"];
-      return order.indexOf(a[0]) - order.indexOf(b[0]);
-    })
-    .map(([rank, data]) => ({
-      rank,
-      total: data.total,
-      completed: data.completed,
-      completionRate: data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0,
-      fill: DIFFICULTY_COLORS[rank] || "#6366f1",
-    }));
-
-  const radarData = categoryData.map(c => ({
-    category: c.name,
-    completion: c.completionRate,
-    missions: Math.min(c.total * 10, 100),
-  }));
-
-  const cumulativeXp = missionCompletionTrend.reduce((acc: any[], day: any, i: number) => {
-    const prev = i > 0 ? acc[i - 1].cumXp : 0;
-    acc.push({ ...day, cumXp: prev + day.xpEarned });
-    return acc;
-  }, []);
-
   type AnalyticsWidgetMeta = {
     id: string;
     title: string;
@@ -191,6 +143,63 @@ export default function AnalyticsPage() {
       analytics: newOrder,
     }));
   }, []);
+
+  const moodTrends = analytics?.moodTrends ?? [];
+  const missionCompletionTrend = analytics?.missionCompletionTrend ?? [];
+  const categoryStats = analytics?.categoryStats ?? {};
+  const difficultyStats = analytics?.difficultyStats ?? {};
+  const summary = analytics?.summary ?? {};
+  const weeklyPatterns = analytics?.weeklyPatterns ?? [];
+  const streakHistory = analytics?.streakHistory ?? [];
+  const personalRecords = analytics?.personalRecords ?? {};
+  const tokenEfficiency = analytics?.tokenEfficiency ?? [];
+  const sleepWellnessCorrelation = analytics?.sleepWellnessCorrelation ?? [];
+
+  const categoryData = useMemo(() => Object.entries(categoryStats as Record<string, any>).map(([name, data], i) => ({
+    name: name.charAt(0).toUpperCase() + name.slice(1),
+    total: data.total,
+    completed: data.completed,
+    completionRate: data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0,
+    xp: data.totalXp,
+    energy: data.totalEnergy,
+    fill: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
+  })), [categoryStats]);
+
+  const difficultyData = useMemo(() => Object.entries(difficultyStats as Record<string, any>)
+    .sort((a, b) => {
+      const order = ["S", "A", "B", "C", "D"];
+      return order.indexOf(a[0]) - order.indexOf(b[0]);
+    })
+    .map(([rank, data]) => ({
+      rank,
+      total: data.total,
+      completed: data.completed,
+      completionRate: data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0,
+      fill: DIFFICULTY_COLORS[rank] || "#6366f1",
+    })), [difficultyStats]);
+
+  const radarData = useMemo(() => categoryData.map(c => ({
+    category: c.name,
+    completion: c.completionRate,
+    missions: Math.min(c.total * 10, 100),
+  })), [categoryData]);
+
+  const cumulativeXp = useMemo(() => missionCompletionTrend.reduce((acc: any[], day: any, i: number) => {
+    const prev = i > 0 ? acc[i - 1].cumXp : 0;
+    acc.push({ ...day, cumXp: prev + day.xpEarned });
+    return acc;
+  }, []), [missionCompletionTrend]);
+
+  if (isLoading || !analytics) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground">Loading analytics...</p>
+        </div>
+      </div>
+    );
+  }
 
   const renderWidgetContent = (widgetId: string) => {
     switch (widgetId) {
