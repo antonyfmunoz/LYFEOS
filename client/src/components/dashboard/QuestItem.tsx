@@ -112,10 +112,12 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
       className={`glassmorphic rounded-xl p-4 mb-3 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition neon-border ${isDragging ? "opacity-50" : ""}`}
     >
       <div className="flex items-start">
-        {category !== "onboarding" && (
+        {category !== "onboarding" ? (
           <div ref={dragHandleRef} className="mt-1 cursor-move flex-shrink-0">
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </div>
+        ) : (
+          <div className="w-4 flex-shrink-0" />
         )}
         <div className="ml-2 flex-grow">
           <div className="flex justify-between items-start">
