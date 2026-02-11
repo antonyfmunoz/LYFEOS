@@ -224,7 +224,7 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
 
   const createMutation = useMutation({
     mutationFn: async (title: string) => {
-      return apiRequest('/api/vision-goals', {
+      return apiRequest<VisionGoal>('/api/vision-goals', {
         method: 'POST',
         body: JSON.stringify({ category, title }),
       });
@@ -248,7 +248,14 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
       queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) => [...old, tempGoal]);
       setNewTitle("");
       inputRef.current?.focus();
-      return { previous };
+      return { previous, tempId: tempGoal.id };
+    },
+    onSuccess: (data, _title, context) => {
+      if (data && context?.tempId !== undefined) {
+        queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) =>
+          old.map(g => g.id === context.tempId ? { ...data } : g)
+        );
+      }
     },
     onError: (_err, _title, context) => {
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
