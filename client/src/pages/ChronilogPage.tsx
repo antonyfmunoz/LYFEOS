@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 import { DropTargetMonitor } from 'react-dnd';
 import TimelineWidget from '@/components/chronilog/TimelineWidget';
 import { useQuery } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 
 // Define DraggableCategoryItem component
 interface CategoryItem {
@@ -311,7 +311,7 @@ export default function ChronilogPage() {
       apiRequest('/api/widget-layouts', {
         method: 'PUT',
         body: JSON.stringify({ page: 'chronilog', order: newCategories.map(c => c.id) }),
-      });
+      }).then(() => queryClient.invalidateQueries({ queryKey: ['/api/widget-layouts'] }));
       return newCategories;
     });
   }, []);

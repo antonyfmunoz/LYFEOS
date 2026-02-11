@@ -1323,7 +1323,7 @@ export default function DashboardPage() {
       apiRequest('/api/widget-layouts', {
         method: 'PUT',
         body: JSON.stringify({ page: 'dashboard', order: newWidgets.map(w => w.id) }),
-      });
+      }).then(() => queryClient.invalidateQueries({ queryKey: ['/api/widget-layouts'] }));
       return newWidgets;
     });
   }, []);

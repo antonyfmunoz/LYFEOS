@@ -7,7 +7,7 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import update from 'immutability-helper';
 import { CollapsibleWidget } from '@/components/ui/collapsible-widget';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 import {
   ArrowLeft, TrendingUp, Target, Brain, Zap, Heart,
   Calendar, Award, BarChart3, Activity, Flame, Loader2,
@@ -181,7 +181,7 @@ export default function AnalyticsPage() {
       apiRequest('/api/widget-layouts', {
         method: 'PUT',
         body: JSON.stringify({ page: 'analytics', order: newWidgets.map(w => w.id) }),
-      });
+      }).then(() => queryClient.invalidateQueries({ queryKey: ['/api/widget-layouts'] }));
       return newWidgets;
     });
   }, []);
