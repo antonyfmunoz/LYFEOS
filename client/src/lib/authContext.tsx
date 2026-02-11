@@ -30,6 +30,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (identifier: string, password: string) => Promise<void>;
   register: (email: string, password: string, extraData?: { avatarColor?: string }) => Promise<void>;
+  completeRegistration: (data: Record<string, any>) => Promise<void>;
   logout: () => void;
   loginWithGoogle: () => Promise<void>;
   handleOAuthRedirect: () => Promise<void>;
@@ -382,6 +383,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const completeRegistration = async (data: Record<string, any>) => {
+    try {
+      setIsLoading(true);
+      const response = await fetch("/api/auth/complete-registration", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include"
+      });
+
+      const responseText = await response.text();
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        throw new Error("Invalid server response. Please try again.");
+      }
+
+      if (!response.ok) {
+        throw new Error(result?.error || "Registration failed. Please try again.");
+      }
+
+      sessionStorage.removeItem("lyfeos-pending-registration");
+      setUser(result.user);
+      localStorage.setItem("lyfeos_user", JSON.stringify(result.user));
+      localStorage.removeItem("lyfeos-widget-states");
+    } catch (error: any) {
+      console.error("Complete registration error:", error);
+      toast({
+        title: "Registration Failed",
+        description: error.message || "Could not complete registration. Please try again.",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       console.log("Logging out user...");
@@ -539,6 +579,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         login,
         register,
+        completeRegistration,
         logout,
         loginWithGoogle,
         handleOAuthRedirect,

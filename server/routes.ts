@@ -270,6 +270,129 @@ const isOwner = (req: Request, res: Response, next: NextFunction) => {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // USER ROUTES
+  app.get("/api/auth/check-email", async (req: Request, res: Response) => {
+    try {
+      const email = req.query.email as string;
+      if (!email || !z.string().email().safeParse(email).success) {
+        return res.status(400).json({ available: false, error: "Invalid email" });
+      }
+      const existing = await storage.getUserByEmail(email.trim());
+      return res.json({ available: !existing });
+    } catch (error) {
+      console.error("Error checking email:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/auth/complete-registration", async (req: Request, res: Response) => {
+    try {
+      const { email, password, username, firstName, lastName, avatarColor, birthday, location, timezone, termsAccepted } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({ error: "Email and password are required" });
+      }
+
+      if (!z.string().email().safeParse(email).success) {
+        return res.status(400).json({ error: "Invalid email format" });
+      }
+
+      if (!username || username.trim().length < 3) {
+        return res.status(400).json({ error: "Username must be at least 3 characters" });
+      }
+
+      const existingEmail = await storage.getUserByEmail(email);
+      if (existingEmail) {
+        return res.status(400).json({ error: "An account with this email already exists" });
+      }
+
+      const existingUsername = await storage.getUserByUsername(username.trim());
+      if (existingUsername) {
+        return res.status(400).json({ error: "Username already taken" });
+      }
+
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+      const displayName = [firstName, lastName].filter(Boolean).join(" ") || username.trim();
+      const user = await storage.createUser({
+        username: username.trim(),
+        password: hashedPassword,
+        displayName,
+        firstName: firstName || null,
+        lastName: lastName || null,
+        title: "COMMANDER",
+        email,
+        authProvider: 'email',
+        termsAccepted: termsAccepted || false
+      });
+
+      await storage.createUserStats({
+        userId: user.id,
+        experienceCurrent: 0,
+        experienceMax: 1000,
+        level: 1,
+        timeTokensCurrent: 100,
+        timeTokensMax: 100,
+        energyPointsCurrent: 100,
+        energyPointsMax: 100,
+        healthPointsCurrent: 100,
+        healthPointsMax: 100,
+        attentionTokensCurrent: 100,
+        attentionTokensMax: 100,
+        streakDays: 0,
+        efficiencyScore: 0,
+        aiAssistantName: "NOVA",
+        primaryColor: avatarColor || "#00e0ff"
+      });
+
+      await storage.upsertUserProfile(user.id, {
+        startStage: "beginner",
+        targetArchetype: "architect",
+        flowStyle: "hyperfocus",
+        coreMotivation: "growth",
+        setupMissionStatus: "not_started",
+        primaryThemeColor: "#ecc94b",
+        onboardingCompleted: false
+      });
+
+      await storage.createUserIntegration({
+        userId: user.id,
+        appleHealthConnected: false,
+        googleCalendarConnected: false,
+        notionConnected: false
+      });
+
+      const today = new Date().toISOString().split('T')[0];
+      await storage.createUserDailyLog({
+        userId: user.id,
+        date: today,
+        yesterdayXp: 0,
+        todayPrimaryMission: "Get started with LYFEOS",
+        optionalBoostsShown: false
+      });
+
+      if (email) {
+        const verificationToken = crypto.randomBytes(32).toString('hex');
+        const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        await storage.setEmailVerificationToken(user.id, verificationToken, expiry);
+        sendVerificationEmail(email, verificationToken, firstName).catch(err => {
+          console.error("Failed to send verification email:", err);
+        });
+      }
+
+      req.session.userId = user.id;
+      req.session.username = user.username || user.email || String(user.id);
+
+      return res.status(201).json({ user: { id: user.id, username: user.username, email: user.email } });
+    } catch (error) {
+      console.error("Registration error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
       console.log("Register attempt:", { email: req.body.email });

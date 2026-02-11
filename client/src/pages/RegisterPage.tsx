@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { useAuth } from "@/lib/authContext";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { Input } from "@/components/ui/input";
 import { Loader2, Check } from "lucide-react";
@@ -19,7 +18,6 @@ const avatarColors = [
 export default function RegisterPage() {
   usePageTitle('Register');
   
-  const { register } = useAuth();
   const { primaryColor, setPrimaryColor: setThemePrimaryColor } = useTheme();
   const [, navigate] = useLocation();
   
@@ -85,17 +83,26 @@ export default function RegisterPage() {
     }
     
     try {
-      localStorage.setItem("onboarding_data", JSON.stringify({
+      const checkResponse = await fetch(`/api/auth/check-email?email=${encodeURIComponent(trimmedEmail)}`);
+      if (checkResponse.ok) {
+        const checkData = await checkResponse.json();
+        if (!checkData.available) {
+          setError("An account with this email already exists");
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      sessionStorage.setItem("lyfeos-pending-registration", JSON.stringify({
         email: trimmedEmail,
+        password: trimmedPassword,
         avatarColor: selectedColor,
-        step: 1
       }));
-      
+
       localStorage.setItem("lyfeos-primary-color", selectedColor);
-      
-      await register(trimmedEmail, trimmedPassword, {
-        avatarColor: selectedColor,
-      });
+      localStorage.setItem("lyfeos-pending-onboarding", "true");
+
+      navigate("/onboarding", { replace: true });
     } catch (err: any) {
       console.error("Registration error:", err);
       

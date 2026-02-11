@@ -622,9 +622,12 @@ function ScenarioSelect({
 
 export default function OnboardingPage() {
   usePageTitle("Onboarding");
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, completeRegistration } = useAuth();
   const { quests, refetchQuests } = useLYFEOS();
   const [, navigate] = useLocation();
+
+  const pendingReg = sessionStorage.getItem("lyfeos-pending-registration");
+  const isPendingRegistration = !!pendingReg && !user;
   
   const { data: userProfile } = useQuery({
     queryKey: ["/api/profile"],
@@ -632,11 +635,11 @@ export default function OnboardingPage() {
   });
   
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (!authLoading && !user && !isPendingRegistration) {
       console.log("User not authenticated, redirecting to login");
       navigate("/login");
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, isPendingRegistration]);
   
   const [currentMission, setCurrentMission] = useState(0);
   const [continuedPastMission0, setContinuedPastMission0] = useState(() => {
@@ -860,20 +863,40 @@ export default function OnboardingPage() {
       const mission = MISSIONS.find(m => m.id === missionId);
       if (!mission) return;
       
-      if (missionId === 0 && onboardingUsername.trim()) {
-        try {
-          await fetch("/api/auth/set-username", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({
-              username: onboardingUsername.trim(),
-              firstName: onboardingFirstName.trim(),
-              lastName: onboardingLastName.trim(),
-            }),
+      if (missionId === 0) {
+        const pendingRegData = sessionStorage.getItem("lyfeos-pending-registration");
+        if (pendingRegData) {
+          const { email, password, avatarColor } = JSON.parse(pendingRegData);
+          const birthdayStr = birthYear && birthMonth && birthDay
+            ? `${birthYear}-${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`
+            : "";
+          await completeRegistration({
+            email,
+            password,
+            username: onboardingUsername.trim(),
+            firstName: onboardingFirstName.trim(),
+            lastName: onboardingLastName.trim(),
+            avatarColor,
+            birthday: birthdayStr,
+            location,
+            timezone,
+            termsAccepted: true,
           });
-        } catch (err) {
-          console.error("Failed to set username:", err);
+        } else if (onboardingUsername.trim()) {
+          try {
+            await fetch("/api/auth/set-username", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                username: onboardingUsername.trim(),
+                firstName: onboardingFirstName.trim(),
+                lastName: onboardingLastName.trim(),
+              }),
+            });
+          } catch (err) {
+            console.error("Failed to set username:", err);
+          }
         }
       }
       
