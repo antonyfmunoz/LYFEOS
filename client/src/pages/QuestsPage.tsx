@@ -326,10 +326,12 @@ export default function QuestsPage() {
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   
+  const profileLoaded = userProfile !== undefined;
   const completedOnboardingMissions = (userProfile as any)?.completedOnboardingMissions || [];
-  const nextOnboardingMission = ONBOARDING_MISSIONS.find(
-    m => !completedOnboardingMissions.includes(m.id)
-  ) || null;
+  const onboardingComplete = (userProfile as any)?.onboardingCompleted === true;
+  const nextOnboardingMission = profileLoaded && !onboardingComplete
+    ? ONBOARDING_MISSIONS.find(m => !completedOnboardingMissions.includes(m.id)) || null
+    : null;
   
   const { todayMissions, upcomingMissions, completedMissions, inboxMissions } = useMemo(() => {
     const active = quests.filter(q => !q.completed);

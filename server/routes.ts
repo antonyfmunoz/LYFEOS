@@ -1600,6 +1600,16 @@ Generate the complete affirmation now:`;
           (q: Quest) => q.title === questData.title && q.category === "onboarding"
         );
         if (existingOnboardingQuest) {
+          if (processedBody.completed && !existingOnboardingQuest.completed) {
+            const updatedQuest = await storage.updateQuest(existingOnboardingQuest.id, {
+              completed: true,
+              completedAt: processedBody.completedAt || new Date(),
+              experienceReward: processedBody.experienceReward ?? existingOnboardingQuest.experienceReward,
+              difficulty: processedBody.difficulty ?? existingOnboardingQuest.difficulty,
+            });
+            console.log(`Updated existing onboarding quest to completed for user ${questData.userId}: ${questData.title}`);
+            return res.status(200).json({ quest: updatedQuest, duplicate: true });
+          }
           console.log(`Onboarding quest already exists for user ${questData.userId}: ${questData.title}`);
           return res.status(200).json({ quest: existingOnboardingQuest, duplicate: true });
         }

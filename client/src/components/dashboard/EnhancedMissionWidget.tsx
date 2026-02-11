@@ -33,6 +33,7 @@ export default function EnhancedMissionWidget({
     enabled: !!user,
   });
 
+  const profileLoaded = profileData !== undefined;
   const onboardingComplete = profileData?.onboardingCompleted === true;
   const completedOnboardingMissions: number[] = profileData?.completedOnboardingMissions || [];
   
@@ -47,7 +48,9 @@ export default function EnhancedMissionWidget({
     { id: 7, title: "Systems & Rituals", xp: 65 },
   ];
   
-  const nextOnboardingMission = ONBOARDING_MISSIONS.find(m => !completedOnboardingMissions.includes(m.id));
+  const nextOnboardingMission = profileLoaded && !onboardingComplete
+    ? ONBOARDING_MISSIONS.find(m => !completedOnboardingMissions.includes(m.id))
+    : undefined;
   
   // Load completed missions from localStorage
   const loadCompletedMissions = (): Record<string, boolean> => {

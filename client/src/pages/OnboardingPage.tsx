@@ -893,9 +893,9 @@ export default function OnboardingPage() {
         try {
           const questTitle = `Onboarding: ${mission.title}`;
           
-          const existingQuest = quests.find(q => q.title === questTitle && q.completed);
-          if (existingQuest) {
-            console.log("Onboarding quest already exists, skipping creation:", questTitle);
+          const existingCompletedQuest = quests.find(q => q.title === questTitle && q.completed);
+          if (existingCompletedQuest) {
+            console.log("Onboarding quest already completed, skipping creation:", questTitle);
           } else {
             const startTime = missionStartTimeRef.current;
             const startDateStr = `${startTime.getFullYear()}-${String(startTime.getMonth() + 1).padStart(2, '0')}-${String(startTime.getDate()).padStart(2, '0')}`;
