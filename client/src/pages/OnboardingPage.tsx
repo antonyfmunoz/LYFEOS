@@ -236,13 +236,24 @@ const SCENARIO_OPTIONS: Record<number, { text: string; archetype: Archetype }[]>
   ],
 };
 
+const ONBOARDING_TIMEZONE_OPTIONS = [
+  { label: 'EST', value: 'America/New_York' },
+  { label: 'CST', value: 'America/Chicago' },
+  { label: 'MST', value: 'America/Denver' },
+  { label: 'PST', value: 'America/Los_Angeles' },
+  { label: 'GMT', value: 'Europe/London' },
+  { label: 'CET', value: 'Europe/Paris' },
+  { label: 'JST', value: 'Asia/Tokyo' },
+  { label: 'AEST', value: 'Australia/Sydney' },
+  { label: 'NZST', value: 'Pacific/Auckland' }
+];
+
 function TimezoneDropdown({ value, onChange }: { value: string; onChange: (val: string) => void }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [search, setSearch] = useState("");
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
-  const allTimezones = Intl.supportedValuesOf("timeZone");
+
+  const currentLabel = ONBOARDING_TIMEZONE_OPTIONS.find(tz => tz.value === value)?.label || value;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -251,31 +262,20 @@ function TimezoneDropdown({ value, onChange }: { value: string; onChange: (val: 
         buttonRef.current && !buttonRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false);
-        setSearch("");
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    if (isOpen && searchRef.current) {
-      searchRef.current.focus();
-    }
-  }, [isOpen]);
-
-  const filtered = search
-    ? allTimezones.filter(tz => tz.toLowerCase().includes(search.toLowerCase()))
-    : allTimezones;
-
   return (
     <div className="relative max-w-md mx-auto">
       <button
         ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between rounded-lg border border-primary/20 bg-card/30 backdrop-blur px-4 py-3 text-sm text-foreground font-mono hover:border-primary/50 transition-colors"
+        className="w-full flex items-center justify-between rounded-lg border border-primary/20 bg-card/30 backdrop-blur px-4 py-3 text-sm text-foreground hover:border-primary/50 transition-colors"
       >
-        <span>{value.replace(/_/g, " ")}</span>
+        <span className="font-mono">{currentLabel}</span>
         <ChevronDown className={`h-4 w-4 text-primary transition-transform ${isOpen ? "rotate-180" : ""}`} />
       </button>
       {isOpen && (
@@ -283,30 +283,19 @@ function TimezoneDropdown({ value, onChange }: { value: string; onChange: (val: 
           ref={dropdownRef}
           className="absolute z-50 w-full mt-1 rounded-xl border border-primary/30 bg-card/95 backdrop-blur shadow-[0_0_20px_var(--primary-bg-subtle)] overflow-hidden"
         >
-          <div className="p-2 border-b border-primary/10">
-            <input
-              ref={searchRef}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search timezone..."
-              className="w-full bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground font-mono px-2 py-1"
-            />
-          </div>
-          <div className="max-h-48 overflow-y-auto">
-            {filtered.map((tz) => (
+          <div className="max-h-48 overflow-y-auto p-1">
+            {ONBOARDING_TIMEZONE_OPTIONS.map(tz => (
               <button
-                key={tz}
-                onClick={() => { onChange(tz); setIsOpen(false); setSearch(""); }}
-                className={`w-full text-left px-4 py-2 text-sm font-mono hover:bg-primary/20 transition-colors ${
-                  tz === value ? "bg-primary/10 text-primary" : "text-foreground"
+                key={tz.value}
+                onClick={() => { onChange(tz.value); setIsOpen(false); }}
+                className={`w-full text-left px-4 py-2 text-sm font-mono rounded hover:bg-primary/20 transition-colors flex items-center justify-between ${
+                  tz.value === value ? "bg-primary/10 text-primary" : "text-foreground"
                 }`}
               >
-                {tz.replace(/_/g, " ")}
+                {tz.label}
+                {tz.value === value && <Check className="h-3 w-3 text-primary" />}
               </button>
             ))}
-            {filtered.length === 0 && (
-              <p className="text-xs text-muted-foreground text-center py-3">No matching timezones</p>
-            )}
           </div>
         </div>
       )}
@@ -335,34 +324,26 @@ function DotNavigation({ current, total }: { current: number; total: number }) {
 
 function LocationDropdown({ value, onChange }: { value: string; onChange: (val: string) => void }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(value || "");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const buttonRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
         dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
-        buttonRef.current && !buttonRef.current.contains(event.target as Node)
+        inputRef.current && !inputRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false);
-        setSearch("");
         setSuggestions([]);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  useEffect(() => {
-    if (isOpen && searchRef.current) {
-      searchRef.current.focus();
-    }
-  }, [isOpen]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -394,51 +375,47 @@ function LocationDropdown({ value, onChange }: { value: string; onChange: (val: 
       } finally {
         setIsSearching(false);
       }
-    }, 350);
+    }, 150);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [search]);
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setSearch(val);
+    onChange(val);
+    if (!isOpen) setIsOpen(true);
+  };
+
+  const handleSelect = (loc: string) => {
+    onChange(loc);
+    setSearch(loc);
+    setIsOpen(false);
+    setSuggestions([]);
+  };
+
   return (
-    <div className="relative max-w-md mx-auto">
-      <button
-        ref={buttonRef}
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between rounded-lg border border-primary/20 bg-card/30 backdrop-blur px-4 py-3 text-sm text-foreground hover:border-primary/50 transition-colors"
-      >
-        <span>{value || "Select location..."}</span>
-        <ChevronDown className={`h-4 w-4 text-primary transition-transform ${isOpen ? "rotate-180" : ""}`} />
-      </button>
-      {isOpen && (
+    <div className="relative max-w-md mx-auto" ref={dropdownRef}>
+      <input
+        ref={inputRef}
+        value={search}
+        onChange={handleInputChange}
+        onFocus={() => setIsOpen(true)}
+        placeholder="Type your city or search..."
+        autoComplete="off"
+        className="w-full rounded-lg border border-primary/20 bg-card/30 backdrop-blur px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground hover:border-primary/50 focus:border-primary/50 focus:outline-none transition-colors"
+      />
+      {isOpen && (search.length >= 2 || isSearching) && (
         <div
-          ref={dropdownRef}
           className="absolute z-50 w-full mt-1 rounded-xl border border-primary/30 bg-card/95 backdrop-blur shadow-[0_0_20px_var(--primary-bg-subtle)] overflow-hidden"
         >
-          <div className="p-2 border-b border-primary/10">
-            <input
-              ref={searchRef}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search city..."
-              autoComplete="off"
-              className="w-full bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground px-2 py-1"
-            />
-          </div>
           <div className="max-h-48 overflow-y-auto">
-            {value && search.length < 2 && (
-              <button
-                onClick={() => { setIsOpen(false); setSearch(""); }}
-                className="w-full text-left px-4 py-2 text-sm bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-              >
-                {value}
-              </button>
-            )}
             {isSearching && (
               <p className="text-xs text-muted-foreground text-center py-3">Searching...</p>
             )}
             {!isSearching && suggestions.length > 0 && suggestions.map((loc) => (
               <button
                 key={loc}
-                onClick={() => { onChange(loc); setIsOpen(false); setSearch(""); setSuggestions([]); }}
+                onClick={() => handleSelect(loc)}
                 className={`w-full text-left px-4 py-2 text-sm hover:bg-primary/20 transition-colors ${
                   loc === value ? "bg-primary/10 text-primary" : "text-foreground"
                 }`}
@@ -447,10 +424,7 @@ function LocationDropdown({ value, onChange }: { value: string; onChange: (val: 
               </button>
             ))}
             {!isSearching && search.length >= 2 && suggestions.length === 0 && (
-              <p className="text-xs text-muted-foreground text-center py-3">No matching locations</p>
-            )}
-            {!isSearching && search.length < 2 && (
-              <p className="text-xs text-muted-foreground text-center py-3">Search to find a different city</p>
+              <p className="text-xs text-muted-foreground text-center py-3">No results — your typed value will be used</p>
             )}
           </div>
         </div>
@@ -1700,7 +1674,7 @@ export default function OnboardingPage() {
             <Button 
               variant="outline" 
               onClick={handlePrevious} 
-              className="bg-card/50 border-primary/30 hover:bg-card/80"
+              className="bg-transparent border-2 border-primary text-primary hover:bg-primary/20"
             >
               <ChevronLeft className="h-4 w-4 mr-2" />
               Back
