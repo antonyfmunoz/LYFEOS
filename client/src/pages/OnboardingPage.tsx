@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, Check, Loader2, Zap, X, ChevronDown } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -1197,47 +1198,47 @@ export default function OnboardingPage() {
         const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
         const age = birthMonth && birthDay && birthYear ? calculateAge(birthYear, birthMonth, birthDay) : null;
         return (
-          <div className="space-y-6">
+          <div className="space-y-5">
             <h2 className="text-2xl font-orbitron font-bold text-center">When were you born?</h2>
-            <div className="flex gap-3 justify-center">
-              <select
-                value={birthMonth || ""}
-                onChange={(e) => {
-                  const m = parseInt(e.target.value) || 0;
-                  setBirthMonth(m);
-                  if (birthDay > getDaysInMonth(m, birthYear || currentYear)) setBirthDay(0);
-                }}
-                className="flex-1 max-w-[140px] h-12 rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
-              >
-                <option value="">Month</option>
-                {MONTHS.map((name, i) => (
-                  <option key={i} value={i + 1}>{name}</option>
-                ))}
-              </select>
-              <select
-                value={birthDay || ""}
-                onChange={(e) => setBirthDay(parseInt(e.target.value) || 0)}
-                className="flex-1 max-w-[90px] h-12 rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
-              >
-                <option value="">Day</option>
-                {days.map((d) => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
-              <select
-                value={birthYear || ""}
-                onChange={(e) => {
-                  const y = parseInt(e.target.value) || 0;
-                  setBirthYear(y);
-                  if (birthDay > getDaysInMonth(birthMonth || 1, y)) setBirthDay(0);
-                }}
-                className="flex-1 max-w-[110px] h-12 rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
-              >
-                <option value="">Year</option>
-                {years.map((y) => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
+            <div className="flex gap-2 justify-center">
+              <Select value={birthMonth ? String(birthMonth) : ""} onValueChange={(val) => {
+                const m = parseInt(val) || 0;
+                setBirthMonth(m);
+                if (birthDay > getDaysInMonth(m, birthYear || currentYear)) setBirthDay(0);
+              }}>
+                <SelectTrigger className="w-[120px] h-9 text-xs border-primary/30">
+                  <SelectValue placeholder="Month" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[200px]">
+                  {MONTHS.map((name, i) => (
+                    <SelectItem key={i} value={String(i + 1)} className="text-xs">{name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={birthDay ? String(birthDay) : ""} onValueChange={(val) => setBirthDay(parseInt(val) || 0)}>
+                <SelectTrigger className="w-[80px] h-9 text-xs border-primary/30">
+                  <SelectValue placeholder="Day" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[200px]">
+                  {days.map((d) => (
+                    <SelectItem key={d} value={String(d)} className="text-xs">{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={birthYear ? String(birthYear) : ""} onValueChange={(val) => {
+                const y = parseInt(val) || 0;
+                setBirthYear(y);
+                if (birthDay > getDaysInMonth(birthMonth || 1, y)) setBirthDay(0);
+              }}>
+                <SelectTrigger className="w-[90px] h-9 text-xs border-primary/30">
+                  <SelectValue placeholder="Year" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[200px]">
+                  {years.map((y) => (
+                    <SelectItem key={y} value={String(y)} className="text-xs">{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             {age !== null && age >= 0 && (
               <p className="text-center text-muted-foreground text-sm">
