@@ -64,7 +64,7 @@ interface DraggableMilestoneProps {
   setEditTitle: (v: string) => void;
   handleEditSave: (id: number) => void;
   setEditingId: (id: number | null) => void;
-  editInputRef: React.RefObject<HTMLInputElement | null>;
+  editInputRef: React.RefObject<HTMLInputElement>;
   infoExpandedId: number | null;
   setInfoExpandedId: (id: number | null) => void;
   renderInfoPanel: (goal: VisionGoal) => React.ReactNode;
