@@ -227,7 +227,6 @@ export default function RegisterPage() {
         <h1 className="text-4xl text-white font-orbitron mb-2">LYFEOS</h1>
         <p className="text-muted-foreground">Your personal life operating system</p>
       </div>
-      
       <div className="w-full max-w-md rounded-xl p-6 border border-white/20 backdrop-blur-md animate-fadeIn"
            style={{ backgroundColor: "rgba(38, 38, 42, 0.85)", boxShadow: "0 0 20px rgba(255, 255, 255, 0.08)" }}>
         <h2 className="text-xl font-orbitron text-center mb-6 text-white">Create Your LYFEOS Account</h2>
@@ -326,7 +325,7 @@ export default function RegisterPage() {
           </div>
           
           <div className="space-y-2">
-            <label className="block text-sm text-muted-foreground">CHOOSE YOUR COLOR</label>
+            <label className="block text-sm text-muted-foreground">CHOOSE YOUR THEME COLOR</label>
             <div className="flex flex-wrap gap-2 justify-center">
               {avatarColors.map((color) => (
                 <button
