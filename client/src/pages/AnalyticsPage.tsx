@@ -1,17 +1,18 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/authContext";
 import { usePageTitle } from "@/hooks/use-page-title";
 import {
   ArrowLeft, TrendingUp, Target, Brain, Zap, Heart,
-  Calendar, Award, BarChart3, Activity, Flame, Loader2
+  Calendar, Award, BarChart3, Activity, Flame, Loader2,
+  Trophy, Crown, Shield
 } from "lucide-react";
 import {
   LineChart, Line, BarChart, Bar, RadarChart, Radar, PolarGrid,
   PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
   XAxis, YAxis, Tooltip, CartesianGrid, Area, AreaChart,
-  Cell, PieChart, Pie, Legend
+  Cell, PieChart, Pie, Legend, ScatterChart, Scatter
 } from "recharts";
 
 const RANGE_OPTIONS = [
@@ -53,6 +54,20 @@ function CustomTooltipContent({ active, payload, label }: any) {
   );
 }
 
+function GenericTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-card/95 backdrop-blur border border-primary/30 rounded-lg px-3 py-2 shadow-lg">
+      <p className="text-xs text-muted-foreground mb-1">{label}</p>
+      {payload.map((entry: any, i: number) => (
+        <p key={i} className="text-sm" style={{ color: entry.color }}>
+          {entry.name}: {entry.value}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 export default function AnalyticsPage() {
   usePageTitle("Analytics - LYFEOS");
   const { user } = useAuth();
@@ -74,7 +89,7 @@ export default function AnalyticsPage() {
     );
   }
 
-  const { moodTrends, missionCompletionTrend, categoryStats, difficultyStats, summary } = analytics;
+  const { moodTrends, missionCompletionTrend, categoryStats, difficultyStats, summary, weeklyPatterns, streakHistory, personalRecords, tokenEfficiency, sleepWellnessCorrelation } = analytics;
 
   const categoryData = Object.entries(categoryStats as Record<string, any>).map(([name, data], i) => ({
     name: name.charAt(0).toUpperCase() + name.slice(1),
@@ -314,6 +329,255 @@ export default function AnalyticsPage() {
           </div>
         </div>
       </ChartCard>
+
+      {streakHistory && <ActivityHeatmap streakHistory={streakHistory} />}
+
+      {weeklyPatterns && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 mt-6">
+          <ChartCard title="Weekly Productivity" icon={<BarChart3 className="h-5 w-5" />}>
+            {weeklyPatterns.some((d: any) => d.missions > 0) ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={weeklyPatterns}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.3} />
+                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <Tooltip content={<GenericTooltip />} />
+                  <Bar dataKey="missions" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Missions" opacity={0.8} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : <EmptyState message="No weekly pattern data yet." />}
+          </ChartCard>
+
+          <ChartCard title="Weekly XP Distribution" icon={<Award className="h-5 w-5" />}>
+            {weeklyPatterns.some((d: any) => d.xp > 0) ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <RadarChart data={weeklyPatterns} cx="50%" cy="50%" outerRadius="70%">
+                  <PolarGrid stroke="hsl(var(--muted))" opacity={0.3} />
+                  <PolarAngleAxis dataKey="day" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <PolarRadiusAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} />
+                  <Radar name="XP" dataKey="xp" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} strokeWidth={2} />
+                </RadarChart>
+              </ResponsiveContainer>
+            ) : <EmptyState message="No XP data yet." />}
+          </ChartCard>
+        </div>
+      )}
+
+      {tokenEfficiency && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 mt-6">
+          <ChartCard title="Token Efficiency" icon={<Zap className="h-5 w-5" />}>
+            <div className="flex items-center justify-center py-6">
+              <div className="relative w-40 h-40">
+                <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                  <circle cx="50" cy="50" r="42" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" opacity="0.2" />
+                  <circle
+                    cx="50" cy="50" r="42" fill="none"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    strokeDasharray={`${tokenEfficiency.efficiency * 2.64} 264`}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-4xl font-mono font-bold text-primary">{tokenEfficiency.efficiency}%</span>
+                  <span className="text-xs text-muted-foreground mt-1">efficiency</span>
+                </div>
+              </div>
+              <div className="ml-10 space-y-4">
+                <StatRow label="Total Energy" value={tokenEfficiency.totalEnergyCost.toLocaleString()} />
+                <StatRow label="Completed Energy" value={tokenEfficiency.completedEnergyCost.toLocaleString()} />
+                <StatRow label="Efficiency" value={`${tokenEfficiency.efficiency}%`} />
+              </div>
+            </div>
+          </ChartCard>
+
+          {sleepWellnessCorrelation && sleepWellnessCorrelation.length > 0 ? (
+            <ChartCard title="Sleep & Wellness" icon={<Heart className="h-5 w-5" />}>
+              <ResponsiveContainer width="100%" height={250}>
+                <ScatterChart>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.3} />
+                  <XAxis dataKey="sleepHours" name="Sleep Hours" type="number" domain={['auto', 'auto']} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} label={{ value: "Sleep Hours", position: "insideBottom", offset: -5, style: { fontSize: 11, fill: "hsl(var(--muted-foreground))" } }} />
+                  <YAxis dataKey="mood" name="Mood" type="number" domain={[0, 10]} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} label={{ value: "Mood", angle: -90, position: "insideLeft", style: { fontSize: 11, fill: "hsl(var(--muted-foreground))" } }} />
+                  <Tooltip
+                    content={({ active, payload }: any) => {
+                      if (!active || !payload?.length) return null;
+                      const d = payload[0].payload;
+                      return (
+                        <div className="bg-card/95 backdrop-blur border border-primary/30 rounded-lg px-3 py-2 shadow-lg">
+                          <p className="text-xs text-muted-foreground mb-1">{d.date}</p>
+                          <p className="text-sm text-primary">Sleep: {d.sleepHours}h</p>
+                          <p className="text-sm text-primary">Mood: {d.mood}/10</p>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Scatter data={sleepWellnessCorrelation} fill="hsl(var(--primary))" fillOpacity={0.7} />
+                </ScatterChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          ) : (
+            <ChartCard title="Sleep & Wellness" icon={<Heart className="h-5 w-5" />}>
+              <EmptyState message="No sleep & wellness data yet. Log your sleep and mood in daily check-ins." />
+            </ChartCard>
+          )}
+        </div>
+      )}
+
+      {personalRecords && (
+        <div className="mb-6 mt-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Trophy className="h-5 w-5 text-primary" />
+            <h2 className="font-orbitron text-lg text-primary">Personal Records</h2>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <RecordCard
+              icon={<Trophy className="h-6 w-6" />}
+              label="Best Day"
+              value={`${personalRecords.bestDayMissions} missions`}
+              sub={personalRecords.bestDayDate ? formatDate(personalRecords.bestDayDate) : "—"}
+            />
+            <RecordCard
+              icon={<Crown className="h-6 w-6" />}
+              label="Best XP Day"
+              value={`${personalRecords.bestDayXp.toLocaleString()} XP`}
+              sub="single day record"
+            />
+            <RecordCard
+              icon={<Flame className="h-6 w-6" />}
+              label="Longest Streak"
+              value={`${personalRecords.longestStreak} days`}
+              sub="consecutive active"
+            />
+            <RecordCard
+              icon={<Shield className="h-6 w-6" />}
+              label="Highest Rank"
+              value={personalRecords.highestDifficulty ? `Rank ${personalRecords.highestDifficulty}` : "—"}
+              sub="completed"
+            />
+            <RecordCard
+              icon={<Calendar className="h-6 w-6" />}
+              label="Active Days"
+              value={`${personalRecords.totalDaysActive}`}
+              sub="days with completions"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ActivityHeatmap({ streakHistory }: { streakHistory: { date: string; count: number }[] }) {
+  const { weeks, monthLabels } = useMemo(() => {
+    if (!streakHistory || streakHistory.length === 0) return { weeks: [], monthLabels: [] };
+
+    const sorted = [...streakHistory].sort((a, b) => a.date.localeCompare(b.date));
+    const firstDate = new Date(sorted[0].date + "T00:00:00");
+    const startDow = firstDate.getDay();
+
+    const cells: { date: string; count: number; dow: number }[] = [];
+    for (let i = 0; i < startDow; i++) {
+      cells.push({ date: "", count: -1, dow: i });
+    }
+    sorted.forEach(d => {
+      const dt = new Date(d.date + "T00:00:00");
+      cells.push({ date: d.date, count: d.count, dow: dt.getDay() });
+    });
+
+    const wks: { date: string; count: number; dow: number }[][] = [];
+    for (let i = 0; i < cells.length; i += 7) {
+      wks.push(cells.slice(i, i + 7));
+    }
+    while (wks.length > 0 && wks[wks.length - 1].length < 7) {
+      const last = wks[wks.length - 1];
+      while (last.length < 7) last.push({ date: "", count: -1, dow: last.length });
+    }
+
+    const labels: { label: string; weekIndex: number }[] = [];
+    let lastMonth = "";
+    wks.forEach((week, wi) => {
+      const validDay = week.find(d => d.date);
+      if (validDay) {
+        const dt = new Date(validDay.date + "T00:00:00");
+        const month = dt.toLocaleDateString("en-US", { month: "short" });
+        if (month !== lastMonth) {
+          labels.push({ label: month, weekIndex: wi });
+          lastMonth = month;
+        }
+      }
+    });
+
+    return { weeks: wks, monthLabels: labels };
+  }, [streakHistory]);
+
+  if (weeks.length === 0) return null;
+
+  function getColor(count: number): string {
+    if (count < 0) return "transparent";
+    if (count === 0) return "hsl(var(--muted) / 0.2)";
+    if (count <= 2) return "hsl(var(--primary) / 0.3)";
+    if (count <= 4) return "hsl(var(--primary) / 0.6)";
+    return "hsl(var(--primary) / 0.9)";
+  }
+
+  return (
+    <div className="glassmorphic rounded-xl p-6 border border-primary/20 mb-6 mt-6">
+      <div className="flex items-center gap-2 mb-4">
+        <Activity className="h-5 w-5 text-primary" />
+        <h2 className="font-orbitron text-lg text-primary">Activity Heatmap</h2>
+      </div>
+      <div className="overflow-x-auto">
+        <div className="min-w-[600px]">
+          <div className="flex gap-0.5 mb-1 ml-8">
+            {monthLabels.map((m, i) => (
+              <div
+                key={i}
+                className="text-[10px] text-muted-foreground"
+                style={{ position: "relative", left: `${m.weekIndex * 14}px` }}
+              >
+                {m.label}
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-0.5">
+            <div className="flex flex-col gap-0.5 mr-1">
+              {["S","M","T","W","T","F","S"].map((d, i) => (
+                <div key={i} className="w-6 h-[12px] text-[9px] text-muted-foreground flex items-center justify-end pr-1">{i % 2 === 1 ? d : ""}</div>
+              ))}
+            </div>
+            {weeks.map((week, wi) => (
+              <div key={wi} className="flex flex-col gap-0.5">
+                {week.map((day, di) => (
+                  <div
+                    key={di}
+                    className="w-[12px] h-[12px] rounded-[2px] transition-colors"
+                    style={{ backgroundColor: getColor(day.count) }}
+                    title={day.date ? `${day.date}: ${day.count} missions` : ""}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-1 mt-3 ml-8">
+            <span className="text-[10px] text-muted-foreground mr-1">Less</span>
+            {[0, 1, 3, 5].map((v, i) => (
+              <div key={i} className="w-[12px] h-[12px] rounded-[2px]" style={{ backgroundColor: getColor(v) }} />
+            ))}
+            <span className="text-[10px] text-muted-foreground ml-1">More</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RecordCard({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string; sub: string }) {
+  return (
+    <div className="glassmorphic rounded-xl p-4 border border-primary/20 hover:border-primary/40 transition-colors text-center">
+      <div className="flex justify-center text-primary mb-2">{icon}</div>
+      <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{label}</div>
+      <div className="text-lg font-mono font-bold text-foreground">{value}</div>
+      <div className="text-xs text-muted-foreground mt-1">{sub}</div>
     </div>
   );
 }

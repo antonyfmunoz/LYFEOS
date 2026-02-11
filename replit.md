@@ -15,7 +15,7 @@ Preferred communication style: Simple, everyday language.
 - **Routing**: Wouter (lightweight React router)
 - **State Management**: React Context API (`LYFEOSProvider`, `AuthProvider`, `ThemeProvider`) combined with TanStack React Query for server state
 - **UI Components**: Radix UI primitives with shadcn/ui component library
-- **Styling**: Tailwind CSS with custom dark/light theme system using CSS variables
+- **Styling**: Tailwind CSS with dark-only theme system using CSS variables
 - **Drag and Drop**: react-dnd with HTML5 backend for widget reordering
 - **Build Tool**: Vite with custom plugins for theming
 

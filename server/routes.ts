@@ -4721,12 +4721,79 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
         .filter(log => log.wakeTime || log.sleepTime)
         .map(log => ({ date: log.date, wakeTime: log.wakeTime, sleepTime: log.sleepTime }));
 
+      const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+      const weeklyBuckets: { missions: number; xp: number }[] = Array.from({ length: 7 }, () => ({ missions: 0, xp: 0 }));
+      completedMissions.forEach(m => {
+        if (m.completedAt) {
+          const dow = new Date(m.completedAt).getDay();
+          weeklyBuckets[dow].missions++;
+          weeklyBuckets[dow].xp += m.experienceReward || 0;
+        }
+      });
+      const weeklyPatterns = weeklyBuckets.map((b, i) => ({ day: dayNames[i], missions: b.missions, xp: b.xp }));
+
+      const streakHistory = dateRange.map(date => ({ date, count: completionsByDay[date] || 0 }));
+
+      const completionEntries = Object.entries(completionsByDay);
+      const xpEntries = Object.entries(xpByDay);
+      const bestDayMissions = completionEntries.length > 0 ? Math.max(...completionEntries.map(e => e[1])) : 0;
+      const bestDayXp = xpEntries.length > 0 ? Math.max(...xpEntries.map(e => e[1])) : 0;
+      const bestDayDate = completionEntries.length > 0 ? completionEntries.reduce((a, b) => b[1] > a[1] ? b : a)[0] : null;
+      const totalDaysActive = completionEntries.filter(e => e[1] > 0).length;
+
+      const difficultyRanks = ["S","A","B","C","D"];
+      let highestDifficulty: string | null = null;
+      for (const rank of difficultyRanks) {
+        if (completedMissions.some(m => (m.difficulty || "D") === rank)) {
+          highestDifficulty = rank;
+          break;
+        }
+      }
+
+      let longestStreak = 0;
+      let currentRun = 0;
+      for (const date of dateRange) {
+        if ((completionsByDay[date] || 0) > 0) {
+          currentRun++;
+          if (currentRun > longestStreak) longestStreak = currentRun;
+        } else {
+          currentRun = 0;
+        }
+      }
+
+      const personalRecords = { bestDayMissions, bestDayXp, bestDayDate, totalDaysActive, highestDifficulty, longestStreak };
+
+      const totalEnergyCost = activeMissions.reduce((sum, m) => sum + (m.energyCost || 0), 0);
+      const completedEnergyCost = completedMissions.reduce((sum, m) => sum + (m.energyCost || 0), 0);
+      const tokenEfficiency = {
+        totalEnergyCost,
+        completedEnergyCost,
+        efficiency: totalEnergyCost > 0 ? Math.round(completedEnergyCost / totalEnergyCost * 100) : 0,
+      };
+
+      const sleepWellnessCorrelation = dailyLogs
+        .filter(log => log.wakeTime && log.sleepTime && log.mentalState != null && log.physicalState != null && log.emotionalState != null)
+        .map(log => {
+          const [wH, wM] = (log.wakeTime as string).split(":").map(Number);
+          const [sH, sM] = (log.sleepTime as string).split(":").map(Number);
+          let diffMin = (wH * 60 + wM) - (sH * 60 + sM);
+          if (diffMin < 0) diffMin += 24 * 60;
+          const sleepHours = Math.round(diffMin / 60 * 10) / 10;
+          const mood = Math.round(((log.mentalState ?? 5) + (log.physicalState ?? 5) + (log.emotionalState ?? 5)) / 3 * 10) / 10;
+          return { date: log.date, sleepHours, mood };
+        });
+
       res.json({
         moodTrends,
         missionCompletionTrend,
         categoryStats,
         difficultyStats,
         sleepData,
+        weeklyPatterns,
+        streakHistory,
+        personalRecords,
+        tokenEfficiency,
+        sleepWellnessCorrelation,
         summary: {
           totalMissions: activeMissions.length,
           completedMissions: completedMissions.length,
