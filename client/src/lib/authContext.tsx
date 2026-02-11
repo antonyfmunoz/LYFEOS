@@ -207,6 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Update application state
       setUser(data.user);
       localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
+      localStorage.removeItem("lyfeos-pending-onboarding");
       
       // Wait for session cookie to be fully established before navigating
       await new Promise(resolve => setTimeout(resolve, 200));

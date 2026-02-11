@@ -8,7 +8,6 @@ export default function LoginSuccessPage() {
 
   useEffect(() => {
     const username = sessionStorage.getItem("login_success_username");
-    const isNewUser = sessionStorage.getItem("login_success_new_user") === "true";
     sessionStorage.removeItem("login_success_username");
     sessionStorage.removeItem("login_success_new_user");
 
@@ -20,11 +19,7 @@ export default function LoginSuccessPage() {
     });
 
     const timer = setTimeout(() => {
-      if (isNewUser) {
-        navigate("/onboarding", { replace: true });
-      } else {
-        navigate("/dashboard", { replace: true });
-      }
+      navigate("/dashboard", { replace: true });
     }, 600);
 
     return () => clearTimeout(timer);
