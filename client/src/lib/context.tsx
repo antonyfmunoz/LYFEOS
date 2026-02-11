@@ -456,14 +456,14 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
                 streakToastFired.current = true;
                 const today = new Date().toDateString();
                 const lastStreakToastDate = localStorage.getItem("lyfeos_streak_toast_date");
-                if (lastStreakToastDate !== today) {
-                  localStorage.setItem("lyfeos_streak_toast_date", today);
+                if (lastStreakToastDate !== today && sessionStorage.getItem("lyfeos_login_toast_done") === "true") {
                   let attempts = 0;
-                  const maxAttempts = 8;
+                  const maxAttempts = 6;
                   const showStreakAfterLogin = () => {
                     attempts++;
                     if (sessionStorage.getItem("lyfeos_login_toast_done") === "true") {
                       sessionStorage.removeItem("lyfeos_login_toast_done");
+                      localStorage.setItem("lyfeos_streak_toast_date", today);
                       streakToast(dbStats.streakDays);
                     } else if (attempts < maxAttempts) {
                       setTimeout(showStreakAfterLogin, 500);
