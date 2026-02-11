@@ -46,7 +46,6 @@ import {
   Palette as PaletteIcon,
   Loader2,
   Mail,
-  Phone,
   Lock,
   Eye,
   EyeOff,
@@ -312,7 +311,6 @@ export default function ProfilePage() {
   
   // Account settings state
   const [accountEmail, setAccountEmail] = useState("");
-  const [accountPhone, setAccountPhone] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -331,7 +329,6 @@ export default function ProfilePage() {
   useEffect(() => {
     if (accountData) {
       setAccountEmail(accountData.email || "");
-      setAccountPhone(accountData.phoneNumber || "");
     }
   }, [accountData]);
   
@@ -404,7 +401,6 @@ export default function ProfilePage() {
   const handleSaveAccount = () => {
     updateAccountMutation.mutate({
       email: accountEmail,
-      phoneNumber: accountPhone,
     });
   };
   
@@ -894,26 +890,10 @@ export default function ProfilePage() {
                     />
                   </div>
                   
-                  <div>
-                    <Label htmlFor="phone" className="flex items-center gap-2 mb-2">
-                      <Phone className="h-4 w-4 text-primary" />
-                      Phone Number
-                    </Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      value={accountPhone}
-                      onChange={(e) => setAccountPhone(e.target.value)}
-                      placeholder="+1 (555) 123-4567"
-                      className="bg-background/50 border-primary/30 focus:border-primary/50"
-                    />
-                  </div>
-                  
                   <div className="flex gap-2 pt-2">
                     <button onClick={() => {
                         setIsEditingAccount(false);
                         setAccountEmail(accountData?.email || "");
-                        setAccountPhone(accountData?.phoneNumber || "");
                       }} className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5">
                       <X className="h-3 w-3" />Cancel
                     </button>
@@ -1022,14 +1002,6 @@ export default function ProfilePage() {
                     <div>
                       <div className="text-xs text-muted-foreground">Email</div>
                       <div className="text-sm">{accountData?.email ? "••••••••" : "Not set"}</div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3 p-3 bg-card/50 rounded-lg border border-primary/10">
-                    <Phone className="h-4 w-4 text-primary" />
-                    <div>
-                      <div className="text-xs text-muted-foreground">Phone</div>
-                      <div className="text-sm">{accountData?.phoneNumber ? "••••••••" : "Not set"}</div>
                     </div>
                   </div>
                   

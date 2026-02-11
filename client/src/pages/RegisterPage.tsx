@@ -25,7 +25,6 @@ export default function RegisterPage() {
   
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -49,7 +48,6 @@ export default function RegisterPage() {
     
     const trimmedUsername = username.trim();
     const trimmedEmail = email.trim();
-    const trimmedPhone = phone.trim();
     const trimmedPassword = password.trim();
     const trimmedConfirmPassword = confirmPassword.trim();
     const trimmedFirstName = firstName.trim();
@@ -77,12 +75,6 @@ export default function RegisterPage() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(trimmedEmail)) {
       setError("Please enter a valid email address");
-      setIsLoading(false);
-      return;
-    }
-    
-    if (!trimmedPhone) {
-      setError("Phone number is required");
       setIsLoading(false);
       return;
     }
@@ -130,7 +122,6 @@ export default function RegisterPage() {
         firstName: trimmedFirstName,
         lastName: trimmedLastName,
         email: trimmedEmail,
-        phone: trimmedPhone,
         avatarColor: selectedColor,
         step: 1
       }));
@@ -193,19 +184,6 @@ export default function RegisterPage() {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-white focus-visible:ring-white/30"
               placeholder="Enter your email"
-              required
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <label htmlFor="phone" className="block text-sm text-white">PHONE NUMBER</label>
-            <Input 
-              type="tel" 
-              id="phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-white focus-visible:ring-white/30"
-              placeholder="Enter your phone number"
               required
             />
           </div>
