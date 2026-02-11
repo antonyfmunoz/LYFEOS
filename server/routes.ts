@@ -1578,6 +1578,34 @@ Generate the complete affirmation now:`;
     }
   });
 
+  const ONBOARDING_TITLE_TO_ID: Record<string, number> = {
+    "Onboarding: Access & Quickstart": 0,
+    "Onboarding: Archetype Calibration": 1,
+    "Onboarding: Identity & Direction": 2,
+    "Onboarding: Craft & Mastery": 3,
+    "Onboarding: Capacity & Constraints": 4,
+    "Onboarding: Baselines & States": 5,
+    "Onboarding: History & Roots": 6,
+    "Onboarding: Systems & Rituals": 7,
+  };
+
+  async function syncOnboardingProfile(userId: number, questTitle: string) {
+    try {
+      const missionId = ONBOARDING_TITLE_TO_ID[questTitle];
+      if (missionId === undefined) return;
+      const profile = await storage.getUserProfile(userId);
+      const existing: number[] = profile?.completedOnboardingMissions || [];
+      if (!existing.includes(missionId)) {
+        await storage.upsertUserProfile(userId, {
+          completedOnboardingMissions: [...existing, missionId],
+        });
+        console.log(`Synced profile: added mission ${missionId} to completedOnboardingMissions for user ${userId}`);
+      }
+    } catch (err) {
+      console.error("Failed to sync onboarding profile:", err);
+    }
+  }
+
   app.post("/api/quests", isAuthenticated, async (req: Request, res: Response) => {
     try {
       // Pre-process the request body to convert date strings to Date objects
@@ -1608,6 +1636,7 @@ Generate the complete affirmation now:`;
               difficulty: processedBody.difficulty ?? existingOnboardingQuest.difficulty,
             });
             console.log(`Updated existing onboarding quest to completed for user ${questData.userId}: ${questData.title}`);
+            await syncOnboardingProfile(questData.userId, questData.title);
             return res.status(200).json({ quest: updatedQuest, duplicate: true });
           }
           console.log(`Onboarding quest already exists for user ${questData.userId}: ${questData.title}`);
@@ -1680,6 +1709,9 @@ ${questData.description ? `Description: ${questData.description}` : ''}`
         timeCost,
         energyCost,
       });
+      if (assignedCategory === "onboarding" && quest.completed && quest.title) {
+        await syncOnboardingProfile(questData.userId, quest.title);
+      }
       return res.status(201).json({ quest });
     } catch (error) {
       console.error("Quest creation error:", error);

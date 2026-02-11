@@ -323,8 +323,14 @@ export default function QuestsPage() {
   const profileLoaded = userProfile !== null;
   const completedOnboardingMissions = userProfile?.completedOnboardingMissions || [];
   const onboardingComplete = userProfile?.onboardingCompleted === true;
+  const completedOnboardingTitles = quests
+    .filter(q => q.category === 'onboarding' && q.completed)
+    .map(q => q.title);
   const nextOnboardingMission = profileLoaded && !onboardingComplete
-    ? ONBOARDING_MISSIONS.find(m => !completedOnboardingMissions.includes(m.id)) || null
+    ? ONBOARDING_MISSIONS.find(m => 
+        !completedOnboardingMissions.includes(m.id) && 
+        !completedOnboardingTitles.includes(`Onboarding: ${m.title}`)
+      ) || null
     : null;
   
   const { todayMissions, upcomingMissions, completedMissions, inboxMissions } = useMemo(() => {
