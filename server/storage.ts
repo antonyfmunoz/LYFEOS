@@ -235,6 +235,9 @@ export interface IStorage {
   getWidgetStates(userId: number): Promise<Record<string, boolean>>;
   setWidgetState(userId: number, widgetId: string, isOpen: boolean): Promise<Record<string, boolean>>;
 
+  getWidgetLayouts(userId: number): Promise<Record<string, string[]>>;
+  setWidgetLayout(userId: number, page: string, order: string[]): Promise<Record<string, string[]>>;
+
   getDismissedKnowledge(userId: number): Promise<DismissedKnowledge[]>;
   dismissKnowledgeEntry(entry: InsertDismissedKnowledge): Promise<DismissedKnowledge>;
   undismissKnowledgeEntry(id: number, userId: number): Promise<void>;
@@ -2051,6 +2054,41 @@ export class DatabaseStorage implements IStorage {
       await db.insert(widgetStates).values({ userId, states: newStates });
       return newStates;
     }
+  }
+
+  async getWidgetLayouts(userId: number): Promise<Record<string, string[]>> {
+    const [row] = await db.select().from(widgetStates).where(eq(widgetStates.userId, userId));
+    const states = (row?.states as Record<string, any>) || {};
+    const layouts: Record<string, string[]> = {};
+    for (const key of Object.keys(states)) {
+      if (key.startsWith('__layout_')) {
+        layouts[key.replace('__layout_', '')] = states[key];
+      }
+    }
+    return layouts;
+  }
+
+  async setWidgetLayout(userId: number, page: string, order: string[]): Promise<Record<string, string[]>> {
+    const [existing] = await db.select().from(widgetStates).where(eq(widgetStates.userId, userId));
+    const layoutKey = `__layout_${page}`;
+    
+    if (existing) {
+      const currentStates = (existing.states as Record<string, any>) || {};
+      const newStates = { ...currentStates, [layoutKey]: order };
+      await db.update(widgetStates).set({ states: newStates }).where(eq(widgetStates.userId, userId));
+    } else {
+      await db.insert(widgetStates).values({ userId, states: { [layoutKey]: order } });
+    }
+    
+    const layouts: Record<string, string[]> = {};
+    const [row] = await db.select().from(widgetStates).where(eq(widgetStates.userId, userId));
+    const states = (row?.states as Record<string, any>) || {};
+    for (const key of Object.keys(states)) {
+      if (key.startsWith('__layout_')) {
+        layouts[key.replace('__layout_', '')] = states[key];
+      }
+    }
+    return layouts;
   }
 
   async getDismissedKnowledge(userId: number): Promise<DismissedKnowledge[]> {

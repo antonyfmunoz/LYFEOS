@@ -4748,6 +4748,33 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
     }
   });
 
+  app.get("/api/widget-layouts", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const layouts = await storage.getWidgetLayouts(userId);
+      return res.json(layouts);
+    } catch (error) {
+      console.error("Error fetching widget layouts:", error);
+      return res.status(500).json({ error: "Failed to fetch widget layouts" });
+    }
+  });
+
+  app.put("/api/widget-layouts", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const schema = z.object({ page: z.string().min(1), order: z.array(z.string()) });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "page (string) and order (string[]) required" });
+      }
+      const layouts = await storage.setWidgetLayout(userId, parsed.data.page, parsed.data.order);
+      return res.json(layouts);
+    } catch (error) {
+      console.error("Error updating widget layout:", error);
+      return res.status(500).json({ error: "Failed to update widget layout" });
+    }
+  });
+
   app.patch("/api/users/:userId/daily-logs/rename-research-field", isOwner, async (req: Request, res: Response) => {
     try {
       const userId = parseInt(req.params.userId);

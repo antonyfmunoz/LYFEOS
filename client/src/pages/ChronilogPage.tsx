@@ -1,15 +1,18 @@
 import { Link, useLocation } from "wouter";
 import { useLYFEOS } from "@/lib/context";
+import { useAuth } from "@/lib/authContext";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { FileText, Clock, Tag, Calendar, Award, GripVertical, CheckSquare, BookOpen, GraduationCap, Target, Info, BarChart3 } from "lucide-react";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import update from 'immutability-helper';
 import { cn } from '@/lib/utils';
 import { DropTargetMonitor } from 'react-dnd';
 import TimelineWidget from '@/components/chronilog/TimelineWidget';
+import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 
 // Define DraggableCategoryItem component
 interface CategoryItem {
@@ -173,11 +176,77 @@ const DraggableCategoryCard = ({ id, index, item, moveCategory, navigate }: Drag
   );
 };
 
+interface DraggableTimelineProps {
+  id: string;
+  index: number;
+  moveCategory: (dragIndex: number, hoverIndex: number) => void;
+}
+
+const DraggableTimelineWrapper = ({ id, index, moveCategory }: DraggableTimelineProps) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const dragHandleRef = useRef<HTMLDivElement>(null);
+  
+  const [{ handlerId }, drop] = useDrop<DragItem, void, { handlerId: string | symbol | null }>({
+    accept: 'CATEGORY',
+    collect(monitor: DropTargetMonitor) {
+      return { handlerId: monitor.getHandlerId() };
+    },
+    hover(item: DragItem, monitor: DropTargetMonitor) {
+      if (!ref.current) return;
+      const dragIndex = item.index;
+      const hoverIndex = index;
+      if (dragIndex === hoverIndex) return;
+      const hoverBoundingRect = ref.current?.getBoundingClientRect();
+      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+      const clientOffset = monitor.getClientOffset();
+      const hoverClientY = clientOffset!.y - hoverBoundingRect.top;
+      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) return;
+      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) return;
+      moveCategory(dragIndex, hoverIndex);
+      item.index = hoverIndex;
+    },
+  });
+
+  const [{ isDragging }, drag, preview] = useDrag<
+    { id: string; index: number },
+    void,
+    { isDragging: boolean }
+  >({
+    type: 'CATEGORY',
+    item: () => ({ id, index }),
+    collect: (monitor: any) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  });
+
+  preview(drop(ref));
+  if (dragHandleRef.current) {
+    drag(dragHandleRef);
+  }
+
+  return (
+    <div
+      ref={ref}
+      className={cn("relative", isDragging && "opacity-50")}
+      data-handler-id={handlerId}
+    >
+      <div 
+        ref={dragHandleRef}
+        className="absolute top-3 left-3 z-10 cursor-move p-1 rounded hover:bg-primary/10 transition-colors"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <GripVertical className="h-4 w-4 text-muted-foreground" />
+      </div>
+      <TimelineWidget />
+    </div>
+  );
+};
+
 export default function ChronilogPage() {
-  // Set the page title
   usePageTitle('Chronilog');
   
   const { missionPages } = useLYFEOS();
+  const { user } = useAuth();
   const [, navigate] = useLocation();
   
   const [categories, setCategories] = useState<CategoryItem[]>([
@@ -210,19 +279,52 @@ export default function ChronilogPage() {
       title: "Analytics", 
       icon: <BarChart3 className="h-5 w-5 text-primary" />,
       description: "Visualize your progress with mood trends, XP progression, mission completion rates, and performance insights over time."
+    },
+    { 
+      id: "timeline", 
+      title: "Timeline", 
+      icon: <Clock className="h-5 w-5 text-primary" />,
+      description: "Your recent activity timeline showing missions, journal entries, and milestones."
     }
   ]);
 
+  const { data: widgetLayouts } = useQuery<Record<string, string[]>>({
+    queryKey: ['/api/widget-layouts'],
+    enabled: !!user,
+  });
+
+  useEffect(() => {
+    if (widgetLayouts?.chronilog) {
+      const savedOrder = widgetLayouts.chronilog;
+      setCategories(prev => {
+        const ordered: CategoryItem[] = [];
+        for (const id of savedOrder) {
+          const cat = prev.find(c => c.id === id);
+          if (cat) ordered.push(cat);
+        }
+        for (const cat of prev) {
+          if (!ordered.find(c => c.id === cat.id)) ordered.push(cat);
+        }
+        return ordered;
+      });
+    }
+  }, [widgetLayouts]);
+
   // Callback for category card drag and drop reordering
   const moveCategory = useCallback((dragIndex: number, hoverIndex: number) => {
-    setCategories((prevCategories) => 
-      update(prevCategories, {
+    setCategories((prevCategories) => {
+      const newCategories = update(prevCategories, {
         $splice: [
           [dragIndex, 1],
           [hoverIndex, 0, prevCategories[dragIndex]],
         ],
-      })
-    );
+      });
+      apiRequest('/api/widget-layouts', {
+        method: 'PUT',
+        body: JSON.stringify({ page: 'chronilog', order: newCategories.map(c => c.id) }),
+      });
+      return newCategories;
+    });
   }, []);
 
   return (
@@ -233,21 +335,51 @@ export default function ChronilogPage() {
           <p className="text-[#7DAAB2]">Your personal timeline of knowledge, reflections, and growth logs.</p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          {categories.map((category, index) => (
-            <DraggableCategoryCard
-              key={category.id}
-              id={category.id}
-              index={index}
-              item={category}
-              moveCategory={moveCategory}
-              navigate={navigate}
-            />
-          ))}
+        <div className="space-y-4">
+          {(() => {
+            const items: React.ReactNode[] = [];
+            let categoryBuffer: { cat: CategoryItem; idx: number }[] = [];
+            
+            const flushCategoryBuffer = () => {
+              if (categoryBuffer.length > 0) {
+                items.push(
+                  <div key={`cat-group-${categoryBuffer[0].idx}`} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {categoryBuffer.map(({ cat, idx }) => (
+                      <DraggableCategoryCard
+                        key={cat.id}
+                        id={cat.id}
+                        index={idx}
+                        item={cat}
+                        moveCategory={moveCategory}
+                        navigate={navigate}
+                      />
+                    ))}
+                  </div>
+                );
+                categoryBuffer = [];
+              }
+            };
+            
+            categories.forEach((category, index) => {
+              if (category.id === 'timeline') {
+                flushCategoryBuffer();
+                items.push(
+                  <DraggableTimelineWrapper
+                    key="timeline"
+                    id="timeline"
+                    index={index}
+                    moveCategory={moveCategory}
+                  />
+                );
+              } else {
+                categoryBuffer.push({ cat: category, idx: index });
+              }
+            });
+            flushCategoryBuffer();
+            
+            return items;
+          })()}
         </div>
-        
-        {/* Timeline widget */}
-        <TimelineWidget />
       </div>
     </DndProvider>
   );

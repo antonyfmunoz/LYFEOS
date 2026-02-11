@@ -1,12 +1,17 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/authContext";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import update from 'immutability-helper';
+import { CollapsibleWidget } from '@/components/ui/collapsible-widget';
+import { apiRequest } from '@/lib/queryClient';
 import {
   ArrowLeft, TrendingUp, Target, Brain, Zap, Heart,
   Calendar, Award, BarChart3, Activity, Flame, Loader2,
-  Trophy, Crown, Shield
+  Trophy, Crown, Shield, GripVertical
 } from "lucide-react";
 import {
   LineChart, Line, BarChart, Bar, RadarChart, Radar, PolarGrid,
@@ -126,6 +131,367 @@ export default function AnalyticsPage() {
     return acc;
   }, []);
 
+  type AnalyticsWidgetMeta = {
+    id: string;
+    title: string;
+    icon: React.ReactNode;
+  };
+
+  const [analyticsWidgets, setAnalyticsWidgets] = useState<AnalyticsWidgetMeta[]>([
+    { id: 'mood-xp', title: 'Mood & XP Trends', icon: <Activity className="h-5 w-5 text-primary" /> },
+    { id: 'missions-categories', title: 'Missions & Categories', icon: <Target className="h-5 w-5 text-primary" /> },
+    { id: 'difficulty-breakdown', title: 'Difficulty & Breakdown', icon: <Zap className="h-5 w-5 text-primary" /> },
+    { id: 'completion-rate', title: 'Completion Rate', icon: <Heart className="h-5 w-5 text-primary" /> },
+    { id: 'activity-heatmap', title: 'Activity Heatmap', icon: <Activity className="h-5 w-5 text-primary" /> },
+    { id: 'weekly-patterns', title: 'Weekly Patterns', icon: <BarChart3 className="h-5 w-5 text-primary" /> },
+    { id: 'token-wellness', title: 'Token & Wellness', icon: <Zap className="h-5 w-5 text-primary" /> },
+    { id: 'personal-records', title: 'Personal Records', icon: <Trophy className="h-5 w-5 text-primary" /> },
+  ]);
+
+  const { data: widgetLayouts } = useQuery<Record<string, string[]>>({
+    queryKey: ['/api/widget-layouts'],
+    enabled: !!user,
+  });
+
+  useEffect(() => {
+    if (widgetLayouts?.analytics) {
+      const savedOrder = widgetLayouts.analytics;
+      setAnalyticsWidgets(prev => {
+        const ordered: AnalyticsWidgetMeta[] = [];
+        for (const id of savedOrder) {
+          const widget = prev.find(w => w.id === id);
+          if (widget) ordered.push(widget);
+        }
+        for (const widget of prev) {
+          if (!ordered.find(w => w.id === widget.id)) ordered.push(widget);
+        }
+        return ordered;
+      });
+    }
+  }, [widgetLayouts]);
+
+  const moveAnalyticsWidget = useCallback((dragIndex: number, hoverIndex: number) => {
+    setAnalyticsWidgets((prev) => {
+      const newWidgets = update(prev, {
+        $splice: [
+          [dragIndex, 1],
+          [hoverIndex, 0, prev[dragIndex]],
+        ],
+      });
+      apiRequest('/api/widget-layouts', {
+        method: 'PUT',
+        body: JSON.stringify({ page: 'analytics', order: newWidgets.map(w => w.id) }),
+      });
+      return newWidgets;
+    });
+  }, []);
+
+  const renderWidgetContent = (widgetId: string) => {
+    switch (widgetId) {
+      case 'mood-xp':
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ChartCard title="Mood Trends" icon={<Activity className="h-5 w-5" />}>
+              {moodTrends.length > 0 ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={moodTrends}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.3} />
+                    <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis domain={[0, 10]} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <Tooltip content={<CustomTooltipContent />} />
+                    <Line type="monotone" dataKey="mental" stroke="#6366f1" strokeWidth={2} dot={false} name="Mental" />
+                    <Line type="monotone" dataKey="physical" stroke="#22c55e" strokeWidth={2} dot={false} name="Physical" />
+                    <Line type="monotone" dataKey="emotional" stroke="#f97316" strokeWidth={2} dot={false} name="Emotional" />
+                    <Line type="monotone" dataKey="average" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={false} name="Average" strokeDasharray="5 5" />
+                    <Legend wrapperStyle={{ fontSize: 12, color: "hsl(var(--muted-foreground))" }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : <EmptyState message="No mood data yet. Complete daily check-ins to see trends." />}
+            </ChartCard>
+            <ChartCard title="XP Progression" icon={<TrendingUp className="h-5 w-5" />}>
+              {cumulativeXp.some((d: any) => d.cumXp > 0) ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <AreaChart data={cumulativeXp}>
+                    <defs>
+                      <linearGradient id="xpGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.3} />
+                    <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <Tooltip content={<CustomTooltipContent />} />
+                    <Area type="monotone" dataKey="cumXp" stroke="hsl(var(--primary))" fill="url(#xpGradient)" strokeWidth={2} name="Cumulative XP" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : <EmptyState message="No XP data yet. Complete missions to track progression." />}
+            </ChartCard>
+          </div>
+        );
+      case 'missions-categories':
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ChartCard title="Daily Mission Completions" icon={<Target className="h-5 w-5" />}>
+              {missionCompletionTrend.some((d: any) => d.completed > 0) ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={missionCompletionTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.3} />
+                    <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <Tooltip content={<CustomTooltipContent />} />
+                    <Bar dataKey="completed" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Completed" opacity={0.8} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : <EmptyState message="No completed missions yet. Start completing missions to see trends." />}
+            </ChartCard>
+            <ChartCard title="Category Balance" icon={<BarChart3 className="h-5 w-5" />}>
+              {radarData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
+                    <PolarGrid stroke="hsl(var(--muted))" opacity={0.3} />
+                    <PolarAngleAxis dataKey="category" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} />
+                    <Radar name="Completion %" dataKey="completion" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} strokeWidth={2} />
+                  </RadarChart>
+                </ResponsiveContainer>
+              ) : <EmptyState message="No category data yet. Create missions across different categories." />}
+            </ChartCard>
+          </div>
+        );
+      case 'difficulty-breakdown':
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ChartCard title="Difficulty Distribution" icon={<Zap className="h-5 w-5" />}>
+              {difficultyData.length > 0 ? (
+                <div className="flex items-center gap-6">
+                  <ResponsiveContainer width="50%" height={220}>
+                    <PieChart>
+                      <Pie
+                        data={difficultyData}
+                        dataKey="total"
+                        nameKey="rank"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        innerRadius={40}
+                        strokeWidth={2}
+                        stroke="hsl(var(--background))"
+                      >
+                        {difficultyData.map((entry, i) => (
+                          <Cell key={i} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<CustomTooltipContent />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="flex-1 space-y-3">
+                    {difficultyData.map(d => (
+                      <div key={d.rank} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: d.fill }} />
+                          <span className="text-sm font-medium">Rank {d.rank}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-sm text-muted-foreground">{d.completed}/{d.total}</span>
+                          <span className="text-xs text-primary ml-2">({d.completionRate}%)</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : <EmptyState message="No mission data yet." />}
+            </ChartCard>
+            <ChartCard title="Category Breakdown" icon={<Calendar className="h-5 w-5" />}>
+              {categoryData.length > 0 ? (
+                <div className="space-y-4">
+                  {categoryData.map(cat => (
+                    <div key={cat.name} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.fill }} />
+                          <span className="font-medium">{cat.name}</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-muted-foreground">
+                          <span>{cat.completed}/{cat.total} missions</span>
+                          <span className="text-primary font-medium">{cat.completionRate}%</span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-muted/30 h-1.5 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${cat.completionRate}%`, backgroundColor: cat.fill }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : <EmptyState message="No category data yet." />}
+            </ChartCard>
+          </div>
+        );
+      case 'completion-rate':
+        return (
+          <div className="flex items-center justify-center py-6">
+            <div className="relative w-40 h-40">
+              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                <circle cx="50" cy="50" r="42" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" opacity="0.2" />
+                <circle
+                  cx="50" cy="50" r="42" fill="none"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth="8"
+                  strokeLinecap="round"
+                  strokeDasharray={`${summary.completionRate * 2.64} 264`}
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-4xl font-mono font-bold text-primary">{summary.completionRate}%</span>
+                <span className="text-xs text-muted-foreground mt-1">overall</span>
+              </div>
+            </div>
+            <div className="ml-10 space-y-4">
+              <StatRow label="Total Missions" value={summary.totalMissions} />
+              <StatRow label="Completed" value={summary.completedMissions} />
+              <StatRow label="In Progress" value={summary.totalMissions - summary.completedMissions} />
+              <StatRow label="Total XP Earned" value={summary.totalXpEarned.toLocaleString()} />
+            </div>
+          </div>
+        );
+      case 'activity-heatmap':
+        if (!streakHistory) return null;
+        return <ActivityHeatmap streakHistory={streakHistory} />;
+      case 'weekly-patterns':
+        if (!weeklyPatterns) return null;
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ChartCard title="Weekly Productivity" icon={<BarChart3 className="h-5 w-5" />}>
+              {weeklyPatterns.some((d: any) => d.missions > 0) ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={weeklyPatterns}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.3} />
+                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <Tooltip content={<GenericTooltip />} />
+                    <Bar dataKey="missions" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Missions" opacity={0.8} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : <EmptyState message="No weekly pattern data yet." />}
+            </ChartCard>
+            <ChartCard title="Weekly XP Distribution" icon={<Award className="h-5 w-5" />}>
+              {weeklyPatterns.some((d: any) => d.xp > 0) ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <RadarChart data={weeklyPatterns} cx="50%" cy="50%" outerRadius="70%">
+                    <PolarGrid stroke="hsl(var(--muted))" opacity={0.3} />
+                    <PolarAngleAxis dataKey="day" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <PolarRadiusAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} />
+                    <Radar name="XP" dataKey="xp" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} strokeWidth={2} />
+                  </RadarChart>
+                </ResponsiveContainer>
+              ) : <EmptyState message="No XP data yet." />}
+            </ChartCard>
+          </div>
+        );
+      case 'token-wellness':
+        if (!tokenEfficiency) return null;
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ChartCard title="Token Efficiency" icon={<Zap className="h-5 w-5" />}>
+              <div className="flex items-center justify-center py-6">
+                <div className="relative w-40 h-40">
+                  <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" opacity="0.2" />
+                    <circle
+                      cx="50" cy="50" r="42" fill="none"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth="8"
+                      strokeLinecap="round"
+                      strokeDasharray={`${tokenEfficiency.efficiency * 2.64} 264`}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-4xl font-mono font-bold text-primary">{tokenEfficiency.efficiency}%</span>
+                    <span className="text-xs text-muted-foreground mt-1">efficiency</span>
+                  </div>
+                </div>
+                <div className="ml-10 space-y-4">
+                  <StatRow label="Total Energy" value={tokenEfficiency.totalEnergyCost.toLocaleString()} />
+                  <StatRow label="Completed Energy" value={tokenEfficiency.completedEnergyCost.toLocaleString()} />
+                  <StatRow label="Efficiency" value={`${tokenEfficiency.efficiency}%`} />
+                </div>
+              </div>
+            </ChartCard>
+            {sleepWellnessCorrelation && sleepWellnessCorrelation.length > 0 ? (
+              <ChartCard title="Sleep & Wellness" icon={<Heart className="h-5 w-5" />}>
+                <ResponsiveContainer width="100%" height={250}>
+                  <ScatterChart>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.3} />
+                    <XAxis dataKey="sleepHours" name="Sleep Hours" type="number" domain={['auto', 'auto']} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} label={{ value: "Sleep Hours", position: "insideBottom", offset: -5, style: { fontSize: 11, fill: "hsl(var(--muted-foreground))" } }} />
+                    <YAxis dataKey="mood" name="Mood" type="number" domain={[0, 10]} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} label={{ value: "Mood", angle: -90, position: "insideLeft", style: { fontSize: 11, fill: "hsl(var(--muted-foreground))" } }} />
+                    <Tooltip
+                      content={({ active, payload }: any) => {
+                        if (!active || !payload?.length) return null;
+                        const d = payload[0].payload;
+                        return (
+                          <div className="bg-card/95 backdrop-blur border border-primary/30 rounded-lg px-3 py-2 shadow-lg">
+                            <p className="text-xs text-muted-foreground mb-1">{d.date}</p>
+                            <p className="text-sm text-primary">Sleep: {d.sleepHours}h</p>
+                            <p className="text-sm text-primary">Mood: {d.mood}/10</p>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Scatter data={sleepWellnessCorrelation} fill="hsl(var(--primary))" fillOpacity={0.7} />
+                  </ScatterChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            ) : (
+              <ChartCard title="Sleep & Wellness" icon={<Heart className="h-5 w-5" />}>
+                <EmptyState message="No sleep & wellness data yet. Log your sleep and mood in daily check-ins." />
+              </ChartCard>
+            )}
+          </div>
+        );
+      case 'personal-records':
+        if (!personalRecords) return null;
+        return (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <RecordCard
+              icon={<Trophy className="h-6 w-6" />}
+              label="Best Day"
+              value={`${personalRecords.bestDayMissions} missions`}
+              sub={personalRecords.bestDayDate ? formatDate(personalRecords.bestDayDate) : "—"}
+            />
+            <RecordCard
+              icon={<Crown className="h-6 w-6" />}
+              label="Best XP Day"
+              value={`${personalRecords.bestDayXp.toLocaleString()} XP`}
+              sub="single day record"
+            />
+            <RecordCard
+              icon={<Flame className="h-6 w-6" />}
+              label="Longest Streak"
+              value={`${personalRecords.longestStreak} days`}
+              sub="consecutive active"
+            />
+            <RecordCard
+              icon={<Shield className="h-6 w-6" />}
+              label="Highest Rank"
+              value={personalRecords.highestDifficulty ? `Rank ${personalRecords.highestDifficulty}` : "—"}
+              sub="completed"
+            />
+            <RecordCard
+              icon={<Calendar className="h-6 w-6" />}
+              label="Active Days"
+              value={`${personalRecords.totalDaysActive}`}
+              sub="days with completions"
+            />
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="mx-auto max-w-6xl py-8 px-4">
       <div className="mb-6">
@@ -164,305 +530,26 @@ export default function AnalyticsPage() {
         <SummaryCard icon={<Brain className="h-5 w-5" />} label="Avg Mood" value={summary.avgMoodScore} sub={`${summary.daysTracked} days tracked`} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <ChartCard title="Mood Trends" icon={<Activity className="h-5 w-5" />}>
-          {moodTrends.length > 0 ? (
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={moodTrends}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.3} />
-                <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis domain={[0, 10]} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <Tooltip content={<CustomTooltipContent />} />
-                <Line type="monotone" dataKey="mental" stroke="#6366f1" strokeWidth={2} dot={false} name="Mental" />
-                <Line type="monotone" dataKey="physical" stroke="#22c55e" strokeWidth={2} dot={false} name="Physical" />
-                <Line type="monotone" dataKey="emotional" stroke="#f97316" strokeWidth={2} dot={false} name="Emotional" />
-                <Line type="monotone" dataKey="average" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={false} name="Average" strokeDasharray="5 5" />
-                <Legend wrapperStyle={{ fontSize: 12, color: "hsl(var(--muted-foreground))" }} />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : <EmptyState message="No mood data yet. Complete daily check-ins to see trends." />}
-        </ChartCard>
-
-        <ChartCard title="XP Progression" icon={<TrendingUp className="h-5 w-5" />}>
-          {cumulativeXp.some((d: any) => d.cumXp > 0) ? (
-            <ResponsiveContainer width="100%" height={250}>
-              <AreaChart data={cumulativeXp}>
-                <defs>
-                  <linearGradient id="xpGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.3} />
-                <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <Tooltip content={<CustomTooltipContent />} />
-                <Area type="monotone" dataKey="cumXp" stroke="hsl(var(--primary))" fill="url(#xpGradient)" strokeWidth={2} name="Cumulative XP" />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : <EmptyState message="No XP data yet. Complete missions to track progression." />}
-        </ChartCard>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <ChartCard title="Daily Mission Completions" icon={<Target className="h-5 w-5" />}>
-          {missionCompletionTrend.some((d: any) => d.completed > 0) ? (
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={missionCompletionTrend}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.3} />
-                <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <Tooltip content={<CustomTooltipContent />} />
-                <Bar dataKey="completed" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Completed" opacity={0.8} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : <EmptyState message="No completed missions yet. Start completing missions to see trends." />}
-        </ChartCard>
-
-        <ChartCard title="Category Balance" icon={<BarChart3 className="h-5 w-5" />}>
-          {radarData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={250}>
-              <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
-                <PolarGrid stroke="hsl(var(--muted))" opacity={0.3} />
-                <PolarAngleAxis dataKey="category" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} />
-                <Radar name="Completion %" dataKey="completion" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} strokeWidth={2} />
-              </RadarChart>
-            </ResponsiveContainer>
-          ) : <EmptyState message="No category data yet. Create missions across different categories." />}
-        </ChartCard>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <ChartCard title="Difficulty Distribution" icon={<Zap className="h-5 w-5" />}>
-          {difficultyData.length > 0 ? (
-            <div className="flex items-center gap-6">
-              <ResponsiveContainer width="50%" height={220}>
-                <PieChart>
-                  <Pie
-                    data={difficultyData}
-                    dataKey="total"
-                    nameKey="rank"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    innerRadius={40}
-                    strokeWidth={2}
-                    stroke="hsl(var(--background))"
-                  >
-                    {difficultyData.map((entry, i) => (
-                      <Cell key={i} fill={entry.fill} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CustomTooltipContent />} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="flex-1 space-y-3">
-                {difficultyData.map(d => (
-                  <div key={d.rank} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: d.fill }} />
-                      <span className="text-sm font-medium">Rank {d.rank}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-sm text-muted-foreground">{d.completed}/{d.total}</span>
-                      <span className="text-xs text-primary ml-2">({d.completionRate}%)</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : <EmptyState message="No mission data yet." />}
-        </ChartCard>
-
-        <ChartCard title="Category Breakdown" icon={<Calendar className="h-5 w-5" />}>
-          {categoryData.length > 0 ? (
-            <div className="space-y-4">
-              {categoryData.map(cat => (
-                <div key={cat.name} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.fill }} />
-                      <span className="font-medium">{cat.name}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-muted-foreground">
-                      <span>{cat.completed}/{cat.total} missions</span>
-                      <span className="text-primary font-medium">{cat.completionRate}%</span>
-                    </div>
-                  </div>
-                  <div className="w-full bg-muted/30 h-1.5 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{ width: `${cat.completionRate}%`, backgroundColor: cat.fill }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : <EmptyState message="No category data yet." />}
-        </ChartCard>
-      </div>
-
-      <ChartCard title="Completion Rate" icon={<Heart className="h-5 w-5" />}>
-        <div className="flex items-center justify-center py-6">
-          <div className="relative w-40 h-40">
-            <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-              <circle cx="50" cy="50" r="42" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" opacity="0.2" />
-              <circle
-                cx="50" cy="50" r="42" fill="none"
-                stroke="hsl(var(--primary))"
-                strokeWidth="8"
-                strokeLinecap="round"
-                strokeDasharray={`${summary.completionRate * 2.64} 264`}
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-4xl font-mono font-bold text-primary">{summary.completionRate}%</span>
-              <span className="text-xs text-muted-foreground mt-1">overall</span>
-            </div>
-          </div>
-          <div className="ml-10 space-y-4">
-            <StatRow label="Total Missions" value={summary.totalMissions} />
-            <StatRow label="Completed" value={summary.completedMissions} />
-            <StatRow label="In Progress" value={summary.totalMissions - summary.completedMissions} />
-            <StatRow label="Total XP Earned" value={summary.totalXpEarned.toLocaleString()} />
-          </div>
+      <DndProvider backend={HTML5Backend}>
+        <div className="space-y-6">
+          {analyticsWidgets.map((widget, index) => {
+            const content = renderWidgetContent(widget.id);
+            if (!content) return null;
+            return (
+              <CollapsibleWidget
+                key={widget.id}
+                id={widget.id}
+                index={index}
+                title={widget.title}
+                icon={widget.icon}
+                moveWidget={moveAnalyticsWidget}
+              >
+                {content}
+              </CollapsibleWidget>
+            );
+          })}
         </div>
-      </ChartCard>
-
-      {streakHistory && <ActivityHeatmap streakHistory={streakHistory} />}
-
-      {weeklyPatterns && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 mt-6">
-          <ChartCard title="Weekly Productivity" icon={<BarChart3 className="h-5 w-5" />}>
-            {weeklyPatterns.some((d: any) => d.missions > 0) ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={weeklyPatterns}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.3} />
-                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                  <Tooltip content={<GenericTooltip />} />
-                  <Bar dataKey="missions" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Missions" opacity={0.8} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : <EmptyState message="No weekly pattern data yet." />}
-          </ChartCard>
-
-          <ChartCard title="Weekly XP Distribution" icon={<Award className="h-5 w-5" />}>
-            {weeklyPatterns.some((d: any) => d.xp > 0) ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <RadarChart data={weeklyPatterns} cx="50%" cy="50%" outerRadius="70%">
-                  <PolarGrid stroke="hsl(var(--muted))" opacity={0.3} />
-                  <PolarAngleAxis dataKey="day" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                  <PolarRadiusAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} />
-                  <Radar name="XP" dataKey="xp" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} strokeWidth={2} />
-                </RadarChart>
-              </ResponsiveContainer>
-            ) : <EmptyState message="No XP data yet." />}
-          </ChartCard>
-        </div>
-      )}
-
-      {tokenEfficiency && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 mt-6">
-          <ChartCard title="Token Efficiency" icon={<Zap className="h-5 w-5" />}>
-            <div className="flex items-center justify-center py-6">
-              <div className="relative w-40 h-40">
-                <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                  <circle cx="50" cy="50" r="42" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" opacity="0.2" />
-                  <circle
-                    cx="50" cy="50" r="42" fill="none"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth="8"
-                    strokeLinecap="round"
-                    strokeDasharray={`${tokenEfficiency.efficiency * 2.64} 264`}
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-4xl font-mono font-bold text-primary">{tokenEfficiency.efficiency}%</span>
-                  <span className="text-xs text-muted-foreground mt-1">efficiency</span>
-                </div>
-              </div>
-              <div className="ml-10 space-y-4">
-                <StatRow label="Total Energy" value={tokenEfficiency.totalEnergyCost.toLocaleString()} />
-                <StatRow label="Completed Energy" value={tokenEfficiency.completedEnergyCost.toLocaleString()} />
-                <StatRow label="Efficiency" value={`${tokenEfficiency.efficiency}%`} />
-              </div>
-            </div>
-          </ChartCard>
-
-          {sleepWellnessCorrelation && sleepWellnessCorrelation.length > 0 ? (
-            <ChartCard title="Sleep & Wellness" icon={<Heart className="h-5 w-5" />}>
-              <ResponsiveContainer width="100%" height={250}>
-                <ScatterChart>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.3} />
-                  <XAxis dataKey="sleepHours" name="Sleep Hours" type="number" domain={['auto', 'auto']} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} label={{ value: "Sleep Hours", position: "insideBottom", offset: -5, style: { fontSize: 11, fill: "hsl(var(--muted-foreground))" } }} />
-                  <YAxis dataKey="mood" name="Mood" type="number" domain={[0, 10]} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} label={{ value: "Mood", angle: -90, position: "insideLeft", style: { fontSize: 11, fill: "hsl(var(--muted-foreground))" } }} />
-                  <Tooltip
-                    content={({ active, payload }: any) => {
-                      if (!active || !payload?.length) return null;
-                      const d = payload[0].payload;
-                      return (
-                        <div className="bg-card/95 backdrop-blur border border-primary/30 rounded-lg px-3 py-2 shadow-lg">
-                          <p className="text-xs text-muted-foreground mb-1">{d.date}</p>
-                          <p className="text-sm text-primary">Sleep: {d.sleepHours}h</p>
-                          <p className="text-sm text-primary">Mood: {d.mood}/10</p>
-                        </div>
-                      );
-                    }}
-                  />
-                  <Scatter data={sleepWellnessCorrelation} fill="hsl(var(--primary))" fillOpacity={0.7} />
-                </ScatterChart>
-              </ResponsiveContainer>
-            </ChartCard>
-          ) : (
-            <ChartCard title="Sleep & Wellness" icon={<Heart className="h-5 w-5" />}>
-              <EmptyState message="No sleep & wellness data yet. Log your sleep and mood in daily check-ins." />
-            </ChartCard>
-          )}
-        </div>
-      )}
-
-      {personalRecords && (
-        <div className="mb-6 mt-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Trophy className="h-5 w-5 text-primary" />
-            <h2 className="font-orbitron text-lg text-primary">Personal Records</h2>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            <RecordCard
-              icon={<Trophy className="h-6 w-6" />}
-              label="Best Day"
-              value={`${personalRecords.bestDayMissions} missions`}
-              sub={personalRecords.bestDayDate ? formatDate(personalRecords.bestDayDate) : "—"}
-            />
-            <RecordCard
-              icon={<Crown className="h-6 w-6" />}
-              label="Best XP Day"
-              value={`${personalRecords.bestDayXp.toLocaleString()} XP`}
-              sub="single day record"
-            />
-            <RecordCard
-              icon={<Flame className="h-6 w-6" />}
-              label="Longest Streak"
-              value={`${personalRecords.longestStreak} days`}
-              sub="consecutive active"
-            />
-            <RecordCard
-              icon={<Shield className="h-6 w-6" />}
-              label="Highest Rank"
-              value={personalRecords.highestDifficulty ? `Rank ${personalRecords.highestDifficulty}` : "—"}
-              sub="completed"
-            />
-            <RecordCard
-              icon={<Calendar className="h-6 w-6" />}
-              label="Active Days"
-              value={`${personalRecords.totalDaysActive}`}
-              sub="days with completions"
-            />
-          </div>
-        </div>
-      )}
+      </DndProvider>
     </div>
   );
 }

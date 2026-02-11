@@ -1289,16 +1289,43 @@ export default function DashboardPage() {
     }
   };
   
+  const { data: widgetLayouts } = useQuery<Record<string, string[]>>({
+    queryKey: ['/api/widget-layouts'],
+    enabled: !!user,
+  });
+
+  useEffect(() => {
+    if (widgetLayouts?.dashboard) {
+      const savedOrder = widgetLayouts.dashboard;
+      setWidgets(prev => {
+        const ordered: WidgetMeta[] = [];
+        for (const id of savedOrder) {
+          const widget = prev.find(w => w.id === id);
+          if (widget) ordered.push(widget);
+        }
+        for (const widget of prev) {
+          if (!ordered.find(w => w.id === widget.id)) ordered.push(widget);
+        }
+        return ordered;
+      });
+    }
+  }, [widgetLayouts]);
+
   // Callback for widget drag and drop reordering
   const moveWidget = useCallback((dragIndex: number, hoverIndex: number) => {
-    setWidgets((prevWidgets) => 
-      update(prevWidgets, {
+    setWidgets((prevWidgets) => {
+      const newWidgets = update(prevWidgets, {
         $splice: [
           [dragIndex, 1],
           [hoverIndex, 0, prevWidgets[dragIndex]],
         ],
-      })
-    );
+      });
+      apiRequest('/api/widget-layouts', {
+        method: 'PUT',
+        body: JSON.stringify({ page: 'dashboard', order: newWidgets.map(w => w.id) }),
+      });
+      return newWidgets;
+    });
   }, []);
 
   return (
