@@ -3,6 +3,7 @@ import { UserStats, Quest, AIMessage, CalendarEvent, MissionPage, ChatSession, K
 import { toast } from "@/hooks/use-toast";
 import { missionCompleteToast, levelUpToast, streakToast } from "@/lib/gamified-toast";
 import { getRank } from "@/lib/ranks";
+import { useCelebration } from "@/lib/celebrationContext";
 import { useAuth } from "./authContext";
 import { apiRequest, queryClient } from "./queryClient";
 import { getLocalDateString } from "./utils";
@@ -323,6 +324,7 @@ const createSlug = (title: string): string => {
 
 export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const { user, isAuthenticated } = useAuth();
+  const { triggerCelebration } = useCelebration();
   const [stats, setStats] = useState<UserStats>(initialStats);
   const [quests, setQuests] = useState<Quest[]>(initialQuests);
   const [messages, setMessages] = useState<AIMessage[]>(initialMessages);
@@ -336,6 +338,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const [reflectionLog, setReflectionLog] = useState<ReflectionLogData>(initialReflectionLog);
   const [username, setUsername] = useState<string>("Alex Chen");
   const streakToastFired = useRef(false);
+  const levelUpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [aiCompanionName, setAICompanionNameState] = useState<string>("Lyfe");
   const [chatSessions, setChatSessions] = useState<ChatSession[]>(initialChatSessions);
   // Mapping from local chat session IDs to database conversation IDs
@@ -798,10 +801,10 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     });
     setQuests(updatedQuests);
     
-    // Show mission completed toast IMMEDIATELY (optimistic, before server response)
     if (completed) {
       const xpEstimate = Math.floor(currentQuest.experienceReward * ({ D: 1, C: 1.5, B: 2, A: 3, S: 5 }[currentQuest.difficulty || 'D'] || 1));
       missionCompleteToast(currentQuest.title, xpEstimate);
+      triggerCelebration({ type: "mission_complete", title: currentQuest.title, xp: xpEstimate });
     }
     
     // Persist to database (runs in background after toast)
@@ -851,10 +854,20 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
           },
         }));
         
-        // Show level up toast if applicable
         if (data.stats.experience.showLevelUp) {
           const rank = getRank(data.stats.experience.level);
           levelUpToast(data.stats.experience.level, rank.name);
+          if (levelUpTimerRef.current) clearTimeout(levelUpTimerRef.current);
+          levelUpTimerRef.current = setTimeout(() => {
+            triggerCelebration({
+              type: "level_up",
+              level: data.stats.experience.level,
+              rankName: rank.name,
+              rankColor: rank.color,
+              rankIcon: rank.icon,
+            });
+            levelUpTimerRef.current = null;
+          }, 1200);
         }
       }
       
