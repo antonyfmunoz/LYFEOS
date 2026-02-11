@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, Check, Loader2, Zap, X, ChevronDown, Pencil } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, Loader2, Zap, X, ChevronDown } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -333,43 +333,119 @@ function DotNavigation({ current, total }: { current: number; total: number }) {
   );
 }
 
-function LocationInput({ value, onChange }: { value: string; onChange: (val: string) => void }) {
-  const [isEditing, setIsEditing] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+function LocationDropdown({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [isEditing]);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
+        buttonRef.current && !buttonRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+        setSearch("");
+        setSuggestions([]);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-  if (!isEditing && value) {
-    return (
-      <div className="max-w-md mx-auto">
-        <button
-          onClick={() => setIsEditing(true)}
-          className="w-full flex items-center justify-between rounded-lg border border-primary/20 bg-card/30 backdrop-blur px-4 py-3 text-sm text-foreground hover:border-primary/50 transition-colors"
-        >
-          <span>{value}</span>
-          <Pencil className="h-3.5 w-3.5 text-primary" />
-        </button>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (isOpen && searchRef.current) {
+      searchRef.current.focus();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (search.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    setIsSearching(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(search)}&format=json&addressdetails=1&limit=8&featuretype=city`,
+          { headers: { "Accept-Language": "en" } }
+        );
+        if (!res.ok) throw new Error("fetch failed");
+        const data = await res.json();
+        const locations = data
+          .map((item: any) => {
+            const city = item.address?.city || item.address?.town || item.address?.village || item.address?.municipality || item.name;
+            const state = item.address?.state;
+            const country = item.address?.country;
+            const parts = [city, state, country].filter(Boolean);
+            return parts.join(", ");
+          })
+          .filter((loc: string, i: number, arr: string[]) => arr.indexOf(loc) === i);
+        setSuggestions(locations);
+      } catch {
+        setSuggestions([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 350);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [search]);
 
   return (
-    <div className="max-w-md mx-auto">
-      <input
-        ref={inputRef}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={() => { if (value.trim()) setIsEditing(false); }}
-        onKeyDown={(e) => { if (e.key === "Enter" && value.trim()) setIsEditing(false); }}
-        placeholder="Enter your city, state, country..."
-        autoComplete="off"
-        className="w-full rounded-lg border border-primary/20 bg-card/30 backdrop-blur px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground hover:border-primary/50 focus:border-primary/50 focus:outline-none transition-colors"
-      />
+    <div className="relative max-w-md mx-auto">
+      <button
+        ref={buttonRef}
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between rounded-lg border border-primary/20 bg-card/30 backdrop-blur px-4 py-3 text-sm text-foreground hover:border-primary/50 transition-colors"
+      >
+        <span>{value || "Select location..."}</span>
+        <ChevronDown className={`h-4 w-4 text-primary transition-transform ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+      {isOpen && (
+        <div
+          ref={dropdownRef}
+          className="absolute z-50 w-full mt-1 rounded-xl border border-primary/30 bg-card/95 backdrop-blur shadow-[0_0_20px_var(--primary-bg-subtle)] overflow-hidden"
+        >
+          <div className="p-2 border-b border-primary/10">
+            <input
+              ref={searchRef}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search city..."
+              className="w-full bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground px-2 py-1"
+            />
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {isSearching && (
+              <p className="text-xs text-muted-foreground text-center py-3">Searching...</p>
+            )}
+            {!isSearching && suggestions.length > 0 && suggestions.map((loc) => (
+              <button
+                key={loc}
+                onClick={() => { onChange(loc); setIsOpen(false); setSearch(""); setSuggestions([]); }}
+                className={`w-full text-left px-4 py-2 text-sm hover:bg-primary/20 transition-colors ${
+                  loc === value ? "bg-primary/10 text-primary" : "text-foreground"
+                }`}
+              >
+                {loc}
+              </button>
+            ))}
+            {!isSearching && search.length >= 2 && suggestions.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-3">No matching locations</p>
+            )}
+            {!isSearching && search.length < 2 && (
+              <p className="text-xs text-muted-foreground text-center py-3">Type at least 2 characters to search</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1221,10 +1297,10 @@ export default function OnboardingPage() {
             <h2 className="text-2xl font-orbitron font-bold text-center">Confirm your location</h2>
             <p className="text-sm text-muted-foreground text-center">
               {location
-                ? <>We detected your location. Tap the pencil to edit if needed:</>
-                : "Enter your city below:"}
+                ? <>Auto-detected as <span className="text-primary font-medium">{location}</span>. Click below to change if needed:</>
+                : "Click below to search and select your city:"}
             </p>
-            <LocationInput value={location} onChange={setLocation} />
+            <LocationDropdown value={location} onChange={setLocation} />
           </div>
         );
       case 2:
