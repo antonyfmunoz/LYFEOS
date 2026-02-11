@@ -15,6 +15,13 @@
       "when": 1770806339672,
       "tag": "0001_fixed_jimmy_woo",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1770807484627,
+      "tag": "0002_tranquil_albert_cleary",
+      "breakpoints": true
     }
   ]
 }

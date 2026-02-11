@@ -319,6 +319,7 @@ export const quests = pgTable("quests", {
   repeatDays: text("repeat_days").array(), // for weekly: ["mon","tue","wed","thu","fri","sat","sun"]
   repeatEndDate: text("repeat_end_date"), // format: "YYYY-MM-DD", null means forever
   parentRitualId: integer("parent_ritual_id"), // links generated instances back to the original ritual
+  visionGoalId: integer("vision_goal_id").references(() => visionGoals.id),
   sortOrder: integer("sort_order").default(0),
   deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -563,6 +564,7 @@ export const insertQuestSchema = createInsertSchema(quests).pick({
   repeatDays: true,
   repeatEndDate: true,
   parentRitualId: true,
+  visionGoalId: true,
   createdAt: true,
   sortOrder: true,
   deletedAt: true,
