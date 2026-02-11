@@ -10,13 +10,13 @@ import { getLocalDateString } from "./utils";
 
 interface User {
   id: number;
-  username: string;
+  username: string | null;
 }
 
 interface AuthResponse {
   user: {
     id: number;
-    username: string;
+    username: string | null;
   };
   isNewUser?: boolean;
   primaryColor?: string;
@@ -29,7 +29,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (identifier: string, password: string) => Promise<void>;
-  register: (username: string, password: string, extraData?: { firstName?: string; lastName?: string; email?: string; displayName?: string; avatarColor?: string }) => Promise<void>;
+  register: (email: string, password: string, extraData?: { avatarColor?: string }) => Promise<void>;
   logout: () => void;
   loginWithGoogle: () => Promise<void>;
   handleOAuthRedirect: () => Promise<void>;
@@ -230,7 +230,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.prefetchQuery({ queryKey: ["/api/account"] });
 
       // Store username for the transition page toast
-      sessionStorage.setItem("login_success_username", data.user.username);
+      sessionStorage.setItem("login_success_username", data.user.username || "");
       sessionStorage.setItem("login_success_new_user", data.isNewUser ? "true" : "false");
       
       // Navigate to transition page — toast shows there, then auto-redirects
@@ -252,16 +252,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (username: string, password: string, extraData?: { firstName?: string; lastName?: string; email?: string; displayName?: string; avatarColor?: string }) => {
+  const register = async (email: string, password: string, extraData?: { avatarColor?: string }) => {
     try {
       setIsLoading(true);
-      console.log("Attempting to register with:", username);
+      console.log("Attempting to register with email:", email);
       
-      const trimmedUsername = username.trim();
+      const trimmedEmail = email.trim();
       const trimmedPassword = password.trim();
       
-      if (!trimmedUsername || !trimmedPassword) {
-        const error = new Error("Username and password are required");
+      if (!trimmedEmail || !trimmedPassword) {
+        const error = new Error("Email and password are required");
         toast({
           title: "Registration Error",
           description: error.message,
@@ -276,7 +276,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ 
-          username: trimmedUsername, 
+          email: trimmedEmail, 
           password: trimmedPassword,
           termsAccepted: true,
           ...(extraData || {}),
@@ -308,7 +308,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       if (!response.ok) {
-        const errorMessage = data?.error || "Username may already be taken";
+        const errorMessage = data?.error || "Registration failed. Please try again.";
         const error = new Error(errorMessage);
         toast({
           title: "Registration Failed",

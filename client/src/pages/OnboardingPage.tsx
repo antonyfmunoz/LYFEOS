@@ -715,6 +715,11 @@ export default function OnboardingPage() {
       } catch {}
     })();
   }, []);
+  const [onboardingUsername, setOnboardingUsername] = useState(saved.onboardingUsername || "");
+  const [onboardingFirstName, setOnboardingFirstName] = useState(saved.onboardingFirstName || "");
+  const [onboardingLastName, setOnboardingLastName] = useState(saved.onboardingLastName || "");
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [checkingUsername, setCheckingUsername] = useState(false);
   const [lifeStage, setLifeStage] = useState(saved.lifeStage || "");
   
   const [archetypeAnswers, setArchetypeAnswers] = useState<Record<number, number | Archetype>>(saved.archetypeAnswers || {});
@@ -784,6 +789,7 @@ export default function OnboardingPage() {
   
   useEffect(() => {
     const data = {
+      onboardingUsername, onboardingFirstName, onboardingLastName,
       birthMonth, birthDay, birthYear, location, timezone, lifeStage, archetypeAnswers,
       coreValues, desiredEmotion, coreBelief, limitingBelief, empoweringBelief,
       strengths, weaknesses, selfStandards, traitToReprogram, desiredTrait,
@@ -799,6 +805,7 @@ export default function OnboardingPage() {
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   }, [
+    onboardingUsername, onboardingFirstName, onboardingLastName,
     birthMonth, birthDay, birthYear, location, timezone, lifeStage, archetypeAnswers,
     coreValues, desiredEmotion, coreBelief, limitingBelief, empoweringBelief,
     strengths, weaknesses, selfStandards, traitToReprogram, desiredTrait,
@@ -854,6 +861,23 @@ export default function OnboardingPage() {
     try {
       const mission = MISSIONS.find(m => m.id === missionId);
       if (!mission) return;
+      
+      if (missionId === 0 && onboardingUsername.trim()) {
+        try {
+          await fetch("/api/auth/set-username", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+              username: onboardingUsername.trim(),
+              firstName: onboardingFirstName.trim(),
+              lastName: onboardingLastName.trim(),
+            }),
+          });
+        } catch (err) {
+          console.error("Failed to set username:", err);
+        }
+      }
       
       const now = new Date();
       const localDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -919,7 +943,7 @@ export default function OnboardingPage() {
   
   function getMaxSteps(missionId: number) {
     switch (missionId) {
-      case 0: return 3;
+      case 0: return 5;
       case 1: return ARCHETYPE_QUESTIONS.length;
       case 2: return 20;
       case 3: return 6;
@@ -933,9 +957,11 @@ export default function OnboardingPage() {
   
   const canProceed = () => {
     if (currentMission === 0) {
-      if (currentStep === 0) return birthMonth > 0 && birthDay > 0 && birthYear > 0;
-      if (currentStep === 1) return location.trim() !== "";
-      if (currentStep === 2) return timezone !== "";
+      if (currentStep === 0) return onboardingUsername.trim().length >= 3 && usernameAvailable === true;
+      if (currentStep === 1) return onboardingFirstName.trim() !== "" && onboardingLastName.trim() !== "";
+      if (currentStep === 2) return birthMonth > 0 && birthDay > 0 && birthYear > 0;
+      if (currentStep === 3) return location.trim() !== "";
+      if (currentStep === 4) return timezone !== "";
     }
     if (currentMission === 1) {
       return archetypeAnswers[ARCHETYPE_QUESTIONS[currentStep]?.id] !== undefined;
@@ -1116,7 +1142,7 @@ export default function OnboardingPage() {
   const getMissionProfileData = (missionId: number): Record<string, any> => {
     switch (missionId) {
       case 0:
-        return { ageRange: birthYear && birthMonth && birthDay ? ageToRange(calculateAge(birthYear, birthMonth, birthDay)) : "", birthday: birthYear && birthMonth && birthDay ? `${birthYear}-${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}` : "", location, timezone };
+        return { username: onboardingUsername.trim(), firstName: onboardingFirstName.trim(), lastName: onboardingLastName.trim(), ageRange: birthYear && birthMonth && birthDay ? ageToRange(calculateAge(birthYear, birthMonth, birthDay)) : "", birthday: birthYear && birthMonth && birthDay ? `${birthYear}-${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}` : "", location, timezone };
       case 1: {
         const archetypeResults = getArchetypeResults();
         return {
@@ -1243,9 +1269,82 @@ export default function OnboardingPage() {
     }
   };
   
+  const checkUsernameAvailability = async (name: string) => {
+    if (name.trim().length < 3) {
+      setUsernameAvailable(null);
+      return;
+    }
+    setCheckingUsername(true);
+    try {
+      const res = await fetch(`/api/auth/check-username?username=${encodeURIComponent(name.trim())}`, { credentials: "include" });
+      const data = await res.json();
+      setUsernameAvailable(data.available === true);
+    } catch {
+      setUsernameAvailable(null);
+    } finally {
+      setCheckingUsername(false);
+    }
+  };
+
   const renderMission0 = () => {
     switch (currentStep) {
-      case 0: {
+      case 0:
+        return (
+          <div className="space-y-5">
+            <h2 className="text-2xl font-orbitron font-bold text-center">Choose your username</h2>
+            <p className="text-sm text-muted-foreground text-center">This is how you'll be known in LYFEOS</p>
+            <div className="max-w-sm mx-auto space-y-2">
+              <Input
+                value={onboardingUsername}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^a-zA-Z0-9_-]/g, '');
+                  setOnboardingUsername(val);
+                  setUsernameAvailable(null);
+                }}
+                onBlur={() => checkUsernameAvailability(onboardingUsername)}
+                placeholder="e.g., phantom_coder"
+                autoComplete="off"
+                className="bg-card/30 border-primary/20 text-center text-lg"
+              />
+              {onboardingUsername.trim().length > 0 && onboardingUsername.trim().length < 3 && (
+                <p className="text-xs text-muted-foreground text-center">Must be at least 3 characters</p>
+              )}
+              {checkingUsername && (
+                <p className="text-xs text-muted-foreground text-center">Checking availability...</p>
+              )}
+              {usernameAvailable === true && onboardingUsername.trim().length >= 3 && (
+                <p className="text-xs text-green-400 text-center">Username is available!</p>
+              )}
+              {usernameAvailable === false && (
+                <p className="text-xs text-red-400 text-center">Username is already taken</p>
+              )}
+            </div>
+          </div>
+        );
+      case 1:
+        return (
+          <div className="space-y-5">
+            <h2 className="text-2xl font-orbitron font-bold text-center">What's your name?</h2>
+            <p className="text-sm text-muted-foreground text-center">So we know what to call you</p>
+            <div className="max-w-sm mx-auto grid grid-cols-2 gap-3">
+              <Input
+                value={onboardingFirstName}
+                onChange={(e) => setOnboardingFirstName(e.target.value)}
+                placeholder="First name"
+                autoComplete="off"
+                className="bg-card/30 border-primary/20"
+              />
+              <Input
+                value={onboardingLastName}
+                onChange={(e) => setOnboardingLastName(e.target.value)}
+                placeholder="Last name"
+                autoComplete="off"
+                className="bg-card/30 border-primary/20"
+              />
+            </div>
+          </div>
+        );
+      case 2: {
         const currentYear = new Date().getFullYear();
         const years = Array.from({ length: 100 }, (_, i) => currentYear - i);
         const daysInMonth = birthMonth && birthYear ? getDaysInMonth(birthMonth, birthYear) : 31;
@@ -1302,7 +1401,7 @@ export default function OnboardingPage() {
           </div>
         );
       }
-      case 1:
+      case 3:
         return (
           <div className="space-y-4">
             <h2 className="text-2xl font-orbitron font-bold text-center">Confirm your location</h2>
@@ -1314,7 +1413,7 @@ export default function OnboardingPage() {
             <LocationDropdown value={location} onChange={setLocation} />
           </div>
         );
-      case 2:
+      case 4:
         return (
           <div className="space-y-4">
             <h2 className="text-2xl font-orbitron font-bold text-center">Confirm your timezone</h2>

@@ -35,7 +35,7 @@ Preferred communication style: Simple, everyday language.
 - **Migrations**: Drizzle Kit for database migrations (`migrations/` directory)
 
 ### Authentication & Security
-- **Primary**: Username/password with bcrypt hashing and express-session
+- **Primary**: Email/password registration (username is optional at signup, collected during Mission 0 onboarding) with bcrypt hashing and express-session
 - **OAuth**: Firebase Authentication for Google/Apple/Facebook sign-in (optional)
 - **Session Storage**: Server-side sessions with secure HTTP-only cookies
 - **Email Verification**: SHA-256 hashed tokens with 24-hour expiry, sent via Resend

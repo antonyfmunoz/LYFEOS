@@ -272,46 +272,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // USER ROUTES
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
-      console.log("Register attempt:", { username: req.body.username });
+      console.log("Register attempt:", { email: req.body.email });
       
-      // Validate user data
       const userData = {
         ...req.body,
-        displayName: req.body.username,
         title: "COMMANDER"
       };
       
-      // Basic validation
-      if (!userData.username || !userData.password) {
-        console.log("Register failed: Missing username or password");
-        return res.status(400).json({ error: "Username and password are required" });
+      if (!userData.email || !userData.password) {
+        console.log("Register failed: Missing email or password");
+        return res.status(400).json({ error: "Email and password are required" });
       }
       
-      if (userData.email && !z.string().email().safeParse(userData.email).success) {
+      if (!z.string().email().safeParse(userData.email).success) {
         return res.status(400).json({ error: "Invalid email format" });
       }
 
-      const existingUser = await storage.getUserByUsername(userData.username);
-      
-      if (existingUser) {
-        console.log("Register failed: Username already exists");
-        return res.status(400).json({ error: "Username already exists" });
+      const existingEmail = await storage.getUserByEmail(userData.email);
+      if (existingEmail) {
+        console.log("Register failed: Email already exists");
+        return res.status(400).json({ error: "An account with this email already exists" });
+      }
+
+      if (userData.username) {
+        const existingUser = await storage.getUserByUsername(userData.username);
+        if (existingUser) {
+          console.log("Register failed: Username already exists");
+          return res.status(400).json({ error: "Username already exists" });
+        }
       }
       
-      // Hash password
       const saltRounds = 10;
       const hashedPassword = await bcrypt.hash(userData.password, saltRounds);
       
-      // Save user with hashed password
-      console.log("Creating new user:", userData.username);
+      console.log("Creating new user with email:", userData.email);
       const user = await storage.createUser({
-        username: userData.username,
+        username: userData.username || null,
         password: hashedPassword,
-        displayName: userData.displayName,
+        displayName: userData.displayName || null,
         firstName: userData.firstName || null,
         lastName: userData.lastName || null,
         title: userData.title,
-        email: userData.email || null,
+        email: userData.email,
         authProvider: userData.authProvider || 'email',
         termsAccepted: userData.termsAccepted || false
       });
@@ -381,16 +383,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       req.session.userId = user.id;
-      req.session.username = user.username;
+      req.session.username = user.username || user.email || String(user.id);
       
-      console.log("Registration successful, session created for user:", user.username);
+      console.log("Registration successful, session created for user:", user.id);
       
-      return res.status(201).json({ user: { id: user.id, username: user.username } });
+      return res.status(201).json({ user: { id: user.id, username: user.username, email: user.email } });
     } catch (error) {
       console.error("Registration error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
       }
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/auth/check-username", async (req: Request, res: Response) => {
+    try {
+      const username = req.query.username as string;
+      if (!username || username.trim().length < 3) {
+        return res.status(400).json({ available: false, error: "Username must be at least 3 characters" });
+      }
+      const existing = await storage.getUserByUsername(username.trim());
+      return res.json({ available: !existing });
+    } catch (error) {
+      console.error("Error checking username:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/auth/set-username", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { username, firstName, lastName } = req.body;
+
+      if (!username || username.trim().length < 3) {
+        return res.status(400).json({ error: "Username must be at least 3 characters" });
+      }
+
+      const existing = await storage.getUserByUsername(username.trim());
+      if (existing && existing.id !== userId) {
+        return res.status(400).json({ error: "Username already taken" });
+      }
+
+      const displayName = [firstName, lastName].filter(Boolean).join(" ") || username.trim();
+      const updatedUser = await storage.updateUser(userId, {
+        username: username.trim(),
+        displayName,
+        firstName: firstName || null,
+        lastName: lastName || null,
+      });
+
+      req.session.username = updatedUser.username || updatedUser.email || String(updatedUser.id);
+
+      const { password, ...userData } = updatedUser;
+      return res.json(userData);
+    } catch (error) {
+      console.error("Error setting username:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });
@@ -421,11 +469,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Invalid credentials" });
       }
       
-      console.log("Login successful for:", user.username);
+      console.log("Login successful for user ID:", user.id);
       
-      // Create session
       req.session.userId = user.id;
-      req.session.username = user.username;
+      req.session.username = user.username || user.email || String(user.id);
       
       // Process daily stats (streak, health)
       const { streakDays, isNewDay } = await storage.processLoginStreak(user.id);
@@ -640,11 +687,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Set session
       req.session.userId = user.id;
-      req.session.username = user.username;
+      req.session.username = user.username || user.email || String(user.id);
       
-      // Process daily stats (streak, health)
       const { streakDays, isNewDay } = await storage.processLoginStreak(user.id);
       if (isNewDay) {
         await storage.processDailyHealthUpdate(user.id);

@@ -23,12 +23,9 @@ export default function RegisterPage() {
   const { primaryColor, setPrimaryColor: setThemePrimaryColor } = useTheme();
   const [, navigate] = useLocation();
   
-  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
   const [error, setError] = useState("");
   const [selectedColor, setSelectedColor] = useState(() => localStorage.getItem('lyfeos-primary-color') || primaryColor || "#00e0ff");
   const [hasUserSelectedColor, setHasUserSelectedColor] = useState(false);
@@ -46,25 +43,9 @@ export default function RegisterPage() {
     setError("");
     setIsLoading(true);
     
-    const trimmedUsername = username.trim();
     const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
     const trimmedConfirmPassword = confirmPassword.trim();
-    const trimmedFirstName = firstName.trim();
-    const trimmedLastName = lastName.trim();
-    const trimmedDisplayName = [trimmedFirstName, trimmedLastName].filter(Boolean).join(" ");
-    
-    if (!trimmedUsername) {
-      setError("Username is required");
-      setIsLoading(false);
-      return;
-    }
-    
-    if (trimmedUsername.length < 3) {
-      setError("Username must be at least 3 characters");
-      setIsLoading(false);
-      return;
-    }
     
     if (!trimmedEmail) {
       setError("Email is required");
@@ -75,18 +56,6 @@ export default function RegisterPage() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(trimmedEmail)) {
       setError("Please enter a valid email address");
-      setIsLoading(false);
-      return;
-    }
-    
-    if (!trimmedFirstName) {
-      setError("First name is required");
-      setIsLoading(false);
-      return;
-    }
-    
-    if (!trimmedLastName) {
-      setError("Last name is required");
       setIsLoading(false);
       return;
     }
@@ -116,11 +85,7 @@ export default function RegisterPage() {
     }
     
     try {
-      console.log("Saving onboarding data to localStorage");
       localStorage.setItem("onboarding_data", JSON.stringify({
-        displayName: trimmedDisplayName || trimmedUsername,
-        firstName: trimmedFirstName,
-        lastName: trimmedLastName,
         email: trimmedEmail,
         avatarColor: selectedColor,
         step: 1
@@ -128,21 +93,14 @@ export default function RegisterPage() {
       
       localStorage.setItem("lyfeos-primary-color", selectedColor);
       
-      console.log("Registering user with username:", trimmedUsername);
-      await register(trimmedUsername, trimmedPassword, {
-        firstName: trimmedFirstName,
-        lastName: trimmedLastName,
-        email: trimmedEmail,
-        displayName: trimmedDisplayName || trimmedUsername,
+      await register(trimmedEmail, trimmedPassword, {
         avatarColor: selectedColor,
       });
-      
-      console.log("Registration successful, authContext handles redirect to onboarding");
     } catch (err: any) {
       console.error("Registration error:", err);
       
       if (!err?.message) {
-        setError("Registration failed. Please try again with a different username.");
+        setError("Registration failed. Please try again.");
       } else {
         setError(err.message);
       }
@@ -163,19 +121,6 @@ export default function RegisterPage() {
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label htmlFor="username" className="block text-sm text-white">USERNAME (DISPLAY NAME)</label>
-            <Input 
-              type="text" 
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-white focus-visible:ring-white/30"
-              placeholder="Choose a username"
-              required
-            />
-          </div>
-          
-          <div className="space-y-2">
             <label htmlFor="email" className="block text-sm text-white">EMAIL</label>
             <Input 
               type="email" 
@@ -186,33 +131,6 @@ export default function RegisterPage() {
               placeholder="Enter your email"
               required
             />
-          </div>
-          
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <label htmlFor="firstName" className="block text-sm text-white">FIRST NAME</label>
-              <Input 
-                type="text" 
-                id="firstName"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-white focus-visible:ring-white/30"
-                placeholder="First name"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="lastName" className="block text-sm text-white">LAST NAME</label>
-              <Input 
-                type="text" 
-                id="lastName"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-white focus-visible:ring-white/30"
-                placeholder="Last name"
-                required
-              />
-            </div>
           </div>
           
           <div className="space-y-2">
