@@ -222,7 +222,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="dark-theme min-h-screen flex flex-col items-center justify-center p-4" style={{ background: 'hsl(0 0% 7%)' }}>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
       <div className="text-center mb-8">
         <h1 className="text-4xl text-white font-orbitron mb-2">LYFEOS</h1>
         <p className="text-muted-foreground">Your personal life operating system</p>
