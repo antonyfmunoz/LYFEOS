@@ -29,7 +29,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (identifier: string, password: string) => Promise<void>;
-  register: (username: string, password: string, extraData?: { firstName?: string; lastName?: string; email?: string; displayName?: string }) => Promise<void>;
+  register: (username: string, password: string, extraData?: { firstName?: string; lastName?: string; email?: string; displayName?: string; avatarColor?: string }) => Promise<void>;
   logout: () => void;
   loginWithGoogle: () => Promise<void>;
   handleOAuthRedirect: () => Promise<void>;
@@ -251,7 +251,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (username: string, password: string, extraData?: { firstName?: string; lastName?: string; email?: string; displayName?: string }) => {
+  const register = async (username: string, password: string, extraData?: { firstName?: string; lastName?: string; email?: string; displayName?: string; avatarColor?: string }) => {
     try {
       setIsLoading(true);
       console.log("Attempting to register with:", username);

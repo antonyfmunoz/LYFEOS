@@ -616,7 +616,6 @@ export default function OnboardingPage() {
   const [timezone, setTimezone] = useState(saved.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
 
   useEffect(() => {
-    if (location) return;
     (async () => {
       try {
         const res = await fetch("https://ipapi.co/json/");
@@ -626,7 +625,9 @@ export default function OnboardingPage() {
         const locationStr = parts.join(", ");
         if (locationStr) {
           setDetectedLocation(locationStr);
-          setLocation(locationStr);
+          if (!location) {
+            setLocation(locationStr);
+          }
         }
       } catch {}
     })();

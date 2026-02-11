@@ -143,6 +143,7 @@ export default function RegisterPage() {
         lastName: trimmedLastName,
         email: trimmedEmail,
         displayName: trimmedDisplayName || trimmedUsername,
+        avatarColor: selectedColor,
       });
       
       console.log("Registration successful, authContext handles redirect to onboarding");
