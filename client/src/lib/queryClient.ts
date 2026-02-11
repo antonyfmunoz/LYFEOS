@@ -42,6 +42,22 @@ export const getQueryFn: <T>(options: {
     return await res.json();
   };
 
+let redirecting401 = false;
+function handleGlobal401(error: unknown) {
+  if (typeof window === "undefined") return;
+  if (redirecting401) return;
+  if (error instanceof Error && error.message.startsWith("401:")) {
+    const currentPath = window.location.pathname;
+    const publicPaths = ["/login", "/register", "/verify-email", "/forgot-password", "/reset-password", "/login-success", "/onboarding"];
+    if (!publicPaths.some(p => currentPath.startsWith(p))) {
+      redirecting401 = true;
+      console.log("Session expired (401), clearing auth and redirecting to login");
+      localStorage.removeItem("lyfeos_user");
+      window.location.href = "/login";
+    }
+  }
+}
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -53,6 +69,13 @@ export const queryClient = new QueryClient({
     },
     mutations: {
       retry: false,
+      onError: handleGlobal401,
     },
   },
+});
+
+queryClient.getQueryCache().subscribe((event) => {
+  if (event.type === "updated" && event.action?.type === "error") {
+    handleGlobal401(event.action.error);
+  }
 });

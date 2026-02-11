@@ -46,62 +46,52 @@ import LoginSuccessPage from "./pages/LoginSuccessPage";
 import SubscriptionPage from "./pages/SubscriptionPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const [, navigate] = useLocation();
   const hasAttemptedRedirect = React.useRef(false);
-  const [sessionRetryCount, setSessionRetryCount] = React.useState(0);
-  const [isRedirecting, setIsRedirecting] = React.useState(false);
-  
-  // Simplified session recovery - only attempt once if needed
+  const [isRecoveringSession, setIsRecoveringSession] = React.useState(false);
+  const recoveryAttempted = React.useRef(false);
+
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (!isLoading && !isAuthenticated && !recoveryAttempted.current) {
       const lsUser = localStorage.getItem("lyfeos_user");
-      if (lsUser && sessionRetryCount === 0) {
-        setSessionRetryCount(1); // Mark that we've tried recovery
-        console.log("Found user in localStorage but session is invalid, attempting silent re-auth");
-        
-        // Quietly try to restore the session without page reload
+      if (lsUser) {
+        recoveryAttempted.current = true;
+        setIsRecoveringSession(true);
+
+        const timeout = setTimeout(() => {
+          setIsRecoveringSession(false);
+        }, 5000);
+
         fetch("/api/auth/me", { credentials: "include" })
           .then(resp => {
             if (resp.ok) {
               console.log("Session restored silently");
-              // The next auth state update will handle rendering
             }
           })
-          .catch(() => {
-            // Do nothing on error, the redirect logic will handle it
+          .catch(() => {})
+          .finally(() => {
+            clearTimeout(timeout);
+            setIsRecoveringSession(false);
           });
       }
     }
-  }, [isAuthenticated, isLoading, sessionRetryCount]);
-  
-  // Redirect to login if user is not authenticated and not loading
+  }, [isAuthenticated, isLoading]);
+
   useEffect(() => {
-    // Skip if we're in the middle of a redirect already
-    if (isRedirecting) return;
-    
-    // Only redirect once if not authenticated after loading completes
-    // Wait for session retry if needed (sessionRetryCount > 0)
-    const shouldAttemptRedirect = !isAuthenticated && 
-                               !isLoading && 
-                               !hasAttemptedRedirect.current &&
-                               (sessionRetryCount === 0 || sessionRetryCount > 0);
-    
-    if (shouldAttemptRedirect) {
-      setIsRedirecting(true);
-      console.log("Not authenticated, redirecting to login from protected route");
+    if (isRecoveringSession || isLoading) return;
+    if (hasAttemptedRedirect.current) return;
+
+    if (!isAuthenticated) {
       hasAttemptedRedirect.current = true;
       navigate("/login", { replace: true });
     }
-  }, [isAuthenticated, isLoading, navigate, sessionRetryCount, isRedirecting]);
-  
-  // Show minimal spinner during initial loading only
-  if (isLoading && !localStorage.getItem("lyfeos_user")) {
+  }, [isAuthenticated, isLoading, isRecoveringSession, navigate]);
+
+  if (isLoading || isRecoveringSession) {
     return <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary fixed top-4 right-4 opacity-70"></div>;
   }
-  
-  // If authenticated, render the children, otherwise show nothing
-  // (redirect happens via useEffect)
+
   return isAuthenticated ? <>{children}</> : null;
 }
 

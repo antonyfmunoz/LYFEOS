@@ -206,8 +206,8 @@ async function initStripe() {
   }
 
   const port = 5000;
-  const MAX_RETRIES = 10;
-  const RETRY_DELAY = 1000;
+  const MAX_RETRIES = 20;
+  const RETRY_DELAY = 2000;
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
   function startListening(attempt: number) {
