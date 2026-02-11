@@ -1,115 +1,200 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useCelebration } from "@/lib/celebrationContext";
 
-interface Particle {
+function getPrimaryColor(): string {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue("--primary-hsl").trim();
+  if (raw) {
+    const parts = raw.replace(/,/g, "").split(/\s+/);
+    if (parts.length >= 3) {
+      return `hsl(${parts[0]}, ${parts[1]}, ${parts[2]})`;
+    }
+  }
+  return "#00e0ff";
+}
+
+function getPrimaryRgb(): [number, number, number] {
+  const el = document.createElement("div");
+  el.style.color = getPrimaryColor();
+  document.body.appendChild(el);
+  const computed = getComputedStyle(el).color;
+  document.body.removeChild(el);
+  const match = computed.match(/(\d+)/g);
+  if (match && match.length >= 3) {
+    return [parseInt(match[0]), parseInt(match[1]), parseInt(match[2])];
+  }
+  return [0, 224, 255];
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const el = document.createElement("div");
+  el.style.color = hex;
+  document.body.appendChild(el);
+  const computed = getComputedStyle(el).color;
+  document.body.removeChild(el);
+  const match = computed.match(/(\d+)/g);
+  if (match && match.length >= 3) {
+    return [parseInt(match[0]), parseInt(match[1]), parseInt(match[2])];
+  }
+  return [0, 224, 255];
+}
+
+interface HudParticle {
   x: number;
   y: number;
   vx: number;
   vy: number;
   size: number;
-  color: string;
   alpha: number;
   decay: number;
-  gravity: number;
+  type: "dot" | "line" | "diamond";
   rotation: number;
   rotationSpeed: number;
-  shape: "circle" | "square" | "star";
+  length?: number;
 }
 
-const MISSION_COLORS = ["#10b981", "#34d399", "#6ee7b7", "#a7f3d0", "#059669", "#047857"];
-const LEVEL_UP_COLORS = ["#a78bfa", "#8b5cf6", "#c084fc", "#e879f9", "#f0abfc", "#7c3aed", "#fbbf24", "#f59e0b"];
+function drawHexagon(ctx: CanvasRenderingContext2D, cx: number, cy: number, radius: number) {
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 3) * i - Math.PI / 6;
+    const x = cx + radius * Math.cos(angle);
+    const y = cy + radius * Math.sin(angle);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
 
-function createParticles(
-  cx: number,
-  cy: number,
-  count: number,
-  colors: string[],
-  spread: number,
-  speedRange: [number, number]
-): Particle[] {
-  const particles: Particle[] = [];
-  const shapes: Particle["shape"][] = ["circle", "square", "star"];
+function drawDiamond(ctx: CanvasRenderingContext2D, size: number) {
+  ctx.beginPath();
+  ctx.moveTo(0, -size);
+  ctx.lineTo(size * 0.6, 0);
+  ctx.lineTo(0, size);
+  ctx.lineTo(-size * 0.6, 0);
+  ctx.closePath();
+}
+
+function createHudParticles(cx: number, cy: number, count: number, upward: boolean): HudParticle[] {
+  const particles: HudParticle[] = [];
+  const types: HudParticle["type"][] = ["dot", "line", "diamond"];
   for (let i = 0; i < count; i++) {
-    const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * spread;
-    const speed = speedRange[0] + Math.random() * (speedRange[1] - speedRange[0]);
+    const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
+    const speed = 1.5 + Math.random() * 4;
     particles.push({
-      x: cx,
-      y: cy,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - 2,
-      size: 3 + Math.random() * 6,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      alpha: 1,
-      decay: 0.008 + Math.random() * 0.012,
-      gravity: 0.08 + Math.random() * 0.04,
+      x: cx + (Math.random() - 0.5) * 40,
+      y: cy + (Math.random() - 0.5) * 40,
+      vx: Math.cos(angle) * speed * 0.4,
+      vy: upward ? -Math.abs(Math.sin(angle) * speed) - 1 : Math.sin(angle) * speed,
+      size: 2 + Math.random() * 4,
+      alpha: 0.8 + Math.random() * 0.2,
+      decay: 0.006 + Math.random() * 0.008,
+      type: types[Math.floor(Math.random() * types.length)],
       rotation: Math.random() * Math.PI * 2,
-      rotationSpeed: (Math.random() - 0.5) * 0.2,
-      shape: shapes[Math.floor(Math.random() * shapes.length)],
+      rotationSpeed: (Math.random() - 0.5) * 0.08,
+      length: 8 + Math.random() * 16,
     });
   }
   return particles;
 }
 
-function drawStar(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
-  const spikes = 5;
-  const outerRadius = size;
-  const innerRadius = size / 2;
-  let rot = (Math.PI / 2) * 3;
-  const step = Math.PI / spikes;
-  ctx.beginPath();
-  ctx.moveTo(x, y - outerRadius);
-  for (let i = 0; i < spikes; i++) {
-    ctx.lineTo(x + Math.cos(rot) * outerRadius, y + Math.sin(rot) * outerRadius);
-    rot += step;
-    ctx.lineTo(x + Math.cos(rot) * innerRadius, y + Math.sin(rot) * innerRadius);
-    rot += step;
-  }
-  ctx.lineTo(x, y - outerRadius);
-  ctx.closePath();
-  ctx.fill();
-}
-
 function MissionCompleteOverlay({ onDone }: { onDone: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const particlesRef = useRef<Particle[]>([]);
+  const particlesRef = useRef<HudParticle[]>([]);
   const animFrameRef = useRef<number>(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
+    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
     resize();
     window.addEventListener("resize", resize);
 
+    const [r, g, b] = getPrimaryRgb();
     const cx = canvas.width / 2;
     const cy = canvas.height / 2;
 
-    particlesRef.current = [
-      ...createParticles(cx, cy, 60, MISSION_COLORS, 0.5, [3, 8]),
-      ...createParticles(cx, cy - 20, 30, MISSION_COLORS, 1, [2, 5]),
-    ];
+    particlesRef.current = createHudParticles(cx, cy, 50, true);
 
     let frame = 0;
-    const maxFrames = 120;
+    const totalFrames = 90;
 
     const animate = () => {
       frame++;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const w = canvas.width;
+      const h = canvas.height;
+      const progress = frame / totalFrames;
+
+      if (frame < 8) {
+        const flashA = Math.max(0, 0.15 - frame * 0.02);
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${flashA})`;
+        ctx.fillRect(0, 0, w, h);
+      }
+
+      const hexProgress = Math.min(1, frame / 25);
+      const hexRadius = 40 + hexProgress * 80;
+      ctx.save();
+      ctx.globalAlpha = (1 - hexProgress) * 0.7;
+      ctx.strokeStyle = `rgb(${r}, ${g}, ${b})`;
+      ctx.lineWidth = 1.5;
+      ctx.shadowColor = `rgba(${r}, ${g}, ${b}, 0.8)`;
+      ctx.shadowBlur = 15;
+      drawHexagon(ctx, cx, cy, hexRadius);
+      ctx.stroke();
+      ctx.restore();
+
+      if (frame > 5) {
+        const hex2Progress = Math.min(1, (frame - 5) / 30);
+        const hex2Radius = 20 + hex2Progress * 120;
+        ctx.save();
+        ctx.globalAlpha = (1 - hex2Progress) * 0.4;
+        ctx.strokeStyle = `rgb(${r}, ${g}, ${b})`;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 8]);
+        drawHexagon(ctx, cx, cy, hex2Radius);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+
+      const scanCount = 4;
+      for (let i = 0; i < scanCount; i++) {
+        const scanProgress = ((frame * 2 + i * 30) % 120) / 120;
+        const scanY = h * scanProgress;
+        const scanAlpha = Math.sin(scanProgress * Math.PI) * 0.08;
+        ctx.save();
+        ctx.globalAlpha = scanAlpha;
+        ctx.strokeStyle = `rgb(${r}, ${g}, ${b})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, scanY);
+        ctx.lineTo(w, scanY);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      const crosshairSize = 12;
+      const crossAlpha = Math.max(0, 1 - progress * 1.5) * 0.6;
+      ctx.save();
+      ctx.globalAlpha = crossAlpha;
+      ctx.strokeStyle = `rgb(${r}, ${g}, ${b})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx - crosshairSize, cy); ctx.lineTo(cx - 5, cy);
+      ctx.moveTo(cx + 5, cy); ctx.lineTo(cx + crosshairSize, cy);
+      ctx.moveTo(cx, cy - crosshairSize); ctx.lineTo(cx, cy - 5);
+      ctx.moveTo(cx, cy + 5); ctx.lineTo(cx, cy + crosshairSize);
+      ctx.stroke();
+      ctx.restore();
 
       particlesRef.current = particlesRef.current.filter((p) => p.alpha > 0.01);
-
       for (const p of particlesRef.current) {
         p.x += p.vx;
         p.y += p.vy;
-        p.vy += p.gravity;
-        p.vx *= 0.99;
+        p.vx *= 0.98;
+        p.vy *= 0.98;
         p.alpha -= p.decay;
         p.rotation += p.rotationSpeed;
 
@@ -117,21 +202,30 @@ function MissionCompleteOverlay({ onDone }: { onDone: () => void }) {
         ctx.globalAlpha = Math.max(0, p.alpha);
         ctx.translate(p.x, p.y);
         ctx.rotate(p.rotation);
-        ctx.fillStyle = p.color;
+        ctx.shadowColor = `rgba(${r}, ${g}, ${b}, 0.6)`;
+        ctx.shadowBlur = 6;
 
-        if (p.shape === "circle") {
+        if (p.type === "dot") {
+          ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${p.alpha})`;
           ctx.beginPath();
-          ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+          ctx.arc(0, 0, p.size * 0.5, 0, Math.PI * 2);
           ctx.fill();
-        } else if (p.shape === "square") {
-          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+        } else if (p.type === "line") {
+          ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${p.alpha})`;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(0, -(p.length || 12));
+          ctx.stroke();
         } else {
-          drawStar(ctx, 0, 0, p.size);
+          ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${p.alpha * 0.7})`;
+          drawDiamond(ctx, p.size);
+          ctx.fill();
         }
         ctx.restore();
       }
 
-      if (frame < maxFrames && particlesRef.current.length > 0) {
+      if (frame < totalFrames) {
         animFrameRef.current = requestAnimationFrame(animate);
       } else {
         onDone();
@@ -139,7 +233,6 @@ function MissionCompleteOverlay({ onDone }: { onDone: () => void }) {
     };
 
     animFrameRef.current = requestAnimationFrame(animate);
-
     return () => {
       window.removeEventListener("resize", resize);
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
@@ -169,7 +262,7 @@ function LevelUpOverlay({
   onDone: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const particlesRef = useRef<Particle[]>([]);
+  const particlesRef = useRef<HudParticle[]>([]);
   const animFrameRef = useRef<number>(0);
   const [phase, setPhase] = useState<"burst" | "text" | "fade">("burst");
   const [textOpacity, setTextOpacity] = useState(0);
@@ -177,111 +270,178 @@ function LevelUpOverlay({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
+    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
     resize();
     window.addEventListener("resize", resize);
 
+    const [pr, pg, pb] = getPrimaryRgb();
+    const [rr, rg, rb] = rankColor ? hexToRgb(rankColor) : [pr, pg, pb];
     const cx = canvas.width / 2;
     const cy = canvas.height / 2;
 
-    const colors = rankColor
-      ? [rankColor, ...LEVEL_UP_COLORS]
-      : LEVEL_UP_COLORS;
-
     particlesRef.current = [
-      ...createParticles(cx, cy, 80, colors, 0.3, [4, 12]),
-      ...createParticles(cx - 60, cy + 30, 40, colors, 0.8, [3, 7]),
-      ...createParticles(cx + 60, cy + 30, 40, colors, 0.8, [3, 7]),
-      ...createParticles(cx, cy - 40, 40, colors, 0.6, [5, 10]),
+      ...createHudParticles(cx, cy, 60, true),
+      ...createHudParticles(cx, cy - 30, 30, true),
     ];
 
     let frame = 0;
+    const totalFrames = 160;
 
     const animate = () => {
       frame++;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const w = canvas.width;
+      const h = canvas.height;
 
-      if (frame < 20) {
-        const flashAlpha = Math.max(0, 0.3 - frame * 0.015);
-        ctx.fillStyle = `rgba(168, 85, 247, ${flashAlpha})`;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      if (frame < 15) {
+        const flashA = Math.max(0, 0.25 - frame * 0.017);
+        ctx.fillStyle = `rgba(${rr}, ${rg}, ${rb}, ${flashA})`;
+        ctx.fillRect(0, 0, w, h);
       }
 
-      const ringProgress = Math.min(1, frame / 30);
-      if (ringProgress < 1) {
-        const ringRadius = 50 + ringProgress * 150;
+      const scanSpeed = 8;
+      if (frame < 40) {
+        const scanY1 = (frame * scanSpeed) % h;
+        const scanY2 = h - (frame * scanSpeed) % h;
         ctx.save();
-        ctx.strokeStyle = rankColor || "#a78bfa";
-        ctx.globalAlpha = 1 - ringProgress;
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(cx, cy, ringRadius, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.globalAlpha = Math.max(0, 0.12 - frame * 0.003);
+        const grad1 = ctx.createLinearGradient(0, scanY1 - 30, 0, scanY1 + 30);
+        grad1.addColorStop(0, `rgba(${rr}, ${rg}, ${rb}, 0)`);
+        grad1.addColorStop(0.5, `rgba(${rr}, ${rg}, ${rb}, 1)`);
+        grad1.addColorStop(1, `rgba(${rr}, ${rg}, ${rb}, 0)`);
+        ctx.fillStyle = grad1;
+        ctx.fillRect(0, scanY1 - 30, w, 60);
+        const grad2 = ctx.createLinearGradient(0, scanY2 - 30, 0, scanY2 + 30);
+        grad2.addColorStop(0, `rgba(${rr}, ${rg}, ${rb}, 0)`);
+        grad2.addColorStop(0.5, `rgba(${rr}, ${rg}, ${rb}, 1)`);
+        grad2.addColorStop(1, `rgba(${rr}, ${rg}, ${rb}, 0)`);
+        ctx.fillStyle = grad2;
+        ctx.fillRect(0, scanY2 - 30, w, 60);
         ctx.restore();
       }
 
-      if (frame > 10 && frame < 50) {
-        const ring2Progress = Math.min(1, (frame - 10) / 30);
-        const ringRadius = 30 + ring2Progress * 200;
+      for (let ring = 0; ring < 3; ring++) {
+        const ringDelay = ring * 8;
+        if (frame > ringDelay) {
+          const ringProgress = Math.min(1, (frame - ringDelay) / 35);
+          const ringRadius = 30 + ringProgress * (100 + ring * 50);
+          ctx.save();
+          ctx.globalAlpha = (1 - ringProgress) * (0.6 - ring * 0.15);
+          ctx.strokeStyle = `rgb(${rr}, ${rg}, ${rb})`;
+          ctx.lineWidth = 2 - ring * 0.5;
+          ctx.shadowColor = `rgba(${rr}, ${rg}, ${rb}, 0.5)`;
+          ctx.shadowBlur = 20;
+          drawHexagon(ctx, cx, cy, ringRadius);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+
+      if (frame > 10 && frame < 80) {
+        const diamondProgress = Math.min(1, (frame - 10) / 20);
+        const diamondSize = 60 + diamondProgress * 30;
         ctx.save();
-        ctx.strokeStyle = "#fbbf24";
-        ctx.globalAlpha = (1 - ring2Progress) * 0.6;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(cx, cy, ringRadius, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.translate(cx, cy);
+        ctx.rotate(Math.PI / 4);
+        ctx.globalAlpha = Math.min(0.5, diamondProgress) * Math.max(0, 1 - (frame - 10) / 70);
+        ctx.strokeStyle = `rgb(${rr}, ${rg}, ${rb})`;
+        ctx.lineWidth = 1.5;
+        ctx.shadowColor = `rgba(${rr}, ${rg}, ${rb}, 0.6)`;
+        ctx.shadowBlur = 15;
+        ctx.strokeRect(-diamondSize / 2, -diamondSize / 2, diamondSize, diamondSize);
         ctx.restore();
+      }
+
+      const cornerSize = 20;
+      const cornerAlpha = Math.max(0, Math.min(0.5, (frame - 15) / 20)) * Math.max(0, 1 - (frame - 15) / 120);
+      if (cornerAlpha > 0) {
+        ctx.save();
+        ctx.globalAlpha = cornerAlpha;
+        ctx.strokeStyle = `rgb(${rr}, ${rg}, ${rb})`;
+        ctx.lineWidth = 1.5;
+        const offX = 80;
+        const offY = 50;
+        const corners = [
+          [cx - offX, cy - offY, 1, 1],
+          [cx + offX, cy - offY, -1, 1],
+          [cx - offX, cy + offY, 1, -1],
+          [cx + offX, cy + offY, -1, -1],
+        ];
+        for (const [bx, by, dx, dy] of corners) {
+          ctx.beginPath();
+          ctx.moveTo(bx, by + dy * cornerSize);
+          ctx.lineTo(bx, by);
+          ctx.lineTo(bx + dx * cornerSize, by);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      const dataStreamCount = 6;
+      for (let i = 0; i < dataStreamCount; i++) {
+        const streamX = cx + (i - dataStreamCount / 2) * 30 + 15;
+        const streamOffset = ((frame * 3 + i * 20) % 120);
+        const streamAlpha = Math.max(0, 0.3 - frame / totalFrames * 0.3);
+        for (let j = 0; j < 5; j++) {
+          const dotY = cy + 80 - streamOffset - j * 8;
+          const dotAlpha = streamAlpha * (1 - j / 5);
+          if (dotAlpha > 0) {
+            ctx.save();
+            ctx.globalAlpha = dotAlpha;
+            ctx.fillStyle = `rgb(${rr}, ${rg}, ${rb})`;
+            ctx.fillRect(streamX, dotY, 2, 3);
+            ctx.restore();
+          }
+        }
       }
 
       particlesRef.current = particlesRef.current.filter((p) => p.alpha > 0.01);
-
       for (const p of particlesRef.current) {
         p.x += p.vx;
         p.y += p.vy;
-        p.vy += p.gravity;
         p.vx *= 0.99;
-        p.alpha -= p.decay * 0.6;
+        p.vy *= 0.99;
+        p.alpha -= p.decay * 0.5;
         p.rotation += p.rotationSpeed;
 
         ctx.save();
         ctx.globalAlpha = Math.max(0, p.alpha);
         ctx.translate(p.x, p.y);
         ctx.rotate(p.rotation);
-        ctx.fillStyle = p.color;
+        ctx.shadowColor = `rgba(${rr}, ${rg}, ${rb}, 0.4)`;
+        ctx.shadowBlur = 8;
 
-        if (p.shape === "circle") {
+        if (p.type === "dot") {
+          ctx.fillStyle = `rgba(${rr}, ${rg}, ${rb}, ${p.alpha})`;
           ctx.beginPath();
-          ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+          ctx.arc(0, 0, p.size * 0.5, 0, Math.PI * 2);
           ctx.fill();
-        } else if (p.shape === "square") {
-          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+        } else if (p.type === "line") {
+          ctx.strokeStyle = `rgba(${rr}, ${rg}, ${rb}, ${p.alpha})`;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(0, -(p.length || 12));
+          ctx.stroke();
         } else {
-          drawStar(ctx, 0, 0, p.size);
+          ctx.fillStyle = `rgba(${rr}, ${rg}, ${rb}, ${p.alpha * 0.6})`;
+          drawDiamond(ctx, p.size);
+          ctx.fill();
         }
         ctx.restore();
       }
 
-      if (frame === 15) {
-        setPhase("text");
-      }
-
-      if (frame >= 15 && frame <= 35) {
-        setTextOpacity(Math.min(1, (frame - 15) / 10));
-      }
-
-      if (frame > 140) {
+      if (frame === 20) setPhase("text");
+      if (frame >= 20 && frame <= 45) setTextOpacity(Math.min(1, (frame - 20) / 15));
+      if (frame > 120) {
         setPhase("fade");
-        setTextOpacity((prev) => Math.max(0, prev - 0.05));
+        setTextOpacity((prev) => Math.max(0, prev - 0.04));
       }
 
-      if (frame < 180) {
+      if (frame < totalFrames) {
         animFrameRef.current = requestAnimationFrame(animate);
       } else {
         onDone();
@@ -289,14 +449,13 @@ function LevelUpOverlay({
     };
 
     animFrameRef.current = requestAnimationFrame(animate);
-
     return () => {
       window.removeEventListener("resize", resize);
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
   }, [onDone, rankColor]);
 
-  const accentColor = rankColor || "#a78bfa";
+  const accentColor = rankColor || getPrimaryColor();
 
   return (
     <div className="fixed inset-0 z-[200] pointer-events-none">
@@ -308,28 +467,35 @@ function LevelUpOverlay({
       {(phase === "text" || phase === "fade") && (
         <div
           className="absolute inset-0 flex flex-col items-center justify-center"
-          style={{ opacity: textOpacity, transition: "opacity 0.1s" }}
+          style={{ opacity: textOpacity }}
         >
           <div
-            className="text-sm font-bold tracking-[0.3em] uppercase mb-2"
-            style={{ color: accentColor, textShadow: `0 0 20px ${accentColor}80` }}
+            className="text-[10px] font-mono font-bold tracking-[0.5em] uppercase mb-3"
+            style={{ color: accentColor, textShadow: `0 0 20px ${accentColor}80, 0 0 40px ${accentColor}40` }}
           >
-            Level Up
+            // SYSTEM ALERT //
           </div>
           <div
-            className="text-6xl sm:text-8xl font-black mb-3"
+            className="text-xs font-mono tracking-[0.3em] uppercase mb-2 opacity-70"
+            style={{ color: accentColor }}
+          >
+            Level Achieved
+          </div>
+          <div
+            className="text-7xl sm:text-9xl font-black mb-2 font-mono"
             style={{
               color: "#fff",
-              textShadow: `0 0 40px ${accentColor}80, 0 0 80px ${accentColor}40`,
+              textShadow: `0 0 30px ${accentColor}90, 0 0 60px ${accentColor}50, 0 0 100px ${accentColor}30`,
+              WebkitTextStroke: `1px ${accentColor}40`,
             }}
           >
             {level}
           </div>
           {rankName && (
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-3 mt-2">
               {rankIcon && <span className="text-2xl">{rankIcon}</span>}
               <span
-                className="text-xl sm:text-2xl font-bold tracking-wide"
+                className="text-lg sm:text-xl font-mono font-bold tracking-[0.2em] uppercase"
                 style={{ color: accentColor, textShadow: `0 0 15px ${accentColor}60` }}
               >
                 {rankName}
