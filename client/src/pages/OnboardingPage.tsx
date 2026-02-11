@@ -34,7 +34,35 @@ interface ArchetypeScores {
   alchemist: number;
 }
 
-const AGE_RANGES = ["18-24", "25-34", "35-44", "45-54", "55-64", "65+"];
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
+function getDaysInMonth(month: number, year: number): number {
+  return new Date(year, month, 0).getDate();
+}
+
+function calculateAge(year: number, month: number, day: number): number {
+  const today = new Date();
+  const birthDate = new Date(year, month - 1, day);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+}
+
+function ageToRange(age: number): string {
+  if (age < 18) return "under-18";
+  if (age <= 24) return "18-24";
+  if (age <= 34) return "25-34";
+  if (age <= 44) return "35-44";
+  if (age <= 54) return "45-54";
+  if (age <= 64) return "55-64";
+  return "65+";
+}
 const LIFE_STAGES = [
   { label: "Awakening", description: "Just starting your journey" },
   { label: "Building", description: "Actively constructing your path" },
@@ -610,7 +638,9 @@ export default function OnboardingPage() {
   
   const saved = loadSavedAnswers();
   
-  const [ageRange, setAgeRange] = useState(saved.ageRange || "");
+  const [birthMonth, setBirthMonth] = useState<number>(saved.birthMonth || 0);
+  const [birthDay, setBirthDay] = useState<number>(saved.birthDay || 0);
+  const [birthYear, setBirthYear] = useState<number>(saved.birthYear || 0);
   const [location, setLocation] = useState(saved.location || "");
   const [detectedLocation, setDetectedLocation] = useState("");
   const [timezone, setTimezone] = useState(saved.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
@@ -701,7 +731,7 @@ export default function OnboardingPage() {
   
   useEffect(() => {
     const data = {
-      ageRange, location, timezone, lifeStage, archetypeAnswers,
+      birthMonth, birthDay, birthYear, location, timezone, lifeStage, archetypeAnswers,
       coreValues, desiredEmotion, coreBelief, limitingBelief, empoweringBelief,
       strengths, weaknesses, selfStandards, traitToReprogram, desiredTrait,
       vision90Day, vision90DayMetric, vision18Month, vision18MonthMetric,
@@ -716,7 +746,7 @@ export default function OnboardingPage() {
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   }, [
-    ageRange, location, timezone, lifeStage, archetypeAnswers,
+    birthMonth, birthDay, birthYear, location, timezone, lifeStage, archetypeAnswers,
     coreValues, desiredEmotion, coreBelief, limitingBelief, empoweringBelief,
     strengths, weaknesses, selfStandards, traitToReprogram, desiredTrait,
     vision90Day, vision90DayMetric, vision18Month, vision18MonthMetric,
@@ -850,7 +880,7 @@ export default function OnboardingPage() {
   
   const canProceed = () => {
     if (currentMission === 0) {
-      if (currentStep === 0) return ageRange !== "";
+      if (currentStep === 0) return birthMonth > 0 && birthDay > 0 && birthYear > 0;
       if (currentStep === 1) return location.trim() !== "";
       if (currentStep === 2) return timezone !== "";
     }
@@ -1031,7 +1061,7 @@ export default function OnboardingPage() {
   const getMissionProfileData = (missionId: number): Record<string, any> => {
     switch (missionId) {
       case 0:
-        return { ageRange, location, timezone };
+        return { ageRange: birthYear && birthMonth && birthDay ? ageToRange(calculateAge(birthYear, birthMonth, birthDay)) : "", birthday: birthYear && birthMonth && birthDay ? `${birthYear}-${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}` : "", location, timezone };
       case 1: {
         const archetypeResults = getArchetypeResults();
         return {
@@ -1160,13 +1190,63 @@ export default function OnboardingPage() {
   
   const renderMission0 = () => {
     switch (currentStep) {
-      case 0:
+      case 0: {
+        const currentYear = new Date().getFullYear();
+        const years = Array.from({ length: 100 }, (_, i) => currentYear - i);
+        const daysInMonth = birthMonth && birthYear ? getDaysInMonth(birthMonth, birthYear) : 31;
+        const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+        const age = birthMonth && birthDay && birthYear ? calculateAge(birthYear, birthMonth, birthDay) : null;
         return (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-orbitron font-bold text-center">What's your age range?</h2>
-            <ChipSelect options={AGE_RANGES} value={ageRange} onChange={(val) => setAgeRange(val as string)} />
+          <div className="space-y-6">
+            <h2 className="text-2xl font-orbitron font-bold text-center">When were you born?</h2>
+            <div className="flex gap-3 justify-center">
+              <select
+                value={birthMonth || ""}
+                onChange={(e) => {
+                  const m = parseInt(e.target.value) || 0;
+                  setBirthMonth(m);
+                  if (birthDay > getDaysInMonth(m, birthYear || currentYear)) setBirthDay(0);
+                }}
+                className="flex-1 max-w-[140px] h-12 rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+              >
+                <option value="">Month</option>
+                {MONTHS.map((name, i) => (
+                  <option key={i} value={i + 1}>{name}</option>
+                ))}
+              </select>
+              <select
+                value={birthDay || ""}
+                onChange={(e) => setBirthDay(parseInt(e.target.value) || 0)}
+                className="flex-1 max-w-[90px] h-12 rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+              >
+                <option value="">Day</option>
+                {days.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+              <select
+                value={birthYear || ""}
+                onChange={(e) => {
+                  const y = parseInt(e.target.value) || 0;
+                  setBirthYear(y);
+                  if (birthDay > getDaysInMonth(birthMonth || 1, y)) setBirthDay(0);
+                }}
+                className="flex-1 max-w-[110px] h-12 rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+              >
+                <option value="">Year</option>
+                {years.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+            {age !== null && age >= 0 && (
+              <p className="text-center text-muted-foreground text-sm">
+                Age: <span className="text-primary font-semibold">{age}</span>
+              </p>
+            )}
           </div>
         );
+      }
       case 1:
         return (
           <div className="space-y-4">

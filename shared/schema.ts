@@ -68,6 +68,7 @@ export const userProfile = pgTable("user_profile", {
   
   // === MISSION 0: ACCESS & QUICKSTART ===
   ageRange: text("age_range"), // ("18-24", "25-34", "35-44", "45-54", "55-64", "65+")
+  birthday: text("birthday"), // ISO date string "YYYY-MM-DD"
   location: text("location"), // Optional location text
   timezone: text("timezone"), // IANA timezone string
   
