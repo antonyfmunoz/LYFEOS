@@ -59,11 +59,10 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
 
   const createMutation = useMutation({
     mutationFn: async (title: string) => {
-      const res = await apiRequest('/api/vision-goals', {
+      return apiRequest('/api/vision-goals', {
         method: 'POST',
         body: JSON.stringify({ category, title }),
       });
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/vision-goals', category] });
