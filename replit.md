@@ -50,7 +50,8 @@ Preferred communication style: Simple, everyday language.
 - **Users**: Core account with profile, avatar, auth provider tracking
 - **UserStats**: Gamification stats (XP, level, energy, health, time tokens, attention tokens, streaks)
 - **UserProfile**: Onboarding data (archetype, flow style, motivations)
-- **Quests**: Task/mission system with XP rewards, supports ritualized (recurring) missions with hourly/daily/weekly/monthly/yearly repeat patterns
+- **Quests**: Task/mission system with XP rewards, supports ritualized (recurring) missions with hourly/daily/weekly/monthly/yearly repeat patterns. Missions can be linked to vision milestones via `visionGoalId` (nullable FK to visionGoals table).
+- **VisionGoals**: Milestone-based achievement goals organized by time horizon (legacy, 10year, 5year, 18month, 90day). CRUD with optimistic updates. Shows completed linked missions under each milestone.
 - **CalendarEvents**: Scheduling and time-blocking
 - **MissionPages**: Markdown-based mission documentation
 - **KanbanBoards/Columns/Tasks**: Project management

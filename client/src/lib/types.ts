@@ -65,6 +65,7 @@ export interface Quest {
   repeatDays?: string[] | null;
   repeatEndDate?: string | null;
   parentRitualId?: number | null;
+  visionGoalId?: number | null;
   deletedAt?: string | null;
 }
 

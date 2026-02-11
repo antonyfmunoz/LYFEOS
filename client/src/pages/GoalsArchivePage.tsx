@@ -4,13 +4,12 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
 import { useWidgetState } from "@/hooks/use-widget-state";
-import { ArrowLeft, Eye, Compass, Flame, Target, Milestone, Plus, Check, Trash2, Edit2, Loader2 } from "lucide-react";
+import { ArrowLeft, Eye, Compass, Flame, Target, Milestone, Plus, Check, Trash2, Edit2, Loader2, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import update from 'immutability-helper';
 import { CollapsibleWidget } from '@/components/ui/collapsible-widget';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 interface VisionGoal {
@@ -32,20 +31,40 @@ interface VisionWidget {
   placeholder: string;
 }
 
+interface CompletedMission {
+  id: number;
+  title: string;
+  completedAt: string | null;
+  visionGoalId: number | null;
+}
+
 function MilestoneList({ category, placeholder }: { category: string; placeholder: string }) {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [newTitle, setNewTitle] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
+  const [expandedGoalId, setExpandedGoalId] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
+  let tempIdCounter = useRef(-1);
+
+  const queryKey = ['/api/vision-goals', category];
 
   const { data: goals = [], isLoading } = useQuery<VisionGoal[]>({
-    queryKey: ['/api/vision-goals', category],
+    queryKey,
     queryFn: async () => {
       const res = await fetch(`/api/vision-goals/${category}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch goals');
+      return res.json();
+    },
+    enabled: !!user,
+  });
+
+  const { data: completedMissions = [] } = useQuery<CompletedMission[]>({
+    queryKey: ['/api/quests/completed-by-vision-goal', category],
+    queryFn: async () => {
+      const res = await fetch(`/api/quests/completed-by-vision-goal/${category}`, { credentials: 'include' });
+      if (!res.ok) return [];
       return res.json();
     },
     enabled: !!user,
@@ -64,13 +83,29 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
         body: JSON.stringify({ category, title }),
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals', category] });
+    onMutate: async (title: string) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<VisionGoal[]>(queryKey);
+      const tempGoal: VisionGoal = {
+        id: tempIdCounter.current--,
+        userId: user?.id || 0,
+        category,
+        title,
+        description: null,
+        completed: false,
+        displayOrder: (previous?.length || 0) + 1,
+        createdAt: new Date().toISOString(),
+      };
+      queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) => [...old, tempGoal]);
       setNewTitle("");
       inputRef.current?.focus();
+      return { previous };
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to add goal.", variant: "destructive" });
+    onError: (_err, _title, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 
@@ -81,8 +116,19 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
         body: JSON.stringify({ completed }),
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals', category] });
+    onMutate: async ({ id, completed }) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<VisionGoal[]>(queryKey);
+      queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) =>
+        old.map(g => g.id === id ? { ...g, completed } : g)
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 
@@ -93,12 +139,20 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
         body: JSON.stringify({ title }),
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals', category] });
+    onMutate: async ({ id, title }) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<VisionGoal[]>(queryKey);
+      queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) =>
+        old.map(g => g.id === id ? { ...g, title } : g)
+      );
       setEditingId(null);
+      return { previous };
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to update goal.", variant: "destructive" });
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 
@@ -106,9 +160,19 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
     mutationFn: async (id: number) => {
       await apiRequest(`/api/vision-goals/${id}`, { method: 'DELETE' });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals', category] });
-      toast({ title: "Goal removed" });
+    onMutate: async (id: number) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<VisionGoal[]>(queryKey);
+      queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) =>
+        old.filter(g => g.id !== id)
+      );
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 
@@ -128,6 +192,10 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
     setEditTitle(goal.title);
   };
 
+  const getMissionsForGoal = (goalId: number) => {
+    return completedMissions.filter(m => m.visionGoalId === goalId);
+  };
+
   const activeGoals = goals.filter(g => !g.completed);
   const completedGoals = goals.filter(g => g.completed);
 
@@ -139,6 +207,33 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
     );
   }
 
+  const renderGoalMissions = (goalId: number) => {
+    const missions = getMissionsForGoal(goalId);
+    if (missions.length === 0) return null;
+    const isExpanded = expandedGoalId === goalId;
+    return (
+      <div className="ml-8 mt-1">
+        <button
+          onClick={(e) => { e.stopPropagation(); setExpandedGoalId(isExpanded ? null : goalId); }}
+          className="flex items-center gap-1 text-xs text-primary/70 hover:text-primary transition-colors"
+        >
+          {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          <span>{missions.length} completed mission{missions.length !== 1 ? 's' : ''}</span>
+        </button>
+        {isExpanded && (
+          <div className="mt-1 space-y-0.5 pl-4 border-l border-primary/10">
+            {missions.map((m) => (
+              <div key={m.id} className="flex items-center gap-2 py-0.5">
+                <Check className="h-3 w-3 text-green-400 shrink-0" />
+                <span className="text-xs text-muted-foreground truncate">{m.title}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-3">
       <form onSubmit={handleAdd} className="flex gap-2">
@@ -148,15 +243,14 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
           onChange={(e) => setNewTitle(e.target.value)}
           placeholder={placeholder}
           className="bg-card/30 border-primary/30 focus-visible:ring-primary/30 text-sm"
-          disabled={createMutation.isPending}
         />
         <Button
           type="submit"
           size="sm"
-          disabled={!newTitle.trim() || createMutation.isPending}
+          disabled={!newTitle.trim()}
           className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 shrink-0 gap-1"
         >
-          {createMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+          <Plus className="h-3.5 w-3.5" />
           Add
         </Button>
       </form>
@@ -168,53 +262,49 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
       {activeGoals.length > 0 && (
         <div className="space-y-1">
           {activeGoals.map((goal) => (
-            <div
-              key={goal.id}
-              className="group flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-primary/5 transition-colors"
-            >
-              <button
-                onClick={() => toggleMutation.mutate({ id: goal.id, completed: true })}
-                className="shrink-0 h-5 w-5 rounded-full border-2 border-primary/40 hover:border-primary hover:bg-primary/20 transition-colors flex items-center justify-center"
-              >
-                {toggleMutation.isPending && toggleMutation.variables?.id === goal.id && (
-                  <Loader2 className="h-3 w-3 animate-spin text-primary" />
+            <div key={goal.id}>
+              <div className="group flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-primary/5 transition-colors">
+                <button
+                  onClick={() => toggleMutation.mutate({ id: goal.id, completed: true })}
+                  className="shrink-0 h-5 w-5 rounded-full border-2 border-primary/40 hover:border-primary hover:bg-primary/20 transition-colors flex items-center justify-center"
+                />
+                {editingId === goal.id ? (
+                  <form
+                    onSubmit={(e) => { e.preventDefault(); handleEditSave(goal.id); }}
+                    className="flex-1 flex gap-2"
+                  >
+                    <Input
+                      ref={editInputRef}
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="h-7 text-sm bg-card/30 border-primary/30"
+                      onKeyDown={(e) => { if (e.key === 'Escape') setEditingId(null); }}
+                    />
+                    <Button type="submit" size="sm" variant="ghost" className="h-7 px-2 text-primary">
+                      <Check className="h-3.5 w-3.5" />
+                    </Button>
+                  </form>
+                ) : (
+                  <>
+                    <span className="flex-1 text-sm text-foreground">{goal.title}</span>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => startEdit(goal)}
+                        className="h-6 w-6 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 flex items-center justify-center transition-colors"
+                      >
+                        <Edit2 className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={() => deleteMutation.mutate(goal.id)}
+                        className="h-6 w-6 rounded text-muted-foreground hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </>
                 )}
-              </button>
-              {editingId === goal.id ? (
-                <form
-                  onSubmit={(e) => { e.preventDefault(); handleEditSave(goal.id); }}
-                  className="flex-1 flex gap-2"
-                >
-                  <Input
-                    ref={editInputRef}
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    className="h-7 text-sm bg-card/30 border-primary/30"
-                    onKeyDown={(e) => { if (e.key === 'Escape') setEditingId(null); }}
-                  />
-                  <Button type="submit" size="sm" variant="ghost" className="h-7 px-2 text-primary">
-                    <Check className="h-3.5 w-3.5" />
-                  </Button>
-                </form>
-              ) : (
-                <>
-                  <span className="flex-1 text-sm text-foreground">{goal.title}</span>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => startEdit(goal)}
-                      className="h-6 w-6 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 flex items-center justify-center transition-colors"
-                    >
-                      <Edit2 className="h-3 w-3" />
-                    </button>
-                    <button
-                      onClick={() => deleteMutation.mutate(goal.id)}
-                      className="h-6 w-6 rounded text-muted-foreground hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  </div>
-                </>
-              )}
+              </div>
+              {renderGoalMissions(goal.id)}
             </div>
           ))}
         </div>
@@ -226,25 +316,25 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
             Completed ({completedGoals.length})
           </p>
           {completedGoals.map((goal) => (
-            <div
-              key={goal.id}
-              className="group flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-primary/5 transition-colors"
-            >
-              <button
-                onClick={() => toggleMutation.mutate({ id: goal.id, completed: false })}
-                className="shrink-0 h-5 w-5 rounded-full border-2 border-primary/60 bg-primary/20 flex items-center justify-center hover:bg-primary/30 transition-colors"
-              >
-                <Check className="h-3 w-3 text-primary" />
-              </button>
-              <span className={cn("flex-1 text-sm line-through text-muted-foreground")}>{goal.title}</span>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div key={goal.id}>
+              <div className="group flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-primary/5 transition-colors">
                 <button
-                  onClick={() => deleteMutation.mutate(goal.id)}
-                  className="h-6 w-6 rounded text-muted-foreground hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors"
+                  onClick={() => toggleMutation.mutate({ id: goal.id, completed: false })}
+                  className="shrink-0 h-5 w-5 rounded-full border-2 border-primary/60 bg-primary/20 flex items-center justify-center hover:bg-primary/30 transition-colors"
                 >
-                  <Trash2 className="h-3 w-3" />
+                  <Check className="h-3 w-3 text-primary" />
                 </button>
+                <span className={cn("flex-1 text-sm line-through text-muted-foreground")}>{goal.title}</span>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => deleteMutation.mutate(goal.id)}
+                    className="h-6 w-6 rounded text-muted-foreground hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
               </div>
+              {renderGoalMissions(goal.id)}
             </div>
           ))}
         </div>

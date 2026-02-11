@@ -1,7 +1,9 @@
 import { useState, useRef } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import { Quest } from "../../lib/types";
-import { Trash2, Calendar, Clock, Bell, Edit3, Info, Timer, Undo2, GripVertical, Repeat, Coffee } from "lucide-react";
+import { Trash2, Calendar, Clock, Bell, Edit3, Info, Timer, Undo2, GripVertical, Repeat, Coffee, Target } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/lib/authContext";
 import { Button } from "@/components/ui/button";
 
 export const QUEST_DND_TYPE = 'QUEST_ITEM';
@@ -45,7 +47,16 @@ function formatElapsed(totalSeconds: number) {
 
 export default function QuestItem({ quest, index, section, onToggle, onDelete, onEdit, onStart, onResume, onDone, onUndo, onRestart, onMoveQuest, elapsedSeconds, breakSeconds, isTimerActive, timerBlocked }: QuestItemProps) {
   const [showDescription, setShowDescription] = useState(false);
-  const { title, description, completed, energyCost, attentionCost, timeCost, experienceReward, startDate, startTime, endDate, endTime, notificationEnabled, difficulty, category } = quest;
+  const { user } = useAuth();
+  const { title, description, completed, energyCost, attentionCost, timeCost, experienceReward, startDate, startTime, endDate, endTime, notificationEnabled, difficulty, category, visionGoalId } = quest;
+
+  const { data: allVisionGoals = [] } = useQuery<{ id: number; category: string; title: string }[]>({
+    queryKey: ['/api/vision-goals/all'],
+    enabled: !!user && !!visionGoalId,
+  });
+
+  const linkedMilestone = visionGoalId ? allVisionGoals.find(g => g.id === visionGoalId) : null;
+  const categoryLabels: Record<string, string> = { legacy: "Legacy", "10year": "10-Year", "5year": "5-Year", "18month": "18-Month", "90day": "90-Day" };
 
   const difficultyStyle = "bg-primary/20 border-primary/50 text-primary";
   const difficultyMultipliers: Record<string, number> = { D: 1, C: 1.5, B: 2, A: 3, S: 5 };
@@ -227,6 +238,15 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
                 </p>
               )}
               <div className="border-t border-primary/10 pt-2 space-y-1">
+                {linkedMilestone && (
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Target className="h-3 w-3 text-primary flex-shrink-0" />
+                    <span className="text-xs text-primary font-mono">
+                      [{categoryLabels[linkedMilestone.category] || linkedMilestone.category}]
+                    </span>
+                    <span className="text-xs text-muted-foreground">{linkedMilestone.title}</span>
+                  </div>
+                )}
                 {category && category !== "general" && category !== "onboarding" && (
                   <p className="text-muted-foreground text-xs">
                     <span className="text-primary font-mono capitalize">{category}</span> — {

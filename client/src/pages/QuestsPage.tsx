@@ -65,6 +65,7 @@ interface MissionFormData {
   repeatInterval: number;
   repeatDays: string[];
   repeatEndDate: string;
+  visionGoalId: number | null;
 }
 
 const defaultFormData: MissionFormData = {
@@ -83,6 +84,21 @@ const defaultFormData: MissionFormData = {
   repeatInterval: 1,
   repeatDays: [],
   repeatEndDate: "",
+  visionGoalId: null,
+};
+
+interface VisionGoalOption {
+  id: number;
+  category: string;
+  title: string;
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  legacy: "Legacy",
+  "10year": "10-Year",
+  "5year": "5-Year",
+  "18month": "18-Month",
+  "90day": "90-Day",
 };
 
 const REPEAT_FREQUENCIES = [
@@ -162,6 +178,11 @@ export default function QuestsPage() {
     staleTime: 60000,
   });
   
+  const { data: allVisionGoals = [] } = useQuery<VisionGoalOption[]>({
+    queryKey: ['/api/vision-goals/all'],
+    enabled: !!user,
+  });
+
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingQuest, setEditingQuest] = useState<Quest | null>(null);
@@ -454,6 +475,7 @@ export default function QuestsPage() {
       repeatInterval: quest.repeatInterval || 1,
       repeatDays: quest.repeatDays || [],
       repeatEndDate: quest.repeatEndDate || "",
+      visionGoalId: quest.visionGoalId || null,
     });
     setIsEditOpen(true);
   };
@@ -481,6 +503,7 @@ export default function QuestsPage() {
         repeatInterval: createFormData.isRitualized ? createFormData.repeatInterval : null,
         repeatDays: createFormData.isRitualized && createFormData.repeatFrequency === "weekly" ? createFormData.repeatDays : null,
         repeatEndDate: createFormData.isRitualized && createFormData.repeatEndDate ? createFormData.repeatEndDate : null,
+        visionGoalId: createFormData.visionGoalId,
       });
       
       setCreateFormData(defaultFormData);
@@ -515,6 +538,7 @@ export default function QuestsPage() {
         repeatInterval: editFormData.isRitualized ? editFormData.repeatInterval : null,
         repeatDays: editFormData.isRitualized && editFormData.repeatFrequency === "weekly" ? editFormData.repeatDays : null,
         repeatEndDate: editFormData.isRitualized && editFormData.repeatEndDate ? editFormData.repeatEndDate : null,
+        visionGoalId: editFormData.visionGoalId,
       });
       
       setEditFormData(defaultFormData);
@@ -630,6 +654,35 @@ export default function QuestsPage() {
                   </Select>
                 </div>
               </div>
+
+              {allVisionGoals.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Target className="h-4 w-4" />
+                    Link to Milestone
+                  </Label>
+                  <Select
+                    value={createFormData.visionGoalId?.toString() || "none"}
+                    onValueChange={(val) => setCreateFormData(prev => ({ ...prev, visionGoalId: val === "none" ? null : parseInt(val) }))}
+                  >
+                    <SelectTrigger className="bg-background/50 border-primary/30">
+                      <SelectValue placeholder="None" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {["legacy", "10year", "5year", "18month", "90day"].map(cat => {
+                        const catGoals = allVisionGoals.filter(g => g.category === cat);
+                        if (catGoals.length === 0) return null;
+                        return catGoals.map(g => (
+                          <SelectItem key={g.id} value={g.id.toString()}>
+                            <span className="text-muted-foreground text-xs mr-1">[{CATEGORY_LABELS[cat]}]</span> {g.title}
+                          </SelectItem>
+                        ));
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -912,6 +965,35 @@ export default function QuestsPage() {
                 </Select>
               </div>
             </div>
+
+            {allVisionGoals.length > 0 && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Target className="h-4 w-4" />
+                  Link to Milestone
+                </Label>
+                <Select
+                  value={editFormData.visionGoalId?.toString() || "none"}
+                  onValueChange={(val) => setEditFormData(prev => ({ ...prev, visionGoalId: val === "none" ? null : parseInt(val) }))}
+                >
+                  <SelectTrigger className="bg-background/50 border-primary/30">
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {["legacy", "10year", "5year", "18month", "90day"].map(cat => {
+                      const catGoals = allVisionGoals.filter(g => g.category === cat);
+                      if (catGoals.length === 0) return null;
+                      return catGoals.map(g => (
+                        <SelectItem key={g.id} value={g.id.toString()}>
+                          <span className="text-muted-foreground text-xs mr-1">[{CATEGORY_LABELS[cat]}]</span> {g.title}
+                        </SelectItem>
+                      ));
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

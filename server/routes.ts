@@ -5328,6 +5328,22 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
   });
 
   // Vision Goals CRUD
+  app.get("/api/vision-goals/all", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const categories = ["legacy", "10year", "5year", "18month", "90day"];
+      const allGoals = [];
+      for (const cat of categories) {
+        const goals = await storage.getVisionGoals(userId, cat);
+        allGoals.push(...goals);
+      }
+      res.json(allGoals);
+    } catch (error) {
+      console.error("Error fetching all vision goals:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/vision-goals/:category", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
@@ -5396,6 +5412,30 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting vision goal:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/quests/completed-by-vision-goal/:category", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { category } = req.params;
+      const validCategories = ["legacy", "10year", "5year", "18month", "90day"];
+      if (!validCategories.includes(category)) {
+        return res.status(400).json({ error: "Invalid category" });
+      }
+      const goals = await storage.getVisionGoals(userId, category);
+      const goalIds = goals.map(g => g.id);
+      if (goalIds.length === 0) {
+        return res.json([]);
+      }
+      const allQuests = await storage.getQuests(userId);
+      const completedLinked = allQuests
+        .filter(q => q.completed && q.visionGoalId && goalIds.includes(q.visionGoalId))
+        .map(q => ({ id: q.id, title: q.title, completedAt: q.completedAt, visionGoalId: q.visionGoalId }));
+      res.json(completedLinked);
+    } catch (error) {
+      console.error("Error fetching completed missions by vision goal:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
