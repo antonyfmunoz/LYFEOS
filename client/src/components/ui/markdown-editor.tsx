@@ -201,7 +201,7 @@ export function MarkdownEditor({
             value={value}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
-            className="w-full h-full min-h-[100px] p-3 bg-transparent resize-none outline-none border-none rounded-md placeholder:text-muted-foreground dark:text-[#D6F4FF] light:text-slate-700 text-base"
+            className="w-full h-full min-h-[100px] p-3 bg-transparent resize-none outline-none border-none rounded-md placeholder:text-muted-foreground/50 dark:text-[#D6F4FF] light:text-slate-700 text-base"
             placeholder={placeholder}
             style={{ minHeight }}
           />
@@ -223,7 +223,7 @@ export function MarkdownEditor({
                 {value}
               </ObsidianMarkdown>
             ) : (
-              <div className="dark:text-[#7DAAB2]/50 light:text-slate-400/80">{placeholder}</div>
+              <div className="text-muted-foreground/50">{placeholder}</div>
             )}
             <button 
               onClick={handleEditClick}

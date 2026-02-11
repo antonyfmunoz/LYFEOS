@@ -375,7 +375,7 @@ export default function MarkdownEditor({
               onChange={handleContentChange}
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
-              className="w-full h-[500px] p-4 bg-transparent resize-vertical border-none outline-none dark:text-[#D6F4FF] light:text-slate-700 text-base"
+              className="w-full h-[500px] p-4 bg-transparent resize-vertical border-none outline-none placeholder:text-muted-foreground/50 dark:text-[#D6F4FF] light:text-slate-700 text-base"
               disabled={readOnly}
             />
           ) : (
@@ -384,20 +384,24 @@ export default function MarkdownEditor({
               style={{ maxHeight: '500px' }}
               onClick={handleMarkdownClick}
             >
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm, remarkMath]}
-                rehypePlugins={[rehypeKatex]}
-                components={{
-                  li: ({ node, className, children, ...props }: any) => {
-                    if (props.checked !== undefined) {
-                      return <TaskListRenderer checked={props.checked}>{children}</TaskListRenderer>;
+              {processedContent ? (
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm, remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                  components={{
+                    li: ({ node, className, children, ...props }: any) => {
+                      if (props.checked !== undefined) {
+                        return <TaskListRenderer checked={props.checked}>{children}</TaskListRenderer>;
+                      }
+                      return <li className={className} {...props}>{children}</li>;
                     }
-                    return <li className={className} {...props}>{children}</li>;
-                  }
-                }}
-              >
-                {processedContent || placeholder}
-              </ReactMarkdown>
+                  }}
+                >
+                  {processedContent}
+                </ReactMarkdown>
+              ) : (
+                <div className="text-muted-foreground/50">{placeholder}</div>
+              )}
             </div>
           )}
         </div>
