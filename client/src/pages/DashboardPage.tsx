@@ -196,15 +196,33 @@ export default function DashboardPage() {
       position: "top",
     },
     {
-      target: "[data-tour='widget-first']",
-      title: "Drag & Drop Widgets",
-      description: "Each section below is a widget you can rearrange! Grab the handle on the left to drag widgets into your preferred order. Collapse or expand them as you like.",
-      position: "top",
+      target: "[data-tour='widget-data-entry-log']",
+      title: "Daily Data Log",
+      description: "Capture your daily thoughts, information consumed, and ideas here. These entries are automatically saved to your Chronilog journal for future review.",
+      position: "bottom",
     },
     {
-      target: "[data-tour='widget-first']",
-      title: "Daily Logs",
-      description: "Use these widgets to capture your thoughts, research, reflections, intentions, and energy levels each day. Everything is saved automatically to your Chronilog journal.",
+      target: "[data-tour='widget-research-log']",
+      title: "Daily Research Log",
+      description: "Document your research findings, revision summaries, and execution plans. Track the lifecycle of ideas from discovery through implementation.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='widget-reflection-log']",
+      title: "Daily Reflection Log",
+      description: "Reflect on what went well, what could improve, and lessons learned. Daily reflection builds self-awareness and accelerates personal growth.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='widget-intention-setter']",
+      title: "Daily Intention Log",
+      description: "Set your focus and priorities for the day. Clear intentions help direct your energy and attention toward what matters most.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='widget-energy-log']",
+      title: "Daily Energy Log",
+      description: "Track your energy levels, sleep quality, exercise, and mood throughout the day. Understanding your patterns helps optimize your performance.",
       position: "bottom",
     },
   ];
@@ -1438,7 +1456,7 @@ export default function DashboardPage() {
         
         {/* Draggable Widget Sections */}
         {widgets.map((widget, index) => (
-          <div key={widget.id} {...(index === 0 ? { "data-tour": "widget-first" } : {})}>
+          <div key={widget.id} data-tour={`widget-${widget.id}`}>
             <PersistentDraggableWidget
               widgetId={`dashboard.${widget.id}`}
               id={widget.id}

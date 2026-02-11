@@ -144,6 +144,7 @@ const DraggableCategoryCard = ({ id, index, item, moveCategory, navigate }: Drag
       )}
       onClick={navigateToArchive}
       data-handler-id={handlerId}
+      data-tour={`chronilog-${id}`}
     >
       <div className="p-3 flex items-center justify-between">
         <div className="flex items-center">
@@ -225,6 +226,7 @@ const DraggableTimelineWrapper = ({ id, index, moveCategory }: DraggableTimeline
       ref={ref}
       className={cn("relative", isDragging && "opacity-50")}
       data-handler-id={handlerId}
+      data-tour="chronilog-timeline"
     >
       <TimelineWidget />
     </div>
@@ -331,9 +333,39 @@ export default function ChronilogPage() {
       position: "bottom",
     },
     {
-      target: "[data-tour='chronilog-categories']",
-      title: "Browse Categories",
-      description: "Your content is organized into sections: Journal entries, Knowledge base, Vision & goals, Analytics, and Timeline. Tap any card to explore. You can also drag to reorder them.",
+      target: "[data-tour='chronilog-missions']",
+      title: "Missions Archive",
+      description: "A detailed history of all your completed and active missions. Track your progress and revisit past achievements.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='chronilog-journal']",
+      title: "Journal",
+      description: "Your daily reflections, thoughts, and personal entries. Review past journal logs to track your growth over time.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='chronilog-knowledge']",
+      title: "Knowledge Vault",
+      description: "Your personal library of notes, documents, and saved knowledge. Store and organize information for easy retrieval.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='chronilog-goals']",
+      title: "Vision & Goals",
+      description: "Long-term goals and vision board. Set objectives, track milestones, and align your daily actions with your bigger picture.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='chronilog-analytics']",
+      title: "Analytics",
+      description: "Visualize your progress with mood trends, XP progression, mission completion rates, and performance insights over time.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='chronilog-timeline']",
+      title: "Timeline",
+      description: "Your recent activity feed showing missions completed, journal entries, and milestones — all in chronological order.",
       position: "bottom",
     },
   ];

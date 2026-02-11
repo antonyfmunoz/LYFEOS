@@ -224,14 +224,32 @@ export default function ProfilePage() {
     {
       target: "[data-tour='profile-header']",
       title: "Your Profile",
-      description: "This is your player card. It shows your avatar, display name, and level. You can upload a profile picture and customize your appearance.",
+      description: "This is your player card. It shows your avatar, display name, title, and level. You can upload a profile picture and customize your appearance.",
       position: "bottom",
     },
     {
-      target: "[data-tour='profile-stats']",
+      target: "[data-tour='profile-widget-stats']",
       title: "Player Stats",
-      description: "Track your XP, energy, health, time tokens, and attention tokens here. These stats reflect your daily activity and overall progress in the system.",
+      description: "Track your XP, energy, health, time tokens, and attention tokens here. Tap any stat for detailed breakdowns, streaks, and AI-powered tips.",
       position: "bottom",
+    },
+    {
+      target: "[data-tour='profile-widget-player-record']",
+      title: "Player Record",
+      description: "Your personal bio and background story. This is your player identity card — edit it to define who you are in the system.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='profile-widget-player-affirmation']",
+      title: "Player Affirmation",
+      description: "Set a personal affirmation or mantra that motivates you. It appears on your profile as a reminder of your purpose every time you visit.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='profile-widget-settings']",
+      title: "Settings",
+      description: "Customize your experience — change your theme color, toggle notifications, enable two-factor authentication, and adjust display preferences.",
+      position: "top",
     },
   ];
 
@@ -1841,7 +1859,7 @@ export default function ProfilePage() {
         {/* Draggable Widgets - Stats Log and Settings */}
         <div className="mt-6">
             {widgets.map((widget, index) => (
-              <div key={`wrapper-${widget.id}`} {...(index === 0 ? { "data-tour": "profile-stats" } : {})}>
+              <div key={`wrapper-${widget.id}`} data-tour={`profile-widget-${widget.id}`}>
               <PersistentProfileDraggableWidget
                 widgetId={`profile.${widget.id}`}
                 id={widget.id}

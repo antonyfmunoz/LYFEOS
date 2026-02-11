@@ -50,19 +50,31 @@ export default function AIPage() {
     {
       target: "[data-tour='ai-header']",
       title: "Your AI Assistant",
-      description: "Meet your personal AI companion. You can rename it, and it learns about your goals, stats, and preferences to give personalized advice.",
+      description: "Meet your personal AI companion. You can rename it by clicking the edit icon, and it learns about your goals, stats, and preferences to give personalized advice.",
       position: "bottom",
     },
     {
       target: "[data-tour='ai-sidebar']",
-      title: "Chat History",
-      description: "Your conversation history lives here. Create new chats for different topics, rename them, or delete old ones.",
+      title: "Chat Sessions",
+      description: "Your conversation history lives here. Create new chats for different topics, use quick prompts to get started, rename sessions, or delete old ones.",
       position: "right",
     },
     {
+      target: "[data-tour='ai-chat-area']",
+      title: "Chat Window",
+      description: "Your conversations appear here. The AI remembers context within each chat session and can help with task planning, brainstorming, motivation, and more.",
+      position: "bottom",
+    },
+    {
       target: "[data-tour='ai-input']",
-      title: "Start Chatting",
+      title: "Message Input",
       description: "Type your message here to chat with your AI assistant. Ask for advice, brainstorm ideas, get help planning your day, or just have a conversation.",
+      position: "top",
+    },
+    {
+      target: "[data-tour='ai-voice']",
+      title: "Voice Commands",
+      description: "Tap the microphone to use voice input. Speak naturally to navigate the app, manage missions, control timers, or ask questions hands-free.",
       position: "top",
     },
   ];
@@ -462,7 +474,7 @@ export default function AIPage() {
         {/* Main Chat Window */}
         <div className="flex-1 flex flex-col glassmorphic rounded-xl p-4 neon-border h-full ml-0 sm:ml-4 md:ml-6 mt-12 sm:mt-0 relative min-w-0">
           {/* Messages area */}
-          <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar">
+          <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar" data-tour="ai-chat-area">
             {activeChat && activeChat.messages.length > 0 ? (
               <div className="flex flex-col space-y-6 pt-2">
                 {activeChat.messages.map((message) => (
@@ -560,6 +572,7 @@ export default function AIPage() {
                 onClick={() => window.dispatchEvent(new CustomEvent('toggle-voice-control'))}
                 className="absolute right-12 bottom-2 h-8 w-8 rounded border bg-card/50 border-primary/30 text-primary hover:bg-primary/20 transition-colors inline-flex items-center justify-center"
                 title="Voice input"
+                data-tour="ai-voice"
               >
                 <Mic className="h-4 w-4" />
               </button>
