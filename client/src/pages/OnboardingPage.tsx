@@ -612,7 +612,36 @@ export default function OnboardingPage() {
   
   const [ageRange, setAgeRange] = useState(saved.ageRange || "");
   const [location, setLocation] = useState(saved.location || "");
+  const [detectedLocation, setDetectedLocation] = useState("");
   const [timezone, setTimezone] = useState(saved.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
+
+  useEffect(() => {
+    if (location) return;
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
+            { headers: { "Accept-Language": "en" } }
+          );
+          if (!res.ok) return;
+          const data = await res.json();
+          const city = data.address?.city || data.address?.town || data.address?.village || data.address?.municipality || "";
+          const state = data.address?.state || "";
+          const country = data.address?.country || "";
+          const parts = [city, state, country].filter(Boolean);
+          const locationStr = parts.join(", ");
+          if (locationStr) {
+            setDetectedLocation(locationStr);
+            setLocation(locationStr);
+          }
+        } catch {}
+      },
+      () => {}
+    );
+  }, []);
   const [lifeStage, setLifeStage] = useState(saved.lifeStage || "");
   
   const [archetypeAnswers, setArchetypeAnswers] = useState<Record<number, number | Archetype>>(saved.archetypeAnswers || {});
@@ -1151,7 +1180,13 @@ export default function OnboardingPage() {
       case 1:
         return (
           <div className="space-y-4">
-            <h2 className="text-2xl font-orbitron font-bold text-center">Where are you located?</h2>
+            <h2 className="text-2xl font-orbitron font-bold text-center">Confirm your location</h2>
+            {detectedLocation && (
+              <p className="text-sm text-muted-foreground text-center">Auto-detected as <span className="text-primary font-medium">{detectedLocation}</span>. Change below if needed:</p>
+            )}
+            {!detectedLocation && (
+              <p className="text-sm text-muted-foreground text-center">Start typing your city to search:</p>
+            )}
             <LocationAutosuggest value={location} onChange={setLocation} />
           </div>
         );

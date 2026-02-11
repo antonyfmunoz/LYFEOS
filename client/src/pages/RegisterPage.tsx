@@ -20,7 +20,7 @@ export default function RegisterPage() {
   usePageTitle('Register');
   
   const { register } = useAuth();
-  const { primaryColor } = useTheme();
+  const { primaryColor, setPrimaryColor: setThemePrimaryColor } = useTheme();
   const [, navigate] = useLocation();
   
   const [username, setUsername] = useState("");
@@ -31,75 +31,16 @@ export default function RegisterPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [error, setError] = useState("");
-  const [selectedColor, setSelectedColor] = useState("#00e0ff");
+  const [selectedColor, setSelectedColor] = useState(() => localStorage.getItem('lyfeos-primary-color') || primaryColor || "#00e0ff");
+  const [hasUserSelectedColor, setHasUserSelectedColor] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
   useEffect(() => {
-    const colorToApply = selectedColor || localStorage.getItem('lyfeos-primary-color') || primaryColor;
-    if (colorToApply) {
-      const savedColor = colorToApply;
-      
-      const hexToHSL = (hex: string): string => {
-        hex = hex.replace(/^#/, '');
-        const r = parseInt(hex.substring(0, 2), 16) / 255;
-        const g = parseInt(hex.substring(2, 4), 16) / 255;
-        const b = parseInt(hex.substring(4, 6), 16) / 255;
-        const max = Math.max(r, g, b);
-        const min = Math.min(r, g, b);
-        let h = 0, s = 0, l = (max + min) / 2;
-        
-        if (max !== min) {
-          const d = max - min;
-          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-          switch (max) {
-            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-            case g: h = (b - r) / d + 2; break;
-            case b: h = (r - g) / d + 4; break;
-          }
-          h /= 6;
-        }
-        
-        h = Math.round(h * 360);
-        s = Math.round(s * 100);
-        l = Math.round(l * 100);
-        
-        return `${h} ${s}% ${l}%`;
-      };
-      
-      const hexToRGB = (hex: string): { r: number, g: number, b: number } | null => {
-        hex = hex.replace(/^#/, '');
-        if (!/^[0-9A-Fa-f]{6}$/.test(hex)) {
-          return null;
-        }
-        const r = parseInt(hex.substring(0, 2), 16);
-        const g = parseInt(hex.substring(2, 4), 16);
-        const b = parseInt(hex.substring(4, 6), 16);
-        return { r, g, b };
-      };
-      
-      const hsl = hexToHSL(savedColor);
-      document.documentElement.style.setProperty('--primary', hsl);
-      document.documentElement.style.setProperty('--primary-hsl', hsl);
-      document.documentElement.style.setProperty('--primary-foreground', '210 40% 98%');
-      document.documentElement.style.setProperty('--primary-hex', savedColor);
-      document.documentElement.style.setProperty('--primary-color', savedColor);
-      
-      const rgbValues = hexToRGB(savedColor);
-      if (rgbValues) {
-        const { r, g, b } = rgbValues;
-        document.documentElement.style.setProperty('--primary-rgb', `${r}, ${g}, ${b}`);
-        document.documentElement.style.setProperty('--primary-glow-light', `rgba(${r}, ${g}, ${b}, 0.3)`);
-        document.documentElement.style.setProperty('--primary-glow-medium', `rgba(${r}, ${g}, ${b}, 0.5)`);
-        document.documentElement.style.setProperty('--primary-glow-strong', `rgba(${r}, ${g}, ${b}, 0.7)`);
-        document.documentElement.style.setProperty('--primary-bg-subtle', `rgba(${r}, ${g}, ${b}, 0.1)`);
-        document.documentElement.style.setProperty('--primary-bg-light', `rgba(${r}, ${g}, ${b}, 0.2)`);
-        document.documentElement.style.setProperty('--primary-border', `rgba(${r}, ${g}, ${b}, 0.4)`);
-        document.documentElement.style.setProperty('--primary-border-subtle', `rgba(${r}, ${g}, ${b}, 0.2)`);
-        document.documentElement.style.setProperty('--primary-shadow', `rgba(${r}, ${g}, ${b}, 0.7)`);
-      }
+    if (hasUserSelectedColor) {
+      setThemePrimaryColor(selectedColor);
     }
-  }, [primaryColor, selectedColor]);
+  }, [selectedColor, hasUserSelectedColor]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -336,6 +277,7 @@ export default function RegisterPage() {
                   style={{ backgroundColor: color }}
                   onClick={() => {
                     setSelectedColor(color);
+                    setHasUserSelectedColor(true);
                     localStorage.setItem('lyfeos-primary-color', color);
                   }}
                 >
