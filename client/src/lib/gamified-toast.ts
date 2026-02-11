@@ -20,9 +20,9 @@ export function levelUpToast(newLevel: number, rankName?: string) {
 
 export function streakToast(days: number) {
   toast({
-    title: `${days}-Day Streak!`,
-    description: "You're on fire! Keep the momentum going!",
-    className: "gamified-toast gamified-toast-streak border-orange-500/60 bg-gradient-to-r from-orange-950/90 via-red-900/80 to-orange-950/90 text-orange-100",
+    title: `${days}-Day Streak`,
+    description: "Keep the momentum going.",
+    variant: "default",
     duration: 2500,
   });
 }

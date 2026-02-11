@@ -451,7 +451,23 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
               
               if (dbStats.streakDays > 1 && !streakToastFired.current) {
                 streakToastFired.current = true;
-                streakToast(dbStats.streakDays);
+                const today = new Date().toDateString();
+                const lastStreakToastDate = localStorage.getItem("lyfeos_streak_toast_date");
+                if (lastStreakToastDate !== today) {
+                  localStorage.setItem("lyfeos_streak_toast_date", today);
+                  let attempts = 0;
+                  const maxAttempts = 10;
+                  const showStreakAfterLogin = () => {
+                    attempts++;
+                    if (sessionStorage.getItem("lyfeos_login_toast_done") === "true") {
+                      sessionStorage.removeItem("lyfeos_login_toast_done");
+                      streakToast(dbStats.streakDays);
+                    } else if (attempts < maxAttempts) {
+                      setTimeout(showStreakAfterLogin, 500);
+                    }
+                  };
+                  setTimeout(showStreakAfterLogin, 500);
+                }
               }
               
               if (dbStats.primaryColor) {
