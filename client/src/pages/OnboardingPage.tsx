@@ -617,30 +617,19 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (location) return;
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const { latitude, longitude } = position.coords;
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
-            { headers: { "Accept-Language": "en" } }
-          );
-          if (!res.ok) return;
-          const data = await res.json();
-          const city = data.address?.city || data.address?.town || data.address?.village || data.address?.municipality || "";
-          const state = data.address?.state || "";
-          const country = data.address?.country || "";
-          const parts = [city, state, country].filter(Boolean);
-          const locationStr = parts.join(", ");
-          if (locationStr) {
-            setDetectedLocation(locationStr);
-            setLocation(locationStr);
-          }
-        } catch {}
-      },
-      () => {}
-    );
+    (async () => {
+      try {
+        const res = await fetch("https://ipapi.co/json/");
+        if (!res.ok) return;
+        const data = await res.json();
+        const parts = [data.city, data.region, data.country_name].filter(Boolean);
+        const locationStr = parts.join(", ");
+        if (locationStr) {
+          setDetectedLocation(locationStr);
+          setLocation(locationStr);
+        }
+      } catch {}
+    })();
   }, []);
   const [lifeStage, setLifeStage] = useState(saved.lifeStage || "");
   

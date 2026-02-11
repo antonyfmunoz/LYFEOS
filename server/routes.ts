@@ -335,7 +335,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         attentionTokensMax: 100,
         streakDays: 0,
         efficiencyScore: 0,
-        aiAssistantName: "NOVA"
+        aiAssistantName: "NOVA",
+        primaryColor: userData.avatarColor || "#00e0ff"
       });
       
       // Create or update user profile (using upsert to handle race conditions)
