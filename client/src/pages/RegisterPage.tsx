@@ -222,7 +222,7 @@ export default function RegisterPage() {
     <div className="min-h-screen flex flex-col items-center justify-center p-4 text-white" style={{ backgroundColor: 'hsl(0 0% 7%)' }}>
       <div className="text-center mb-8">
         <h1 className="text-4xl text-white font-orbitron mb-2">LYFEOS</h1>
-        <p className="text-white">Your personal life operating system</p>
+        <p className="text-white">Your life operating system</p>
       </div>
       <div className="w-full max-w-md rounded-xl p-6 border border-white/20 backdrop-blur-md animate-fadeIn"
            style={{ backgroundColor: "rgba(38, 38, 42, 0.85)", boxShadow: "0 0 20px rgba(255, 255, 255, 0.08)" }}>
