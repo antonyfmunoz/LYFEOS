@@ -23,9 +23,12 @@ export default function RegisterPage() {
   const { primaryColor, setPrimaryColor: setThemePrimaryColor } = useTheme();
   const [, navigate] = useLocation();
   
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [error, setError] = useState("");
   const [selectedColor, setSelectedColor] = useState(() => localStorage.getItem('lyfeos-primary-color') || primaryColor || "#00e0ff");
   const [hasUserSelectedColor, setHasUserSelectedColor] = useState(false);
