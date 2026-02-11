@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { UserStats, Quest, AIMessage, CalendarEvent, MissionPage, ChatSession, KanbanTask, KanbanStatus, KanbanBoard, KanbanColumn } from "./types";
 import { toast } from "@/hooks/use-toast";
+import { missionCompleteToast, levelUpToast, streakToast } from "@/lib/gamified-toast";
+import { getRank } from "@/lib/ranks";
 import { useAuth } from "./authContext";
 import { apiRequest, queryClient } from "./queryClient";
 import { getLocalDateString } from "./utils";
@@ -446,6 +448,10 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
               console.log("Stats loaded successfully:", dbStats);
               setStats(dbStats);
               
+              if (dbStats.streakDays > 1) {
+                setTimeout(() => streakToast(dbStats.streakDays), 1500);
+              }
+              
               if (dbStats.primaryColor) {
                 applyPrimaryColor(dbStats.primaryColor);
               }
@@ -777,13 +783,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     // Show mission completed toast IMMEDIATELY (optimistic, before server response)
     if (completed) {
       const xpEstimate = Math.floor(currentQuest.experienceReward * ({ D: 1, C: 1.5, B: 2, A: 3, S: 5 }[currentQuest.difficulty || 'D'] || 1));
-      toast({
-        title: "Mission Completed",
-        description: `${currentQuest.title} — +${xpEstimate} XP`,
-        variant: "default",
-        className: "bg-background/80 border border-primary text-foreground",
-        duration: 1500,
-      });
+      missionCompleteToast(currentQuest.title, xpEstimate);
     }
     
     // Persist to database (runs in background after toast)
@@ -835,13 +835,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         
         // Show level up toast if applicable
         if (data.stats.experience.showLevelUp) {
-          toast({
-            title: "Level Up!",
-            description: `You've reached level ${data.stats.experience.level}! Keep up the good work!`,
-            variant: "default",
-            className: "bg-background/80 border border-primary text-foreground",
-            duration: 5000,
-          });
+          const rank = getRank(data.stats.experience.level);
+          levelUpToast(data.stats.experience.level, rank.name);
         }
       }
       

@@ -4,13 +4,15 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
 import { useWidgetState } from "@/hooks/use-widget-state";
-import { ArrowLeft, Eye, Compass, Flame, Target, Milestone, Plus, Check, Trash2, Edit2, Loader2, ChevronDown, ChevronRight, Info, Zap } from "lucide-react";
+import { ArrowLeft, Eye, Compass, Flame, Target, Milestone, Plus, Check, Trash2, Edit2, Loader2, ChevronDown, ChevronRight, Info, Zap, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import update from 'immutability-helper';
+import { useDrag, useDrop } from 'react-dnd';
 import { CollapsibleWidget } from '@/components/ui/collapsible-widget';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { cn } from "@/lib/utils";
+import { milestoneToast } from "@/lib/gamified-toast";
 
 interface VisionGoal {
   id: number;
@@ -45,6 +47,120 @@ interface CompletedMission {
 
 const difficultyOrder: Record<string, number> = { 'D': 1, 'C': 2, 'B': 3, 'A': 4, 'S': 5 };
 const reverseOrder: Record<number, string> = { 1: 'D', 2: 'C', 3: 'B', 4: 'A', 5: 'S' };
+
+const MILESTONE_ITEM = "MILESTONE_ITEM";
+
+interface DraggableMilestoneProps {
+  goal: VisionGoal;
+  index: number;
+  moveGoal: (dragIndex: number, hoverIndex: number) => void;
+  onToggle: (id: number, completed: boolean) => void;
+  onEdit: (goal: VisionGoal) => void;
+  onDelete: (id: number) => void;
+  editingId: number | null;
+  editTitle: string;
+  setEditTitle: (v: string) => void;
+  handleEditSave: (id: number) => void;
+  setEditingId: (id: number | null) => void;
+  editInputRef: React.RefObject<HTMLInputElement | null>;
+  infoExpandedId: number | null;
+  setInfoExpandedId: (id: number | null) => void;
+  renderInfoPanel: (goal: VisionGoal) => React.ReactNode;
+  renderGoalMissions: (goalId: number) => React.ReactNode;
+  category: string;
+}
+
+function DraggableMilestone({
+  goal, index, moveGoal, onToggle, onEdit, onDelete,
+  editingId, editTitle, setEditTitle, handleEditSave, setEditingId, editInputRef,
+  infoExpandedId, setInfoExpandedId, renderInfoPanel, renderGoalMissions, category,
+}: DraggableMilestoneProps) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  const [{ isDragging }, drag, preview] = useDrag({
+    type: `${MILESTONE_ITEM}_${category}`,
+    item: () => ({ index }),
+    collect: (monitor) => ({ isDragging: monitor.isDragging() }),
+  });
+
+  const [, drop] = useDrop({
+    accept: `${MILESTONE_ITEM}_${category}`,
+    hover(item: { index: number }, monitor) {
+      if (!ref.current) return;
+      const dragIndex = item.index;
+      const hoverIndex = index;
+      if (dragIndex === hoverIndex) return;
+      const hoverBoundingRect = ref.current.getBoundingClientRect();
+      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+      const clientOffset = monitor.getClientOffset();
+      if (!clientOffset) return;
+      const hoverClientY = clientOffset.y - hoverBoundingRect.top;
+      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) return;
+      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) return;
+      moveGoal(dragIndex, hoverIndex);
+      item.index = hoverIndex;
+    },
+  });
+
+  preview(drop(ref));
+
+  return (
+    <div ref={ref} style={{ opacity: isDragging ? 0.4 : 1 }}>
+      <div className="group flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-primary/5 transition-colors">
+        <div ref={(node) => { drag(node); }} className="cursor-grab active:cursor-grabbing shrink-0 text-muted-foreground hover:text-primary transition-colors">
+          <GripVertical className="h-4 w-4" />
+        </div>
+        <button
+          onClick={() => onToggle(goal.id, true)}
+          className="shrink-0 h-5 w-5 rounded-full border-2 border-primary/40 hover:border-primary hover:bg-primary/20 transition-colors flex items-center justify-center"
+        />
+        {editingId === goal.id ? (
+          <form
+            onSubmit={(e) => { e.preventDefault(); handleEditSave(goal.id); }}
+            className="flex-1 flex gap-2"
+          >
+            <Input
+              ref={editInputRef}
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              className="h-7 text-sm bg-card/30 border-primary/30"
+              onKeyDown={(e) => { if (e.key === 'Escape') setEditingId(null); }}
+            />
+            <Button type="submit" size="sm" variant="ghost" className="h-7 px-2 text-primary">
+              <Check className="h-3.5 w-3.5" />
+            </Button>
+          </form>
+        ) : (
+          <>
+            <span className="flex-1 text-sm text-foreground">{goal.title}</span>
+            <div className="flex gap-1">
+              <button
+                onClick={() => setInfoExpandedId(infoExpandedId === goal.id ? null : goal.id)}
+                className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+              >
+                <Info className="h-3 w-3" />
+              </button>
+              <button
+                onClick={() => onEdit(goal)}
+                className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+              >
+                <Edit2 className="h-3 w-3" />
+              </button>
+              <button
+                onClick={() => onDelete(goal.id)}
+                className="h-6 w-6 inline-flex items-center justify-center rounded border bg-red-500/20 border-red-500/50 text-red-400 hover:bg-red-500/30 transition-colors"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+      {renderInfoPanel(goal)}
+      {renderGoalMissions(goal.id)}
+    </div>
+  );
+}
 
 function MilestoneList({ category, placeholder }: { category: string; placeholder: string }) {
   const { user } = useAuth();
@@ -104,6 +220,7 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
         title,
         description: null,
         completed: false,
+        completedAt: null,
         displayOrder: (previous?.length || 0) + 1,
         createdAt: new Date().toISOString(),
       };
@@ -134,6 +251,12 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
         old.map(g => g.id === id ? { ...g, completed } : g)
       );
       return { previous };
+    },
+    onSuccess: (_data, { id, completed }) => {
+      if (completed) {
+        const goal = goals.find(g => g.id === id);
+        if (goal) milestoneToast(goal.title);
+      }
     },
     onError: (_err, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
@@ -196,6 +319,37 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
       queryClient.invalidateQueries({ queryKey });
     },
   });
+
+  const reorderMutation = useMutation({
+    mutationFn: async (ids: number[]) => {
+      await apiRequest('/api/vision-goals/reorder', {
+        method: 'PUT',
+        body: JSON.stringify({ ids }),
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
+  const activeGoalsRef = useRef<VisionGoal[]>([]);
+
+  const moveGoal = useCallback((dragIndex: number, hoverIndex: number) => {
+    const currentActive = activeGoalsRef.current;
+    const newGoals = update(currentActive, {
+      $splice: [
+        [dragIndex, 1],
+        [hoverIndex, 0, currentActive[dragIndex]],
+      ],
+    });
+    const reordered = newGoals.map((g, i) => ({ ...g, displayOrder: i }));
+    queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) => {
+      const completed = old.filter(g => g.completed);
+      return [...reordered, ...completed];
+    });
+    activeGoalsRef.current = reordered;
+    reorderMutation.mutate(reordered.map(g => g.id));
+  }, [queryKey]);
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -312,8 +466,9 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
     );
   };
 
-  const activeGoals = goals.filter(g => !g.completed);
+  const activeGoals = [...goals.filter(g => !g.completed)].sort((a, b) => a.displayOrder - b.displayOrder);
   const completedGoals = goals.filter(g => g.completed);
+  activeGoalsRef.current = activeGoals;
 
   if (isLoading) {
     return (
@@ -377,58 +532,27 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
 
       {activeGoals.length > 0 && (
         <div className="space-y-1">
-          {activeGoals.map((goal) => (
-            <div key={goal.id}>
-              <div className="group flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-primary/5 transition-colors">
-                <button
-                  onClick={() => toggleMutation.mutate({ id: goal.id, completed: true })}
-                  className="shrink-0 h-5 w-5 rounded-full border-2 border-primary/40 hover:border-primary hover:bg-primary/20 transition-colors flex items-center justify-center"
-                />
-                {editingId === goal.id ? (
-                  <form
-                    onSubmit={(e) => { e.preventDefault(); handleEditSave(goal.id); }}
-                    className="flex-1 flex gap-2"
-                  >
-                    <Input
-                      ref={editInputRef}
-                      value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
-                      className="h-7 text-sm bg-card/30 border-primary/30"
-                      onKeyDown={(e) => { if (e.key === 'Escape') setEditingId(null); }}
-                    />
-                    <Button type="submit" size="sm" variant="ghost" className="h-7 px-2 text-primary">
-                      <Check className="h-3.5 w-3.5" />
-                    </Button>
-                  </form>
-                ) : (
-                  <>
-                    <span className="flex-1 text-sm text-foreground">{goal.title}</span>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => setInfoExpandedId(infoExpandedId === goal.id ? null : goal.id)}
-                        className="h-6 w-6 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 flex items-center justify-center transition-colors"
-                      >
-                        <Info className="h-3 w-3" />
-                      </button>
-                      <button
-                        onClick={() => startEdit(goal)}
-                        className="h-6 w-6 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 flex items-center justify-center transition-colors"
-                      >
-                        <Edit2 className="h-3 w-3" />
-                      </button>
-                      <button
-                        onClick={() => deleteMutation.mutate(goal.id)}
-                        className="h-6 w-6 rounded text-muted-foreground hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-              {renderInfoPanel(goal)}
-              {renderGoalMissions(goal.id)}
-            </div>
+          {activeGoals.map((goal, index) => (
+            <DraggableMilestone
+              key={goal.id}
+              goal={goal}
+              index={index}
+              moveGoal={moveGoal}
+              onToggle={(id, completed) => toggleMutation.mutate({ id, completed })}
+              onEdit={startEdit}
+              onDelete={(id) => deleteMutation.mutate(id)}
+              editingId={editingId}
+              editTitle={editTitle}
+              setEditTitle={setEditTitle}
+              handleEditSave={handleEditSave}
+              setEditingId={setEditingId}
+              editInputRef={editInputRef}
+              infoExpandedId={infoExpandedId}
+              setInfoExpandedId={setInfoExpandedId}
+              renderInfoPanel={renderInfoPanel}
+              renderGoalMissions={renderGoalMissions}
+              category={category}
+            />
           ))}
         </div>
       )}
@@ -448,22 +572,22 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
                   <Check className="h-3 w-3 text-primary" />
                 </button>
                 <span className={cn("flex-1 text-sm line-through text-muted-foreground")}>{goal.title}</span>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex gap-1">
                   <button
                     onClick={() => setInfoExpandedId(infoExpandedId === goal.id ? null : goal.id)}
-                    className="h-6 w-6 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 flex items-center justify-center transition-colors"
+                    className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
                   >
                     <Info className="h-3 w-3" />
                   </button>
                   <button
                     onClick={() => startEdit(goal)}
-                    className="h-6 w-6 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 flex items-center justify-center transition-colors"
+                    className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
                   >
                     <Edit2 className="h-3 w-3" />
                   </button>
                   <button
                     onClick={() => deleteMutation.mutate(goal.id)}
-                    className="h-6 w-6 rounded text-muted-foreground hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors"
+                    className="h-6 w-6 inline-flex items-center justify-center rounded border bg-red-500/20 border-red-500/50 text-red-400 hover:bg-red-500/30 transition-colors"
                   >
                     <Trash2 className="h-3 w-3" />
                   </button>

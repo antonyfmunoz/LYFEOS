@@ -249,6 +249,7 @@ export interface IStorage {
   createVisionGoal(goal: InsertVisionGoal): Promise<VisionGoal>;
   updateVisionGoal(id: number, userId: number, goal: Partial<InsertVisionGoal>): Promise<VisionGoal>;
   deleteVisionGoal(id: number, userId: number): Promise<void>;
+  reorderVisionGoals(ids: number[], userId: number): Promise<void>;
 
   // User Category methods
   getUserCategories(userId: number): Promise<UserCategory[]>;
@@ -2142,6 +2143,14 @@ export class DatabaseStorage implements IStorage {
     await db.delete(visionGoals).where(
       and(eq(visionGoals.id, id), eq(visionGoals.userId, userId))
     );
+  }
+
+  async reorderVisionGoals(ids: number[], userId: number): Promise<void> {
+    for (let i = 0; i < ids.length; i++) {
+      await db.update(visionGoals)
+        .set({ displayOrder: i })
+        .where(and(eq(visionGoals.id, ids[i]), eq(visionGoals.userId, userId)));
+    }
   }
 
   async getUserCategories(userId: number): Promise<UserCategory[]> {

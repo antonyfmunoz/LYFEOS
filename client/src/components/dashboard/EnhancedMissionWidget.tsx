@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, Clock, Award, Zap, Info } from "lucide-react";
+import { Calendar, Clock, Award, Zap, Info, Sword } from "lucide-react";
 import { CalendarEvent, MissionPage } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/authContext";
+import { missionCompleteToast } from "@/lib/gamified-toast";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { useLYFEOS } from "@/lib/context";
 
@@ -22,8 +25,15 @@ export default function EnhancedMissionWidget({
   maxHeight = "96",
   hideHeader = false,
 }: EnhancedMissionWidgetProps) {
-  // Get mission pages from context
   const { missionPages, updateMissionPage } = useLYFEOS();
+  const { user } = useAuth();
+
+  const { data: profileData } = useQuery<any>({
+    queryKey: ['/api/user-profile'],
+    enabled: !!user,
+  });
+
+  const onboardingComplete = profileData?.onboardingCompleted === true;
   
   // Load completed missions from localStorage
   const loadCompletedMissions = (): Record<string, boolean> => {
@@ -108,25 +118,7 @@ export default function EnhancedMissionWidget({
     }));
     
     if (event && isCompleting) {
-      // Show toast notification for completed mission
-      toast({
-        title: "Mission Completed!",
-        description: (
-          <div className="flex flex-col space-y-2">
-            <div className="text-sm opacity-90">{event.title}</div>
-            <div className="flex space-x-4 text-sm mt-2">
-              <div className="flex items-center text-primary">
-                <Zap className="h-4 w-4 mr-1" />
-                <span>-5 Energy Points</span>
-              </div>
-              <div className="flex items-center text-primary">
-                <Award className="h-4 w-4 mr-1" />
-                <span>+15 Experience</span>
-              </div>
-            </div>
-          </div>
-        ),
-      });
+      missionCompleteToast(event.title, 15);
     }
   };
   
@@ -206,24 +198,7 @@ export default function EnhancedMissionWidget({
       updateMissionPage(missionId, { completed: newCompleted });
       
       if (newCompleted) {
-        toast({
-          title: "Mission Completed!",
-          description: (
-            <div className="flex flex-col space-y-2">
-              <div className="text-sm opacity-90">{mission.title}</div>
-              <div className="flex space-x-4 text-sm mt-2">
-                <div className="flex items-center text-primary">
-                  <Zap className="h-4 w-4 mr-1" />
-                  <span>-5 Energy Points</span>
-                </div>
-                <div className="flex items-center text-primary">
-                  <Award className="h-4 w-4 mr-1" />
-                  <span>+{mission.xpValue} Experience</span>
-                </div>
-              </div>
-            </div>
-          ),
-        });
+        missionCompleteToast(mission.title, mission.xpValue);
       }
     }
   };
@@ -256,8 +231,25 @@ export default function EnhancedMissionWidget({
         </div>
       )}
       
+      {!onboardingComplete && user && (
+        <Link href="/onboarding">
+          <div className="mb-4 p-4 rounded-lg border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/15 transition-colors cursor-pointer">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                <Sword className="h-5 w-5 text-amber-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-orbitron text-sm text-amber-300">Continue Onboarding</h3>
+                <p className="text-xs text-amber-400/70 mt-0.5">Complete your setup missions to unlock all features</p>
+              </div>
+              <div className="text-xs font-mono text-amber-400 shrink-0">+XP</div>
+            </div>
+          </div>
+        </Link>
+      )}
+
       <div className={`py-2 max-h-${maxHeight} overflow-y-auto`}>
-        {!hasTodayItems ? (
+        {!hasTodayItems && onboardingComplete ? (
           renderEmptyState()
         ) : !hasUpcomingItems ? (
           renderAllCompletedState()

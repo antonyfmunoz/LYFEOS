@@ -8,6 +8,7 @@ interface StatInfoDialogProps {
   children?: React.ReactNode;
   trigger: React.ReactNode;
   title: string;
+  titleColor?: string;
   description: string;
   additionalInfo?: string;
   statType?: "attention" | "time" | "energy" | "health" | "experience" | "streak" | "efficiency";
@@ -18,6 +19,7 @@ export function StatInfoDialog({
   children,
   trigger,
   title,
+  titleColor,
   description,
   additionalInfo,
   statType = "time",

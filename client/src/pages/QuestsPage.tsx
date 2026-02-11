@@ -30,6 +30,7 @@ import {
 import { Plus, Zap, Star, Bell, BellOff, BellRing, Edit3, X, ChevronDown, ChevronRight, Target, Calendar, Clock, CheckCircle2, GraduationCap, Inbox, Info, Archive, Undo2, Repeat, Loader2 } from "lucide-react";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { achievementToast } from "@/lib/gamified-toast";
 import { Quest, QuestNotification } from "@/lib/types";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import {
@@ -234,6 +235,7 @@ export default function QuestsPage() {
       }
       setCustomCategoryMode(null);
       setCustomCategoryInput("");
+      achievementToast("Category Created", `"${inputValue}" is now available`);
     } catch (error) {
       console.error("Failed to save custom category:", error);
       toast({ title: "Failed to create category", variant: "destructive" });

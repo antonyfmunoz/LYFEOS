@@ -5666,6 +5666,21 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
     }
   });
 
+  app.put("/api/vision-goals/reorder", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.some((id: any) => typeof id !== 'number')) {
+        return res.status(400).json({ error: "ids must be an array of numbers" });
+      }
+      await storage.reorderVisionGoals(ids, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error reordering vision goals:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.delete("/api/vision-goals/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;

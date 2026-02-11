@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Award, Sparkles, ArrowRight } from "lucide-react";
 import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
+import { getRank } from "@/lib/ranks";
 
 interface LevelUpModalProps {
   level: number;
@@ -124,6 +125,19 @@ export function LevelUpModal({ level, primaryColor = "#00e0ff", isOpen, onClose 
                   >
                     {level}
                   </motion.div>
+                  <motion.span
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1, duration: 0.3 }}
+                    className="inline-block px-3 py-1 rounded-full text-xs font-orbitron font-bold mt-2"
+                    style={{
+                      backgroundColor: `${getRank(level).color}20`,
+                      color: getRank(level).color,
+                      border: `1px solid ${getRank(level).color}40`,
+                    }}
+                  >
+                    {getRank(level).icon} {getRank(level).name}
+                  </motion.span>
                   <p className="text-[#7DAAB2] text-sm">
                     Congratulations on reaching a new level in your journey.
                   </p>
