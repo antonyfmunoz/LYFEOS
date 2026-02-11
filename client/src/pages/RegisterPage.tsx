@@ -13,8 +13,6 @@ const avatarColors = [
   "#ed8936",
   "#ecc94b",
   "#48bb78",
-  "#4299e1",
-  "#667eea",
   "#9f7aea",
 ];
 

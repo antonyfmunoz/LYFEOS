@@ -195,8 +195,6 @@ const STAT_COLORS = [
   "#ed8936", // orange - Energy Points (Sacral Chakra)
   "#ecc94b", // yellow - Efficiency (Solar Plexus Chakra)
   "#48bb78", // green - Streak (Heart Chakra)
-  "#4299e1", // blue - General/Primary
-  "#667eea", // indigo - Attention Tokens (Third Eye Chakra)
   "#9f7aea", // purple - Experience (Crown Chakra)
 ];
 
