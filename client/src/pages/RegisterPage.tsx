@@ -8,7 +8,7 @@ import { useTheme } from "@/lib/themeContext";
 import { Checkbox } from "@/components/ui/checkbox";
 
 const avatarColors = [
-  "#000000",
+  "#00e0ff",
   "#f56565",
   "#ed8936",
   "#ecc94b",
