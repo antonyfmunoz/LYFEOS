@@ -5327,6 +5327,82 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
     res.json({ message: "Two-factor authentication disabled" });
   });
 
+  // User Categories CRUD
+  app.get("/api/user-categories", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const categories = await storage.getUserCategories(userId);
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching user categories:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/user-categories", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { value, label, description } = req.body;
+      if (!value || !label) {
+        return res.status(400).json({ error: "Value and label are required" });
+      }
+      const existing = await storage.getUserCategories(userId);
+      if (existing.some(c => c.value === value)) {
+        return res.status(409).json({ error: "Category already exists" });
+      }
+      const category = await storage.createUserCategory({
+        userId,
+        value: value.toLowerCase().replace(/\s+/g, '_'),
+        label,
+        description: description || null,
+      });
+      res.json(category);
+    } catch (error) {
+      console.error("Error creating user category:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/user-categories/generate-description", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { categoryName } = req.body;
+      if (!categoryName) {
+        return res.status(400).json({ error: "Category name is required" });
+      }
+      const anthropic = new Anthropic({
+        apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+      });
+      const message = await anthropic.messages.create({
+        model: "claude-haiku-4-5",
+        max_tokens: 100,
+        messages: [
+          {
+            role: "user",
+            content: `Generate a short, one-sentence description (under 15 words) for a personal productivity mission category called "${categoryName}". The description should explain what types of tasks or goals belong in this category. Be concise and direct. Return ONLY the description, no quotes or punctuation at the start/end.`
+          }
+        ],
+      });
+      const description = message.content[0].type === "text" ? message.content[0].text.trim() : "";
+      res.json({ description });
+    } catch (error) {
+      console.error("Error generating category description:", error);
+      res.status(500).json({ error: "Failed to generate description" });
+    }
+  });
+
+  app.delete("/api/user-categories/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const id = parseInt(req.params.id);
+      await storage.deleteUserCategory(id, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting user category:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Vision Goals CRUD
   app.get("/api/vision-goals/all", isAuthenticated, async (req: Request, res: Response) => {
     try {
@@ -5432,7 +5508,16 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
       const allQuests = await storage.getQuests(userId);
       const completedLinked = allQuests
         .filter(q => q.completed && q.visionGoalId && goalIds.includes(q.visionGoalId))
-        .map(q => ({ id: q.id, title: q.title, completedAt: q.completedAt, visionGoalId: q.visionGoalId }));
+        .map(q => ({
+          id: q.id,
+          title: q.title,
+          completedAt: q.completedAt,
+          visionGoalId: q.visionGoalId,
+          difficulty: q.difficulty || "D",
+          experienceReward: q.experienceReward,
+          energyCost: q.energyCost,
+          category: q.category || "general",
+        }));
       res.json(completedLinked);
     } catch (error) {
       console.error("Error fetching completed missions by vision goal:", error);

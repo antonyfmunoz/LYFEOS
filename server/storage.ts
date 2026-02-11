@@ -25,7 +25,8 @@ import {
   widgetStates, type WidgetStates,
   pushSubscriptions, type PushSubscription, type InsertPushSubscription,
   dismissedKnowledge, type DismissedKnowledge, type InsertDismissedKnowledge,
-  visionGoals, type VisionGoal, type InsertVisionGoal
+  visionGoals, type VisionGoal, type InsertVisionGoal,
+  userCategories, type UserCategory, type InsertUserCategory
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, isNull, isNotNull, gt, lt } from "drizzle-orm";
@@ -248,6 +249,11 @@ export interface IStorage {
   createVisionGoal(goal: InsertVisionGoal): Promise<VisionGoal>;
   updateVisionGoal(id: number, userId: number, goal: Partial<InsertVisionGoal>): Promise<VisionGoal>;
   deleteVisionGoal(id: number, userId: number): Promise<void>;
+
+  // User Category methods
+  getUserCategories(userId: number): Promise<UserCategory[]>;
+  createUserCategory(category: InsertUserCategory): Promise<UserCategory>;
+  deleteUserCategory(id: number, userId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2135,6 +2141,21 @@ export class DatabaseStorage implements IStorage {
   async deleteVisionGoal(id: number, userId: number): Promise<void> {
     await db.delete(visionGoals).where(
       and(eq(visionGoals.id, id), eq(visionGoals.userId, userId))
+    );
+  }
+
+  async getUserCategories(userId: number): Promise<UserCategory[]> {
+    return db.select().from(userCategories).where(eq(userCategories.userId, userId)).orderBy(asc(userCategories.label));
+  }
+
+  async createUserCategory(category: InsertUserCategory): Promise<UserCategory> {
+    const [result] = await db.insert(userCategories).values(category).returning();
+    return result;
+  }
+
+  async deleteUserCategory(id: number, userId: number): Promise<void> {
+    await db.delete(userCategories).where(
+      and(eq(userCategories.id, id), eq(userCategories.userId, userId))
     );
   }
 }

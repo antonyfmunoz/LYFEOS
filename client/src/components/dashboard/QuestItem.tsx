@@ -45,6 +45,13 @@ function formatElapsed(totalSeconds: number) {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
+interface UserCategoryOption {
+  id: number;
+  value: string;
+  label: string;
+  description: string | null;
+}
+
 export default function QuestItem({ quest, index, section, onToggle, onDelete, onEdit, onStart, onResume, onDone, onUndo, onRestart, onMoveQuest, elapsedSeconds, breakSeconds, isTimerActive, timerBlocked }: QuestItemProps) {
   const [showDescription, setShowDescription] = useState(false);
   const { user } = useAuth();
@@ -53,6 +60,11 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
   const { data: allVisionGoals = [] } = useQuery<{ id: number; category: string; title: string }[]>({
     queryKey: ['/api/vision-goals/all'],
     enabled: !!user && !!visionGoalId,
+  });
+
+  const { data: userCategories = [] } = useQuery<UserCategoryOption[]>({
+    queryKey: ['/api/user-categories'],
+    enabled: !!user,
   });
 
   const linkedMilestone = visionGoalId ? allVisionGoals.find(g => g.id === visionGoalId) : null;
@@ -267,7 +279,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
                         spiritual: 'Faith, purpose, reflection, and spiritual practices.',
                         household: 'Home maintenance, cleaning, chores, and living space.',
                         event: 'Scheduled occasions, celebrations, and milestone events.',
-                      } as Record<string, string>)[category] || 'Auto-classified mission category.'
+                      } as Record<string, string>)[category] || userCategories.find(uc => uc.value === category)?.description || 'Auto-classified mission category.'
                     }
                   </p>
                 )}

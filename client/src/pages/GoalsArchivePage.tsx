@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
 import { useWidgetState } from "@/hooks/use-widget-state";
-import { ArrowLeft, Eye, Compass, Flame, Target, Milestone, Plus, Check, Trash2, Edit2, Loader2, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowLeft, Eye, Compass, Flame, Target, Milestone, Plus, Check, Trash2, Edit2, Loader2, ChevronDown, ChevronRight, Info, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import update from 'immutability-helper';
@@ -36,7 +36,14 @@ interface CompletedMission {
   title: string;
   completedAt: string | null;
   visionGoalId: number | null;
+  difficulty: string;
+  experienceReward: number;
+  energyCost: number;
+  category: string;
 }
+
+const difficultyOrder: Record<string, number> = { 'D': 1, 'C': 2, 'B': 3, 'A': 4, 'S': 5 };
+const reverseOrder: Record<number, string> = { 1: 'D', 2: 'C', 3: 'B', 4: 'A', 5: 'S' };
 
 function MilestoneList({ category, placeholder }: { category: string; placeholder: string }) {
   const { user } = useAuth();
@@ -44,6 +51,9 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [expandedGoalId, setExpandedGoalId] = useState<number | null>(null);
+  const [infoExpandedId, setInfoExpandedId] = useState<number | null>(null);
+  const [editingDescId, setEditingDescId] = useState<number | null>(null);
+  const [editDesc, setEditDesc] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
   let tempIdCounter = useRef(-1);
@@ -133,19 +143,29 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, title }: { id: number; title: string }) => {
+    mutationFn: async ({ id, title, description }: { id: number; title?: string; description?: string }) => {
+      const body: Record<string, string> = {};
+      if (title !== undefined) body.title = title;
+      if (description !== undefined) body.description = description;
       await apiRequest(`/api/vision-goals/${id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ title }),
+        body: JSON.stringify(body),
       });
     },
-    onMutate: async ({ id, title }) => {
+    onMutate: async ({ id, title, description }) => {
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<VisionGoal[]>(queryKey);
       queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) =>
-        old.map(g => g.id === id ? { ...g, title } : g)
+        old.map(g => {
+          if (g.id !== id) return g;
+          const updated = { ...g };
+          if (title !== undefined) updated.title = title;
+          if (description !== undefined) updated.description = description;
+          return updated;
+        })
       );
       setEditingId(null);
+      setEditingDescId(null);
       return { previous };
     },
     onError: (_err, _vars, context) => {
@@ -194,6 +214,94 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
 
   const getMissionsForGoal = (goalId: number) => {
     return completedMissions.filter(m => m.visionGoalId === goalId);
+  };
+
+  const renderInfoPanel = (goal: VisionGoal) => {
+    if (infoExpandedId !== goal.id) return null;
+    const missions = getMissionsForGoal(goal.id);
+
+    let avgDifficulty: string | null = null;
+    if (missions.length > 0) {
+      const sum = missions.reduce((acc, m) => acc + (difficultyOrder[m.difficulty] || 0), 0);
+      const avg = Math.round(sum / missions.length);
+      avgDifficulty = reverseOrder[avg] || null;
+    }
+
+    const uniqueCategories = Array.from(new Set(missions.map(m => m.category))).filter(c => c !== 'general');
+
+    const totalXP = missions.reduce((acc, m) => acc + (m.experienceReward || 0), 0);
+    const totalEnergy = missions.reduce((acc, m) => acc + (m.energyCost || 0), 0);
+
+    return (
+      <div className="ml-8 mt-1 bg-primary/5 border border-primary/10 rounded-lg p-3 space-y-2 text-xs">
+        <div className="flex items-start gap-2">
+          <span className="text-muted-foreground shrink-0">Desc:</span>
+          {editingDescId === goal.id ? (
+            <div className="flex-1 flex gap-1 items-center">
+              <Input
+                value={editDesc}
+                onChange={(e) => setEditDesc(e.target.value)}
+                className="h-6 text-xs bg-card/30 border-primary/30 flex-1"
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') setEditingDescId(null);
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    updateMutation.mutate({ id: goal.id, description: editDesc.trim() });
+                  }
+                }}
+                autoFocus
+              />
+              <button
+                onClick={() => updateMutation.mutate({ id: goal.id, description: editDesc.trim() })}
+                className="h-5 w-5 rounded text-primary hover:bg-primary/10 flex items-center justify-center transition-colors shrink-0"
+              >
+                <Check className="h-3 w-3" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center gap-1">
+              {goal.description ? (
+                <span className="text-foreground/80">{goal.description}</span>
+              ) : (
+                <span className="italic text-muted-foreground">No description</span>
+              )}
+              <button
+                onClick={() => { setEditingDescId(goal.id); setEditDesc(goal.description || ""); }}
+                className="h-5 w-5 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 flex items-center justify-center transition-colors shrink-0"
+              >
+                <Edit2 className="h-2.5 w-2.5" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground">Avg Rank:</span>
+          {avgDifficulty ? (
+            <span className="font-mono text-primary font-medium">{avgDifficulty}</span>
+          ) : (
+            <span className="italic text-muted-foreground">No missions linked</span>
+          )}
+        </div>
+
+        {uniqueCategories.length > 0 && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {uniqueCategories.map(cat => (
+              <span key={cat} className="px-1.5 py-0.5 rounded bg-primary/10 text-primary/80 text-[10px] font-medium">
+                {cat}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {missions.length > 0 && (
+          <div className="flex items-center gap-1 text-muted-foreground">
+            <Zap className="h-3 w-3 text-primary/60" />
+            <span>+{totalXP} XP · -{totalEnergy} EP · {missions.length} mission{missions.length !== 1 ? 's' : ''}</span>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const activeGoals = goals.filter(g => !g.completed);
@@ -289,6 +397,12 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
                     <span className="flex-1 text-sm text-foreground">{goal.title}</span>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
+                        onClick={() => setInfoExpandedId(infoExpandedId === goal.id ? null : goal.id)}
+                        className="h-6 w-6 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 flex items-center justify-center transition-colors"
+                      >
+                        <Info className="h-3 w-3" />
+                      </button>
+                      <button
                         onClick={() => startEdit(goal)}
                         className="h-6 w-6 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 flex items-center justify-center transition-colors"
                       >
@@ -304,6 +418,7 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
                   </>
                 )}
               </div>
+              {renderInfoPanel(goal)}
               {renderGoalMissions(goal.id)}
             </div>
           ))}
@@ -327,6 +442,18 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
                 <span className={cn("flex-1 text-sm line-through text-muted-foreground")}>{goal.title}</span>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
+                    onClick={() => setInfoExpandedId(infoExpandedId === goal.id ? null : goal.id)}
+                    className="h-6 w-6 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 flex items-center justify-center transition-colors"
+                  >
+                    <Info className="h-3 w-3" />
+                  </button>
+                  <button
+                    onClick={() => startEdit(goal)}
+                    className="h-6 w-6 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 flex items-center justify-center transition-colors"
+                  >
+                    <Edit2 className="h-3 w-3" />
+                  </button>
+                  <button
                     onClick={() => deleteMutation.mutate(goal.id)}
                     className="h-6 w-6 rounded text-muted-foreground hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors"
                   >
@@ -334,6 +461,7 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
                   </button>
                 </div>
               </div>
+              {renderInfoPanel(goal)}
               {renderGoalMissions(goal.id)}
             </div>
           ))}

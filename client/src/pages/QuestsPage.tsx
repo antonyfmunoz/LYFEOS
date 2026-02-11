@@ -27,7 +27,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Zap, Star, Bell, BellOff, BellRing, Edit3, X, ChevronDown, ChevronRight, Target, Calendar, Clock, CheckCircle2, GraduationCap, Inbox, Info, Archive, Undo2, Repeat } from "lucide-react";
+import { Plus, Zap, Star, Bell, BellOff, BellRing, Edit3, X, ChevronDown, ChevronRight, Target, Calendar, Clock, CheckCircle2, GraduationCap, Inbox, Info, Archive, Undo2, Repeat, Loader2 } from "lucide-react";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Quest, QuestNotification } from "@/lib/types";
@@ -48,6 +48,13 @@ const ONBOARDING_MISSIONS = [
   { id: 6, title: "History & Roots", xp: 50, difficulty: "D", duration: 5, energyCost: 5, attentionCost: 5, timeCost: 5, description: "Record your background and personal history to inform your growth trajectory." },
   { id: 7, title: "Systems & Rituals", xp: 65, difficulty: "D", duration: 7, energyCost: 7, attentionCost: 7, timeCost: 7, description: "Set up your daily rituals and recurring systems for consistent progress." },
 ];
+
+interface UserCategoryOption {
+  id: number;
+  value: string;
+  label: string;
+  description: string | null;
+}
 
 interface MissionFormData {
   title: string;
@@ -183,6 +190,16 @@ export default function QuestsPage() {
     enabled: !!user,
   });
 
+  const { data: userCategories = [] } = useQuery<UserCategoryOption[]>({
+    queryKey: ['/api/user-categories'],
+    enabled: !!user,
+  });
+
+  const mergedCategories = useMemo(() => {
+    const custom = userCategories.map(c => ({ value: c.value, label: c.label }));
+    return [...MISSION_CATEGORIES, ...custom];
+  }, [userCategories]);
+
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingQuest, setEditingQuest] = useState<Quest | null>(null);
@@ -190,6 +207,40 @@ export default function QuestsPage() {
   
   const [createFormData, setCreateFormData] = useState<MissionFormData>(defaultFormData);
   const [editFormData, setEditFormData] = useState<MissionFormData>(defaultFormData);
+  
+  const [customCategoryMode, setCustomCategoryMode] = useState<'create' | 'edit' | null>(null);
+  const [customCategoryInput, setCustomCategoryInput] = useState("");
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
+
+  const handleSaveCustomCategory = async (formType: 'create' | 'edit') => {
+    const inputValue = customCategoryInput.trim();
+    if (!inputValue) return;
+    setIsSavingCategory(true);
+    try {
+      const result = await apiRequest<{ description: string }>("/api/user-categories/generate-description", {
+        method: "POST",
+        body: JSON.stringify({ categoryName: inputValue }),
+      });
+      const newValue = inputValue.toLowerCase().replace(/\s+/g, '_');
+      await apiRequest("/api/user-categories", {
+        method: "POST",
+        body: JSON.stringify({ value: newValue, label: inputValue, description: result.description }),
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/user-categories'] });
+      if (formType === 'create') {
+        setCreateFormData(prev => ({ ...prev, category: newValue }));
+      } else {
+        setEditFormData(prev => ({ ...prev, category: newValue }));
+      }
+      setCustomCategoryMode(null);
+      setCustomCategoryInput("");
+    } catch (error) {
+      console.error("Failed to save custom category:", error);
+      toast({ title: "Failed to create category", variant: "destructive" });
+    } finally {
+      setIsSavingCategory(false);
+    }
+  };
   
   const [todayExpanded, setTodayExpanded] = useWidgetState("quests.today", true);
   const [upcomingExpanded, setUpcomingExpanded] = useWidgetState("quests.upcoming", true);
@@ -642,16 +693,43 @@ export default function QuestsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Category</Label>
-                  <Select value={createFormData.category} onValueChange={(val) => setCreateFormData(prev => ({ ...prev, category: val }))}>
+                  <Select value={createFormData.category} onValueChange={(val) => {
+                    if (val === "__custom__") {
+                      setCustomCategoryMode('create');
+                      setCustomCategoryInput("");
+                    } else {
+                      setCreateFormData(prev => ({ ...prev, category: val }));
+                      setCustomCategoryMode(null);
+                    }
+                  }}>
                     <SelectTrigger className="bg-background/50 border-primary/30">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {MISSION_CATEGORIES.map(c => (
+                      {mergedCategories.map(c => (
                         <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                       ))}
+                      <SelectItem value="__custom__">+ Add Custom...</SelectItem>
                     </SelectContent>
                   </Select>
+                  {customCategoryMode === 'create' && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <Input
+                        placeholder="Category name..."
+                        value={customCategoryInput}
+                        onChange={(e) => setCustomCategoryInput(e.target.value)}
+                        className="bg-background/50 border-primary/30 flex-1"
+                        disabled={isSavingCategory}
+                      />
+                      <Button
+                        size="sm"
+                        onClick={() => handleSaveCustomCategory('create')}
+                        disabled={!customCategoryInput.trim() || isSavingCategory}
+                      >
+                        {isSavingCategory ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -953,16 +1031,43 @@ export default function QuestsPage() {
               </div>
               <div className="space-y-2">
                 <Label>Category</Label>
-                <Select value={editFormData.category} onValueChange={(val) => setEditFormData(prev => ({ ...prev, category: val }))}>
+                <Select value={editFormData.category} onValueChange={(val) => {
+                  if (val === "__custom__") {
+                    setCustomCategoryMode('edit');
+                    setCustomCategoryInput("");
+                  } else {
+                    setEditFormData(prev => ({ ...prev, category: val }));
+                    setCustomCategoryMode(null);
+                  }
+                }}>
                   <SelectTrigger className="bg-background/50 border-primary/30">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {MISSION_CATEGORIES.map(c => (
+                    {mergedCategories.map(c => (
                       <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                     ))}
+                    <SelectItem value="__custom__">+ Add Custom...</SelectItem>
                   </SelectContent>
                 </Select>
+                {customCategoryMode === 'edit' && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <Input
+                      placeholder="Category name..."
+                      value={customCategoryInput}
+                      onChange={(e) => setCustomCategoryInput(e.target.value)}
+                      className="bg-background/50 border-primary/30 flex-1"
+                      disabled={isSavingCategory}
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => handleSaveCustomCategory('edit')}
+                      disabled={!customCategoryInput.trim() || isSavingCategory}
+                    >
+                      {isSavingCategory ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1604,7 +1709,7 @@ export default function QuestsPage() {
                                         spiritual: 'Faith, purpose, reflection, and spiritual practices.',
                                         household: 'Home maintenance, cleaning, chores, and living space.',
                                         event: 'Scheduled occasions, celebrations, and milestone events.',
-                                      } as Record<string, string>)[quest.category] || 'Auto-classified mission category.'
+                                      } as Record<string, string>)[quest.category] || userCategories.find(uc => uc.value === quest.category)?.description || 'Auto-classified mission category.'
                                     }
                                   </p>
                                 )}

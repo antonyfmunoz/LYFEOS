@@ -1213,6 +1213,23 @@ export const insertVisionGoalSchema = createInsertSchema(visionGoals).omit({
 export type VisionGoal = typeof visionGoals.$inferSelect;
 export type InsertVisionGoal = z.infer<typeof insertVisionGoalSchema>;
 
+export const userCategories = pgTable("user_categories", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  value: text("value").notNull(),
+  label: text("label").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertUserCategorySchema = createInsertSchema(userCategories).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type UserCategory = typeof userCategories.$inferSelect;
+export type InsertUserCategory = z.infer<typeof insertUserCategorySchema>;
+
 export const widgetStates = pgTable("widget_states", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id).unique(),
