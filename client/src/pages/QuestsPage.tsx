@@ -38,14 +38,14 @@ import {
 } from "@/components/ui/popover";
 
 const ONBOARDING_MISSIONS = [
-  { id: 0, title: "Access & Quickstart", xp: 100, difficulty: "D", duration: 10, description: "Log in, explore the dashboard, and complete your first quick mission to get familiar with LYFEOS." },
-  { id: 1, title: "Archetype Calibration", xp: 150, difficulty: "D", duration: 15, description: "Discover your player archetype through a guided assessment to personalize your LYFEOS experience." },
-  { id: 2, title: "Identity & Direction", xp: 75, difficulty: "D", duration: 8, description: "Define your core identity pillars and set your life direction compass." },
-  { id: 3, title: "Craft & Mastery", xp: 60, difficulty: "D", duration: 6, description: "Identify your key skills and craft areas to track mastery progression." },
-  { id: 4, title: "Capacity & Constraints", xp: 55, difficulty: "D", duration: 6, description: "Set your daily energy, attention, and time capacity limits for balanced resource management." },
-  { id: 5, title: "Baselines & States", xp: 70, difficulty: "D", duration: 7, description: "Establish your baseline stats and current life state for accurate tracking." },
-  { id: 6, title: "History & Roots", xp: 50, difficulty: "D", duration: 5, description: "Record your background and personal history to inform your growth trajectory." },
-  { id: 7, title: "Systems & Rituals", xp: 65, difficulty: "D", duration: 7, description: "Set up your daily rituals and recurring systems for consistent progress." },
+  { id: 0, title: "Access & Quickstart", xp: 100, difficulty: "D", duration: 10, energyCost: 10, attentionCost: 10, timeCost: 10, description: "Log in, explore the dashboard, and complete your first quick mission to get familiar with LYFEOS." },
+  { id: 1, title: "Archetype Calibration", xp: 150, difficulty: "D", duration: 15, energyCost: 15, attentionCost: 15, timeCost: 15, description: "Discover your player archetype through a guided assessment to personalize your LYFEOS experience." },
+  { id: 2, title: "Identity & Direction", xp: 75, difficulty: "D", duration: 8, energyCost: 8, attentionCost: 8, timeCost: 8, description: "Define your core identity pillars and set your life direction compass." },
+  { id: 3, title: "Craft & Mastery", xp: 60, difficulty: "D", duration: 6, energyCost: 6, attentionCost: 6, timeCost: 6, description: "Identify your key skills and craft areas to track mastery progression." },
+  { id: 4, title: "Capacity & Constraints", xp: 55, difficulty: "D", duration: 6, energyCost: 6, attentionCost: 6, timeCost: 6, description: "Set your daily energy, attention, and time capacity limits for balanced resource management." },
+  { id: 5, title: "Baselines & States", xp: 70, difficulty: "D", duration: 7, energyCost: 7, attentionCost: 7, timeCost: 7, description: "Establish your baseline stats and current life state for accurate tracking." },
+  { id: 6, title: "History & Roots", xp: 50, difficulty: "D", duration: 5, energyCost: 5, attentionCost: 5, timeCost: 5, description: "Record your background and personal history to inform your growth trajectory." },
+  { id: 7, title: "Systems & Rituals", xp: 65, difficulty: "D", duration: 7, energyCost: 7, attentionCost: 7, timeCost: 7, description: "Set up your daily rituals and recurring systems for consistent progress." },
 ];
 
 interface MissionFormData {
@@ -174,7 +174,6 @@ export default function QuestsPage() {
   const [completedExpanded, setCompletedExpanded] = useWidgetState("quests.completed", true);
   const [inboxExpanded, setInboxExpanded] = useWidgetState("quests.inbox", true);
   const [archivedExpanded, setArchivedExpanded] = useWidgetState("quests.archived", false);
-  const [onboardingInfoOpen, setOnboardingInfoOpen] = useState<Record<number, boolean>>({});
   const [terminatedInfoOpen, setTerminatedInfoOpen] = useState<Record<string | number, boolean>>({});
   const [originalDates, setOriginalDates] = useState<Record<string, { startDate?: string; endDate?: string; startTime?: string; endTime?: string }>>({});
   const originalDatesRef = useRef(originalDates);
@@ -1111,50 +1110,31 @@ export default function QuestsPage() {
           <CollapsibleContent>
             <div className="px-4 pb-4 space-y-3">
               {nextOnboardingMission && (
-                <div 
-                  className="glassmorphic rounded-xl p-4 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition neon-border border-primary/30 bg-primary/5"
-                >
-                  <div className="flex items-start">
-                    <div className="flex-grow">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <span className="text-[10px] font-mono text-primary/70 uppercase tracking-wider">Onboarding {nextOnboardingMission.id + 1}/8</span>
-                          <h3 className="font-medium">{nextOnboardingMission.title}</h3>
-                        </div>
-                        <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                          {nextOnboardingMission.description && (
-                            <button
-                              className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
-                              onClick={() => setOnboardingInfoOpen(prev => ({ ...prev, [nextOnboardingMission.id]: !prev[nextOnboardingMission.id] }))}
-                            >
-                              <Info className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 mt-1 flex-wrap">
-                        <span className="text-primary text-xs font-mono whitespace-nowrap">+{nextOnboardingMission.xp} XP</span>
-                        <span className="text-muted-foreground text-xs font-mono whitespace-nowrap">{nextOnboardingMission.duration} min</span>
-                        <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary">{nextOnboardingMission.difficulty}</span>
-                      </div>
-                      {onboardingInfoOpen[nextOnboardingMission.id] && nextOnboardingMission.description && (
-                        <p className="text-muted-foreground text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10">
-                          {nextOnboardingMission.description}
-                        </p>
-                      )}
-                      <button
-                        disabled={!!activeTimerQuest}
-                        className="mt-2 text-xs font-mono px-3 py-1.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/onboarding?mission=${nextOnboardingMission.id}`);
-                        }}
-                      >
-                        Start Mission
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <QuestItem
+                  quest={{
+                    id: `onboarding-${nextOnboardingMission.id}`,
+                    title: `Onboarding ${nextOnboardingMission.id + 1}/8: ${nextOnboardingMission.title}`,
+                    description: nextOnboardingMission.description,
+                    completed: false,
+                    experienceReward: nextOnboardingMission.xp,
+                    difficulty: nextOnboardingMission.difficulty,
+                    category: "onboarding",
+                    energyCost: nextOnboardingMission.energyCost,
+                    attentionCost: nextOnboardingMission.attentionCost,
+                    timeCost: nextOnboardingMission.timeCost,
+                    startDate: "",
+                    startTime: "",
+                    endDate: "",
+                    endTime: "",
+                    notificationEnabled: false,
+                    isRitualized: false,
+                  } as Quest}
+                  index={0}
+                  section="today"
+                  onToggle={() => {}}
+                  onStart={() => navigate(`/onboarding?mission=${nextOnboardingMission.id}`)}
+                  timerBlocked={!!activeTimerQuest}
+                />
               )}
               {todayMissions.length > 0 ? (
                 todayMissions.map((quest, idx) => (
