@@ -2,52 +2,21 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import ReactDOM from "react-dom";
 import { ChevronRight, ChevronLeft, X, Sparkles } from "lucide-react";
 
-interface TutorialStep {
+export interface TutorialStep {
   target: string;
   title: string;
   description: string;
   position: "top" | "bottom" | "left" | "right";
 }
 
-const TUTORIAL_STEPS: TutorialStep[] = [
-  {
-    target: "[data-tour='date-header']",
-    title: "Your Daily HUD",
-    description: "This is your command center. It shows the current date, time, and timezone. You can switch between 12h/24h format and change timezones.",
-    position: "bottom",
-  },
-  {
-    target: "[data-tour='sidebar-nav']",
-    title: "Navigation Hub",
-    description: "Use the sidebar to switch between Dashboard, Missions, AI Assistant, Chronilog (journal), and your Profile. Each section has its own powerful tools.",
-    position: "right",
-  },
-  {
-    target: "[data-tour='mobile-nav']",
-    title: "Navigation Bar",
-    description: "Tap these icons to switch between Dashboard, Missions, AI Assistant, Chronilog (journal), and your Profile.",
-    position: "top",
-  },
-  {
-    target: "[data-tour='widget-first']",
-    title: "Drag & Drop Widgets",
-    description: "Each section below is a widget you can rearrange! Grab the handle on the left to drag widgets into your preferred order. Collapse or expand them as you like.",
-    position: "top",
-  },
-  {
-    target: "[data-tour='widget-first']",
-    title: "Daily Logs",
-    description: "Use these widgets to capture your thoughts, research, reflections, intentions, and energy levels each day. Everything is saved automatically to your Chronilog journal.",
-    position: "bottom",
-  },
-];
-
-interface DashboardTutorialProps {
+interface PageTutorialProps {
+  steps: TutorialStep[];
+  storageKey: string;
   isOpen: boolean;
   onComplete: () => void;
 }
 
-export default function DashboardTutorial({ isOpen, onComplete }: DashboardTutorialProps) {
+export default function PageTutorial({ steps, storageKey, isOpen, onComplete }: PageTutorialProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [visible, setVisible] = useState(false);
@@ -56,8 +25,8 @@ export default function DashboardTutorial({ isOpen, onComplete }: DashboardTutor
 
   const findVisibleStep = useCallback((startIndex: number, direction: 1 | -1 = 1): number => {
     let idx = startIndex;
-    while (idx >= 0 && idx < TUTORIAL_STEPS.length) {
-      const step = TUTORIAL_STEPS[idx];
+    while (idx >= 0 && idx < steps.length) {
+      const step = steps[idx];
       const el = document.querySelector(step.target);
       if (el && el.getBoundingClientRect().width > 0) {
         return idx;
@@ -65,11 +34,11 @@ export default function DashboardTutorial({ isOpen, onComplete }: DashboardTutor
       idx += direction;
     }
     return -1;
-  }, []);
+  }, [steps]);
 
   const updateTargetRect = useCallback(() => {
     if (!isOpen) return;
-    const step = TUTORIAL_STEPS[currentStep];
+    const step = steps[currentStep];
     if (!step) return;
     const el = document.querySelector(step.target);
     if (el) {
@@ -83,7 +52,7 @@ export default function DashboardTutorial({ isOpen, onComplete }: DashboardTutor
     if (nextVisible !== -1 && nextVisible !== currentStep) {
       setCurrentStep(nextVisible);
     }
-  }, [isOpen, currentStep, findVisibleStep]);
+  }, [isOpen, currentStep, findVisibleStep, steps]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -114,7 +83,7 @@ export default function DashboardTutorial({ isOpen, onComplete }: DashboardTutor
 
   useEffect(() => {
     if (!visible || !isOpen) return;
-    const step = TUTORIAL_STEPS[currentStep];
+    const step = steps[currentStep];
     if (!step) return;
     const el = document.querySelector(step.target);
     if (!el) return;
@@ -132,7 +101,7 @@ export default function DashboardTutorial({ isOpen, onComplete }: DashboardTutor
       clearTimeout(timer);
       resizeObserverRef.current?.disconnect();
     };
-  }, [currentStep, visible, isOpen, updateTargetRect]);
+  }, [currentStep, visible, isOpen, updateTargetRect, steps]);
 
   const handleNext = () => {
     const next = findVisibleStep(currentStep + 1, 1);
@@ -156,13 +125,13 @@ export default function DashboardTutorial({ isOpen, onComplete }: DashboardTutor
 
   if (!isOpen || !visible) return null;
 
-  const step = TUTORIAL_STEPS[currentStep];
-  const totalVisible = TUTORIAL_STEPS.filter((s) => {
+  const step = steps[currentStep];
+  const totalVisible = steps.filter((s) => {
     const el = document.querySelector(s.target);
     return el && el.getBoundingClientRect().width > 0;
   }).length;
 
-  const visibleIndex = TUTORIAL_STEPS.slice(0, currentStep + 1).filter((s) => {
+  const visibleIndex = steps.slice(0, currentStep + 1).filter((s) => {
     const el = document.querySelector(s.target);
     return el && el.getBoundingClientRect().width > 0;
   }).length;
@@ -176,6 +145,8 @@ export default function DashboardTutorial({ isOpen, onComplete }: DashboardTutor
         height: targetRect.height + padding * 2,
       }
     : null;
+
+  const maskId = `tour-spotlight-mask-${storageKey}`;
 
   const getTooltipStyle = (): React.CSSProperties => {
     if (!targetRect) return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
@@ -212,7 +183,7 @@ export default function DashboardTutorial({ isOpen, onComplete }: DashboardTutor
     <div className="fixed inset-0" style={{ zIndex: 10000 }}>
       <svg className="absolute inset-0 w-full h-full" style={{ zIndex: 10000 }}>
         <defs>
-          <mask id="tour-spotlight-mask">
+          <mask id={maskId}>
             <rect x="0" y="0" width="100%" height="100%" fill="white" />
             {spotlightStyle && (
               <rect
@@ -232,7 +203,7 @@ export default function DashboardTutorial({ isOpen, onComplete }: DashboardTutor
           width="100%"
           height="100%"
           fill="rgba(0,0,0,0.75)"
-          mask="url(#tour-spotlight-mask)"
+          mask={`url(#${maskId})`}
         />
       </svg>
 

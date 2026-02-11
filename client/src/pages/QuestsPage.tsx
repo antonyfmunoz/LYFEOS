@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
 import { useWidgetState } from "@/hooks/use-widget-state";
 import { useLYFEOS } from "../lib/context";
 import { useAuth } from "@/lib/authContext";
@@ -176,6 +177,48 @@ export default function QuestsPage() {
   const [archivedExpanded, setArchivedExpanded] = useWidgetState("quests.archived", false);
   const [terminatedInfoOpen, setTerminatedInfoOpen] = useState<Record<string | number, boolean>>({});
   const [originalDates, setOriginalDates] = useState<Record<string, { startDate?: string; endDate?: string; startTime?: string; endTime?: string }>>({});
+
+  const MISSIONS_TOUR_STEPS: TutorialStep[] = [
+    {
+      target: "[data-tour='missions-header']",
+      title: "Mission Control",
+      description: "This is where you manage all your missions. Missions are tasks that earn you XP and help you level up. Think of them as quests in your personal game.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='create-mission']",
+      title: "Create Missions",
+      description: "Tap here to create a new mission. Set a title, description, difficulty, schedule, and even make it a recurring ritual.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='today-missions']",
+      title: "Today's Missions",
+      description: "Your active missions for today appear here. Check them off as you complete them to earn XP. You can also start a focus timer on any mission.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='upcoming-missions']",
+      title: "Upcoming Missions",
+      description: "Missions scheduled for future dates show up here. They'll automatically move to Today's Missions when the day arrives.",
+      position: "top",
+    },
+    {
+      target: "[data-tour='inbox-missions']",
+      title: "Mission Inbox",
+      description: "Quick-capture ideas and tasks here without scheduling them yet. Drag them to Today or Upcoming when you're ready to commit.",
+      position: "top",
+    },
+  ];
+
+  const [showTutorial, setShowTutorial] = useState(() => {
+    return !localStorage.getItem("lyfeos-missions-tutorial-completed");
+  });
+
+  const handleTutorialComplete = useCallback(() => {
+    setShowTutorial(false);
+    localStorage.setItem("lyfeos-missions-tutorial-completed", "true");
+  }, []);
   const originalDatesRef = useRef(originalDates);
   originalDatesRef.current = originalDates;
 
@@ -510,7 +553,8 @@ export default function QuestsPage() {
 
   return (
     <div className="pb-20">
-      <div className="mb-6 flex items-center justify-between">
+      <PageTutorial steps={MISSIONS_TOUR_STEPS} storageKey="missions" isOpen={showTutorial} onComplete={handleTutorialComplete} />
+      <div className="mb-6 flex items-center justify-between" data-tour="missions-header">
         <div>
           <h1 className="text-2xl font-orbitron mb-1">Missions</h1>
           <p className="text-muted-foreground">Complete missions to earn XP and reach your goals.</p>
@@ -523,7 +567,7 @@ export default function QuestsPage() {
           if (!open) setCreateFormData(defaultFormData);
         }}>
           <DialogTrigger asChild>
-            <Button variant="ghost" className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10">
+            <Button variant="ghost" data-tour="create-mission" className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10">
               Create Mission
             </Button>
           </DialogTrigger>
@@ -1080,7 +1124,7 @@ export default function QuestsPage() {
       </Dialog>
       
       <DndProvider backend={HTML5Backend}>
-      {/* Today's Missions */}
+      <div data-tour="today-missions">
       <DroppableSection section="today" onDropQuest={handleCrossSectionDrop} className="mb-6">
       <Collapsible open={todayExpanded} onOpenChange={setTodayExpanded}>
         <div className="glassmorphic rounded-xl overflow-hidden neon-border">
@@ -1172,8 +1216,9 @@ export default function QuestsPage() {
         </div>
       </Collapsible>
       </DroppableSection>
+      </div>
       
-      {/* Future Missions */}
+      <div data-tour="upcoming-missions">
       <DroppableSection section="upcoming" onDropQuest={handleCrossSectionDrop} className="mb-6">
         <Collapsible open={upcomingExpanded} onOpenChange={setUpcomingExpanded}>
           <div className="glassmorphic rounded-xl overflow-hidden neon-border">
@@ -1237,6 +1282,7 @@ export default function QuestsPage() {
           </div>
         </Collapsible>
       </DroppableSection>
+      </div>
       
       {/* Completed Missions */}
       <DroppableSection section="completed" onDropQuest={handleCrossSectionDrop} className="mb-6">
@@ -1298,7 +1344,7 @@ export default function QuestsPage() {
       </Collapsible>
       </DroppableSection>
       
-      {/* Mission Archive - onboarding missions and to-do ideas */}
+      <div data-tour="inbox-missions">
       <DroppableSection section="inbox" onDropQuest={handleCrossSectionDrop} className="mb-6">
         <Collapsible open={inboxExpanded} onOpenChange={setInboxExpanded}>
           <div className="glassmorphic rounded-xl overflow-hidden neon-border">
@@ -1361,6 +1407,7 @@ export default function QuestsPage() {
           </div>
         </Collapsible>
       </DroppableSection>
+      </div>
 
       {/* Terminated Missions - recently deleted, held for 24 hours */}
       <DroppableSection section="terminated" onDropQuest={handleCrossSectionDrop} className="mb-6">

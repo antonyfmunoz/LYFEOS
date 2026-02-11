@@ -6,6 +6,7 @@ import { FileText, Clock, Tag, Calendar, Award, GripVertical, CheckSquare, BookO
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { useDrag, useDrop } from 'react-dnd';
 import { useState, useCallback, useRef, useEffect } from 'react';
+import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
 import update from 'immutability-helper';
 import { cn } from '@/lib/utils';
 import { DropTargetMonitor } from 'react-dnd';
@@ -322,14 +323,39 @@ export default function ChronilogPage() {
     }));
   }, []);
 
+  const CHRONILOG_TOUR_STEPS: TutorialStep[] = [
+    {
+      target: "[data-tour='chronilog-header']",
+      title: "Your Chronilog",
+      description: "The Chronilog is your personal journal and knowledge hub. It stores everything you log on the Dashboard — thoughts, research, reflections, and more.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='chronilog-categories']",
+      title: "Browse Categories",
+      description: "Your content is organized into sections: Journal entries, Knowledge base, Vision & goals, Analytics, and Timeline. Tap any card to explore. You can also drag to reorder them.",
+      position: "bottom",
+    },
+  ];
+
+  const [showTutorial, setShowTutorial] = useState(() => {
+    return !localStorage.getItem("lyfeos-chronilog-tutorial-completed");
+  });
+
+  const handleTutorialComplete = useCallback(() => {
+    setShowTutorial(false);
+    localStorage.setItem("lyfeos-chronilog-tutorial-completed", "true");
+  }, []);
+
   return (
       <div className="pb-20">
-        <div className="mb-6">
+        <PageTutorial steps={CHRONILOG_TOUR_STEPS} storageKey="chronilog" isOpen={showTutorial} onComplete={handleTutorialComplete} />
+        <div className="mb-6" data-tour="chronilog-header">
           <h1 className="text-2xl font-orbitron mb-1">Chronilog</h1>
           <p className="text-[#7DAAB2]">Your personal timeline of knowledge, reflections, and growth logs.</p>
         </div>
         
-        <div className="space-y-4">
+        <div className="space-y-4" data-tour="chronilog-categories">
           {(() => {
             const items: React.ReactNode[] = [];
             let categoryBuffer: { cat: CategoryItem; idx: number }[] = [];

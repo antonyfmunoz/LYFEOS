@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
 import { useLYFEOS } from "../lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { 
@@ -44,6 +45,36 @@ export default function AIPage() {
   const [chatTitleInput, setChatTitleInput] = useState("");
   const [editingChatId, setEditingChatId] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const AI_TOUR_STEPS: TutorialStep[] = [
+    {
+      target: "[data-tour='ai-header']",
+      title: "Your AI Assistant",
+      description: "Meet your personal AI companion. You can rename it, and it learns about your goals, stats, and preferences to give personalized advice.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='ai-sidebar']",
+      title: "Chat History",
+      description: "Your conversation history lives here. Create new chats for different topics, rename them, or delete old ones.",
+      position: "right",
+    },
+    {
+      target: "[data-tour='ai-input']",
+      title: "Start Chatting",
+      description: "Type your message here to chat with your AI assistant. Ask for advice, brainstorm ideas, get help planning your day, or just have a conversation.",
+      position: "top",
+    },
+  ];
+
+  const [showTutorial, setShowTutorial] = useState(() => {
+    return !localStorage.getItem("lyfeos-ai-tutorial-completed");
+  });
+
+  const handleTutorialComplete = useCallback(() => {
+    setShowTutorial(false);
+    localStorage.setItem("lyfeos-ai-tutorial-completed", "true");
+  }, []);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -217,8 +248,8 @@ export default function AIPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] pb-10">
-      {/* AI Assistant Header with integrated hamburger menu */}
-      <div className="flex items-center justify-between mb-4 pb-4 border-b border-primary/20">
+      <PageTutorial steps={AI_TOUR_STEPS} storageKey="ai" isOpen={showTutorial} onComplete={handleTutorialComplete} />
+      <div className="flex items-center justify-between mb-4 pb-4 border-b border-primary/20" data-tour="ai-header">
         <div className="flex items-center">
           {/* Hamburger Menu for mobile - static in header */}
           <Button
@@ -297,7 +328,7 @@ export default function AIPage() {
         )}
         
         {/* Left Sidebar - Chat Sessions & Quick Prompts - Collapsible */}
-        <div className={`
+        <div data-tour="ai-sidebar" className={`
           fixed sm:static left-0 z-20
           top-[57px] bottom-[70px] sm:top-0 sm:bottom-0
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full sm:translate-x-0'} 
@@ -507,7 +538,7 @@ export default function AIPage() {
           </div>
           
           {/* Input area */}
-          <form onSubmit={handleSendMessage} className="mt-4 pt-4 border-t border-primary/20 relative">
+          <form onSubmit={handleSendMessage} className="mt-4 pt-4 border-t border-primary/20 relative" data-tour="ai-input">
             <div className="relative rounded-2xl border border-primary/30 bg-card/30 shadow-inner overflow-hidden">
               <Input 
                 id="messageInput"

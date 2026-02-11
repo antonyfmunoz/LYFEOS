@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
 import { useWidgetState } from "@/hooks/use-widget-state";
 import RootLayout from "../components/layout/RootLayout";
 import { useLYFEOS } from "../lib/context";
@@ -215,6 +216,30 @@ export default function ProfilePage() {
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const PROFILE_TOUR_STEPS: TutorialStep[] = [
+    {
+      target: "[data-tour='profile-header']",
+      title: "Your Profile",
+      description: "This is your player card. It shows your avatar, display name, and level. You can upload a profile picture and customize your appearance.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='profile-stats']",
+      title: "Player Stats",
+      description: "Track your XP, energy, health, time tokens, and attention tokens here. These stats reflect your daily activity and overall progress in the system.",
+      position: "bottom",
+    },
+  ];
+
+  const [showTutorial, setShowTutorial] = useState(() => {
+    return !localStorage.getItem("lyfeos-profile-tutorial-completed");
+  });
+
+  const handleTutorialComplete = useCallback(() => {
+    setShowTutorial(false);
+    localStorage.setItem("lyfeos-profile-tutorial-completed", "true");
+  }, []);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editUsername, setEditUsername] = useState(username);
@@ -1277,6 +1302,7 @@ export default function ProfilePage() {
   return (
     <RootLayout>
       <div className="max-w-4xl mx-auto pb-20">
+        <PageTutorial steps={PROFILE_TOUR_STEPS} storageKey="profile" isOpen={showTutorial} onComplete={handleTutorialComplete} />
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-orbitron text-foreground">My Account</h1>
@@ -1299,9 +1325,8 @@ export default function ProfilePage() {
           </Alert>
         )}
 
-        {/* Profile Card */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="glassmorphic rounded-xl neon-border overflow-hidden">
+          <div className="glassmorphic rounded-xl neon-border overflow-hidden" data-tour="profile-header">
             <div 
               className="p-3 flex items-center justify-between border-b border-primary/20 cursor-pointer hover:bg-primary/5 transition-colors"
               onClick={() => setIsProfileOpen(!isProfileOpen)}
@@ -1451,8 +1476,8 @@ export default function ProfilePage() {
         {/* Draggable Widgets - Stats Log and Settings */}
         <div className="mt-6">
             {widgets.map((widget, index) => (
+              <div key={`wrapper-${widget.id}`} {...(index === 0 ? { "data-tour": "profile-stats" } : {})}>
               <PersistentProfileDraggableWidget
-                key={widget.id}
                 widgetId={`profile.${widget.id}`}
                 id={widget.id}
                 index={index}
@@ -1464,6 +1489,7 @@ export default function ProfilePage() {
               >
                 {renderWidgetContent(widget.id)}
               </PersistentProfileDraggableWidget>
+              </div>
             ))}
         </div>
       </div>

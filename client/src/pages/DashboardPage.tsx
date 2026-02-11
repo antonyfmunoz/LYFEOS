@@ -20,7 +20,7 @@ import { DraggableWidget, DraggableWidgetProps } from '@/components/ui/draggable
 import update from 'immutability-helper';
 import { useWidgetState } from '@/hooks/use-widget-state';
 import { LevelUpModal } from '@/components/dashboard/LevelUpModal';
-import DashboardTutorial from '@/components/dashboard/DashboardTutorial';
+import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { getLocalDateString } from '@/lib/utils';
@@ -176,7 +176,39 @@ export default function DashboardPage() {
   // Level-up modal state
   const [isLevelUpModalOpen, setIsLevelUpModalOpen] = useState(false);
   
-  // Tutorial state - show for first-time users
+  const DASHBOARD_TOUR_STEPS: TutorialStep[] = [
+    {
+      target: "[data-tour='date-header']",
+      title: "Your Daily HUD",
+      description: "This is your command center. It shows the current date, time, and timezone. You can switch between 12h/24h format and change timezones.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='sidebar-nav']",
+      title: "Navigation Hub",
+      description: "Use the sidebar to switch between Dashboard, Missions, AI Assistant, Chronilog (journal), and your Profile. Each section has its own powerful tools.",
+      position: "right",
+    },
+    {
+      target: "[data-tour='mobile-nav']",
+      title: "Navigation Bar",
+      description: "Tap these icons to switch between Dashboard, Missions, AI Assistant, Chronilog (journal), and your Profile.",
+      position: "top",
+    },
+    {
+      target: "[data-tour='widget-first']",
+      title: "Drag & Drop Widgets",
+      description: "Each section below is a widget you can rearrange! Grab the handle on the left to drag widgets into your preferred order. Collapse or expand them as you like.",
+      position: "top",
+    },
+    {
+      target: "[data-tour='widget-first']",
+      title: "Daily Logs",
+      description: "Use these widgets to capture your thoughts, research, reflections, intentions, and energy levels each day. Everything is saved automatically to your Chronilog journal.",
+      position: "bottom",
+    },
+  ];
+
   const [showTutorial, setShowTutorial] = useState(() => {
     return !localStorage.getItem("lyfeos-dashboard-tutorial-completed");
   });
@@ -1352,7 +1384,7 @@ export default function DashboardPage() {
 
   return (
       <div className="dashboard-container pb-20">
-        <DashboardTutorial isOpen={showTutorial} onComplete={handleTutorialComplete} />
+        <PageTutorial steps={DASHBOARD_TOUR_STEPS} storageKey="dashboard" isOpen={showTutorial} onComplete={handleTutorialComplete} />
         <DailyInitModal />
         
         {/* Level-up modal - shows when user levels up */}
