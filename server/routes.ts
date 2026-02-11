@@ -2,8 +2,8 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
-import { eq, desc, and } from "drizzle-orm";
-import { userDailyLogs, quests as questsTable } from "@shared/schema";
+import { eq, desc, and, gte, asc, sql } from "drizzle-orm";
+import { userDailyLogs, quests as questsTable, userStats } from "@shared/schema";
 import { registerChatRoutes } from "./replit_integrations/chat";
 import { z } from "zod";
 import bcrypt from "bcrypt";
@@ -4638,6 +4638,112 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
     } catch (error) {
       console.error("Error undismissing knowledge entry:", error);
       return res.status(500).json({ error: "Failed to undismiss knowledge entry" });
+    }
+  });
+
+  // Analytics / Insights API
+  app.get("/api/analytics", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const days = parseInt(req.query.days as string) || 30;
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - days);
+      const cutoffStr = cutoffDate.toISOString().split("T")[0];
+
+      const [dailyLogs, allMissions, stats] = await Promise.all([
+        db.select().from(userDailyLogs)
+          .where(and(eq(userDailyLogs.userId, userId), gte(userDailyLogs.date, cutoffStr)))
+          .orderBy(asc(userDailyLogs.date)),
+        db.select().from(questsTable)
+          .where(eq(questsTable.userId, userId)),
+        storage.getUserStats(userId),
+      ]);
+
+      const moodTrends = dailyLogs.map(log => ({
+        date: log.date,
+        mental: log.mentalState ?? 5,
+        physical: log.physicalState ?? 5,
+        emotional: log.emotionalState ?? 5,
+        average: Math.round(((log.mentalState ?? 5) + (log.physicalState ?? 5) + (log.emotionalState ?? 5)) / 3 * 10) / 10,
+      }));
+
+      const xpByDay: Record<string, number> = {};
+      dailyLogs.forEach(log => {
+        xpByDay[log.date] = log.yesterdayXp ?? 0;
+      });
+
+      const activeMissions = allMissions.filter(m => !m.deletedAt);
+      const completedMissions = activeMissions.filter(m => m.completed);
+
+      const completionsByDay: Record<string, number> = {};
+      completedMissions.forEach(m => {
+        if (m.completedAt) {
+          const day = new Date(m.completedAt).toISOString().split("T")[0];
+          if (day >= cutoffStr) {
+            completionsByDay[day] = (completionsByDay[day] || 0) + 1;
+          }
+        }
+      });
+
+      const dateRange: string[] = [];
+      const d = new Date(cutoffStr);
+      const today = new Date();
+      while (d <= today) {
+        dateRange.push(d.toISOString().split("T")[0]);
+        d.setDate(d.getDate() + 1);
+      }
+
+      const missionCompletionTrend = dateRange.map(date => ({
+        date,
+        completed: completionsByDay[date] || 0,
+        xpEarned: xpByDay[date] || 0,
+      }));
+
+      const categoryStats: Record<string, { total: number; completed: number; totalXp: number; totalEnergy: number }> = {};
+      activeMissions.forEach(m => {
+        const cat = m.category || "general";
+        if (!categoryStats[cat]) categoryStats[cat] = { total: 0, completed: 0, totalXp: 0, totalEnergy: 0 };
+        categoryStats[cat].total++;
+        if (m.completed) {
+          categoryStats[cat].completed++;
+          categoryStats[cat].totalXp += m.experienceReward || 0;
+        }
+        categoryStats[cat].totalEnergy += m.energyCost || 0;
+      });
+
+      const difficultyStats: Record<string, { total: number; completed: number }> = {};
+      activeMissions.forEach(m => {
+        const diff = m.difficulty || "D";
+        if (!difficultyStats[diff]) difficultyStats[diff] = { total: 0, completed: 0 };
+        difficultyStats[diff].total++;
+        if (m.completed) difficultyStats[diff].completed++;
+      });
+
+      const sleepData = dailyLogs
+        .filter(log => log.wakeTime || log.sleepTime)
+        .map(log => ({ date: log.date, wakeTime: log.wakeTime, sleepTime: log.sleepTime }));
+
+      res.json({
+        moodTrends,
+        missionCompletionTrend,
+        categoryStats,
+        difficultyStats,
+        sleepData,
+        summary: {
+          totalMissions: activeMissions.length,
+          completedMissions: completedMissions.length,
+          completionRate: activeMissions.length > 0 ? Math.round((completedMissions.length / activeMissions.length) * 100) : 0,
+          totalXpEarned: completedMissions.reduce((sum, m) => sum + (m.experienceReward || 0), 0),
+          currentLevel: stats?.level ?? 1,
+          currentXp: stats?.experienceCurrent ?? 0,
+          currentStreak: stats?.streakDays ?? 0,
+          avgMoodScore: moodTrends.length > 0 ? Math.round(moodTrends.reduce((s, m) => s + m.average, 0) / moodTrends.length * 10) / 10 : 0,
+          daysTracked: dailyLogs.length,
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching analytics:", error);
+      res.status(500).json({ error: "Failed to fetch analytics" });
     }
   });
 
