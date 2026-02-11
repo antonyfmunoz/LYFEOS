@@ -107,6 +107,17 @@ Preferred communication style: Simple, everyday language.
 └── migrations/       # Database migrations
 ```
 
+### Payment Processing
+- **Stripe Integration**: Subscription-based payments via Replit Stripe connector
+  - Webhook route registered BEFORE express.json() in `server/index.ts`
+  - `server/stripeClient.ts`: Fetches Stripe credentials from Replit connection API
+  - `server/stripeService.ts`: Handles checkout sessions, customer creation, portal sessions
+  - `server/webhookHandlers.ts`: Processes Stripe webhooks via stripe-replit-sync
+  - `stripe-replit-sync` manages the `stripe` schema automatically (products, prices, subscriptions, etc.)
+  - Products/prices created via `scripts/seed-products.ts` (LYFEOS Pro: $9.99/mo, $79.99/yr)
+  - Users table has `stripe_customer_id` and `stripe_subscription_id` columns
+  - Frontend: `/subscription` page with plan comparison, checkout, and billing portal
+
 ## External Dependencies
 
 ### Database

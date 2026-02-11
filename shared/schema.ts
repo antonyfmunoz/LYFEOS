@@ -34,6 +34,8 @@ export const users = pgTable("users", {
   twoFactorEmailExpiry: timestamp("two_factor_email_expiry"),
   twoFactorPhoneCode: text("two_factor_phone_code"),
   twoFactorPhoneExpiry: timestamp("two_factor_phone_expiry"),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   lastLoginAt: timestamp("last_login_at"),
 });
@@ -511,6 +513,8 @@ export const insertUserSchema = createInsertSchema(users).pick({
   firebaseUid: true,
   termsAccepted: true,
   lastLoginAt: true,
+  stripeCustomerId: true,
+  stripeSubscriptionId: true,
 });
 
 export const insertUserStatsSchema = createInsertSchema(userStats).pick({

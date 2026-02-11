@@ -43,6 +43,7 @@ import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import LoginSuccessPage from "./pages/LoginSuccessPage";
+import SubscriptionPage from "./pages/SubscriptionPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -433,6 +434,12 @@ function Router() {
           <RootLayout>
             <AnalyticsPage />
           </RootLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/subscription">
+        <ProtectedRoute>
+          <SubscriptionPage />
         </ProtectedRoute>
       </Route>
       
