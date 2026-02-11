@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar, Clock, Award, Zap, Info, Sword } from "lucide-react";
@@ -25,18 +25,12 @@ export default function EnhancedMissionWidget({
   maxHeight = "96",
   hideHeader = false,
 }: EnhancedMissionWidgetProps) {
-  const { missionPages, updateMissionPage } = useLYFEOS();
+  const { missionPages, updateMissionPage, userProfile } = useLYFEOS();
   const { user } = useAuth();
 
-  const { data: profileData } = useQuery<any>({
-    queryKey: ['/api/profile'],
-    enabled: !!user,
-    staleTime: 60000,
-  });
-
-  const profileLoaded = profileData !== undefined;
-  const onboardingComplete = profileData?.onboardingCompleted === true;
-  const completedOnboardingMissions: number[] = profileData?.completedOnboardingMissions || [];
+  const profileLoaded = userProfile !== null;
+  const onboardingComplete = userProfile?.onboardingCompleted === true;
+  const completedOnboardingMissions: number[] = userProfile?.completedOnboardingMissions || [];
   
   const ONBOARDING_MISSIONS = [
     { id: 0, title: "Access & Quickstart", xp: 100 },

@@ -175,16 +175,10 @@ export default function QuestsPage() {
   usePageTitle('Missions');
   const [, navigate] = useLocation();
   
-  const { quests, toggleQuestCompletion, createQuest, updateQuest, deleteQuest, refetchQuests, activeTimerQuest, missionElapsedTimes, missionBreakTimes, startMissionTimer, resumeMissionTimer, restartMissionTimer } = useLYFEOS();
+  const { quests, toggleQuestCompletion, createQuest, updateQuest, deleteQuest, refetchQuests, activeTimerQuest, missionElapsedTimes, missionBreakTimes, startMissionTimer, resumeMissionTimer, restartMissionTimer, userProfile } = useLYFEOS();
   const { user } = useAuth();
   const { toast } = useToast();
   const pushNotifs = usePushNotifications();
-  
-  const { data: userProfile } = useQuery({
-    queryKey: ["/api/profile"],
-    enabled: !!user?.id,
-    staleTime: 60000,
-  });
   
   const { data: allVisionGoals = [] } = useQuery<VisionGoalOption[]>({
     queryKey: ['/api/vision-goals/all'],
@@ -326,9 +320,9 @@ export default function QuestsPage() {
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   
-  const profileLoaded = userProfile !== undefined;
-  const completedOnboardingMissions = (userProfile as any)?.completedOnboardingMissions || [];
-  const onboardingComplete = (userProfile as any)?.onboardingCompleted === true;
+  const profileLoaded = userProfile !== null;
+  const completedOnboardingMissions = userProfile?.completedOnboardingMissions || [];
+  const onboardingComplete = userProfile?.onboardingCompleted === true;
   const nextOnboardingMission = profileLoaded && !onboardingComplete
     ? ONBOARDING_MISSIONS.find(m => !completedOnboardingMissions.includes(m.id)) || null
     : null;

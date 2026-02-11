@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { UserStats, Quest, AIMessage, CalendarEvent, MissionPage, ChatSession, KanbanTask, KanbanStatus, KanbanBoard, KanbanColumn } from "./types";
 import { toast } from "@/hooks/use-toast";
 import { missionCompleteToast, levelUpToast, streakToast } from "@/lib/gamified-toast";
@@ -227,6 +228,7 @@ const initialKanbanTasks: KanbanTask[] = [
 interface LYFEOSContextType {
   stats: UserStats;
   quests: Quest[];
+  userProfile: any | null;
   messages: AIMessage[];
   events: CalendarEvent[];
   missionPages: MissionPage[];
@@ -327,6 +329,11 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const { triggerCelebration } = useCelebration();
   const [stats, setStats] = useState<UserStats>(initialStats);
   const [quests, setQuests] = useState<Quest[]>(initialQuests);
+  const { data: userProfile = null } = useQuery<any>({
+    queryKey: ["/api/profile"],
+    enabled: isAuthenticated && !!user,
+    staleTime: 60000,
+  });
   const [messages, setMessages] = useState<AIMessage[]>(initialMessages);
   const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
   const [missionPages, setMissionPages] = useState<MissionPage[]>(initialMissionPages);
@@ -678,16 +685,10 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Load quests/missions and profile when user logs in
+  // Load quests/missions when user logs in
   useEffect(() => {
     if (isAuthenticated && user) {
       refetchQuests();
-      fetch("/api/profile", { credentials: "include" })
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (data) queryClient.setQueryData(["/api/profile"], data);
-        })
-        .catch(() => {});
     }
   }, [isAuthenticated, user]);
   
@@ -2182,6 +2183,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       value={{
         stats,
         quests,
+        userProfile,
         messages,
         events,
         missionPages,
