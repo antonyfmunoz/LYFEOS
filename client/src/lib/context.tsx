@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { UserStats, Quest, AIMessage, CalendarEvent, MissionPage, ChatSession, KanbanTask, KanbanStatus, KanbanBoard, KanbanColumn } from "./types";
 import { toast } from "@/hooks/use-toast";
 import { missionCompleteToast, levelUpToast, streakToast } from "@/lib/gamified-toast";
@@ -335,6 +335,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const [dataLog, setDataLog] = useState<DataLogData>(initialDataLog);
   const [reflectionLog, setReflectionLog] = useState<ReflectionLogData>(initialReflectionLog);
   const [username, setUsername] = useState<string>("Alex Chen");
+  const streakToastFired = useRef(false);
   const [aiCompanionName, setAICompanionNameState] = useState<string>("Lyfe");
   const [chatSessions, setChatSessions] = useState<ChatSession[]>(initialChatSessions);
   // Mapping from local chat session IDs to database conversation IDs
@@ -448,7 +449,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
               console.log("Stats loaded successfully:", dbStats);
               setStats(dbStats);
               
-              if (dbStats.streakDays > 1) {
+              if (dbStats.streakDays > 1 && !streakToastFired.current) {
+                streakToastFired.current = true;
                 setTimeout(() => streakToast(dbStats.streakDays), 1500);
               }
               
