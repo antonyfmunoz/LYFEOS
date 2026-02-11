@@ -18,18 +18,13 @@ export default function LoginSuccessPage() {
       duration: 1500,
     });
 
-    const loginToastDoneTimer = setTimeout(() => {
-      sessionStorage.setItem("lyfeos_login_toast_done", "true");
-    }, 1600);
+    sessionStorage.setItem("lyfeos_login_toast_done", "true");
 
     const navTimer = setTimeout(() => {
       navigate("/dashboard", { replace: true });
     }, 600);
 
-    return () => {
-      clearTimeout(loginToastDoneTimer);
-      clearTimeout(navTimer);
-    };
+    return () => clearTimeout(navTimer);
   }, []);
 
   return (

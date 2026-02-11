@@ -456,7 +456,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
                 if (lastStreakToastDate !== today) {
                   localStorage.setItem("lyfeos_streak_toast_date", today);
                   let attempts = 0;
-                  const maxAttempts = 10;
+                  const maxAttempts = 8;
                   const showStreakAfterLogin = () => {
                     attempts++;
                     if (sessionStorage.getItem("lyfeos_login_toast_done") === "true") {
@@ -466,7 +466,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
                       setTimeout(showStreakAfterLogin, 500);
                     }
                   };
-                  setTimeout(showStreakAfterLogin, 500);
+                  setTimeout(showStreakAfterLogin, 2000);
                 }
               }
               
