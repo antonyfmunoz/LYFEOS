@@ -19,7 +19,7 @@ export default function LoginPage() {
     setError("");
     
     if (!identifier.trim() || !password.trim()) {
-      setError("Please enter your username, email, or phone number and password");
+      setError("Please enter your username or email and password");
       return;
     }
     
@@ -58,14 +58,14 @@ export default function LoginPage() {
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label htmlFor="identifier" className="block text-sm text-white">USERNAME, EMAIL, OR PHONE</label>
+            <label htmlFor="identifier" className="block text-sm text-white">USERNAME OR EMAIL</label>
             <Input 
               type="text" 
               id="identifier"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-white focus-visible:ring-white/30"
-              placeholder="Enter username, email, or phone number"
+              placeholder="Enter username or email"
               required
             />
           </div>

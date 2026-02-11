@@ -452,14 +452,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!identifier || !password) {
         console.log("Login failed: Missing identifier or password");
-        return res.status(400).json({ error: "Username, email, or phone number and password are required" });
+        return res.status(400).json({ error: "Username or email and password are required" });
       }
       
-      // Find user by username, email, or phone number
+      // Find user by username or email
       const user = await storage.getUserByIdentifier(identifier);
       if (!user) {
         console.log("Login failed: User not found");
-        return res.status(401).json({ error: "Invalid credentials. Please check your username/email/phone and password, or register a new account." });
+        return res.status(401).json({ error: "Invalid credentials. Please check your username/email and password, or register a new account." });
       }
       
       // Verify password
