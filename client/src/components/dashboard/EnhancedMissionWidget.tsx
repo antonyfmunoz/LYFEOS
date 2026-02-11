@@ -29,7 +29,7 @@ export default function EnhancedMissionWidget({
   const { user } = useAuth();
 
   const { data: profileData } = useQuery<any>({
-    queryKey: ['/api/user-profile'],
+    queryKey: ['/api/profile'],
     enabled: !!user,
   });
 
