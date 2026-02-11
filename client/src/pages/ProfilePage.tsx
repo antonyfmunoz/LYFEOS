@@ -1139,7 +1139,7 @@ export default function ProfilePage() {
             <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
               <div className="flex items-center gap-2 mb-2">
                 <Paintbrush className="h-4 w-4 text-primary" />
-                <Label className="text-sm text-foreground">UI Theme Color</Label>
+                <Label className="text-sm text-foreground">Theme Color</Label>
               </div>
               <p className="text-xs text-muted-foreground mb-3">
                 Select your preferred interface color.
@@ -1165,12 +1165,6 @@ export default function ProfilePage() {
                     )}
                   </button>
                 ))}
-              </div>
-              <div className="flex items-center mt-3 gap-2">
-                <span className="block w-3 h-3 rounded-full animate-pulse" style={{ backgroundColor: stats.primaryColor || "#00e0ff" }}></span>
-                <p className="text-xs text-muted-foreground">
-                  Current color: {stats.primaryColor || "#00e0ff"}
-                </p>
               </div>
             </div>
           </>
