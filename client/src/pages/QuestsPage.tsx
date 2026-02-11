@@ -219,6 +219,7 @@ export default function QuestsPage() {
     
     const completed = quests.filter(q => {
       if (!q.completed || !q.completedAt) return false;
+      if (q.category === 'onboarding') return true;
       const completedDate = new Date(q.completedAt);
       const completedLocalDate = `${completedDate.getFullYear()}-${String(completedDate.getMonth() + 1).padStart(2, '0')}-${String(completedDate.getDate()).padStart(2, '0')}`;
       return completedLocalDate === today;
@@ -1113,7 +1114,7 @@ export default function QuestsPage() {
                 <QuestItem
                   quest={{
                     id: `onboarding-${nextOnboardingMission.id}`,
-                    title: `Onboarding ${nextOnboardingMission.id + 1}/8: ${nextOnboardingMission.title}`,
+                    title: nextOnboardingMission.title,
                     description: nextOnboardingMission.description,
                     completed: false,
                     experienceReward: nextOnboardingMission.xp,
