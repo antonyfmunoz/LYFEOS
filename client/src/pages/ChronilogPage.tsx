@@ -281,24 +281,21 @@ export default function ChronilogPage() {
     enabled: !!user,
   });
 
-  const layoutAppliedRef = useRef(false);
   useEffect(() => {
-    if (!widgetLayouts || layoutAppliedRef.current) return;
-    layoutAppliedRef.current = true;
-    if (widgetLayouts.chronilog) {
-      const savedOrder = widgetLayouts.chronilog;
-      setCategories(prev => {
-        const ordered: CategoryItem[] = [];
-        for (const id of savedOrder) {
-          const cat = prev.find(c => c.id === id);
-          if (cat) ordered.push(cat);
-        }
-        for (const cat of prev) {
-          if (!ordered.find(c => c.id === cat.id)) ordered.push(cat);
-        }
-        return ordered;
-      });
-    }
+    if (!widgetLayouts?.chronilog) return;
+    const savedOrder = widgetLayouts.chronilog;
+    setCategories(prev => {
+      const ordered: CategoryItem[] = [];
+      for (const id of savedOrder) {
+        const cat = prev.find(c => c.id === id);
+        if (cat) ordered.push(cat);
+      }
+      for (const cat of prev) {
+        if (!ordered.find(c => c.id === cat.id)) ordered.push(cat);
+      }
+      if (ordered.every((c, i) => c.id === prev[i]?.id)) return prev;
+      return ordered;
+    });
   }, [widgetLayouts]);
 
   const categoriesRef = useRef(categories);

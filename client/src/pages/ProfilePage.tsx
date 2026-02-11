@@ -516,24 +516,21 @@ export default function ProfilePage() {
     enabled: !!user,
   });
 
-  const layoutAppliedRef = useRef(false);
   useEffect(() => {
-    if (!widgetLayouts || layoutAppliedRef.current) return;
-    layoutAppliedRef.current = true;
-    if (widgetLayouts.profile) {
-      const savedOrder = widgetLayouts.profile;
-      setWidgets(prev => {
-        const ordered: WidgetData[] = [];
-        for (const id of savedOrder) {
-          const widget = prev.find(w => w.id === id);
-          if (widget) ordered.push(widget);
-        }
-        for (const widget of prev) {
-          if (!ordered.find(w => w.id === widget.id)) ordered.push(widget);
-        }
-        return ordered;
-      });
-    }
+    if (!widgetLayouts?.profile) return;
+    const savedOrder = widgetLayouts.profile;
+    setWidgets(prev => {
+      const ordered: WidgetData[] = [];
+      for (const id of savedOrder) {
+        const widget = prev.find(w => w.id === id);
+        if (widget) ordered.push(widget);
+      }
+      for (const widget of prev) {
+        if (!ordered.find(w => w.id === widget.id)) ordered.push(widget);
+      }
+      if (ordered.every((w, i) => w.id === prev[i]?.id)) return prev;
+      return ordered;
+    });
   }, [widgetLayouts]);
 
   const widgetsRef = useRef(widgets);
