@@ -24,10 +24,11 @@ import {
   mediaAlbums, type MediaAlbum, type InsertMediaAlbum,
   widgetStates, type WidgetStates,
   pushSubscriptions, type PushSubscription, type InsertPushSubscription,
-  dismissedKnowledge, type DismissedKnowledge, type InsertDismissedKnowledge
+  dismissedKnowledge, type DismissedKnowledge, type InsertDismissedKnowledge,
+  visionGoals, type VisionGoal, type InsertVisionGoal
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, isNull, isNotNull, gt, lt } from "drizzle-orm";
+import { eq, and, desc, asc, isNull, isNotNull, gt, lt } from "drizzle-orm";
 import crypto from "crypto";
 
 function hashToken(token: string): string {
@@ -241,6 +242,12 @@ export interface IStorage {
   getDismissedKnowledge(userId: number): Promise<DismissedKnowledge[]>;
   dismissKnowledgeEntry(entry: InsertDismissedKnowledge): Promise<DismissedKnowledge>;
   undismissKnowledgeEntry(id: number, userId: number): Promise<void>;
+
+  // Vision Goal methods
+  getVisionGoals(userId: number, category: string): Promise<VisionGoal[]>;
+  createVisionGoal(goal: InsertVisionGoal): Promise<VisionGoal>;
+  updateVisionGoal(id: number, userId: number, goal: Partial<InsertVisionGoal>): Promise<VisionGoal>;
+  deleteVisionGoal(id: number, userId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2103,6 +2110,31 @@ export class DatabaseStorage implements IStorage {
   async undismissKnowledgeEntry(id: number, userId: number): Promise<void> {
     await db.delete(dismissedKnowledge).where(
       and(eq(dismissedKnowledge.id, id), eq(dismissedKnowledge.userId, userId))
+    );
+  }
+
+  async getVisionGoals(userId: number, category: string): Promise<VisionGoal[]> {
+    return db.select().from(visionGoals).where(
+      and(eq(visionGoals.userId, userId), eq(visionGoals.category, category))
+    ).orderBy(asc(visionGoals.displayOrder), asc(visionGoals.id));
+  }
+
+  async createVisionGoal(goal: InsertVisionGoal): Promise<VisionGoal> {
+    const [result] = await db.insert(visionGoals).values(goal).returning();
+    return result;
+  }
+
+  async updateVisionGoal(id: number, userId: number, goal: Partial<InsertVisionGoal>): Promise<VisionGoal> {
+    const [result] = await db.update(visionGoals)
+      .set(goal)
+      .where(and(eq(visionGoals.id, id), eq(visionGoals.userId, userId)))
+      .returning();
+    return result;
+  }
+
+  async deleteVisionGoal(id: number, userId: number): Promise<void> {
+    await db.delete(visionGoals).where(
+      and(eq(visionGoals.id, id), eq(visionGoals.userId, userId))
     );
   }
 }

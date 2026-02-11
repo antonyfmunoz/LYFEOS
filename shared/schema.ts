@@ -1192,6 +1192,25 @@ export const insertDismissedKnowledgeSchema = createInsertSchema(dismissedKnowle
 export type DismissedKnowledge = typeof dismissedKnowledge.$inferSelect;
 export type InsertDismissedKnowledge = z.infer<typeof insertDismissedKnowledgeSchema>;
 
+export const visionGoals = pgTable("vision_goals", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  category: text("category").notNull(), // 'legacy', '10year', '5year', '18month', '90day'
+  title: text("title").notNull(),
+  description: text("description"),
+  completed: boolean("completed").default(false).notNull(),
+  displayOrder: integer("display_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertVisionGoalSchema = createInsertSchema(visionGoals).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type VisionGoal = typeof visionGoals.$inferSelect;
+export type InsertVisionGoal = z.infer<typeof insertVisionGoalSchema>;
+
 export const widgetStates = pgTable("widget_states", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id).unique(),

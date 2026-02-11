@@ -5327,6 +5327,79 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
     res.json({ message: "Two-factor authentication disabled" });
   });
 
+  // Vision Goals CRUD
+  app.get("/api/vision-goals/:category", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { category } = req.params;
+      const validCategories = ['legacy', '10year', '5year', '18month', '90day'];
+      if (!validCategories.includes(category)) {
+        return res.status(400).json({ error: "Invalid category" });
+      }
+      const goals = await storage.getVisionGoals(userId, category);
+      res.json(goals);
+    } catch (error) {
+      console.error("Error fetching vision goals:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/vision-goals", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { category, title, description } = req.body;
+      const validCategories = ['legacy', '10year', '5year', '18month', '90day'];
+      if (!validCategories.includes(category) || !title?.trim()) {
+        return res.status(400).json({ error: "Category and title are required" });
+      }
+      const existing = await storage.getVisionGoals(userId, category);
+      const maxOrder = existing.length > 0 ? Math.max(...existing.map(g => g.displayOrder)) : -1;
+      const goal = await storage.createVisionGoal({
+        userId,
+        category,
+        title: title.trim(),
+        description: description?.trim() || null,
+        completed: false,
+        displayOrder: maxOrder + 1,
+      });
+      res.json(goal);
+    } catch (error) {
+      console.error("Error creating vision goal:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/vision-goals/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+      const updateData: any = {};
+      if (req.body.title !== undefined) updateData.title = req.body.title.trim();
+      if (req.body.description !== undefined) updateData.description = req.body.description?.trim() || null;
+      if (req.body.completed !== undefined) updateData.completed = req.body.completed;
+      if (req.body.displayOrder !== undefined) updateData.displayOrder = req.body.displayOrder;
+      const goal = await storage.updateVisionGoal(id, userId, updateData);
+      res.json(goal);
+    } catch (error) {
+      console.error("Error updating vision goal:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/vision-goals/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+      await storage.deleteVisionGoal(id, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting vision goal:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Register AI Chat routes
   registerChatRoutes(app);
 
