@@ -5049,6 +5049,131 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
     }
   });
 
+  app.get("/api/streaks", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const stats = await storage.getUserStats(userId);
+      const currentStreak = stats?.streakDays ?? 0;
+
+      const allQuests = await storage.getQuests(userId);
+
+      const today = new Date();
+      const heatmapStart = new Date(today);
+      heatmapStart.setDate(heatmapStart.getDate() - 364);
+      const heatmapDays: string[] = [];
+      for (let d = new Date(heatmapStart); d <= today; d.setDate(d.getDate() + 1)) {
+        heatmapDays.push(d.toISOString().slice(0, 10));
+      }
+      const completionsByDay: Record<string, number> = {};
+      allQuests.forEach(q => {
+        if (q.completed && q.completedAt) {
+          const day = new Date(q.completedAt).toISOString().slice(0, 10);
+          completionsByDay[day] = (completionsByDay[day] || 0) + 1;
+        }
+      });
+      const heatmap = heatmapDays.map(date => ({ date, count: completionsByDay[date] || 0 }));
+
+      let longestStreak = 0;
+      let currentRun = 0;
+      let longestStart = "";
+      let longestEnd = "";
+      let runStart = "";
+      for (const date of heatmapDays) {
+        if ((completionsByDay[date] || 0) > 0) {
+          if (currentRun === 0) runStart = date;
+          currentRun++;
+          if (currentRun > longestStreak) {
+            longestStreak = currentRun;
+            longestStart = runStart;
+            longestEnd = date;
+          }
+        } else {
+          currentRun = 0;
+        }
+      }
+
+      const activeDays = heatmapDays.filter(d => (completionsByDay[d] || 0) > 0).length;
+      const totalCompleted = allQuests.filter(q => q.completed).length;
+
+      const ritualQuests = allQuests.filter(q => q.isRitualized && q.parentRitualId);
+      const ritualGroups: Record<number, typeof ritualQuests> = {};
+      ritualQuests.forEach(q => {
+        const pid = q.parentRitualId!;
+        if (!ritualGroups[pid]) ritualGroups[pid] = [];
+        ritualGroups[pid].push(q);
+      });
+      const parentRituals = allQuests.filter(q => q.isRitualized && !q.parentRitualId);
+      parentRituals.forEach(p => {
+        if (!ritualGroups[p.id]) ritualGroups[p.id] = [];
+      });
+
+      const habitStreaks = Object.entries(ritualGroups).map(([parentIdStr, instances]) => {
+        const parentId = parseInt(parentIdStr);
+        const parent = allQuests.find(q => q.id === parentId);
+        const title = parent?.title || instances[0]?.title || "Unknown Habit";
+        const category = parent?.category || instances[0]?.category || "general";
+        const frequency = parent?.repeatFrequency || instances[0]?.repeatFrequency || "daily";
+
+        const completedInstances = instances
+          .filter(q => q.completed && q.completedAt)
+          .sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime());
+
+        const completedDates = Array.from(new Set(completedInstances.map(q => new Date(q.completedAt!).toISOString().slice(0, 10)))).sort().reverse();
+
+        let streak = 0;
+        if (completedDates.length > 0) {
+          const todayStr = today.toISOString().slice(0, 10);
+          const yesterdayStr = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+          if (completedDates[0] === todayStr || completedDates[0] === yesterdayStr) {
+            streak = 1;
+            for (let i = 1; i < completedDates.length; i++) {
+              const prev = new Date(completedDates[i - 1] + "T00:00:00");
+              const curr = new Date(completedDates[i] + "T00:00:00");
+              const diff = (prev.getTime() - curr.getTime()) / 86400000;
+              if (diff === 1) streak++;
+              else break;
+            }
+          }
+        }
+
+        return {
+          id: parentId,
+          title,
+          category,
+          frequency,
+          currentStreak: streak,
+          totalCompleted: completedInstances.length,
+          totalInstances: instances.length,
+          lastCompleted: completedDates[0] || null,
+        };
+      }).filter(h => h.totalInstances > 0).sort((a, b) => b.currentStreak - a.currentStreak);
+
+      const last30 = heatmapDays.slice(-30);
+      const weeklyActivity: { week: string; missions: number }[] = [];
+      for (let i = 0; i < last30.length; i += 7) {
+        const chunk = last30.slice(i, i + 7);
+        const missions = chunk.reduce((s, d) => s + (completionsByDay[d] || 0), 0);
+        const label = new Date(chunk[0] + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        weeklyActivity.push({ week: label, missions });
+      }
+
+      res.json({
+        currentStreak,
+        longestStreak,
+        longestStreakStart: longestStart,
+        longestStreakEnd: longestEnd,
+        activeDays,
+        totalCompleted,
+        heatmap,
+        habitStreaks,
+        weeklyActivity,
+      });
+    } catch (error) {
+      console.error("Error fetching streaks:", error);
+      res.status(500).json({ error: "Failed to fetch streaks" });
+    }
+  });
+
   app.get("/api/auth/2fa/status", isAuthenticated, async (req, res) => {
     const user = await storage.getUser(req.session.userId!);
     if (!user) return res.status(404).json({ error: "User not found" });
