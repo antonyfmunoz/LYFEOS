@@ -9,7 +9,6 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
   const navItems = [
     { id: "dashboard", icon: "dashboard", label: "Dashboard" },
     { id: "missions", icon: "track_changes", label: "Missions" },
-    { id: "analytics", icon: "insights", label: "Analytics" },
     { id: "ai", icon: "smart_toy", label: "AI" },
     { id: "chronilog", icon: "book", label: "Chronilog" },
     { id: "profile", icon: "person", label: "Profile" },
@@ -30,7 +29,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
     <div className="lg:hidden border-t border-primary border-opacity-20 glassmorphic relative">
       <div 
         ref={indicatorRef}
-        className="absolute bottom-0 left-0 h-0.5 bg-primary shadow-[0_0_10px_var(--primary-shadow)] transition-transform duration-300" style={{ width: `${100 / 6}%` }}
+        className="absolute bottom-0 left-0 h-0.5 bg-primary shadow-[0_0_10px_var(--primary-shadow)] transition-transform duration-300" style={{ width: `${100 / navItems.length}%` }}
       ></div>
       
       <div className="flex justify-around">

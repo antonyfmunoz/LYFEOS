@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
-import { FileText, Clock, Tag, Calendar, Award, GripVertical, CheckSquare, BookOpen, GraduationCap, Target, Info } from "lucide-react";
+import { FileText, Clock, Tag, Calendar, Award, GripVertical, CheckSquare, BookOpen, GraduationCap, Target, Info, BarChart3 } from "lucide-react";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -122,6 +122,8 @@ const DraggableCategoryCard = ({ id, index, item, moveCategory, navigate }: Drag
       navigate('/knowledge-vault');
     } else if (item.id === "goals") {
       navigate('/goals-archive');
+    } else if (item.id === "analytics") {
+      navigate('/analytics');
     }
   };
   
@@ -202,6 +204,12 @@ export default function ChronilogPage() {
       title: "Vision", 
       icon: <Target className="h-5 w-5 text-primary" />,
       description: "Long-term goals and vision board. Set objectives, track milestones, and align your daily actions with your bigger picture."
+    },
+    { 
+      id: "analytics", 
+      title: "Analytics", 
+      icon: <BarChart3 className="h-5 w-5 text-primary" />,
+      description: "Visualize your progress with mood trends, XP progression, mission completion rates, and performance insights over time."
     }
   ]);
 
