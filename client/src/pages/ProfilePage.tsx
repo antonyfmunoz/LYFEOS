@@ -1142,7 +1142,7 @@ export default function ProfilePage() {
               <p className="text-xs text-muted-foreground mb-3">
                 Select your preferred interface color.
               </p>
-              <div className="grid grid-cols-3 gap-2 justify-items-center mx-auto" style={{ width: 'fit-content' }}>
+              <div className="grid grid-cols-3 gap-2">
                 {STAT_COLORS.map((color) => (
                   <button
                     key={color}
