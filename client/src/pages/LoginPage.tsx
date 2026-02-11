@@ -43,7 +43,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col items-center justify-center p-4 text-white" style={{ backgroundColor: 'hsl(0 0% 7%)' }}>
       <div className="text-center mb-8">
         <h1 className="text-4xl text-white font-orbitron mb-2">LYFEOS</h1>
-        <p className="text-white/60">Your personal life operating system</p>
+        <p className="text-white">Your personal life operating system</p>
       </div>
       
       <div className="w-full max-w-md rounded-xl p-6 border border-white/20 backdrop-blur-md"
@@ -59,7 +59,7 @@ export default function LoginPage() {
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label htmlFor="identifier" className="block text-sm text-white/60">USERNAME, EMAIL, OR PHONE</label>
+            <label htmlFor="identifier" className="block text-sm text-white">USERNAME, EMAIL, OR PHONE</label>
             <Input 
               type="text" 
               id="identifier"
@@ -72,7 +72,7 @@ export default function LoginPage() {
           </div>
           
           <div className="space-y-2">
-            <label htmlFor="password" className="block text-sm text-white/60">PASSWORD</label>
+            <label htmlFor="password" className="block text-sm text-white">PASSWORD</label>
             <Input 
               type="password" 
               id="password"
@@ -106,7 +106,7 @@ export default function LoginPage() {
           </Link>
         </div>
         <div className="mt-3 text-center">
-          <p className="text-white/60">
+          <p className="text-white">
             Don't have an account?{" "}
             <span className="text-white auth-link"><Link href="/register" className="hover:opacity-80 transition">
               Register

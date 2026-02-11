@@ -52,7 +52,7 @@ export default function ResetPasswordPage() {
       <div className="min-h-screen flex flex-col items-center justify-center p-4 text-white" style={{ backgroundColor: 'hsl(0 0% 7%)' }}>
         <div className="text-center mb-8">
           <h1 className="text-4xl text-white font-orbitron mb-2">LYFEOS</h1>
-          <p className="text-white/60">Your personal life operating system</p>
+          <p className="text-white">Your personal life operating system</p>
         </div>
         <div className="w-full max-w-md rounded-xl p-6 border border-white/20 backdrop-blur-md text-center space-y-4"
              style={{ backgroundColor: "rgba(38, 38, 42, 0.85)", boxShadow: "0 0 20px rgba(255, 255, 255, 0.08)" }}>
@@ -69,7 +69,7 @@ export default function ResetPasswordPage() {
     <div className="min-h-screen flex flex-col items-center justify-center p-4 text-white" style={{ backgroundColor: 'hsl(0 0% 7%)' }}>
       <div className="text-center mb-8">
         <h1 className="text-4xl text-white font-orbitron mb-2">LYFEOS</h1>
-        <p className="text-white/60">Your personal life operating system</p>
+        <p className="text-white">Your personal life operating system</p>
       </div>
 
       {success ? (
@@ -77,7 +77,7 @@ export default function ResetPasswordPage() {
              style={{ backgroundColor: "rgba(38, 38, 42, 0.85)", boxShadow: "0 0 20px rgba(255, 255, 255, 0.08)" }}>
           <CheckCircle className="w-16 h-16 mx-auto text-green-500" />
           <h2 className="text-xl font-orbitron text-white">Password Reset!</h2>
-          <p className="text-white/60 text-sm">
+          <p className="text-white text-sm">
             Your password has been updated successfully. You can now log in with your new password.
           </p>
           <button
@@ -100,7 +100,7 @@ export default function ResetPasswordPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <label className="block text-sm text-white/60">NEW PASSWORD</label>
+              <label className="block text-sm text-white">NEW PASSWORD</label>
               <div className="relative">
                 <Input
                   type={showPassword ? "text" : "password"}
@@ -114,7 +114,7 @@ export default function ResetPasswordPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white hover:text-white"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -122,7 +122,7 @@ export default function ResetPasswordPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm text-white/60">CONFIRM PASSWORD</label>
+              <label className="block text-sm text-white">CONFIRM PASSWORD</label>
               <Input
                 type={showPassword ? "text" : "password"}
                 value={confirmPassword}
