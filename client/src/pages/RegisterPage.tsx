@@ -219,10 +219,10 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 text-white" style={{ backgroundColor: 'hsl(0 0% 7%)' }}>
       <div className="text-center mb-8">
         <h1 className="text-4xl text-white font-orbitron mb-2">LYFEOS</h1>
-        <p className="text-muted-foreground">Your personal life operating system</p>
+        <p className="text-white/60">Your personal life operating system</p>
       </div>
       <div className="w-full max-w-md rounded-xl p-6 border border-white/20 backdrop-blur-md animate-fadeIn"
            style={{ backgroundColor: "rgba(38, 38, 42, 0.85)", boxShadow: "0 0 20px rgba(255, 255, 255, 0.08)" }}>
@@ -230,7 +230,7 @@ export default function RegisterPage() {
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label htmlFor="username" className="block text-sm text-muted-foreground">USERNAME (DISPLAY NAME)</label>
+            <label htmlFor="username" className="block text-sm text-white/60">USERNAME (DISPLAY NAME)</label>
             <Input 
               type="text" 
               id="username"
@@ -243,7 +243,7 @@ export default function RegisterPage() {
           </div>
           
           <div className="space-y-2">
-            <label htmlFor="email" className="block text-sm text-muted-foreground">EMAIL</label>
+            <label htmlFor="email" className="block text-sm text-white/60">EMAIL</label>
             <Input 
               type="email" 
               id="email"
@@ -256,7 +256,7 @@ export default function RegisterPage() {
           </div>
           
           <div className="space-y-2">
-            <label htmlFor="phone" className="block text-sm text-muted-foreground">PHONE NUMBER</label>
+            <label htmlFor="phone" className="block text-sm text-white/60">PHONE NUMBER</label>
             <Input 
               type="tel" 
               id="phone"
@@ -270,7 +270,7 @@ export default function RegisterPage() {
           
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <label htmlFor="firstName" className="block text-sm text-muted-foreground">FIRST NAME</label>
+              <label htmlFor="firstName" className="block text-sm text-white/60">FIRST NAME</label>
               <Input 
                 type="text" 
                 id="firstName"
@@ -282,7 +282,7 @@ export default function RegisterPage() {
               />
             </div>
             <div className="space-y-2">
-              <label htmlFor="lastName" className="block text-sm text-muted-foreground">LAST NAME</label>
+              <label htmlFor="lastName" className="block text-sm text-white/60">LAST NAME</label>
               <Input 
                 type="text" 
                 id="lastName"
@@ -296,7 +296,7 @@ export default function RegisterPage() {
           </div>
           
           <div className="space-y-2">
-            <label htmlFor="password" className="block text-sm text-muted-foreground">PASSWORD</label>
+            <label htmlFor="password" className="block text-sm text-white/60">PASSWORD</label>
             <Input 
               type="password" 
               id="password"
@@ -309,7 +309,7 @@ export default function RegisterPage() {
           </div>
           
           <div className="space-y-2">
-            <label htmlFor="confirmPassword" className="block text-sm text-muted-foreground">CONFIRM PASSWORD</label>
+            <label htmlFor="confirmPassword" className="block text-sm text-white/60">CONFIRM PASSWORD</label>
             <Input 
               type="password" 
               id="confirmPassword"
@@ -322,7 +322,7 @@ export default function RegisterPage() {
           </div>
           
           <div className="space-y-2">
-            <label className="block text-sm text-muted-foreground">CHOOSE YOUR THEME COLOR</label>
+            <label className="block text-sm text-white/60">CHOOSE YOUR THEME COLOR</label>
             <div className="grid grid-cols-4 gap-2 justify-center">
               {avatarColors.map((color) => (
                 <button
@@ -356,7 +356,7 @@ export default function RegisterPage() {
               onCheckedChange={(checked) => setTermsAccepted(checked === true)}
               className="mt-1 border-white/50 data-[state=checked]:bg-white data-[state=checked]:text-black"
             />
-            <label htmlFor="terms" className="text-sm text-muted-foreground cursor-pointer">
+            <label htmlFor="terms" className="text-sm text-white/60 cursor-pointer">
               I agree to the <span className="text-white auth-link"><Link href="/terms" className="hover:opacity-80">Terms of Service</Link></span> and <span className="text-white auth-link"><Link href="/privacy" className="hover:opacity-80">Privacy Policy</Link></span>. 
               Your journey is protected, and your data remains under your control.
             </label>
@@ -385,7 +385,7 @@ export default function RegisterPage() {
         </form>
         
         <div className="mt-6 text-center">
-          <p className="text-muted-foreground">
+          <p className="text-white/60">
             Already have an account?{" "}
             <span className="text-white auth-link"><Link href="/login" className="hover:opacity-80 transition">
               Login

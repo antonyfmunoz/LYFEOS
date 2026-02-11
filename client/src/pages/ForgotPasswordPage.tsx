@@ -34,10 +34,10 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 text-white" style={{ backgroundColor: 'hsl(0 0% 7%)' }}>
       <div className="text-center mb-8">
         <h1 className="text-4xl text-white font-orbitron mb-2">LYFEOS</h1>
-        <p className="text-muted-foreground">Your personal life operating system</p>
+        <p className="text-white/60">Your personal life operating system</p>
       </div>
 
       {submitted ? (
@@ -45,7 +45,7 @@ export default function ForgotPasswordPage() {
              style={{ backgroundColor: "rgba(38, 38, 42, 0.85)", boxShadow: "0 0 20px rgba(255, 255, 255, 0.08)" }}>
           <Mail className="w-12 h-12 mx-auto text-white" />
           <h2 className="text-xl font-orbitron text-white">Check your email</h2>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-white/60 text-sm">
             If an account exists with that email, we've sent a password reset link. Check your inbox and spam folder.
           </p>
           <div className="pt-2">
@@ -62,7 +62,7 @@ export default function ForgotPasswordPage() {
              style={{ backgroundColor: "rgba(38, 38, 42, 0.85)", boxShadow: "0 0 20px rgba(255, 255, 255, 0.08)" }}>
           <h2 className="text-xl font-orbitron text-center mb-6 text-white">Reset Password</h2>
 
-          <p className="text-muted-foreground text-sm text-center mb-6">
+          <p className="text-white/60 text-sm text-center mb-6">
             Enter the email address associated with your account and we'll send you a reset link.
           </p>
 
@@ -74,7 +74,7 @@ export default function ForgotPasswordPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <label className="block text-sm text-muted-foreground">EMAIL</label>
+              <label className="block text-sm text-white/60">EMAIL</label>
               <Input
                 type="email"
                 value={email}
