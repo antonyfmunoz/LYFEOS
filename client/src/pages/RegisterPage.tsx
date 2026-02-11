@@ -9,14 +9,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 const avatarColors = [
   "#00e0ff",
-  "#f59e0b",
-  "#10b981",
-  "#8b5cf6",
-  "#ec4899",
-  "#ef4444",
-  "#06b6d4",
+  "#f56565",
+  "#ed8936",
   "#ecc94b",
-  "#14b8a6"
+  "#48bb78",
+  "#4299e1",
+  "#667eea",
+  "#9f7aea",
 ];
 
 export default function RegisterPage() {
@@ -326,19 +325,27 @@ export default function RegisterPage() {
           
           <div className="space-y-2">
             <label className="block text-sm text-muted-foreground">CHOOSE YOUR THEME COLOR</label>
-            <div className="flex flex-wrap gap-2 justify-center">
+            <div className="grid grid-cols-4 gap-2 justify-center">
               {avatarColors.map((color) => (
                 <button
                   key={color}
                   type="button"
-                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform ${selectedColor === color ? 'ring-2 ring-foreground scale-110' : ''}`}
+                  className={`w-8 h-8 rounded-md transition-all ${
+                    selectedColor === color 
+                      ? 'ring-2 ring-offset-2 ring-offset-background ring-primary scale-110' 
+                      : 'ring-1 ring-primary/20 hover:scale-105'
+                  }`}
                   style={{ backgroundColor: color }}
                   onClick={() => {
                     setSelectedColor(color);
                     localStorage.setItem('lyfeos-primary-color', color);
                   }}
                 >
-                  {selectedColor === color && <Check className="h-4 w-4 text-white" />}
+                  {selectedColor === color && (
+                    <span className="flex items-center justify-center text-white text-xs">
+                      <Check className="h-4 w-4" />
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
