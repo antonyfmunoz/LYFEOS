@@ -24,7 +24,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <div className="flex-grow flex flex-col overflow-hidden">
           <div className="shrink-0 lg:hidden bg-background z-40">
             <div className="flex items-center justify-center py-4">
-              <span className="text-2xl text-primary font-orbitron font-bold">LYFE<span className="text-white">OS</span></span>
+              <span className="text-2xl text-white font-orbitron font-bold">LYFE<span className="text-primary">OS</span></span>
             </div>
           </div>
           

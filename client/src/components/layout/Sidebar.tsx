@@ -43,7 +43,7 @@ export default function Sidebar({ currentPage, username }: SidebarProps) {
         {collapsed ? (
           <span className="text-xl text-primary font-orbitron font-bold">L</span>
         ) : (
-          <span className="text-3xl text-primary font-orbitron font-bold">LYFE<span className="text-white">OS</span></span>
+          <span className="text-3xl text-white font-orbitron font-bold">LYFE<span className="text-primary">OS</span></span>
         )}
       </div>
 
