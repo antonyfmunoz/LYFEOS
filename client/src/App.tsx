@@ -153,6 +153,10 @@ function Router() {
     const hasPendingOnboarding = localStorage.getItem("lyfeos-pending-onboarding") === "true";
     const hasPendingRegistration = !!sessionStorage.getItem("lyfeos-pending-registration");
 
+    if (hasPendingOnboarding && !isAuthenticated && !hasPendingRegistration) {
+      localStorage.removeItem("lyfeos-pending-onboarding");
+    }
+
     if (hasPendingOnboarding && (isAuthenticated || hasPendingRegistration)) {
       if (!currentPath.startsWith('/onboarding')) {
         console.log('Pending onboarding detected, redirecting to /onboarding');
