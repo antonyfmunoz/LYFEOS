@@ -336,10 +336,6 @@ export default function QuestsPage() {
     
     const completed = quests.filter(q => {
       if (!q.completed || !q.completedAt) return false;
-      if (q.category === 'onboarding') {
-        const completedTime = new Date(q.completedAt).getTime();
-        return Date.now() - completedTime < 24 * 60 * 60 * 1000;
-      }
       const completedDate = new Date(q.completedAt);
       const completedLocalDate = `${completedDate.getFullYear()}-${String(completedDate.getMonth() + 1).padStart(2, '0')}-${String(completedDate.getDate()).padStart(2, '0')}`;
       return completedLocalDate === today;
