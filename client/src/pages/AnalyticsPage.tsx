@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/authContext";
@@ -153,8 +153,11 @@ export default function AnalyticsPage() {
     enabled: !!user,
   });
 
+  const layoutAppliedRef = useRef(false);
   useEffect(() => {
-    if (widgetLayouts?.analytics) {
+    if (!widgetLayouts || layoutAppliedRef.current) return;
+    layoutAppliedRef.current = true;
+    if (widgetLayouts.analytics) {
       const savedOrder = widgetLayouts.analytics;
       setAnalyticsWidgets(prev => {
         const ordered: AnalyticsWidgetMeta[] = [];
@@ -178,10 +181,15 @@ export default function AnalyticsPage() {
           [hoverIndex, 0, prev[dragIndex]],
         ],
       });
+      const newOrder = newWidgets.map(w => w.id);
       apiRequest('/api/widget-layouts', {
         method: 'PUT',
-        body: JSON.stringify({ page: 'analytics', order: newWidgets.map(w => w.id) }),
-      }).then(() => queryClient.invalidateQueries({ queryKey: ['/api/widget-layouts'] }));
+        body: JSON.stringify({ page: 'analytics', order: newOrder }),
+      });
+      queryClient.setQueryData<Record<string, string[]>>(['/api/widget-layouts'], (old) => ({
+        ...old,
+        analytics: newOrder,
+      }));
       return newWidgets;
     });
   }, []);

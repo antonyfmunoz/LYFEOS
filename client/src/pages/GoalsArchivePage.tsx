@@ -1,10 +1,24 @@
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
 import { useWidgetState } from "@/hooks/use-widget-state";
-import { ChevronDown, ArrowLeft, Eye, Compass, Flame, Target, Milestone } from "lucide-react";
+import { ArrowLeft, Eye, Compass, Flame, Target, Milestone } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import update from 'immutability-helper';
+import { CollapsibleWidget } from '@/components/ui/collapsible-widget';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+
+interface VisionWidget {
+  id: string;
+  title: string;
+  icon: React.ReactNode;
+  dataKey: string;
+  stateKey: string;
+}
 
 export default function GoalsArchivePage() {
   usePageTitle('Vision');
@@ -23,126 +37,139 @@ export default function GoalsArchivePage() {
   const [eighteenMonthOpen, setEighteenMonthOpen] = useWidgetState('goals.18month-vision', false);
   const [ninetyDayOpen, setNinetyDayOpen] = useWidgetState('goals.90day-vision', false);
 
+  const openStates: Record<string, { isOpen: boolean; setOpen: (v: boolean) => void }> = {
+    'legacy': { isOpen: legacyOpen, setOpen: setLegacyOpen },
+    '10year': { isOpen: tenYearOpen, setOpen: setTenYearOpen },
+    '5year': { isOpen: fiveYearOpen, setOpen: setFiveYearOpen },
+    '18month': { isOpen: eighteenMonthOpen, setOpen: setEighteenMonthOpen },
+    '90day': { isOpen: ninetyDayOpen, setOpen: setNinetyDayOpen },
+  };
+
+  const [widgets, setWidgets] = useState<VisionWidget[]>([
+    {
+      id: 'legacy',
+      title: 'Legacy Vision',
+      icon: <Eye className="h-5 w-5 text-primary" />,
+      dataKey: 'vision10YearLegacy',
+      stateKey: 'goals.legacy-vision',
+    },
+    {
+      id: '10year',
+      title: '10-Year Vision',
+      icon: <Target className="h-5 w-5 text-primary" />,
+      dataKey: 'vision10Year',
+      stateKey: 'goals.10year-vision',
+    },
+    {
+      id: '5year',
+      title: '5-Year Vision',
+      icon: <Compass className="h-5 w-5 text-primary" />,
+      dataKey: 'vision5Year',
+      stateKey: 'goals.5year-vision',
+    },
+    {
+      id: '18month',
+      title: '18-Month Vision',
+      icon: <Milestone className="h-5 w-5 text-primary" />,
+      dataKey: 'vision18Month',
+      stateKey: 'goals.18month-vision',
+    },
+    {
+      id: '90day',
+      title: '90-Day Vision',
+      icon: <Flame className="h-5 w-5 text-primary" />,
+      dataKey: 'vision90Day',
+      stateKey: 'goals.90day-vision',
+    },
+  ]);
+
+  const { data: widgetLayouts } = useQuery<Record<string, string[]>>({
+    queryKey: ['/api/widget-layouts'],
+    enabled: !!user,
+  });
+
+  const layoutAppliedRef = useRef(false);
+  useEffect(() => {
+    if (!widgetLayouts || layoutAppliedRef.current) return;
+    layoutAppliedRef.current = true;
+    if (widgetLayouts.vision) {
+      const savedOrder = widgetLayouts.vision;
+      setWidgets(prev => {
+        const ordered: VisionWidget[] = [];
+        for (const id of savedOrder) {
+          const widget = prev.find(w => w.id === id);
+          if (widget) ordered.push(widget);
+        }
+        for (const widget of prev) {
+          if (!ordered.find(w => w.id === widget.id)) ordered.push(widget);
+        }
+        return ordered;
+      });
+    }
+  }, [widgetLayouts]);
+
+  const moveWidget = useCallback((dragIndex: number, hoverIndex: number) => {
+    setWidgets((prev) => {
+      const newWidgets = update(prev, {
+        $splice: [
+          [dragIndex, 1],
+          [hoverIndex, 0, prev[dragIndex]],
+        ],
+      });
+      const newOrder = newWidgets.map(w => w.id);
+      apiRequest('/api/widget-layouts', {
+        method: 'PUT',
+        body: JSON.stringify({ page: 'vision', order: newOrder }),
+      });
+      queryClient.setQueryData<Record<string, string[]>>(['/api/widget-layouts'], (old) => ({
+        ...old,
+        vision: newOrder,
+      }));
+      return newWidgets;
+    });
+  }, []);
+
   return (
-    <div className="pb-20">
-      <div className="mb-4">
-        <Button 
-          variant="ghost" 
-          className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10" 
-          onClick={() => navigate('/chronilog')}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span>Back</span>
-        </Button>
-      </div>
-      
-      <div className="mb-6">
-        <h1 className="text-2xl font-orbitron mb-1">Vision</h1>
-        <p className="text-[#7DAAB2]">Document your life vision and goals at different time horizons</p>
-      </div>
-
-      <div className="space-y-6 mb-6">
-        <div className="glassmorphic rounded-xl neon-border overflow-hidden">
-          <div 
-            className="p-3 flex items-center justify-between cursor-pointer border-b border-primary/20 hover:bg-primary/5 transition-colors"
-            onClick={() => setLegacyOpen(!legacyOpen)}
+    <DndProvider backend={HTML5Backend}>
+      <div className="pb-20">
+        <div className="mb-4">
+          <Button 
+            variant="ghost" 
+            className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10" 
+            onClick={() => navigate('/chronilog')}
           >
-            <div className="flex items-center">
-              <Eye className="h-5 w-5 mr-2 text-primary" />
-              <h2 className="text-lg font-orbitron text-foreground">Legacy Vision</h2>
-            </div>
-            <div className="text-primary">
-              <ChevronDown className={`h-5 w-5 transition-transform ${legacyOpen ? 'rotate-180' : ''}`} />
-            </div>
-          </div>
-          {legacyOpen && (
-            <div className="p-4">
-              <span className="text-sm text-foreground">{profileData?.vision10YearLegacy || "\u2014"}</span>
-            </div>
-          )}
+            <ArrowLeft className="h-4 w-4" />
+            <span>Back</span>
+          </Button>
+        </div>
+        
+        <div className="mb-6">
+          <h1 className="text-2xl font-orbitron mb-1">Vision</h1>
+          <p className="text-[#7DAAB2]">Document your life vision and goals at different time horizons</p>
         </div>
 
-        <div className="glassmorphic rounded-xl neon-border overflow-hidden">
-          <div 
-            className="p-3 flex items-center justify-between cursor-pointer border-b border-primary/20 hover:bg-primary/5 transition-colors"
-            onClick={() => setTenYearOpen(!tenYearOpen)}
-          >
-            <div className="flex items-center">
-              <Target className="h-5 w-5 mr-2 text-primary" />
-              <h2 className="text-lg font-orbitron text-foreground">10-Year Vision</h2>
-            </div>
-            <div className="text-primary">
-              <ChevronDown className={`h-5 w-5 transition-transform ${tenYearOpen ? 'rotate-180' : ''}`} />
-            </div>
-          </div>
-          {tenYearOpen && (
-            <div className="p-4">
-              <span className="text-sm text-foreground">{profileData?.vision10Year || "\u2014"}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="glassmorphic rounded-xl neon-border overflow-hidden">
-          <div 
-            className="p-3 flex items-center justify-between cursor-pointer border-b border-primary/20 hover:bg-primary/5 transition-colors"
-            onClick={() => setFiveYearOpen(!fiveYearOpen)}
-          >
-            <div className="flex items-center">
-              <Compass className="h-5 w-5 mr-2 text-primary" />
-              <h2 className="text-lg font-orbitron text-foreground">5-Year Vision</h2>
-            </div>
-            <div className="text-primary">
-              <ChevronDown className={`h-5 w-5 transition-transform ${fiveYearOpen ? 'rotate-180' : ''}`} />
-            </div>
-          </div>
-          {fiveYearOpen && (
-            <div className="p-4">
-              <span className="text-sm text-foreground">{profileData?.vision5Year || "\u2014"}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="glassmorphic rounded-xl neon-border overflow-hidden">
-          <div 
-            className="p-3 flex items-center justify-between cursor-pointer border-b border-primary/20 hover:bg-primary/5 transition-colors"
-            onClick={() => setEighteenMonthOpen(!eighteenMonthOpen)}
-          >
-            <div className="flex items-center">
-              <Milestone className="h-5 w-5 mr-2 text-primary" />
-              <h2 className="text-lg font-orbitron text-foreground">18-Month Vision</h2>
-            </div>
-            <div className="text-primary">
-              <ChevronDown className={`h-5 w-5 transition-transform ${eighteenMonthOpen ? 'rotate-180' : ''}`} />
-            </div>
-          </div>
-          {eighteenMonthOpen && (
-            <div className="p-4">
-              <span className="text-sm text-foreground">{profileData?.vision18Month || "\u2014"}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="glassmorphic rounded-xl neon-border overflow-hidden">
-          <div 
-            className="p-3 flex items-center justify-between cursor-pointer border-b border-primary/20 hover:bg-primary/5 transition-colors"
-            onClick={() => setNinetyDayOpen(!ninetyDayOpen)}
-          >
-            <div className="flex items-center">
-              <Flame className="h-5 w-5 mr-2 text-primary" />
-              <h2 className="text-lg font-orbitron text-foreground">90-Day Vision</h2>
-            </div>
-            <div className="text-primary">
-              <ChevronDown className={`h-5 w-5 transition-transform ${ninetyDayOpen ? 'rotate-180' : ''}`} />
-            </div>
-          </div>
-          {ninetyDayOpen && (
-            <div className="p-4">
-              <span className="text-sm text-foreground">{profileData?.vision90Day || "\u2014"}</span>
-            </div>
-          )}
+        <div className="space-y-6 mb-6">
+          {widgets.map((widget, index) => {
+            const state = openStates[widget.id];
+            return (
+              <CollapsibleWidget
+                key={widget.id}
+                id={widget.id}
+                index={index}
+                title={widget.title}
+                icon={widget.icon}
+                isOpenProp={state.isOpen}
+                onOpenChange={state.setOpen}
+                moveWidget={moveWidget}
+              >
+                <span className="text-sm text-foreground">
+                  {profileData?.[widget.dataKey] || "\u2014"}
+                </span>
+              </CollapsibleWidget>
+            );
+          })}
         </div>
       </div>
-
-    </div>
+    </DndProvider>
   );
 }

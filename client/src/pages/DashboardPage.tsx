@@ -1294,8 +1294,11 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
+  const layoutAppliedRef = useRef(false);
   useEffect(() => {
-    if (widgetLayouts?.dashboard) {
+    if (!widgetLayouts || layoutAppliedRef.current) return;
+    layoutAppliedRef.current = true;
+    if (widgetLayouts.dashboard) {
       const savedOrder = widgetLayouts.dashboard;
       setWidgets(prev => {
         const ordered: WidgetMeta[] = [];
@@ -1311,7 +1314,6 @@ export default function DashboardPage() {
     }
   }, [widgetLayouts]);
 
-  // Callback for widget drag and drop reordering
   const moveWidget = useCallback((dragIndex: number, hoverIndex: number) => {
     setWidgets((prevWidgets) => {
       const newWidgets = update(prevWidgets, {
@@ -1320,10 +1322,15 @@ export default function DashboardPage() {
           [hoverIndex, 0, prevWidgets[dragIndex]],
         ],
       });
+      const newOrder = newWidgets.map(w => w.id);
       apiRequest('/api/widget-layouts', {
         method: 'PUT',
-        body: JSON.stringify({ page: 'dashboard', order: newWidgets.map(w => w.id) }),
-      }).then(() => queryClient.invalidateQueries({ queryKey: ['/api/widget-layouts'] }));
+        body: JSON.stringify({ page: 'dashboard', order: newOrder }),
+      });
+      queryClient.setQueryData<Record<string, string[]>>(['/api/widget-layouts'], (old) => ({
+        ...old,
+        dashboard: newOrder,
+      }));
       return newWidgets;
     });
   }, []);

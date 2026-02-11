@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useWidgetState } from "@/hooks/use-widget-state";
 import RootLayout from "../components/layout/RootLayout";
 import { useLYFEOS } from "../lib/context";
@@ -54,7 +54,7 @@ import {
   Repeat
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -513,16 +513,50 @@ export default function ProfilePage() {
     }
   ]);
 
-  // Move widget handler for drag and drop
+  const { data: widgetLayouts } = useQuery<Record<string, string[]>>({
+    queryKey: ['/api/widget-layouts'],
+    enabled: !!user,
+  });
+
+  const layoutAppliedRef = useRef(false);
+  useEffect(() => {
+    if (!widgetLayouts || layoutAppliedRef.current) return;
+    layoutAppliedRef.current = true;
+    if (widgetLayouts.profile) {
+      const savedOrder = widgetLayouts.profile;
+      setWidgets(prev => {
+        const ordered: WidgetData[] = [];
+        for (const id of savedOrder) {
+          const widget = prev.find(w => w.id === id);
+          if (widget) ordered.push(widget);
+        }
+        for (const widget of prev) {
+          if (!ordered.find(w => w.id === widget.id)) ordered.push(widget);
+        }
+        return ordered;
+      });
+    }
+  }, [widgetLayouts]);
+
   const moveWidget = useCallback((dragIndex: number, hoverIndex: number) => {
-    setWidgets((prevWidgets) =>
-      update(prevWidgets, {
+    setWidgets((prevWidgets) => {
+      const newWidgets = update(prevWidgets, {
         $splice: [
           [dragIndex, 1],
           [hoverIndex, 0, prevWidgets[dragIndex]],
         ],
-      })
-    );
+      });
+      const newOrder = newWidgets.map(w => w.id);
+      apiRequest('/api/widget-layouts', {
+        method: 'PUT',
+        body: JSON.stringify({ page: 'profile', order: newOrder }),
+      });
+      queryClient.setQueryData<Record<string, string[]>>(['/api/widget-layouts'], (old) => ({
+        ...old,
+        profile: newOrder,
+      }));
+      return newWidgets;
+    });
   }, []);
   
   // Helper to format array or object values for display

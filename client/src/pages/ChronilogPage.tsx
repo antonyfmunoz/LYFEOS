@@ -282,8 +282,11 @@ export default function ChronilogPage() {
     enabled: !!user,
   });
 
+  const layoutAppliedRef = useRef(false);
   useEffect(() => {
-    if (widgetLayouts?.chronilog) {
+    if (!widgetLayouts || layoutAppliedRef.current) return;
+    layoutAppliedRef.current = true;
+    if (widgetLayouts.chronilog) {
       const savedOrder = widgetLayouts.chronilog;
       setCategories(prev => {
         const ordered: CategoryItem[] = [];
@@ -299,7 +302,6 @@ export default function ChronilogPage() {
     }
   }, [widgetLayouts]);
 
-  // Callback for category card drag and drop reordering
   const moveCategory = useCallback((dragIndex: number, hoverIndex: number) => {
     setCategories((prevCategories) => {
       const newCategories = update(prevCategories, {
@@ -308,10 +310,15 @@ export default function ChronilogPage() {
           [hoverIndex, 0, prevCategories[dragIndex]],
         ],
       });
+      const newOrder = newCategories.map(c => c.id);
       apiRequest('/api/widget-layouts', {
         method: 'PUT',
-        body: JSON.stringify({ page: 'chronilog', order: newCategories.map(c => c.id) }),
-      }).then(() => queryClient.invalidateQueries({ queryKey: ['/api/widget-layouts'] }));
+        body: JSON.stringify({ page: 'chronilog', order: newOrder }),
+      });
+      queryClient.setQueryData<Record<string, string[]>>(['/api/widget-layouts'], (old) => ({
+        ...old,
+        chronilog: newOrder,
+      }));
       return newCategories;
     });
   }, []);
