@@ -260,10 +260,11 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
 
   const toggleMutation = useMutation({
     mutationFn: async ({ id, completed }: { id: number; completed: boolean }) => {
-      await apiRequest(`/api/vision-goals/${id}`, {
+      const result = await apiRequest<VisionGoal & { xpAwarded?: number }>(`/api/vision-goals/${id}`, {
         method: 'PATCH',
         body: JSON.stringify({ completed }),
       });
+      return result;
     },
     onMutate: async ({ id, completed }) => {
       await queryClient.cancelQueries({ queryKey });
@@ -273,10 +274,14 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
       );
       return { previous };
     },
-    onSuccess: (_data, { id, completed }) => {
-      if (completed) {
-        const goal = goals.find(g => g.id === id);
-        if (goal) milestoneToast(goal.title, goal.rewardText, goal.bonusXp);
+    onSuccess: (data, { completed }) => {
+      if (data) {
+        queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) =>
+          old.map(g => g.id === data.id ? { ...g, ...data } : g)
+        );
+        if (completed) {
+          milestoneToast(data.title, data.rewardText, data.bonusXp);
+        }
       }
     },
     onError: (_err, _vars, context) => {
@@ -288,18 +293,18 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, title, description, rewardText, bonusXp }: { id: number; title?: string; description?: string; rewardText?: string; bonusXp?: string }) => {
+    mutationFn: async ({ id, title, description, rewardText }: { id: number; title?: string; description?: string; rewardText?: string }) => {
       const body: Record<string, any> = {};
       if (title !== undefined) body.title = title;
       if (description !== undefined) body.description = description;
       if (rewardText !== undefined) body.rewardText = rewardText;
-      if (bonusXp !== undefined) body.bonusXp = bonusXp;
-      await apiRequest(`/api/vision-goals/${id}`, {
+      const result = await apiRequest<VisionGoal>(`/api/vision-goals/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(body),
       });
+      return result;
     },
-    onMutate: async ({ id, title, description, rewardText, bonusXp }) => {
+    onMutate: async ({ id, title, description, rewardText }) => {
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<VisionGoal[]>(queryKey);
       queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) =>
@@ -309,7 +314,6 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
           if (title !== undefined) updated.title = title;
           if (description !== undefined) updated.description = description;
           if (rewardText !== undefined) updated.rewardText = rewardText || null;
-          if (bonusXp !== undefined) updated.bonusXp = parseInt(bonusXp) || 0;
           return updated;
         })
       );
@@ -317,6 +321,13 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
       setEditingDescId(null);
       setEditingRewardId(null);
       return { previous };
+    },
+    onSuccess: (data) => {
+      if (data) {
+        queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) =>
+          old.map(g => g.id === data.id ? { ...g, ...data } : g)
+        );
+      }
     },
     onError: (_err, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
