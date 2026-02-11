@@ -131,13 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const trimmedPassword = password.trim();
       
       if (!trimmedIdentifier || !trimmedPassword) {
-        const error = new Error("Username, email, or phone number and password are required");
-        toast({
-          title: "Login Error",
-          description: error.message,
-          variant: "destructive",
-        });
-        throw error;
+        throw new Error("Username, email, or phone number and password are required");
       }
       
       // Make the login request with identifier (username, email, or phone)
@@ -167,34 +161,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data = JSON.parse(responseText) as AuthResponse;
       } catch (e) {
         console.error("Failed to parse JSON response:", e);
-        const error = new Error("Invalid server response. Please try again.");
-        toast({
-          title: "Login Error",
-          description: error.message,
-          variant: "destructive",
-        });
-        throw error;
+        throw new Error("Invalid server response. Please try again.");
       }
       
       if (!response.ok) {
-        const errorMessage = data?.error || "Check your username and password";
-        const error = new Error(errorMessage);
-        toast({
-          title: "Login Failed",
-          description: errorMessage,
-          variant: "destructive",
-        });
-        throw error;
+        throw new Error(data?.error || "Check your username and password");
       }
       
       if (!data || !data.user || !data.user.id) {
-        const error = new Error("Invalid user data received from server");
-        toast({
-          title: "Login Error",
-          description: error.message,
-          variant: "destructive",
-        });
-        throw error;
+        throw new Error("Invalid user data received from server");
       }
       
       // Success path
@@ -239,14 +214,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       navigate("/login-success", { replace: true });
     } catch (error: any) {
       console.error("Login error:", error);
-      // If the error doesn't have a message property, show a generic error
-      if (!error.message) {
-        toast({
-          title: "Login Error",
-          description: "Could not connect to server. Please try again.",
-          variant: "destructive",
-        });
-      }
       throw error;
     } finally {
       setIsLoading(false);
