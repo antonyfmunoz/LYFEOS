@@ -106,25 +106,28 @@ export default function GoalsArchivePage() {
     }
   }, [widgetLayouts]);
 
+  const widgetsRef = useRef(widgets);
+  widgetsRef.current = widgets;
+
   const moveWidget = useCallback((dragIndex: number, hoverIndex: number) => {
-    setWidgets((prev) => {
-      const newWidgets = update(prev, {
-        $splice: [
-          [dragIndex, 1],
-          [hoverIndex, 0, prev[dragIndex]],
-        ],
-      });
-      const newOrder = newWidgets.map(w => w.id);
-      apiRequest('/api/widget-layouts', {
-        method: 'PUT',
-        body: JSON.stringify({ page: 'vision', order: newOrder }),
-      });
-      queryClient.setQueryData<Record<string, string[]>>(['/api/widget-layouts'], (old) => ({
-        ...old,
-        vision: newOrder,
-      }));
-      return newWidgets;
+    const prev = widgetsRef.current;
+    const newWidgets = update(prev, {
+      $splice: [
+        [dragIndex, 1],
+        [hoverIndex, 0, prev[dragIndex]],
+      ],
     });
+    setWidgets(newWidgets);
+    widgetsRef.current = newWidgets;
+    const newOrder = newWidgets.map(w => w.id);
+    apiRequest('/api/widget-layouts', {
+      method: 'PUT',
+      body: JSON.stringify({ page: 'vision', order: newOrder }),
+    }).catch(() => {});
+    queryClient.setQueryData<Record<string, string[]>>(['/api/widget-layouts'], (old) => ({
+      ...old,
+      vision: newOrder,
+    }));
   }, []);
 
   return (

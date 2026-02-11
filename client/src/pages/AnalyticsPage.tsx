@@ -171,25 +171,28 @@ export default function AnalyticsPage() {
     }
   }, [widgetLayouts]);
 
+  const analyticsWidgetsRef = useRef(analyticsWidgets);
+  analyticsWidgetsRef.current = analyticsWidgets;
+
   const moveAnalyticsWidget = useCallback((dragIndex: number, hoverIndex: number) => {
-    setAnalyticsWidgets((prev) => {
-      const newWidgets = update(prev, {
-        $splice: [
-          [dragIndex, 1],
-          [hoverIndex, 0, prev[dragIndex]],
-        ],
-      });
-      const newOrder = newWidgets.map(w => w.id);
-      apiRequest('/api/widget-layouts', {
-        method: 'PUT',
-        body: JSON.stringify({ page: 'analytics', order: newOrder }),
-      });
-      queryClient.setQueryData<Record<string, string[]>>(['/api/widget-layouts'], (old) => ({
-        ...old,
-        analytics: newOrder,
-      }));
-      return newWidgets;
+    const prev = analyticsWidgetsRef.current;
+    const newWidgets = update(prev, {
+      $splice: [
+        [dragIndex, 1],
+        [hoverIndex, 0, prev[dragIndex]],
+      ],
     });
+    setAnalyticsWidgets(newWidgets);
+    analyticsWidgetsRef.current = newWidgets;
+    const newOrder = newWidgets.map(w => w.id);
+    apiRequest('/api/widget-layouts', {
+      method: 'PUT',
+      body: JSON.stringify({ page: 'analytics', order: newOrder }),
+    }).catch(() => {});
+    queryClient.setQueryData<Record<string, string[]>>(['/api/widget-layouts'], (old) => ({
+      ...old,
+      analytics: newOrder,
+    }));
   }, []);
 
   const renderWidgetContent = (widgetId: string) => {

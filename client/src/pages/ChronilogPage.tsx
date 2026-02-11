@@ -301,25 +301,28 @@ export default function ChronilogPage() {
     }
   }, [widgetLayouts]);
 
+  const categoriesRef = useRef(categories);
+  categoriesRef.current = categories;
+
   const moveCategory = useCallback((dragIndex: number, hoverIndex: number) => {
-    setCategories((prevCategories) => {
-      const newCategories = update(prevCategories, {
-        $splice: [
-          [dragIndex, 1],
-          [hoverIndex, 0, prevCategories[dragIndex]],
-        ],
-      });
-      const newOrder = newCategories.map(c => c.id);
-      apiRequest('/api/widget-layouts', {
-        method: 'PUT',
-        body: JSON.stringify({ page: 'chronilog', order: newOrder }),
-      });
-      queryClient.setQueryData<Record<string, string[]>>(['/api/widget-layouts'], (old) => ({
-        ...old,
-        chronilog: newOrder,
-      }));
-      return newCategories;
+    const prevCategories = categoriesRef.current;
+    const newCategories = update(prevCategories, {
+      $splice: [
+        [dragIndex, 1],
+        [hoverIndex, 0, prevCategories[dragIndex]],
+      ],
     });
+    setCategories(newCategories);
+    categoriesRef.current = newCategories;
+    const newOrder = newCategories.map(c => c.id);
+    apiRequest('/api/widget-layouts', {
+      method: 'PUT',
+      body: JSON.stringify({ page: 'chronilog', order: newOrder }),
+    }).catch(() => {});
+    queryClient.setQueryData<Record<string, string[]>>(['/api/widget-layouts'], (old) => ({
+      ...old,
+      chronilog: newOrder,
+    }));
   }, []);
 
   return (

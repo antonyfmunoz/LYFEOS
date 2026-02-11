@@ -536,25 +536,28 @@ export default function ProfilePage() {
     }
   }, [widgetLayouts]);
 
+  const widgetsRef = useRef(widgets);
+  widgetsRef.current = widgets;
+
   const moveWidget = useCallback((dragIndex: number, hoverIndex: number) => {
-    setWidgets((prevWidgets) => {
-      const newWidgets = update(prevWidgets, {
-        $splice: [
-          [dragIndex, 1],
-          [hoverIndex, 0, prevWidgets[dragIndex]],
-        ],
-      });
-      const newOrder = newWidgets.map(w => w.id);
-      apiRequest('/api/widget-layouts', {
-        method: 'PUT',
-        body: JSON.stringify({ page: 'profile', order: newOrder }),
-      });
-      queryClient.setQueryData<Record<string, string[]>>(['/api/widget-layouts'], (old) => ({
-        ...old,
-        profile: newOrder,
-      }));
-      return newWidgets;
+    const prevWidgets = widgetsRef.current;
+    const newWidgets = update(prevWidgets, {
+      $splice: [
+        [dragIndex, 1],
+        [hoverIndex, 0, prevWidgets[dragIndex]],
+      ],
     });
+    setWidgets(newWidgets);
+    widgetsRef.current = newWidgets;
+    const newOrder = newWidgets.map(w => w.id);
+    apiRequest('/api/widget-layouts', {
+      method: 'PUT',
+      body: JSON.stringify({ page: 'profile', order: newOrder }),
+    }).catch(() => {});
+    queryClient.setQueryData<Record<string, string[]>>(['/api/widget-layouts'], (old) => ({
+      ...old,
+      profile: newOrder,
+    }));
   }, []);
   
   // Helper to format array or object values for display
