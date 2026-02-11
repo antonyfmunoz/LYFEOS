@@ -1083,9 +1083,10 @@ export default function OnboardingPage() {
       localStorage.removeItem("lyfeos-continued-past-mission0");
       localStorage.removeItem(STORAGE_KEY);
       try {
+        const allCompleted = completedOnboardingMissions.length >= MISSIONS.length;
         await apiRequest("/api/profile", {
           method: "PATCH",
-          body: JSON.stringify({ onboardingCompleted: true }),
+          body: JSON.stringify({ onboardingCompleted: allCompleted }),
         });
         navigate("/missions");
       } catch (error) {
@@ -1122,9 +1123,10 @@ export default function OnboardingPage() {
     setIsGeneratingAffirmation(true);
     
     try {
+      const allCompleted = completedOnboardingMissions.length >= MISSIONS.length;
       await apiRequest("/api/profile", {
         method: "PATCH",
-        body: JSON.stringify({ onboardingCompleted: true }),
+        body: JSON.stringify({ onboardingCompleted: allCompleted }),
       });
       await generateAffirmationRequest();
       navigate("/ceremony");
