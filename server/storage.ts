@@ -246,6 +246,7 @@ export interface IStorage {
 
   // Vision Goal methods
   getVisionGoals(userId: number, category: string): Promise<VisionGoal[]>;
+  getVisionGoalById(id: number, userId: number): Promise<VisionGoal | undefined>;
   createVisionGoal(goal: InsertVisionGoal): Promise<VisionGoal>;
   updateVisionGoal(id: number, userId: number, goal: Partial<InsertVisionGoal>): Promise<VisionGoal>;
   deleteVisionGoal(id: number, userId: number): Promise<void>;
@@ -2124,6 +2125,13 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(visionGoals).where(
       and(eq(visionGoals.userId, userId), eq(visionGoals.category, category))
     ).orderBy(asc(visionGoals.displayOrder), asc(visionGoals.id));
+  }
+
+  async getVisionGoalById(id: number, userId: number): Promise<VisionGoal | undefined> {
+    const [result] = await db.select().from(visionGoals).where(
+      and(eq(visionGoals.id, id), eq(visionGoals.userId, userId))
+    );
+    return result;
   }
 
   async createVisionGoal(goal: InsertVisionGoal): Promise<VisionGoal> {

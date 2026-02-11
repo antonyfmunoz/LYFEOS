@@ -5652,6 +5652,9 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
       const userId = req.session.userId!;
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+      const existingGoal = await storage.getVisionGoalById(id, userId);
+      const wasCompleted = existingGoal?.completed ?? false;
+
       const updateData: any = {};
       if (req.body.title !== undefined) updateData.title = req.body.title.trim();
       if (req.body.description !== undefined) updateData.description = req.body.description?.trim() || null;
@@ -5665,7 +5668,7 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
       const goal = await storage.updateVisionGoal(id, userId, updateData);
 
       let xpAwarded = 0;
-      if (req.body.completed === true && goal.bonusXp > 0) {
+      if (req.body.completed === true && !wasCompleted && goal.bonusXp > 0) {
         const xpResult = await awardExperiencePoints(userId, goal.bonusXp);
         if (xpResult.success) {
           xpAwarded = goal.bonusXp;

@@ -278,7 +278,7 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<VisionGoal[]>(queryKey);
       queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) =>
-        old.map(g => g.id === id ? { ...g, completed } : g)
+        old.map(g => g.id === id ? { ...g, completed, completedAt: completed ? new Date().toISOString() : null } : g)
       );
       return { previous };
     },
