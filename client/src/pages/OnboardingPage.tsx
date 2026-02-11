@@ -1663,9 +1663,8 @@ export default function OnboardingPage() {
             <div />
           ) : currentStep === 0 && currentMission > 0 ? (
             <Button 
-              variant="outline" 
               onClick={handleStop} 
-              className="bg-card/50 border-primary/30 hover:bg-primary/10 text-primary hover:text-primary"
+              className="bg-transparent border-2 border-primary text-primary hover:bg-primary/20 hover:text-primary"
             >
               <X className="h-4 w-4 mr-2" />
               Stop
