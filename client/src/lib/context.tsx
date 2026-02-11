@@ -451,7 +451,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
               
               if (dbStats.streakDays > 1 && !streakToastFired.current) {
                 streakToastFired.current = true;
-                setTimeout(() => streakToast(dbStats.streakDays), 1500);
+                streakToast(dbStats.streakDays);
               }
               
               if (dbStats.primaryColor) {

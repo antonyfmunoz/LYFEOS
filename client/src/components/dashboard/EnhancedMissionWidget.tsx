@@ -34,6 +34,20 @@ export default function EnhancedMissionWidget({
   });
 
   const onboardingComplete = profileData?.onboardingCompleted === true;
+  const completedOnboardingMissions: number[] = profileData?.completedOnboardingMissions || [];
+  
+  const ONBOARDING_MISSIONS = [
+    { id: 0, title: "Access & Quickstart", xp: 100 },
+    { id: 1, title: "Archetype Calibration", xp: 150 },
+    { id: 2, title: "Identity & Direction", xp: 75 },
+    { id: 3, title: "Craft & Mastery", xp: 60 },
+    { id: 4, title: "Capacity & Constraints", xp: 55 },
+    { id: 5, title: "Baselines & States", xp: 70 },
+    { id: 6, title: "History & Roots", xp: 50 },
+    { id: 7, title: "Systems & Rituals", xp: 65 },
+  ];
+  
+  const nextOnboardingMission = ONBOARDING_MISSIONS.find(m => !completedOnboardingMissions.includes(m.id));
   
   // Load completed missions from localStorage
   const loadCompletedMissions = (): Record<string, boolean> => {
@@ -231,18 +245,20 @@ export default function EnhancedMissionWidget({
         </div>
       )}
       
-      {!onboardingComplete && user && (
-        <Link href="/onboarding">
+      {!onboardingComplete && user && nextOnboardingMission && (
+        <Link href={`/onboarding?mission=${nextOnboardingMission.id}`}>
           <div className="mb-4 p-4 rounded-lg border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/15 transition-colors cursor-pointer">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
                 <Sword className="h-5 w-5 text-amber-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-orbitron text-sm text-amber-300">Continue Onboarding</h3>
-                <p className="text-xs text-amber-400/70 mt-0.5">Complete your setup missions to unlock all features</p>
+                <h3 className="font-orbitron text-sm text-amber-300">Mission {nextOnboardingMission.id}: {nextOnboardingMission.title}</h3>
+                <p className="text-xs text-amber-400/70 mt-0.5">
+                  {completedOnboardingMissions.length}/8 onboarding missions complete
+                </p>
               </div>
-              <div className="text-xs font-mono text-amber-400 shrink-0">+XP</div>
+              <div className="text-xs font-mono text-amber-400 shrink-0">+{nextOnboardingMission.xp} XP</div>
             </div>
           </div>
         </Link>

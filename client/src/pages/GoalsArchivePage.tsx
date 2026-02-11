@@ -183,9 +183,6 @@ function DraggableMilestone({
 function MilestoneList({ category, placeholder }: { category: string; placeholder: string }) {
   const { user } = useAuth();
   const [newTitle, setNewTitle] = useState("");
-  const [newRewardText, setNewRewardText] = useState("");
-  const [newBonusXp, setNewBonusXp] = useState("0");
-  const [showRewards, setShowRewards] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [expandedGoalId, setExpandedGoalId] = useState<number | null>(null);
@@ -229,13 +226,13 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
   }, [editingId]);
 
   const createMutation = useMutation({
-    mutationFn: async ({ title, rewardText, bonusXp }: { title: string; rewardText: string; bonusXp: string }) => {
+    mutationFn: async (title: string) => {
       return apiRequest('/api/vision-goals', {
         method: 'POST',
-        body: JSON.stringify({ category, title, rewardText: rewardText || null, bonusXp: bonusXp || "0" }),
+        body: JSON.stringify({ category, title }),
       });
     },
-    onMutate: async ({ title, rewardText, bonusXp }) => {
+    onMutate: async (title: string) => {
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<VisionGoal[]>(queryKey);
       const tempGoal: VisionGoal = {
@@ -244,8 +241,8 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
         category,
         title,
         description: null,
-        rewardText: rewardText || null,
-        bonusXp: parseInt(bonusXp) || 0,
+        rewardText: null,
+        bonusXp: 0,
         completed: false,
         completedAt: null,
         displayOrder: (previous?.length || 0) + 1,
@@ -253,9 +250,6 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
       };
       queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) => [...old, tempGoal]);
       setNewTitle("");
-      setNewRewardText("");
-      setNewBonusXp("0");
-      setShowRewards(false);
       inputRef.current?.focus();
       return { previous };
     },
@@ -390,7 +384,7 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
-    createMutation.mutate({ title: newTitle.trim(), rewardText: newRewardText.trim(), bonusXp: newBonusXp });
+    createMutation.mutate(newTitle.trim());
   };
 
   const handleEditSave = (id: number) => {
@@ -639,35 +633,6 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
             Add
           </Button>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowRewards(!showRewards)}
-          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
-        >
-          {showRewards ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-          <Gift className="h-3 w-3" />
-          Add Rewards
-        </button>
-        {showRewards && (
-          <div className="flex gap-2 items-center bg-card/30 border border-primary/30 rounded-lg p-2">
-            <Input
-              value={newRewardText}
-              onChange={(e) => setNewRewardText(e.target.value)}
-              placeholder="e.g., Buy new shoes, Take a day off"
-              className="bg-card/30 border-primary/30 focus-visible:ring-primary/30 text-xs h-8 flex-1"
-            />
-            <Select value={newBonusXp} onValueChange={setNewBonusXp}>
-              <SelectTrigger className="w-[100px] h-8 text-xs bg-card/30 border-primary/30">
-                <SelectValue placeholder="Bonus XP" />
-              </SelectTrigger>
-              <SelectContent>
-                {[0, 25, 50, 100, 150, 200, 250, 500].map(xp => (
-                  <SelectItem key={xp} value={String(xp)}>+{xp} XP</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
       </form>
 
       {goals.length === 0 && (
