@@ -151,6 +151,9 @@ app.use((req, res, next) => {
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
   function startListening(attempt: number) {
+    server.removeAllListeners('error');
+    server.removeAllListeners('listening');
+
     server.once('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'EADDRINUSE' && attempt < MAX_RETRIES) {
         log(`Port ${port} in use, retrying in ${RETRY_DELAY}ms... (attempt ${attempt + 1}/${MAX_RETRIES})`);
@@ -163,15 +166,13 @@ app.use((req, res, next) => {
       }
     });
 
-    server.listen({
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    }, () => {
+    server.once('listening', () => {
       if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
       log(`serving on port ${port}`);
       startNotificationScheduler();
     });
+
+    server.listen({ port, host: "0.0.0.0", reusePort: true });
   }
 
   startListening(0);
