@@ -5668,10 +5668,39 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
       const goal = await storage.updateVisionGoal(id, userId, updateData);
 
       let xpAwarded = 0;
-      if (req.body.completed === true && !wasCompleted && goal.bonusXp > 0) {
-        const xpResult = await awardExperiencePoints(userId, goal.bonusXp);
-        if (xpResult.success) {
-          xpAwarded = goal.bonusXp;
+      if (req.body.completed === true && !wasCompleted) {
+        let bonusXp = goal.bonusXp;
+        if (bonusXp === 0) {
+          try {
+            const anthropic = new Anthropic({
+              apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
+              baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+            });
+            const aiResponse = await anthropic.messages.create({
+              model: "claude-haiku-4-5-20250514",
+              max_tokens: 50,
+              messages: [{
+                role: "user",
+                content: `Assign bonus XP for completing this milestone in a gamified life system. Category: ${goal.category}. Title: "${goal.title}". Respond with ONLY a number from this list: 25, 50, 75, 100, 150, 200, 250, 500. Higher XP for more ambitious/difficult milestones.`
+              }],
+            });
+            const parsed = parseInt((aiResponse.content[0] as any).text?.trim());
+            if ([25, 50, 75, 100, 150, 200, 250, 500].includes(parsed)) {
+              bonusXp = parsed;
+            } else {
+              bonusXp = 50;
+            }
+          } catch {
+            bonusXp = 50;
+          }
+          await storage.updateVisionGoal(id, userId, { bonusXp });
+          goal.bonusXp = bonusXp;
+        }
+        if (bonusXp > 0) {
+          const xpResult = await awardExperiencePoints(userId, bonusXp);
+          if (xpResult.success) {
+            xpAwarded = bonusXp;
+          }
         }
       }
 

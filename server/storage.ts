@@ -2148,6 +2148,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteVisionGoal(id: number, userId: number): Promise<void> {
+    await db.update(quests)
+      .set({ visionGoalId: null })
+      .where(and(eq(quests.visionGoalId, id), eq(quests.userId, userId)));
     await db.delete(visionGoals).where(
       and(eq(visionGoals.id, id), eq(visionGoals.userId, userId))
     );

@@ -5,7 +5,6 @@ import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
 import { useWidgetState } from "@/hooks/use-widget-state";
 import { ArrowLeft, Eye, Compass, Flame, Target, Milestone, Plus, Check, Trash2, Edit2, Loader2, ChevronDown, ChevronRight, Info, Zap, GripVertical, Gift, Star } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import update from 'immutability-helper';
@@ -191,8 +190,6 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
   const [editDesc, setEditDesc] = useState("");
   const [editingRewardId, setEditingRewardId] = useState<number | null>(null);
   const [editReward, setEditReward] = useState("");
-  const [editingXpId, setEditingXpId] = useState<number | null>(null);
-  const [editXp, setEditXp] = useState("0");
   const inputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
   let tempIdCounter = useRef(-1);
@@ -319,7 +316,6 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
       setEditingId(null);
       setEditingDescId(null);
       setEditingRewardId(null);
-      setEditingXpId(null);
       return { previous };
     },
     onError: (_err, _vars, context) => {
@@ -503,38 +499,9 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
 
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground flex items-center gap-1"><Star className="h-3 w-3" /> Bonus XP:</span>
-          {editingXpId === goal.id ? (
-            <div className="flex items-center gap-1">
-              <Select value={editXp} onValueChange={setEditXp}>
-                <SelectTrigger className="w-[90px] h-6 text-xs bg-card/30 border-primary/30">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[0, 25, 50, 100, 150, 200, 250, 500].map(xp => (
-                    <SelectItem key={xp} value={String(xp)}>+{xp} XP</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <button
-                onClick={() => updateMutation.mutate({ id: goal.id, bonusXp: editXp })}
-                className="h-5 w-5 rounded text-primary hover:bg-primary/10 flex items-center justify-center transition-colors shrink-0"
-              >
-                <Check className="h-3 w-3" />
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1">
-              <span className={goal.bonusXp > 0 ? "text-amber-400 font-medium" : "italic text-muted-foreground"}>
-                {goal.bonusXp > 0 ? `+${goal.bonusXp}` : "None"}
-              </span>
-              <button
-                onClick={() => { setEditingXpId(goal.id); setEditXp(String(goal.bonusXp)); }}
-                className="h-5 w-5 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 flex items-center justify-center transition-colors shrink-0"
-              >
-                <Edit2 className="h-2.5 w-2.5" />
-              </button>
-            </div>
-          )}
+          <span className={goal.bonusXp > 0 ? "text-amber-400 font-medium" : "italic text-muted-foreground"}>
+            {goal.bonusXp > 0 ? `+${goal.bonusXp}` : "AI-assigned on completion"}
+          </span>
         </div>
 
         <div className="flex items-center gap-4 text-muted-foreground">
