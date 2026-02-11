@@ -155,6 +155,9 @@ function Router() {
 
     if (hasPendingOnboarding && !isAuthenticated && !hasPendingRegistration) {
       localStorage.removeItem("lyfeos-pending-onboarding");
+      localStorage.removeItem("lyfeos-onboarding-answers");
+      localStorage.removeItem("lyfeos-continued-past-mission0");
+      localStorage.removeItem("lyfeos-onboarding-resume");
     }
 
     if (hasPendingOnboarding && (isAuthenticated || hasPendingRegistration)) {
