@@ -10,7 +10,7 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import multer from "multer";
 import Anthropic from "@anthropic-ai/sdk";
-import { sendVerificationEmail, sendPasswordResetEmail } from "./email";
+import { sendVerificationEmail, sendPasswordResetEmail, send2FAVerificationEmail, send2FAVerificationSMS } from "./email";
 import webpush from "web-push";
 import { 
   insertUserSchema, 
@@ -5047,6 +5047,159 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
       console.error("Error fetching analytics:", error);
       res.status(500).json({ error: "Failed to fetch analytics" });
     }
+  });
+
+  app.get("/api/auth/2fa/status", isAuthenticated, async (req, res) => {
+    const user = await storage.getUser(req.session.userId!);
+    if (!user) return res.status(404).json({ error: "User not found" });
+    res.json({
+      twoFactorEnabled: user.twoFactorEnabled || false,
+      emailVerified: user.emailVerified || false,
+      phoneVerified: user.phoneVerified || false,
+      phoneNumber: user.phoneNumber ? user.phoneNumber.replace(/(\+\d{1,3})\d{6}(\d{4})/, '$1******$2') : null,
+      email: user.email || null,
+    });
+  });
+
+  app.post("/api/auth/2fa/send-email-code", isAuthenticated, async (req, res) => {
+    const user = await storage.getUser(req.session.userId!);
+    if (!user) return res.status(404).json({ error: "User not found" });
+    if (!user.email) return res.status(400).json({ error: "No email address on file" });
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedCode = crypto.createHash('sha256').update(code).digest('hex');
+    const expiry = new Date(Date.now() + 10 * 60 * 1000);
+
+    await storage.updateUser(user.id, {
+      twoFactorEmailCode: hashedCode,
+      twoFactorEmailExpiry: expiry,
+    } as any);
+
+    const sent = await send2FAVerificationEmail(user.email, code, user.firstName || undefined);
+    if (!sent) return res.status(500).json({ error: "Failed to send verification email" });
+
+    res.json({ message: "Verification code sent to your email" });
+  });
+
+  app.post("/api/auth/2fa/verify-email-code", isAuthenticated, async (req, res) => {
+    const { code } = req.body;
+    if (!code || typeof code !== 'string' || code.length !== 6) {
+      return res.status(400).json({ error: "Invalid code format" });
+    }
+
+    const user = await storage.getUser(req.session.userId!);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    if (!user.twoFactorEmailCode || !user.twoFactorEmailExpiry) {
+      return res.status(400).json({ error: "No verification code pending" });
+    }
+
+    if (new Date() > new Date(user.twoFactorEmailExpiry)) {
+      return res.status(400).json({ error: "Verification code has expired" });
+    }
+
+    const hashedCode = crypto.createHash('sha256').update(code).digest('hex');
+    if (hashedCode !== user.twoFactorEmailCode) {
+      return res.status(400).json({ error: "Invalid verification code" });
+    }
+
+    await storage.updateUser(user.id, {
+      emailVerified: true,
+      twoFactorEmailCode: null,
+      twoFactorEmailExpiry: null,
+    } as any);
+
+    res.json({ message: "Email verified successfully" });
+  });
+
+  app.post("/api/auth/2fa/send-phone-code", isAuthenticated, async (req, res) => {
+    const { phoneNumber } = req.body;
+    if (!phoneNumber || typeof phoneNumber !== 'string') {
+      return res.status(400).json({ error: "Phone number is required" });
+    }
+
+    const cleaned = phoneNumber.replace(/[^\d+]/g, '');
+    if (cleaned.length < 10) {
+      return res.status(400).json({ error: "Invalid phone number" });
+    }
+
+    const user = await storage.getUser(req.session.userId!);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedCode = crypto.createHash('sha256').update(code).digest('hex');
+    const expiry = new Date(Date.now() + 10 * 60 * 1000);
+
+    await storage.updateUser(user.id, {
+      phoneNumber: cleaned,
+      twoFactorPhoneCode: hashedCode,
+      twoFactorPhoneExpiry: expiry,
+    } as any);
+
+    const sent = await send2FAVerificationSMS(cleaned, code);
+    if (!sent) return res.status(500).json({ error: "Failed to send SMS. Twilio may not be configured yet." });
+
+    res.json({ message: "Verification code sent to your phone" });
+  });
+
+  app.post("/api/auth/2fa/verify-phone-code", isAuthenticated, async (req, res) => {
+    const { code } = req.body;
+    if (!code || typeof code !== 'string' || code.length !== 6) {
+      return res.status(400).json({ error: "Invalid code format" });
+    }
+
+    const user = await storage.getUser(req.session.userId!);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    if (!user.twoFactorPhoneCode || !user.twoFactorPhoneExpiry) {
+      return res.status(400).json({ error: "No verification code pending" });
+    }
+
+    if (new Date() > new Date(user.twoFactorPhoneExpiry)) {
+      return res.status(400).json({ error: "Verification code has expired" });
+    }
+
+    const hashedCode = crypto.createHash('sha256').update(code).digest('hex');
+    if (hashedCode !== user.twoFactorPhoneCode) {
+      return res.status(400).json({ error: "Invalid verification code" });
+    }
+
+    await storage.updateUser(user.id, {
+      phoneVerified: true,
+      twoFactorPhoneCode: null,
+      twoFactorPhoneExpiry: null,
+    } as any);
+
+    res.json({ message: "Phone verified successfully" });
+  });
+
+  app.post("/api/auth/2fa/enable", isAuthenticated, async (req, res) => {
+    const user = await storage.getUser(req.session.userId!);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    if (!user.emailVerified) {
+      return res.status(400).json({ error: "Email must be verified first" });
+    }
+    if (!user.phoneVerified) {
+      return res.status(400).json({ error: "Phone must be verified first" });
+    }
+
+    await storage.updateUser(user.id, {
+      twoFactorEnabled: true,
+    } as any);
+
+    res.json({ message: "Two-factor authentication enabled" });
+  });
+
+  app.post("/api/auth/2fa/disable", isAuthenticated, async (req, res) => {
+    const user = await storage.getUser(req.session.userId!);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    await storage.updateUser(user.id, {
+      twoFactorEnabled: false,
+    } as any);
+
+    res.json({ message: "Two-factor authentication disabled" });
   });
 
   // Register AI Chat routes

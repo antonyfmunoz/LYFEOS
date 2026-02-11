@@ -85,6 +85,68 @@ export async function sendVerificationEmail(to: string, token: string, firstName
   }
 }
 
+export async function send2FAVerificationEmail(to: string, code: string, firstName?: string): Promise<boolean> {
+  try {
+    const { client, fromEmail } = await getResendClient();
+    const name = firstName || 'Commander';
+
+    await client.emails.send({
+      from: fromEmail,
+      to,
+      subject: 'LYFEOS - Email Verification Code',
+      html: `
+        <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; background: #0a0a1a; color: #e0e0e0; padding: 40px; border-radius: 12px; border: 1px solid #1a1a3a;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #00e0ff; font-size: 28px; margin: 0;">LYFEOS</h1>
+            <p style="color: #666; font-size: 14px; margin-top: 5px;">Life Operating System</p>
+          </div>
+          <h2 style="color: #fff; font-size: 20px;">Verification Code</h2>
+          <p style="color: #aaa; line-height: 1.6;">Hi ${name}, here is your email verification code for two-factor authentication setup:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <div style="background: #1a1a3a; border: 2px solid #00e0ff; border-radius: 12px; padding: 20px; display: inline-block;">
+              <span style="font-size: 32px; font-weight: bold; color: #00e0ff; letter-spacing: 8px; font-family: monospace;">${code}</span>
+            </div>
+          </div>
+          <p style="color: #666; font-size: 13px;">This code expires in 10 minutes.</p>
+          <hr style="border: none; border-top: 1px solid #1a1a3a; margin: 30px 0;" />
+          <p style="color: #444; font-size: 12px; text-align: center;">If you didn't request this code, you can safely ignore this email.</p>
+        </div>
+      `
+    });
+    return true;
+  } catch (error) {
+    console.error('Failed to send 2FA verification email:', error);
+    return false;
+  }
+}
+
+export async function send2FAVerificationSMS(to: string, code: string): Promise<boolean> {
+  try {
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const fromNumber = process.env.TWILIO_PHONE_NUMBER;
+
+    if (!accountSid || !authToken || !fromNumber) {
+      console.error('Twilio credentials not configured');
+      return false;
+    }
+
+    const twilio = await import('twilio');
+    const client = twilio.default(accountSid, authToken);
+
+    await client.messages.create({
+      body: `Your LYFEOS verification code is: ${code}. This code expires in 10 minutes.`,
+      from: fromNumber,
+      to,
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Failed to send 2FA SMS:', error);
+    return false;
+  }
+}
+
 export async function sendPasswordResetEmail(to: string, token: string, firstName?: string): Promise<boolean> {
   try {
     const { client, fromEmail } = await getResendClient();

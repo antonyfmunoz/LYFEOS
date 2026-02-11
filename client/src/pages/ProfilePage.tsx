@@ -52,7 +52,10 @@ import {
   EyeOff,
   Play,
   Pause,
-  Repeat
+  Repeat,
+  Shield,
+  Phone,
+  CheckCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -341,11 +344,30 @@ export default function ProfilePage() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [twoFactorStep, setTwoFactorStep] = useState<'idle' | 'email' | 'phone' | 'complete'>('idle');
+  const [emailCode, setEmailCode] = useState('');
+  const [phoneCode, setPhoneCode] = useState('');
+  const [phoneInput, setPhoneInput] = useState('');
+  const [twoFactorLoading, setTwoFactorLoading] = useState(false);
+  const [twoFactorError, setTwoFactorError] = useState('');
+  const [emailCodeSent, setEmailCodeSent] = useState(false);
+  const [phoneCodeSent, setPhoneCodeSent] = useState(false);
   
   // Fetch account data
   const { data: accountData, isLoading: isAccountLoading } = useQuery<{ email?: string; phoneNumber?: string; authProvider?: string }>({
     queryKey: ["/api/account"],
     enabled: !!user?.id,
+  });
+
+  const { data: twoFactorStatus, refetch: refetchTwoFactorStatus } = useQuery<{
+    twoFactorEnabled: boolean;
+    emailVerified: boolean;
+    phoneVerified: boolean;
+    phoneNumber: string | null;
+    email: string | null;
+  }>({
+    queryKey: ['/api/auth/2fa/status'],
+    enabled: !!user,
   });
   
   // Update account when data loads
@@ -1074,6 +1096,349 @@ export default function ProfilePage() {
                   </div>
                 </div>
               )}
+            </div>
+
+            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-primary" />
+                  <Label className="text-sm text-foreground">Two-Factor Authentication</Label>
+                </div>
+                {twoFactorStatus?.twoFactorEnabled && (
+                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-green-500/20 text-green-400 border border-green-500/30">Active</span>
+                )}
+              </div>
+
+              {twoFactorError && (
+                <div className="mb-3 p-2 rounded bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+                  {twoFactorError}
+                </div>
+              )}
+
+              {twoFactorStatus?.twoFactorEnabled ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-3 bg-card/50 rounded-lg border border-primary/10">
+                    <Mail className="h-4 w-4 text-green-400" />
+                    <div className="flex-1">
+                      <div className="text-xs text-muted-foreground">Email</div>
+                      <div className="text-sm text-green-400">Verified</div>
+                    </div>
+                    <CheckCircle className="h-4 w-4 text-green-400" />
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-card/50 rounded-lg border border-primary/10">
+                    <Phone className="h-4 w-4 text-green-400" />
+                    <div className="flex-1">
+                      <div className="text-xs text-muted-foreground">Phone</div>
+                      <div className="text-sm text-green-400">{twoFactorStatus.phoneNumber || 'Verified'}</div>
+                    </div>
+                    <CheckCircle className="h-4 w-4 text-green-400" />
+                  </div>
+                  <button
+                    onClick={async () => {
+                      setTwoFactorLoading(true);
+                      setTwoFactorError('');
+                      try {
+                        const res = await fetch('/api/auth/2fa/disable', { method: 'POST', credentials: 'include' });
+                        if (!res.ok) { const data = await res.json(); throw new Error(data.error); }
+                        refetchTwoFactorStatus();
+                        toast({ title: "2FA Disabled", description: "Two-factor authentication has been turned off." });
+                      } catch (err: any) {
+                        setTwoFactorError(err.message || 'Failed to disable 2FA');
+                      } finally {
+                        setTwoFactorLoading(false);
+                      }
+                    }}
+                    disabled={twoFactorLoading}
+                    className="w-full text-xs font-mono px-3 py-2 rounded border bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-40"
+                  >
+                    {twoFactorLoading ? 'Processing...' : 'Disable Two-Factor Authentication'}
+                  </button>
+                </div>
+              ) : twoFactorStep === 'idle' ? (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Add an extra layer of security by verifying your email and phone number.
+                  </p>
+                  <div className="space-y-2 mb-3">
+                    <div className="flex items-center gap-3 p-3 bg-card/50 rounded-lg border border-primary/10">
+                      <Mail className="h-4 w-4 text-primary" />
+                      <div className="flex-1">
+                        <div className="text-xs text-muted-foreground">Email Verification</div>
+                        <div className="text-sm">{twoFactorStatus?.emailVerified ? <span className="text-green-400">Verified</span> : 'Not verified'}</div>
+                      </div>
+                      {twoFactorStatus?.emailVerified && <CheckCircle className="h-4 w-4 text-green-400" />}
+                    </div>
+                    <div className="flex items-center gap-3 p-3 bg-card/50 rounded-lg border border-primary/10">
+                      <Phone className="h-4 w-4 text-primary" />
+                      <div className="flex-1">
+                        <div className="text-xs text-muted-foreground">Phone Verification</div>
+                        <div className="text-sm">{twoFactorStatus?.phoneVerified ? <span className="text-green-400">Verified</span> : 'Not verified'}</div>
+                      </div>
+                      {twoFactorStatus?.phoneVerified && <CheckCircle className="h-4 w-4 text-green-400" />}
+                    </div>
+                  </div>
+                  {twoFactorStatus?.emailVerified && twoFactorStatus?.phoneVerified ? (
+                    <button
+                      onClick={async () => {
+                        setTwoFactorLoading(true);
+                        setTwoFactorError('');
+                        try {
+                          const res = await fetch('/api/auth/2fa/enable', { method: 'POST', credentials: 'include' });
+                          if (!res.ok) { const data = await res.json(); throw new Error(data.error); }
+                          refetchTwoFactorStatus();
+                          toast({ title: "2FA Enabled", description: "Two-factor authentication is now active." });
+                        } catch (err: any) {
+                          setTwoFactorError(err.message || 'Failed to enable 2FA');
+                        } finally {
+                          setTwoFactorLoading(false);
+                        }
+                      }}
+                      disabled={twoFactorLoading}
+                      className="w-full text-xs font-mono px-3 py-2 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40"
+                    >
+                      {twoFactorLoading ? 'Processing...' : 'Enable Two-Factor Authentication'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setTwoFactorError('');
+                        if (!twoFactorStatus?.emailVerified) {
+                          setTwoFactorStep('email');
+                        } else {
+                          setTwoFactorStep('phone');
+                        }
+                      }}
+                      className="w-full text-xs font-mono px-3 py-2 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                    >
+                      Set Up Two-Factor Authentication
+                    </button>
+                  )}
+                </div>
+              ) : twoFactorStep === 'email' ? (
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Step 1: We'll send a 6-digit verification code to your email address ({twoFactorStatus?.email || 'your email'}).
+                  </p>
+                  {!emailCodeSent ? (
+                    <button
+                      onClick={async () => {
+                        setTwoFactorLoading(true);
+                        setTwoFactorError('');
+                        try {
+                          const res = await fetch('/api/auth/2fa/send-email-code', { method: 'POST', credentials: 'include' });
+                          if (!res.ok) { const data = await res.json(); throw new Error(data.error); }
+                          setEmailCodeSent(true);
+                          toast({ title: "Code Sent", description: "Check your email for the verification code." });
+                        } catch (err: any) {
+                          setTwoFactorError(err.message || 'Failed to send code');
+                        } finally {
+                          setTwoFactorLoading(false);
+                        }
+                      }}
+                      disabled={twoFactorLoading}
+                      className="w-full text-xs font-mono px-3 py-2 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-2"
+                    >
+                      {twoFactorLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />}
+                      Send Verification Code
+                    </button>
+                  ) : null}
+
+                  <div>
+                    <Label className="text-xs mb-1 block">Enter 6-digit code</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="text"
+                        maxLength={6}
+                        placeholder="000000"
+                        value={emailCode}
+                        onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        className="bg-background/50 border-primary/30 font-mono text-center tracking-widest"
+                      />
+                      <button
+                        onClick={async () => {
+                          if (emailCode.length !== 6) return;
+                          setTwoFactorLoading(true);
+                          setTwoFactorError('');
+                          try {
+                            const res = await fetch('/api/auth/2fa/verify-email-code', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              credentials: 'include',
+                              body: JSON.stringify({ code: emailCode }),
+                            });
+                            if (!res.ok) { const data = await res.json(); throw new Error(data.error); }
+                            setEmailCode('');
+                            setTwoFactorStep('phone');
+                            refetchTwoFactorStatus();
+                            toast({ title: "Email Verified", description: "Now let's verify your phone number." });
+                          } catch (err: any) {
+                            setTwoFactorError(err.message || 'Invalid code');
+                          } finally {
+                            setTwoFactorLoading(false);
+                          }
+                        }}
+                        disabled={emailCode.length !== 6 || twoFactorLoading}
+                        className="text-xs font-mono px-3 py-2 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center gap-1"
+                      >
+                        {twoFactorLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Verify'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { setTwoFactorStep('idle'); setEmailCode(''); setEmailCodeSent(false); setTwoFactorError(''); }}
+                      className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1"
+                    >
+                      <X className="h-3 w-3" />Cancel
+                    </button>
+                    <button
+                      onClick={async () => {
+                        setTwoFactorLoading(true);
+                        setTwoFactorError('');
+                        try {
+                          const res = await fetch('/api/auth/2fa/send-email-code', { method: 'POST', credentials: 'include' });
+                          if (!res.ok) { const data = await res.json(); throw new Error(data.error); }
+                          toast({ title: "Code Resent", description: "Check your email for the new code." });
+                        } catch (err: any) {
+                          setTwoFactorError(err.message || 'Failed to resend');
+                        } finally {
+                          setTwoFactorLoading(false);
+                        }
+                      }}
+                      disabled={twoFactorLoading}
+                      className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-muted-foreground hover:text-primary hover:bg-primary/30 transition-colors disabled:opacity-40"
+                    >
+                      Resend Code
+                    </button>
+                  </div>
+                </div>
+              ) : twoFactorStep === 'phone' ? (
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Step 2: Enter your phone number and verify it with a text message.
+                  </p>
+                  <div>
+                    <Label className="text-xs mb-1 block">Phone Number</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="tel"
+                        placeholder="+1234567890"
+                        value={phoneInput}
+                        onChange={(e) => setPhoneInput(e.target.value)}
+                        className="bg-background/50 border-primary/30"
+                      />
+                      <button
+                        onClick={async () => {
+                          if (!phoneInput.trim()) return;
+                          setTwoFactorLoading(true);
+                          setTwoFactorError('');
+                          try {
+                            const res = await fetch('/api/auth/2fa/send-phone-code', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              credentials: 'include',
+                              body: JSON.stringify({ phoneNumber: phoneInput.trim() }),
+                            });
+                            if (!res.ok) { const data = await res.json(); throw new Error(data.error); }
+                            toast({ title: "Code Sent", description: "Check your phone for the verification text." });
+                          } catch (err: any) {
+                            setTwoFactorError(err.message || 'Failed to send SMS');
+                          } finally {
+                            setTwoFactorLoading(false);
+                          }
+                        }}
+                        disabled={!phoneInput.trim() || twoFactorLoading}
+                        className="text-xs font-mono px-3 py-2 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 whitespace-nowrap inline-flex items-center gap-1"
+                      >
+                        {twoFactorLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Phone className="h-3 w-3" />}
+                        Send Code
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs mb-1 block">Enter 6-digit code</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="text"
+                        maxLength={6}
+                        placeholder="000000"
+                        value={phoneCode}
+                        onChange={(e) => setPhoneCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        className="bg-background/50 border-primary/30 font-mono text-center tracking-widest"
+                      />
+                      <button
+                        onClick={async () => {
+                          if (phoneCode.length !== 6) return;
+                          setTwoFactorLoading(true);
+                          setTwoFactorError('');
+                          try {
+                            const res = await fetch('/api/auth/2fa/verify-phone-code', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              credentials: 'include',
+                              body: JSON.stringify({ code: phoneCode }),
+                            });
+                            if (!res.ok) { const data = await res.json(); throw new Error(data.error); }
+                            setPhoneCode('');
+                            setTwoFactorStep('complete');
+                            refetchTwoFactorStatus();
+                            toast({ title: "Phone Verified", description: "You can now enable two-factor authentication." });
+                          } catch (err: any) {
+                            setTwoFactorError(err.message || 'Invalid code');
+                          } finally {
+                            setTwoFactorLoading(false);
+                          }
+                        }}
+                        disabled={phoneCode.length !== 6 || twoFactorLoading}
+                        className="text-xs font-mono px-3 py-2 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center gap-1"
+                      >
+                        {twoFactorLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Verify'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => { setTwoFactorStep('idle'); setPhoneCode(''); setPhoneInput(''); setPhoneCodeSent(false); setTwoFactorError(''); }}
+                    className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1"
+                  >
+                    <X className="h-3 w-3" />Cancel
+                  </button>
+                </div>
+              ) : twoFactorStep === 'complete' ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+                    <CheckCircle className="h-5 w-5 text-green-400" />
+                    <div>
+                      <div className="text-sm text-green-400 font-medium">Both verifications complete!</div>
+                      <div className="text-xs text-muted-foreground">You can now enable two-factor authentication.</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      setTwoFactorLoading(true);
+                      setTwoFactorError('');
+                      try {
+                        const res = await fetch('/api/auth/2fa/enable', { method: 'POST', credentials: 'include' });
+                        if (!res.ok) { const data = await res.json(); throw new Error(data.error); }
+                        setTwoFactorStep('idle');
+                        refetchTwoFactorStatus();
+                        toast({ title: "2FA Enabled", description: "Two-factor authentication is now active on your account." });
+                      } catch (err: any) {
+                        setTwoFactorError(err.message || 'Failed to enable 2FA');
+                      } finally {
+                        setTwoFactorLoading(false);
+                      }
+                    }}
+                    disabled={twoFactorLoading}
+                    className="w-full text-xs font-mono px-3 py-2 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-2"
+                  >
+                    {twoFactorLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Shield className="h-3 w-3" />}
+                    Enable Two-Factor Authentication
+                  </button>
+                </div>
+              ) : null}
             </div>
             
             {/* Notifications toggle */}

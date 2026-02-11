@@ -44,6 +44,7 @@ Preferred communication style: Simple, everyday language.
 - **Rate Limiting**: forgot-password (3/min), reset-password (5/min), resend-verification (3/min)
 - **Security Headers**: Helmet middleware with compression and 1MB request size limits
 - **Input Validation**: Zod-based validation on all auth endpoints with format checks
+- **Two-Factor Authentication**: Optional 2FA setup via Settings widget on Profile page. Email verification via Resend (6-digit code, SHA-256 hashed, 10-min expiry). Phone verification via Twilio SMS (6-digit code, SHA-256 hashed, 10-min expiry). Twilio credentials deferred — SMS won't send until TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER secrets are configured.
 
 ### Key Data Models
 - **Users**: Core account with profile, avatar, auth provider tracking

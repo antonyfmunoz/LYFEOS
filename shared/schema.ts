@@ -28,6 +28,12 @@ export const users = pgTable("users", {
   emailVerificationExpiry: timestamp("email_verification_expiry"),
   passwordResetToken: text("password_reset_token"),
   passwordResetExpiry: timestamp("password_reset_expiry"),
+  twoFactorEnabled: boolean("two_factor_enabled").default(false),
+  phoneVerified: boolean("phone_verified").default(false),
+  twoFactorEmailCode: text("two_factor_email_code"),
+  twoFactorEmailExpiry: timestamp("two_factor_email_expiry"),
+  twoFactorPhoneCode: text("two_factor_phone_code"),
+  twoFactorPhoneExpiry: timestamp("two_factor_phone_expiry"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   lastLoginAt: timestamp("last_login_at"),
 });
