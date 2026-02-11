@@ -690,9 +690,9 @@ export default function OnboardingPage() {
       } catch {}
     })();
   }, []);
-  const [onboardingUsername, setOnboardingUsername] = useState(saved.onboardingUsername || "");
-  const [onboardingFirstName, setOnboardingFirstName] = useState(saved.onboardingFirstName || "");
-  const [onboardingLastName, setOnboardingLastName] = useState(saved.onboardingLastName || "");
+  const [onboardingUsername, setOnboardingUsername] = useState("");
+  const [onboardingFirstName, setOnboardingFirstName] = useState("");
+  const [onboardingLastName, setOnboardingLastName] = useState("");
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [lifeStage, setLifeStage] = useState(saved.lifeStage || "");
