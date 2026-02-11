@@ -145,28 +145,44 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
   const port = 5000;
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-    startNotificationScheduler();
-  });
+  const MAX_RETRIES = 10;
+  const RETRY_DELAY = 1000;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
-  // Graceful shutdown handling to properly release port
+  function startListening(attempt: number) {
+    server.once('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE' && attempt < MAX_RETRIES) {
+        log(`Port ${port} in use, retrying in ${RETRY_DELAY}ms... (attempt ${attempt + 1}/${MAX_RETRIES})`);
+        server.close(() => {
+          retryTimer = setTimeout(() => startListening(attempt + 1), RETRY_DELAY);
+        });
+      } else {
+        log(`Failed to start server: ${err.message}`);
+        process.exit(1);
+      }
+    });
+
+    server.listen({
+      port,
+      host: "0.0.0.0",
+      reusePort: true,
+    }, () => {
+      if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+      log(`serving on port ${port}`);
+      startNotificationScheduler();
+    });
+  }
+
+  startListening(0);
+
   const gracefulShutdown = (signal: string) => {
     log(`Received ${signal}, shutting down gracefully...`);
+    if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
     server.close(() => {
       log('Server closed');
       process.exit(0);
     });
-    
-    // Force exit if server doesn't close within 5 seconds
     setTimeout(() => {
       log('Forcing shutdown after timeout');
       process.exit(1);
@@ -177,7 +193,6 @@ app.use((req, res, next) => {
   process.on('SIGINT', () => gracefulShutdown('SIGINT'));
   process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));
 
-  // Handle uncaught exceptions and unhandled promise rejections
   process.on('uncaughtException', (err) => {
     log(`Uncaught exception: ${err.message}`);
     console.error(err);
