@@ -4,8 +4,7 @@ import { useAuth } from "@/lib/authContext";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { FileText, Clock, Tag, Calendar, Award, GripVertical, CheckSquare, BookOpen, GraduationCap, Target, Info, BarChart3 } from "lucide-react";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
-import { DndProvider, useDrag, useDrop } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
+import { useDrag, useDrop } from 'react-dnd';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import update from 'immutability-helper';
 import { cn } from '@/lib/utils';
@@ -324,7 +323,6 @@ export default function ChronilogPage() {
   }, []);
 
   return (
-    <DndProvider backend={HTML5Backend}>
       <div className="pb-20">
         <div className="mb-6">
           <h1 className="text-2xl font-orbitron mb-1">Chronilog</h1>
@@ -377,6 +375,5 @@ export default function ChronilogPage() {
           })()}
         </div>
       </div>
-    </DndProvider>
   );
 }

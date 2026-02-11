@@ -3,8 +3,6 @@ import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/authContext";
 import { usePageTitle } from "@/hooks/use-page-title";
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
 import update from 'immutability-helper';
 import { CollapsibleWidget } from '@/components/ui/collapsible-widget';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -538,26 +536,24 @@ export default function AnalyticsPage() {
         <SummaryCard icon={<Brain className="h-5 w-5" />} label="Avg Mood" value={summary.avgMoodScore} sub={`${summary.daysTracked} days tracked`} />
       </div>
 
-      <DndProvider backend={HTML5Backend}>
-        <div className="space-y-6">
-          {analyticsWidgets.map((widget, index) => {
-            const content = renderWidgetContent(widget.id);
-            if (!content) return null;
-            return (
-              <CollapsibleWidget
-                key={widget.id}
-                id={widget.id}
-                index={index}
-                title={widget.title}
-                icon={widget.icon}
-                moveWidget={moveAnalyticsWidget}
-              >
-                {content}
-              </CollapsibleWidget>
-            );
-          })}
-        </div>
-      </DndProvider>
+      <div className="space-y-6">
+        {analyticsWidgets.map((widget, index) => {
+          const content = renderWidgetContent(widget.id);
+          if (!content) return null;
+          return (
+            <CollapsibleWidget
+              key={widget.id}
+              id={widget.id}
+              index={index}
+              title={widget.title}
+              icon={widget.icon}
+              moveWidget={moveAnalyticsWidget}
+            >
+              {content}
+            </CollapsibleWidget>
+          );
+        })}
+      </div>
     </div>
   );
 }

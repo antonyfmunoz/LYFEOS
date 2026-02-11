@@ -6,8 +6,6 @@ import { useAuth } from "@/lib/authContext";
 import { useWidgetState } from "@/hooks/use-widget-state";
 import { ArrowLeft, Eye, Compass, Flame, Target, Milestone } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
 import update from 'immutability-helper';
 import { CollapsibleWidget } from '@/components/ui/collapsible-widget';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -130,7 +128,6 @@ export default function GoalsArchivePage() {
   }, []);
 
   return (
-    <DndProvider backend={HTML5Backend}>
       <div className="pb-20">
         <div className="mb-4">
           <Button 
@@ -170,6 +167,5 @@ export default function GoalsArchivePage() {
           })}
         </div>
       </div>
-    </DndProvider>
   );
 }

@@ -56,8 +56,6 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
 import { DraggableWidget, type DraggableWidgetProps } from '@/components/ui/draggable-widget';
 import update from 'immutability-helper';
 import type { UserProfile as UserProfileSchema } from "@shared/schema";
@@ -1452,7 +1450,6 @@ export default function ProfilePage() {
 
         {/* Draggable Widgets - Stats Log and Settings */}
         <div className="mt-6">
-          <DndProvider backend={HTML5Backend}>
             {widgets.map((widget, index) => (
               <PersistentProfileDraggableWidget
                 key={widget.id}
@@ -1468,7 +1465,6 @@ export default function ProfilePage() {
                 {renderWidgetContent(widget.id)}
               </PersistentProfileDraggableWidget>
             ))}
-          </DndProvider>
         </div>
       </div>
     </RootLayout>

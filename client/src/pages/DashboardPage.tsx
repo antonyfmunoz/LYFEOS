@@ -16,8 +16,6 @@ import { CustomTimePicker } from '@/components/ui/custom-time-picker';
 import EnhancedMissionWidget from '@/components/dashboard/EnhancedMissionWidget';
 import { DailyInitModal } from '@/components/dailyInit/DailyInitModal';
 import { useToast } from '@/hooks/use-toast';
-import { HTML5Backend } from 'react-dnd-html5-backend';
-import { DndProvider } from 'react-dnd';
 import { DraggableWidget, DraggableWidgetProps } from '@/components/ui/draggable-widget';
 import update from 'immutability-helper';
 import { useWidgetState } from '@/hooks/use-widget-state';
