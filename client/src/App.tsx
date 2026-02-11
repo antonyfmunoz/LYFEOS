@@ -37,6 +37,7 @@ import MissionArchivePage from "./pages/MissionArchivePage";
 import RitualsArchivePage from "./pages/RitualsArchivePage";
 import KnowledgeArchivePage from "./pages/KnowledgeArchivePage";
 import GoalsArchivePage from "./pages/GoalsArchivePage";
+import AnalyticsPage from "./pages/AnalyticsPage";
 import VoiceOverlay from "./components/VoiceOverlay";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
@@ -415,6 +416,14 @@ function Router() {
         <ProtectedRoute>
           <RootLayout>
             <GoalsArchivePage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/analytics">
+        <ProtectedRoute>
+          <RootLayout>
+            <AnalyticsPage />
           </RootLayout>
         </ProtectedRoute>
       </Route>

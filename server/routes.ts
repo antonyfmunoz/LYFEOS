@@ -4667,20 +4667,18 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
         average: Math.round(((log.mentalState ?? 5) + (log.physicalState ?? 5) + (log.emotionalState ?? 5)) / 3 * 10) / 10,
       }));
 
-      const xpByDay: Record<string, number> = {};
-      dailyLogs.forEach(log => {
-        xpByDay[log.date] = log.yesterdayXp ?? 0;
-      });
-
       const activeMissions = allMissions.filter(m => !m.deletedAt);
       const completedMissions = activeMissions.filter(m => m.completed);
 
       const completionsByDay: Record<string, number> = {};
+      const xpByDay: Record<string, number> = {};
       completedMissions.forEach(m => {
         if (m.completedAt) {
-          const day = new Date(m.completedAt).toISOString().split("T")[0];
+          const dt = new Date(m.completedAt);
+          const day = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
           if (day >= cutoffStr) {
             completionsByDay[day] = (completionsByDay[day] || 0) + 1;
+            xpByDay[day] = (xpByDay[day] || 0) + (m.experienceReward || 0);
           }
         }
       });
