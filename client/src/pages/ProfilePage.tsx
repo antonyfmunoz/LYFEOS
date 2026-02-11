@@ -214,7 +214,7 @@ export default function ProfilePage() {
   usePageTitle('Profile');
   
   const { username, stats, updateUserStats, setPrimaryColor: setContextPrimaryColor } = useLYFEOS();
-  const { setPrimaryColor: setThemePrimaryColor, toggleDarkMode } = useTheme();
+  const { setPrimaryColor: setThemePrimaryColor } = useTheme();
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1045,39 +1045,6 @@ export default function ProfilePage() {
                   </div>
                 </div>
               )}
-            </div>
-            
-            {/* Dark Theme toggle */}
-            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="material-icons text-primary text-sm">dark_mode</span>
-                <Label className="text-sm text-foreground">Dark Theme</Label>
-              </div>
-              <p className="text-xs text-muted-foreground mb-3">
-                Toggle between light and dark interface mode.
-              </p>
-              <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
-                <div className="flex items-center">
-                  <span className="material-icons text-primary text-sm mr-2">dark_mode</span>
-                  <span className="text-sm">Dark Theme</span>
-                </div>
-                <button 
-                  onClick={() => {
-                    toggleDarkMode();
-                  }}
-                  className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
-                    stats.darkThemeEnabled ? 'bg-primary/30' : 'bg-card'
-                  }`}
-                  aria-pressed={stats.darkThemeEnabled}
-                  role="switch"
-                >
-                  <div 
-                    className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
-                      stats.darkThemeEnabled ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
-                    }`}
-                  ></div>
-                </button>
-              </div>
             </div>
             
             {/* Notifications toggle */}

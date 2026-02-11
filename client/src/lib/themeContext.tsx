@@ -122,14 +122,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   // Apply theme class and primary color to document whenever they change
   useEffect(() => {
-    // Apply dark/light theme
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark-theme');
-      document.documentElement.classList.remove('light-theme');
-    } else {
-      document.documentElement.classList.add('light-theme');
-      document.documentElement.classList.remove('dark-theme');
-    }
+    document.documentElement.classList.add('dark-theme');
+    document.documentElement.classList.remove('light-theme');
     
     // Apply primary color
     if (primaryColor) {
@@ -167,7 +161,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
     
     // Save preferences to localStorage
-    localStorage.setItem('lyfeos-theme', isDarkMode ? 'dark' : 'light');
+    localStorage.setItem('lyfeos-theme', 'dark');
     localStorage.setItem('lyfeos-primary-color', primaryColor);
   }, [isDarkMode, primaryColor]);
 
