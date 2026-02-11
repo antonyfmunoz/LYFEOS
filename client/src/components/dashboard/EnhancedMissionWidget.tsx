@@ -31,6 +31,7 @@ export default function EnhancedMissionWidget({
   const { data: profileData } = useQuery<any>({
     queryKey: ['/api/profile'],
     enabled: !!user,
+    staleTime: 60000,
   });
 
   const profileLoaded = profileData !== undefined;

@@ -678,10 +678,16 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Load quests/missions when user logs in
+  // Load quests/missions and profile when user logs in
   useEffect(() => {
     if (isAuthenticated && user) {
       refetchQuests();
+      fetch("/api/profile", { credentials: "include" })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data) queryClient.setQueryData(["/api/profile"], data);
+        })
+        .catch(() => {});
     }
   }, [isAuthenticated, user]);
   
