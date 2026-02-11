@@ -211,9 +211,9 @@ export default function QuestsPage() {
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   
   const completedOnboardingMissions = (userProfile as any)?.completedOnboardingMissions || [];
-  const incompleteOnboardingMissions = ONBOARDING_MISSIONS.filter(
+  const nextOnboardingMission = ONBOARDING_MISSIONS.find(
     m => !completedOnboardingMissions.includes(m.id)
-  );
+  ) || null;
   
   const { todayMissions, upcomingMissions, completedMissions, inboxMissions } = useMemo(() => {
     const active = quests.filter(q => !q.completed);
@@ -225,10 +225,7 @@ export default function QuestsPage() {
       return completedLocalDate === today;
     });
     
-    // Inbox missions: missions created from to-do ideas (category='todo')
     const inboxItems = active.filter(q => q.category === 'todo');
-    
-    const incompleteOnboardingItems = active.filter(q => q.category === 'onboarding');
 
     const todayItems = active.filter(q => {
       if (q.category === 'todo') return false;
@@ -262,7 +259,7 @@ export default function QuestsPage() {
       todayMissions: todayItems.sort(sortByOrder),
       upcomingMissions: upcomingItems.sort(sortByOrder),
       completedMissions: completed.sort(sortByOrder),
-      inboxMissions: [...inboxItems, ...archivedFutureItems, ...incompleteOnboardingItems].sort(sortByOrder),
+      inboxMissions: [...inboxItems, ...archivedFutureItems].sort(sortByOrder),
     };
   }, [quests, today]);
 
@@ -1113,6 +1110,57 @@ export default function QuestsPage() {
           
           <CollapsibleContent>
             <div className="px-4 pb-4 space-y-3">
+              {nextOnboardingMission && (
+                <div 
+                  className="glassmorphic rounded-xl p-4 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition neon-border border-primary/30 bg-primary/5"
+                >
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0 mt-1">
+                      <div className="h-6 w-6 rounded-full border-2 border-primary/50 flex items-center justify-center">
+                        <span className="text-xs font-mono text-primary">{nextOnboardingMission.id}</span>
+                      </div>
+                    </div>
+                    <div className="ml-3 flex-grow">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className="text-[10px] font-mono text-primary/70 uppercase tracking-wider">Onboarding {nextOnboardingMission.id + 1}/8</span>
+                          <h3 className="font-medium">{nextOnboardingMission.title}</h3>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                          {nextOnboardingMission.description && (
+                            <button
+                              className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                              onClick={() => setOnboardingInfoOpen(prev => ({ ...prev, [nextOnboardingMission.id]: !prev[nextOnboardingMission.id] }))}
+                            >
+                              <Info className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 flex-wrap">
+                        <span className="text-primary text-xs font-mono whitespace-nowrap">+{nextOnboardingMission.xp} XP</span>
+                        <span className="text-muted-foreground text-xs font-mono whitespace-nowrap">{nextOnboardingMission.duration} min</span>
+                        <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary">{nextOnboardingMission.difficulty}</span>
+                      </div>
+                      {onboardingInfoOpen[nextOnboardingMission.id] && nextOnboardingMission.description && (
+                        <p className="text-muted-foreground text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10">
+                          {nextOnboardingMission.description}
+                        </p>
+                      )}
+                      <button
+                        disabled={!!activeTimerQuest}
+                        className="mt-2 text-xs font-mono px-3 py-1.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/onboarding?mission=${nextOnboardingMission.id}`);
+                        }}
+                      >
+                        Start Mission
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               {todayMissions.length > 0 ? (
                 todayMissions.map((quest, idx) => (
                   <QuestItem 
@@ -1134,12 +1182,12 @@ export default function QuestsPage() {
                     timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
                   />
                 ))
-              ) : (
+              ) : !nextOnboardingMission ? (
                 <div className="glassmorphic rounded-xl p-6 text-center neon-border">
                   <span className="material-icons text-3xl text-muted-foreground mb-2">task_alt</span>
                   <p className="text-muted-foreground">No missions for today. Create one to get started!</p>
                 </div>
-              )}
+              ) : null}
             </div>
           </CollapsibleContent>
         </div>
@@ -1304,61 +1352,6 @@ export default function QuestsPage() {
             
             <CollapsibleContent>
               <div className="px-4 pb-4 space-y-3">
-                {incompleteOnboardingMissions.map((mission) => {
-                  const difficultyMultipliers: Record<string, number> = { D: 1, C: 1.5, B: 2, A: 3, S: 5 };
-                  const xpMultiplier = difficultyMultipliers[mission.difficulty] || 1;
-                  const adjustedXp = Math.floor(mission.xp * xpMultiplier);
-                  const isInfoOpen = onboardingInfoOpen[mission.id] || false;
-                  return (
-                    <div 
-                      key={`onboarding-${mission.id}`}
-                      className="glassmorphic rounded-xl p-4 mb-3 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition neon-border"
-                    >
-                      <div className="flex items-start">
-                        <div className="ml-2 flex-grow">
-                          <div className="flex justify-between items-start">
-                            <h3 className="font-medium">{mission.title}</h3>
-                            <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                              {mission.description && (
-                                <button
-                                  className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
-                                  onClick={() => setOnboardingInfoOpen(prev => ({ ...prev, [mission.id]: !prev[mission.id] }))}
-                                >
-                                  <Info className="h-3.5 w-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3 mt-1 flex-wrap">
-                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{((mission.duration / 1440) * 100).toFixed(0)}% AT</span>
-                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{((mission.duration / 1440) * 100).toFixed(0)}% TT</span>
-                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{((mission.duration / 1440) * 100).toFixed(0)}% EP</span>
-                            <span className="text-primary text-xs font-mono whitespace-nowrap">+{adjustedXp} XP</span>
-                          </div>
-                          <div className="flex items-center gap-1 text-xs mt-1 text-muted-foreground">
-                            <Calendar className="h-3 w-3 flex-shrink-0" />
-                            <span>{mission.duration} min</span>
-                          </div>
-                          {isInfoOpen && mission.description && (
-                            <p className="text-muted-foreground text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10">
-                              {mission.description}
-                            </p>
-                          )}
-                          <button
-                            disabled={!!activeTimerQuest}
-                            className="mt-2 text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/onboarding?mission=${mission.id}`);
-                            }}
-                          >
-                            Start
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
                 {inboxMissions.map((quest, idx) => (
                   <QuestItem 
                     key={quest.id}
@@ -1379,7 +1372,7 @@ export default function QuestsPage() {
                     timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
                   />
                 ))}
-                {inboxMissions.length === 0 && incompleteOnboardingMissions.length === 0 && (
+                {inboxMissions.length === 0 && (
                   <div className="glassmorphic rounded-xl p-6 text-center neon-border">
                     <p className="text-muted-foreground">No archived missions. Drag a mission here to archive it.</p>
                   </div>
