@@ -5049,6 +5049,190 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
     }
   });
 
+  app.get("/api/stat-analytics", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const days = parseInt(req.query.days as string) || 30;
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - days);
+      const cutoffStr = cutoffDate.toISOString().split("T")[0];
+
+      const [dailyLogs, allMissions, stats] = await Promise.all([
+        db.select().from(userDailyLogs)
+          .where(and(eq(userDailyLogs.userId, userId), gte(userDailyLogs.date, cutoffStr)))
+          .orderBy(asc(userDailyLogs.date)),
+        db.select().from(questsTable)
+          .where(eq(questsTable.userId, userId)),
+        storage.getUserStats(userId),
+      ]);
+
+      const activeMissions = allMissions.filter(m => !m.deletedAt);
+      const completedMissions = activeMissions.filter(m => m.completed);
+
+      const dateRange: string[] = [];
+      const d = new Date(cutoffStr);
+      const today = new Date();
+      while (d <= today) {
+        dateRange.push(d.toISOString().split("T")[0]);
+        d.setDate(d.getDate() + 1);
+      }
+
+      const xpByDay: Record<string, number> = {};
+      const completionsByDay: Record<string, number> = {};
+      const energyByDay: Record<string, number> = {};
+      const missionsByDay: Record<string, { title: string; xp: number; energy: number; category: string; difficulty: string }[]> = {};
+
+      completedMissions.forEach(m => {
+        if (m.completedAt) {
+          const dt = new Date(m.completedAt);
+          const day = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+          if (day >= cutoffStr) {
+            xpByDay[day] = (xpByDay[day] || 0) + (m.experienceReward || 0);
+            completionsByDay[day] = (completionsByDay[day] || 0) + 1;
+            energyByDay[day] = (energyByDay[day] || 0) + (m.energyCost || 0);
+            if (!missionsByDay[day]) missionsByDay[day] = [];
+            missionsByDay[day].push({
+              title: m.title,
+              xp: m.experienceReward || 0,
+              energy: m.energyCost || 0,
+              category: m.category || "general",
+              difficulty: m.difficulty || "D",
+            });
+          }
+        }
+      });
+
+      const xpTrend = dateRange.map(date => ({
+        date,
+        xp: xpByDay[date] || 0,
+        missions: completionsByDay[date] || 0,
+      }));
+
+      const energyTrend = dateRange.map(date => ({
+        date,
+        energyUsed: energyByDay[date] || 0,
+        missions: completionsByDay[date] || 0,
+      }));
+
+      const categoryStats: Record<string, { total: number; completed: number; totalXp: number; totalEnergy: number }> = {};
+      activeMissions.forEach(m => {
+        const cat = m.category || "general";
+        if (!categoryStats[cat]) categoryStats[cat] = { total: 0, completed: 0, totalXp: 0, totalEnergy: 0 };
+        categoryStats[cat].total++;
+        if (m.completed) {
+          categoryStats[cat].completed++;
+          categoryStats[cat].totalXp += m.experienceReward || 0;
+          categoryStats[cat].totalEnergy += m.energyCost || 0;
+        }
+      });
+
+      const difficultyBreakdown: Record<string, { total: number; completed: number; totalXp: number }> = {};
+      activeMissions.forEach(m => {
+        const diff = m.difficulty || "D";
+        if (!difficultyBreakdown[diff]) difficultyBreakdown[diff] = { total: 0, completed: 0, totalXp: 0 };
+        difficultyBreakdown[diff].total++;
+        if (m.completed) {
+          difficultyBreakdown[diff].completed++;
+          difficultyBreakdown[diff].totalXp += m.experienceReward || 0;
+        }
+      });
+
+      const moodTrend = dailyLogs.map(log => ({
+        date: log.date,
+        mental: log.mentalState ?? 5,
+        physical: log.physicalState ?? 5,
+        emotional: log.emotionalState ?? 5,
+        average: Math.round(((log.mentalState ?? 5) + (log.physicalState ?? 5) + (log.emotionalState ?? 5)) / 3 * 10) / 10,
+      }));
+
+      const completionTrend = dateRange.map(date => ({
+        date,
+        completed: completionsByDay[date] || 0,
+        total: activeMissions.filter(m => {
+          if (!m.createdAt) return false;
+          const created = new Date(m.createdAt).toISOString().split("T")[0];
+          return created <= date;
+        }).length,
+      }));
+
+      const maxTokens = stats?.energyMax ?? 100;
+      const tokenUtilization = dateRange.map(date => {
+        const used = energyByDay[date] || 0;
+        return {
+          date,
+          used,
+          remaining: Math.max(maxTokens - used, 0),
+          utilization: maxTokens > 0 ? Math.round((used / maxTokens) * 100) : 0,
+        };
+      });
+
+      const topMissions = completedMissions
+        .filter(m => m.completedAt)
+        .sort((a, b) => (b.experienceReward || 0) - (a.experienceReward || 0))
+        .slice(0, 10)
+        .map(m => ({
+          title: m.title,
+          xp: m.experienceReward || 0,
+          energy: m.energyCost || 0,
+          difficulty: m.difficulty || "D",
+          category: m.category || "general",
+          completedAt: m.completedAt,
+        }));
+
+      const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      const weekdayBuckets = Array.from({ length: 7 }, () => ({ missions: 0, xp: 0, energy: 0 }));
+      completedMissions.forEach(m => {
+        if (m.completedAt) {
+          const dow = new Date(m.completedAt).getDay();
+          weekdayBuckets[dow].missions++;
+          weekdayBuckets[dow].xp += m.experienceReward || 0;
+          weekdayBuckets[dow].energy += m.energyCost || 0;
+        }
+      });
+      const weekdayPatterns = weekdayBuckets.map((b, i) => ({ day: dayNames[i], ...b }));
+
+      const totalXpEarned = completedMissions.reduce((s, m) => s + (m.experienceReward || 0), 0);
+      const totalEnergySpent = completedMissions.reduce((s, m) => s + (m.energyCost || 0), 0);
+      const avgXpPerMission = completedMissions.length > 0 ? Math.round(totalXpEarned / completedMissions.length) : 0;
+      const avgEnergyPerMission = completedMissions.length > 0 ? Math.round(totalEnergySpent / completedMissions.length) : 0;
+
+      res.json({
+        xpTrend,
+        energyTrend,
+        completionTrend,
+        tokenUtilization,
+        categoryStats,
+        difficultyBreakdown,
+        moodTrend,
+        topMissions,
+        weekdayPatterns,
+        summary: {
+          totalMissions: activeMissions.length,
+          completedMissions: completedMissions.length,
+          completionRate: activeMissions.length > 0 ? Math.round((completedMissions.length / activeMissions.length) * 100) : 0,
+          totalXpEarned,
+          totalEnergySpent,
+          avgXpPerMission,
+          avgEnergyPerMission,
+          currentLevel: stats?.level ?? 1,
+          currentXp: stats?.experienceCurrent ?? 0,
+          xpToNextLevel: (stats?.experienceMax ?? 1000) - (stats?.experienceCurrent ?? 0),
+          maxXp: stats?.experienceMax ?? 1000,
+          currentStreak: stats?.streakDays ?? 0,
+          energyMax: stats?.energyMax ?? 100,
+          healthMax: stats?.healthMax ?? 100,
+          timeMax: stats?.timeMax ?? 100,
+          attentionMax: stats?.attentionMax ?? 100,
+          daysTracked: dailyLogs.length,
+          avgMoodScore: moodTrend.length > 0 ? Math.round(moodTrend.reduce((s, m) => s + m.average, 0) / moodTrend.length * 10) / 10 : 0,
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching stat analytics:", error);
+      res.status(500).json({ error: "Failed to fetch stat analytics" });
+    }
+  });
+
   app.get("/api/streaks", isAuthenticated, async (req, res) => {
     try {
       const userId = req.session.userId!;
@@ -5469,7 +5653,10 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
       const updateData: any = {};
       if (req.body.title !== undefined) updateData.title = req.body.title.trim();
       if (req.body.description !== undefined) updateData.description = req.body.description?.trim() || null;
-      if (req.body.completed !== undefined) updateData.completed = req.body.completed;
+      if (req.body.completed !== undefined) {
+        updateData.completed = req.body.completed;
+        updateData.completedAt = req.body.completed ? new Date() : null;
+      }
       if (req.body.displayOrder !== undefined) updateData.displayOrder = req.body.displayOrder;
       const goal = await storage.updateVisionGoal(id, userId, updateData);
       res.json(goal);

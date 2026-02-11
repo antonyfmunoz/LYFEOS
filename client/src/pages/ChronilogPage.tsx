@@ -267,7 +267,7 @@ export default function ChronilogPage() {
     },
     { 
       id: "analytics", 
-      title: "Analytics", 
+      title: "Tracker", 
       icon: <BarChart3 className="h-5 w-5 text-primary" />,
       description: "Visualize your progress with mood trends, XP progression, mission completion rates, and performance insights over time."
     },
@@ -358,7 +358,7 @@ export default function ChronilogPage() {
     },
     {
       target: "[data-tour='chronilog-analytics']",
-      title: "Analytics",
+      title: "Tracker",
       description: "Visualize your progress with mood trends, XP progression, mission completion rates, and performance insights over time.",
       position: "bottom",
     },

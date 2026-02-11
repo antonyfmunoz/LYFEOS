@@ -9,7 +9,7 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import {
   ArrowLeft, TrendingUp, Target, Brain, Zap, Heart,
   Calendar, Award, BarChart3, Activity, Flame, Loader2,
-  Trophy, Crown, Shield, GripVertical
+  Trophy, Crown, Shield, GripVertical, Milestone
 } from "lucide-react";
 import {
   LineChart, Line, BarChart, Bar, RadarChart, Radar, PolarGrid,
@@ -72,12 +72,17 @@ function GenericTooltip({ active, payload, label }: any) {
 }
 
 export default function AnalyticsPage() {
-  usePageTitle("Analytics - LYFEOS");
+  usePageTitle("Tracker - LYFEOS");
   const { user } = useAuth();
   const [days, setDays] = useState(30);
 
   const { data: analytics, isLoading } = useQuery<any>({
     queryKey: [`/api/analytics?days=${days}`],
+    enabled: !!user,
+  });
+
+  const { data: visionGoals } = useQuery<any[]>({
+    queryKey: ['/api/vision-goals/all'],
     enabled: !!user,
   });
 
@@ -96,6 +101,7 @@ export default function AnalyticsPage() {
     { id: 'weekly-patterns', title: 'Weekly Patterns', icon: <BarChart3 className="h-5 w-5 text-primary" /> },
     { id: 'token-wellness', title: 'Token & Wellness', icon: <Zap className="h-5 w-5 text-primary" /> },
     { id: 'personal-records', title: 'Personal Records', icon: <Trophy className="h-5 w-5 text-primary" /> },
+    { id: 'milestone-analytics', title: 'Milestone Analytics', icon: <Milestone className="h-5 w-5 text-primary" /> },
   ]);
 
   const { data: widgetLayouts } = useQuery<Record<string, string[]>>({
@@ -195,7 +201,7 @@ export default function AnalyticsPage() {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground">Loading analytics...</p>
+          <p className="text-muted-foreground">Loading tracker...</p>
         </div>
       </div>
     );
@@ -502,6 +508,103 @@ export default function AnalyticsPage() {
             />
           </div>
         );
+      case 'milestone-analytics': {
+        const goals = visionGoals ?? [];
+        if (goals.length === 0) return <EmptyState message="No milestones yet. Create vision milestones in the Goals Archive to see analytics." />;
+        const categories = ['legacy', '10year', '5year', '18month', '90day'];
+        const categoryLabels: Record<string, string> = { legacy: 'Legacy', '10year': '10 Year', '5year': '5 Year', '18month': '18 Month', '90day': '90 Day' };
+        const categoryData = categories.map(cat => {
+          const catGoals = goals.filter((g: any) => g.category === cat);
+          const completed = catGoals.filter((g: any) => g.completed).length;
+          return { category: categoryLabels[cat], total: catGoals.length, completed, rate: catGoals.length > 0 ? Math.round((completed / catGoals.length) * 100) : 0 };
+        }).filter(c => c.total > 0);
+
+        const totalGoals = goals.length;
+        const completedGoals = goals.filter((g: any) => g.completed).length;
+        const overallRate = totalGoals > 0 ? Math.round((completedGoals / totalGoals) * 100) : 0;
+
+        const recentCompleted = goals
+          .filter((g: any) => g.completed && g.completedAt)
+          .sort((a: any, b: any) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())
+          .slice(0, 5);
+
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ChartCard title="Milestone Progress" icon={<Milestone className="h-5 w-5" />}>
+              <div className="space-y-1 mb-4">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Overall completion</span>
+                  <span className="text-primary font-mono font-semibold">{completedGoals}/{totalGoals} ({overallRate}%)</span>
+                </div>
+                <div className="w-full bg-muted/30 h-3 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full bg-gradient-to-r from-primary/60 to-primary transition-all" style={{ width: `${overallRate}%` }} />
+                </div>
+              </div>
+              <div className="space-y-3">
+                {categoryData.map(cat => (
+                  <div key={cat.category}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-muted-foreground">{cat.category}</span>
+                      <span className="font-mono text-foreground/80">{cat.completed}/{cat.total}</span>
+                    </div>
+                    <div className="w-full bg-muted/20 h-2 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-primary/70 transition-all" style={{ width: `${cat.rate}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {categoryData.length > 0 && (
+                <ResponsiveContainer width="100%" height={200} className="mt-4">
+                  <BarChart data={categoryData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.3} />
+                    <XAxis dataKey="category" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <Tooltip content={<CustomTooltipContent />} />
+                    <Bar dataKey="total" fill="hsl(var(--muted))" opacity={0.4} radius={[4, 4, 0, 0]} name="Total" />
+                    <Bar dataKey="completed" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Completed" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </ChartCard>
+            <ChartCard title="Recent Completions" icon={<Trophy className="h-5 w-5" />}>
+              {recentCompleted.length > 0 ? (
+                <div className="space-y-3">
+                  {recentCompleted.map((g: any) => (
+                    <div key={g.id} className="flex items-center gap-3 p-3 rounded-lg border border-primary/10 bg-primary/5">
+                      <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                        <Trophy className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{g.title}</p>
+                        <p className="text-xs text-muted-foreground">{categoryLabels[g.category] || g.category}</p>
+                      </div>
+                      <span className="text-xs text-muted-foreground font-mono flex-shrink-0">
+                        {new Date(g.completedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState message="No milestones completed yet. Keep working toward your goals!" />
+              )}
+              <div className="mt-4 grid grid-cols-3 gap-3">
+                <div className="text-center p-3 rounded-lg bg-background/50 border border-muted/20">
+                  <p className="text-2xl font-mono font-bold text-primary">{totalGoals}</p>
+                  <p className="text-xs text-muted-foreground">Total</p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-background/50 border border-muted/20">
+                  <p className="text-2xl font-mono font-bold text-green-400">{completedGoals}</p>
+                  <p className="text-xs text-muted-foreground">Done</p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-background/50 border border-muted/20">
+                  <p className="text-2xl font-mono font-bold text-foreground">{totalGoals - completedGoals}</p>
+                  <p className="text-xs text-muted-foreground">Pending</p>
+                </div>
+              </div>
+            </ChartCard>
+          </div>
+        );
+      }
       default:
         return null;
     }
@@ -519,7 +622,7 @@ export default function AnalyticsPage() {
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center">
           <BarChart3 className="h-8 w-8 mr-3 text-primary" />
-          <h1 className="text-3xl font-orbitron">Analytics</h1>
+          <h1 className="text-3xl font-orbitron">Tracker</h1>
         </div>
         <div className="flex gap-1 bg-card/30 backdrop-blur border border-primary/20 rounded-lg p-1">
           {RANGE_OPTIONS.map(opt => (

@@ -19,6 +19,7 @@ interface VisionGoal {
   title: string;
   description: string | null;
   completed: boolean;
+  completedAt: string | null;
   displayOrder: number;
   createdAt: string;
 }
@@ -272,6 +273,13 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
                 <Edit2 className="h-2.5 w-2.5" />
               </button>
             </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-4 text-muted-foreground">
+          <span>Created: <span className="text-foreground/80">{new Date(goal.createdAt).toLocaleDateString()}</span></span>
+          {goal.completed && goal.completedAt && (
+            <span>Completed: <span className="text-green-400">{new Date(goal.completedAt).toLocaleDateString()}</span></span>
           )}
         </div>
 
