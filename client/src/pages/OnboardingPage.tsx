@@ -1429,9 +1429,8 @@ export default function OnboardingPage() {
           <span className="text-foreground">LYFE</span>
           <span className="text-primary">OS</span>
         </h1>
-        <p className="text-muted-foreground text-sm">Your personal life operating system</p>
+        <p className="text-muted-foreground text-sm">Your life operating system</p>
       </div>
-      
       <div className="flex-1 flex flex-col items-center justify-center px-4 pb-4">
         <Card className="w-full max-w-lg border-primary/30 bg-card/50 backdrop-blur shadow-[0_0_30px_var(--primary-bg-subtle)]">
           <CardContent className="p-6">
@@ -1440,7 +1439,6 @@ export default function OnboardingPage() {
           </CardContent>
         </Card>
       </div>
-      
       <div className="p-4">
         <div className="max-w-lg mx-auto flex justify-between items-center">
           {currentMission === 0 && currentStep === 0 ? (
