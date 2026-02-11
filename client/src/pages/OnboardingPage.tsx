@@ -333,25 +333,48 @@ function DotNavigation({ current, total }: { current: number; total: number }) {
   );
 }
 
-function LocationAutosuggest({ value, onChange }: { value: string; onChange: (val: string) => void }) {
-  const [isFocused, setIsFocused] = useState(false);
+function LocationDropdown({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
+        buttonRef.current && !buttonRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+        setSearch("");
+        setSuggestions([]);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-    if (value.length < 2) {
+  useEffect(() => {
+    if (isOpen && searchRef.current) {
+      searchRef.current.focus();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (search.length < 2) {
       setSuggestions([]);
       return;
     }
-
     setIsSearching(true);
     debounceRef.current = setTimeout(async () => {
       try {
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(value)}&format=json&addressdetails=1&limit=8&featuretype=city`,
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(search)}&format=json&addressdetails=1&limit=8&featuretype=city`,
           { headers: { "Accept-Language": "en" } }
         );
         if (!res.ok) throw new Error("fetch failed");
@@ -372,35 +395,55 @@ function LocationAutosuggest({ value, onChange }: { value: string; onChange: (va
         setIsSearching(false);
       }
     }, 350);
-
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [value]);
+  }, [search]);
 
   return (
     <div className="relative max-w-md mx-auto">
-      <Input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-        placeholder="Start typing your city..."
-        className="bg-card/30 border-primary/20"
-      />
-      {isSearching && value.length >= 2 && (
-        <p className="text-xs text-muted-foreground mt-1 text-center">Searching...</p>
-      )}
-      {isFocused && suggestions.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 rounded-xl border border-primary/30 bg-card/90 backdrop-blur shadow-[0_0_20px_var(--primary-bg-subtle)] overflow-hidden max-h-64 overflow-y-auto">
-          {suggestions.map((loc) => (
-            <button
-              key={loc}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => { onChange(loc); setIsFocused(false); setSuggestions([]); }}
-              className="w-full text-left px-4 py-2.5 text-sm hover:bg-primary/20 transition-colors border-b border-primary/10 last:border-b-0"
-            >
-              {loc}
-            </button>
-          ))}
+      <button
+        ref={buttonRef}
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between rounded-lg border border-primary/20 bg-card/30 backdrop-blur px-4 py-3 text-sm text-foreground hover:border-primary/50 transition-colors"
+      >
+        <span>{value || "Select location..."}</span>
+        <ChevronDown className={`h-4 w-4 text-primary transition-transform ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+      {isOpen && (
+        <div
+          ref={dropdownRef}
+          className="absolute z-50 w-full mt-1 rounded-xl border border-primary/30 bg-card/95 backdrop-blur shadow-[0_0_20px_var(--primary-bg-subtle)] overflow-hidden"
+        >
+          <div className="p-2 border-b border-primary/10">
+            <input
+              ref={searchRef}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search city..."
+              className="w-full bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground px-2 py-1"
+            />
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {isSearching && (
+              <p className="text-xs text-muted-foreground text-center py-3">Searching...</p>
+            )}
+            {!isSearching && suggestions.length > 0 && suggestions.map((loc) => (
+              <button
+                key={loc}
+                onClick={() => { onChange(loc); setIsOpen(false); setSearch(""); setSuggestions([]); }}
+                className={`w-full text-left px-4 py-2 text-sm hover:bg-primary/20 transition-colors ${
+                  loc === value ? "bg-primary/10 text-primary" : "text-foreground"
+                }`}
+              >
+                {loc}
+              </button>
+            ))}
+            {!isSearching && search.length >= 2 && suggestions.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-3">No matching locations</p>
+            )}
+            {!isSearching && search.length < 2 && (
+              <p className="text-xs text-muted-foreground text-center py-3">Type at least 2 characters to search</p>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -1252,13 +1295,12 @@ export default function OnboardingPage() {
         return (
           <div className="space-y-4">
             <h2 className="text-2xl font-orbitron font-bold text-center">Confirm your location</h2>
-            {detectedLocation && (
-              <p className="text-sm text-muted-foreground text-center">Auto-detected as <span className="text-primary font-medium">{detectedLocation}</span>. Change below if needed:</p>
-            )}
-            {!detectedLocation && (
-              <p className="text-sm text-muted-foreground text-center">Start typing your city to search:</p>
-            )}
-            <LocationAutosuggest value={location} onChange={setLocation} />
+            <p className="text-sm text-muted-foreground text-center">
+              {location
+                ? <>Auto-detected as <span className="text-primary font-medium">{location}</span>. Click below to change if needed:</>
+                : "Click below to search and select your city:"}
+            </p>
+            <LocationDropdown value={location} onChange={setLocation} />
           </div>
         );
       case 2:
