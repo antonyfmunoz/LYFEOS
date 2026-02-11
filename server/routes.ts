@@ -5623,7 +5623,7 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
   app.post("/api/vision-goals", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
-      const { category, title, description } = req.body;
+      const { category, title, description, rewardText, bonusXp } = req.body;
       const validCategories = ['legacy', '10year', '5year', '18month', '90day'];
       if (!validCategories.includes(category) || !title?.trim()) {
         return res.status(400).json({ error: "Category and title are required" });
@@ -5635,6 +5635,8 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
         category,
         title: title.trim(),
         description: description?.trim() || null,
+        rewardText: rewardText?.trim() || null,
+        bonusXp: bonusXp ? parseInt(bonusXp) : 0,
         completed: false,
         displayOrder: maxOrder + 1,
       });
@@ -5653,13 +5655,24 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
       const updateData: any = {};
       if (req.body.title !== undefined) updateData.title = req.body.title.trim();
       if (req.body.description !== undefined) updateData.description = req.body.description?.trim() || null;
+      if (req.body.rewardText !== undefined) updateData.rewardText = req.body.rewardText?.trim() || null;
+      if (req.body.bonusXp !== undefined) updateData.bonusXp = parseInt(req.body.bonusXp) || 0;
       if (req.body.completed !== undefined) {
         updateData.completed = req.body.completed;
         updateData.completedAt = req.body.completed ? new Date() : null;
       }
       if (req.body.displayOrder !== undefined) updateData.displayOrder = req.body.displayOrder;
       const goal = await storage.updateVisionGoal(id, userId, updateData);
-      res.json(goal);
+
+      let xpAwarded = 0;
+      if (req.body.completed === true && goal.bonusXp > 0) {
+        const xpResult = await awardExperiencePoints(userId, goal.bonusXp);
+        if (xpResult.success) {
+          xpAwarded = goal.bonusXp;
+        }
+      }
+
+      res.json({ ...goal, xpAwarded });
     } catch (error) {
       console.error("Error updating vision goal:", error);
       res.status(500).json({ error: "Internal server error" });

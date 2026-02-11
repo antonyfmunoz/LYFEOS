@@ -4,7 +4,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
 import { useWidgetState } from "@/hooks/use-widget-state";
-import { ArrowLeft, Eye, Compass, Flame, Target, Milestone, Plus, Check, Trash2, Edit2, Loader2, ChevronDown, ChevronRight, Info, Zap, GripVertical } from "lucide-react";
+import { ArrowLeft, Eye, Compass, Flame, Target, Milestone, Plus, Check, Trash2, Edit2, Loader2, ChevronDown, ChevronRight, Info, Zap, GripVertical, Gift, Star } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import update from 'immutability-helper';
@@ -20,6 +21,8 @@ interface VisionGoal {
   category: string;
   title: string;
   description: string | null;
+  rewardText: string | null;
+  bonusXp: number;
   completed: boolean;
   completedAt: string | null;
   displayOrder: number;
@@ -132,8 +135,23 @@ function DraggableMilestone({
           </form>
         ) : (
           <>
-            <span className="flex-1 text-sm text-foreground">{goal.title}</span>
-            <div className="flex gap-1">
+            <div className="flex-1 min-w-0">
+              <span className="text-sm text-foreground">{goal.title}</span>
+              {(goal.rewardText || goal.bonusXp > 0) && (
+                <div className="flex items-center gap-2 mt-0.5">
+                  {goal.rewardText && (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Gift className="h-3 w-3 text-primary/50" />
+                      {goal.rewardText}
+                    </span>
+                  )}
+                  {goal.bonusXp > 0 && (
+                    <span className="text-xs text-amber-400/80 font-medium">+{goal.bonusXp} XP</span>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="flex gap-1 shrink-0">
               <button
                 onClick={() => setInfoExpandedId(infoExpandedId === goal.id ? null : goal.id)}
                 className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
@@ -165,12 +183,19 @@ function DraggableMilestone({
 function MilestoneList({ category, placeholder }: { category: string; placeholder: string }) {
   const { user } = useAuth();
   const [newTitle, setNewTitle] = useState("");
+  const [newRewardText, setNewRewardText] = useState("");
+  const [newBonusXp, setNewBonusXp] = useState("0");
+  const [showRewards, setShowRewards] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [expandedGoalId, setExpandedGoalId] = useState<number | null>(null);
   const [infoExpandedId, setInfoExpandedId] = useState<number | null>(null);
   const [editingDescId, setEditingDescId] = useState<number | null>(null);
   const [editDesc, setEditDesc] = useState("");
+  const [editingRewardId, setEditingRewardId] = useState<number | null>(null);
+  const [editReward, setEditReward] = useState("");
+  const [editingXpId, setEditingXpId] = useState<number | null>(null);
+  const [editXp, setEditXp] = useState("0");
   const inputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
   let tempIdCounter = useRef(-1);
@@ -204,13 +229,13 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
   }, [editingId]);
 
   const createMutation = useMutation({
-    mutationFn: async (title: string) => {
+    mutationFn: async ({ title, rewardText, bonusXp }: { title: string; rewardText: string; bonusXp: string }) => {
       return apiRequest('/api/vision-goals', {
         method: 'POST',
-        body: JSON.stringify({ category, title }),
+        body: JSON.stringify({ category, title, rewardText: rewardText || null, bonusXp: bonusXp || "0" }),
       });
     },
-    onMutate: async (title: string) => {
+    onMutate: async ({ title, rewardText, bonusXp }) => {
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<VisionGoal[]>(queryKey);
       const tempGoal: VisionGoal = {
@@ -219,6 +244,8 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
         category,
         title,
         description: null,
+        rewardText: rewardText || null,
+        bonusXp: parseInt(bonusXp) || 0,
         completed: false,
         completedAt: null,
         displayOrder: (previous?.length || 0) + 1,
@@ -226,6 +253,9 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
       };
       queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) => [...old, tempGoal]);
       setNewTitle("");
+      setNewRewardText("");
+      setNewBonusXp("0");
+      setShowRewards(false);
       inputRef.current?.focus();
       return { previous };
     },
@@ -255,7 +285,7 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
     onSuccess: (_data, { id, completed }) => {
       if (completed) {
         const goal = goals.find(g => g.id === id);
-        if (goal) milestoneToast(goal.title);
+        if (goal) milestoneToast(goal.title, goal.rewardText, goal.bonusXp);
       }
     },
     onError: (_err, _vars, context) => {
@@ -267,16 +297,18 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, title, description }: { id: number; title?: string; description?: string }) => {
-      const body: Record<string, string> = {};
+    mutationFn: async ({ id, title, description, rewardText, bonusXp }: { id: number; title?: string; description?: string; rewardText?: string; bonusXp?: string }) => {
+      const body: Record<string, any> = {};
       if (title !== undefined) body.title = title;
       if (description !== undefined) body.description = description;
+      if (rewardText !== undefined) body.rewardText = rewardText;
+      if (bonusXp !== undefined) body.bonusXp = bonusXp;
       await apiRequest(`/api/vision-goals/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(body),
       });
     },
-    onMutate: async ({ id, title, description }) => {
+    onMutate: async ({ id, title, description, rewardText, bonusXp }) => {
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<VisionGoal[]>(queryKey);
       queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) =>
@@ -285,11 +317,15 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
           const updated = { ...g };
           if (title !== undefined) updated.title = title;
           if (description !== undefined) updated.description = description;
+          if (rewardText !== undefined) updated.rewardText = rewardText || null;
+          if (bonusXp !== undefined) updated.bonusXp = parseInt(bonusXp) || 0;
           return updated;
         })
       );
       setEditingId(null);
       setEditingDescId(null);
+      setEditingRewardId(null);
+      setEditingXpId(null);
       return { previous };
     },
     onError: (_err, _vars, context) => {
@@ -354,7 +390,7 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
-    createMutation.mutate(newTitle.trim());
+    createMutation.mutate({ title: newTitle.trim(), rewardText: newRewardText.trim(), bonusXp: newBonusXp });
   };
 
   const handleEditSave = (id: number) => {
@@ -422,6 +458,83 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
               )}
               <button
                 onClick={() => { setEditingDescId(goal.id); setEditDesc(goal.description || ""); }}
+                className="h-5 w-5 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 flex items-center justify-center transition-colors shrink-0"
+              >
+                <Edit2 className="h-2.5 w-2.5" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-start gap-2">
+          <span className="text-muted-foreground shrink-0 flex items-center gap-1"><Gift className="h-3 w-3" /> Reward:</span>
+          {editingRewardId === goal.id ? (
+            <div className="flex-1 flex gap-1 items-center">
+              <Input
+                value={editReward}
+                onChange={(e) => setEditReward(e.target.value)}
+                className="h-6 text-xs bg-card/30 border-primary/30 flex-1"
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') setEditingRewardId(null);
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    updateMutation.mutate({ id: goal.id, rewardText: editReward.trim() });
+                  }
+                }}
+                autoFocus
+              />
+              <button
+                onClick={() => updateMutation.mutate({ id: goal.id, rewardText: editReward.trim() })}
+                className="h-5 w-5 rounded text-primary hover:bg-primary/10 flex items-center justify-center transition-colors shrink-0"
+              >
+                <Check className="h-3 w-3" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center gap-1">
+              {goal.rewardText ? (
+                <span className="text-foreground/80">{goal.rewardText}</span>
+              ) : (
+                <span className="italic text-muted-foreground">No reward set</span>
+              )}
+              <button
+                onClick={() => { setEditingRewardId(goal.id); setEditReward(goal.rewardText || ""); }}
+                className="h-5 w-5 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 flex items-center justify-center transition-colors shrink-0"
+              >
+                <Edit2 className="h-2.5 w-2.5" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground flex items-center gap-1"><Star className="h-3 w-3" /> Bonus XP:</span>
+          {editingXpId === goal.id ? (
+            <div className="flex items-center gap-1">
+              <Select value={editXp} onValueChange={setEditXp}>
+                <SelectTrigger className="w-[90px] h-6 text-xs bg-card/30 border-primary/30">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[0, 25, 50, 100, 150, 200, 250, 500].map(xp => (
+                    <SelectItem key={xp} value={String(xp)}>+{xp} XP</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <button
+                onClick={() => updateMutation.mutate({ id: goal.id, bonusXp: editXp })}
+                className="h-5 w-5 rounded text-primary hover:bg-primary/10 flex items-center justify-center transition-colors shrink-0"
+              >
+                <Check className="h-3 w-3" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1">
+              <span className={goal.bonusXp > 0 ? "text-amber-400 font-medium" : "italic text-muted-foreground"}>
+                {goal.bonusXp > 0 ? `+${goal.bonusXp}` : "None"}
+              </span>
+              <button
+                onClick={() => { setEditingXpId(goal.id); setEditXp(String(goal.bonusXp)); }}
                 className="h-5 w-5 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 flex items-center justify-center transition-colors shrink-0"
               >
                 <Edit2 className="h-2.5 w-2.5" />
@@ -507,23 +620,54 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
 
   return (
     <div className="space-y-3">
-      <form onSubmit={handleAdd} className="flex gap-2">
-        <Input
-          ref={inputRef}
-          value={newTitle}
-          onChange={(e) => setNewTitle(e.target.value)}
-          placeholder={placeholder}
-          className="bg-card/30 border-primary/30 focus-visible:ring-primary/30 text-sm"
-        />
-        <Button
-          type="submit"
-          size="sm"
-          disabled={!newTitle.trim()}
-          className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 shrink-0 gap-1"
+      <form onSubmit={handleAdd} className="space-y-2">
+        <div className="flex gap-2">
+          <Input
+            ref={inputRef}
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder={placeholder}
+            className="bg-card/30 border-primary/30 focus-visible:ring-primary/30 text-sm"
+          />
+          <Button
+            type="submit"
+            size="sm"
+            disabled={!newTitle.trim()}
+            className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 shrink-0 gap-1"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add
+          </Button>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowRewards(!showRewards)}
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
         >
-          <Plus className="h-3.5 w-3.5" />
-          Add
-        </Button>
+          {showRewards ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          <Gift className="h-3 w-3" />
+          Add Rewards
+        </button>
+        {showRewards && (
+          <div className="flex gap-2 items-center bg-card/30 border border-primary/30 rounded-lg p-2">
+            <Input
+              value={newRewardText}
+              onChange={(e) => setNewRewardText(e.target.value)}
+              placeholder="e.g., Buy new shoes, Take a day off"
+              className="bg-card/30 border-primary/30 focus-visible:ring-primary/30 text-xs h-8 flex-1"
+            />
+            <Select value={newBonusXp} onValueChange={setNewBonusXp}>
+              <SelectTrigger className="w-[100px] h-8 text-xs bg-card/30 border-primary/30">
+                <SelectValue placeholder="Bonus XP" />
+              </SelectTrigger>
+              <SelectContent>
+                {[0, 25, 50, 100, 150, 200, 250, 500].map(xp => (
+                  <SelectItem key={xp} value={String(xp)}>+{xp} XP</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </form>
 
       {goals.length === 0 && (

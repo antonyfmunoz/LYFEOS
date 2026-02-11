@@ -36,10 +36,13 @@ export function missionCompleteToast(title: string, xp: number) {
   });
 }
 
-export function milestoneToast(title: string) {
+export function milestoneToast(title: string, rewardText?: string | null, bonusXp?: number) {
+  const parts = [title];
+  if (bonusXp && bonusXp > 0) parts.push(`+${bonusXp} Bonus XP`);
+  if (rewardText) parts.push(`Reward: ${rewardText}`);
   toast({
     title: "🏆 Milestone Achieved!",
-    description: title,
+    description: parts.join(" — "),
     className: "gamified-toast gamified-toast-milestone border-yellow-500/60 bg-gradient-to-r from-yellow-950/90 via-amber-900/80 to-yellow-950/90 text-yellow-100",
     duration: 3000,
   });

@@ -1200,6 +1200,8 @@ export const visionGoals = pgTable("vision_goals", {
   category: text("category").notNull(), // 'legacy', '10year', '5year', '18month', '90day'
   title: text("title").notNull(),
   description: text("description"),
+  rewardText: text("reward_text"),
+  bonusXp: integer("bonus_xp").default(0).notNull(),
   completed: boolean("completed").default(false).notNull(),
   completedAt: timestamp("completed_at"),
   displayOrder: integer("display_order").default(0).notNull(),
