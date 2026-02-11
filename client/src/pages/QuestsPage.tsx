@@ -1115,12 +1115,7 @@ export default function QuestsPage() {
                   className="glassmorphic rounded-xl p-4 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition neon-border border-primary/30 bg-primary/5"
                 >
                   <div className="flex items-start">
-                    <div className="flex-shrink-0 mt-1">
-                      <div className="h-6 w-6 rounded-full border-2 border-primary/50 flex items-center justify-center">
-                        <span className="text-xs font-mono text-primary">{nextOnboardingMission.id}</span>
-                      </div>
-                    </div>
-                    <div className="ml-3 flex-grow">
+                    <div className="flex-grow">
                       <div className="flex justify-between items-start">
                         <div>
                           <span className="text-[10px] font-mono text-primary/70 uppercase tracking-wider">Onboarding {nextOnboardingMission.id + 1}/8</span>
