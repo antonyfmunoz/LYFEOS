@@ -1629,13 +1629,26 @@ Generate the complete affirmation now:`;
         );
         if (existingOnboardingQuest) {
           if (processedBody.completed && !existingOnboardingQuest.completed) {
+            const { attentionCost: oaCost, timeCost: otCost, energyCost: oeCost } = calculateMissionCosts(
+              processedBody.startDate || existingOnboardingQuest.startDate || null,
+              processedBody.startTime || existingOnboardingQuest.startTime || null,
+              processedBody.endDate || existingOnboardingQuest.endDate || null,
+              processedBody.endTime || existingOnboardingQuest.endTime || null
+            );
             const updatedQuest = await storage.updateQuest(existingOnboardingQuest.id, {
               completed: true,
               completedAt: processedBody.completedAt || new Date(),
               experienceReward: processedBody.experienceReward ?? existingOnboardingQuest.experienceReward,
               difficulty: processedBody.difficulty ?? existingOnboardingQuest.difficulty,
+              startDate: processedBody.startDate ?? existingOnboardingQuest.startDate,
+              startTime: processedBody.startTime ?? existingOnboardingQuest.startTime,
+              endDate: processedBody.endDate ?? existingOnboardingQuest.endDate,
+              endTime: processedBody.endTime ?? existingOnboardingQuest.endTime,
+              attentionCost: oaCost,
+              timeCost: otCost,
+              energyCost: oeCost,
             });
-            console.log(`Updated existing onboarding quest to completed for user ${questData.userId}: ${questData.title}`);
+            console.log(`Updated existing onboarding quest to completed for user ${questData.userId}: ${questData.title} (costs: AT=${oaCost}, TT=${otCost}, EP=${oeCost})`);
             await syncOnboardingProfile(questData.userId, questData.title);
             return res.status(200).json({ quest: updatedQuest, duplicate: true });
           }
