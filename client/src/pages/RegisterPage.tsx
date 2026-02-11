@@ -323,7 +323,7 @@ export default function RegisterPage() {
           
           <div className="space-y-2">
             <label className="block text-sm text-white">CHOOSE YOUR THEME COLOR</label>
-            <div className="grid grid-cols-3 gap-2 justify-items-center max-w-fit mx-auto">
+            <div className="grid grid-cols-3 gap-4 justify-items-center max-w-fit mx-auto">
               {avatarColors.map((color) => (
                 <button
                   key={color}
