@@ -208,7 +208,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* ─── HEADER ─── */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg">
+      <header className="z-50 bg-background/80 backdrop-blur-lg">
         <div className="max-w-6xl mx-auto px-4 pt-4 pb-3 relative">
           <div className="flex items-center justify-between">
             <button
