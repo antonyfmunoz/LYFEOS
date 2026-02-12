@@ -416,7 +416,7 @@ export default function KnowledgeArchivePage() {
                       <div className="flex items-center gap-1.5 group/author min-w-0">
                         <h2 className="text-base font-medium truncate">{group.author}</h2>
                         <button
-                          className="p-1 rounded hover:bg-primary/20 text-muted-foreground flex-shrink-0"
+                          className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors flex-shrink-0"
                           title="Edit author name"
                           onClick={e => { e.stopPropagation(); startEditing('author', group.author); }}
                         >
@@ -430,14 +430,14 @@ export default function KnowledgeArchivePage() {
                       {sourceCount} {sourceCount === 1 ? 'source' : 'sources'} · {entryCount} {entryCount === 1 ? 'entry' : 'entries'}
                     </span>
                     <button
-                      className="p-1.5 rounded-md hover:bg-red-500/20 text-muted-foreground hover:text-red-400 transition-colors"
+                      className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-destructive/30 hover:text-destructive hover:border-destructive/50 transition-colors"
                       title={`Hide all entries by ${group.author}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         dismissEntry(group.author);
                       }}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </div>
@@ -476,7 +476,7 @@ export default function KnowledgeArchivePage() {
                                 <div className="flex items-center gap-1.5 group/source min-w-0">
                                   <span className="text-sm truncate">{source.sourceMaterial}</span>
                                   <button
-                                    className="p-1 rounded hover:bg-primary/20 text-muted-foreground flex-shrink-0"
+                                    className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors flex-shrink-0"
                                     title="Edit source material"
                                     onClick={e => { e.stopPropagation(); startEditing('source', source.sourceMaterial, group.author); }}
                                   >
@@ -490,7 +490,7 @@ export default function KnowledgeArchivePage() {
                                 {source.entries.length}
                               </span>
                               <button
-                                className="p-1 rounded-md hover:bg-red-500/20 text-muted-foreground hover:text-red-400 transition-colors"
+                                className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-destructive/30 hover:text-destructive hover:border-destructive/50 transition-colors"
                                 title={`Hide "${source.sourceMaterial}"`}
                                 onClick={(e) => {
                                   e.stopPropagation();
