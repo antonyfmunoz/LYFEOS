@@ -5211,7 +5211,7 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
         }).length,
       }));
 
-      const maxTokens = stats?.energyMax ?? 100;
+      const maxTokens = stats?.energyPointsMax ?? 100;
       const tokenUtilization = dateRange.map(date => {
         const used = energyByDay[date] || 0;
         return {
@@ -5275,10 +5275,10 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
           xpToNextLevel: (stats?.experienceMax ?? 1000) - (stats?.experienceCurrent ?? 0),
           maxXp: stats?.experienceMax ?? 1000,
           currentStreak: stats?.streakDays ?? 0,
-          energyMax: stats?.energyMax ?? 100,
-          healthMax: stats?.healthMax ?? 100,
-          timeMax: stats?.timeMax ?? 100,
-          attentionMax: stats?.attentionMax ?? 100,
+          energyMax: stats?.energyPointsMax ?? 100,
+          healthMax: stats?.healthPointsMax ?? 100,
+          timeMax: stats?.timeTokensMax ?? 100,
+          attentionMax: stats?.attentionTokensMax ?? 100,
           daysTracked: dailyLogs.length,
           avgMoodScore: moodTrend.length > 0 ? Math.round(moodTrend.reduce((s, m) => s + m.average, 0) / moodTrend.length * 10) / 10 : 0,
         },

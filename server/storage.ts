@@ -369,38 +369,6 @@ export class DatabaseStorage implements IStorage {
       .values(insertUser)
       .returning();
     
-    // Create default stats for the new user
-    await this.createUserStats({
-      userId: user.id,
-      timeTokensCurrent: 100,
-      timeTokensMax: 100,
-      energyPointsCurrent: 100,
-      energyPointsMax: 100,
-      healthPointsCurrent: 100,
-      healthPointsMax: 100,
-      attentionTokensCurrent: 100,
-      attentionTokensMax: 100,
-      experienceCurrent: 0,
-      experienceMax: 1000,
-      level: 1
-    });
-    
-    // Create default user profile
-    await db.insert(userProfile).values({
-      userId: user.id,
-      primaryThemeColor: '#00e0ff',
-      onboardingCompleted: false,
-      setupMissionStatus: 'not_started'
-    });
-    
-    // Create default user integrations
-    await db.insert(userIntegrations).values({
-      userId: user.id,
-      appleHealthConnected: false,
-      googleCalendarConnected: false,
-      notionConnected: false
-    });
-    
     return user;
   }
   
@@ -1119,7 +1087,7 @@ export class DatabaseStorage implements IStorage {
       endTime: nextEndTimeStr,
       notificationEnabled: quest.notificationEnabled,
       notificationTime: quest.notificationTime,
-      notifications: quest.notifications,
+      notifications: quest.notifications as any,
       isRitualized: true,
       repeatFrequency: quest.repeatFrequency,
       repeatInterval: quest.repeatInterval,
