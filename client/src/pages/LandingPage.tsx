@@ -280,15 +280,15 @@ export default function LandingPage() {
       {/* ─── HERO ─── */}
       <section id="hero" className="max-w-6xl mx-auto px-4 py-16 sm:py-24 lg:py-32">
         <div className="grid lg:grid-cols-5 gap-10 lg:gap-14 items-center">
-          <div className="lg:col-span-3 space-y-6">
+          <div className="lg:col-span-3 space-y-6 text-center lg:text-left">
             <h1 className="font-orbitron text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight">
               Stop Juggling 5 Apps.{" "}
               <span className="text-primary">Build Your Life OS.</span>
             </h1>
-            <p className="text-base sm:text-lg text-muted-foreground max-w-xl leading-relaxed">
+            <p className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto lg:mx-0 leading-relaxed">
               90 minutes to define who you are and what you're building. $29/month to run your entire life.
             </p>
-            <div className="flex flex-col items-center sm:items-start gap-4">
+            <div className="flex flex-col items-center lg:items-start gap-4">
               <Link
                 href={ctaHref}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
