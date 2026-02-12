@@ -218,8 +218,8 @@ export default function LandingPage() {
           </button>
 
           <button onClick={() => scrollTo("hero")} className="absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0 flex items-center gap-2">
-            <span className="font-orbitron text-lg sm:text-xl font-bold tracking-wider text-primary">
-              LYFEOS
+            <span className="font-orbitron text-2xl sm:text-3xl font-bold tracking-wider">
+              <span className="text-white">LYFE</span><span className="text-primary">OS</span>
             </span>
           </button>
 
