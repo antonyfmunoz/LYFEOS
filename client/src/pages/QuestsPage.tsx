@@ -27,7 +27,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Zap, Star, Bell, BellOff, BellRing, Edit3, X, ChevronDown, ChevronRight, Target, Calendar, Clock, CheckCircle2, GraduationCap, Inbox, Info, Archive, Undo2, Repeat, Loader2 } from "lucide-react";
+import { Plus, Zap, Star, Bell, BellOff, BellRing, Edit3, Trash2, X, ChevronDown, ChevronRight, Target, Calendar, Clock, CheckCircle2, GraduationCap, Inbox, Info, Archive, Undo2, Repeat, Loader2 } from "lucide-react";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { achievementToast } from "@/lib/gamified-toast";
@@ -280,6 +280,24 @@ export default function QuestsPage() {
       toast({ title: "Failed to update category", variant: "destructive" });
     } finally {
       setIsSavingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId: number, categoryValue: string, formType: 'create' | 'edit') => {
+    try {
+      await apiRequest(`/api/user-categories/${categoryId}`, { method: "DELETE" });
+      setLocalCategoryOverrides(userCategories.filter(c => c.id !== categoryId));
+      if (formType === 'create' && createFormData.category === categoryValue) {
+        setCreateFormData(prev => ({ ...prev, category: 'general' }));
+      }
+      if (formType === 'edit' && editFormData.category === categoryValue) {
+        setEditFormData(prev => ({ ...prev, category: 'general' }));
+      }
+      queryClient.invalidateQueries({ queryKey: ['/api/user-categories'] });
+      refetchQuests();
+    } catch (error) {
+      console.error("Failed to delete category:", error);
+      toast({ title: "Failed to delete category", variant: "destructive" });
     }
   };
   
@@ -806,14 +824,24 @@ export default function QuestsPage() {
                     const customCat = userCategories.find(c => c.value === createFormData.category);
                     if (!customCat) return null;
                     return (
-                      <button
-                        type="button"
-                        className="mt-1 text-xs text-primary/70 hover:text-primary flex items-center gap-1 transition-colors"
-                        onClick={() => { setEditingCategoryId(customCat.id); setEditCategoryInput(customCat.label); }}
-                      >
-                        <Edit3 className="h-3 w-3" />
-                        Rename category
-                      </button>
+                      <div className="mt-1 flex items-center gap-3">
+                        <button
+                          type="button"
+                          className="text-xs text-primary/70 hover:text-primary flex items-center gap-1 transition-colors"
+                          onClick={() => { setEditingCategoryId(customCat.id); setEditCategoryInput(customCat.label); }}
+                        >
+                          <Edit3 className="h-3 w-3" />
+                          Rename
+                        </button>
+                        <button
+                          type="button"
+                          className="text-xs text-red-400/70 hover:text-red-400 flex items-center gap-1 transition-colors"
+                          onClick={() => handleDeleteCategory(customCat.id, customCat.value, 'create')}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          Delete
+                        </button>
+                      </div>
                     );
                   })()}
                 </div>
@@ -1185,14 +1213,24 @@ export default function QuestsPage() {
                   const customCat = userCategories.find(c => c.value === editFormData.category);
                   if (!customCat) return null;
                   return (
-                    <button
-                      type="button"
-                      className="mt-1 text-xs text-primary/70 hover:text-primary flex items-center gap-1 transition-colors"
-                      onClick={() => { setEditingCategoryId(customCat.id); setEditCategoryInput(customCat.label); }}
-                    >
-                      <Edit3 className="h-3 w-3" />
-                      Rename category
-                    </button>
+                    <div className="mt-1 flex items-center gap-3">
+                      <button
+                        type="button"
+                        className="text-xs text-primary/70 hover:text-primary flex items-center gap-1 transition-colors"
+                        onClick={() => { setEditingCategoryId(customCat.id); setEditCategoryInput(customCat.label); }}
+                      >
+                        <Edit3 className="h-3 w-3" />
+                        Rename
+                      </button>
+                      <button
+                        type="button"
+                        className="text-xs text-red-400/70 hover:text-red-400 flex items-center gap-1 transition-colors"
+                        onClick={() => handleDeleteCategory(customCat.id, customCat.value, 'edit')}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        Delete
+                      </button>
+                    </div>
                   );
                 })()}
               </div>
