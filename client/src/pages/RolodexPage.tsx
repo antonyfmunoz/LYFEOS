@@ -25,26 +25,26 @@ const CATEGORY_COLORS: Record<string, string> = {
   client: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
 };
 
-const RELATIONSHIP_TYPES = ['ally', 'mentor', 'protege', 'client', 'partner', 'rival', 'contact', 'informant'];
+const RELATIONSHIP_TYPES = ['friend', 'mentor', 'mentee', 'client', 'partner', 'colleague', 'acquaintance', 'collaborator'];
 const FREQUENCY_OPTIONS = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly', 'as-needed'];
 
 const TRUST_LABELS: Record<number, string> = {
-  1: 'Unknown',
-  2: 'Cautious',
-  3: 'Neutral',
-  4: 'Trusted',
+  1: 'New',
+  2: 'Familiar',
+  3: 'Reliable',
+  4: 'Close',
   5: 'Inner Circle',
 };
 
 const RELATIONSHIP_COLORS: Record<string, string> = {
-  ally: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+  friend: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
   mentor: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-  protege: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
+  mentee: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
   client: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
   partner: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  rival: 'bg-red-500/20 text-red-400 border-red-500/30',
-  contact: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
-  informant: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  colleague: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  acquaintance: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+  collaborator: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
 };
 
 function getInitials(name: string): string {
@@ -341,7 +341,7 @@ export default function RolodexPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-orbitron mb-1">Rolodex</h1>
-          <p className="text-[#7DAAB2]">Your personal dossier network</p>
+          <p className="text-[#7DAAB2]">Your personal contacts</p>
         </div>
         <Button
           onClick={openCreateForm}
@@ -707,13 +707,13 @@ export default function RolodexPage() {
           >
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
               <span className="text-[80px] font-orbitron font-bold text-primary/[0.03] uppercase select-none" style={{ transform: 'rotate(-12deg)' }}>
-                CLASSIFIED
+                ROLODEX
               </span>
             </div>
 
             <div className="p-4 border-b border-primary/10 flex items-center justify-between relative z-10">
               <h2 className="text-lg font-orbitron text-foreground">
-                {editingContact ? 'EDIT DOSSIER' : 'NEW DOSSIER'}
+                {editingContact ? 'EDIT CONTACT' : 'NEW CONTACT'}
               </h2>
               <button
                 onClick={closeForm}
@@ -725,7 +725,7 @@ export default function RolodexPage() {
 
             <form onSubmit={handleSubmit} className="p-4 space-y-5 relative z-10">
               <div>
-                <SectionHeader icon={UserCircle} label="SECTION 01 // IDENTITY" />
+                <SectionHeader icon={UserCircle} label="BASICS" />
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={labelClass}>Name *</label>
@@ -794,7 +794,7 @@ export default function RolodexPage() {
               </div>
 
               <div>
-                <SectionHeader icon={Radar} label="SECTION 02 // COMMS" />
+                <SectionHeader icon={Radar} label="CONTACT INFO" />
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={labelClass}>Email</label>
@@ -874,7 +874,7 @@ export default function RolodexPage() {
               </div>
 
               <div>
-                <SectionHeader icon={Building2} label="SECTION 03 // AFFILIATION" />
+                <SectionHeader icon={Building2} label="WORK" />
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={labelClass}>Company</label>
@@ -922,7 +922,7 @@ export default function RolodexPage() {
               </div>
 
               <div>
-                <SectionHeader icon={MapPin} label="SECTION 04 // LOCATION" />
+                <SectionHeader icon={MapPin} label="LOCATION" />
                 <div>
                   <label className={labelClass}>Address</label>
                   <input
@@ -968,7 +968,7 @@ export default function RolodexPage() {
               </div>
 
               <div>
-                <SectionHeader icon={Shield} label="SECTION 05 // INTEL" />
+                <SectionHeader icon={Shield} label="NOTES & DETAILS" />
                 <div>
                   <label className={labelClass}>How Met</label>
                   <input
@@ -1080,7 +1080,7 @@ export default function RolodexPage() {
                       className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"
                       size="sm"
                     >
-                      {(createMutation.isPending || updateMutation.isPending) ? 'SAVING...' : editingContact ? 'UPDATE DOSSIER' : 'CREATE DOSSIER'}
+                      {(createMutation.isPending || updateMutation.isPending) ? 'SAVING...' : editingContact ? 'SAVE CHANGES' : 'ADD CONTACT'}
                     </Button>
                   </div>
                 </div>
