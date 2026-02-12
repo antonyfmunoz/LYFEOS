@@ -36,6 +36,13 @@
       "when": 1770828692701,
       "tag": "0004_dizzy_zarda",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1770872035490,
+      "tag": "0005_simple_stardust",
+      "breakpoints": true
     }
   ]
 }
