@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useLYFEOS } from "@/lib/context";
 import { useAuth } from "@/lib/authContext";
 import { usePageTitle } from "@/hooks/use-page-title";
-import { FileText, Clock, Tag, Calendar, Award, GripVertical, CheckSquare, BookOpen, GraduationCap, Target, Info, BarChart3 } from "lucide-react";
+import { FileText, Clock, Tag, Calendar, Award, GripVertical, CheckSquare, BookOpen, GraduationCap, Target, Info, BarChart3, Users } from "lucide-react";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { useDrag, useDrop } from 'react-dnd';
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -11,6 +11,7 @@ import update from 'immutability-helper';
 import { cn } from '@/lib/utils';
 import { DropTargetMonitor } from 'react-dnd';
 import TimelineWidget from '@/components/chronilog/TimelineWidget';
+import RolodexWidget from '@/components/chronilog/RolodexWidget';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 
@@ -233,6 +234,56 @@ const DraggableTimelineWrapper = ({ id, index, moveCategory }: DraggableTimeline
   );
 };
 
+const DraggableRolodexWrapper = ({ id, index, moveCategory }: DraggableTimelineProps) => {
+  const ref = useRef<HTMLDivElement>(null);
+  
+  const [{ handlerId }, drop] = useDrop<DragItem, void, { handlerId: string | symbol | null }>({
+    accept: 'CATEGORY',
+    collect(monitor: DropTargetMonitor) {
+      return { handlerId: monitor.getHandlerId() };
+    },
+    hover(item: DragItem, monitor: DropTargetMonitor) {
+      if (!ref.current) return;
+      const dragIndex = item.index;
+      const hoverIndex = index;
+      if (dragIndex === hoverIndex) return;
+      const hoverBoundingRect = ref.current?.getBoundingClientRect();
+      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+      const clientOffset = monitor.getClientOffset();
+      const hoverClientY = clientOffset!.y - hoverBoundingRect.top;
+      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) return;
+      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) return;
+      moveCategory(dragIndex, hoverIndex);
+      item.index = hoverIndex;
+    },
+  });
+
+  const [{ isDragging }, drag, preview] = useDrag<
+    { id: string; index: number },
+    void,
+    { isDragging: boolean }
+  >({
+    type: 'CATEGORY',
+    item: () => ({ id, index }),
+    collect: (monitor: any) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  });
+
+  drag(drop(ref));
+
+  return (
+    <div
+      ref={ref}
+      className={cn("relative", isDragging && "opacity-50")}
+      data-handler-id={handlerId}
+      data-tour="chronilog-rolodex"
+    >
+      <RolodexWidget />
+    </div>
+  );
+};
+
 export default function ChronilogPage() {
   usePageTitle('Chronilog');
   
@@ -276,6 +327,12 @@ export default function ChronilogPage() {
       title: "Timeline", 
       icon: <Clock className="h-5 w-5 text-primary" />,
       description: "Your recent activity timeline showing missions, journal entries, and milestones."
+    },
+    { 
+      id: "rolodex", 
+      title: "Rolodex", 
+      icon: <Users className="h-5 w-5 text-primary" />,
+      description: "Flip through your contacts like a classic rolodex. Favorites are pinned to the front with search and filter."
     }
   ]);
 
@@ -368,6 +425,12 @@ export default function ChronilogPage() {
       description: "Your recent activity feed showing missions completed, journal entries, and milestones — all in chronological order.",
       position: "bottom",
     },
+    {
+      target: "[data-tour='chronilog-rolodex']",
+      title: "Rolodex",
+      description: "Flip through your contacts like a classic rolodex. Favorites are pinned to the front for quick access.",
+      position: "bottom",
+    },
   ];
 
   const [showTutorial, setShowTutorial] = useState(() => {
@@ -419,6 +482,16 @@ export default function ChronilogPage() {
                   <DraggableTimelineWrapper
                     key="timeline"
                     id="timeline"
+                    index={index}
+                    moveCategory={moveCategory}
+                  />
+                );
+              } else if (category.id === 'rolodex') {
+                flushCategoryBuffer();
+                items.push(
+                  <DraggableRolodexWrapper
+                    key="rolodex"
+                    id="rolodex"
                     index={index}
                     moveCategory={moveCategory}
                   />
