@@ -255,6 +255,7 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
     },
   });
 
@@ -284,6 +285,7 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
     },
   });
 
@@ -322,6 +324,7 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
     },
   });
 
@@ -342,6 +345,7 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
     },
   });
 
@@ -354,6 +358,7 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
     },
   });
 
