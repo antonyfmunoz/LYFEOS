@@ -11,7 +11,6 @@ import update from 'immutability-helper';
 import { cn } from '@/lib/utils';
 import { DropTargetMonitor } from 'react-dnd';
 import TimelineWidget from '@/components/chronilog/TimelineWidget';
-import RolodexWidget from '@/components/chronilog/RolodexWidget';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 
@@ -128,6 +127,8 @@ const DraggableCategoryCard = ({ id, index, item, moveCategory, navigate }: Drag
       navigate('/goals-archive');
     } else if (item.id === "analytics") {
       navigate('/analytics');
+    } else if (item.id === "rolodex") {
+      navigate('/rolodex');
     }
   };
   
@@ -230,58 +231,6 @@ const DraggableTimelineWrapper = ({ id, index, moveCategory }: DraggableTimeline
       data-tour="chronilog-timeline"
     >
       <TimelineWidget />
-    </div>
-  );
-};
-
-const DraggableRolodexWrapper = ({ id, index, moveCategory }: DraggableTimelineProps) => {
-  const ref = useRef<HTMLDivElement>(null);
-  const [, navigate] = useLocation();
-  
-  const [{ handlerId }, drop] = useDrop<DragItem, void, { handlerId: string | symbol | null }>({
-    accept: 'CATEGORY',
-    collect(monitor: DropTargetMonitor) {
-      return { handlerId: monitor.getHandlerId() };
-    },
-    hover(item: DragItem, monitor: DropTargetMonitor) {
-      if (!ref.current) return;
-      const dragIndex = item.index;
-      const hoverIndex = index;
-      if (dragIndex === hoverIndex) return;
-      const hoverBoundingRect = ref.current?.getBoundingClientRect();
-      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
-      const clientOffset = monitor.getClientOffset();
-      const hoverClientY = clientOffset!.y - hoverBoundingRect.top;
-      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) return;
-      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) return;
-      moveCategory(dragIndex, hoverIndex);
-      item.index = hoverIndex;
-    },
-  });
-
-  const [{ isDragging }, drag, preview] = useDrag<
-    { id: string; index: number },
-    void,
-    { isDragging: boolean }
-  >({
-    type: 'CATEGORY',
-    item: () => ({ id, index }),
-    collect: (monitor: any) => ({
-      isDragging: monitor.isDragging(),
-    }),
-  });
-
-  drag(drop(ref));
-
-  return (
-    <div
-      ref={ref}
-      className={cn("relative cursor-pointer", isDragging && "opacity-50")}
-      data-handler-id={handlerId}
-      data-tour="chronilog-rolodex"
-      onClick={() => navigate('/rolodex')}
-    >
-      <RolodexWidget />
     </div>
   );
 };
@@ -484,16 +433,6 @@ export default function ChronilogPage() {
                   <DraggableTimelineWrapper
                     key="timeline"
                     id="timeline"
-                    index={index}
-                    moveCategory={moveCategory}
-                  />
-                );
-              } else if (category.id === 'rolodex') {
-                flushCategoryBuffer();
-                items.push(
-                  <DraggableRolodexWrapper
-                    key="rolodex"
-                    id="rolodex"
                     index={index}
                     moveCategory={moveCategory}
                   />
