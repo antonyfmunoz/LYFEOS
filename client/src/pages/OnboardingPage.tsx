@@ -16,12 +16,12 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 const MISSIONS = [
   { id: 0, title: "Access & Quickstart", questions: 3, xp: 100 },
   { id: 1, title: "Archetype Calibration", questions: 54, xp: 150 },
-  { id: 2, title: "Identity & Direction", questions: 20, xp: 75 },
-  { id: 3, title: "Craft & Mastery", questions: 6, xp: 60 },
-  { id: 4, title: "Capacity & Constraints", questions: 9, xp: 55 },
-  { id: 5, title: "Baselines & States", questions: 14, xp: 70 },
+  { id: 2, title: "Identity & Direction", questions: 21, xp: 75 },
+  { id: 3, title: "Craft & Mastery", questions: 8, xp: 60 },
+  { id: 4, title: "Capacity & Constraints", questions: 12, xp: 55 },
+  { id: 5, title: "Baselines & States", questions: 17, xp: 70 },
   { id: 6, title: "History & Roots", questions: 5, xp: 50 },
-  { id: 7, title: "Systems & Rituals", questions: 7, xp: 65 },
+  { id: 7, title: "Systems & Rituals", questions: 10, xp: 65 },
 ];
 
 type Archetype = "warrior" | "architect" | "creator" | "monarch" | "oracle" | "alchemist";
@@ -764,6 +764,18 @@ export default function OnboardingPage() {
   const [boundaries, setBoundaries] = useState(saved.boundaries || { techOffTime: "", workHours: "" });
   const [lockedHabit, setLockedHabit] = useState(saved.lockedHabit || "");
   const [yearlyCyclesText, setYearlyCyclesText] = useState(saved.yearlyCyclesText || "");
+  const [keyDrivers, setKeyDrivers] = useState<string[]>(saved.keyDrivers || []);
+  const [careerVocation, setCareerVocation] = useState(saved.careerVocation || "");
+  const [activeVentures, setActiveVentures] = useState(saved.activeVentures || "");
+  const [collaborationStyle, setCollaborationStyle] = useState(saved.collaborationStyle || "");
+  const [roleOrientation, setRoleOrientation] = useState(saved.roleOrientation || "");
+  const [greatestContribution, setGreatestContribution] = useState(saved.greatestContribution || "");
+  const [trainingStyle, setTrainingStyle] = useState(saved.trainingStyle || "");
+  const [energyPatterns, setEnergyPatterns] = useState(saved.energyPatterns || "");
+  const [longevityFocus, setLongevityFocus] = useState<string[]>(saved.longevityFocus || []);
+  const [aesthetic, setAesthetic] = useState(saved.aesthetic || "");
+  const [signatureExpression, setSignatureExpression] = useState(saved.signatureExpression || "");
+  const [creativeOutlets, setCreativeOutlets] = useState<string[]>(saved.creativeOutlets || []);
   
   useEffect(() => {
     const data = {
@@ -780,6 +792,8 @@ export default function OnboardingPage() {
       emotionsToCultivate, copingPractices, copingEssential, dominantInstinctType, decisionMakingStyles, decisionMakingPrimary,
       shadowPatternText, upbringing, culturalContext, keyExperiences, relationshipDrains,
       idealDay, morningRituals, eveningRituals, groundingRitual, boundaries, lockedHabit, yearlyCyclesText,
+      keyDrivers, careerVocation, activeVentures, collaborationStyle, roleOrientation, greatestContribution,
+      trainingStyle, energyPatterns, longevityFocus, aesthetic, signatureExpression, creativeOutlets,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   }, [
@@ -796,6 +810,8 @@ export default function OnboardingPage() {
     emotionsToCultivate, copingPractices, copingEssential, dominantInstinctType, decisionMakingStyles, decisionMakingPrimary,
     shadowPatternText, upbringing, culturalContext, keyExperiences, relationshipDrains,
     idealDay, morningRituals, eveningRituals, groundingRitual, boundaries, lockedHabit, yearlyCyclesText,
+    keyDrivers, careerVocation, activeVentures, collaborationStyle, roleOrientation, greatestContribution,
+    trainingStyle, energyPatterns, longevityFocus, aesthetic, signatureExpression, creativeOutlets,
   ]);
   
   const calculateArchetypeScores = (): ArchetypeScores => {
@@ -946,12 +962,12 @@ export default function OnboardingPage() {
     switch (missionId) {
       case 0: return 5;
       case 1: return ARCHETYPE_QUESTIONS.length;
-      case 2: return 20;
-      case 3: return 6;
-      case 4: return 9;
-      case 5: return 14;
+      case 2: return 21;
+      case 3: return 8;
+      case 4: return 12;
+      case 5: return 17;
       case 6: return 5;
-      case 7: return 7;
+      case 7: return 10;
       default: return 1;
     }
   }
@@ -989,6 +1005,7 @@ export default function OnboardingPage() {
         case 17: return legacyMetric.trim() !== "";
         case 18: return mortalityReflection.trim() !== "";
         case 19: return lifeDomains.length > 0;
+        case 20: return keyDrivers.length > 0;
       }
     }
     if (currentMission === 3) {
@@ -999,6 +1016,8 @@ export default function OnboardingPage() {
         case 3: return skillsToAcquire.trim() !== "";
         case 4: return learningPreference !== "";
         case 5: return true;
+        case 6: return careerVocation.trim() !== "";
+        case 7: return activeVentures.trim() !== "";
       }
     }
     if (currentMission === 4) {
@@ -1012,6 +1031,9 @@ export default function OnboardingPage() {
         case 6: return financialConstraints.length > 0;
         case 7: return true;
         case 8: return moneyRelationship.trim() !== "";
+        case 9: return collaborationStyle !== "";
+        case 10: return roleOrientation !== "";
+        case 11: return greatestContribution.trim() !== "";
       }
     }
     if (currentMission === 5) {
@@ -1030,6 +1052,9 @@ export default function OnboardingPage() {
         case 11: return dominantInstinctType !== "";
         case 12: return decisionMakingStyles.length > 0;
         case 13: return decisionMakingPrimary !== "";
+        case 14: return trainingStyle !== "";
+        case 15: return energyPatterns !== "";
+        case 16: return longevityFocus.length > 0;
       }
     }
     if (currentMission === 6) {
@@ -1050,6 +1075,9 @@ export default function OnboardingPage() {
         case 4: return boundaries.techOffTime.trim() !== "" && boundaries.workHours.trim() !== "";
         case 5: return lockedHabit.trim() !== "";
         case 6: return yearlyCyclesText.trim() !== "";
+        case 7: return aesthetic.trim() !== "";
+        case 8: return signatureExpression.trim() !== "";
+        case 9: return creativeOutlets.length > 0;
       }
     }
     return true;
@@ -1179,6 +1207,7 @@ export default function OnboardingPage() {
           legacyMetric,
           mortalityInsights: { reflection: mortalityReflection },
           lifeDomains,
+          keyDrivers,
         };
       case 3:
         return {
@@ -1191,6 +1220,8 @@ export default function OnboardingPage() {
           domainsOfCompetence: knowledgeAreas.split(",").map(s => s.trim()).filter(Boolean),
           integrationMethod: learningPreference,
           activePhase: lifeStage || "Building",
+          careerVocation,
+          activeVentures: activeVentures.split(",").map((s: string) => s.trim()).filter(Boolean),
         };
       case 4:
         return {
@@ -1203,6 +1234,9 @@ export default function OnboardingPage() {
           moneyConfidence: { score: moneyConfidenceScore },
           moneyRelationship,
           optimalEnvironment: physicalEnvironment,
+          collaborationStyle,
+          roleOrientation,
+          greatestContribution,
         };
       case 5:
         return {
@@ -1220,6 +1254,8 @@ export default function OnboardingPage() {
           nutritionRecovery: { nutritionalApproach: nutritionApproach },
           decisionOrientation: decisionMakingPrimary,
           stressResponse: copingEssential,
+          fitnessMovement: { trainingStyle },
+          healthVitality: { energyPatterns, longevityFocus },
         };
       case 6:
         return {
@@ -1237,6 +1273,9 @@ export default function OnboardingPage() {
           boundaries,
           lockedHabit,
           yearlyCycles: yearlyCyclesText.split("\n").filter(Boolean),
+          aesthetic,
+          signatureExpression,
+          creativeOutlets,
         };
       default:
         return {};
@@ -1485,6 +1524,7 @@ export default function OnboardingPage() {
       case 17: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">How will your legacy be measured?</h3><Input value={legacyMetric} onChange={(e) => setLegacyMetric(e.target.value)} placeholder="Legacy metric..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       case 18: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">If you had 5 years to live, what would change?</h3><Textarea value={mortalityReflection} onChange={(e) => setMortalityReflection(e.target.value)} placeholder="What would you do differently..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       case 19: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Rank your life domains by priority</h3><p className="text-xs text-muted-foreground text-center">Select in order of importance to you</p><ChipSelect options={["Health", "Career", "Relationships", "Finance", "Spirituality", "Creativity", "Learning", "Adventure", "Family", "Community"]} value={lifeDomains} onChange={(val) => setLifeDomains(val as string[])} multiple /></div>);
+      case 20: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What drives you forward?</h3><ChipSelect options={["Achievement", "Connection", "Growth", "Impact", "Freedom", "Security", "Knowledge", "Adventure", "Recognition", "Service"]} value={keyDrivers} onChange={(val) => setKeyDrivers(val as string[])} multiple /></div>);
       default: return null;
     }
   };
@@ -1497,6 +1537,8 @@ export default function OnboardingPage() {
       case 3: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What skills do you want to acquire?</h3><Input value={skillsToAcquire} onChange={(e) => setSkillsToAcquire(e.target.value)} placeholder="Comma-separated: Public Speaking..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       case 4: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">How do you prefer to learn?</h3><ChipSelect options={["Visual", "Auditory", "Reading/Writing", "Kinesthetic", "Mixed"]} value={learningPreference} onChange={(val) => setLearningPreference(val as string)} /></div>);
       case 5: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Hours per week for practice?</h3><div className="max-w-md mx-auto"><input type="range" min="0" max="40" value={practiceHours} onChange={(e) => setPracticeHours(parseInt(e.target.value))} className="w-full accent-primary" /><p className="text-center text-primary font-medium">{practiceHours} hours/week</p></div></div>);
+      case 6: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What is your career or vocation?</h3><Input value={careerVocation} onChange={(e) => setCareerVocation(e.target.value)} placeholder="e.g., Software Engineer, Teacher..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 7: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What ventures are you actively working on?</h3><Input value={activeVentures} onChange={(e) => setActiveVentures(e.target.value)} placeholder="Comma-separated: Startup, Side project..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       default: return null;
     }
   };
@@ -1512,6 +1554,9 @@ export default function OnboardingPage() {
       case 6: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What financial constraints limit you?</h3><ChipSelect options={["Debt", "Low Income", "High Expenses", "No Savings", "Unstable Income", "Dependents", "Student Loans", "Medical Costs"]} value={financialConstraints} onChange={(val) => setFinancialConstraints(val as string[])} multiple /></div>);
       case 7: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Rate your money confidence (1-10)</h3><div className="max-w-md mx-auto"><input type="range" min="1" max="10" value={moneyConfidenceScore} onChange={(e) => setMoneyConfidenceScore(parseInt(e.target.value))} className="w-full accent-primary" /><p className="text-center text-primary font-medium">{moneyConfidenceScore} / 10</p></div></div>);
       case 8: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Describe your relationship with money</h3><Textarea value={moneyRelationship} onChange={(e) => setMoneyRelationship(e.target.value)} placeholder="How do you relate to money..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 9: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">How do you prefer to collaborate?</h3><ChipSelect options={["Independent", "Pair-based", "Small teams", "Large teams", "Mentoring", "Leading", "Supporting"]} value={collaborationStyle} onChange={(val) => setCollaborationStyle(val as string)} /></div>);
+      case 10: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What role do you naturally take?</h3><ChipSelect options={["Leader", "Strategist", "Executor", "Advisor", "Creator", "Mediator", "Specialist"]} value={roleOrientation} onChange={(val) => setRoleOrientation(val as string)} /></div>);
+      case 11: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What is your greatest contribution to the world?</h3><Textarea value={greatestContribution} onChange={(e) => setGreatestContribution(e.target.value)} placeholder="Describe your greatest contribution..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       default: return null;
     }
   };
@@ -1532,6 +1577,9 @@ export default function OnboardingPage() {
       case 11: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What is your dominant instinct?</h3><ChipSelect options={["Self-Preservation", "Social", "Sexual/Creative", "Intellectual"]} value={dominantInstinctType} onChange={(val) => setDominantInstinctType(val as string)} /></div>);
       case 12: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">How do you make decisions?</h3><ChipSelect options={["Intuitive", "Analytical", "Collaborative", "Impulsive", "Deliberate", "Emotional", "Data-Driven"]} value={decisionMakingStyles} onChange={(val) => setDecisionMakingStyles(val as string[])} multiple /></div>);
       case 13: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your primary decision-making style?</h3><ChipSelect options={["Intuitive", "Analytical", "Collaborative", "Impulsive", "Deliberate", "Emotional", "Data-Driven"]} value={decisionMakingPrimary} onChange={(val) => setDecisionMakingPrimary(val as string)} /></div>);
+      case 14: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your training style?</h3><ChipSelect options={["Strength Training", "Cardio", "Yoga/Flexibility", "Sports", "Martial Arts", "Calisthenics", "Mixed Training", "Walking/Hiking"]} value={trainingStyle} onChange={(val) => setTrainingStyle(val as string)} /></div>);
+      case 15: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">How would you describe your energy patterns?</h3><ChipSelect options={["Morning Person", "Night Owl", "Afternoon Peak", "Steady Throughout", "Varies Daily", "Low Energy"]} value={energyPatterns} onChange={(val) => setEnergyPatterns(val as string)} /></div>);
+      case 16: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What longevity practices matter to you?</h3><ChipSelect options={["Sleep Optimization", "Nutrition", "Exercise", "Stress Management", "Social Connection", "Mental Stimulation", "Nature Exposure", "Preventive Healthcare"]} value={longevityFocus} onChange={(val) => setLongevityFocus(val as string[])} multiple /></div>);
       default: return null;
     }
   };
@@ -1556,6 +1604,9 @@ export default function OnboardingPage() {
       case 4: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">Set your boundaries</h3><div className="max-w-md mx-auto space-y-3"><div><label className="text-sm text-muted-foreground">Tech off-time</label><Input value={boundaries.techOffTime} onChange={(e) => setBoundaries({ ...boundaries, techOffTime: e.target.value })} placeholder="e.g., 9 PM - 7 AM" className="bg-card/30 border-primary/20" /></div><div><label className="text-sm text-muted-foreground">Work hours</label><Input value={boundaries.workHours} onChange={(e) => setBoundaries({ ...boundaries, workHours: e.target.value })} placeholder="e.g., 9 AM - 6 PM" className="bg-card/30 border-primary/20" /></div></div></div>);
       case 5: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's one habit you've locked in?</h3><Input value={lockedHabit} onChange={(e) => setLockedHabit(e.target.value)} placeholder="A habit that's non-negotiable..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
       case 6: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What yearly cycles do you follow?</h3><Textarea value={yearlyCyclesText} onChange={(e) => setYearlyCyclesText(e.target.value)} placeholder="One per line: seasonal rhythms, annual events..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 7: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">How would you describe your personal aesthetic?</h3><Input value={aesthetic} onChange={(e) => setAesthetic(e.target.value)} placeholder="e.g., Minimalist, Bohemian, Futuristic..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 8: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What is your signature form of expression?</h3><Input value={signatureExpression} onChange={(e) => setSignatureExpression(e.target.value)} placeholder="e.g., Writing poetry, Public speaking..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 9: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What creative outlets do you have?</h3><ChipSelect options={["Writing", "Music", "Visual Art", "Photography", "Dance", "Cooking", "Design", "Film/Video", "Crafts", "Performance"]} value={creativeOutlets} onChange={(val) => setCreativeOutlets(val as string[])} multiple /></div>);
       default: return null;
     }
   };
