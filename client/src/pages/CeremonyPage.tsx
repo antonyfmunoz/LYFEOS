@@ -16,8 +16,10 @@ export default function CeremonyPage() {
 
   const ceremonyMode = localStorage.getItem("lyfeos-ceremony-mode") || "init";
   const isUpdate = ceremonyMode === "update";
+  const isLogin = ceremonyMode === "login";
   
-  usePageTitle(isUpdate ? "System Updated" : "System Online");
+  const pageTitle = isLogin ? "Welcome Back" : isUpdate ? "System Updated" : "System Online";
+  usePageTitle(pageTitle);
 
   useEffect(() => {
     const resumeData = localStorage.getItem("lyfeos-onboarding-resume");
@@ -52,7 +54,7 @@ export default function CeremonyPage() {
         {phase === 0 && (
           <div className="animate-pulse">
             <p className="text-primary font-mono text-lg tracking-widest">
-              {isUpdate ? "UPDATING SYSTEM..." : "INITIATING SYSTEM..."}
+              {isLogin ? "RECONNECTING..." : isUpdate ? "UPDATING SYSTEM..." : "INITIATING SYSTEM..."}
             </p>
           </div>
         )}
@@ -60,7 +62,7 @@ export default function CeremonyPage() {
         {phase === 1 && (
           <div className="space-y-6 animate-fade-in">
             <p className="text-primary font-mono text-sm tracking-wider mb-8">
-              {isUpdate ? "SYNCING PLAYER STATS" : "LOADING PLAYER STATS"}
+              {isLogin ? "RESTORING PLAYER STATS" : isUpdate ? "SYNCING PLAYER STATS" : "LOADING PLAYER STATS"}
             </p>
             
             <div className="space-y-4 w-80">
@@ -79,11 +81,11 @@ export default function CeremonyPage() {
             <div className="relative">
               <div className="absolute inset-0 bg-primary/20 blur-3xl animate-pulse" />
               <h1 className="relative text-4xl md:text-6xl font-bold text-primary tracking-widest">
-                {isUpdate ? "SYSTEM UPDATED" : "SYSTEM ONLINE"}
+                {isLogin ? "WELCOME BACK" : isUpdate ? "SYSTEM UPDATED" : "SYSTEM ONLINE"}
               </h1>
             </div>
             <p className="text-muted-foreground font-mono text-sm animate-fade-in">
-              Welcome, Commander
+              {isLogin ? "Ready for action, Commander" : "Welcome, Commander"}
             </p>
           </div>
         )}

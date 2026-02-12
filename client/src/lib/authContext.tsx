@@ -510,8 +510,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           applyPrimaryColor(userData.primaryColor);
         }
         
-        sessionStorage.setItem("pending_login_celebration", displayName || "");
-        
         setUser(userData.user);
         localStorage.setItem("lyfeos_user", JSON.stringify(userData.user));
         
@@ -519,7 +517,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log("New user detected, redirecting to onboarding");
           navigate("/onboarding");
         } else {
-          navigate("/dashboard");
+          localStorage.setItem("lyfeos-ceremony-mode", "login");
+          navigate("/ceremony");
         }
       }
     } catch (error) {

@@ -138,9 +138,8 @@ function calculateMissionCosts(
   endDate: string | null,
   endTime: string | null
 ): { attentionCost: number; timeCost: number; energyCost: number } {
-  // Default costs when no duration is set
   if (!startDate || !startTime || !endDate || !endTime) {
-    return { attentionCost: 0, timeCost: 0, energyCost: 1 };
+    return { attentionCost: 1, timeCost: 1, energyCost: 1 };
   }
   
   try {
@@ -167,7 +166,7 @@ function calculateMissionCosts(
     return { attentionCost, timeCost, energyCost };
   } catch (error) {
     console.error("Error calculating mission costs:", error);
-    return { attentionCost: 0, timeCost: 0, energyCost: 1 };
+    return { attentionCost: 1, timeCost: 1, energyCost: 1 };
   }
 }
 

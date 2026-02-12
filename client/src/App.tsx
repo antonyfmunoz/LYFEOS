@@ -6,7 +6,7 @@ import { AuthProvider, useAuth } from "./lib/authContext";
 import { ThemeProvider } from "./lib/themeContext";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import { CelebrationProvider, useCelebration } from "./lib/celebrationContext";
+import { CelebrationProvider } from "./lib/celebrationContext";
 import CelebrationOverlay from "./components/CelebrationOverlay";
 import DashboardPage from "./pages/DashboardPage";
 import QuestsPage from "./pages/QuestsPage";
@@ -100,20 +100,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
   const [, navigate] = useLocation();
-  const { triggerCelebration } = useCelebration();
-  
-  useEffect(() => {
-    const pendingName = sessionStorage.getItem("pending_login_celebration");
-    if (pendingName !== null && isAuthenticated) {
-      sessionStorage.removeItem("pending_login_celebration");
-      triggerCelebration({
-        type: "mission_complete",
-        title: pendingName ? `Welcome back, ${pendingName}!` : "Welcome back!",
-        xp: 0,
-      });
-    }
-  }, [isAuthenticated, triggerCelebration]);
-  
   // Track if we've already attempted a redirect for the current route
   const routeRedirectRef = React.useRef<string | null>(null);
   
@@ -192,9 +178,8 @@ function Router() {
       return;
     }
     
-    // Skip onboarding path protection - needed for new users
-    if (currentPath.startsWith('/onboarding')) {
-      console.log('Allowing access to onboarding path for authentication flow');
+    // Skip onboarding and ceremony path protection - needed for new users and login ceremony
+    if (currentPath.startsWith('/onboarding') || currentPath.startsWith('/ceremony')) {
       return;
     }
     
