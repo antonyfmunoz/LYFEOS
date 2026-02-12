@@ -311,7 +311,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── PROBLEM ─── */}
-      <section className="bg-card/20 border-y border-border/20">
+      <section className="bg-card/20">
         <div className="max-w-6xl mx-auto px-4 py-16 sm:py-20">
           <h2 className="font-orbitron text-2xl sm:text-3xl font-bold text-center mb-4">
             You're Not Lazy. <span className="text-primary">You're Scattered.</span>
@@ -373,7 +373,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── HOW IT WORKS ─── */}
-      <section id="how-it-works" className="bg-card/20 border-y border-border/20">
+      <section id="how-it-works" className="bg-card/20">
         <div className="max-w-6xl mx-auto px-4 py-16 sm:py-20">
           <h2 className="font-orbitron text-2xl sm:text-3xl font-bold text-center mb-14">
             How It <span className="text-primary">Works</span>
@@ -421,7 +421,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── PRICING ─── */}
-      <section id="pricing" className="bg-card/20 border-y border-border/20">
+      <section id="pricing" className="bg-card/20">
         <div className="max-w-4xl mx-auto px-4 py-16 sm:py-20">
           <h2 className="font-orbitron text-2xl sm:text-3xl font-bold text-center mb-2">
             Simple, Transparent <span className="text-primary">Pricing</span>
@@ -510,7 +510,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── FINAL CTA ─── */}
-      <section className="border-y border-border/20">
+      <section className="">
         <div className="max-w-3xl mx-auto px-4 py-16 sm:py-20 text-center space-y-6">
           <h2 className="font-orbitron text-2xl sm:text-3xl font-bold">
             Ready to Stop Being <span className="text-primary">Scattered?</span>
@@ -530,14 +530,9 @@ export default function LandingPage() {
       </section>
 
       {/* ─── FOOTER ─── */}
-      <footer className="border-t border-border/20 bg-background">
+      <footer className="bg-background">
         <div className="max-w-6xl mx-auto px-4 py-12">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div className="space-y-2">
-              <span className="font-orbitron text-lg font-bold text-primary">LYFEOS</span>
-              <p className="text-sm text-muted-foreground">Your Life Operating System</p>
-            </div>
-
+          <div className="grid sm:grid-cols-2 gap-8">
             <div className="space-y-2">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                 Links
@@ -572,7 +567,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="mt-10 pt-6 border-t border-border/20 text-center">
+          <div className="mt-10 pt-6 text-center">
             <p className="text-xs text-muted-foreground/50">
               &copy; 2026 LYFEOS. All rights reserved.
             </p>
