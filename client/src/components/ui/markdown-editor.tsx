@@ -193,10 +193,9 @@ export function MarkdownEditor({
     <div 
       ref={wrapperRef}
       className={cn(
-        "relative min-h-[100px] group",
+        "relative group",
         className
       )}
-      style={{ minHeight }}
     >
       {isEditing ? (
         <div className="relative rounded-md border border-primary/30 bg-background">
@@ -218,10 +217,13 @@ export function MarkdownEditor({
               <Save size={14} />
             </button>
           </div>
+          <div className="absolute bottom-2 right-2 text-xs dark:text-[#7DAAB2]/50 light:text-slate-400/80">
+            Ctrl+Enter or Esc to save
+          </div>
         </div>
       ) : (
-        <div className="relative rounded-md border border-primary/30 bg-background" style={{ minHeight }}>
-          <div className="p-3 cursor-default min-h-[100px]" onDoubleClick={handleDoubleClick}>
+        <div className="relative rounded-md border border-primary/30 bg-background overflow-hidden" style={{ minHeight, maxHeight: minHeight }}>
+          <div className="p-3 cursor-default" style={{ minHeight }} onDoubleClick={handleDoubleClick}>
             {value ? (
               <ObsidianMarkdown className="dark:text-[#D6F4FF] light:text-slate-700">
                 {value}
@@ -237,13 +239,6 @@ export function MarkdownEditor({
               <Edit2 size={14} />
             </button>
           </div>
-        </div>
-      )}
-      
-      {/* Small hint in bottom-right corner when editing */}
-      {isEditing && (
-        <div className="absolute bottom-2 right-2 text-xs dark:text-[#7DAAB2]/50 light:text-slate-400/80">
-          Ctrl+Enter or Esc to save
         </div>
       )}
     </div>
