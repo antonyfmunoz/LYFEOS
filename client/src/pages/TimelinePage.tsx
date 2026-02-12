@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { ArrowLeft, CalendarClock, Milestone, CalendarDays, ZoomIn, ZoomOut, ChevronDown } from 'lucide-react';
+import { ArrowLeft, CalendarClock, Milestone, CalendarDays, ZoomIn, ZoomOut, ChevronDown, Info, Calendar, Clock } from 'lucide-react';
+import { Quest } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { useLYFEOS } from '@/lib/context';
 import { usePageTitle } from '@/hooks/use-page-title';
@@ -14,6 +15,7 @@ interface TimelineItem {
   title: string;
   description: string;
   type: TimelineItemType;
+  quest?: Quest;
 }
 
 type ZoomLevel = 'life' | 'year' | 'month' | 'week' | 'day';
@@ -30,6 +32,35 @@ const ZOOM_LABELS: Record<ZoomLevel, string> = {
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const MONTH_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const categoryDescriptions: Record<string, string> = {
+  work: 'Professional tasks, projects, and job-related responsibilities.',
+  health: 'Medical care, wellness checkups, and overall well-being.',
+  fitness: 'Exercise, workouts, physical training, and movement goals.',
+  finance: 'Budgeting, saving, investing, and money management.',
+  learning: 'Education, studying, courses, and skill development.',
+  creative: 'Art, music, writing, design, and creative expression.',
+  social: 'Relationships, events, gatherings, and interpersonal connections.',
+  personal: 'Self-care, errands, and individual life management.',
+  mindset: 'Mental health, meditation, mindfulness, and inner growth.',
+  career: 'Long-term professional growth, networking, and advancement.',
+  nutrition: 'Meal planning, diet, cooking, and food choices.',
+  recovery: 'Rest, rehabilitation, stress relief, and recharging.',
+  planning: 'Strategy, organization, scheduling, and goal-setting.',
+  spiritual: 'Faith, purpose, reflection, and spiritual practices.',
+  household: 'Home maintenance, cleaning, chores, and living space.',
+  event: 'Scheduled occasions, celebrations, and milestone events.',
+};
+
+const difficultyDescriptions: Record<string, string> = {
+  S: 'Extreme effort. Multi-day or life-changing.',
+  A: 'High effort. Significant commitment.',
+  B: 'Moderate effort. Requires focus and planning.',
+  C: 'Light effort. Simple but requires attention.',
+  D: 'Minimal effort. Quick and easy.',
+};
+
+const difficultyMultipliers: Record<string, number> = { D: 1, C: 1.5, B: 2, A: 3, S: 5 };
 
 function getDescriptionFromContent(content: string): string {
   if (!content) return '';
@@ -91,6 +122,7 @@ export default function TimelinePage() {
   const [focusMonth, setFocusMonth] = useState<number | null>(null);
   const [focusWeek, setFocusWeek] = useState<number | null>(null);
   const [focusDay, setFocusDay] = useState<number | null>(null);
+  const [expandedInfoIds, setExpandedInfoIds] = useState<Set<string>>(new Set());
 
   const timelineItems: TimelineItem[] = useMemo(() => {
     const items: TimelineItem[] = [];
@@ -117,6 +149,7 @@ export default function TimelinePage() {
         title: quest.title.replace(/^Onboarding:\s*/, ''),
         description: quest.description || '',
         type: 'mission',
+        quest,
       });
     });
 
@@ -466,17 +499,87 @@ export default function TimelinePage() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          {node.sublabel && (
-                            <span className="text-[10px] font-mono text-primary/70">{node.sublabel}</span>
-                          )}
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary capitalize">
-                            {node.items[0]?.type}
-                          </span>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {node.sublabel && (
+                              <span className="text-[10px] font-mono text-primary/70">{node.sublabel}</span>
+                            )}
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary capitalize">
+                              {node.items[0]?.type}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                            {node.items[0]?.quest && (
+                              <>
+                                {node.items[0].quest.category && node.items[0].quest.category !== "general" && node.items[0].quest.category !== "onboarding" && (
+                                  <span className="text-[10px] font-mono h-6 px-1.5 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary opacity-50 capitalize">
+                                    {node.items[0].quest.category}
+                                  </span>
+                                )}
+                                <span className="text-[10px] font-mono h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary opacity-50">
+                                  {node.items[0].quest.difficulty || 'D'}
+                                </span>
+                              </>
+                            )}
+                            <button
+                              className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedInfoIds(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(node.key)) next.delete(node.key);
+                                  else next.add(node.key);
+                                  return next;
+                                });
+                              }}
+                            >
+                              <Info className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </div>
-                        <h4 className="text-sm font-medium text-foreground mt-0.5 truncate">{node.label}</h4>
-                        {node.items[0]?.description && (
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{node.items[0].description}</p>
+                        <h4 className="text-sm font-medium text-muted-foreground mt-0.5 truncate line-through">{node.label}</h4>
+                        {node.items[0]?.quest && (
+                          <div className="flex items-center gap-3 mt-1 flex-wrap opacity-50">
+                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((node.items[0].quest.energyCost ?? 0) / 1440) * 100).toFixed(1)}% ET</span>
+                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((node.items[0].quest.attentionCost ?? 0) / 1440) * 100).toFixed(1)}% AT</span>
+                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((node.items[0].quest.timeCost ?? 0) / 1440) * 100).toFixed(1)}% TT</span>
+                            <span className="text-primary text-xs font-mono whitespace-nowrap">+{Math.floor(node.items[0].quest.experienceReward * (difficultyMultipliers[node.items[0].quest.difficulty || 'D'] || 1))} XP</span>
+                          </div>
+                        )}
+                        {node.items[0]?.quest && (() => {
+                          const q = node.items[0].quest!;
+                          const hasSchedule = q.startDate || q.startTime || q.endDate || q.endTime;
+                          if (!hasSchedule) return null;
+                          const fmtDate = (ds: string) => { const [y, m, d] = ds.split('-').map(Number); return new Date(y, m-1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); };
+                          const fmtTime = (ts: string) => { const [h, mn] = ts.split(':'); const hr = parseInt(h); return `${hr % 12 || 12}:${mn} ${hr >= 12 ? 'PM' : 'AM'}`; };
+                          return (
+                            <div className="flex items-center gap-1 text-xs mt-1 flex-wrap text-muted-foreground opacity-50">
+                              {q.startDate && <span className="flex items-center gap-1 whitespace-nowrap"><Calendar className="h-3 w-3 flex-shrink-0" />{fmtDate(q.startDate)}</span>}
+                              {q.startTime && <span className="flex items-center gap-1 whitespace-nowrap"><Clock className="h-3 w-3 flex-shrink-0" />{fmtTime(q.startTime)}</span>}
+                              {(q.endDate || q.endTime) && <span className="text-primary flex-shrink-0">→</span>}
+                              {q.endDate && <span className="flex items-center gap-1 whitespace-nowrap"><Calendar className="h-3 w-3 flex-shrink-0" />{fmtDate(q.endDate)}</span>}
+                              {q.endTime && <span className="flex items-center gap-1 whitespace-nowrap"><Clock className="h-3 w-3 flex-shrink-0" />{fmtTime(q.endTime)}</span>}
+                            </div>
+                          );
+                        })()}
+                        {expandedInfoIds.has(node.key) && (
+                          <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 space-y-2 opacity-50">
+                            {node.items[0]?.description && (
+                              <p className="text-muted-foreground">{node.items[0].description}</p>
+                            )}
+                            {node.items[0]?.quest && (
+                              <div className="border-t border-primary/10 pt-2 space-y-1">
+                                {node.items[0].quest.category && node.items[0].quest.category !== "general" && node.items[0].quest.category !== "onboarding" && (
+                                  <p className="text-muted-foreground text-xs">
+                                    <span className="text-primary font-mono capitalize">{node.items[0].quest.category}</span> — {categoryDescriptions[node.items[0].quest.category] || 'Auto-classified mission category.'}
+                                  </p>
+                                )}
+                                <p className="text-muted-foreground text-xs">
+                                  <span className="text-primary font-mono">Rank {node.items[0].quest.difficulty || 'D'}</span> — {difficultyDescriptions[node.items[0].quest.difficulty || 'D']}
+                                </p>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
