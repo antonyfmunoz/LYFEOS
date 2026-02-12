@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { useAuth } from "@/lib/authContext";
 
 export default function CeremonyPage() {
   const [, navigate] = useLocation();
+  const { user } = useAuth();
   const [phase, setPhase] = useState(0);
   const [statsLoaded, setStatsLoaded] = useState({
     level: false,
@@ -85,7 +87,7 @@ export default function CeremonyPage() {
               </h1>
             </div>
             <p className="text-muted-foreground font-mono text-sm animate-fade-in">
-              {isLogin ? "Ready for action, Commander" : "Welcome, Commander"}
+              Welcome, {user?.username || "Player"}
             </p>
           </div>
         )}

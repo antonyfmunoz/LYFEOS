@@ -52,6 +52,13 @@ interface UserCategoryOption {
   description: string | null;
 }
 
+function formatStatCost(cost: number | null | undefined): string {
+  const val = ((cost ?? 0) / 1440) * 100;
+  if (!cost || val === 0) return "0%";
+  if (val < 1) return val.toFixed(1) + "%";
+  return Math.round(val) + "%";
+}
+
 const ONBOARDING_DESCRIPTIONS: Record<string, string> = {
   "Access & Quickstart": "Log in, explore the dashboard, and complete your first quick mission to get familiar with LYFEOS.",
   "Archetype Calibration": "Discover your player archetype through a guided assessment to personalize your LYFEOS experience.",
@@ -202,9 +209,9 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
           </div>
           {category !== "event" && (
             <div className={`flex items-center gap-3 mt-1 flex-wrap ${completed ? "opacity-50" : ""}`}>
-              <span className="text-primary text-xs font-mono whitespace-nowrap">-{Math.max(attentionCost ? 1 : 0, Math.round(((attentionCost ?? 0) / 1440) * 100))}% AT</span>
-              <span className="text-primary text-xs font-mono whitespace-nowrap">-{Math.max(timeCost ? 1 : 0, Math.round(((timeCost ?? 0) / 1440) * 100))}% TT</span>
-              <span className="text-primary text-xs font-mono whitespace-nowrap">-{Math.max(energyCost ? 1 : 0, Math.round(((energyCost ?? 0) / 1440) * 100))}% EP</span>
+              <span className="text-primary text-xs font-mono whitespace-nowrap">-{formatStatCost(attentionCost)} AT</span>
+              <span className="text-primary text-xs font-mono whitespace-nowrap">-{formatStatCost(timeCost)} TT</span>
+              <span className="text-primary text-xs font-mono whitespace-nowrap">-{formatStatCost(energyCost)} EP</span>
               <span className="text-primary text-xs font-mono whitespace-nowrap">+{adjustedXp} XP</span>
             </div>
           )}
