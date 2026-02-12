@@ -93,6 +93,7 @@ interface DraggableObjectiveProps {
   onToggle: (id: number, completed: boolean) => void;
   onEdit: (goal: VisionGoal) => void;
   onDelete: (id: number) => void;
+  isMutating: boolean;
   infoExpandedId: number | null;
   setInfoExpandedId: (id: number | null) => void;
   renderInfoPanel: (goal: VisionGoal) => React.ReactNode;
@@ -101,7 +102,7 @@ interface DraggableObjectiveProps {
 }
 
 function DraggableObjective({
-  goal, index, moveGoal, onToggle, onEdit, onDelete,
+  goal, index, moveGoal, onToggle, onEdit, onDelete, isMutating,
   infoExpandedId, setInfoExpandedId, renderInfoPanel, renderGoalMissions, category,
 }: DraggableObjectiveProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -141,7 +142,8 @@ function DraggableObjective({
         </div>
         <button
           onClick={(e) => { e.stopPropagation(); e.preventDefault(); console.log(`[GOAL-TOGGLE] Complete clicked id=${goal.id}`); onToggle(goal.id, true); }}
-          className="shrink-0 relative h-8 w-8 flex items-center justify-center touch-manipulation"
+          disabled={isMutating}
+          className="shrink-0 relative h-8 w-8 flex items-center justify-center touch-manipulation disabled:opacity-50"
           style={{ WebkitTapHighlightColor: 'transparent', zIndex: 10, position: 'relative' }}
         >
           <span className="h-5 w-5 rounded-full border-2 border-primary/40 hover:border-primary hover:bg-primary/20 transition-colors block" />
@@ -177,7 +179,8 @@ function DraggableObjective({
           </button>
           <button
             onClick={() => onDelete(goal.id)}
-            className="h-6 w-6 inline-flex items-center justify-center rounded border bg-red-500/20 border-red-500/50 text-red-400 hover:bg-red-500/30 transition-colors"
+            disabled={isMutating}
+            className="h-6 w-6 inline-flex items-center justify-center rounded border bg-red-500/20 border-red-500/50 text-red-400 hover:bg-red-500/30 transition-colors disabled:opacity-50"
           >
             <Trash2 className="h-3 w-3" />
           </button>
@@ -196,13 +199,6 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
   const [infoExpandedId, setInfoExpandedId] = useState<number | null>(null);
 
   const queryKey = ['/api/vision-goals', category] as const;
-
-  const refetchAll = async () => {
-    await Promise.all([
-      queryClient.refetchQueries({ queryKey: ['/api/vision-goals', category] }),
-      queryClient.refetchQueries({ queryKey: ['/api/vision-goals/all'] }),
-    ]);
-  };
 
   const { data: goals = [], isLoading } = useQuery<VisionGoal[]>({
     queryKey: ['/api/vision-goals', category],
@@ -224,6 +220,11 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
     enabled: !!user,
   });
 
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/vision-goals', category] });
+    queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
+  };
+
   const toggleMutation = useMutation({
     mutationFn: async ({ id, completed }: { id: number; completed: boolean }) => {
       console.log(`[GOAL-TOGGLE] Sending PATCH id=${id}, completed=${completed}`);
@@ -234,10 +235,14 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
       console.log(`[GOAL-TOGGLE] Response:`, JSON.stringify(result));
       return result;
     },
-    onSuccess: async (data, variables) => {
-      console.log(`[GOAL-TOGGLE] onSuccess, refetching...`);
-      await refetchAll();
-      console.log(`[GOAL-TOGGLE] refetch complete`);
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) =>
+        old.map(g => g.id === variables.id ? { ...g, completed: variables.completed } : g)
+      );
+      queryClient.setQueryData<VisionGoal[]>(['/api/vision-goals/all'], (old = []) =>
+        old.map(g => g.id === variables.id ? { ...g, completed: variables.completed } : g)
+      );
+      invalidateAll();
       if (variables.completed === true && data && data.title) {
         objectiveToast(data.title, data.rewardText, data.bonusXp);
       }
@@ -256,9 +261,14 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
       console.log(`[GOAL-DELETE] Sending DELETE id=${id}`);
       await apiRequest(`/api/vision-goals/${id}`, { method: 'DELETE' });
     },
-    onSuccess: async () => {
-      console.log(`[GOAL-DELETE] onSuccess, refetching...`);
-      await refetchAll();
+    onSuccess: (_data, id) => {
+      queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) =>
+        old.filter(g => g.id !== id)
+      );
+      queryClient.setQueryData<VisionGoal[]>(['/api/vision-goals/all'], (old = []) =>
+        old.filter(g => g.id !== id)
+      );
+      invalidateAll();
     },
     onError: (err) => {
       toast({
@@ -276,8 +286,8 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
         body: JSON.stringify({ ids }),
       });
     },
-    onSuccess: async () => {
-      await refetchAll();
+    onSuccess: () => {
+      invalidateAll();
     },
   });
 
@@ -435,6 +445,7 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
               onToggle={(id, completed) => toggleMutation.mutate({ id, completed })}
               onEdit={onEditGoal}
               onDelete={(id) => deleteMutation.mutate(id)}
+              isMutating={toggleMutation.isPending || deleteMutation.isPending}
               infoExpandedId={infoExpandedId}
               setInfoExpandedId={setInfoExpandedId}
               renderInfoPanel={renderInfoPanel}
@@ -479,7 +490,8 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
                   </button>
                   <button
                     onClick={() => deleteMutation.mutate(goal.id)}
-                    className="h-6 w-6 inline-flex items-center justify-center rounded border bg-red-500/20 border-red-500/50 text-red-400 hover:bg-red-500/30 transition-colors"
+                    disabled={deleteMutation.isPending || toggleMutation.isPending}
+                    className="h-6 w-6 inline-flex items-center justify-center rounded border bg-red-500/20 border-red-500/50 text-red-400 hover:bg-red-500/30 transition-colors disabled:opacity-50"
                   >
                     <Trash2 className="h-3 w-3" />
                   </button>
