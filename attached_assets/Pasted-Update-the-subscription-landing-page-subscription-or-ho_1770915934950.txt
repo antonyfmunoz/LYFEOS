@@ -1,0 +1,243 @@
+Update the subscription landing page (/subscription or home page) to match our existing LYFEOS design system and styling. Use the same colors, typography, buttons, spacing, and components that are already in the app.
+
+---
+
+HEADER:
+
+- Fixed at top, same style as app header
+- Left: LYFEOS logo/text
+- Right: "Login" button (links to /login)
+- Make it sticky on scroll
+
+---
+
+HERO SECTION (Above Fold):
+
+Two columns (60/40 split, stack on mobile):
+
+LEFT COLUMN:
+- Headline: "Stop Juggling 5 Apps. Build Your Life OS."
+- Subheadline: "90 minutes to define who you are and what you're building. $29/month to run your entire life."
+- Primary CTA button: "Start Your 7-Day Free Trial" (links to /signup)
+- Small text below: "No credit card required • Cancel anytime"
+- Social proof: "Trusted by 500+ founders, creators, and knowledge workers"
+
+RIGHT COLUMN:
+- Dashboard screenshot showing Stats HUD + Mission Zone
+- (Use placeholder with border if screenshot not available)
+
+---
+
+PROBLEM SECTION:
+
+Headline: "You're Not Lazy. You're Scattered."
+
+3 cards in a row (stack on mobile):
+
+Card 1:
+- Icon: 🔀
+- Title: "5 productivity apps, zero integration"
+- Text: "Notion for notes. Todoist for tasks. Apple Notes for quick capture. Paper journal for reflection. Nothing talks to each other."
+
+Card 2:
+- Icon: 😵
+- Title: "Goals everywhere, progress nowhere"
+- Text: "You have goals for work, health, relationships, projects. But they're scattered across apps, notes, and your head."
+
+Card 3:
+- Icon: 🤯
+- Title: "You know WHAT you want"
+- Text: "You're not confused about your goals. You just can't stay organized enough to actually GET there."
+
+---
+
+SOLUTION SECTION:
+
+Headline: "One System. Your Identity. Your Goals. Your Daily Actions."
+
+3 benefit blocks (alternate image left/right):
+
+Block 1:
+- Badge: 🎯
+- Title: "Know Yourself"
+- Text: "Complete 8 missions to calibrate your archetype, values, and vision. LYFEOS generates your Character Affirmation—a 300-word synthesis of who you are and what you're building. Not a template. Your identity."
+- Image: Character Affirmation screenshot (or placeholder)
+
+Block 2:
+- Badge: 📊
+- Title: "Track Everything"
+- Text: "8 stats across all life domains: Level/XP, Streak, Efficiency, Energy, Health, Wealth, Time, Attention. One dashboard replaces 5 apps. No context switching. No data silos."
+- Image: Dashboard Stats HUD screenshot (or placeholder)
+
+Block 3:
+- Badge: 🤖
+- Title: "AI That Knows You"
+- Text: "NOVA isn't ChatGPT with a prompt. It has read your entire profile: your values, goals, patterns, and constraints. It creates missions, updates your logs, and helps you execute—based on who you actually are."
+- Image: NOVA chat screenshot (or placeholder)
+
+---
+
+HOW IT WORKS SECTION:
+
+Headline: "How It Works"
+
+3 steps (horizontal on desktop, stack on mobile):
+
+Step 1:
+- Number: 1
+- Title: "Complete 8 Missions"
+- Text: "90 minutes of focused questions. Map your identity, values, craft, capacity, and vision. No fluff. No busywork."
+- Image: Mission screenshot (or placeholder)
+
+Step 2:
+- Number: 2
+- Title: "LYFEOS Builds Your System"
+- Text: "Based on your answers, NOVA generates your Character Affirmation and populates your dashboard with missions aligned to your goals."
+- Image: Character Affirmation (or placeholder)
+
+Step 3:
+- Number: 3
+- Title: "Run Your Life from One Dashboard"
+- Text: "Track 8 stats. Complete missions. Log daily data. Ask NOVA for help. All from one place. No more context switching."
+- Image: Dashboard screenshot (or placeholder)
+
+---
+
+TESTIMONIALS SECTION:
+
+Headline: "What Early Users Say"
+
+3 testimonial cards:
+
+Testimonial 1:
+- Quote: "I spent $5,000 on coaching last year. LYFEOS gives me 80% of the same clarity for $29/month. The Character Affirmation alone is worth 3 coaching sessions."
+- Name: "Alex M."
+- Title: "Product Manager, SF"
+
+Testimonial 2:
+- Quote: "I've tried Notion, Todoist, Things, and Obsidian. LYFEOS is the first system that actually knows me. It's not a blank canvas—it's a system built around who I am."
+- Name: "Jordan K."
+- Title: "Entrepreneur, NYC"
+
+Testimonial 3:
+- Quote: "My 8-year-old can now explain my core values and 5-year vision. That's how clear LYFEOS made my goals. It's not just organization—it's self-knowledge."
+- Name: "Sam L."
+- Title: "Creative Director, London"
+
+---
+
+PRICING SECTION:
+
+Headline: "Simple, Transparent Pricing"
+Subhead: "One plan. Everything included. Cancel anytime."
+
+Two pricing cards side-by-side (stack on mobile):
+
+CARD 1 - MONTHLY:
+- Label: "Monthly"
+- Price: "$29/month"
+- Billed monthly
+- Features list:
+  ✓ Complete 8-Mission Awakening Protocol
+  ✓ Full Dashboard (7 Logs, 8 Stats)
+  ✓ NOVA AI Assistant (Unlimited)
+  ✓ Unlimited Mission Creation
+  ✓ Character Affirmation Generation
+  ✓ Web App Access
+  ✓ Mobile Apps (Coming Q3 2026)
+- CTA button: "Start 7-Day Free Trial"
+- Below: "No credit card required"
+
+CARD 2 - ANNUAL (Highlighted/Recommended):
+- Badge: "Save $58" or "2 Months Free"
+- Label: "Annual"
+- Price: "$290/year"
+- Billed annually ($24.17/month)
+- Features list:
+  ✓ Complete 8-Mission Awakening Protocol
+  ✓ Full Dashboard (7 Logs, 8 Stats)
+  ✓ NOVA AI Assistant (Unlimited)
+  ✓ Unlimited Mission Creation
+  ✓ Character Affirmation Generation
+  ✓ Web App Access
+  ✓ Mobile Apps (Coming Q3 2026)
+- CTA button: "Start 7-Day Free Trial"
+- Below: "No credit card required"
+
+Note below cards: "Cancel anytime. Full refund within 30 days."
+
+---
+
+FAQ SECTION:
+
+Headline: "Frequently Asked Questions"
+
+Q1: "How is LYFEOS different from Notion?"
+A: "Notion is a blank canvas. LYFEOS is a complete system built around your identity. You spend 90 minutes in onboarding, and the system knows who you are, what you want, and what you're working on. No templates. No empty pages. It's designed for you."
+
+Q2: "Do I need to be a productivity nerd?"
+A: "No. LYFEOS is for anyone who's scattered—not because they're lazy, but because they have goals in multiple domains and no unified system. If you've tried 3+ productivity apps and still feel disorganized, LYFEOS is for you."
+
+Q3: "What if I stop using it?"
+A: "You can export all your data anytime. Your missions, logs, and profile are yours. We're month-to-month—cancel whenever. But most users stick because it becomes their second brain."
+
+Q4: "Is my data private?"
+A: "Yes. Your data is encrypted at rest and never shared. We don't sell data. We don't train AI models on your content. Your life OS is yours."
+
+Q5: "When is the mobile app coming?"
+A: "Native iOS and Android apps launch Q3 2026. Beta users get early access. The web app works on mobile browsers now (responsive design), but native apps will add quick-capture features."
+
+Q6: "Can I switch between monthly and annual?"
+A: "Yes. You can upgrade to annual anytime to get the discount. If you downgrade from annual to monthly, you'll keep annual access until your billing period ends."
+
+Q7: "What happens after the 7-day trial?"
+A: "After 7 days, you'll be charged for your chosen plan (monthly or annual). You can cancel anytime during the trial with no charge."
+
+---
+
+FINAL CTA SECTION:
+
+Full-width accent background section:
+- Headline: "Ready to Stop Being Scattered?"
+- Subhead: "90 minutes to build your system. $29/month or $290/year to run your life."
+- CTA button: "Start Your 7-Day Free Trial"
+- Below: "No credit card required"
+
+---
+
+FOOTER:
+
+3 columns:
+
+Column 1:
+- LYFEOS logo
+- Tagline: "Your Life Operating System"
+
+Column 2:
+- Login
+- Privacy Policy
+- Terms of Service
+- Contact
+
+Column 3:
+- Twitter/X
+- LinkedIn
+- Email: hello@lyfeos.com
+
+Copyright: "© 2026 LYFEOS. All rights reserved."
+
+---
+
+REQUIREMENTS:
+
+1. Match the existing app's design system exactly (colors, typography, spacing, buttons, panels)
+2. Use the same components/patterns from the rest of the app
+3. Make fully mobile-responsive
+4. Login button in header links to /login
+5. All CTAs link to /signup or /onboarding with appropriate plan selection
+6. Highlight the annual plan as "recommended" or "best value"
+7. Use placeholders for screenshots if actual images aren't available
+8. Make it fast-loading and smooth
+9. Add proper meta tags for SEO
+
+Generate the landing page matching our existing LYFEOS style.
