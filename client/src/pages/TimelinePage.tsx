@@ -8,6 +8,23 @@ import { usePageTitle } from '@/hooks/use-page-title';
 import { useAuth } from '@/lib/authContext';
 import { useQuery } from '@tanstack/react-query';
 
+const ONBOARDING_MISSIONS = [
+  { id: 0, title: "Access & Quickstart", description: "Log in, explore the dashboard, and complete your first quick mission to get familiar with LYFEOS." },
+  { id: 1, title: "Archetype Calibration", description: "Discover your player archetype through a guided assessment to personalize your LYFEOS experience." },
+  { id: 2, title: "Identity & Direction", description: "Define your core identity pillars and set your life direction compass." },
+  { id: 3, title: "Craft & Mastery", description: "Identify your key skills and craft areas to track mastery progression." },
+  { id: 4, title: "Capacity & Constraints", description: "Set your daily energy, attention, and time capacity limits for balanced resource management." },
+  { id: 5, title: "Baselines & States", description: "Establish your baseline stats and current life state for accurate tracking." },
+  { id: 6, title: "History & Roots", description: "Record your background and personal history to inform your growth trajectory." },
+  { id: 7, title: "Systems & Rituals", description: "Set up your daily rituals and recurring systems for consistent progress." },
+];
+
+function getOnboardingDescription(title: string, dbDescription: string): string {
+  const cleanTitle = title.replace(/^Onboarding:\s*/, '');
+  const match = ONBOARDING_MISSIONS.find(m => m.title === cleanTitle);
+  return match?.description || dbDescription;
+}
+
 interface UserCategoryOption {
   id: number;
   value: string;
@@ -161,7 +178,7 @@ export default function TimelinePage() {
         rawDate: d,
         time: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`,
         title: quest.title.replace(/^Onboarding:\s*/, ''),
-        description: quest.description || '',
+        description: quest.category === 'onboarding' ? getOnboardingDescription(quest.title, quest.description || '') : (quest.description || ''),
         type: 'mission',
         quest,
       });
@@ -564,7 +581,9 @@ export default function TimelinePage() {
                         <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 space-y-2 opacity-50">
                           {node.items[0]?.quest?.description && (
                             <p className="text-muted-foreground">
-                              {node.items[0].quest.description.replace(/^Completed onboarding mission "(.+)"$/, 'Completed the "$1" mission')}
+                              {node.items[0].quest.category === 'onboarding'
+                                ? getOnboardingDescription(node.items[0].quest.title, node.items[0].quest.description)
+                                : node.items[0].quest.description}
                             </p>
                           )}
                           <div className="border-t border-primary/10 pt-2 space-y-1">

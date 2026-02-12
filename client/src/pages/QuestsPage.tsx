@@ -1851,7 +1851,11 @@ export default function QuestsPage() {
                           {terminatedInfoOpen[quest.id] && (
                             <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 opacity-60 space-y-2">
                               {quest.description && (
-                                <p className="text-muted-foreground">{quest.description}</p>
+                                <p className="text-muted-foreground">
+                                  {quest.category === 'onboarding'
+                                    ? (ONBOARDING_MISSIONS.find(m => m.title === quest.title.replace(/^Onboarding:\s*/, ''))?.description || quest.description)
+                                    : quest.description}
+                                </p>
                               )}
                               <div className="border-t border-primary/10 pt-2 space-y-1">
                                 {quest.category && quest.category !== "general" && quest.category !== "onboarding" && (
