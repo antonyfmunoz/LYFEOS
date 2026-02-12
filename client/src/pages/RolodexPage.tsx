@@ -4,7 +4,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { Contact } from '@shared/schema';
-import { queryClient, apiRequest } from '@/lib/queryClient';
+import { queryClient } from '@/lib/queryClient';
 import {
   ArrowLeft, Users, Star, Search, Plus, Briefcase, Mail, Phone,
   MapPin, Trash2, Edit3, X, ChevronDown, Calendar, SlidersHorizontal,
@@ -141,10 +141,6 @@ export default function RolodexPage() {
 
   const contacts = contactsData?.contacts || [];
 
-  const refetchContacts = async () => {
-    await queryClient.refetchQueries({ queryKey: contactsQueryKey });
-  };
-
   const createMutation = useMutation({
     mutationFn: async (data: ContactFormData) => {
       const body: any = { ...data };
@@ -171,10 +167,19 @@ export default function RolodexPage() {
       if (!body.trustLevel) delete body.trustLevel;
       if (!body.strengths) delete body.strengths;
       if (!body.contactFrequency) delete body.contactFrequency;
-      return apiRequest('/api/contacts', { method: 'POST', body: JSON.stringify(body) });
+      const res = await fetch('/api/contacts', {
+        method: 'POST',
+        body: JSON.stringify(body),
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to create contact');
+      return res.json();
     },
-    onSuccess: async () => {
-      await refetchContacts();
+    onSuccess: (data) => {
+      queryClient.setQueryData(contactsQueryKey, (old: { contacts: Contact[] } | undefined) => ({
+        contacts: [...(old?.contacts || []), data.contact],
+      }));
       closeForm();
     },
   });
@@ -183,20 +188,32 @@ export default function RolodexPage() {
     mutationFn: async ({ id, data }: { id: number; data: Partial<ContactFormData> }) => {
       const body: any = { ...data };
       if (body.birthday === '') body.birthday = null;
-      return apiRequest(`/api/contacts/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+      const res = await fetch(`/api/contacts/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to update contact');
+      return res.json();
     },
-    onSuccess: async () => {
-      await refetchContacts();
+    onSuccess: (data) => {
+      queryClient.setQueryData(contactsQueryKey, (old: { contacts: Contact[] } | undefined) => ({
+        contacts: (old?.contacts || []).map(c => c.id === data.contact.id ? data.contact : c),
+      }));
       closeForm();
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest(`/api/contacts/${id}`, { method: 'DELETE' });
+      await fetch(`/api/contacts/${id}`, { method: 'DELETE', credentials: 'include' });
+      return id;
     },
-    onSuccess: async () => {
-      await refetchContacts();
+    onSuccess: (deletedId) => {
+      queryClient.setQueryData(contactsQueryKey, (old: { contacts: Contact[] } | undefined) => ({
+        contacts: (old?.contacts || []).filter(c => c.id !== deletedId),
+      }));
       setDeleteConfirmId(null);
       setExpandedId(null);
     },
@@ -204,10 +221,14 @@ export default function RolodexPage() {
 
   const toggleFavoriteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest(`/api/contacts/${id}/toggle-favorite`, { method: 'POST' });
+      const res = await fetch(`/api/contacts/${id}/toggle-favorite`, { method: 'POST', credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to toggle favorite');
+      return res.json();
     },
-    onSuccess: async () => {
-      await refetchContacts();
+    onSuccess: (data) => {
+      queryClient.setQueryData(contactsQueryKey, (old: { contacts: Contact[] } | undefined) => ({
+        contacts: (old?.contacts || []).map(c => c.id === data.contact.id ? data.contact : c),
+      }));
     },
   });
 
