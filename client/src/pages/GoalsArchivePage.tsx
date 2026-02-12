@@ -636,12 +636,10 @@ export default function GoalsArchivePage() {
           bonusXp: 0,
         }),
       });
-      await Promise.all([
-        queryClient.refetchQueries({ queryKey: ['/api/vision-goals', createFormData.category] }),
-        queryClient.refetchQueries({ queryKey: ['/api/vision-goals/all'] }),
-      ]);
       setIsCreateOpen(false);
       setCreateFormData(defaultFormData);
+      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals', createFormData.category] });
+      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
     } catch (error) {
       console.error("Error creating goal:", error);
     } finally {
@@ -661,15 +659,13 @@ export default function GoalsArchivePage() {
           rewardText: editFormData.rewardText.trim() || null,
         }),
       });
-      await Promise.all([
-        ...CATEGORY_OPTIONS.map(cat =>
-          queryClient.refetchQueries({ queryKey: ['/api/vision-goals', cat.value] })
-        ),
-        queryClient.refetchQueries({ queryKey: ['/api/vision-goals/all'] }),
-      ]);
       setIsEditOpen(false);
       setEditFormData(defaultFormData);
       setEditingGoalId(null);
+      CATEGORY_OPTIONS.forEach(cat =>
+        queryClient.invalidateQueries({ queryKey: ['/api/vision-goals', cat.value] })
+      );
+      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
     } catch (error) {
       console.error("Error updating goal:", error);
     } finally {
