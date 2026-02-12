@@ -353,7 +353,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         flowStyle: "hyperfocus",
         coreMotivation: "growth",
         setupMissionStatus: "not_started",
-        primaryThemeColor: "#ecc94b",
+        primaryThemeColor: "#ffe03d",
         onboardingCompleted: false
       });
 
@@ -474,7 +474,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         flowStyle: "hyperfocus",
         coreMotivation: "growth",
         setupMissionStatus: "not_started",
-        primaryThemeColor: "#ecc94b",
+        primaryThemeColor: "#ffe03d",
         onboardingCompleted: false
       });
       

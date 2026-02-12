@@ -9,11 +9,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 const avatarColors = [
   "#00e0ff",
-  "#f56565",
-  "#ed8936",
-  "#ecc94b",
-  "#48bb78",
-  "#9f7aea",
+  "#ff2d95",
+  "#ff6b2b",
+  "#ffe03d",
+  "#39ff14",
+  "#b44dff",
 ];
 
 const hexToRgba = (hex: string, alpha: number) => {

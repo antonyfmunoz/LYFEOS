@@ -193,12 +193,12 @@ function PersistentProfileSection({ section, onSave }: { section: { id: string; 
 
 // Chakra colors for stats (used for theme colors)
 const STAT_COLORS = [
-  "#00e0ff", // cyan - Time Tokens (Throat Chakra)
-  "#f56565", // red - Health Points (Root Chakra)
-  "#ed8936", // orange - Energy Points (Sacral Chakra)
-  "#ecc94b", // yellow - Efficiency (Solar Plexus Chakra)
-  "#48bb78", // green - Streak (Heart Chakra)
-  "#9f7aea", // purple - Experience (Crown Chakra)
+  "#00e0ff", // neon cyan - Time Tokens
+  "#ff2d95", // neon pink - Health Points
+  "#ff6b2b", // neon orange - Energy Points
+  "#ffe03d", // neon yellow - Efficiency
+  "#39ff14", // neon green - Streak
+  "#b44dff", // neon purple - Experience
 ];
 
 interface UserProfile {
