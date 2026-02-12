@@ -4,7 +4,6 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { Contact } from '@shared/schema';
-import { queryClient } from '@/lib/queryClient';
 import {
   ArrowLeft, Users, Star, Search, Plus, Briefcase, Mail, Phone,
   MapPin, Trash2, Edit3, X, ChevronDown, Calendar, SlidersHorizontal,
@@ -131,15 +130,19 @@ export default function RolodexPage() {
   const [formData, setFormData] = useState<ContactFormData>(emptyForm);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [contacts, setContacts] = useState<Contact[]>([]);
 
-  const contactsQueryKey = [`/api/users/${user?.id}/contacts`];
-
-  const { data: contactsData, isLoading } = useQuery<{ contacts: Contact[] }>({
-    queryKey: contactsQueryKey,
+  const { isLoading } = useQuery<{ contacts: Contact[] }>({
+    queryKey: [`/api/users/${user?.id}/contacts`],
     enabled: !!user?.id,
+    queryFn: async () => {
+      const res = await fetch(`/api/users/${user?.id}/contacts`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch contacts');
+      const data = await res.json();
+      setContacts(data.contacts || []);
+      return data;
+    },
   });
-
-  const contacts = contactsData?.contacts || [];
 
   const createMutation = useMutation({
     mutationFn: async (data: ContactFormData) => {
@@ -177,9 +180,7 @@ export default function RolodexPage() {
       return res.json();
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(contactsQueryKey, (old: { contacts: Contact[] } | undefined) => ({
-        contacts: [...(old?.contacts || []), data.contact],
-      }));
+      setContacts(prev => [...prev, data.contact]);
       closeForm();
     },
   });
@@ -198,9 +199,7 @@ export default function RolodexPage() {
       return res.json();
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(contactsQueryKey, (old: { contacts: Contact[] } | undefined) => ({
-        contacts: (old?.contacts || []).map(c => c.id === data.contact.id ? data.contact : c),
-      }));
+      setContacts(prev => prev.map(c => c.id === data.contact.id ? data.contact : c));
       closeForm();
     },
   });
@@ -211,9 +210,7 @@ export default function RolodexPage() {
       return id;
     },
     onSuccess: (deletedId) => {
-      queryClient.setQueryData(contactsQueryKey, (old: { contacts: Contact[] } | undefined) => ({
-        contacts: (old?.contacts || []).filter(c => c.id !== deletedId),
-      }));
+      setContacts(prev => prev.filter(c => c.id !== deletedId));
       setDeleteConfirmId(null);
       setExpandedId(null);
     },
@@ -226,9 +223,7 @@ export default function RolodexPage() {
       return res.json();
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(contactsQueryKey, (old: { contacts: Contact[] } | undefined) => ({
-        contacts: (old?.contacts || []).map(c => c.id === data.contact.id ? data.contact : c),
-      }));
+      setContacts(prev => prev.map(c => c.id === data.contact.id ? data.contact : c));
     },
   });
 
