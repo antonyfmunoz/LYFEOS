@@ -140,9 +140,12 @@ function DraggableObjective({
           <GripVertical className="h-4 w-4" />
         </div>
         <button
-          onClick={() => onToggle(goal.id, true)}
-          className="shrink-0 h-5 w-5 rounded-full border-2 border-primary/40 hover:border-primary hover:bg-primary/20 transition-colors flex items-center justify-center touch-manipulation"
-        />
+          onClick={(e) => { e.stopPropagation(); e.preventDefault(); onToggle(goal.id, true); }}
+          className="shrink-0 relative h-8 w-8 flex items-center justify-center touch-manipulation"
+          style={{ WebkitTapHighlightColor: 'transparent' }}
+        >
+          <span className="h-5 w-5 rounded-full border-2 border-primary/40 hover:border-primary hover:bg-primary/20 transition-colors block" />
+        </button>
         <div className="flex-1 min-w-0">
           <span className="text-sm text-foreground">{goal.title}</span>
           {(goal.rewardText || goal.bonusXp > 0) && (
@@ -217,13 +220,16 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
 
   const toggleMutation = useMutation({
     mutationFn: async ({ id, completed }: { id: number; completed: boolean }) => {
+      console.log(`[GOAL-TOGGLE] Sending PATCH id=${id}, completed=${completed}`);
       const result = await apiRequest<VisionGoal & { xpAwarded?: number }>(`/api/vision-goals/${id}`, {
         method: 'PATCH',
         body: JSON.stringify({ completed }),
       });
+      console.log(`[GOAL-TOGGLE] Response:`, JSON.stringify(result));
       return result;
     },
     onMutate: async ({ id, completed }) => {
+      console.log(`[GOAL-TOGGLE] onMutate id=${id}, completed=${completed}`);
       await queryClient.cancelQueries({ queryKey });
       await queryClient.cancelQueries({ queryKey: allGoalsKey });
       const previous = queryClient.getQueryData<VisionGoal[]>(queryKey);
@@ -467,10 +473,14 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
             <div key={goal.id}>
               <div className="group flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-primary/5 transition-colors">
                 <button
-                  onClick={() => toggleMutation.mutate({ id: goal.id, completed: false })}
-                  className="shrink-0 h-5 w-5 rounded-full border-2 border-primary/60 bg-primary/20 flex items-center justify-center hover:bg-primary/30 transition-colors touch-manipulation"
+                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); console.log(`[GOAL-TOGGLE] Uncomplete clicked id=${goal.id}`); toggleMutation.mutate({ id: goal.id, completed: false }); }}
+                  disabled={toggleMutation.isPending}
+                  className="shrink-0 relative h-8 w-8 flex items-center justify-center touch-manipulation disabled:opacity-50"
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
                 >
-                  <Check className="h-3 w-3 text-primary" />
+                  <span className="h-5 w-5 rounded-full border-2 border-primary/60 bg-primary/20 flex items-center justify-center hover:bg-primary/30 transition-colors">
+                    <Check className="h-3 w-3 text-primary" />
+                  </span>
                 </button>
                 <span className={cn("flex-1 text-sm line-through text-muted-foreground")}>{goal.title}</span>
                 <div className="flex gap-1">
