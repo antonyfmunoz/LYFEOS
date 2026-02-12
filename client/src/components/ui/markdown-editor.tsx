@@ -27,13 +27,18 @@ export function MarkdownEditor({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // Focus the textarea and set cursor position when entering edit mode
+  const autoResize = () => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = Math.max(textareaRef.current.scrollHeight, parseInt(minHeight)) + 'px';
+    }
+  };
+
   useEffect(() => {
     if (isEditing && textareaRef.current) {
       textareaRef.current.focus();
-      
-      // Initial bullet functionality completely disabled
       textareaRef.current.setSelectionRange(cursorPosition, cursorPosition);
+      autoResize();
     }
   }, [isEditing, cursorPosition, value, onChange]);
 
@@ -41,9 +46,8 @@ export function MarkdownEditor({
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     onChange(newValue);
-    
-    // Bullet handling completely disabled
     setCursorPosition(e.target.selectionStart || 0);
+    autoResize();
   };
 
   // Toggle to edit mode
@@ -201,7 +205,7 @@ export function MarkdownEditor({
             value={value}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
-            className="w-full h-full min-h-[100px] p-3 bg-transparent resize-none outline-none border-none rounded-md placeholder:text-muted-foreground/50 dark:text-[#D6F4FF] light:text-slate-700 text-base"
+            className="w-full p-3 bg-transparent resize-none outline-none border-none rounded-md placeholder:text-muted-foreground/50 dark:text-[#D6F4FF] light:text-slate-700 text-base overflow-hidden"
             placeholder={placeholder}
             style={{ minHeight }}
           />
