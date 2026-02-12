@@ -47,6 +47,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import LoginSuccessPage from "./pages/LoginSuccessPage";
 import SubscriptionPage from "./pages/SubscriptionPage";
 import RolodexPage from "./pages/RolodexPage";
+import PWAInstallPrompt from "./components/PWAInstallPrompt";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -469,6 +470,7 @@ function App() {
                 <VoiceOverlay />
                 <CelebrationOverlay />
                 <Toaster />
+                <PWAInstallPrompt />
               </DndProvider>
             </ThemeProvider>
           </LYFEOSProvider>

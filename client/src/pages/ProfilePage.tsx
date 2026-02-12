@@ -7,6 +7,7 @@ import { getRank } from "@/lib/ranks";
 import { useAuth } from "@/lib/authContext";
 import { useTheme } from "@/lib/themeContext";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import CompactStatsWidget from "@/components/dashboard/CompactStatsWidget";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -220,6 +221,7 @@ export default function ProfilePage() {
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const pushNotifs = usePushNotifications();
 
   const PROFILE_TOUR_STEPS: TutorialStep[] = [
     {
@@ -1460,57 +1462,92 @@ export default function ProfilePage() {
               ) : null}
             </div>
             
-            {/* Notifications toggle */}
+            {/* Push Notifications */}
             <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
               <div className="flex items-center gap-2 mb-2">
                 <span className="material-icons text-primary text-sm">notifications</span>
-                <Label className="text-sm text-foreground">Notifications</Label>
+                <Label className="text-sm text-foreground">Push Notifications</Label>
               </div>
               <p className="text-xs text-muted-foreground mb-3">
-                Enable or disable system notifications.
+                Get notified about mission reminders, streak alerts, and milestone completions — even when the app is closed.
               </p>
               <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
                 <div className="flex items-center">
-                  <span className="material-icons text-primary text-sm mr-2">notifications</span>
-                  <span className="text-sm">Notifications</span>
+                  <span className="material-icons text-primary text-sm mr-2">notifications_active</span>
+                  <div>
+                    <span className="text-sm">Push Notifications</span>
+                    {!pushNotifs.isSupported && (
+                      <p className="text-xs text-muted-foreground">Not supported in this browser</p>
+                    )}
+                    {pushNotifs.permission === 'denied' && (
+                      <p className="text-xs text-red-400">Blocked — enable in browser settings</p>
+                    )}
+                  </div>
                 </div>
                 <button 
+                  disabled={!pushNotifs.isSupported || pushNotifs.permission === 'denied' || pushNotifs.loading}
                   onClick={async () => {
-                    if (!user?.id) return;
-                    
-                    const newValue = !stats.notificationsEnabled;
-                    
-                    try {
-                      const response = await fetch(`/api/users/${user.id}/stats`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ notificationsEnabled: newValue }),
-                        credentials: "include"
-                      });
-                      
-                      if (!response.ok) throw new Error("Failed to update setting");
-                      
-                      updateUserStats({
-                        ...stats,
-                        notificationsEnabled: newValue,
-                      });
-                    } catch (error) {
-                      console.error("Error updating notification settings:", error);
+                    if (pushNotifs.isSubscribed) {
+                      const ok = await pushNotifs.unsubscribe();
+                      if (ok) {
+                        toast({ title: "Notifications disabled", description: "You won't receive push notifications anymore." });
+                        if (user?.id) {
+                          try {
+                            await fetch(`/api/users/${user.id}/stats`, {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ notificationsEnabled: false }),
+                              credentials: "include"
+                            });
+                            updateUserStats({ ...stats, notificationsEnabled: false });
+                          } catch {}
+                        }
+                      }
+                    } else {
+                      const ok = await pushNotifs.subscribe();
+                      if (ok) {
+                        toast({ title: "Notifications enabled!", description: "You'll receive mission reminders, streak alerts, and more." });
+                        if (user?.id) {
+                          try {
+                            await fetch(`/api/users/${user.id}/stats`, {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ notificationsEnabled: true }),
+                              credentials: "include"
+                            });
+                            updateUserStats({ ...stats, notificationsEnabled: true });
+                          } catch {}
+                        }
+                      } else if (pushNotifs.permission === 'denied') {
+                        toast({ title: "Notifications blocked", description: "Please enable notifications in your browser settings.", variant: "destructive" });
+                      }
                     }
                   }}
-                  className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
-                    stats.notificationsEnabled ? 'bg-primary/30' : 'bg-card'
+                  className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 disabled:opacity-40 ${
+                    pushNotifs.isSubscribed ? 'bg-primary/30' : 'bg-card'
                   }`}
-                  aria-pressed={stats.notificationsEnabled}
+                  aria-pressed={pushNotifs.isSubscribed}
                   role="switch"
                 >
                   <div 
                     className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
-                      stats.notificationsEnabled ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
+                      pushNotifs.isSubscribed ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
                     }`}
                   ></div>
                 </button>
               </div>
+              {pushNotifs.isSubscribed && (
+                <button
+                  onClick={async () => {
+                    const ok = await pushNotifs.sendTestNotification();
+                    if (ok) toast({ title: "Test sent!", description: "You should receive a test notification shortly." });
+                    else toast({ title: "Test failed", description: "Could not send test notification.", variant: "destructive" });
+                  }}
+                  className="mt-2 w-full text-xs py-1.5 px-3 rounded border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
+                >
+                  Send Test Notification
+                </button>
+              )}
             </div>
             
             {/* Primary Theme Color Selector */}

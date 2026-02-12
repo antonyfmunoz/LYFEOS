@@ -108,6 +108,20 @@ Preferred communication style: Simple, everyday language.
 └── migrations/       # Database migrations
 ```
 
+### Progressive Web App (PWA)
+- **Manifest**: `client/public/manifest.json` — app name, icons (192x192, 512x512), standalone display, dark background
+- **Service Worker**: `client/public/sw.js` — offline caching (network-first with cache fallback), push notification handling, notification click routing
+- **Registration**: In `client/src/main.tsx`, service worker registered on page load
+- **Install Prompt**: `client/src/components/PWAInstallPrompt.tsx` — smart banner for mobile users (7-day dismissal, iOS share instructions, beforeinstallprompt for Android/Chrome)
+- **Push Notifications**: Full stack implementation:
+  - `client/src/hooks/usePushNotifications.ts`: subscribe/unsubscribe/test hook using Web Push API
+  - `server/notificationScheduler.ts`: Periodic scheduler (60s) for mission reminders, hourly streak reminders at 8 PM, plus `sendPushToUser()` helper for event-driven notifications
+  - Push routes: `GET /api/push/vapid-public-key`, `POST /api/push/subscribe`, `DELETE /api/push/subscribe`, `POST /api/push/test`
+  - Event triggers: Mission completion, level-up, milestone/goal completion (in `server/routes.ts`)
+  - VAPID keys stored as secrets: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
+  - DB table: `push_subscriptions` (userId, endpoint, p256dh, auth)
+- **Settings**: Push notification toggle in Profile page Settings widget uses `usePushNotifications` hook for real browser push subscription management
+
 ### Payment Processing
 - **Stripe Integration**: Subscription-based payments via Replit Stripe connector
   - Webhook route registered BEFORE express.json() in `server/index.ts`

@@ -12,6 +12,7 @@ import multer from "multer";
 import Anthropic from "@anthropic-ai/sdk";
 import { sendVerificationEmail, sendPasswordResetEmail, send2FAVerificationEmail, send2FAVerificationSMS } from "./email";
 import webpush from "web-push";
+import { sendPushToUser } from "./notificationScheduler";
 import { stripeService } from "./stripeService";
 import { getStripePublishableKey } from "./stripeClient";
 import { 
@@ -1790,6 +1791,18 @@ ${questData.description ? `Description: ${questData.description}` : ''}`
       const userProfile = await storage.getUserProfile(quest.userId);
       const totalXP = userProfile?.totalXP || 0;
       
+      if (updatedQuest.completed) {
+        const xpGained = Math.floor(quest.experienceReward * ({ D: 1, C: 1.5, B: 2, A: 3, S: 5 }[quest.difficulty || 'D'] || 1));
+        sendPushToUser(quest.userId, {
+          title: levelUp ? "Level Up!" : "Mission Complete!",
+          body: levelUp
+            ? `${quest.title} completed! +${xpGained} XP — You leveled up!`
+            : `${quest.title} completed! +${xpGained} XP`,
+          tag: `quest-complete-${quest.id}`,
+          url: "/quests",
+        }).catch(() => {});
+      }
+
       return res.status(200).json({ 
         quest: updatedQuest,
         xpAwarded: updatedQuest.completed ? Math.floor(quest.experienceReward * ({ D: 1, C: 1.5, B: 2, A: 3, S: 5 }[quest.difficulty || 'D'] || 1)) : 0,
@@ -5788,6 +5801,15 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
             xpAwarded = bonusXp;
           }
         }
+      }
+
+      if (req.body.completed === true && !wasCompleted && xpAwarded > 0) {
+        sendPushToUser(userId, {
+          title: "Milestone Achieved!",
+          body: `${goal.title} completed! +${xpAwarded} bonus XP${goal.rewardText ? ` — Reward: ${goal.rewardText}` : ""}`,
+          tag: `goal-complete-${goal.id}`,
+          url: "/goals-archive",
+        }).catch(() => {});
       }
 
       res.json({ ...goal, xpAwarded });
