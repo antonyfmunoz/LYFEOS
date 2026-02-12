@@ -650,7 +650,9 @@ export default function GoalsArchivePage() {
       });
       setIsCreateOpen(false);
       setCreateFormData(defaultFormData);
-      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals', createFormData.category] });
+      CATEGORY_OPTIONS.forEach(cat =>
+        queryClient.invalidateQueries({ queryKey: ['/api/vision-goals', cat.value] })
+      );
       queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
     } catch (error) {
       console.error("Error creating goal:", error);
