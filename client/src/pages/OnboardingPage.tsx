@@ -1188,6 +1188,9 @@ export default function OnboardingPage() {
           skillsToAcquire: skillsToAcquire.split(",").map(s => s.trim()).filter(Boolean),
           learningStyle: { preference: learningPreference },
           practiceCadence: { hoursPerWeek: practiceHours },
+          domainsOfCompetence: knowledgeAreas.split(",").map(s => s.trim()).filter(Boolean),
+          integrationMethod: learningPreference,
+          activePhase: lifeStage || "Building",
         };
       case 4:
         return {
@@ -1199,6 +1202,7 @@ export default function OnboardingPage() {
           financialConstraints,
           moneyConfidence: { score: moneyConfidenceScore },
           moneyRelationship,
+          optimalEnvironment: physicalEnvironment,
         };
       case 5:
         return {
@@ -1212,6 +1216,10 @@ export default function OnboardingPage() {
           decisionMakingStyles,
           decisionMakingPrimary,
           shadowPatterns: { pattern: shadowPatternText },
+          primaryInstincts: dominantInstinctType ? [dominantInstinctType] : [],
+          nutritionRecovery: { nutritionalApproach: nutritionApproach },
+          decisionOrientation: decisionMakingPrimary,
+          stressResponse: copingEssential,
         };
       case 6:
         return {
