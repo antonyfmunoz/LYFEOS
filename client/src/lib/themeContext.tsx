@@ -162,7 +162,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     
     // Save preferences to localStorage
     localStorage.setItem('lyfeos-theme', 'dark');
-    localStorage.setItem('lyfeos-primary-color', primaryColor);
   }, [isDarkMode, primaryColor]);
 
   // Toggle dark mode function
@@ -182,7 +181,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // Set primary color function
   const setPrimaryColor = (color: string) => {
     setPrimaryColorState(color);
-    localStorage.setItem('lyfeos-primary-color', color);
     
     if (stats && updateUserStats) {
       updateUserStats({
