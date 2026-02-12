@@ -464,20 +464,20 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
                 streakToastFired.current = true;
                 const today = new Date().toDateString();
                 const lastStreakToastDate = localStorage.getItem("lyfeos_streak_toast_date");
-                if (lastStreakToastDate !== today && sessionStorage.getItem("lyfeos_login_toast_done") === "true") {
+                if (lastStreakToastDate !== today) {
                   let attempts = 0;
-                  const maxAttempts = 6;
-                  const showStreakAfterLogin = () => {
+                  const maxAttempts = 20;
+                  const showStreakAfterCeremony = () => {
                     attempts++;
-                    if (sessionStorage.getItem("lyfeos_login_toast_done") === "true") {
-                      sessionStorage.removeItem("lyfeos_login_toast_done");
+                    if (sessionStorage.getItem("lyfeos_ceremony_complete") === "true") {
+                      sessionStorage.removeItem("lyfeos_ceremony_complete");
                       localStorage.setItem("lyfeos_streak_toast_date", today);
-                      streakToast(dbStats.streakDays);
+                      setTimeout(() => streakToast(dbStats.streakDays), 800);
                     } else if (attempts < maxAttempts) {
-                      setTimeout(showStreakAfterLogin, 500);
+                      setTimeout(showStreakAfterCeremony, 500);
                     }
                   };
-                  setTimeout(showStreakAfterLogin, 2000);
+                  setTimeout(showStreakAfterCeremony, 1000);
                 }
               }
               

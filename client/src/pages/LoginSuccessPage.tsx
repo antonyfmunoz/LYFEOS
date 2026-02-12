@@ -7,12 +7,11 @@ export default function LoginSuccessPage() {
   useEffect(() => {
     sessionStorage.removeItem("login_success_username");
     sessionStorage.removeItem("login_success_new_user");
-    sessionStorage.setItem("lyfeos_login_toast_done", "true");
-
     const today = new Date().toDateString();
     const lastCeremonyDate = localStorage.getItem("lyfeos_ceremony_date");
 
     if (lastCeremonyDate === today) {
+      sessionStorage.setItem("lyfeos_ceremony_complete", "true");
       navigate("/dashboard", { replace: true });
     } else {
       localStorage.setItem("lyfeos_ceremony_date", today);

@@ -439,19 +439,8 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
 
   return (
     <div className="space-y-3">
-      <div className="flex justify-end">
-        <Button
-          size="sm"
-          onClick={() => onCreateGoal(category)}
-          className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 shrink-0 gap-1"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Add
-        </Button>
-      </div>
-
       {goals.length === 0 && (
-        <p className="text-sm text-muted-foreground italic py-2">No mission objectives yet. Click "Add" to create your first one.</p>
+        <p className="text-sm text-muted-foreground italic py-2">No mission objectives yet. Use "Create Goal" above to add one.</p>
       )}
 
       {activeGoals.length > 0 && (

@@ -38,7 +38,7 @@ export default function CeremonyPage() {
       { delay: 3200, action: () => setStatsLoaded(prev => ({ ...prev, attention: true })) },
       { delay: 3700, action: () => setStatsLoaded(prev => ({ ...prev, efficiency: true })) },
       { delay: 4700, action: () => setPhase(2) },
-      { delay: 6700, action: () => navigate(destination) },
+      { delay: 6700, action: () => { sessionStorage.setItem("lyfeos_ceremony_complete", "true"); navigate(destination); } },
     ];
 
     const timeouts = phases.map(({ delay, action }) => 
