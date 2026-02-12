@@ -1,10 +1,19 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { ArrowLeft, CalendarClock, Milestone, CalendarDays, ZoomIn, ZoomOut, ChevronDown, Info, Calendar, Clock } from 'lucide-react';
+import { ArrowLeft, CalendarClock, ZoomIn, ZoomOut, ChevronDown, Info, Calendar, Clock } from 'lucide-react';
 import { Quest } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { useLYFEOS } from '@/lib/context';
 import { usePageTitle } from '@/hooks/use-page-title';
+import { useAuth } from '@/lib/authContext';
+import { useQuery } from '@tanstack/react-query';
+
+interface UserCategoryOption {
+  id: number;
+  value: string;
+  label: string;
+  description: string | null;
+}
 
 type TimelineItemType = 'mission' | 'event';
 
@@ -116,6 +125,11 @@ export default function TimelinePage() {
 
   const [, navigate] = useLocation();
   const { missionPages, events, quests } = useLYFEOS();
+  const { user } = useAuth();
+  const { data: userCategories = [] } = useQuery<UserCategoryOption[]>({
+    queryKey: ['/api/user-categories'],
+    enabled: !!user,
+  });
 
   const [zoomLevel, setZoomLevel] = useState<ZoomLevel>('life');
   const [focusYear, setFocusYear] = useState<number | null>(null);
@@ -489,99 +503,86 @@ export default function TimelinePage() {
                 />
 
                 {zoomLevel === 'day' ? (
-                  <div className="ml-2 py-2 pl-3 rounded-lg bg-background/10 border border-primary/10 hover:border-primary/30 transition-all">
-                    <div className="flex items-start gap-2">
-                      <div className="mt-0.5 flex-shrink-0">
-                        {node.items[0]?.type === 'mission' ? (
-                          <Milestone className="h-3.5 w-3.5 text-primary" />
-                        ) : (
-                          <CalendarDays className="h-3.5 w-3.5 text-primary" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            {node.sublabel && (
-                              <span className="text-[10px] font-mono text-primary/70">{node.sublabel}</span>
-                            )}
-                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary capitalize">
-                              {node.items[0]?.type}
+                  <div className="ml-2 glassmorphic rounded-xl p-4 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition neon-border">
+                    <div className="flex-grow">
+                      <div className="flex justify-between items-start">
+                        <h3 className="font-medium text-muted-foreground line-through">
+                          {node.label}
+                        </h3>
+                        <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                          {node.items[0]?.quest?.category && node.items[0].quest.category !== "general" && node.items[0].quest.category !== "onboarding" && (
+                            <span className="text-[10px] font-mono h-6 px-1.5 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary opacity-50 capitalize">
+                              {node.items[0].quest.category}
                             </span>
+                          )}
+                          {node.items[0]?.quest && (
+                            <span className="text-[10px] font-mono h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary opacity-50">
+                              {node.items[0].quest.difficulty || 'D'}
+                            </span>
+                          )}
+                          <button
+                            className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedInfoIds(prev => {
+                                const next = new Set(prev);
+                                if (next.has(node.key)) next.delete(node.key);
+                                else next.add(node.key);
+                                return next;
+                              });
+                            }}
+                          >
+                            <Info className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      {node.items[0]?.quest && (
+                        <div className="flex items-center gap-3 mt-1 flex-wrap opacity-50">
+                          <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((node.items[0].quest.energyCost ?? 0) / 1440) * 100).toFixed(1)}% ET</span>
+                          <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((node.items[0].quest.attentionCost ?? 0) / 1440) * 100).toFixed(1)}% AT</span>
+                          <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((node.items[0].quest.timeCost ?? 0) / 1440) * 100).toFixed(1)}% TT</span>
+                          <span className="text-primary text-xs font-mono whitespace-nowrap">+{Math.floor(node.items[0].quest.experienceReward * (difficultyMultipliers[node.items[0].quest.difficulty || 'D'] || 1))} XP</span>
+                        </div>
+                      )}
+                      {node.items[0]?.quest && (() => {
+                        const q = node.items[0].quest!;
+                        const hasSchedule = q.startDate || q.startTime || q.endDate || q.endTime;
+                        if (!hasSchedule) return null;
+                        const fmtDate = (ds: string) => { const [y, m, d] = ds.split('-').map(Number); return new Date(y, m-1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); };
+                        const fmtTime = (ts: string) => { const [h, mn] = ts.split(':'); const hr = parseInt(h); return `${hr % 12 || 12}:${mn} ${hr >= 12 ? 'PM' : 'AM'}`; };
+                        return (
+                          <div className="flex items-center gap-1 text-xs mt-1 flex-wrap text-muted-foreground opacity-50">
+                            {q.startDate && <span className="flex items-center gap-1 whitespace-nowrap"><Calendar className="h-3 w-3 flex-shrink-0" />{fmtDate(q.startDate)}</span>}
+                            {q.startTime && <span className="flex items-center gap-1 whitespace-nowrap"><Clock className="h-3 w-3 flex-shrink-0" />{fmtTime(q.startTime)}</span>}
+                            {(q.endDate || q.endTime) && <span className="text-primary flex-shrink-0">→</span>}
+                            {q.endDate && <span className="flex items-center gap-1 whitespace-nowrap"><Calendar className="h-3 w-3 flex-shrink-0" />{fmtDate(q.endDate)}</span>}
+                            {q.endTime && <span className="flex items-center gap-1 whitespace-nowrap"><Clock className="h-3 w-3 flex-shrink-0" />{fmtTime(q.endTime)}</span>}
                           </div>
-                          <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                            {node.items[0]?.quest && (
-                              <>
-                                {node.items[0].quest.category && node.items[0].quest.category !== "general" && node.items[0].quest.category !== "onboarding" && (
-                                  <span className="text-[10px] font-mono h-6 px-1.5 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary opacity-50 capitalize">
-                                    {node.items[0].quest.category}
-                                  </span>
-                                )}
-                                <span className="text-[10px] font-mono h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary opacity-50">
-                                  {node.items[0].quest.difficulty || 'D'}
-                                </span>
-                              </>
+                        );
+                      })()}
+                      {expandedInfoIds.has(node.key) && (
+                        <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 space-y-2 opacity-50">
+                          {node.items[0]?.quest?.description && (
+                            <p className="text-muted-foreground">
+                              {node.items[0].quest.description.replace(/^Completed onboarding mission "(.+)"$/, 'Completed the "$1" mission')}
+                            </p>
+                          )}
+                          <div className="border-t border-primary/10 pt-2 space-y-1">
+                            {node.items[0]?.quest?.category && node.items[0].quest.category !== "general" && node.items[0].quest.category !== "onboarding" && (
+                              <p className="text-muted-foreground text-xs">
+                                <span className="text-primary font-mono capitalize">{node.items[0].quest.category}</span> — {
+                                  categoryDescriptions[node.items[0].quest.category] || userCategories.find(uc => uc.value === node.items[0]?.quest?.category)?.description || 'Auto-classified mission category.'
+                                }
+                              </p>
                             )}
-                            <button
-                              className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setExpandedInfoIds(prev => {
-                                  const next = new Set(prev);
-                                  if (next.has(node.key)) next.delete(node.key);
-                                  else next.add(node.key);
-                                  return next;
-                                });
-                              }}
-                            >
-                              <Info className="h-3.5 w-3.5" />
-                            </button>
+                            {node.items[0]?.quest && (
+                              <p className="text-muted-foreground text-xs">
+                                <span className="text-primary font-mono">Rank {node.items[0].quest.difficulty || 'D'}</span> — {difficultyDescriptions[node.items[0].quest.difficulty || 'D']}
+                              </p>
+                            )}
                           </div>
                         </div>
-                        <h4 className="text-sm font-medium text-muted-foreground mt-0.5 truncate line-through">{node.label}</h4>
-                        {node.items[0]?.quest && (
-                          <div className="flex items-center gap-3 mt-1 flex-wrap opacity-50">
-                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((node.items[0].quest.energyCost ?? 0) / 1440) * 100).toFixed(1)}% ET</span>
-                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((node.items[0].quest.attentionCost ?? 0) / 1440) * 100).toFixed(1)}% AT</span>
-                            <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((node.items[0].quest.timeCost ?? 0) / 1440) * 100).toFixed(1)}% TT</span>
-                            <span className="text-primary text-xs font-mono whitespace-nowrap">+{Math.floor(node.items[0].quest.experienceReward * (difficultyMultipliers[node.items[0].quest.difficulty || 'D'] || 1))} XP</span>
-                          </div>
-                        )}
-                        {node.items[0]?.quest && (() => {
-                          const q = node.items[0].quest!;
-                          const hasSchedule = q.startDate || q.startTime || q.endDate || q.endTime;
-                          if (!hasSchedule) return null;
-                          const fmtDate = (ds: string) => { const [y, m, d] = ds.split('-').map(Number); return new Date(y, m-1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); };
-                          const fmtTime = (ts: string) => { const [h, mn] = ts.split(':'); const hr = parseInt(h); return `${hr % 12 || 12}:${mn} ${hr >= 12 ? 'PM' : 'AM'}`; };
-                          return (
-                            <div className="flex items-center gap-1 text-xs mt-1 flex-wrap text-muted-foreground opacity-50">
-                              {q.startDate && <span className="flex items-center gap-1 whitespace-nowrap"><Calendar className="h-3 w-3 flex-shrink-0" />{fmtDate(q.startDate)}</span>}
-                              {q.startTime && <span className="flex items-center gap-1 whitespace-nowrap"><Clock className="h-3 w-3 flex-shrink-0" />{fmtTime(q.startTime)}</span>}
-                              {(q.endDate || q.endTime) && <span className="text-primary flex-shrink-0">→</span>}
-                              {q.endDate && <span className="flex items-center gap-1 whitespace-nowrap"><Calendar className="h-3 w-3 flex-shrink-0" />{fmtDate(q.endDate)}</span>}
-                              {q.endTime && <span className="flex items-center gap-1 whitespace-nowrap"><Clock className="h-3 w-3 flex-shrink-0" />{fmtTime(q.endTime)}</span>}
-                            </div>
-                          );
-                        })()}
-                        {expandedInfoIds.has(node.key) && (
-                          <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 space-y-2 opacity-50">
-                            {node.items[0]?.description && (
-                              <p className="text-muted-foreground">{node.items[0].description}</p>
-                            )}
-                            {node.items[0]?.quest && (
-                              <div className="border-t border-primary/10 pt-2 space-y-1">
-                                {node.items[0].quest.category && node.items[0].quest.category !== "general" && node.items[0].quest.category !== "onboarding" && (
-                                  <p className="text-muted-foreground text-xs">
-                                    <span className="text-primary font-mono capitalize">{node.items[0].quest.category}</span> — {categoryDescriptions[node.items[0].quest.category] || 'Auto-classified mission category.'}
-                                  </p>
-                                )}
-                                <p className="text-muted-foreground text-xs">
-                                  <span className="text-primary font-mono">Rank {node.items[0].quest.difficulty || 'D'}</span> — {difficultyDescriptions[node.items[0].quest.difficulty || 'D']}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                      )}
                     </div>
                   </div>
                 ) : (
