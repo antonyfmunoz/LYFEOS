@@ -834,7 +834,7 @@ export default function TimelinePage() {
                       {expandedRoadmapBuckets.has(bucket.key) && (
                         <div className="mt-3 space-y-2 border-t border-primary/10 pt-3" onClick={(e) => e.stopPropagation()}>
                           {bucket.items.map((item) => (
-                            <div key={item.id} className="glassmorphic rounded-xl p-4 neon-border">
+                            <div key={item.id} className="glassmorphic rounded-xl p-4 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition border border-primary/10">
                               <div className="flex-grow">
                                 <div className="flex justify-between items-start">
                                   <h3 className="font-medium text-foreground">
