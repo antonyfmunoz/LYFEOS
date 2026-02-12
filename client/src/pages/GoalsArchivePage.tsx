@@ -140,9 +140,9 @@ function DraggableObjective({
           <GripVertical className="h-4 w-4" />
         </div>
         <button
-          onClick={(e) => { e.stopPropagation(); e.preventDefault(); onToggle(goal.id, true); }}
+          onClick={(e) => { e.stopPropagation(); e.preventDefault(); console.log(`[GOAL-TOGGLE] Complete clicked id=${goal.id}`); onToggle(goal.id, true); }}
           className="shrink-0 relative h-8 w-8 flex items-center justify-center touch-manipulation"
-          style={{ WebkitTapHighlightColor: 'transparent' }}
+          style={{ WebkitTapHighlightColor: 'transparent', zIndex: 10, position: 'relative' }}
         >
           <span className="h-5 w-5 rounded-full border-2 border-primary/40 hover:border-primary hover:bg-primary/20 transition-colors block" />
         </button>
@@ -194,6 +194,7 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
   const { toast } = useToast();
   const [expandedGoalId, setExpandedGoalId] = useState<number | null>(null);
   const [infoExpandedId, setInfoExpandedId] = useState<number | null>(null);
+  const [pendingToggleId, setPendingToggleId] = useState<number | null>(null);
 
   const queryKey = ['/api/vision-goals', category];
   const allGoalsKey = ['/api/vision-goals/all'];
@@ -230,6 +231,7 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
     },
     onMutate: async ({ id, completed }) => {
       console.log(`[GOAL-TOGGLE] onMutate id=${id}, completed=${completed}`);
+      setPendingToggleId(id);
       await queryClient.cancelQueries({ queryKey });
       await queryClient.cancelQueries({ queryKey: allGoalsKey });
       const previous = queryClient.getQueryData<VisionGoal[]>(queryKey);
@@ -255,6 +257,7 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
       });
     },
     onSettled: () => {
+      setPendingToggleId(null);
       queryClient.invalidateQueries({ queryKey });
       queryClient.invalidateQueries({ queryKey: allGoalsKey });
     },
@@ -474,9 +477,9 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
               <div className="group flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-primary/5 transition-colors">
                 <button
                   onClick={(e) => { e.stopPropagation(); e.preventDefault(); console.log(`[GOAL-TOGGLE] Uncomplete clicked id=${goal.id}`); toggleMutation.mutate({ id: goal.id, completed: false }); }}
-                  disabled={toggleMutation.isPending}
+                  disabled={pendingToggleId === goal.id}
                   className="shrink-0 relative h-8 w-8 flex items-center justify-center touch-manipulation disabled:opacity-50"
-                  style={{ WebkitTapHighlightColor: 'transparent' }}
+                  style={{ WebkitTapHighlightColor: 'transparent', zIndex: 10, position: 'relative' }}
                 >
                   <span className="h-5 w-5 rounded-full border-2 border-primary/60 bg-primary/20 flex items-center justify-center hover:bg-primary/30 transition-colors">
                     <Check className="h-3 w-3 text-primary" />
