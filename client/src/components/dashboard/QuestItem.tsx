@@ -4,7 +4,7 @@ import { Quest } from "../../lib/types";
 import { Trash2, Calendar, Clock, Bell, Edit3, Info, Timer, Undo2, GripVertical, Repeat, Coffee, Target } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/authContext";
-import { Button } from "@/components/ui/button";
+
 
 export const QUEST_DND_TYPE = 'QUEST_ITEM';
 
@@ -193,17 +193,15 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
                 </button>
               )}
               {onDelete && category !== "onboarding" && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                <button
+                  className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-destructive/30 hover:text-destructive hover:border-destructive/50 transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
                     onDelete();
                   }}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                </button>
               )}
             </div>
           </div>

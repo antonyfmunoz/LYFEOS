@@ -229,7 +229,6 @@ export default function QuestsPage() {
       }
       setCustomCategoryMode(null);
       setCustomCategoryInput("");
-      achievementToast("Category Created", `"${inputValue}" is now available`);
     } catch (error) {
       console.error("Failed to save custom category:", error);
       toast({ title: "Failed to create category", variant: "destructive" });
