@@ -5,7 +5,6 @@ import { useAuth } from '@/lib/authContext';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { Contact } from '@shared/schema';
 import { queryClient, apiRequest } from '@/lib/queryClient';
-import { useToast } from '@/hooks/use-toast';
 import {
   ArrowLeft, Users, Star, Search, Plus, Briefcase, Mail, Phone,
   MapPin, Trash2, Edit3, X, ChevronDown, Calendar, SlidersHorizontal,
@@ -123,7 +122,6 @@ export default function RolodexPage() {
   usePageTitle('Rolodex');
   const [, navigate] = useLocation();
   const { user } = useAuth();
-  const { toast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
@@ -174,13 +172,9 @@ export default function RolodexPage() {
       if (!body.contactFrequency) delete body.contactFrequency;
       return apiRequest('/api/contacts', { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'contacts'] });
-      toast({ title: 'Contact created', description: 'New contact added to your rolodex.' });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'contacts'] });
       closeForm();
-    },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to create contact.', variant: 'destructive' });
     },
   });
 
@@ -190,13 +184,9 @@ export default function RolodexPage() {
       if (body.birthday === '') body.birthday = null;
       return apiRequest(`/api/contacts/${id}`, { method: 'PATCH', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'contacts'] });
-      toast({ title: 'Contact updated', description: 'Contact details saved.' });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'contacts'] });
       closeForm();
-    },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to update contact.', variant: 'destructive' });
     },
   });
 
@@ -204,14 +194,10 @@ export default function RolodexPage() {
     mutationFn: async (id: number) => {
       return apiRequest(`/api/contacts/${id}`, { method: 'DELETE' });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'contacts'] });
-      toast({ title: 'Contact deleted', description: 'Contact removed from your rolodex.' });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'contacts'] });
       setDeleteConfirmId(null);
       setExpandedId(null);
-    },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to delete contact.', variant: 'destructive' });
     },
   });
 
