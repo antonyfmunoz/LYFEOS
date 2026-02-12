@@ -429,6 +429,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     }));
     
     applyPrimaryColor(color);
+    localStorage.setItem('lyfeos-primary-color', color);
     
     if (isAuthenticated && user) {
       try {
@@ -482,6 +483,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
               
               if (dbStats.primaryColor) {
                 applyPrimaryColor(dbStats.primaryColor);
+                localStorage.setItem('lyfeos-primary-color', dbStats.primaryColor);
               }
               
               if (dbStats.aiAssistantName) {

@@ -178,6 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Apply the user's theme color BEFORE showing toast or navigating
       if (data.primaryColor) {
         applyPrimaryColor(data.primaryColor);
+        localStorage.setItem('lyfeos-primary-color', data.primaryColor);
       }
       
       // Update application state
@@ -518,6 +519,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Apply the user's theme color BEFORE showing toast or navigating
         if (userData.primaryColor) {
           applyPrimaryColor(userData.primaryColor);
+          localStorage.setItem('lyfeos-primary-color', userData.primaryColor);
         }
         
         setUser(userData.user);

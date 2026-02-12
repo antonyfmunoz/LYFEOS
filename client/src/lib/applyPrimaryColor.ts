@@ -42,7 +42,6 @@ export function hexToHSL(hex: string) {
 }
 
 export function applyPrimaryColor(color: string) {
-  localStorage.setItem('lyfeos-primary-color', color);
   const hsl = hexToHSL(color);
   document.documentElement.style.setProperty('--primary', hsl);
   document.documentElement.style.setProperty('--primary-hsl', hsl);
