@@ -23,6 +23,7 @@ import { CollapsibleWidget } from '@/components/ui/collapsible-widget';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { cn } from "@/lib/utils";
 import { objectiveToast } from "@/lib/gamified-toast";
+import { useToast } from "@/hooks/use-toast";
 
 interface VisionGoal {
   id: number;
@@ -153,7 +154,7 @@ function DraggableObjective({
         </div>
         <button
           onClick={() => onToggle(goal.id, true)}
-          className="shrink-0 h-5 w-5 rounded-full border-2 border-primary/40 hover:border-primary hover:bg-primary/20 transition-colors flex items-center justify-center"
+          className="shrink-0 h-8 w-8 min-h-[44px] min-w-[44px] rounded-full border-2 border-primary/40 hover:border-primary hover:bg-primary/20 transition-colors flex items-center justify-center touch-manipulation"
         />
         <div className="flex-1 min-w-0">
           <span className="text-sm text-foreground">{goal.title}</span>
@@ -200,6 +201,7 @@ function DraggableObjective({
 
 function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { category: string; placeholder: string; onCreateGoal: (category: string) => void; onEditGoal: (goal: VisionGoal) => void }) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [expandedGoalId, setExpandedGoalId] = useState<number | null>(null);
   const [infoExpandedId, setInfoExpandedId] = useState<number | null>(null);
 
@@ -250,9 +252,14 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
         objectiveToast(data.title, data.rewardText, data.bonusXp);
       }
     },
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
       if (context?.previousAll) queryClient.setQueryData(allGoalsKey, context.previousAll);
+      toast({
+        title: "Failed to update goal",
+        description: err instanceof Error ? err.message : "Please try again",
+        variant: "destructive",
+      });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
@@ -474,9 +481,9 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
               <div className="group flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-primary/5 transition-colors">
                 <button
                   onClick={() => toggleMutation.mutate({ id: goal.id, completed: false })}
-                  className="shrink-0 h-5 w-5 rounded-full border-2 border-primary/60 bg-primary/20 flex items-center justify-center hover:bg-primary/30 transition-colors"
+                  className="shrink-0 h-8 w-8 min-h-[44px] min-w-[44px] rounded-full border-2 border-primary/60 bg-primary/20 flex items-center justify-center hover:bg-primary/30 transition-colors touch-manipulation"
                 >
-                  <Check className="h-3 w-3 text-primary" />
+                  <Check className="h-4 w-4 text-primary" />
                 </button>
                 <span className={cn("flex-1 text-sm line-through text-muted-foreground")}>{goal.title}</span>
                 <div className="flex gap-1">
