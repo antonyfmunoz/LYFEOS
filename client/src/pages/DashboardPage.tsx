@@ -13,6 +13,7 @@ import { UserStats } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { MarkdownEditor } from '@/components/ui/markdown-editor';
 import { CustomTimePicker } from '@/components/ui/custom-time-picker';
+import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 import EnhancedMissionWidget from '@/components/dashboard/EnhancedMissionWidget';
 import { DailyInitModal } from '@/components/dailyInit/DailyInitModal';
 import { useToast } from '@/hooks/use-toast';
@@ -1519,6 +1520,8 @@ export default function DashboardPage() {
             </PersistentDraggableWidget>
           </div>
         ))}
+
+        <PWAInstallPrompt />
       </div>
   );
 }
