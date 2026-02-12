@@ -221,7 +221,8 @@ export default function QuestsPage() {
         method: "POST",
         body: JSON.stringify({ value: newValue, label: inputValue, description: result.description }),
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/user-categories'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/user-categories'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/user-categories'] });
       if (formType === 'create') {
         setCreateFormData(prev => ({ ...prev, category: newValue }));
       } else {
@@ -704,7 +705,7 @@ export default function QuestsPage() {
                     <SelectTrigger className="bg-background/50 border-primary/30">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-48 overflow-y-auto">
                       {mergedCategories.map(c => (
                         <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                       ))}
@@ -1042,7 +1043,7 @@ export default function QuestsPage() {
                   <SelectTrigger className="bg-background/50 border-primary/30">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-48 overflow-y-auto">
                     {mergedCategories.map(c => (
                       <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                     ))}

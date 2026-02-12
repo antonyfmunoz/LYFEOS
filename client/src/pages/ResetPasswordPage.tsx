@@ -1,7 +1,14 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useLocation, Link } from "wouter";
 import { Loader2, CheckCircle, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
+
+const hexToRgba = (hex: string, alpha: number) => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+};
 
 export default function ResetPasswordPage() {
   const [, navigate] = useLocation();
@@ -11,6 +18,20 @@ export default function ResetPasswordPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+
+  const savedColor = localStorage.getItem('lyfeos-primary-color');
+  const accent = useMemo(() => {
+    if (!savedColor) return null;
+    return {
+      color: savedColor,
+      border20: hexToRgba(savedColor, 0.2),
+      border30: hexToRgba(savedColor, 0.3),
+      border50: hexToRgba(savedColor, 0.5),
+      bg20: hexToRgba(savedColor, 0.2),
+      bg30: hexToRgba(savedColor, 0.3),
+      glow: hexToRgba(savedColor, 0.08),
+    };
+  }, [savedColor]);
 
   const token = new URLSearchParams(window.location.search).get("token");
 
@@ -51,13 +72,13 @@ export default function ResetPasswordPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 text-white" style={{ backgroundColor: 'hsl(0 0% 7%)' }}>
         <div className="text-center mb-8">
-          <h1 className="text-4xl text-white font-orbitron mb-2">LYFEOS</h1>
+          <h1 className="text-4xl font-orbitron mb-2" style={{ color: accent?.color || 'white' }}>LYFEOS</h1>
           <p className="text-white">Your personal life operating system</p>
         </div>
-        <div className="w-full max-w-md rounded-xl p-6 border border-white/20 backdrop-blur-md text-center space-y-4"
-             style={{ backgroundColor: "rgba(38, 38, 42, 0.85)", boxShadow: "0 0 20px rgba(255, 255, 255, 0.08)" }}>
+        <div className="w-full max-w-md rounded-xl p-6 border backdrop-blur-md text-center space-y-4"
+             style={{ backgroundColor: "rgba(38, 38, 42, 0.85)", boxShadow: `0 0 20px ${accent?.glow || 'rgba(255,255,255,0.08)'}`, borderColor: accent?.border20 || 'rgba(255,255,255,0.2)' }}>
           <p className="text-white">Invalid reset link. Please request a new one.</p>
-          <span className="text-white auth-link"><Link href="/forgot-password" className="hover:opacity-80 transition">
+          <span className="auth-link" style={{ color: accent?.color || 'white' }}><Link href="/forgot-password" className="hover:opacity-80 transition" style={{ color: accent?.color || 'white' }}>
             <span className="cursor-pointer text-sm">Request New Link</span>
           </Link></span>
         </div>
@@ -68,29 +89,30 @@ export default function ResetPasswordPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 text-white" style={{ backgroundColor: 'hsl(0 0% 7%)' }}>
       <div className="text-center mb-8">
-        <h1 className="text-4xl text-white font-orbitron mb-2">LYFEOS</h1>
+        <h1 className="text-4xl font-orbitron mb-2" style={{ color: accent?.color || 'white' }}>LYFEOS</h1>
         <p className="text-white">Your personal life operating system</p>
       </div>
 
       {success ? (
-        <div className="w-full max-w-md rounded-xl p-6 border border-white/20 backdrop-blur-md text-center space-y-4"
-             style={{ backgroundColor: "rgba(38, 38, 42, 0.85)", boxShadow: "0 0 20px rgba(255, 255, 255, 0.08)" }}>
+        <div className="w-full max-w-md rounded-xl p-6 border backdrop-blur-md text-center space-y-4"
+             style={{ backgroundColor: "rgba(38, 38, 42, 0.85)", boxShadow: `0 0 20px ${accent?.glow || 'rgba(255,255,255,0.08)'}`, borderColor: accent?.border20 || 'rgba(255,255,255,0.2)' }}>
           <CheckCircle className="w-16 h-16 mx-auto text-green-500" />
-          <h2 className="text-xl font-orbitron text-white">Password Reset!</h2>
+          <h2 className="text-xl font-orbitron" style={{ color: accent?.color || 'white' }}>Password Reset!</h2>
           <p className="text-white text-sm">
             Your password has been updated successfully. You can now log in with your new password.
           </p>
           <button
             onClick={() => navigate("/login")}
-            className="mt-2 text-sm font-mono px-6 py-2.5 rounded border bg-white/20 border-white/50 text-white hover:bg-white/30 transition-colors inline-flex items-center justify-center gap-2"
+            className="mt-2 text-sm font-mono px-6 py-2.5 rounded border hover:opacity-80 transition-colors inline-flex items-center justify-center gap-2"
+            style={{ backgroundColor: accent?.bg20 || 'rgba(255,255,255,0.2)', borderColor: accent?.border50 || 'rgba(255,255,255,0.5)', color: accent?.color || 'white' }}
           >
             Go to Login
           </button>
         </div>
       ) : (
-        <div className="w-full max-w-md rounded-xl p-6 border border-white/20 backdrop-blur-md"
-             style={{ backgroundColor: "rgba(38, 38, 42, 0.85)", boxShadow: "0 0 20px rgba(255, 255, 255, 0.08)" }}>
-          <h2 className="text-xl font-orbitron text-center mb-6 text-white">Set New Password</h2>
+        <div className="w-full max-w-md rounded-xl p-6 border backdrop-blur-md"
+             style={{ backgroundColor: "rgba(38, 38, 42, 0.85)", boxShadow: `0 0 20px ${accent?.glow || 'rgba(255,255,255,0.08)'}`, borderColor: accent?.border20 || 'rgba(255,255,255,0.2)' }}>
+          <h2 className="text-xl font-orbitron text-center mb-6" style={{ color: accent?.color || 'white' }}>Set New Password</h2>
 
           {error && (
             <div className="px-3 py-2 rounded bg-red-500/10 border border-red-500/30 text-red-500 text-sm mb-4">
@@ -109,7 +131,8 @@ export default function ResetPasswordPage() {
                   placeholder="At least 6 characters"
                   required
                   minLength={6}
-                  className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-white focus-visible:ring-white/30 pr-10"
+                  className="w-full bg-transparent rounded-lg p-3 outline-none text-white pr-10"
+                  style={{ borderColor: accent?.border30 || 'rgba(255,255,255,0.3)', '--tw-ring-color': accent?.border30 || 'rgba(255,255,255,0.3)' } as any}
                 />
                 <button
                   type="button"
@@ -130,14 +153,16 @@ export default function ResetPasswordPage() {
                 placeholder="Re-enter your password"
                 required
                 minLength={6}
-                className="w-full bg-transparent border-white/30 rounded-lg p-3 outline-none text-white focus-visible:ring-white/30"
+                className="w-full bg-transparent rounded-lg p-3 outline-none text-white"
+                style={{ borderColor: accent?.border30 || 'rgba(255,255,255,0.3)', '--tw-ring-color': accent?.border30 || 'rgba(255,255,255,0.3)' } as any}
               />
             </div>
 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full mt-4 text-sm font-mono px-4 py-2.5 rounded border bg-white/20 border-white/50 text-white hover:bg-white/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-2"
+              className="w-full mt-4 text-sm font-mono px-4 py-2.5 rounded border hover:opacity-80 transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-2"
+              style={{ backgroundColor: accent?.bg20 || 'rgba(255,255,255,0.2)', borderColor: accent?.border50 || 'rgba(255,255,255,0.5)', color: accent?.color || 'white' }}
             >
               {isSubmitting ? (
                 <>
@@ -151,7 +176,7 @@ export default function ResetPasswordPage() {
           </form>
 
           <div className="mt-4 text-center">
-            <span className="text-white auth-link"><Link href="/login" className="hover:opacity-80 transition">
+            <span className="auth-link" style={{ color: accent?.color || 'white' }}><Link href="/login" className="hover:opacity-80 transition" style={{ color: accent?.color || 'white' }}>
               <span className="inline-flex items-center gap-2 text-sm cursor-pointer">
                 <ArrowLeft className="w-4 h-4" />
                 Back to Login
