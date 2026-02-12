@@ -238,8 +238,7 @@ export default function RolodexPage() {
           className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"
           size="sm"
         >
-          <Plus className="h-4 w-4 mr-1" />
-          ADD CONTACT
+          <Plus className="h-4 w-4" />
         </Button>
       </div>
 
