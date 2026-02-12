@@ -7,6 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Quest } from "@/lib/types";
 
+const ONBOARDING_MISSIONS = [
+  { title: "Access & Quickstart", description: "Log in, explore the dashboard, and complete your first quick mission to get familiar with LYFEOS." },
+  { title: "Archetype Calibration", description: "Discover your player archetype through a guided assessment to personalize your LYFEOS experience." },
+  { title: "Identity & Direction", description: "Define your core identity pillars and set your life direction compass." },
+  { title: "Craft & Mastery", description: "Identify your key skills and craft areas to track mastery progression." },
+  { title: "Capacity & Constraints", description: "Set your daily energy, attention, and time capacity limits for balanced resource management." },
+  { title: "Baselines & States", description: "Establish your baseline stats and current life state for accurate tracking." },
+  { title: "History & Roots", description: "Record your background and personal history to inform your growth trajectory." },
+  { title: "Systems & Rituals", description: "Set up your daily rituals and recurring systems for consistent progress." },
+];
+
 const categoryDescriptions: Record<string, string> = {
   work: 'Professional tasks, projects, and job-related responsibilities.',
   health: 'Medical care, wellness checkups, and overall well-being.',
@@ -151,7 +162,9 @@ function MissionCard({ mission }: { mission: Quest }) {
           <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 space-y-2 opacity-50">
             {description && (
               <p className="text-muted-foreground">
-                {description.replace(/^Completed onboarding mission "(.+)"$/, 'Completed the "$1" mission')}
+                {category === 'onboarding'
+                  ? (ONBOARDING_MISSIONS.find(m => m.title === title.replace(/^Onboarding:\s*/, ''))?.description || description)
+                  : description}
               </p>
             )}
             <div className="border-t border-primary/10 pt-2 space-y-1">
