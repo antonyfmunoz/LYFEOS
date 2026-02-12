@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { 
   Calendar, BarChart, CalendarDays, Clock, Brain, AlarmClock, 
@@ -331,6 +331,54 @@ export default function DashboardPage() {
   
   // Track if user has actually made changes (dirty flag) - prevents saving defaults
   const isDirtyRef = useRef(false);
+  
+  useLayoutEffect(() => {
+    if (!user?.id || energyLog.isLoaded) return;
+    const cached = queryClient.getQueryData(['/api/users', user.id, 'daily-logs', todayDateStr]) as any;
+    if (cached && !cached._noData) {
+      const fp = `record-${cached.id}-${todayDateStr}`;
+      loadedRecordFingerprintRef.current = fp;
+      isDirtyRef.current = false;
+      updateEnergyLog({
+        mentalState: cached.mentalState ?? 5,
+        physicalState: cached.physicalState ?? 5,
+        emotionalState: cached.emotionalState ?? 5,
+        wakeTime: cached.wakeTime ?? "06:00",
+        sleepTime: cached.sleepTime ?? "22:00",
+        isLoaded: true,
+        lastPopulatedFingerprint: fp,
+      });
+      updateIntentionLog({
+        gratitude: cached.gratitude ?? "",
+        tomorrowGoals: cached.tomorrowGoals ?? "",
+        annualGoals: cached.annualGoals ?? "",
+        thoughts: cached.thoughts ?? "",
+        isLoaded: true,
+        lastPopulatedFingerprint: fp,
+      });
+      updateDataLog({
+        contentConsumed: cached.contentConsumed ?? "",
+        research: cached.research ?? "",
+        sourceAuthor: cached.sourceAuthor ?? "",
+        sourceMaterial: cached.sourceMaterial ?? "",
+        researchNote: cached.researchNote ?? "",
+        revisionNote: cached.revisionNote ?? "",
+        executionNote: cached.executionNote ?? "",
+        todoIdeas: cached.todoIdeas ?? "",
+        researchEntries: (cached.researchEntries as any[]) || [],
+        isLoaded: true,
+        lastPopulatedFingerprint: fp,
+      });
+      updateReflectionLogState({
+        wentWell: cached.wentWell ?? "",
+        couldBeBetter: cached.couldBeBetter ?? "",
+        learned: cached.learned ?? "",
+        isLoaded: true,
+        lastPopulatedFingerprint: fp,
+      });
+      lastLoadedDateRef.current = todayDateStr;
+    }
+  }, [user?.id, todayDateStr, energyLog.isLoaded, updateEnergyLog, updateIntentionLog, updateDataLog, updateReflectionLogState]);
   
   // Save daily log mutation (includes energy, intention, data, and reflection fields)
   // NOTE: We intentionally do NOT invalidate the query cache on success.
@@ -1051,7 +1099,7 @@ export default function DashboardPage() {
                 value={reflection.todoIdeas}
                 onChange={(value) => updateReflection("todoIdeas", value)}
                 onBlur={handleBlurSave}
-                minHeight="60px"
+                minHeight="80px"
               />
             </div>
           </div>
@@ -1249,7 +1297,7 @@ export default function DashboardPage() {
                   value={reflection.tomorrowGoals}
                   onChange={(value) => updateReflection("tomorrowGoals", value)}
                   onBlur={handleBlurSave}
-                  minHeight="60px"
+                  minHeight="80px"
                 />
               </div>
             </div>

@@ -222,8 +222,8 @@ export function MarkdownEditor({
           </div>
         </div>
       ) : (
-        <div className="relative rounded-md border border-primary/30 bg-background overflow-hidden" style={{ minHeight, maxHeight: minHeight }}>
-          <div className="p-3 cursor-default" style={{ minHeight }} onDoubleClick={handleDoubleClick}>
+        <div className="relative rounded-md border border-primary/30 bg-background overflow-hidden" style={{ height: minHeight }}>
+          <div className="p-3 cursor-default h-full" onDoubleClick={handleDoubleClick}>
             {value ? (
               <ObsidianMarkdown className="dark:text-[#D6F4FF] light:text-slate-700 [&_p:first-of-type]:mt-0 [&_ul:first-of-type]:mt-0 [&_ol:first-of-type]:mt-0 [&_h1:first-of-type]:mt-0 [&_h2:first-of-type]:mt-0 [&_h3:first-of-type]:mt-0">
                 {value}

@@ -201,7 +201,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Prefetch key data so pages load instantly (keys must match destination page queryKeys)
       const todayStr = getLocalDateString();
       queryClient.prefetchQuery({ queryKey: ["/api/profile"] });
-      queryClient.prefetchQuery({ queryKey: ['/api/users', data.user.id, 'daily-logs', todayStr] });
+      queryClient.prefetchQuery({
+        queryKey: ['/api/users', data.user.id, 'daily-logs', todayStr],
+        queryFn: async () => {
+          const response = await fetch(`/api/users/${data.user.id}/daily-logs?date=${todayStr}`, {
+            credentials: 'include'
+          });
+          if (!response.ok) return { _noData: true, _confirmed: true };
+          const result = await response.json();
+          return result.logs?.[0] || { _noData: true, _confirmed: true };
+        },
+      });
       queryClient.prefetchQuery({ queryKey: ["/api/users", data.user.id, "profile"] });
       queryClient.prefetchQuery({ queryKey: ["/api/account"] });
 
