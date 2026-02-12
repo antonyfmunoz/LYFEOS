@@ -483,9 +483,6 @@ export default function KnowledgeArchivePage() {
                               )}
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs text-[#7DAAB2] px-1.5 py-0.5 bg-slate-800/50 rounded">
-                                {source.entries.length}
-                              </span>
                               <button
                                 className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-destructive/30 hover:text-destructive hover:border-destructive/50 transition-colors"
                                 title={`Hide "${source.sourceMaterial}"`}
