@@ -185,10 +185,20 @@ export default function QuestsPage() {
     enabled: !!user,
   });
 
-  const { data: userCategories = [] } = useQuery<UserCategoryOption[]>({
+  const { data: userCategoriesFromQuery = [] } = useQuery<UserCategoryOption[]>({
     queryKey: ['/api/user-categories'],
     enabled: !!user,
   });
+
+  const [localCategoryOverrides, setLocalCategoryOverrides] = useState<UserCategoryOption[] | null>(null);
+  
+  const userCategories = localCategoryOverrides ?? userCategoriesFromQuery;
+  
+  useEffect(() => {
+    if (localCategoryOverrides !== null) {
+      setLocalCategoryOverrides(null);
+    }
+  }, [userCategoriesFromQuery]);
 
   const mergedCategories = useMemo(() => {
     const custom = userCategories.map(c => ({ value: c.value, label: c.label }));
@@ -223,12 +233,10 @@ export default function QuestsPage() {
         method: "POST",
         body: JSON.stringify({ value: newValue, label: inputValue, description: result.description }),
       });
-      queryClient.setQueryData<UserCategoryOption[]>(['/api/user-categories'], (old) => {
-        const newEntry = created && typeof created === 'object' && 'id' in created
-          ? created
-          : { id: Date.now(), value: newValue, label: inputValue, description: result.description };
-        return [...(old || []), newEntry];
-      });
+      const newEntry: UserCategoryOption = created && typeof created === 'object' && 'id' in created
+        ? created
+        : { id: Date.now(), value: newValue, label: inputValue, description: result.description };
+      setLocalCategoryOverrides([...userCategories, newEntry]);
       if (formType === 'create') {
         setCreateFormData(prev => ({ ...prev, category: newValue }));
       } else {
@@ -255,10 +263,9 @@ export default function QuestsPage() {
         method: "PATCH",
         body: JSON.stringify({ value: newValue, label: inputValue }),
       });
-      queryClient.setQueryData<UserCategoryOption[]>(['/api/user-categories'], (old) => {
-        if (!old) return old;
-        return old.map(c => c.id === editingCategoryId ? { ...c, value: newValue, label: inputValue } : c);
-      });
+      setLocalCategoryOverrides(
+        userCategories.map(c => c.id === editingCategoryId ? { ...c, value: newValue, label: inputValue } : c)
+      );
       if (formType === 'create') {
         setCreateFormData(prev => ({ ...prev, category: newValue }));
       } else {
