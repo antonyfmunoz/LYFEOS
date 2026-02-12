@@ -510,10 +510,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           applyPrimaryColor(userData.primaryColor);
         }
         
-        toast({
-          title: "Google Sign-in Successful",
-          description: `Welcome${displayName ? `, ${displayName}` : ''}!`,
-        });
+        sessionStorage.setItem("pending_login_celebration", displayName || "");
         
         setUser(userData.user);
         localStorage.setItem("lyfeos_user", JSON.stringify(userData.user));

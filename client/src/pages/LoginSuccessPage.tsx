@@ -1,21 +1,20 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
-import { useToast } from "@/hooks/use-toast";
+import { useCelebration } from "@/lib/celebrationContext";
 
 export default function LoginSuccessPage() {
   const [, navigate] = useLocation();
-  const { toast } = useToast();
+  const { triggerCelebration } = useCelebration();
 
   useEffect(() => {
     const username = sessionStorage.getItem("login_success_username");
     sessionStorage.removeItem("login_success_username");
     sessionStorage.removeItem("login_success_new_user");
 
-    toast({
-      title: "Login Successful",
-      description: username ? `Welcome back, ${username}!` : "Welcome back!",
-      variant: "default",
-      duration: 1500,
+    triggerCelebration({
+      type: "mission_complete",
+      title: username ? `Welcome back, ${username}!` : "Welcome back!",
+      xp: 0,
     });
 
     sessionStorage.setItem("lyfeos_login_toast_done", "true");

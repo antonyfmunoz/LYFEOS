@@ -811,7 +811,13 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     if (completed) {
       const xpEstimate = Math.floor(currentQuest.experienceReward * ({ D: 1, C: 1.5, B: 2, A: 3, S: 5 }[currentQuest.difficulty || 'D'] || 1));
       missionCompleteToast(currentQuest.title, xpEstimate);
-      triggerCelebration({ type: "mission_complete", title: currentQuest.title, xp: xpEstimate });
+      const isOnboarding1to6 = currentQuest.category === "onboarding" && [
+        "Archetype Calibration", "Identity & Direction", "Craft & Mastery",
+        "Capacity & Constraints", "Baselines & States", "History & Roots",
+      ].some(t => currentQuest.title.includes(t));
+      if (!isOnboarding1to6) {
+        triggerCelebration({ type: "mission_complete", title: currentQuest.title, xp: xpEstimate });
+      }
     }
     
     // Persist to database (runs in background after toast)
