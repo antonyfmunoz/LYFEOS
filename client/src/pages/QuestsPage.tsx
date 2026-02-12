@@ -219,12 +219,16 @@ export default function QuestsPage() {
         body: JSON.stringify({ categoryName: inputValue }),
       });
       const newValue = inputValue.toLowerCase().replace(/\s+/g, '_');
-      await apiRequest("/api/user-categories", {
+      const created = await apiRequest<UserCategoryOption>("/api/user-categories", {
         method: "POST",
         body: JSON.stringify({ value: newValue, label: inputValue, description: result.description }),
       });
-      await queryClient.invalidateQueries({ queryKey: ['/api/user-categories'] });
-      await queryClient.refetchQueries({ queryKey: ['/api/user-categories'] });
+      queryClient.setQueryData<UserCategoryOption[]>(['/api/user-categories'], (old) => {
+        const newEntry = created && typeof created === 'object' && 'id' in created
+          ? created
+          : { id: Date.now(), value: newValue, label: inputValue, description: result.description };
+        return [...(old || []), newEntry];
+      });
       if (formType === 'create') {
         setCreateFormData(prev => ({ ...prev, category: newValue }));
       } else {
@@ -232,6 +236,7 @@ export default function QuestsPage() {
       }
       setCustomCategoryMode(null);
       setCustomCategoryInput("");
+      queryClient.invalidateQueries({ queryKey: ['/api/user-categories'] });
     } catch (error) {
       console.error("Failed to save custom category:", error);
       toast({ title: "Failed to create category", variant: "destructive" });
@@ -250,9 +255,10 @@ export default function QuestsPage() {
         method: "PATCH",
         body: JSON.stringify({ value: newValue, label: inputValue }),
       });
-      await queryClient.invalidateQueries({ queryKey: ['/api/user-categories'] });
-      await queryClient.refetchQueries({ queryKey: ['/api/user-categories'] });
-      await queryClient.invalidateQueries({ queryKey: ['/api/quests'] });
+      queryClient.setQueryData<UserCategoryOption[]>(['/api/user-categories'], (old) => {
+        if (!old) return old;
+        return old.map(c => c.id === editingCategoryId ? { ...c, value: newValue, label: inputValue } : c);
+      });
       if (formType === 'create') {
         setCreateFormData(prev => ({ ...prev, category: newValue }));
       } else {
@@ -260,6 +266,9 @@ export default function QuestsPage() {
       }
       setEditingCategoryId(null);
       setEditCategoryInput("");
+      queryClient.invalidateQueries({ queryKey: ['/api/user-categories'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/quests'] });
+      queryClient.refetchQueries({ queryKey: ['/api/quests'] });
     } catch (error) {
       console.error("Failed to update category:", error);
       toast({ title: "Failed to update category", variant: "destructive" });
