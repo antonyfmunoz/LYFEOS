@@ -834,19 +834,27 @@ export default function TimelinePage() {
                       {expandedRoadmapBuckets.has(bucket.key) && (
                         <div className="mt-3 space-y-2 border-t border-primary/10 pt-3" onClick={(e) => e.stopPropagation()}>
                           {bucket.items.map((item) => (
-                            <div key={item.id} className="flex items-center gap-3 py-1.5 px-2 rounded-lg bg-primary/5 border border-primary/10">
-                              {item.type === 'milestone' && <Target className="h-4 w-4 text-primary flex-shrink-0" />}
-                              {item.type === 'mission' && <CheckSquare className="h-4 w-4 text-primary flex-shrink-0" />}
-                              {item.type === 'event' && <Calendar className="h-4 w-4 text-primary flex-shrink-0" />}
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm text-foreground truncate">{item.title}</p>
+                            <div key={item.id} className="glassmorphic rounded-xl p-4 neon-border">
+                              <div className="flex-grow">
+                                <div className="flex justify-between items-start">
+                                  <h3 className="font-medium text-foreground">
+                                    {item.title}
+                                  </h3>
+                                  <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                                    <span className="text-[10px] font-mono h-6 px-1.5 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary capitalize">
+                                      {item.type === 'milestone' ? 'Milestone' : item.type === 'mission' ? 'Mission' : 'Event'}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1 text-xs mt-1 flex-wrap text-muted-foreground">
+                                  {item.type === 'milestone' && <Target className="h-3 w-3 text-primary flex-shrink-0" />}
+                                  {item.type === 'mission' && <CheckSquare className="h-3 w-3 text-primary flex-shrink-0" />}
+                                  {item.type === 'event' && <Calendar className="h-3 w-3 text-primary flex-shrink-0" />}
+                                  <span className="text-[11px] font-mono text-[#7DAAB2] whitespace-nowrap">
+                                    {fmtDateShort(item.dueDate)}
+                                  </span>
+                                </div>
                               </div>
-                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border bg-primary/20 border-primary/50 text-primary capitalize flex-shrink-0">
-                                {item.type === 'milestone' ? 'Milestone' : item.type === 'mission' ? 'Mission' : 'Event'}
-                              </span>
-                              <span className="text-[11px] font-mono text-[#7DAAB2] whitespace-nowrap flex-shrink-0">
-                                {fmtDateShort(item.dueDate)}
-                              </span>
                             </div>
                           ))}
                         </div>

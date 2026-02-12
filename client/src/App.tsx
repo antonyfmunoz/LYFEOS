@@ -46,6 +46,7 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import LoginSuccessPage from "./pages/LoginSuccessPage";
 import SubscriptionPage from "./pages/SubscriptionPage";
+import RolodexPage from "./pages/RolodexPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -430,6 +431,14 @@ function Router() {
       <Route path="/subscription">
         <ProtectedRoute>
           <SubscriptionPage />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/rolodex">
+        <ProtectedRoute>
+          <RootLayout>
+            <RolodexPage />
+          </RootLayout>
         </ProtectedRoute>
       </Route>
       

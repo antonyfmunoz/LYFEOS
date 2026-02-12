@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import { useAuth } from '@/lib/authContext';
 import { Contact } from '@shared/schema';
 import { Users, Star, Search, ChevronLeft, ChevronRight, Briefcase, Mail, Phone, MapPin, GripVertical, Info } from 'lucide-react';
@@ -27,6 +28,7 @@ function formatDate(date: Date | string | null): string {
 
 export default function RolodexWidget() {
   const { user } = useAuth();
+  const [, navigate] = useLocation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
@@ -102,7 +104,7 @@ export default function RolodexWidget() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => { setShowSearch(!showSearch); setSearchQuery(''); setCurrentIndex(0); }}
+            onClick={(e) => { e.stopPropagation(); setShowSearch(!showSearch); setSearchQuery(''); setCurrentIndex(0); }}
             className="h-7 w-7 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
           >
             <Search className="h-3.5 w-3.5" />
@@ -112,11 +114,17 @@ export default function RolodexWidget() {
               {currentIndex + 1}/{totalContacts}
             </span>
           )}
+          <button
+            onClick={(e) => { e.stopPropagation(); navigate('/rolodex'); }}
+            className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+          >
+            OPEN
+          </button>
         </div>
       </div>
 
       {showSearch && (
-        <div className="px-3 pt-3">
+        <div className="px-3 pt-3" onClick={(e) => e.stopPropagation()}>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <input
@@ -143,7 +151,7 @@ export default function RolodexWidget() {
           <div className="relative">
             <div className="flex items-center justify-between mb-4">
               <button
-                onClick={goPrev}
+                onClick={(e) => { e.stopPropagation(); goPrev(); }}
                 className="h-8 w-8 inline-flex items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -223,14 +231,14 @@ export default function RolodexWidget() {
               </div>
 
               <button
-                onClick={goNext}
+                onClick={(e) => { e.stopPropagation(); goNext(); }}
                 className="h-8 w-8 inline-flex items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="flex justify-center gap-1">
+            <div className="flex justify-center gap-1" onClick={(e) => e.stopPropagation()}>
               {filteredContacts.slice(Math.max(0, currentIndex - 3), currentIndex + 4).map((_, i) => {
                 const actualIndex = Math.max(0, currentIndex - 3) + i;
                 return (

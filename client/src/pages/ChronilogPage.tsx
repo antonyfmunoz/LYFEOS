@@ -236,6 +236,7 @@ const DraggableTimelineWrapper = ({ id, index, moveCategory }: DraggableTimeline
 
 const DraggableRolodexWrapper = ({ id, index, moveCategory }: DraggableTimelineProps) => {
   const ref = useRef<HTMLDivElement>(null);
+  const [, navigate] = useLocation();
   
   const [{ handlerId }, drop] = useDrop<DragItem, void, { handlerId: string | symbol | null }>({
     accept: 'CATEGORY',
@@ -275,9 +276,10 @@ const DraggableRolodexWrapper = ({ id, index, moveCategory }: DraggableTimelineP
   return (
     <div
       ref={ref}
-      className={cn("relative", isDragging && "opacity-50")}
+      className={cn("relative cursor-pointer", isDragging && "opacity-50")}
       data-handler-id={handlerId}
       data-tour="chronilog-rolodex"
+      onClick={() => navigate('/rolodex')}
     >
       <RolodexWidget />
     </div>
