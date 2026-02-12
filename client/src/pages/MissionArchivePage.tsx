@@ -379,7 +379,7 @@ export default function MissionArchivePage() {
                         <Calendar className="h-5 w-5 text-primary" />
                         <h2 className="text-xl font-orbitron">{yearData.year}</h2>
                       </div>
-                      <span className="text-[10px] font-orbitron font-bold uppercase tracking-wider px-2.5 py-0.5 rounded border bg-primary/20 border-primary/50 text-primary">
+                      <span className="text-xs font-mono text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                         {yearMissionCount} {yearMissionCount === 1 ? 'mission' : 'missions'}
                       </span>
                     </div>
@@ -405,7 +405,7 @@ export default function MissionArchivePage() {
                                   )}
                                   <h3 className="text-lg font-medium">{monthData.monthName}</h3>
                                 </div>
-                                <span className="text-[10px] font-orbitron font-bold uppercase tracking-wider px-2.5 py-0.5 rounded border bg-primary/20 border-primary/50 text-primary">
+                                <span className="text-xs font-mono text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                                   {monthMissionCount} {monthMissionCount === 1 ? 'mission' : 'missions'}
                                 </span>
                               </div>
@@ -431,7 +431,7 @@ export default function MissionArchivePage() {
                                             )}
                                             <h4 className="text-base">{weekData.weekLabel}</h4>
                                           </div>
-                                          <span className="text-[10px] font-orbitron font-bold uppercase tracking-wider px-2.5 py-0.5 rounded border bg-primary/20 border-primary/50 text-primary">
+                                          <span className="text-xs font-mono text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                                             {weekMissionCount} {weekMissionCount === 1 ? 'mission' : 'missions'}
                                           </span>
                                         </div>
@@ -456,7 +456,7 @@ export default function MissionArchivePage() {
                                                       )}
                                                       <h5 className="text-sm">{dayData.displayLabel}</h5>
                                                     </div>
-                                                    <span className="text-[10px] font-orbitron font-bold uppercase tracking-wider px-2.5 py-0.5 rounded border bg-primary/20 border-primary/50 text-primary">
+                                                    <span className="text-xs font-mono text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                                                       {dayData.missions.length} {dayData.missions.length === 1 ? 'mission' : 'missions'}
                                                     </span>
                                                   </div>
