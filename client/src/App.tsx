@@ -46,6 +46,7 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import LoginSuccessPage from "./pages/LoginSuccessPage";
 import SubscriptionPage from "./pages/SubscriptionPage";
+import LandingPage from "./pages/LandingPage";
 import RolodexPage from "./pages/RolodexPage";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
 
@@ -192,7 +193,8 @@ function Router() {
     
     // Public paths that don't require auth
     const publicPaths = ['/login', '/register', '/login-success'];
-    if (publicPaths.some(path => currentPath.startsWith(path))) {
+    const exactPublicPaths = ['/subscription'];
+    if (publicPaths.some(path => currentPath.startsWith(path)) || exactPublicPaths.includes(currentPath)) {
       return;
     }
     
@@ -429,7 +431,9 @@ function Router() {
         </ProtectedRoute>
       </Route>
 
-      <Route path="/subscription">
+      <Route path="/subscription" component={LandingPage} />
+
+      <Route path="/subscription/manage">
         <ProtectedRoute>
           <SubscriptionPage />
         </ProtectedRoute>
