@@ -188,7 +188,7 @@ function Placeholder({ label }: { label: string }) {
   return (
     <div className="w-full aspect-video rounded-lg border border-border/40 bg-card/30 overflow-hidden">
       {src ? (
-        <img src={src} alt={label} className="w-full h-full object-cover" />
+        <img src={src} alt={label} className="w-full h-full object-contain" />
       ) : (
         <div className="w-full h-full flex items-center justify-center">
           <span className="text-xs text-muted-foreground/60 uppercase tracking-wider">{label}</span>
