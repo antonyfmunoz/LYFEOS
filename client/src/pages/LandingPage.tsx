@@ -28,19 +28,19 @@ const PROBLEM_CARDS = [
     icon: <Shuffle className="w-6 h-6" />,
     title: "5 productivity apps, zero integration",
     text: "Notion for notes. Todoist for tasks. Apple Notes for quick capture. Paper journal for reflection. Nothing talks to each other.",
-    color: "#f56565",
+    color: "#ff2d95",
   },
   {
     icon: <Frown className="w-6 h-6" />,
     title: "Goals everywhere, progress nowhere",
     text: "You have goals for work, health, relationships, projects. But they're scattered across apps, notes, and your head.",
-    color: "#ed8936",
+    color: "#ff6b2b",
   },
   {
     icon: <BrainCircuit className="w-6 h-6" />,
     title: "You know WHAT you want",
     text: "You're not confused about your goals. You just can't stay organized enough to actually GET there.",
-    color: "#ecc94b",
+    color: "#ffe03d",
   },
 ];
 
@@ -50,7 +50,7 @@ const SOLUTION_BLOCKS = [
     badge: "Know Yourself",
     text: "Complete 8 missions to calibrate your archetype, values, and vision. LYFEOS generates your Character Affirmation — a 300-word synthesis of who you are and what you're building. Not a template. Your identity.",
     placeholder: "Character Affirmation",
-    color: "#9f7aea",
+    color: "#b44dff",
   },
   {
     icon: <BarChart3 className="w-6 h-6" />,
@@ -64,7 +64,7 @@ const SOLUTION_BLOCKS = [
     badge: "AI That Knows You",
     text: "NOVA isn't ChatGPT with a prompt. It has read your entire profile: your values, goals, patterns, and constraints. It creates missions, updates your logs, and helps you execute — based on who you actually are.",
     placeholder: "NOVA Chat",
-    color: "#48bb78",
+    color: "#39ff14",
   },
 ];
 
@@ -74,14 +74,14 @@ const STEPS = [
     title: "Complete 8 Missions",
     text: "90 minutes of focused questions. Map your identity, values, craft, capacity, and vision. No fluff. No busywork.",
     placeholder: "Mission Flow",
-    color: "#9f7aea",
+    color: "#b44dff",
   },
   {
     num: 2,
     title: "LYFEOS Builds Your System",
     text: "Based on your answers, NOVA generates your Character Affirmation and populates your dashboard with missions aligned to your goals.",
     placeholder: "Character Affirmation",
-    color: "#48bb78",
+    color: "#39ff14",
   },
   {
     num: 3,
@@ -269,7 +269,7 @@ export default function LandingPage() {
         </div>
 
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-border/30 bg-background/95 backdrop-blur-lg px-4 py-3 space-y-2">
+          <div className="md:hidden bg-background/95 backdrop-blur-lg px-4 py-3 space-y-2">
             {NAV_LINKS.map((l) => (
               <button
                 key={l.href}
@@ -323,7 +323,7 @@ export default function LandingPage() {
       <section className="bg-card/20">
         <div className="max-w-6xl mx-auto px-4 py-16 sm:py-20">
           <h2 className="font-orbitron text-2xl sm:text-3xl font-bold text-center mb-4">
-            You're Not Lazy. <span style={{ color: "#f56565" }}>You're Scattered.</span>
+            You're Not Lazy. <span className="text-primary">You're Scattered.</span>
           </h2>
           <p className="text-center text-muted-foreground mb-12 max-w-lg mx-auto text-sm">
             Sound familiar?
@@ -350,7 +350,7 @@ export default function LandingPage() {
       <section id="features" className="max-w-6xl mx-auto px-4 py-16 sm:py-20">
         <h2 className="font-orbitron text-2xl sm:text-3xl font-bold text-center mb-4">
           One System. Your Identity. Your Goals.{" "}
-          <span style={{ color: "#9f7aea" }}>Your Daily Actions.</span>
+          <span className="text-primary">Your Daily Actions.</span>
         </h2>
         <p className="text-center text-muted-foreground mb-14 max-w-lg mx-auto text-sm">
           Everything you need in one place.
@@ -385,13 +385,13 @@ export default function LandingPage() {
       <section id="how-it-works" className="bg-card/20">
         <div className="max-w-6xl mx-auto px-4 py-16 sm:py-20">
           <h2 className="font-orbitron text-2xl sm:text-3xl font-bold text-center mb-14">
-            How It <span style={{ color: "#48bb78" }}>Works</span>
+            How It <span className="text-primary">Works</span>
           </h2>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {STEPS.map((s) => (
               <div key={s.num} className="space-y-4">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center font-orbitron text-sm font-bold" style={{ backgroundColor: `${s.color}15`, borderWidth: 1, borderColor: `${s.color}40`, color: s.color }}>
+                <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center font-orbitron text-sm font-bold text-primary">
                   {s.num}
                 </div>
                 <h3 className="font-semibold text-foreground text-lg">{s.title}</h3>
@@ -408,7 +408,7 @@ export default function LandingPage() {
       {/* ─── TESTIMONIALS ─── */}
       <section className="max-w-6xl mx-auto px-4 py-16 sm:py-20">
         <h2 className="font-orbitron text-2xl sm:text-3xl font-bold text-center mb-14">
-          What Early Users <span style={{ color: "#ed8936" }}>Say</span>
+          What Early Users <span className="text-primary">Say</span>
         </h2>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -433,7 +433,7 @@ export default function LandingPage() {
       <section id="pricing" className="bg-card/20">
         <div className="max-w-4xl mx-auto px-4 py-16 sm:py-20">
           <h2 className="font-orbitron text-2xl sm:text-3xl font-bold text-center mb-2">
-            Simple, Transparent <span style={{ color: "#ecc94b" }}>Pricing</span>
+            Simple, Transparent <span className="text-primary">Pricing</span>
           </h2>
           <p className="text-center text-muted-foreground mb-12 text-sm">
             One plan. Everything included. Cancel anytime.
@@ -509,7 +509,7 @@ export default function LandingPage() {
       {/* ─── FAQ ─── */}
       <section id="faq" className="max-w-3xl mx-auto px-4 py-16 sm:py-20">
         <h2 className="font-orbitron text-2xl sm:text-3xl font-bold text-center mb-12">
-          Frequently Asked <span style={{ color: "#00e0ff" }}>Questions</span>
+          Frequently Asked <span className="text-primary">Questions</span>
         </h2>
         <div className="space-y-3">
           {FAQ_ITEMS.map((item) => (
