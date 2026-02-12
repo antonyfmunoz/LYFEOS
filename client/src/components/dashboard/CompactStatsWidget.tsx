@@ -3,7 +3,7 @@ import { Award, Clock, Zap, Heart, Info, BrainCircuit, Calendar, BarChart } from
 import { UserStats } from "@/lib/types";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { useLocation } from "wouter";
-import { getRank } from "@/lib/ranks";
+
 
 interface CompactStatsWidgetProps {
   stats: UserStats;
@@ -61,16 +61,6 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             <div className="flex items-center gap-1.5">
               <span className="text-[#D6F4FF] font-mono text-sm">
                 {stats.experience.level}
-              </span>
-              <span
-                className="px-1.5 py-0.5 rounded-full text-[9px] font-orbitron font-bold leading-none"
-                style={{
-                  backgroundColor: `${getRank(stats.experience.level).color}20`,
-                  color: getRank(stats.experience.level).color,
-                  border: `1px solid ${getRank(stats.experience.level).color}40`,
-                }}
-              >
-                {getRank(stats.experience.level).icon} {getRank(stats.experience.level).name}
               </span>
             </div>
             <span className="text-[#D6F4FF] font-mono text-xs">

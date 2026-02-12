@@ -3,6 +3,7 @@ import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
 import { useWidgetState } from "@/hooks/use-widget-state";
 import RootLayout from "../components/layout/RootLayout";
 import { useLYFEOS } from "../lib/context";
+import { getRank } from "@/lib/ranks";
 import { useAuth } from "@/lib/authContext";
 import { useTheme } from "@/lib/themeContext";
 import { usePageTitle } from "@/hooks/use-page-title";
@@ -1797,6 +1798,11 @@ export default function ProfilePage() {
               <h2 className="text-xl font-orbitron text-foreground mb-1">
                 {profileData.displayName || username}
               </h2>
+              {stats && (
+                <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded border bg-primary/20 border-primary/50 text-primary text-[10px] font-orbitron font-bold uppercase tracking-wider">
+                  {getRank(stats.experience.level).name}
+                </span>
+              )}
             </div>
             
             {isEditing ? (

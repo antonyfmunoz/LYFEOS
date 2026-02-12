@@ -3,7 +3,7 @@ import { LYFEOSContext } from "@/lib/context";
 import { motion, AnimatePresence } from "framer-motion";
 import { Award } from "lucide-react";
 import confetti from "canvas-confetti";
-import { getRank, getNextRank, getLevelsToNextRank } from "@/lib/ranks";
+
 
 interface ExperienceBarProps {
   current: number;
@@ -93,16 +93,6 @@ export default function ExperienceBar({
           <h3 className="font-orbitron text-[#D6F4FF]">LEVEL PROGRESS</h3>
         </div>
         <div className="flex items-center gap-2">
-          <span
-            className="px-2 py-0.5 rounded-full text-[10px] font-orbitron font-bold"
-            style={{
-              backgroundColor: `${getRank(level).color}20`,
-              color: getRank(level).color,
-              border: `1px solid ${getRank(level).color}40`,
-            }}
-          >
-            {getRank(level).icon} {getRank(level).name}
-          </span>
           <motion.span 
             className="px-2 py-1 rounded-md text-xs font-orbitron"
             style={{ 
