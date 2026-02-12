@@ -1597,6 +1597,13 @@ export default function OnboardingPage() {
                     <ChevronRight className="h-4 w-4 ml-2" />
                   </Button>
                   <button
+                    onClick={() => setShowMissionComplete(false)}
+                    className="text-muted-foreground text-sm hover:text-primary transition-colors flex items-center justify-center gap-1 mx-auto"
+                  >
+                    <ChevronLeft className="h-3 w-3" />
+                    Go back to mission
+                  </button>
+                  <button
                     onClick={handleSkipToSystem}
                     className="text-muted-foreground text-sm hover:text-primary transition-colors"
                   >
@@ -1612,6 +1619,13 @@ export default function OnboardingPage() {
                     Initialize System
                     <ChevronRight className="h-4 w-4 ml-2" />
                   </Button>
+                  <button
+                    onClick={() => setShowMissionComplete(false)}
+                    className="text-muted-foreground text-sm hover:text-primary transition-colors flex items-center justify-center gap-1 mx-auto"
+                  >
+                    <ChevronLeft className="h-3 w-3" />
+                    Go back to mission
+                  </button>
                 </div>
               )}
             </CardContent>
