@@ -7,6 +7,16 @@ import { useWidgetState } from "@/hooks/use-widget-state";
 import { ArrowLeft, Eye, Compass, Flame, Target, Milestone, Plus, Check, Trash2, Edit2, Loader2, ChevronDown, ChevronRight, Info, Zap, GripVertical, Gift, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import update from 'immutability-helper';
 import { useDrag, useDrop } from 'react-dnd';
 import { CollapsibleWidget } from '@/components/ui/collapsible-widget';
@@ -47,6 +57,42 @@ interface CompletedMission {
   category: string;
 }
 
+interface GoalFormData {
+  title: string;
+  description: string;
+  category: string;
+  rewardText: string;
+  bonusXp: number;
+}
+
+const defaultFormData: GoalFormData = {
+  title: "",
+  description: "",
+  category: "90day",
+  rewardText: "",
+  bonusXp: 0,
+};
+
+const CATEGORY_OPTIONS = [
+  { value: "legacy", label: "Legacy Vision" },
+  { value: "10year", label: "10-Year Vision" },
+  { value: "5year", label: "5-Year Vision" },
+  { value: "18month", label: "18-Month Vision" },
+  { value: "90day", label: "90-Day Vision" },
+];
+
+const BONUS_XP_OPTIONS = [
+  { value: 0, label: "Auto (AI assigns on completion)" },
+  { value: 25, label: "25 XP" },
+  { value: 50, label: "50 XP" },
+  { value: 75, label: "75 XP" },
+  { value: 100, label: "100 XP" },
+  { value: 150, label: "150 XP" },
+  { value: 200, label: "200 XP" },
+  { value: 250, label: "250 XP" },
+  { value: 500, label: "500 XP" },
+];
+
 const difficultyOrder: Record<string, number> = { 'D': 1, 'C': 2, 'B': 3, 'A': 4, 'S': 5 };
 const reverseOrder: Record<number, string> = { 1: 'D', 2: 'C', 3: 'B', 4: 'A', 5: 'S' };
 
@@ -59,12 +105,6 @@ interface DraggableObjectiveProps {
   onToggle: (id: number, completed: boolean) => void;
   onEdit: (goal: VisionGoal) => void;
   onDelete: (id: number) => void;
-  editingId: number | null;
-  editTitle: string;
-  setEditTitle: (v: string) => void;
-  handleEditSave: (id: number) => void;
-  setEditingId: (id: number | null) => void;
-  editInputRef: React.RefObject<HTMLInputElement>;
   infoExpandedId: number | null;
   setInfoExpandedId: (id: number | null) => void;
   renderInfoPanel: (goal: VisionGoal) => React.ReactNode;
@@ -74,7 +114,6 @@ interface DraggableObjectiveProps {
 
 function DraggableObjective({
   goal, index, moveGoal, onToggle, onEdit, onDelete,
-  editingId, editTitle, setEditTitle, handleEditSave, setEditingId, editInputRef,
   infoExpandedId, setInfoExpandedId, renderInfoPanel, renderGoalMissions, category,
 }: DraggableObjectiveProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -116,62 +155,42 @@ function DraggableObjective({
           onClick={() => onToggle(goal.id, true)}
           className="shrink-0 h-5 w-5 rounded-full border-2 border-primary/40 hover:border-primary hover:bg-primary/20 transition-colors flex items-center justify-center"
         />
-        {editingId === goal.id ? (
-          <form
-            onSubmit={(e) => { e.preventDefault(); handleEditSave(goal.id); }}
-            className="flex-1 flex gap-2"
-          >
-            <Input
-              ref={editInputRef}
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-              className="h-7 text-sm bg-card/30 border-primary/30"
-              onKeyDown={(e) => { if (e.key === 'Escape') setEditingId(null); }}
-            />
-            <Button type="submit" size="sm" variant="ghost" className="h-7 px-2 text-primary">
-              <Check className="h-3.5 w-3.5" />
-            </Button>
-          </form>
-        ) : (
-          <>
-            <div className="flex-1 min-w-0">
-              <span className="text-sm text-foreground">{goal.title}</span>
-              {(goal.rewardText || goal.bonusXp > 0) && (
-                <div className="flex items-center gap-2 mt-0.5">
-                  {goal.rewardText && (
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Gift className="h-3 w-3 text-primary/50" />
-                      {goal.rewardText}
-                    </span>
-                  )}
-                  {goal.bonusXp > 0 && (
-                    <span className="text-xs text-amber-400/80 font-medium">+{goal.bonusXp} XP</span>
-                  )}
-                </div>
+        <div className="flex-1 min-w-0">
+          <span className="text-sm text-foreground">{goal.title}</span>
+          {(goal.rewardText || goal.bonusXp > 0) && (
+            <div className="flex items-center gap-2 mt-0.5">
+              {goal.rewardText && (
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Gift className="h-3 w-3 text-primary/50" />
+                  {goal.rewardText}
+                </span>
+              )}
+              {goal.bonusXp > 0 && (
+                <span className="text-xs text-amber-400/80 font-medium">+{goal.bonusXp} XP</span>
               )}
             </div>
-            <div className="flex gap-1 shrink-0">
-              <button
-                onClick={() => setInfoExpandedId(infoExpandedId === goal.id ? null : goal.id)}
-                className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
-              >
-                <Info className="h-3 w-3" />
-              </button>
-              <button
-                onClick={() => onEdit(goal)}
-                className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
-              >
-                <Edit2 className="h-3 w-3" />
-              </button>
-              <button
-                onClick={() => onDelete(goal.id)}
-                className="h-6 w-6 inline-flex items-center justify-center rounded border bg-red-500/20 border-red-500/50 text-red-400 hover:bg-red-500/30 transition-colors"
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
-            </div>
-          </>
-        )}
+          )}
+        </div>
+        <div className="flex gap-1 shrink-0">
+          <button
+            onClick={() => setInfoExpandedId(infoExpandedId === goal.id ? null : goal.id)}
+            className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+          >
+            <Info className="h-3 w-3" />
+          </button>
+          <button
+            onClick={() => onEdit(goal)}
+            className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+          >
+            <Edit2 className="h-3 w-3" />
+          </button>
+          <button
+            onClick={() => onDelete(goal.id)}
+            className="h-6 w-6 inline-flex items-center justify-center rounded border bg-red-500/20 border-red-500/50 text-red-400 hover:bg-red-500/30 transition-colors"
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
+        </div>
       </div>
       {renderInfoPanel(goal)}
       {renderGoalMissions(goal.id)}
@@ -179,23 +198,13 @@ function DraggableObjective({
   );
 }
 
-function ObjectiveList({ category, placeholder }: { category: string; placeholder: string }) {
+function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { category: string; placeholder: string; onCreateGoal: (category: string) => void; onEditGoal: (goal: VisionGoal) => void }) {
   const { user } = useAuth();
-  const [newTitle, setNewTitle] = useState("");
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editTitle, setEditTitle] = useState("");
   const [expandedGoalId, setExpandedGoalId] = useState<number | null>(null);
   const [infoExpandedId, setInfoExpandedId] = useState<number | null>(null);
-  const [editingDescId, setEditingDescId] = useState<number | null>(null);
-  const [pendingGoals, setPendingGoals] = useState<VisionGoal[]>([]);
-  const [editDesc, setEditDesc] = useState("");
-  const [editingRewardId, setEditingRewardId] = useState<number | null>(null);
-  const [editReward, setEditReward] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-  const editInputRef = useRef<HTMLInputElement>(null);
-  let tempIdCounter = useRef(-1);
 
   const queryKey = ['/api/vision-goals', category];
+  const allGoalsKey = ['/api/vision-goals/all'];
 
   const { data: goals = [], isLoading } = useQuery<VisionGoal[]>({
     queryKey,
@@ -215,36 +224,6 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
       return res.json();
     },
     enabled: !!user,
-  });
-
-  useEffect(() => {
-    if (editingId !== null && editInputRef.current) {
-      editInputRef.current.focus();
-    }
-  }, [editingId]);
-
-  const allGoalsKey = ['/api/vision-goals/all'];
-
-  const createMutation = useMutation({
-    mutationFn: async ({ title, tempId }: { title: string; tempId: number }) => {
-      const data = await apiRequest<VisionGoal>('/api/vision-goals', {
-        method: 'POST',
-        body: JSON.stringify({ category, title }),
-      });
-      return { data, tempId };
-    },
-    onSuccess: ({ data, tempId }) => {
-      setPendingGoals(prev => prev.filter(g => g.id !== tempId));
-      queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) => [...old, data]);
-      queryClient.setQueryData<VisionGoal[]>(allGoalsKey, (old = []) => [...old, data]);
-    },
-    onError: (_err, { tempId }) => {
-      setPendingGoals(prev => prev.filter(g => g.id !== tempId));
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey });
-      queryClient.invalidateQueries({ queryKey: allGoalsKey });
-    },
   });
 
   const toggleMutation = useMutation({
@@ -270,49 +249,6 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
       if (data && data.title && completed) {
         objectiveToast(data.title, data.rewardText, data.bonusXp);
       }
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
-      if (context?.previousAll) queryClient.setQueryData(allGoalsKey, context.previousAll);
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey });
-      queryClient.invalidateQueries({ queryKey: allGoalsKey });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, title, description, rewardText }: { id: number; title?: string; description?: string; rewardText?: string }) => {
-      const body: Record<string, any> = {};
-      if (title !== undefined) body.title = title;
-      if (description !== undefined) body.description = description;
-      if (rewardText !== undefined) body.rewardText = rewardText;
-      const result = await apiRequest<VisionGoal>(`/api/vision-goals/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(body),
-      });
-      return result;
-    },
-    onMutate: async ({ id, title, description, rewardText }) => {
-      await queryClient.cancelQueries({ queryKey });
-      await queryClient.cancelQueries({ queryKey: allGoalsKey });
-      const previous = queryClient.getQueryData<VisionGoal[]>(queryKey);
-      const previousAll = queryClient.getQueryData<VisionGoal[]>(allGoalsKey);
-      const updater = (old: VisionGoal[]) =>
-        old.map(g => {
-          if (g.id !== id) return g;
-          const updated = { ...g };
-          if (title !== undefined) updated.title = title;
-          if (description !== undefined) updated.description = description;
-          if (rewardText !== undefined) updated.rewardText = rewardText || null;
-          return updated;
-        });
-      queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) => updater(old));
-      queryClient.setQueryData<VisionGoal[]>(allGoalsKey, (old = []) => updater(old));
-      setEditingId(null);
-      setEditingDescId(null);
-      setEditingRewardId(null);
-      return { previous, previousAll };
     },
     onError: (_err, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
@@ -383,40 +319,6 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
     reorderMutation.mutate(reordered.map(g => g.id));
   }, [queryKey]);
 
-  const handleAdd = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle.trim()) return;
-    const title = newTitle.trim();
-    const tempId = tempIdCounter.current--;
-    const tempGoal: VisionGoal = {
-      id: tempId,
-      userId: user?.id || 0,
-      category,
-      title,
-      description: null,
-      rewardText: null,
-      bonusXp: 0,
-      completed: false,
-      completedAt: null,
-      displayOrder: (goals?.length || 0) + pendingGoals.length + 1,
-      createdAt: new Date().toISOString() as any,
-    };
-    setPendingGoals(prev => [...prev, tempGoal]);
-    setNewTitle("");
-    inputRef.current?.focus();
-    createMutation.mutate({ title, tempId });
-  };
-
-  const handleEditSave = (id: number) => {
-    if (!editTitle.trim()) return;
-    updateMutation.mutate({ id, title: editTitle.trim() });
-  };
-
-  const startEdit = (goal: VisionGoal) => {
-    setEditingId(goal.id);
-    setEditTitle(goal.title);
-  };
-
   const getMissionsForGoal = (goalId: number) => {
     return completedMissions.filter(m => m.visionGoalId === goalId);
   };
@@ -441,84 +343,16 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
       <div className="ml-8 mt-1 bg-primary/5 border border-primary/10 rounded-lg p-3 space-y-2 text-xs">
         <div className="flex items-start gap-2">
           <span className="text-muted-foreground shrink-0">Desc:</span>
-          {editingDescId === goal.id ? (
-            <div className="flex-1 flex gap-1 items-center">
-              <Input
-                value={editDesc}
-                onChange={(e) => setEditDesc(e.target.value)}
-                className="h-6 text-xs bg-card/30 border-primary/30 flex-1"
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') setEditingDescId(null);
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    updateMutation.mutate({ id: goal.id, description: editDesc.trim() });
-                  }
-                }}
-                autoFocus
-              />
-              <button
-                onClick={() => updateMutation.mutate({ id: goal.id, description: editDesc.trim() })}
-                className="h-5 w-5 rounded text-primary hover:bg-primary/10 flex items-center justify-center transition-colors shrink-0"
-              >
-                <Check className="h-3 w-3" />
-              </button>
-            </div>
-          ) : (
-            <div className="flex-1 flex items-center gap-1">
-              {goal.description ? (
-                <span className="text-foreground/80">{goal.description}</span>
-              ) : (
-                <span className="italic text-muted-foreground">No description</span>
-              )}
-              <button
-                onClick={() => { setEditingDescId(goal.id); setEditDesc(goal.description || ""); }}
-                className="h-5 w-5 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 flex items-center justify-center transition-colors shrink-0"
-              >
-                <Edit2 className="h-2.5 w-2.5" />
-              </button>
-            </div>
-          )}
+          <span className={goal.description ? "text-foreground/80" : "italic text-muted-foreground"}>
+            {goal.description || "No description"}
+          </span>
         </div>
 
         <div className="flex items-start gap-2">
           <span className="text-muted-foreground shrink-0 flex items-center gap-1"><Gift className="h-3 w-3" /> Reward:</span>
-          {editingRewardId === goal.id ? (
-            <div className="flex-1 flex gap-1 items-center">
-              <Input
-                value={editReward}
-                onChange={(e) => setEditReward(e.target.value)}
-                className="h-6 text-xs bg-card/30 border-primary/30 flex-1"
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') setEditingRewardId(null);
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    updateMutation.mutate({ id: goal.id, rewardText: editReward.trim() });
-                  }
-                }}
-                autoFocus
-              />
-              <button
-                onClick={() => updateMutation.mutate({ id: goal.id, rewardText: editReward.trim() })}
-                className="h-5 w-5 rounded text-primary hover:bg-primary/10 flex items-center justify-center transition-colors shrink-0"
-              >
-                <Check className="h-3 w-3" />
-              </button>
-            </div>
-          ) : (
-            <div className="flex-1 flex items-center gap-1">
-              {goal.rewardText ? (
-                <span className="text-foreground/80">{goal.rewardText}</span>
-              ) : (
-                <span className="italic text-muted-foreground">No reward set</span>
-              )}
-              <button
-                onClick={() => { setEditingRewardId(goal.id); setEditReward(goal.rewardText || ""); }}
-                className="h-5 w-5 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 flex items-center justify-center transition-colors shrink-0"
-              >
-                <Edit2 className="h-2.5 w-2.5" />
-              </button>
-            </div>
-          )}
+          <span className={goal.rewardText ? "text-foreground/80" : "italic text-muted-foreground"}>
+            {goal.rewardText || "No reward set"}
+          </span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -564,9 +398,8 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
     );
   };
 
-  const allDisplayGoals = [...goals, ...pendingGoals.filter(pg => !goals.some(g => g.id === pg.id))];
-  const activeGoals = [...allDisplayGoals.filter(g => !g.completed)].sort((a, b) => a.displayOrder - b.displayOrder);
-  const completedGoals = allDisplayGoals.filter(g => g.completed);
+  const activeGoals = [...goals.filter(g => !g.completed)].sort((a, b) => a.displayOrder - b.displayOrder);
+  const completedGoals = goals.filter(g => g.completed);
   activeGoalsRef.current = activeGoals;
 
   if (isLoading) {
@@ -606,29 +439,19 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
 
   return (
     <div className="space-y-3">
-      <form onSubmit={handleAdd} className="space-y-2">
-        <div className="flex gap-2">
-          <Input
-            ref={inputRef}
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            placeholder={placeholder}
-            className="bg-card/30 border-primary/30 focus-visible:ring-primary/30 text-sm"
-          />
-          <Button
-            type="submit"
-            size="sm"
-            disabled={!newTitle.trim()}
-            className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 shrink-0 gap-1"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Add
-          </Button>
-        </div>
-      </form>
+      <div className="flex justify-end">
+        <Button
+          size="sm"
+          onClick={() => onCreateGoal(category)}
+          className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 shrink-0 gap-1"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add
+        </Button>
+      </div>
 
-      {allDisplayGoals.length === 0 && (
-        <p className="text-sm text-muted-foreground italic py-2">No mission objectives yet. Add your first one above.</p>
+      {goals.length === 0 && (
+        <p className="text-sm text-muted-foreground italic py-2">No mission objectives yet. Click "Add" to create your first one.</p>
       )}
 
       {activeGoals.length > 0 && (
@@ -640,14 +463,8 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
               index={index}
               moveGoal={moveGoal}
               onToggle={(id, completed) => toggleMutation.mutate({ id, completed })}
-              onEdit={startEdit}
+              onEdit={onEditGoal}
               onDelete={(id) => deleteMutation.mutate(id)}
-              editingId={editingId}
-              editTitle={editTitle}
-              setEditTitle={setEditTitle}
-              handleEditSave={handleEditSave}
-              setEditingId={setEditingId}
-              editInputRef={editInputRef}
               infoExpandedId={infoExpandedId}
               setInfoExpandedId={setInfoExpandedId}
               renderInfoPanel={renderInfoPanel}
@@ -681,7 +498,7 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
                     <Info className="h-3 w-3" />
                   </button>
                   <button
-                    onClick={() => startEdit(goal)}
+                    onClick={() => onEditGoal(goal)}
                     className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
                   >
                     <Edit2 className="h-3 w-3" />
@@ -709,6 +526,13 @@ export default function GoalsArchivePage() {
 
   const { user } = useAuth();
   const [, navigate] = useLocation();
+
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [createFormData, setCreateFormData] = useState<GoalFormData>(defaultFormData);
+  const [editFormData, setEditFormData] = useState<GoalFormData>(defaultFormData);
+  const [editingGoalId, setEditingGoalId] = useState<number | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [legacyOpen, setLegacyOpen] = useWidgetState('goals.legacy-vision', false);
   const [tenYearOpen, setTenYearOpen] = useWidgetState('goals.10year-vision', false);
@@ -808,9 +632,156 @@ export default function GoalsArchivePage() {
     }));
   }, []);
 
+  const handleOpenCreate = (category?: string) => {
+    setCreateFormData({ ...defaultFormData, category: category || "90day" });
+    setIsCreateOpen(true);
+  };
+
+  const handleOpenEdit = (goal: VisionGoal) => {
+    setEditFormData({
+      title: goal.title,
+      description: goal.description || "",
+      category: goal.category,
+      rewardText: goal.rewardText || "",
+      bonusXp: goal.bonusXp,
+    });
+    setEditingGoalId(goal.id);
+    setIsEditOpen(true);
+  };
+
+  const handleCreateGoal = async () => {
+    if (!createFormData.title.trim()) return;
+    setIsSubmitting(true);
+    try {
+      await apiRequest('/api/vision-goals', {
+        method: 'POST',
+        body: JSON.stringify({
+          category: createFormData.category,
+          title: createFormData.title.trim(),
+          description: createFormData.description.trim() || null,
+          rewardText: createFormData.rewardText.trim() || null,
+          bonusXp: createFormData.bonusXp,
+        }),
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals', createFormData.category] });
+      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
+      setIsCreateOpen(false);
+      setCreateFormData(defaultFormData);
+    } catch (error) {
+      console.error("Error creating goal:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditGoal = async () => {
+    if (!editFormData.title.trim() || !editingGoalId) return;
+    setIsSubmitting(true);
+    try {
+      await apiRequest(`/api/vision-goals/${editingGoalId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          title: editFormData.title.trim(),
+          description: editFormData.description.trim() || null,
+          rewardText: editFormData.rewardText.trim() || null,
+          bonusXp: editFormData.bonusXp,
+        }),
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals', editFormData.category] });
+      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
+      CATEGORY_OPTIONS.forEach(cat => {
+        queryClient.invalidateQueries({ queryKey: ['/api/vision-goals', cat.value] });
+      });
+      setIsEditOpen(false);
+      setEditFormData(defaultFormData);
+      setEditingGoalId(null);
+    } catch (error) {
+      console.error("Error updating goal:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const renderGoalForm = (formData: GoalFormData, setFormData: (fn: (prev: GoalFormData) => GoalFormData) => void, onSubmit: () => void, submitLabel: string, showCategorySelect: boolean) => (
+    <div className="space-y-4 mt-4">
+      <div className="space-y-2">
+        <Label htmlFor="goal-title">Title <span className="text-primary">*</span></Label>
+        <Input
+          id="goal-title"
+          placeholder="Enter goal title..."
+          value={formData.title}
+          onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+          className="bg-background/50 border-primary/30"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="goal-description">Description</Label>
+        <Textarea
+          id="goal-description"
+          placeholder="What does achieving this goal look like?"
+          value={formData.description}
+          onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+          className="bg-background/50 border-primary/30 min-h-[80px]"
+        />
+      </div>
+
+      {showCategorySelect && (
+        <div className="space-y-2">
+          <Label>Time Horizon</Label>
+          <Select value={formData.category} onValueChange={(val) => setFormData(prev => ({ ...prev, category: val }))}>
+            <SelectTrigger className="bg-background/50 border-primary/30">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CATEGORY_OPTIONS.map(c => (
+                <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <Label htmlFor="goal-reward">Personal Reward</Label>
+        <Input
+          id="goal-reward"
+          placeholder="e.g., Buy new shoes, take a vacation..."
+          value={formData.rewardText}
+          onChange={(e) => setFormData(prev => ({ ...prev, rewardText: e.target.value }))}
+          className="bg-background/50 border-primary/30"
+        />
+        <p className="text-xs text-muted-foreground">A personal reward you'll give yourself when you complete this goal</p>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Bonus XP</Label>
+        <Select value={formData.bonusXp.toString()} onValueChange={(val) => setFormData(prev => ({ ...prev, bonusXp: parseInt(val) }))}>
+          <SelectTrigger className="bg-background/50 border-primary/30">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {BONUS_XP_OPTIONS.map(opt => (
+              <SelectItem key={opt.value} value={opt.value.toString()}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">XP awarded when you complete this goal. Leave at "Auto" to let AI decide based on difficulty.</p>
+      </div>
+
+      <button
+        onClick={onSubmit}
+        className="w-full mt-4 text-sm font-mono px-4 py-2.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center"
+        disabled={!formData.title.trim() || isSubmitting}
+      >
+        {isSubmitting ? "Saving..." : submitLabel}
+      </button>
+    </div>
+  );
+
   return (
       <div className="pb-20">
-        <div className="mb-4">
+        <div className="mb-4 flex items-center justify-between">
           <Button 
             variant="ghost" 
             className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10" 
@@ -819,12 +790,54 @@ export default function GoalsArchivePage() {
             <ArrowLeft className="h-4 w-4" />
             <span>Back</span>
           </Button>
+
+          <Dialog open={isCreateOpen} onOpenChange={(open) => {
+            setIsCreateOpen(open);
+            if (!open) setCreateFormData(defaultFormData);
+          }}>
+            <DialogTrigger asChild>
+              <Button variant="ghost" className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => handleOpenCreate()}>
+                <Plus className="h-4 w-4" />
+                Create Goal
+              </Button>
+            </DialogTrigger>
+            <DialogContent
+              className="glassmorphic border-primary/30 w-full h-full max-w-full max-h-full left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:max-w-lg sm:max-h-[90vh] sm:h-auto sm:rounded-lg overflow-y-auto"
+              onOpenAutoFocus={(e) => e.preventDefault()}
+            >
+              <DialogHeader>
+                <DialogTitle className="font-orbitron text-xl">Create New Goal</DialogTitle>
+              </DialogHeader>
+              {renderGoalForm(createFormData, setCreateFormData, handleCreateGoal, "Create Goal", true)}
+            </DialogContent>
+          </Dialog>
         </div>
         
         <div className="mb-6">
           <h1 className="text-2xl font-orbitron mb-1">Vision</h1>
           <p className="text-[#7DAAB2]">Set mission objectives for each time horizon and check them off as you reach them</p>
         </div>
+
+        <Dialog open={isEditOpen} onOpenChange={(open) => {
+          setIsEditOpen(open);
+          if (!open) {
+            setEditFormData(defaultFormData);
+            setEditingGoalId(null);
+          }
+        }}>
+          <DialogContent
+            className="glassmorphic border-primary/30 w-full h-full max-w-full max-h-full left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:max-w-lg sm:max-h-[90vh] sm:h-auto sm:rounded-lg overflow-y-auto"
+            onOpenAutoFocus={(e) => e.preventDefault()}
+          >
+            <DialogHeader>
+              <DialogTitle className="font-orbitron text-xl flex items-center gap-2">
+                <Edit2 className="h-5 w-5" />
+                Edit Goal
+              </DialogTitle>
+            </DialogHeader>
+            {renderGoalForm(editFormData, setEditFormData, handleEditGoal, "Save Changes", false)}
+          </DialogContent>
+        </Dialog>
 
         <div className="space-y-6 mb-6">
           {widgets.map((widget, index) => {
@@ -843,6 +856,8 @@ export default function GoalsArchivePage() {
                 <ObjectiveList
                   category={widget.id}
                   placeholder={widget.placeholder}
+                  onCreateGoal={handleOpenCreate}
+                  onEditGoal={handleOpenEdit}
                 />
               </CollapsibleWidget>
             );
