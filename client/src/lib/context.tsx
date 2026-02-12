@@ -44,7 +44,7 @@ const initialStats: UserStats = {
   darkThemeEnabled: true,
   autoSyncEnabled: true,
   aiAssistantEnabled: true,
-  primaryColor: "#00e0ff",
+  primaryColor: "#ffffff",
 };
 
 // Initial quests data
