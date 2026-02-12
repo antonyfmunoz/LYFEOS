@@ -19,7 +19,7 @@ const MISSIONS = [
   { id: 2, title: "Identity & Direction", questions: 21, xp: 75 },
   { id: 3, title: "Craft & Mastery", questions: 8, xp: 60 },
   { id: 4, title: "Capacity & Constraints", questions: 12, xp: 55 },
-  { id: 5, title: "Baselines & States", questions: 17, xp: 70 },
+  { id: 5, title: "Baselines & States", questions: 14, xp: 70 },
   { id: 6, title: "History & Roots", questions: 5, xp: 50 },
   { id: 7, title: "Systems & Rituals", questions: 10, xp: 65 },
 ];
@@ -965,7 +965,7 @@ export default function OnboardingPage() {
       case 2: return 21;
       case 3: return 8;
       case 4: return 12;
-      case 5: return 17;
+      case 5: return 14;
       case 6: return 5;
       case 7: return 10;
       default: return 1;
@@ -1043,18 +1043,15 @@ export default function OnboardingPage() {
         case 2: return nutritionApproach !== "";
         case 3: return habitsToReprogram.length > 0;
         case 4: return traitsToCultivate.length > 0;
-        case 5: return coreBelief.trim() !== "";
-        case 6: return limitingBelief.trim() !== "";
-        case 7: return empoweringBelief.trim() !== "";
-        case 8: return emotionsToCultivate.length > 0;
-        case 9: return copingPractices.trim() !== "";
-        case 10: return copingEssential.trim() !== "";
-        case 11: return dominantInstinctType !== "";
-        case 12: return decisionMakingStyles.length > 0;
-        case 13: return decisionMakingPrimary !== "";
-        case 14: return trainingStyle !== "";
-        case 15: return energyPatterns !== "";
-        case 16: return longevityFocus.length > 0;
+        case 5: return emotionsToCultivate.length > 0;
+        case 6: return copingPractices.trim() !== "";
+        case 7: return copingEssential.trim() !== "";
+        case 8: return dominantInstinctType !== "";
+        case 9: return decisionMakingStyles.length > 0;
+        case 10: return decisionMakingPrimary !== "";
+        case 11: return trainingStyle !== "";
+        case 12: return energyPatterns !== "";
+        case 13: return longevityFocus.length > 0;
       }
     }
     if (currentMission === 6) {
@@ -1568,18 +1565,15 @@ export default function OnboardingPage() {
       case 2: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your nutrition approach?</h3><ChipSelect options={["Clean Eating", "Balanced", "Intuitive", "Keto/Low Carb", "Vegan/Vegetarian", "No Specific Diet"]} value={nutritionApproach} onChange={(val) => setNutritionApproach(val as string)} /></div>);
       case 3: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What habits do you want to reprogram?</h3><ChipSelect options={["Procrastination", "Overthinking", "Poor Sleep", "Unhealthy Eating", "Phone Addiction", "Negative Self-Talk", "Avoidance", "Perfectionism"]} value={habitsToReprogram} onChange={(val) => setHabitsToReprogram(val as string[])} multiple /></div>);
       case 4: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What traits do you want to cultivate?</h3><ChipSelect options={["Discipline", "Patience", "Confidence", "Resilience", "Creativity", "Focus", "Empathy", "Courage"]} value={traitsToCultivate} onChange={(val) => setTraitsToCultivate(val as string[])} multiple /></div>);
-      case 5: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your core belief about yourself?</h3><Input value={coreBelief} onChange={(e) => setCoreBelief(e.target.value)} placeholder="I believe I am..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
-      case 6: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What limiting belief holds you back?</h3><Input value={limitingBelief} onChange={(e) => setLimitingBelief(e.target.value)} placeholder="I can't because..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
-      case 7: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What empowering belief will you adopt?</h3><Input value={empoweringBelief} onChange={(e) => setEmpoweringBelief(e.target.value)} placeholder="I am capable of..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
-      case 8: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What emotions do you want to cultivate?</h3><ChipSelect options={["Joy", "Peace", "Gratitude", "Confidence", "Love", "Excitement", "Serenity", "Passion"]} value={emotionsToCultivate} onChange={(val) => setEmotionsToCultivate(val as string[])} multiple /></div>);
-      case 9: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What coping practices work for you?</h3><Textarea value={copingPractices} onChange={(e) => setCopingPractices(e.target.value)} placeholder="Practices that help you cope..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
-      case 10: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What is essential for you to cope with stress?</h3><Input value={copingEssential} onChange={(e) => setCopingEssential(e.target.value)} placeholder="The one thing you need..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
-      case 11: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What is your dominant instinct?</h3><ChipSelect options={["Self-Preservation", "Social", "Sexual/Creative", "Intellectual"]} value={dominantInstinctType} onChange={(val) => setDominantInstinctType(val as string)} /></div>);
-      case 12: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">How do you make decisions?</h3><ChipSelect options={["Intuitive", "Analytical", "Collaborative", "Impulsive", "Deliberate", "Emotional", "Data-Driven"]} value={decisionMakingStyles} onChange={(val) => setDecisionMakingStyles(val as string[])} multiple /></div>);
-      case 13: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your primary decision-making style?</h3><ChipSelect options={["Intuitive", "Analytical", "Collaborative", "Impulsive", "Deliberate", "Emotional", "Data-Driven"]} value={decisionMakingPrimary} onChange={(val) => setDecisionMakingPrimary(val as string)} /></div>);
-      case 14: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your training style?</h3><ChipSelect options={["Strength Training", "Cardio", "Yoga/Flexibility", "Sports", "Martial Arts", "Calisthenics", "Mixed Training", "Walking/Hiking"]} value={trainingStyle} onChange={(val) => setTrainingStyle(val as string)} /></div>);
-      case 15: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">How would you describe your energy patterns?</h3><ChipSelect options={["Morning Person", "Night Owl", "Afternoon Peak", "Steady Throughout", "Varies Daily", "Low Energy"]} value={energyPatterns} onChange={(val) => setEnergyPatterns(val as string)} /></div>);
-      case 16: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What longevity practices matter to you?</h3><ChipSelect options={["Sleep Optimization", "Nutrition", "Exercise", "Stress Management", "Social Connection", "Mental Stimulation", "Nature Exposure", "Preventive Healthcare"]} value={longevityFocus} onChange={(val) => setLongevityFocus(val as string[])} multiple /></div>);
+      case 5: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What emotions do you want to cultivate?</h3><ChipSelect options={["Joy", "Peace", "Gratitude", "Confidence", "Love", "Excitement", "Serenity", "Passion"]} value={emotionsToCultivate} onChange={(val) => setEmotionsToCultivate(val as string[])} multiple /></div>);
+      case 6: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What coping practices work for you?</h3><Textarea value={copingPractices} onChange={(e) => setCopingPractices(e.target.value)} placeholder="Practices that help you cope..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 7: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What is essential for you to cope with stress?</h3><Input value={copingEssential} onChange={(e) => setCopingEssential(e.target.value)} placeholder="The one thing you need..." autoComplete="off" className="max-w-md mx-auto bg-card/30 border-primary/20" /></div>);
+      case 8: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What is your dominant instinct?</h3><ChipSelect options={["Self-Preservation", "Social", "Sexual/Creative", "Intellectual"]} value={dominantInstinctType} onChange={(val) => setDominantInstinctType(val as string)} /></div>);
+      case 9: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">How do you make decisions?</h3><ChipSelect options={["Intuitive", "Analytical", "Collaborative", "Impulsive", "Deliberate", "Emotional", "Data-Driven"]} value={decisionMakingStyles} onChange={(val) => setDecisionMakingStyles(val as string[])} multiple /></div>);
+      case 10: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your primary decision-making style?</h3><ChipSelect options={["Intuitive", "Analytical", "Collaborative", "Impulsive", "Deliberate", "Emotional", "Data-Driven"]} value={decisionMakingPrimary} onChange={(val) => setDecisionMakingPrimary(val as string)} /></div>);
+      case 11: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What's your training style?</h3><ChipSelect options={["Strength Training", "Cardio", "Yoga/Flexibility", "Sports", "Martial Arts", "Calisthenics", "Mixed Training", "Walking/Hiking"]} value={trainingStyle} onChange={(val) => setTrainingStyle(val as string)} /></div>);
+      case 12: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">How would you describe your energy patterns?</h3><ChipSelect options={["Morning Person", "Night Owl", "Afternoon Peak", "Steady Throughout", "Varies Daily", "Low Energy"]} value={energyPatterns} onChange={(val) => setEnergyPatterns(val as string)} /></div>);
+      case 13: return (<div className="space-y-4"><h3 className="text-lg font-medium text-center">What longevity practices matter to you?</h3><ChipSelect options={["Sleep Optimization", "Nutrition", "Exercise", "Stress Management", "Social Connection", "Mental Stimulation", "Nature Exposure", "Preventive Healthcare"]} value={longevityFocus} onChange={(val) => setLongevityFocus(val as string[])} multiple /></div>);
       default: return null;
     }
   };
