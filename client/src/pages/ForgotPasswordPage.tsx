@@ -62,7 +62,7 @@ export default function ForgotPasswordPage() {
       </div>
       {submitted ? (
         <div className="w-full max-w-md rounded-xl p-6 border backdrop-blur-md text-center space-y-4"
-             style={{ backgroundColor: "rgba(38, 38, 42, 0.85)", boxShadow: `0 0 20px ${accent?.glow || 'rgba(255,255,255,0.08)'}`, borderColor: accent?.border20 || 'rgba(255,255,255,0.2)' }}>
+             style={{ backgroundColor: "hsla(0, 0%, 11%, 0.7)", boxShadow: `0 0 20px ${accent?.glow || 'rgba(255,255,255,0.08)'}`, borderColor: accent?.border20 || 'rgba(255,255,255,0.2)' }}>
           <Mail className="w-12 h-12 mx-auto" style={{ color: accent?.color || 'white' }} />
           <h2 className="text-xl font-orbitron" style={{ color: accent?.color || 'white' }}>Check your email</h2>
           <p className="text-white text-sm">
@@ -79,7 +79,7 @@ export default function ForgotPasswordPage() {
         </div>
       ) : (
         <div className="w-full max-w-md rounded-xl p-6 border backdrop-blur-md"
-             style={{ backgroundColor: "rgba(38, 38, 42, 0.85)", boxShadow: `0 0 20px ${accent?.glow || 'rgba(255,255,255,0.08)'}`, borderColor: accent?.border20 || 'rgba(255,255,255,0.2)' }}>
+             style={{ backgroundColor: "hsla(0, 0%, 11%, 0.7)", boxShadow: `0 0 20px ${accent?.glow || 'rgba(255,255,255,0.08)'}`, borderColor: accent?.border20 || 'rgba(255,255,255,0.2)' }}>
           <h2 className="text-xl font-orbitron text-center mb-6" style={{ color: accent?.color || 'white' }}>Reset Password</h2>
 
           <p className="text-white text-sm text-center mb-6">

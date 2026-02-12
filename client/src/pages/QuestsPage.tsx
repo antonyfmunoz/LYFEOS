@@ -206,6 +206,8 @@ export default function QuestsPage() {
   const [customCategoryMode, setCustomCategoryMode] = useState<'create' | 'edit' | null>(null);
   const [customCategoryInput, setCustomCategoryInput] = useState("");
   const [isSavingCategory, setIsSavingCategory] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
+  const [editCategoryInput, setEditCategoryInput] = useState("");
 
   const handleSaveCustomCategory = async (formType: 'create' | 'edit') => {
     const inputValue = customCategoryInput.trim();
@@ -233,6 +235,34 @@ export default function QuestsPage() {
     } catch (error) {
       console.error("Failed to save custom category:", error);
       toast({ title: "Failed to create category", variant: "destructive" });
+    } finally {
+      setIsSavingCategory(false);
+    }
+  };
+
+  const handleUpdateCategory = async (formType: 'create' | 'edit') => {
+    const inputValue = editCategoryInput.trim();
+    if (!inputValue || !editingCategoryId) return;
+    setIsSavingCategory(true);
+    try {
+      const newValue = inputValue.toLowerCase().replace(/\s+/g, '_');
+      await apiRequest(`/api/user-categories/${editingCategoryId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ value: newValue, label: inputValue }),
+      });
+      await queryClient.invalidateQueries({ queryKey: ['/api/user-categories'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/user-categories'] });
+      if (formType === 'create') {
+        setCreateFormData(prev => ({ ...prev, category: newValue }));
+      } else {
+        setEditFormData(prev => ({ ...prev, category: newValue }));
+      }
+      setEditingCategoryId(null);
+      setEditCategoryInput("");
+      toast({ title: "Category updated" });
+    } catch (error) {
+      console.error("Failed to update category:", error);
+      toast({ title: "Failed to update category", variant: "destructive" });
     } finally {
       setIsSavingCategory(false);
     }
@@ -701,6 +731,8 @@ export default function QuestsPage() {
                       setCreateFormData(prev => ({ ...prev, category: val }));
                       setCustomCategoryMode(null);
                     }
+                    setEditingCategoryId(null);
+                    setEditCategoryInput("");
                   }}>
                     <SelectTrigger className="bg-background/50 border-primary/30">
                       <SelectValue />
@@ -730,6 +762,45 @@ export default function QuestsPage() {
                       </Button>
                     </div>
                   )}
+                  {editingCategoryId && customCategoryMode !== 'create' && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <Input
+                        placeholder="New category name..."
+                        value={editCategoryInput}
+                        onChange={(e) => setEditCategoryInput(e.target.value)}
+                        className="bg-background/50 border-primary/30 flex-1"
+                        disabled={isSavingCategory}
+                      />
+                      <Button
+                        size="sm"
+                        onClick={() => handleUpdateCategory('create')}
+                        disabled={!editCategoryInput.trim() || isSavingCategory}
+                      >
+                        {isSavingCategory ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => { setEditingCategoryId(null); setEditCategoryInput(""); }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                  {!editingCategoryId && customCategoryMode !== 'create' && (() => {
+                    const customCat = userCategories.find(c => c.value === createFormData.category);
+                    if (!customCat) return null;
+                    return (
+                      <button
+                        type="button"
+                        className="mt-1 text-xs text-primary/70 hover:text-primary flex items-center gap-1 transition-colors"
+                        onClick={() => { setEditingCategoryId(customCat.id); setEditCategoryInput(customCat.label); }}
+                      >
+                        <Edit3 className="h-3 w-3" />
+                        Rename category
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -1039,6 +1110,8 @@ export default function QuestsPage() {
                     setEditFormData(prev => ({ ...prev, category: val }));
                     setCustomCategoryMode(null);
                   }
+                  setEditingCategoryId(null);
+                  setEditCategoryInput("");
                 }}>
                   <SelectTrigger className="bg-background/50 border-primary/30">
                     <SelectValue />
@@ -1068,6 +1141,45 @@ export default function QuestsPage() {
                     </Button>
                   </div>
                 )}
+                {editingCategoryId && customCategoryMode !== 'edit' && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <Input
+                      placeholder="New category name..."
+                      value={editCategoryInput}
+                      onChange={(e) => setEditCategoryInput(e.target.value)}
+                      className="bg-background/50 border-primary/30 flex-1"
+                      disabled={isSavingCategory}
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => handleUpdateCategory('edit')}
+                      disabled={!editCategoryInput.trim() || isSavingCategory}
+                    >
+                      {isSavingCategory ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => { setEditingCategoryId(null); setEditCategoryInput(""); }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+                {!editingCategoryId && customCategoryMode !== 'edit' && (() => {
+                  const customCat = userCategories.find(c => c.value === editFormData.category);
+                  if (!customCat) return null;
+                  return (
+                    <button
+                      type="button"
+                      className="mt-1 text-xs text-primary/70 hover:text-primary flex items-center gap-1 transition-colors"
+                      onClick={() => { setEditingCategoryId(customCat.id); setEditCategoryInput(customCat.label); }}
+                    >
+                      <Edit3 className="h-3 w-3" />
+                      Rename category
+                    </button>
+                  );
+                })()}
               </div>
             </div>
 

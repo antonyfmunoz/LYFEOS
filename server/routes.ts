@@ -5631,6 +5631,34 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
     }
   });
 
+  app.patch("/api/user-categories/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const id = parseInt(req.params.id);
+      const { value, label } = req.body;
+      if (!value || !label) {
+        return res.status(400).json({ error: "Value and label are required" });
+      }
+      const existingCategories = await storage.getUserCategories(userId);
+      const oldCategory = existingCategories.find(c => c.id === id);
+      const duplicate = existingCategories.find(c => c.id !== id && c.value === value);
+      if (duplicate) {
+        return res.status(409).json({ error: "A category with this name already exists" });
+      }
+      const result = await storage.updateUserCategory(id, userId, { value, label });
+      if (!result) {
+        return res.status(404).json({ error: "Category not found" });
+      }
+      if (oldCategory && oldCategory.value !== value) {
+        await storage.updateQuestCategoryForUser(userId, oldCategory.value, value);
+      }
+      res.json(result);
+    } catch (error) {
+      console.error("Error updating user category:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.delete("/api/user-categories/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;

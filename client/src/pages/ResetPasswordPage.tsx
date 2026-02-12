@@ -76,7 +76,7 @@ export default function ResetPasswordPage() {
           <p className="text-white">Your personal life operating system</p>
         </div>
         <div className="w-full max-w-md rounded-xl p-6 border backdrop-blur-md text-center space-y-4"
-             style={{ backgroundColor: "rgba(38, 38, 42, 0.85)", boxShadow: `0 0 20px ${accent?.glow || 'rgba(255,255,255,0.08)'}`, borderColor: accent?.border20 || 'rgba(255,255,255,0.2)' }}>
+             style={{ backgroundColor: "hsla(0, 0%, 11%, 0.7)", boxShadow: `0 0 20px ${accent?.glow || 'rgba(255,255,255,0.08)'}`, borderColor: accent?.border20 || 'rgba(255,255,255,0.2)' }}>
           <p className="text-white">Invalid reset link. Please request a new one.</p>
           <span className="auth-link" style={{ color: accent?.color || 'white' }}><Link href="/forgot-password" className="hover:opacity-80 transition" style={{ color: accent?.color || 'white' }}>
             <span className="cursor-pointer text-sm">Request New Link</span>
@@ -95,7 +95,7 @@ export default function ResetPasswordPage() {
 
       {success ? (
         <div className="w-full max-w-md rounded-xl p-6 border backdrop-blur-md text-center space-y-4"
-             style={{ backgroundColor: "rgba(38, 38, 42, 0.85)", boxShadow: `0 0 20px ${accent?.glow || 'rgba(255,255,255,0.08)'}`, borderColor: accent?.border20 || 'rgba(255,255,255,0.2)' }}>
+             style={{ backgroundColor: "hsla(0, 0%, 11%, 0.7)", boxShadow: `0 0 20px ${accent?.glow || 'rgba(255,255,255,0.08)'}`, borderColor: accent?.border20 || 'rgba(255,255,255,0.2)' }}>
           <CheckCircle className="w-16 h-16 mx-auto text-green-500" />
           <h2 className="text-xl font-orbitron" style={{ color: accent?.color || 'white' }}>Password Reset!</h2>
           <p className="text-white text-sm">
@@ -111,7 +111,7 @@ export default function ResetPasswordPage() {
         </div>
       ) : (
         <div className="w-full max-w-md rounded-xl p-6 border backdrop-blur-md"
-             style={{ backgroundColor: "rgba(38, 38, 42, 0.85)", boxShadow: `0 0 20px ${accent?.glow || 'rgba(255,255,255,0.08)'}`, borderColor: accent?.border20 || 'rgba(255,255,255,0.2)' }}>
+             style={{ backgroundColor: "hsla(0, 0%, 11%, 0.7)", boxShadow: `0 0 20px ${accent?.glow || 'rgba(255,255,255,0.08)'}`, borderColor: accent?.border20 || 'rgba(255,255,255,0.2)' }}>
           <h2 className="text-xl font-orbitron text-center mb-6" style={{ color: accent?.color || 'white' }}>Set New Password</h2>
 
           {error && (
