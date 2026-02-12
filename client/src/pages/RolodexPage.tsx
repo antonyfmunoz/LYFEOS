@@ -132,17 +132,18 @@ export default function RolodexPage() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
+  const contactsQueryKey = [`/api/users/${user?.id}/contacts`];
+
   const { data: contactsData, isLoading } = useQuery<{ contacts: Contact[] }>({
-    queryKey: ['/api/users', user?.id, 'contacts'],
-    queryFn: async () => {
-      const res = await fetch(`/api/users/${user?.id}/contacts`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch contacts');
-      return res.json();
-    },
+    queryKey: contactsQueryKey,
     enabled: !!user?.id,
   });
 
   const contacts = contactsData?.contacts || [];
+
+  const refetchContacts = async () => {
+    await queryClient.refetchQueries({ queryKey: contactsQueryKey });
+  };
 
   const createMutation = useMutation({
     mutationFn: async (data: ContactFormData) => {
@@ -170,10 +171,10 @@ export default function RolodexPage() {
       if (!body.trustLevel) delete body.trustLevel;
       if (!body.strengths) delete body.strengths;
       if (!body.contactFrequency) delete body.contactFrequency;
-      return apiRequest('/api/contacts', { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } });
+      return apiRequest('/api/contacts', { method: 'POST', body: JSON.stringify(body) });
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'contacts'] });
+      await refetchContacts();
       closeForm();
     },
   });
@@ -182,10 +183,10 @@ export default function RolodexPage() {
     mutationFn: async ({ id, data }: { id: number; data: Partial<ContactFormData> }) => {
       const body: any = { ...data };
       if (body.birthday === '') body.birthday = null;
-      return apiRequest(`/api/contacts/${id}`, { method: 'PATCH', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } });
+      return apiRequest(`/api/contacts/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'contacts'] });
+      await refetchContacts();
       closeForm();
     },
   });
@@ -195,7 +196,7 @@ export default function RolodexPage() {
       return apiRequest(`/api/contacts/${id}`, { method: 'DELETE' });
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'contacts'] });
+      await refetchContacts();
       setDeleteConfirmId(null);
       setExpandedId(null);
     },
@@ -205,8 +206,8 @@ export default function RolodexPage() {
     mutationFn: async (id: number) => {
       return apiRequest(`/api/contacts/${id}/toggle-favorite`, { method: 'POST' });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'contacts'] });
+    onSuccess: async () => {
+      await refetchContacts();
     },
   });
 
