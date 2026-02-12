@@ -429,7 +429,7 @@ export default function JournalArchivePage() {
                         <Calendar className="h-5 w-5 text-primary" />
                         <h2 className="text-xl font-orbitron">{yearData.year}</h2>
                       </div>
-                      <span className="text-xs text-[#7DAAB2] px-2 py-1 bg-slate-800/50 rounded-full">
+                      <span className="text-[10px] font-orbitron font-bold uppercase tracking-wider px-2.5 py-0.5 rounded border bg-primary/20 border-primary/50 text-primary">
                         {yearEntryCount} {yearEntryCount === 1 ? 'entry' : 'entries'}
                       </span>
                     </div>
@@ -455,7 +455,7 @@ export default function JournalArchivePage() {
                                   )}
                                   <h3 className="text-lg font-medium">{monthData.monthName}</h3>
                                 </div>
-                                <span className="text-xs text-[#7DAAB2] px-2 py-1 bg-slate-800/50 rounded-full">
+                                <span className="text-[10px] font-orbitron font-bold uppercase tracking-wider px-2.5 py-0.5 rounded border bg-primary/20 border-primary/50 text-primary">
                                   {monthEntryCount} {monthEntryCount === 1 ? 'entry' : 'entries'}
                                 </span>
                               </div>
@@ -480,7 +480,7 @@ export default function JournalArchivePage() {
                                             )}
                                             <h4 className="text-base">{weekData.weekLabel}</h4>
                                           </div>
-                                          <span className="text-xs text-[#7DAAB2] px-2 py-1 bg-slate-800/50 rounded-full">
+                                          <span className="text-[10px] font-orbitron font-bold uppercase tracking-wider px-2.5 py-0.5 rounded border bg-primary/20 border-primary/50 text-primary">
                                             {weekData.days.length} {weekData.days.length === 1 ? 'entry' : 'entries'}
                                           </span>
                                         </div>
