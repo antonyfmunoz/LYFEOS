@@ -52,6 +52,17 @@ interface UserCategoryOption {
   description: string | null;
 }
 
+const ONBOARDING_DESCRIPTIONS: Record<string, string> = {
+  "Access & Quickstart": "Log in, explore the dashboard, and complete your first quick mission to get familiar with LYFEOS.",
+  "Archetype Calibration": "Discover your player archetype through a guided assessment to personalize your LYFEOS experience.",
+  "Identity & Direction": "Define your core identity pillars and set your life direction compass.",
+  "Craft & Mastery": "Identify your key skills and craft areas to track mastery progression.",
+  "Capacity & Constraints": "Set your daily energy, attention, and time capacity limits for balanced resource management.",
+  "Baselines & States": "Establish your baseline stats and current life state for accurate tracking.",
+  "History & Roots": "Record your background and personal history to inform your growth trajectory.",
+  "Systems & Rituals": "Set up your daily rituals and recurring systems for consistent progress.",
+};
+
 export default function QuestItem({ quest, index, section, onToggle, onDelete, onEdit, onStart, onResume, onDone, onUndo, onRestart, onMoveQuest, elapsedSeconds, breakSeconds, isTimerActive, timerBlocked }: QuestItemProps) {
   const [showDescription, setShowDescription] = useState(false);
   const { user } = useAuth();
@@ -244,11 +255,15 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
           )}
           {showDescription && (
             <div className={`text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 space-y-2 ${completed ? "opacity-50" : ""}`}>
-              {description && (
-                <p className="text-muted-foreground">
-                  {description.replace(/^Completed onboarding mission "(.+)"$/, 'Completed the "$1" mission')}
-                </p>
-              )}
+              {(() => {
+                const onboardingDesc = category === "onboarding" && title
+                  ? ONBOARDING_DESCRIPTIONS[title.replace(/^Onboarding:\s*/, '')] 
+                  : null;
+                const displayDesc = onboardingDesc || description;
+                return displayDesc ? (
+                  <p className="text-muted-foreground">{displayDesc}</p>
+                ) : null;
+              })()}
               <div className="border-t border-primary/10 pt-2 space-y-1">
                 {linkedMilestone && (
                   <div className="flex items-center gap-1.5 mb-1">
