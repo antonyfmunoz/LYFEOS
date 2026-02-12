@@ -248,20 +248,13 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
       queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) => [...old, tempGoal]);
       setNewTitle("");
       inputRef.current?.focus();
-      return { previous, tempId: tempGoal.id };
-    },
-    onSuccess: (data, _title, context) => {
-      if (data && context?.tempId !== undefined) {
-        queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) =>
-          old.map(g => g.id === context.tempId ? { ...data } : g)
-        );
-      }
+      return { previous };
     },
     onError: (_err, _title, context) => {
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
     },
     onSettled: () => {
-      queryClient.refetchQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 
@@ -282,20 +275,15 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
       return { previous };
     },
     onSuccess: (data, { completed }) => {
-      if (data) {
-        queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) =>
-          old.map(g => g.id === data.id ? { ...g, ...data } : g)
-        );
-        if (completed) {
-          objectiveToast(data.title, data.rewardText, data.bonusXp);
-        }
+      if (data && completed) {
+        objectiveToast(data.title, data.rewardText, data.bonusXp);
       }
     },
     onError: (_err, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
     },
     onSettled: () => {
-      queryClient.refetchQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 
@@ -329,18 +317,11 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
       setEditingRewardId(null);
       return { previous };
     },
-    onSuccess: (data) => {
-      if (data) {
-        queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) =>
-          old.map(g => g.id === data.id ? { ...g, ...data } : g)
-        );
-      }
-    },
     onError: (_err, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
     },
     onSettled: () => {
-      queryClient.refetchQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 
@@ -360,7 +341,7 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
     },
     onSettled: () => {
-      queryClient.refetchQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 
@@ -372,7 +353,7 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
       });
     },
     onSettled: () => {
-      queryClient.refetchQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 
