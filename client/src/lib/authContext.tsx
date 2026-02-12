@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { toast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "./queryClient";
 import { auth } from "./firebase";
-import { signInWithGoogle, handleRedirectResult } from "./firebaseAuth";
+import { signInWithGoogle, signInWithApple, handleRedirectResult } from "./firebaseAuth";
 import { User as FirebaseUser, onAuthStateChanged, Auth } from "firebase/auth";
 import { applyPrimaryColor } from "./applyPrimaryColor";
 import { getLocalDateString } from "./utils";
@@ -33,6 +33,7 @@ interface AuthContextType {
   completeRegistration: (data: Record<string, any>) => Promise<void>;
   logout: () => void;
   loginWithGoogle: () => Promise<void>;
+  loginWithApple: () => Promise<void>;
   handleOAuthRedirect: () => Promise<void>;
   registerPreLogoutCallback: (callback: () => Promise<void> | void) => void;
   unregisterPreLogoutCallback: (callback: () => Promise<void> | void) => void;
@@ -483,7 +484,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
   
-  // Handle redirect result from OAuth providers
+  const loginWithApple = async () => {
+    try {
+      setIsLoading(true);
+      await signInWithApple();
+    } catch (error) {
+      console.error("Apple login error:", error);
+      toast({
+        title: "Login Error",
+        description: "Could not sign in with Apple. Please try again.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+    }
+  };
+
   const handleOAuthRedirect = async () => {
     try {
       setIsLoading(true);
@@ -493,7 +508,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Get user info from Firebase auth
         const { displayName, email, uid, photoURL } = result.user;
         
-        console.log("Successfully signed in with Google:", { displayName, email, uid });
+        console.log("Successfully signed in via OAuth:", { displayName, email, uid });
         
         // Register or login this Firebase user with our backend
         const response = await fetch("/api/auth/firebase", {
@@ -557,6 +572,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         completeRegistration,
         logout,
         loginWithGoogle,
+        loginWithApple,
         handleOAuthRedirect,
         registerPreLogoutCallback,
         unregisterPreLogoutCallback,
