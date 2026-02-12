@@ -63,7 +63,6 @@ interface GoalFormData {
   description: string;
   category: string;
   rewardText: string;
-  bonusXp: number;
 }
 
 const defaultFormData: GoalFormData = {
@@ -71,7 +70,6 @@ const defaultFormData: GoalFormData = {
   description: "",
   category: "90day",
   rewardText: "",
-  bonusXp: 0,
 };
 
 const CATEGORY_OPTIONS = [
@@ -82,17 +80,6 @@ const CATEGORY_OPTIONS = [
   { value: "90day", label: "90-Day Vision" },
 ];
 
-const BONUS_XP_OPTIONS = [
-  { value: 0, label: "Auto (AI assigns on completion)" },
-  { value: 25, label: "25 XP" },
-  { value: 50, label: "50 XP" },
-  { value: 75, label: "75 XP" },
-  { value: 100, label: "100 XP" },
-  { value: 150, label: "150 XP" },
-  { value: 200, label: "200 XP" },
-  { value: 250, label: "250 XP" },
-  { value: 500, label: "500 XP" },
-];
 
 const difficultyOrder: Record<string, number> = { 'D': 1, 'C': 2, 'B': 3, 'A': 4, 'S': 5 };
 const reverseOrder: Record<number, string> = { 1: 'D', 2: 'C', 3: 'B', 4: 'A', 5: 'S' };
@@ -639,7 +626,6 @@ export default function GoalsArchivePage() {
       description: goal.description || "",
       category: goal.category,
       rewardText: goal.rewardText || "",
-      bonusXp: goal.bonusXp,
     });
     setEditingGoalId(goal.id);
     setIsEditOpen(true);
@@ -656,7 +642,7 @@ export default function GoalsArchivePage() {
           title: createFormData.title.trim(),
           description: createFormData.description.trim() || null,
           rewardText: createFormData.rewardText.trim() || null,
-          bonusXp: createFormData.bonusXp,
+          bonusXp: 0,
         }),
       });
       queryClient.invalidateQueries({ queryKey: ['/api/vision-goals', createFormData.category] });
@@ -680,7 +666,7 @@ export default function GoalsArchivePage() {
           title: editFormData.title.trim(),
           description: editFormData.description.trim() || null,
           rewardText: editFormData.rewardText.trim() || null,
-          bonusXp: editFormData.bonusXp,
+          bonusXp: 0,
         }),
       });
       queryClient.invalidateQueries({ queryKey: ['/api/vision-goals', editFormData.category] });
@@ -748,21 +734,6 @@ export default function GoalsArchivePage() {
           className="bg-background/50 border-primary/30"
         />
         <p className="text-xs text-muted-foreground">A personal reward you'll give yourself when you complete this goal</p>
-      </div>
-
-      <div className="space-y-2">
-        <Label>Bonus XP</Label>
-        <Select value={formData.bonusXp.toString()} onValueChange={(val) => setFormData(prev => ({ ...prev, bonusXp: parseInt(val) }))}>
-          <SelectTrigger className="bg-background/50 border-primary/30">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {BONUS_XP_OPTIONS.map(opt => (
-              <SelectItem key={opt.value} value={opt.value.toString()}>{opt.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <p className="text-xs text-muted-foreground">XP awarded when you complete this goal. Leave at "Auto" to let AI decide based on difficulty.</p>
       </div>
 
       <button
