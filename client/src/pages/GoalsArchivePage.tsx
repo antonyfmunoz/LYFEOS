@@ -194,13 +194,18 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
   const { toast } = useToast();
   const [expandedGoalId, setExpandedGoalId] = useState<number | null>(null);
   const [infoExpandedId, setInfoExpandedId] = useState<number | null>(null);
-  const [pendingToggleId, setPendingToggleId] = useState<number | null>(null);
 
-  const queryKey = ['/api/vision-goals', category];
-  const allGoalsKey = ['/api/vision-goals/all'];
+  const queryKey = ['/api/vision-goals', category] as const;
+
+  const refetchAll = async () => {
+    await Promise.all([
+      queryClient.refetchQueries({ queryKey: ['/api/vision-goals', category] }),
+      queryClient.refetchQueries({ queryKey: ['/api/vision-goals/all'] }),
+    ]);
+  };
 
   const { data: goals = [], isLoading } = useQuery<VisionGoal[]>({
-    queryKey,
+    queryKey: ['/api/vision-goals', category],
     queryFn: async () => {
       const res = await fetch(`/api/vision-goals/${category}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch goals');
@@ -229,64 +234,38 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
       console.log(`[GOAL-TOGGLE] Response:`, JSON.stringify(result));
       return result;
     },
-    onMutate: async ({ id, completed }) => {
-      console.log(`[GOAL-TOGGLE] onMutate id=${id}, completed=${completed}`);
-      setPendingToggleId(id);
-      await queryClient.cancelQueries({ queryKey });
-      await queryClient.cancelQueries({ queryKey: allGoalsKey });
-      const previous = queryClient.getQueryData<VisionGoal[]>(queryKey);
-      const previousAll = queryClient.getQueryData<VisionGoal[]>(allGoalsKey);
-      const updater = (old: VisionGoal[]) =>
-        old.map(g => g.id === id ? { ...g, completed, completedAt: completed ? new Date().toISOString() : null } : g);
-      queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) => updater(old));
-      queryClient.setQueryData<VisionGoal[]>(allGoalsKey, (old = []) => updater(old));
-      return { previous, previousAll };
-    },
-    onSuccess: (data, variables) => {
+    onSuccess: async (data, variables) => {
+      console.log(`[GOAL-TOGGLE] onSuccess, refetching...`);
+      await refetchAll();
+      console.log(`[GOAL-TOGGLE] refetch complete`);
       if (variables.completed === true && data && data.title) {
         objectiveToast(data.title, data.rewardText, data.bonusXp);
       }
     },
-    onError: (err, _vars, context) => {
-      if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
-      if (context?.previousAll) queryClient.setQueryData(allGoalsKey, context.previousAll);
+    onError: (err) => {
       toast({
         title: "Failed to update goal",
         description: err instanceof Error ? err.message : "Please try again",
         variant: "destructive",
       });
     },
-    onSettled: () => {
-      setPendingToggleId(null);
-      queryClient.invalidateQueries({ queryKey });
-      queryClient.invalidateQueries({ queryKey: allGoalsKey });
-    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
+      console.log(`[GOAL-DELETE] Sending DELETE id=${id}`);
       await apiRequest(`/api/vision-goals/${id}`, { method: 'DELETE' });
     },
-    onMutate: async (id: number) => {
-      await queryClient.cancelQueries({ queryKey });
-      await queryClient.cancelQueries({ queryKey: allGoalsKey });
-      const previous = queryClient.getQueryData<VisionGoal[]>(queryKey);
-      const previousAll = queryClient.getQueryData<VisionGoal[]>(allGoalsKey);
-      queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) =>
-        old.filter(g => g.id !== id)
-      );
-      queryClient.setQueryData<VisionGoal[]>(allGoalsKey, (old = []) =>
-        old.filter(g => g.id !== id)
-      );
-      return { previous, previousAll };
+    onSuccess: async () => {
+      console.log(`[GOAL-DELETE] onSuccess, refetching...`);
+      await refetchAll();
     },
-    onError: (_err, _id, context) => {
-      if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
-      if (context?.previousAll) queryClient.setQueryData(allGoalsKey, context.previousAll);
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey });
-      queryClient.invalidateQueries({ queryKey: allGoalsKey });
+    onError: (err) => {
+      toast({
+        title: "Failed to delete goal",
+        description: err instanceof Error ? err.message : "Please try again",
+        variant: "destructive",
+      });
     },
   });
 
@@ -297,9 +276,8 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
         body: JSON.stringify({ ids }),
       });
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey });
-      queryClient.invalidateQueries({ queryKey: allGoalsKey });
+    onSuccess: async () => {
+      await refetchAll();
     },
   });
 
@@ -477,7 +455,7 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
               <div className="group flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-primary/5 transition-colors">
                 <button
                   onClick={(e) => { e.stopPropagation(); e.preventDefault(); console.log(`[GOAL-TOGGLE] Uncomplete clicked id=${goal.id}`); toggleMutation.mutate({ id: goal.id, completed: false }); }}
-                  disabled={pendingToggleId === goal.id}
+                  disabled={toggleMutation.isPending}
                   className="shrink-0 relative h-8 w-8 flex items-center justify-center touch-manipulation disabled:opacity-50"
                   style={{ WebkitTapHighlightColor: 'transparent', zIndex: 10, position: 'relative' }}
                 >
@@ -658,8 +636,10 @@ export default function GoalsArchivePage() {
           bonusXp: 0,
         }),
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals', createFormData.category] });
-      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ['/api/vision-goals', createFormData.category] }),
+        queryClient.refetchQueries({ queryKey: ['/api/vision-goals/all'] }),
+      ]);
       setIsCreateOpen(false);
       setCreateFormData(defaultFormData);
     } catch (error) {
@@ -679,14 +659,14 @@ export default function GoalsArchivePage() {
           title: editFormData.title.trim(),
           description: editFormData.description.trim() || null,
           rewardText: editFormData.rewardText.trim() || null,
-          bonusXp: 0,
         }),
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals', editFormData.category] });
-      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
-      CATEGORY_OPTIONS.forEach(cat => {
-        queryClient.invalidateQueries({ queryKey: ['/api/vision-goals', cat.value] });
-      });
+      await Promise.all([
+        ...CATEGORY_OPTIONS.map(cat =>
+          queryClient.refetchQueries({ queryKey: ['/api/vision-goals', cat.value] })
+        ),
+        queryClient.refetchQueries({ queryKey: ['/api/vision-goals/all'] }),
+      ]);
       setIsEditOpen(false);
       setEditFormData(defaultFormData);
       setEditingGoalId(null);
