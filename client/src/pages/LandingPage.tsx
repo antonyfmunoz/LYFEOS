@@ -174,12 +174,26 @@ function FAQItem({ q, a }: { q: string; a: string }) {
   );
 }
 
+const PREVIEW_IMAGES: Record<string, string> = {
+  "Dashboard Preview": "/images/preview-dashboard.png",
+  "Dashboard Stats HUD": "/images/preview-dashboard.png",
+  "Dashboard": "/images/preview-dashboard.png",
+  "Character Affirmation": "/images/preview-affirmation.png",
+  "NOVA Chat": "/images/preview-nova-chat.png",
+  "Mission Flow": "/images/preview-mission-flow.png",
+};
+
 function Placeholder({ label }: { label: string }) {
+  const src = PREVIEW_IMAGES[label];
   return (
-    <div className="w-full aspect-video rounded-lg border border-border/40 bg-card/30 flex items-center justify-center">
-      <span className="text-xs text-muted-foreground/60 uppercase tracking-wider">
-        {label}
-      </span>
+    <div className="w-full aspect-video rounded-lg border border-border/40 bg-card/30 overflow-hidden">
+      {src ? (
+        <img src={src} alt={label} className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center">
+          <span className="text-xs text-muted-foreground/60 uppercase tracking-wider">{label}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -195,8 +209,15 @@ export default function LandingPage() {
     <div className="min-h-screen bg-background text-foreground">
       {/* ─── HEADER ─── */}
       <header className="sticky top-0 z-50 border-b border-border/30 bg-background/80 backdrop-blur-lg">
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-14 sm:h-16">
-          <button onClick={() => scrollTo("hero")} className="flex items-center gap-2">
+        <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-14 sm:h-16 relative">
+          <button
+            className="md:hidden p-1.5 text-muted-foreground z-10"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+
+          <button onClick={() => scrollTo("hero")} className="absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0 flex items-center gap-2">
             <span className="font-orbitron text-lg sm:text-xl font-bold tracking-wider text-primary">
               LYFEOS
             </span>
@@ -214,7 +235,7 @@ export default function LandingPage() {
             ))}
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center z-10">
             {isAuthenticated ? (
               <Link
                 href="/dashboard"
@@ -230,12 +251,6 @@ export default function LandingPage() {
                 Login
               </Link>
             )}
-            <button
-              className="md:hidden p-1.5 text-muted-foreground"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
           </div>
         </div>
 
@@ -268,25 +283,22 @@ export default function LandingPage() {
             <p className="text-base sm:text-lg text-muted-foreground max-w-xl leading-relaxed">
               90 minutes to define who you are and what you're building. $29/month to run your entire life.
             </p>
-            <div className="flex flex-col sm:flex-row items-start gap-4">
+            <div className="flex flex-col items-center sm:items-start gap-4">
               <Link
                 href={ctaHref}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors shadow-[0_0_20px_rgba(0,229,255,0.2)]"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
               >
                 {ctaLabel}
                 <ArrowRight className="w-4 h-4" />
               </Link>
+              <p className="text-xs text-muted-foreground/70">
+                No credit card required &bull; Cancel anytime
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground/70">
-              No credit card required &bull; Cancel anytime
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Trusted by <span className="text-foreground font-medium">500+</span> founders, creators, and knowledge workers
-            </p>
           </div>
 
           <div className="lg:col-span-2">
-            <div className="rounded-xl border border-border/40 bg-card/30 p-1 shadow-[0_0_40px_rgba(0,229,255,0.06)]">
+            <div className="rounded-xl border border-border/40 bg-card/30 p-1">
               <Placeholder label="Dashboard Preview" />
             </div>
           </div>
@@ -442,7 +454,7 @@ export default function LandingPage() {
             </div>
 
             {/* Annual */}
-            <div className="rounded-xl border-2 border-primary/50 bg-card/40 p-6 space-y-5 relative overflow-hidden shadow-[0_0_30px_rgba(0,229,255,0.08)]">
+            <div className="rounded-xl border-2 border-primary/50 bg-card/40 p-6 space-y-5 relative overflow-hidden">
               <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[10px] font-bold px-3 py-1 rounded-bl-lg uppercase tracking-wider">
                 2 Months Free
               </div>
@@ -466,7 +478,7 @@ export default function LandingPage() {
               </ul>
               <Link
                 href={ctaHref}
-                className="block w-full text-center py-3 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors shadow-[0_0_15px_rgba(0,229,255,0.2)]"
+                className="block w-full text-center py-3 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors"
               >
                 {ctaLabel}
               </Link>
@@ -493,7 +505,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── FINAL CTA ─── */}
-      <section className="border-y border-primary/20 bg-gradient-to-b from-primary/5 to-primary/10">
+      <section className="border-y border-border/20">
         <div className="max-w-3xl mx-auto px-4 py-16 sm:py-20 text-center space-y-6">
           <h2 className="font-orbitron text-2xl sm:text-3xl font-bold">
             Ready to Stop Being <span className="text-primary">Scattered?</span>
@@ -503,7 +515,7 @@ export default function LandingPage() {
           </p>
           <Link
             href={ctaHref}
-            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors shadow-[0_0_25px_rgba(0,229,255,0.25)]"
+            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
           >
             {ctaLabel}
             <ArrowRight className="w-4 h-4" />
