@@ -426,7 +426,7 @@ export default function KnowledgeArchivePage() {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-[#7DAAB2] px-2 py-1 bg-slate-800/50 rounded-full">
+                    <span className="text-[10px] font-orbitron font-bold uppercase tracking-wider px-2.5 py-0.5 rounded border bg-primary/20 border-primary/50 text-primary">
                       {sourceCount} {sourceCount === 1 ? 'source' : 'sources'} · {entryCount} {entryCount === 1 ? 'entry' : 'entries'}
                     </span>
                     <button
