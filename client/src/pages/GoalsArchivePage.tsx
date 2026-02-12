@@ -276,7 +276,7 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
       return { previous };
     },
     onSuccess: (data, { completed }) => {
-      if (data && completed) {
+      if (data && data.title && completed) {
         objectiveToast(data.title, data.rewardText, data.bonusXp);
       }
     },

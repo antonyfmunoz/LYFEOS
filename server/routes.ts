@@ -5737,7 +5737,8 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
       const existingGoal = await storage.getVisionGoalById(id, userId);
-      const wasCompleted = existingGoal?.completed ?? false;
+      if (!existingGoal) return res.status(404).json({ error: "Vision goal not found" });
+      const wasCompleted = existingGoal.completed ?? false;
 
       const updateData: any = {};
       if (req.body.title !== undefined) updateData.title = req.body.title.trim();
@@ -5750,6 +5751,7 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
       }
       if (req.body.displayOrder !== undefined) updateData.displayOrder = req.body.displayOrder;
       const goal = await storage.updateVisionGoal(id, userId, updateData);
+      if (!goal) return res.status(404).json({ error: "Vision goal not found" });
 
       let xpAwarded = 0;
       if (req.body.completed === true && !wasCompleted) {
