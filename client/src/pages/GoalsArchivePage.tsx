@@ -12,7 +12,7 @@ import { useDrag, useDrop } from 'react-dnd';
 import { CollapsibleWidget } from '@/components/ui/collapsible-widget';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { cn } from "@/lib/utils";
-import { milestoneToast } from "@/lib/gamified-toast";
+import { objectiveToast } from "@/lib/gamified-toast";
 
 interface VisionGoal {
   id: number;
@@ -52,7 +52,7 @@ const reverseOrder: Record<number, string> = { 1: 'D', 2: 'C', 3: 'B', 4: 'A', 5
 
 const MILESTONE_ITEM = "MILESTONE_ITEM";
 
-interface DraggableMilestoneProps {
+interface DraggableObjectiveProps {
   goal: VisionGoal;
   index: number;
   moveGoal: (dragIndex: number, hoverIndex: number) => void;
@@ -72,11 +72,11 @@ interface DraggableMilestoneProps {
   category: string;
 }
 
-function DraggableMilestone({
+function DraggableObjective({
   goal, index, moveGoal, onToggle, onEdit, onDelete,
   editingId, editTitle, setEditTitle, handleEditSave, setEditingId, editInputRef,
   infoExpandedId, setInfoExpandedId, renderInfoPanel, renderGoalMissions, category,
-}: DraggableMilestoneProps) {
+}: DraggableObjectiveProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   const [{ isDragging }, drag, preview] = useDrag({
@@ -179,7 +179,7 @@ function DraggableMilestone({
   );
 }
 
-function MilestoneList({ category, placeholder }: { category: string; placeholder: string }) {
+function ObjectiveList({ category, placeholder }: { category: string; placeholder: string }) {
   const { user } = useAuth();
   const [newTitle, setNewTitle] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -261,7 +261,7 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey });
+      queryClient.refetchQueries({ queryKey });
     },
   });
 
@@ -287,7 +287,7 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
           old.map(g => g.id === data.id ? { ...g, ...data } : g)
         );
         if (completed) {
-          milestoneToast(data.title, data.rewardText, data.bonusXp);
+          objectiveToast(data.title, data.rewardText, data.bonusXp);
         }
       }
     },
@@ -295,7 +295,7 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey });
+      queryClient.refetchQueries({ queryKey });
     },
   });
 
@@ -340,7 +340,7 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey });
+      queryClient.refetchQueries({ queryKey });
     },
   });
 
@@ -360,7 +360,7 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey });
+      queryClient.refetchQueries({ queryKey });
     },
   });
 
@@ -372,7 +372,7 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
       });
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey });
+      queryClient.refetchQueries({ queryKey });
     },
   });
 
@@ -621,13 +621,13 @@ function MilestoneList({ category, placeholder }: { category: string; placeholde
       </form>
 
       {goals.length === 0 && (
-        <p className="text-sm text-muted-foreground italic py-2">No milestones yet. Add your first one above.</p>
+        <p className="text-sm text-muted-foreground italic py-2">No mission objectives yet. Add your first one above.</p>
       )}
 
       {activeGoals.length > 0 && (
         <div className="space-y-1">
           {activeGoals.map((goal, index) => (
-            <DraggableMilestone
+            <DraggableObjective
               key={goal.id}
               goal={goal}
               index={index}
@@ -816,7 +816,7 @@ export default function GoalsArchivePage() {
         
         <div className="mb-6">
           <h1 className="text-2xl font-orbitron mb-1">Vision</h1>
-          <p className="text-[#7DAAB2]">Set milestone achievements for each time horizon and check them off as you reach them</p>
+          <p className="text-[#7DAAB2]">Set mission objectives for each time horizon and check them off as you reach them</p>
         </div>
 
         <div className="space-y-6 mb-6">
@@ -833,7 +833,7 @@ export default function GoalsArchivePage() {
                 onOpenChange={state.setOpen}
                 moveWidget={moveWidget}
               >
-                <MilestoneList
+                <ObjectiveList
                   category={widget.id}
                   placeholder={widget.placeholder}
                 />

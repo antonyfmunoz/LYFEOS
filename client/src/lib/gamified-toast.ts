@@ -36,12 +36,12 @@ export function missionCompleteToast(title: string, xp: number) {
   });
 }
 
-export function milestoneToast(title: string, rewardText?: string | null, bonusXp?: number) {
+export function objectiveToast(title: string, rewardText?: string | null, bonusXp?: number) {
   const parts = [title];
   if (bonusXp && bonusXp > 0) parts.push(`+${bonusXp} Bonus XP`);
   if (rewardText) parts.push(`Reward: ${rewardText}`);
   toast({
-    title: "Milestone Achieved",
+    title: "Mission Objective Achieved",
     description: parts.join(" — "),
     variant: "default",
     duration: 3000,

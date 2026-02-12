@@ -265,7 +265,7 @@ export default function ChronilogPage() {
       id: "goals", 
       title: "Vision", 
       icon: <Target className="h-5 w-5 text-primary" />,
-      description: "Long-term goals and vision board. Set objectives, track milestones, and align your daily actions with your bigger picture."
+      description: "Long-term goals and vision board. Set objectives, track mission objectives, and align your daily actions with your bigger picture."
     },
     { 
       id: "analytics", 
@@ -277,7 +277,7 @@ export default function ChronilogPage() {
       id: "timeline", 
       title: "Timeline", 
       icon: <Clock className="h-5 w-5 text-primary" />,
-      description: "Your recent activity timeline showing missions, journal entries, and milestones."
+      description: "Your recent activity timeline showing missions, journal entries, and mission objectives."
     },
     { 
       id: "rolodex", 
@@ -361,7 +361,7 @@ export default function ChronilogPage() {
     {
       target: "[data-tour='chronilog-goals']",
       title: "Vision & Goals",
-      description: "Long-term goals and vision board. Set objectives, track milestones, and align your daily actions with your bigger picture.",
+      description: "Long-term goals and vision board. Set objectives, track mission objectives, and align your daily actions with your bigger picture.",
       position: "bottom",
     },
     {
@@ -373,7 +373,7 @@ export default function ChronilogPage() {
     {
       target: "[data-tour='chronilog-timeline']",
       title: "Timeline",
-      description: "Your recent activity feed showing missions completed, journal entries, and milestones — all in chronological order.",
+      description: "Your recent activity feed showing missions completed, journal entries, and mission objectives — all in chronological order.",
       position: "bottom",
     },
     {

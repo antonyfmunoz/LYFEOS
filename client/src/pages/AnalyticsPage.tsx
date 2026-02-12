@@ -101,7 +101,7 @@ export default function AnalyticsPage() {
     { id: 'weekly-patterns', title: 'Weekly Patterns', icon: <BarChart3 className="h-5 w-5 text-primary" /> },
     { id: 'token-wellness', title: 'Token & Wellness', icon: <Zap className="h-5 w-5 text-primary" /> },
     { id: 'personal-records', title: 'Personal Records', icon: <Trophy className="h-5 w-5 text-primary" /> },
-    { id: 'milestone-analytics', title: 'Milestone Analytics', icon: <Milestone className="h-5 w-5 text-primary" /> },
+    { id: 'milestone-analytics', title: 'Objective Analytics', icon: <Milestone className="h-5 w-5 text-primary" /> },
   ]);
 
   const { data: widgetLayouts } = useQuery<Record<string, string[]>>({
@@ -510,7 +510,7 @@ export default function AnalyticsPage() {
         );
       case 'milestone-analytics': {
         const goals = visionGoals ?? [];
-        if (goals.length === 0) return <EmptyState message="No milestones yet. Create vision milestones in the Goals Archive to see analytics." />;
+        if (goals.length === 0) return <EmptyState message="No mission objectives yet. Create vision objectives to see analytics." />;
         const categories = ['legacy', '10year', '5year', '18month', '90day'];
         const categoryLabels: Record<string, string> = { legacy: 'Legacy', '10year': '10 Year', '5year': '5 Year', '18month': '18 Month', '90day': '90 Day' };
         const categoryData = categories.map(cat => {
@@ -530,7 +530,7 @@ export default function AnalyticsPage() {
 
         return (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ChartCard title="Milestone Progress" icon={<Milestone className="h-5 w-5" />}>
+            <ChartCard title="Objective Progress" icon={<Milestone className="h-5 w-5" />}>
               <div className="space-y-1 mb-4">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Overall completion</span>
@@ -585,7 +585,7 @@ export default function AnalyticsPage() {
                   ))}
                 </div>
               ) : (
-                <EmptyState message="No milestones completed yet. Keep working toward your goals!" />
+                <EmptyState message="No mission objectives completed yet. Keep working toward your goals!" />
               )}
               <div className="mt-4 grid grid-cols-3 gap-3">
                 <div className="text-center p-3 rounded-lg bg-background/50 border border-muted/20">

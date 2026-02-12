@@ -5765,7 +5765,7 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
               max_tokens: 50,
               messages: [{
                 role: "user",
-                content: `Assign bonus XP for completing this milestone in a gamified life system. Category: ${goal.category}. Title: "${goal.title}". Respond with ONLY a number from this list: 25, 50, 75, 100, 150, 200, 250, 500. Higher XP for more ambitious/difficult milestones.`
+                content: `Assign bonus XP for completing this mission objective in a gamified life system. Category: ${goal.category}. Title: "${goal.title}". Respond with ONLY a number from this list: 25, 50, 75, 100, 150, 200, 250, 500. Higher XP for more ambitious/difficult objectives.`
               }],
             });
             const parsed = parseInt((aiResponse.content[0] as any).text?.trim());

@@ -85,7 +85,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
     enabled: !!user,
   });
 
-  const linkedMilestone = visionGoalId ? allVisionGoals.find(g => g.id === visionGoalId) : null;
+  const linkedObjective = visionGoalId ? allVisionGoals.find(g => g.id === visionGoalId) : null;
   const categoryLabels: Record<string, string> = { legacy: "Legacy", "10year": "10-Year", "5year": "5-Year", "18month": "18-Month", "90day": "90-Day" };
 
   const difficultyStyle = "bg-primary/20 border-primary/50 text-primary";
@@ -270,13 +270,13 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
                 ) : null;
               })()}
               <div className="border-t border-primary/10 pt-2 space-y-1">
-                {linkedMilestone && (
+                {linkedObjective && (
                   <div className="flex items-center gap-1.5 mb-1">
                     <Target className="h-3 w-3 text-primary flex-shrink-0" />
                     <span className="text-xs text-primary font-mono">
-                      [{categoryLabels[linkedMilestone.category] || linkedMilestone.category}]
+                      [{categoryLabels[linkedObjective.category] || linkedObjective.category}]
                     </span>
-                    <span className="text-xs text-muted-foreground">{linkedMilestone.title}</span>
+                    <span className="text-xs text-muted-foreground">{linkedObjective.title}</span>
                   </div>
                 )}
                 {category && category !== "general" && category !== "onboarding" && (

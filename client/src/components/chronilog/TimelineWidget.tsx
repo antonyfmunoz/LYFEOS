@@ -35,7 +35,7 @@ const TimelineWidget = () => {
                 </button>
               }
               title="Timeline"
-              description="A chronological view of your activities, events, and milestones. See your journey mapped out over time."
+              description="A chronological view of your activities, events, and mission objectives. See your journey mapped out over time."
               hideMoreDetails
             />
           </div>

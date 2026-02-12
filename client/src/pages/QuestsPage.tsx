@@ -851,7 +851,7 @@ export default function QuestsPage() {
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">
                     <Target className="h-4 w-4" />
-                    Link to Milestone
+                    Link to Mission Objective
                   </Label>
                   <Select
                     value={createFormData.visionGoalId?.toString() || "none"}
@@ -1240,7 +1240,7 @@ export default function QuestsPage() {
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <Target className="h-4 w-4" />
-                  Link to Milestone
+                  Link to Mission Objective
                 </Label>
                 <Select
                   value={editFormData.visionGoalId?.toString() || "none"}

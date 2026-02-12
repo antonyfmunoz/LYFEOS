@@ -1061,7 +1061,7 @@ export default function TimelinePage() {
                               </h3>
                               <div className="flex items-center gap-1 flex-shrink-0 ml-2">
                                 <span className="text-[10px] font-mono h-6 px-1.5 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary capitalize">
-                                  {itemRmType === 'milestone' ? 'Milestone' : itemRmType === 'mission' ? 'Mission' : 'Event'}
+                                  {itemRmType === 'milestone' ? 'Mission Objective' : itemRmType === 'mission' ? 'Mission' : 'Event'}
                                 </span>
                                 {rmItem?.quest?.category && rmItem.quest.category !== "general" && rmItem.quest.category !== "onboarding" && (
                                   <span className="text-[10px] font-mono h-6 px-1.5 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary capitalize">
