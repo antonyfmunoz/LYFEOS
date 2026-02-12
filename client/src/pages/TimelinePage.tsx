@@ -151,21 +151,6 @@ interface TimelineNode {
   drillValue?: { year?: number; month?: number; week?: number; day?: number };
 }
 
-interface RoadmapItem {
-  id: string;
-  title: string;
-  type: 'mission' | 'event' | 'milestone';
-  dueDate: Date;
-  description?: string;
-}
-
-interface RoadmapBucket {
-  key: string;
-  label: string;
-  sublabel: string;
-  items: RoadmapItem[];
-}
-
 export default function TimelinePage() {
   usePageTitle('Timeline');
 
@@ -184,8 +169,14 @@ export default function TimelinePage() {
   const [focusWeek, setFocusWeek] = useState<number | null>(null);
   const [focusDay, setFocusDay] = useState<number | null>(null);
   const [expandedInfoIds, setExpandedInfoIds] = useState<Set<string>>(new Set());
-  const [expandedRoadmapBuckets, setExpandedRoadmapBuckets] = useState<Set<string>>(new Set());
 
+  const [rmZoom, setRmZoom] = useState<ZoomLevel>('life');
+  const [rmFocusYear, setRmFocusYear] = useState<number | null>(null);
+  const [rmFocusMonth, setRmFocusMonth] = useState<number | null>(null);
+  const [rmFocusWeek, setRmFocusWeek] = useState<number | null>(null);
+  const [rmFocusDay, setRmFocusDay] = useState<number | null>(null);
+  const [rmExpandedInfoIds, setRmExpandedInfoIds] = useState<Set<string>>(new Set());
+  
   const { data: visionGoals = [] } = useQuery<VisionGoal[]>({
     queryKey: ['/api/vision-goals/all'],
     enabled: !!user && activeView === 'roadmap',
@@ -365,12 +356,12 @@ export default function TimelinePage() {
     }
   }, [timelineItems, zoomLevel, focusYear, focusMonth, focusWeek, focusDay]);
 
-  const roadmapBuckets: RoadmapBucket[] = useMemo(() => {
+  const roadmapItems: (TimelineItem & { rmType: 'mission' | 'event' | 'milestone' })[] = useMemo(() => {
     if (activeView !== 'roadmap') return [];
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const items: RoadmapItem[] = [];
+    const items: (TimelineItem & { rmType: 'mission' | 'event' | 'milestone' })[] = [];
 
     quests.forEach(quest => {
       if (quest.completed) return;
@@ -379,11 +370,14 @@ export default function TimelinePage() {
       const dueDate = new Date(y, m - 1, d);
       if (dueDate >= today) {
         items.push({
-          id: `quest-${quest.id}`,
+          id: `rm-quest-${quest.id}`,
+          rawDate: dueDate,
+          time: quest.endTime || '00:00',
           title: quest.title,
+          description: quest.description || '',
           type: 'mission',
-          dueDate,
-          description: quest.description,
+          quest,
+          rmType: 'mission',
         });
       }
     });
@@ -394,11 +388,13 @@ export default function TimelinePage() {
       const eventDate = new Date(y, m - 1, d);
       if (eventDate >= today) {
         items.push({
-          id: `event-${event.id}`,
+          id: `rm-event-${event.id}`,
+          rawDate: eventDate,
+          time: event.startTime && event.startTime.includes(':') ? event.startTime : '00:00',
           title: event.title,
+          description: event.description || '',
           type: 'event',
-          dueDate: eventDate,
-          description: event.description,
+          rmType: 'event',
         });
       }
     });
@@ -417,44 +413,145 @@ export default function TimelinePage() {
       const dueDate = new Date(today);
       dueDate.setDate(dueDate.getDate() + offsetDays);
       items.push({
-        id: `vision-${goal.id}`,
+        id: `rm-vision-${goal.id}`,
+        rawDate: dueDate,
+        time: '00:00',
         title: goal.title,
-        type: 'milestone',
-        dueDate,
-        description: goal.description || undefined,
+        description: goal.description || '',
+        type: 'event',
+        rmType: 'milestone',
       });
     });
 
-    const weekEnd = new Date(today);
-    weekEnd.setDate(weekEnd.getDate() + 7);
-    const monthEnd = new Date(today);
-    monthEnd.setDate(monthEnd.getDate() + 30);
-    const quarterEnd = new Date(today);
-    quarterEnd.setDate(quarterEnd.getDate() + 90);
-    const yearEnd = new Date(today);
-    yearEnd.setDate(yearEnd.getDate() + 365);
-
-    const fmtRange = (start: Date, end: Date) => {
-      return `${MONTH_NAMES[start.getMonth()]} ${start.getDate()} – ${MONTH_NAMES[end.getMonth()]} ${end.getDate()}, ${end.getFullYear()}`;
-    };
-
-    const bucketDefs = [
-      { key: 'this-week', label: 'This Week', sublabel: fmtRange(today, weekEnd), filter: (d: Date) => d < weekEnd },
-      { key: 'this-month', label: 'This Month', sublabel: fmtRange(weekEnd, monthEnd), filter: (d: Date) => d >= weekEnd && d < monthEnd },
-      { key: 'this-quarter', label: 'This Quarter', sublabel: fmtRange(monthEnd, quarterEnd), filter: (d: Date) => d >= monthEnd && d < quarterEnd },
-      { key: 'this-year', label: 'This Year', sublabel: fmtRange(quarterEnd, yearEnd), filter: (d: Date) => d >= quarterEnd && d < yearEnd },
-      { key: 'beyond', label: 'Beyond', sublabel: `After ${MONTH_NAMES[yearEnd.getMonth()]} ${yearEnd.getDate()}, ${yearEnd.getFullYear()}`, filter: (d: Date) => d >= yearEnd },
-    ];
-
-    return bucketDefs
-      .map(def => ({
-        key: def.key,
-        label: def.label,
-        sublabel: def.sublabel,
-        items: items.filter(item => def.filter(item.dueDate)).sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime()),
-      }))
-      .filter(bucket => bucket.items.length > 0);
+    return items;
   }, [activeView, quests, events, visionGoals]);
+
+  const roadmapNodes: TimelineNode[] = useMemo(() => {
+    if (roadmapItems.length === 0) return [];
+
+    switch (rmZoom) {
+      case 'life': {
+        const byYear: Record<number, typeof roadmapItems> = {};
+        roadmapItems.forEach(item => {
+          const year = item.rawDate.getFullYear();
+          if (!byYear[year]) byYear[year] = [];
+          byYear[year].push(item);
+        });
+        return Object.keys(byYear)
+          .map(Number)
+          .sort((a, b) => a - b)
+          .map(year => ({
+            key: `rm-year-${year}`,
+            label: String(year),
+            count: byYear[year].length,
+            items: byYear[year],
+            drillValue: { year },
+          }));
+      }
+
+      case 'year': {
+        if (rmFocusYear === null) return [];
+        const filtered = roadmapItems.filter(i => i.rawDate.getFullYear() === rmFocusYear);
+        const byMonth: Record<number, typeof roadmapItems> = {};
+        filtered.forEach(item => {
+          const month = item.rawDate.getMonth();
+          if (!byMonth[month]) byMonth[month] = [];
+          byMonth[month].push(item);
+        });
+        return Object.keys(byMonth)
+          .map(Number)
+          .sort((a, b) => a - b)
+          .map(month => ({
+            key: `rm-month-${month}`,
+            label: MONTH_FULL[month],
+            sublabel: String(rmFocusYear),
+            count: byMonth[month].length,
+            items: byMonth[month],
+            drillValue: { year: rmFocusYear, month },
+          }));
+      }
+
+      case 'month': {
+        if (rmFocusYear === null || rmFocusMonth === null) return [];
+        const filtered = roadmapItems.filter(i =>
+          i.rawDate.getFullYear() === rmFocusYear && i.rawDate.getMonth() === rmFocusMonth
+        );
+        const byWeek: Record<number, typeof roadmapItems> = {};
+        filtered.forEach(item => {
+          const week = getWeekNumber(item.rawDate);
+          if (!byWeek[week]) byWeek[week] = [];
+          byWeek[week].push(item);
+        });
+        const monthStart = new Date(rmFocusYear, rmFocusMonth, 1);
+        const monthEnd = new Date(rmFocusYear, rmFocusMonth + 1, 0);
+        return Object.keys(byWeek)
+          .map(Number)
+          .sort((a, b) => a - b)
+          .map(week => {
+            const rawWeekStart = getWeekStart(rmFocusYear, week);
+            const rawWeekEnd = new Date(rawWeekStart);
+            rawWeekEnd.setDate(rawWeekEnd.getDate() + 6);
+            const clampedStart = rawWeekStart < monthStart ? monthStart : rawWeekStart;
+            const clampedEnd = rawWeekEnd > monthEnd ? monthEnd : rawWeekEnd;
+            return {
+              key: `rm-week-${week}`,
+              label: `Week ${week}`,
+              sublabel: `${MONTH_NAMES[clampedStart.getMonth()]} ${clampedStart.getDate()} - ${MONTH_NAMES[clampedEnd.getMonth()]} ${clampedEnd.getDate()}`,
+              count: byWeek[week].length,
+              items: byWeek[week],
+              drillValue: { year: rmFocusYear, month: rmFocusMonth, week },
+            };
+          });
+      }
+
+      case 'week': {
+        if (rmFocusYear === null || rmFocusMonth === null || rmFocusWeek === null) return [];
+        const filtered = roadmapItems.filter(i =>
+          i.rawDate.getFullYear() === rmFocusYear &&
+          i.rawDate.getMonth() === rmFocusMonth &&
+          getWeekNumber(i.rawDate) === rmFocusWeek
+        );
+        const byDay: Record<number, typeof roadmapItems> = {};
+        filtered.forEach(item => {
+          const day = item.rawDate.getDate();
+          if (!byDay[day]) byDay[day] = [];
+          byDay[day].push(item);
+        });
+        return Object.keys(byDay)
+          .map(Number)
+          .sort((a, b) => a - b)
+          .map(day => {
+            const dateObj = new Date(rmFocusYear, rmFocusMonth, day);
+            return {
+              key: `rm-day-${day}`,
+              label: `${DAY_NAMES[dateObj.getDay()]}, ${MONTH_NAMES[rmFocusMonth]} ${day}`,
+              count: byDay[day].length,
+              items: byDay[day],
+              drillValue: { year: rmFocusYear, month: rmFocusMonth, week: rmFocusWeek, day },
+            };
+          });
+      }
+
+      case 'day': {
+        if (rmFocusYear === null || rmFocusMonth === null || rmFocusDay === null) return [];
+        const filtered = roadmapItems.filter(i =>
+          i.rawDate.getFullYear() === rmFocusYear &&
+          i.rawDate.getMonth() === rmFocusMonth &&
+          i.rawDate.getDate() === rmFocusDay
+        ).sort((a, b) => a.time.localeCompare(b.time));
+        return filtered.map(item => ({
+          key: item.id,
+          label: item.title,
+          sublabel: formatTime(item.time) || undefined,
+          count: 0,
+          items: [item],
+        }));
+      }
+
+      default:
+        return [];
+    }
+  }, [roadmapItems, rmZoom, rmFocusYear, rmFocusMonth, rmFocusWeek, rmFocusDay]);
 
   const handleNodeClick = useCallback((node: TimelineNode) => {
     if (zoomLevel === 'day') return;
@@ -520,14 +617,52 @@ export default function TimelinePage() {
   const canZoomIn = zoomIdx < ZOOM_LEVELS.length - 1 && nodes.length > 0;
   const canZoomOut = zoomIdx > 0;
 
-  const toggleRoadmapBucket = (key: string) => {
-    setExpandedRoadmapBuckets(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  };
+  const handleRmNodeClick = useCallback((node: TimelineNode) => {
+    if (rmZoom === 'day') return;
+    const idx = ZOOM_LEVELS.indexOf(rmZoom);
+    const nextZoom = ZOOM_LEVELS[idx + 1];
+    if (!nextZoom || !node.drillValue) return;
+    if (node.drillValue.year !== undefined) setRmFocusYear(node.drillValue.year);
+    if (node.drillValue.month !== undefined) setRmFocusMonth(node.drillValue.month);
+    if (node.drillValue.week !== undefined) setRmFocusWeek(node.drillValue.week);
+    if (node.drillValue.day !== undefined) setRmFocusDay(node.drillValue.day);
+    setRmZoom(nextZoom);
+  }, [rmZoom]);
+
+  const handleRmZoomOut = useCallback(() => {
+    const idx = ZOOM_LEVELS.indexOf(rmZoom);
+    if (idx <= 0) return;
+    const prevZoom = ZOOM_LEVELS[idx - 1];
+    if (prevZoom === 'life') { setRmFocusYear(null); setRmFocusMonth(null); setRmFocusWeek(null); setRmFocusDay(null); }
+    else if (prevZoom === 'year') { setRmFocusMonth(null); setRmFocusWeek(null); setRmFocusDay(null); }
+    else if (prevZoom === 'month') { setRmFocusWeek(null); setRmFocusDay(null); }
+    else if (prevZoom === 'week') { setRmFocusDay(null); }
+    setRmZoom(prevZoom);
+  }, [rmZoom]);
+
+  const handleRmZoomIn = useCallback(() => {
+    const idx = ZOOM_LEVELS.indexOf(rmZoom);
+    if (idx >= ZOOM_LEVELS.length - 1) return;
+    if (roadmapNodes.length > 0 && roadmapNodes[0].drillValue) {
+      handleRmNodeClick(roadmapNodes[0]);
+    }
+  }, [rmZoom, roadmapNodes, handleRmNodeClick]);
+
+  const rmBreadcrumb = useMemo(() => {
+    const parts: string[] = [];
+    if (rmFocusYear !== null) parts.push(String(rmFocusYear));
+    if (rmFocusMonth !== null) parts.push(MONTH_FULL[rmFocusMonth]);
+    if (rmFocusWeek !== null) parts.push(`Week ${rmFocusWeek}`);
+    if (rmFocusDay !== null && rmFocusMonth !== null) {
+      const dateObj = new Date(rmFocusYear!, rmFocusMonth, rmFocusDay);
+      parts.push(`${DAY_NAMES[dateObj.getDay()]} ${rmFocusDay}`);
+    }
+    return parts;
+  }, [rmFocusYear, rmFocusMonth, rmFocusWeek, rmFocusDay]);
+
+  const rmZoomIdx = ZOOM_LEVELS.indexOf(rmZoom);
+  const rmCanZoomIn = rmZoomIdx < ZOOM_LEVELS.length - 1 && roadmapNodes.length > 0;
+  const rmCanZoomOut = rmZoomIdx > 0;
 
   const fmtDateShort = (d: Date) => {
     return `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
@@ -805,69 +940,230 @@ export default function TimelinePage() {
 
       {activeView === 'roadmap' && (
         <>
-          {roadmapBuckets.length > 0 ? (
+          <div className="glassmorphic rounded-xl neon-border p-3 mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={!rmCanZoomOut}
+                onClick={handleRmZoomOut}
+                className="h-8 w-8 p-0 text-primary hover:bg-primary/10 disabled:opacity-30"
+              >
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={!rmCanZoomIn}
+                onClick={handleRmZoomIn}
+                className="h-8 w-8 p-0 text-primary hover:bg-primary/10 disabled:opacity-30"
+              >
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              {ZOOM_LEVELS.map((level, idx) => (
+                <div
+                  key={level}
+                  className={`text-[10px] font-mono px-2 py-1 rounded-full transition-all ${
+                    idx === rmZoomIdx
+                      ? 'bg-primary text-primary-foreground'
+                      : idx < rmZoomIdx
+                      ? 'bg-primary/20 text-primary cursor-pointer hover:bg-primary/30'
+                      : 'bg-muted/30 text-muted-foreground'
+                  }`}
+                  onClick={() => {
+                    if (idx < rmZoomIdx) {
+                      const targetLevel = ZOOM_LEVELS[idx];
+                      if (targetLevel === 'life') {
+                        setRmFocusYear(null); setRmFocusMonth(null); setRmFocusWeek(null); setRmFocusDay(null);
+                      } else if (targetLevel === 'year') {
+                        setRmFocusMonth(null); setRmFocusWeek(null); setRmFocusDay(null);
+                      } else if (targetLevel === 'month') {
+                        setRmFocusWeek(null); setRmFocusDay(null);
+                      } else if (targetLevel === 'week') {
+                        setRmFocusDay(null);
+                      }
+                      setRmZoom(targetLevel);
+                    }
+                  }}
+                >
+                  {ZOOM_LABELS[level]}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {rmBreadcrumb.length > 0 && (
+            <div className="flex items-center gap-1.5 mb-4 text-xs text-[#7DAAB2] font-mono flex-wrap">
+              <span
+                className="cursor-pointer hover:text-primary transition-colors"
+                onClick={() => {
+                  setRmZoom('life');
+                  setRmFocusYear(null); setRmFocusMonth(null); setRmFocusWeek(null); setRmFocusDay(null);
+                }}
+              >
+                Life
+              </span>
+              {rmBreadcrumb.map((part, idx) => (
+                <span key={idx} className="flex items-center gap-1.5">
+                  <span className="text-primary/40">/</span>
+                  <span
+                    className={idx < rmBreadcrumb.length - 1 ? 'cursor-pointer hover:text-primary transition-colors' : 'text-foreground'}
+                    onClick={() => {
+                      if (idx >= rmBreadcrumb.length - 1) return;
+                      const targetZoom = ZOOM_LEVELS[idx + 1];
+                      if (targetZoom === 'year') {
+                        setRmFocusMonth(null); setRmFocusWeek(null); setRmFocusDay(null);
+                      } else if (targetZoom === 'month') {
+                        setRmFocusWeek(null); setRmFocusDay(null);
+                      } else if (targetZoom === 'week') {
+                        setRmFocusDay(null);
+                      }
+                      setRmZoom(targetZoom);
+                    }}
+                  >
+                    {part}
+                  </span>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {roadmapNodes.length > 0 ? (
             <div className="relative pl-6">
               <div className="absolute left-[11px] top-3 bottom-3 w-[2px] bg-gradient-to-b from-primary/60 via-primary/30 to-primary/10" />
-              <div className="space-y-1">
-                {roadmapBuckets.map((bucket) => (
-                  <div key={bucket.key} className="relative">
-                    <div className="absolute left-[-19px] top-4 w-3 h-3 rounded-full border-2 border-primary z-10 bg-primary shadow-[0_0_6px_var(--primary-glow-medium)]" />
-                    <div
-                      className="ml-2 py-3 px-4 glassmorphic rounded-xl cursor-pointer hover:shadow-[0_0_8px_var(--primary-glow-light)] transition-all group border border-primary/10 hover:border-primary/30"
-                      onClick={() => toggleRoadmapBucket(bucket.key)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="text-base font-orbitron text-foreground group-hover:text-primary transition-colors">
-                            {bucket.label}
-                          </h3>
-                          <p className="text-[11px] text-[#7DAAB2] font-mono mt-0.5">{bucket.sublabel}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                            {bucket.items.length} {bucket.items.length === 1 ? 'item' : 'items'}
-                          </span>
-                          <ChevronDown className={`h-4 w-4 text-primary/50 group-hover:text-primary transition-all ${expandedRoadmapBuckets.has(bucket.key) ? 'rotate-0' : '-rotate-90'}`} />
-                        </div>
-                      </div>
 
-                      {expandedRoadmapBuckets.has(bucket.key) && (
-                        <div className="mt-3 space-y-2 border-t border-primary/10 pt-3" onClick={(e) => e.stopPropagation()}>
-                          {bucket.items.map((item) => (
-                            <div key={item.id} className="glassmorphic rounded-xl p-4 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition border border-primary/10">
-                              <div className="flex-grow">
-                                <div className="flex justify-between items-start">
-                                  <h3 className="font-medium text-foreground">
-                                    {item.title}
-                                  </h3>
-                                  <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                                    <span className="text-[10px] font-mono h-6 px-1.5 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary capitalize">
-                                      {item.type === 'milestone' ? 'Milestone' : item.type === 'mission' ? 'Mission' : 'Event'}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-1 text-xs mt-1 flex-wrap text-muted-foreground">
-                                  {item.type === 'milestone' && <Target className="h-3 w-3 text-primary flex-shrink-0" />}
-                                  {item.type === 'mission' && <CheckSquare className="h-3 w-3 text-primary flex-shrink-0" />}
-                                  {item.type === 'event' && <Calendar className="h-3 w-3 text-primary flex-shrink-0" />}
-                                  <span className="text-[11px] font-mono text-[#7DAAB2] whitespace-nowrap">
-                                    {fmtDateShort(item.dueDate)}
+              <div className="space-y-1">
+                {roadmapNodes.map((node) => {
+                  const rmItem = node.items[0] as (TimelineItem & { rmType?: string }) | undefined;
+                  const itemRmType = rmItem?.rmType || 'mission';
+
+                  return (
+                    <div key={node.key} className="relative">
+                      <div
+                        className={`absolute left-[-19px] top-4 w-3 h-3 rounded-full border-2 border-primary z-10 transition-all ${
+                          rmZoom === 'day'
+                            ? 'bg-primary shadow-[0_0_6px_var(--primary-glow-medium)]'
+                            : node.count > 0
+                            ? 'bg-primary shadow-[0_0_6px_var(--primary-glow-medium)]'
+                            : 'bg-background'
+                        }`}
+                      />
+
+                      {rmZoom === 'day' ? (
+                        <div className="ml-2 glassmorphic rounded-xl p-4 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition neon-border">
+                          <div className="flex-grow">
+                            <div className="flex justify-between items-start">
+                              <h3 className="font-medium text-foreground">
+                                {node.label}
+                              </h3>
+                              <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                                <span className="text-[10px] font-mono h-6 px-1.5 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary capitalize">
+                                  {itemRmType === 'milestone' ? 'Milestone' : itemRmType === 'mission' ? 'Mission' : 'Event'}
+                                </span>
+                                {rmItem?.quest?.category && rmItem.quest.category !== "general" && rmItem.quest.category !== "onboarding" && (
+                                  <span className="text-[10px] font-mono h-6 px-1.5 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary capitalize">
+                                    {rmItem.quest.category}
                                   </span>
-                                </div>
+                                )}
+                                {rmItem?.quest && (
+                                  <span className="text-[10px] font-mono h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary">
+                                    {rmItem.quest.difficulty || 'D'}
+                                  </span>
+                                )}
+                                <button
+                                  className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setRmExpandedInfoIds(prev => {
+                                      const next = new Set(prev);
+                                      if (next.has(node.key)) next.delete(node.key);
+                                      else next.add(node.key);
+                                      return next;
+                                    });
+                                  }}
+                                >
+                                  <Info className="h-3.5 w-3.5" />
+                                </button>
                               </div>
                             </div>
-                          ))}
+                            {rmItem?.quest && (
+                              <div className="flex items-center gap-3 mt-1 flex-wrap">
+                                <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((rmItem.quest.energyCost ?? 0) / 1440) * 100).toFixed(1)}% ET</span>
+                                <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((rmItem.quest.attentionCost ?? 0) / 1440) * 100).toFixed(1)}% AT</span>
+                                <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((rmItem.quest.timeCost ?? 0) / 1440) * 100).toFixed(1)}% TT</span>
+                                <span className="text-primary text-xs font-mono whitespace-nowrap">+{Math.floor(rmItem.quest.experienceReward * (difficultyMultipliers[rmItem.quest.difficulty || 'D'] || 1))} XP</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-1 text-xs mt-1 flex-wrap text-muted-foreground">
+                              {itemRmType === 'milestone' && <Target className="h-3 w-3 text-primary flex-shrink-0" />}
+                              {itemRmType === 'mission' && <CheckSquare className="h-3 w-3 text-primary flex-shrink-0" />}
+                              {itemRmType === 'event' && <Calendar className="h-3 w-3 text-primary flex-shrink-0" />}
+                              <span className="text-[11px] font-mono text-[#7DAAB2] whitespace-nowrap">
+                                {fmtDateShort(node.items[0].rawDate)}
+                              </span>
+                            </div>
+                            {rmExpandedInfoIds.has(node.key) && (
+                              <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 space-y-2">
+                                {node.items[0]?.description && (
+                                  <p className="text-muted-foreground">{node.items[0].description}</p>
+                                )}
+                                {rmItem?.quest && (
+                                  <div className="border-t border-primary/10 pt-2 space-y-1">
+                                    {rmItem.quest.category && rmItem.quest.category !== "general" && rmItem.quest.category !== "onboarding" && (
+                                      <p className="text-muted-foreground text-xs">
+                                        <span className="text-primary font-mono capitalize">{rmItem.quest.category}</span> — {
+                                          categoryDescriptions[rmItem.quest.category] || userCategories.find(uc => uc.value === rmItem?.quest?.category)?.description || 'Auto-classified mission category.'
+                                        }
+                                      </p>
+                                    )}
+                                    <p className="text-muted-foreground text-xs">
+                                      <span className="text-primary font-mono">Rank {rmItem.quest.difficulty || 'D'}</span> — {difficultyDescriptions[rmItem.quest.difficulty || 'D']}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div
+                          className="ml-2 py-3 px-4 glassmorphic rounded-xl cursor-pointer hover:shadow-[0_0_8px_var(--primary-glow-light)] transition-all group border border-primary/10 hover:border-primary/30"
+                          onClick={() => handleRmNodeClick(node)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h3 className="text-base font-orbitron text-foreground group-hover:text-primary transition-colors">
+                                {node.label}
+                              </h3>
+                              {node.sublabel && (
+                                <p className="text-[11px] text-[#7DAAB2] font-mono mt-0.5">{node.sublabel}</p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-mono text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                                {node.count} {node.count === 1 ? 'item' : 'items'}
+                              </span>
+                              <ChevronDown className="h-4 w-4 text-primary/50 group-hover:text-primary transition-colors -rotate-90" />
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ) : (
             <div className="glassmorphic rounded-xl p-8 neon-border text-center">
               <Rocket className="h-8 w-8 text-primary/50 mx-auto mb-3" />
-              <p className="text-muted-foreground">No upcoming items. Set vision goals and schedule missions to build your roadmap.</p>
+              <p className="text-muted-foreground">
+                {rmZoom === 'life'
+                  ? 'No upcoming items. Set vision goals and schedule missions to build your roadmap.'
+                  : 'No items at this time level. Zoom out to see more.'}
+              </p>
             </div>
           )}
         </>
