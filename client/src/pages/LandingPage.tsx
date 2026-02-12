@@ -208,49 +208,54 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* ─── HEADER ─── */}
-      <header className="sticky top-0 z-50 border-b border-border/30 bg-background/80 backdrop-blur-lg">
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-14 sm:h-16 relative">
-          <button
-            className="md:hidden p-1.5 text-muted-foreground z-10"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg">
+        <div className="max-w-6xl mx-auto px-4 pt-4 pb-3 relative">
+          <div className="flex items-center justify-between">
+            <button
+              className="md:hidden p-1.5 text-muted-foreground z-10"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
 
-          <button onClick={() => scrollTo("hero")} className="absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0 flex items-center gap-2">
-            <span className="font-orbitron text-2xl sm:text-3xl font-bold tracking-wider">
-              <span className="text-white">LYFE</span><span className="text-primary">OS</span>
-            </span>
-          </button>
+            <nav className="hidden md:flex items-center gap-6">
+              {NAV_LINKS.map((l) => (
+                <button
+                  key={l.href}
+                  onClick={() => scrollTo(l.href.slice(1))}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {l.label}
+                </button>
+              ))}
+            </nav>
 
-          <nav className="hidden md:flex items-center gap-6">
-            {NAV_LINKS.map((l) => (
-              <button
-                key={l.href}
-                onClick={() => scrollTo(l.href.slice(1))}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {l.label}
-              </button>
-            ))}
-          </nav>
+            <div className="flex items-center z-10">
+              {isAuthenticated ? (
+                <Link
+                  href="/dashboard"
+                  className="text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                >
+                  Dashboard
+                </Link>
+              ) : (
+                <Link
+                  href="/login"
+                  className="text-sm font-medium px-4 py-2 rounded-lg border border-border hover:bg-card transition-colors"
+                >
+                  Login
+                </Link>
+              )}
+            </div>
+          </div>
 
-          <div className="flex items-center z-10">
-            {isAuthenticated ? (
-              <Link
-                href="/dashboard"
-                className="text-sm font-medium px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
-                Dashboard
-              </Link>
-            ) : (
-              <Link
-                href="/login"
-                className="text-sm font-medium px-4 py-2 rounded-lg border border-border hover:bg-card transition-colors"
-              >
-                Login
-              </Link>
-            )}
+          <div className="text-center mt-3">
+            <button onClick={() => scrollTo("hero")}>
+              <h1 className="text-4xl font-orbitron font-bold tracking-wider">
+                <span className="text-white">LYFE</span><span className="text-primary">OS</span>
+              </h1>
+            </button>
+            <p className="text-muted-foreground text-sm mt-1">Your personal life operating system</p>
           </div>
         </div>
 
