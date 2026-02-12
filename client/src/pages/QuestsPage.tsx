@@ -252,6 +252,7 @@ export default function QuestsPage() {
       });
       await queryClient.invalidateQueries({ queryKey: ['/api/user-categories'] });
       await queryClient.refetchQueries({ queryKey: ['/api/user-categories'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/quests'] });
       if (formType === 'create') {
         setCreateFormData(prev => ({ ...prev, category: newValue }));
       } else {
@@ -259,7 +260,6 @@ export default function QuestsPage() {
       }
       setEditingCategoryId(null);
       setEditCategoryInput("");
-      toast({ title: "Category updated" });
     } catch (error) {
       console.error("Failed to update category:", error);
       toast({ title: "Failed to update category", variant: "destructive" });
