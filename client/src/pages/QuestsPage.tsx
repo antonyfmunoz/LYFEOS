@@ -267,8 +267,7 @@ export default function QuestsPage() {
       setEditingCategoryId(null);
       setEditCategoryInput("");
       queryClient.invalidateQueries({ queryKey: ['/api/user-categories'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/quests'] });
-      queryClient.refetchQueries({ queryKey: ['/api/quests'] });
+      refetchQuests();
     } catch (error) {
       console.error("Failed to update category:", error);
       toast({ title: "Failed to update category", variant: "destructive" });
@@ -732,7 +731,7 @@ export default function QuestsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Category</Label>
-                  <Select value={createFormData.category} onValueChange={(val) => {
+                  <Select key={`create-cat-${mergedCategories.map(c => c.value).join(',')}`} value={createFormData.category} onValueChange={(val) => {
                     if (val === "__custom__") {
                       setCustomCategoryMode('create');
                       setCustomCategoryInput("");
@@ -1111,7 +1110,7 @@ export default function QuestsPage() {
               </div>
               <div className="space-y-2">
                 <Label>Category</Label>
-                <Select value={editFormData.category} onValueChange={(val) => {
+                <Select key={`edit-cat-${mergedCategories.map(c => c.value).join(',')}`} value={editFormData.category} onValueChange={(val) => {
                   if (val === "__custom__") {
                     setCustomCategoryMode('edit');
                     setCustomCategoryInput("");
