@@ -104,7 +104,7 @@ function getInitialTheme(): boolean {
 }
 
 function getInitialColor(): string {
-  return localStorage.getItem('lyfeos-primary-color') || "#00e0ff";
+  return localStorage.getItem('lyfeos-primary-color') || "#ffffff";
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
