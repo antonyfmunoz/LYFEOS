@@ -187,6 +187,7 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
   const [expandedGoalId, setExpandedGoalId] = useState<number | null>(null);
   const [infoExpandedId, setInfoExpandedId] = useState<number | null>(null);
   const [editingDescId, setEditingDescId] = useState<number | null>(null);
+  const [pendingGoals, setPendingGoals] = useState<VisionGoal[]>([]);
   const [editDesc, setEditDesc] = useState("");
   const [editingRewardId, setEditingRewardId] = useState<number | null>(null);
   const [editReward, setEditReward] = useState("");
@@ -225,39 +226,20 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
   const allGoalsKey = ['/api/vision-goals/all'];
 
   const createMutation = useMutation({
-    mutationFn: async (title: string) => {
-      return apiRequest<VisionGoal>('/api/vision-goals', {
+    mutationFn: async ({ title, tempId }: { title: string; tempId: number }) => {
+      const data = await apiRequest<VisionGoal>('/api/vision-goals', {
         method: 'POST',
         body: JSON.stringify({ category, title }),
       });
+      return { data, tempId };
     },
-    onMutate: async (title: string) => {
-      await queryClient.cancelQueries({ queryKey });
-      await queryClient.cancelQueries({ queryKey: allGoalsKey });
-      const previous = queryClient.getQueryData<VisionGoal[]>(queryKey);
-      const previousAll = queryClient.getQueryData<VisionGoal[]>(allGoalsKey);
-      const tempGoal: VisionGoal = {
-        id: tempIdCounter.current--,
-        userId: user?.id || 0,
-        category,
-        title,
-        description: null,
-        rewardText: null,
-        bonusXp: 0,
-        completed: false,
-        completedAt: null,
-        displayOrder: (previous?.length || 0) + 1,
-        createdAt: new Date().toISOString(),
-      };
-      queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) => [...old, tempGoal]);
-      queryClient.setQueryData<VisionGoal[]>(allGoalsKey, (old = []) => [...old, tempGoal]);
-      setNewTitle("");
-      inputRef.current?.focus();
-      return { previous, previousAll };
+    onSuccess: ({ data, tempId }) => {
+      setPendingGoals(prev => prev.filter(g => g.id !== tempId));
+      queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) => [...old, data]);
+      queryClient.setQueryData<VisionGoal[]>(allGoalsKey, (old = []) => [...old, data]);
     },
-    onError: (_err, _title, context) => {
-      if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
-      if (context?.previousAll) queryClient.setQueryData(allGoalsKey, context.previousAll);
+    onError: (_err, { tempId }) => {
+      setPendingGoals(prev => prev.filter(g => g.id !== tempId));
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
@@ -404,7 +386,25 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
-    createMutation.mutate(newTitle.trim());
+    const title = newTitle.trim();
+    const tempId = tempIdCounter.current--;
+    const tempGoal: VisionGoal = {
+      id: tempId,
+      userId: user?.id || 0,
+      category,
+      title,
+      description: null,
+      rewardText: null,
+      bonusXp: 0,
+      completed: false,
+      completedAt: null,
+      displayOrder: (goals?.length || 0) + pendingGoals.length + 1,
+      createdAt: new Date().toISOString() as any,
+    };
+    setPendingGoals(prev => [...prev, tempGoal]);
+    setNewTitle("");
+    inputRef.current?.focus();
+    createMutation.mutate({ title, tempId });
   };
 
   const handleEditSave = (id: number) => {
@@ -564,8 +564,9 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
     );
   };
 
-  const activeGoals = [...goals.filter(g => !g.completed)].sort((a, b) => a.displayOrder - b.displayOrder);
-  const completedGoals = goals.filter(g => g.completed);
+  const allDisplayGoals = [...goals, ...pendingGoals.filter(pg => !goals.some(g => g.id === pg.id))];
+  const activeGoals = [...allDisplayGoals.filter(g => !g.completed)].sort((a, b) => a.displayOrder - b.displayOrder);
+  const completedGoals = allDisplayGoals.filter(g => g.completed);
   activeGoalsRef.current = activeGoals;
 
   if (isLoading) {
@@ -626,7 +627,7 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
         </div>
       </form>
 
-      {goals.length === 0 && (
+      {allDisplayGoals.length === 0 && (
         <p className="text-sm text-muted-foreground italic py-2">No mission objectives yet. Add your first one above.</p>
       )}
 
