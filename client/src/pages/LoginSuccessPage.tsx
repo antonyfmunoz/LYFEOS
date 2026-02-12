@@ -9,8 +9,16 @@ export default function LoginSuccessPage() {
     sessionStorage.removeItem("login_success_new_user");
     sessionStorage.setItem("lyfeos_login_toast_done", "true");
 
-    localStorage.setItem("lyfeos-ceremony-mode", "login");
-    navigate("/ceremony", { replace: true });
+    const today = new Date().toDateString();
+    const lastCeremonyDate = localStorage.getItem("lyfeos_ceremony_date");
+
+    if (lastCeremonyDate === today) {
+      navigate("/dashboard", { replace: true });
+    } else {
+      localStorage.setItem("lyfeos_ceremony_date", today);
+      localStorage.setItem("lyfeos-ceremony-mode", "login");
+      navigate("/ceremony", { replace: true });
+    }
   }, []);
 
   return (
