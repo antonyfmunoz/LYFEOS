@@ -222,6 +222,8 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
     }
   }, [editingId]);
 
+  const allGoalsKey = ['/api/vision-goals/all'];
+
   const createMutation = useMutation({
     mutationFn: async (title: string) => {
       return apiRequest<VisionGoal>('/api/vision-goals', {
@@ -231,7 +233,9 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
     },
     onMutate: async (title: string) => {
       await queryClient.cancelQueries({ queryKey });
+      await queryClient.cancelQueries({ queryKey: allGoalsKey });
       const previous = queryClient.getQueryData<VisionGoal[]>(queryKey);
+      const previousAll = queryClient.getQueryData<VisionGoal[]>(allGoalsKey);
       const tempGoal: VisionGoal = {
         id: tempIdCounter.current--,
         userId: user?.id || 0,
@@ -246,16 +250,18 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
         createdAt: new Date().toISOString(),
       };
       queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) => [...old, tempGoal]);
+      queryClient.setQueryData<VisionGoal[]>(allGoalsKey, (old = []) => [...old, tempGoal]);
       setNewTitle("");
       inputRef.current?.focus();
-      return { previous };
+      return { previous, previousAll };
     },
     onError: (_err, _title, context) => {
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
+      if (context?.previousAll) queryClient.setQueryData(allGoalsKey, context.previousAll);
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
-      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
+      queryClient.invalidateQueries({ queryKey: allGoalsKey });
     },
   });
 
@@ -269,11 +275,14 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
     },
     onMutate: async ({ id, completed }) => {
       await queryClient.cancelQueries({ queryKey });
+      await queryClient.cancelQueries({ queryKey: allGoalsKey });
       const previous = queryClient.getQueryData<VisionGoal[]>(queryKey);
-      queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) =>
-        old.map(g => g.id === id ? { ...g, completed, completedAt: completed ? new Date().toISOString() : null } : g)
-      );
-      return { previous };
+      const previousAll = queryClient.getQueryData<VisionGoal[]>(allGoalsKey);
+      const updater = (old: VisionGoal[]) =>
+        old.map(g => g.id === id ? { ...g, completed, completedAt: completed ? new Date().toISOString() : null } : g);
+      queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) => updater(old));
+      queryClient.setQueryData<VisionGoal[]>(allGoalsKey, (old = []) => updater(old));
+      return { previous, previousAll };
     },
     onSuccess: (data, { completed }) => {
       if (data && data.title && completed) {
@@ -282,10 +291,11 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
     },
     onError: (_err, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
+      if (context?.previousAll) queryClient.setQueryData(allGoalsKey, context.previousAll);
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
-      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
+      queryClient.invalidateQueries({ queryKey: allGoalsKey });
     },
   });
 
@@ -303,8 +313,10 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
     },
     onMutate: async ({ id, title, description, rewardText }) => {
       await queryClient.cancelQueries({ queryKey });
+      await queryClient.cancelQueries({ queryKey: allGoalsKey });
       const previous = queryClient.getQueryData<VisionGoal[]>(queryKey);
-      queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) =>
+      const previousAll = queryClient.getQueryData<VisionGoal[]>(allGoalsKey);
+      const updater = (old: VisionGoal[]) =>
         old.map(g => {
           if (g.id !== id) return g;
           const updated = { ...g };
@@ -312,19 +324,21 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
           if (description !== undefined) updated.description = description;
           if (rewardText !== undefined) updated.rewardText = rewardText || null;
           return updated;
-        })
-      );
+        });
+      queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) => updater(old));
+      queryClient.setQueryData<VisionGoal[]>(allGoalsKey, (old = []) => updater(old));
       setEditingId(null);
       setEditingDescId(null);
       setEditingRewardId(null);
-      return { previous };
+      return { previous, previousAll };
     },
     onError: (_err, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
+      if (context?.previousAll) queryClient.setQueryData(allGoalsKey, context.previousAll);
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
-      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
+      queryClient.invalidateQueries({ queryKey: allGoalsKey });
     },
   });
 
@@ -334,18 +348,24 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
     },
     onMutate: async (id: number) => {
       await queryClient.cancelQueries({ queryKey });
+      await queryClient.cancelQueries({ queryKey: allGoalsKey });
       const previous = queryClient.getQueryData<VisionGoal[]>(queryKey);
+      const previousAll = queryClient.getQueryData<VisionGoal[]>(allGoalsKey);
       queryClient.setQueryData<VisionGoal[]>(queryKey, (old = []) =>
         old.filter(g => g.id !== id)
       );
-      return { previous };
+      queryClient.setQueryData<VisionGoal[]>(allGoalsKey, (old = []) =>
+        old.filter(g => g.id !== id)
+      );
+      return { previous, previousAll };
     },
     onError: (_err, _id, context) => {
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
+      if (context?.previousAll) queryClient.setQueryData(allGoalsKey, context.previousAll);
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
-      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
+      queryClient.invalidateQueries({ queryKey: allGoalsKey });
     },
   });
 
@@ -358,7 +378,7 @@ function ObjectiveList({ category, placeholder }: { category: string; placeholde
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
-      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
+      queryClient.invalidateQueries({ queryKey: allGoalsKey });
     },
   });
 
