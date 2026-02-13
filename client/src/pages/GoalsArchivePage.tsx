@@ -651,6 +651,7 @@ export default function GoalsArchivePage() {
         method: 'PATCH',
         body: JSON.stringify({ category: newCategory }),
       });
+      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
     } catch (err) {
       setGoals(previousGoals);
       toast({
@@ -835,6 +836,7 @@ export default function GoalsArchivePage() {
         body: JSON.stringify(optimisticUpdates),
       });
       setGoals(prev => prev.map(g => g.id === editedId ? { ...g, ...updatedGoal } : g));
+      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
     } catch (error) {
       setGoals(previousGoals);
       console.error("Error updating goal:", error);
