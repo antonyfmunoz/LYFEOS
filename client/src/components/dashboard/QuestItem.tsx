@@ -272,9 +272,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
               <div className="border-t border-primary/10 pt-2 space-y-1">
                 {linkedObjective && (
                   <div className="flex items-center gap-1.5 mb-1">
-                    <span className="text-xs text-primary font-mono capitalize">
-                      {categoryLabels[linkedObjective.category] || linkedObjective.category} Objective
-                    </span>
+                    <span className="text-xs text-primary font-mono capitalize">{categoryLabels[linkedObjective.category] || linkedObjective.category} Objective</span>
                     <span className="text-xs text-muted-foreground">—</span>
                     <span className="text-xs text-muted-foreground">{linkedObjective.title}</span>
                   </div>
