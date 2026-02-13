@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
 import { useWidgetState } from "@/hooks/use-widget-state";
@@ -141,7 +141,7 @@ function DraggableObjective({
           <GripVertical className="h-4 w-4" />
         </div>
         <button
-          onClick={(e) => { e.stopPropagation(); e.preventDefault(); console.log(`[GOAL-TOGGLE] Complete clicked id=${goal.id}`); onToggle(goal.id, true); }}
+          onClick={(e) => { e.stopPropagation(); e.preventDefault(); onToggle(goal.id, true); }}
           disabled={isMutating}
           className="shrink-0 relative h-8 w-8 flex items-center justify-center touch-manipulation disabled:opacity-50"
           style={{ WebkitTapHighlightColor: 'transparent', zIndex: 10, position: 'relative' }}
@@ -192,130 +192,27 @@ function DraggableObjective({
   );
 }
 
-const ALL_GOALS_KEY = ['/api/vision-goals/all'] as const;
+interface ObjectiveListProps {
+  category: string;
+  placeholder: string;
+  goals: VisionGoal[];
+  completedMissions: CompletedMission[];
+  isLoading: boolean;
+  onCreateGoal: (category: string) => void;
+  onEditGoal: (goal: VisionGoal) => void;
+  onToggle: (id: number, completed: boolean) => void;
+  onDelete: (id: number) => void;
+  onReorder: (category: string, ids: number[]) => void;
+  setGoals: React.Dispatch<React.SetStateAction<VisionGoal[]>>;
+}
 
-function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { category: string; placeholder: string; onCreateGoal: (category: string) => void; onEditGoal: (goal: VisionGoal) => void }) {
-  const { user } = useAuth();
+function ObjectiveList({ category, placeholder, goals, completedMissions, isLoading, onCreateGoal, onEditGoal, onToggle, onDelete, onReorder, setGoals }: ObjectiveListProps) {
   const { toast } = useToast();
   const [expandedGoalId, setExpandedGoalId] = useState<number | null>(null);
   const [infoExpandedId, setInfoExpandedId] = useState<number | null>(null);
+  const [isMutating, setIsMutating] = useState(false);
 
-  const { data: allGoals = [], isLoading } = useQuery<VisionGoal[]>({
-    queryKey: ALL_GOALS_KEY,
-    queryFn: async () => {
-      const res = await fetch('/api/vision-goals/all', { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch goals');
-      return res.json();
-    },
-    enabled: !!user,
-  });
-
-  const goals = allGoals.filter(g => g.category === category);
-
-  const { data: completedMissions = [] } = useQuery<CompletedMission[]>({
-    queryKey: ['/api/quests/completed-by-vision-goal', category],
-    queryFn: async () => {
-      const res = await fetch(`/api/quests/completed-by-vision-goal/${category}`, { credentials: 'include' });
-      if (!res.ok) return [];
-      return res.json();
-    },
-    enabled: !!user,
-  });
-
-  const toggleMutation = useMutation({
-    mutationFn: async ({ id, completed }: { id: number; completed: boolean }) => {
-      const result = await apiRequest<VisionGoal & { xpAwarded?: number }>(`/api/vision-goals/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ completed }),
-      });
-      return result;
-    },
-    onMutate: async (variables) => {
-      await queryClient.cancelQueries({ queryKey: ALL_GOALS_KEY });
-      const previous = queryClient.getQueryData<VisionGoal[]>(ALL_GOALS_KEY);
-      queryClient.setQueryData<VisionGoal[]>(ALL_GOALS_KEY, (old = []) =>
-        old.map(g => g.id === variables.id ? { ...g, completed: variables.completed } : g)
-      );
-      return { previous };
-    },
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ALL_GOALS_KEY });
-      if (variables.completed === true && data && data.title) {
-        objectiveToast(data.title, data.rewardText, data.bonusXp);
-      }
-    },
-    onError: (err, _variables, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(ALL_GOALS_KEY, context.previous);
-      }
-      toast({
-        title: "Failed to update goal",
-        description: err instanceof Error ? err.message : "Please try again",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await apiRequest(`/api/vision-goals/${id}`, { method: 'DELETE' });
-      return id;
-    },
-    onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: ALL_GOALS_KEY });
-      const previous = queryClient.getQueryData<VisionGoal[]>(ALL_GOALS_KEY);
-      queryClient.setQueryData<VisionGoal[]>(ALL_GOALS_KEY, (old = []) =>
-        old.filter(g => g.id !== id)
-      );
-      return { previous };
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ALL_GOALS_KEY });
-    },
-    onError: (err, _id, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(ALL_GOALS_KEY, context.previous);
-      }
-      toast({
-        title: "Failed to delete goal",
-        description: err instanceof Error ? err.message : "Please try again",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const reorderMutation = useMutation({
-    mutationFn: async (ids: number[]) => {
-      await apiRequest('/api/vision-goals/reorder', {
-        method: 'PUT',
-        body: JSON.stringify({ ids }),
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ALL_GOALS_KEY });
-    },
-  });
-
-  const activeGoalsRef = useRef<VisionGoal[]>([]);
-
-  const moveGoal = useCallback((dragIndex: number, hoverIndex: number) => {
-    const currentActive = activeGoalsRef.current;
-    const newGoals = update(currentActive, {
-      $splice: [
-        [dragIndex, 1],
-        [hoverIndex, 0, currentActive[dragIndex]],
-      ],
-    });
-    const reordered = newGoals.map((g, i) => ({ ...g, displayOrder: i }));
-    queryClient.setQueryData<VisionGoal[]>(ALL_GOALS_KEY, (old = []) =>
-      old.map(g => {
-        const match = reordered.find(r => r.id === g.id);
-        return match ? { ...g, displayOrder: match.displayOrder } : g;
-      })
-    );
-    activeGoalsRef.current = reordered;
-    reorderMutation.mutate(reordered.map(g => g.id));
-  }, []);
+  const categoryGoals = goals.filter(g => g.category === category);
 
   const getMissionsForGoal = (goalId: number) => {
     return completedMissions.filter(m => m.visionGoalId === goalId);
@@ -354,27 +251,30 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-muted-foreground flex items-center gap-1"><Star className="h-3 w-3" /> Bonus XP:</span>
-          <span className={goal.bonusXp > 0 ? "text-amber-400 font-medium" : "italic text-muted-foreground"}>
-            {goal.bonusXp > 0 ? `+${goal.bonusXp}` : "AI-assigned on completion"}
-          </span>
+          <span className="text-muted-foreground shrink-0">Created:</span>
+          <span className="text-foreground/80">{new Date(goal.createdAt).toLocaleDateString()}</span>
         </div>
 
-        <div className="flex items-center gap-4 text-muted-foreground">
-          <span>Created: <span className="text-foreground/80">{new Date(goal.createdAt).toLocaleDateString()}</span></span>
-          {goal.completed && goal.completedAt && (
-            <span>Completed: <span className="text-green-400">{new Date(goal.completedAt).toLocaleDateString()}</span></span>
-          )}
-        </div>
+        {goal.completedAt && (
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground shrink-0">Completed:</span>
+            <span className="text-green-400/80">{new Date(goal.completedAt).toLocaleDateString()}</span>
+          </div>
+        )}
 
-        <div className="flex items-center gap-2">
-          <span className="text-muted-foreground">Avg Rank:</span>
-          {avgDifficulty ? (
-            <span className="font-mono text-primary font-medium">{avgDifficulty}</span>
-          ) : (
-            <span className="italic text-muted-foreground">No missions linked</span>
-          )}
-        </div>
+        {goal.bonusXp > 0 && (
+          <div className="flex items-center gap-2">
+            <Star className="h-3 w-3 text-amber-400" />
+            <span className="text-amber-400/80 font-medium">+{goal.bonusXp} Bonus XP on completion</span>
+          </div>
+        )}
+
+        {avgDifficulty && (
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground shrink-0">Avg Difficulty:</span>
+            <span className="text-primary/80 font-medium">Rank {avgDifficulty}</span>
+          </div>
+        )}
 
         {uniqueCategories.length > 0 && (
           <div className="flex items-center gap-1 flex-wrap">
@@ -396,9 +296,27 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
     );
   };
 
-  const activeGoals = [...goals.filter(g => !g.completed)].sort((a, b) => a.displayOrder - b.displayOrder);
-  const completedGoals = goals.filter(g => g.completed);
+  const activeGoals = [...categoryGoals.filter(g => !g.completed)].sort((a, b) => a.displayOrder - b.displayOrder);
+  const completedGoals = categoryGoals.filter(g => g.completed);
+  const activeGoalsRef = useRef<VisionGoal[]>([]);
   activeGoalsRef.current = activeGoals;
+
+  const moveGoal = useCallback((dragIndex: number, hoverIndex: number) => {
+    const currentActive = activeGoalsRef.current;
+    const newGoals = update(currentActive, {
+      $splice: [
+        [dragIndex, 1],
+        [hoverIndex, 0, currentActive[dragIndex]],
+      ],
+    });
+    const reordered = newGoals.map((g, i) => ({ ...g, displayOrder: i }));
+    setGoals(prev => prev.map(g => {
+      const match = reordered.find(r => r.id === g.id);
+      return match ? { ...g, displayOrder: match.displayOrder } : g;
+    }));
+    activeGoalsRef.current = reordered;
+    onReorder(category, reordered.map(g => g.id));
+  }, [category, onReorder, setGoals]);
 
   if (isLoading) {
     return (
@@ -437,7 +355,7 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
 
   return (
     <div className="space-y-3">
-      {goals.length === 0 && (
+      {categoryGoals.length === 0 && (
         <p className="text-sm text-muted-foreground italic py-2">No mission objectives yet. Use "Create Goal" above to add one.</p>
       )}
 
@@ -449,10 +367,10 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
               goal={goal}
               index={index}
               moveGoal={moveGoal}
-              onToggle={(id, completed) => toggleMutation.mutate({ id, completed })}
+              onToggle={onToggle}
               onEdit={onEditGoal}
-              onDelete={(id) => deleteMutation.mutate(id)}
-              isMutating={toggleMutation.isPending || deleteMutation.isPending}
+              onDelete={onDelete}
+              isMutating={isMutating}
               infoExpandedId={infoExpandedId}
               setInfoExpandedId={setInfoExpandedId}
               renderInfoPanel={renderInfoPanel}
@@ -472,8 +390,8 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
             <div key={goal.id}>
               <div className="group flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-primary/5 transition-colors">
                 <button
-                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); console.log(`[GOAL-TOGGLE] Uncomplete clicked id=${goal.id}`); toggleMutation.mutate({ id: goal.id, completed: false }); }}
-                  disabled={toggleMutation.isPending}
+                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); onToggle(goal.id, false); }}
+                  disabled={isMutating}
                   className="shrink-0 relative h-8 w-8 flex items-center justify-center touch-manipulation disabled:opacity-50"
                   style={{ WebkitTapHighlightColor: 'transparent', zIndex: 10, position: 'relative' }}
                 >
@@ -496,8 +414,8 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
                     <Edit2 className="h-3 w-3" />
                   </button>
                   <button
-                    onClick={() => deleteMutation.mutate(goal.id)}
-                    disabled={deleteMutation.isPending || toggleMutation.isPending}
+                    onClick={() => onDelete(goal.id)}
+                    disabled={isMutating}
                     className="h-6 w-6 inline-flex items-center justify-center rounded border bg-red-500/20 border-red-500/50 text-red-400 hover:bg-red-500/30 transition-colors disabled:opacity-50"
                   >
                     <Trash2 className="h-3 w-3" />
@@ -519,6 +437,10 @@ export default function GoalsArchivePage() {
 
   const { user } = useAuth();
   const [, navigate] = useLocation();
+  const { toast } = useToast();
+
+  const [goals, setGoals] = useState<VisionGoal[]>([]);
+  const [goalsLoaded, setGoalsLoaded] = useState(false);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -526,6 +448,111 @@ export default function GoalsArchivePage() {
   const [editFormData, setEditFormData] = useState<GoalFormData>(defaultFormData);
   const [editingGoalId, setEditingGoalId] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { data: fetchedGoals, isLoading: goalsQueryLoading } = useQuery<VisionGoal[]>({
+    queryKey: ['/api/vision-goals/all'],
+    queryFn: async () => {
+      const res = await fetch('/api/vision-goals/all', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch goals');
+      return res.json();
+    },
+    enabled: !!user,
+  });
+
+  useEffect(() => {
+    if (fetchedGoals && !goalsLoaded) {
+      setGoals(fetchedGoals);
+      setGoalsLoaded(true);
+    }
+  }, [fetchedGoals, goalsLoaded]);
+
+  const { data: legacyMissions = [] } = useQuery<CompletedMission[]>({
+    queryKey: ['/api/quests/completed-by-vision-goal', 'legacy'],
+    queryFn: async () => { const res = await fetch('/api/quests/completed-by-vision-goal/legacy', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
+    enabled: !!user,
+  });
+  const { data: tenYearMissions = [] } = useQuery<CompletedMission[]>({
+    queryKey: ['/api/quests/completed-by-vision-goal', '10year'],
+    queryFn: async () => { const res = await fetch('/api/quests/completed-by-vision-goal/10year', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
+    enabled: !!user,
+  });
+  const { data: fiveYearMissions = [] } = useQuery<CompletedMission[]>({
+    queryKey: ['/api/quests/completed-by-vision-goal', '5year'],
+    queryFn: async () => { const res = await fetch('/api/quests/completed-by-vision-goal/5year', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
+    enabled: !!user,
+  });
+  const { data: eighteenMonthMissions = [] } = useQuery<CompletedMission[]>({
+    queryKey: ['/api/quests/completed-by-vision-goal', '18month'],
+    queryFn: async () => { const res = await fetch('/api/quests/completed-by-vision-goal/18month', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
+    enabled: !!user,
+  });
+  const { data: ninetyDayMissions = [] } = useQuery<CompletedMission[]>({
+    queryKey: ['/api/quests/completed-by-vision-goal', '90day'],
+    queryFn: async () => { const res = await fetch('/api/quests/completed-by-vision-goal/90day', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
+    enabled: !!user,
+  });
+
+  const completedMissionsMap: Record<string, CompletedMission[]> = {
+    legacy: legacyMissions,
+    '10year': tenYearMissions,
+    '5year': fiveYearMissions,
+    '18month': eighteenMonthMissions,
+    '90day': ninetyDayMissions,
+  };
+
+  const getCompletedMissionsForCategory = (category: string): CompletedMission[] => {
+    return completedMissionsMap[category] || [];
+  };
+
+  const handleToggle = useCallback(async (id: number, completed: boolean) => {
+    const previousGoals = [...goals];
+    setGoals(prev => prev.map(g => g.id === id ? { ...g, completed, completedAt: completed ? new Date().toISOString() : null } : g));
+
+    try {
+      const result = await apiRequest<VisionGoal & { xpAwarded?: number }>(`/api/vision-goals/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ completed }),
+      });
+      setGoals(prev => prev.map(g => g.id === id ? { ...g, ...result } : g));
+      if (completed && result && result.title) {
+        objectiveToast(result.title, result.rewardText, result.bonusXp);
+      }
+    } catch (err) {
+      setGoals(previousGoals);
+      toast({
+        title: "Failed to update goal",
+        description: err instanceof Error ? err.message : "Please try again",
+        variant: "destructive",
+      });
+    }
+  }, [goals, toast]);
+
+  const handleDelete = useCallback(async (id: number) => {
+    const previousGoals = [...goals];
+    setGoals(prev => prev.filter(g => g.id !== id));
+
+    try {
+      await apiRequest(`/api/vision-goals/${id}`, { method: 'DELETE' });
+    } catch (err) {
+      setGoals(previousGoals);
+      toast({
+        title: "Failed to delete goal",
+        description: err instanceof Error ? err.message : "Please try again",
+        variant: "destructive",
+      });
+    }
+  }, [goals, toast]);
+
+  const handleReorder = useCallback(async (category: string, ids: number[]) => {
+    try {
+      await apiRequest('/api/vision-goals/reorder', {
+        method: 'PUT',
+        body: JSON.stringify({ ids }),
+      });
+    } catch (err) {
+      console.error("Failed to save reorder:", err);
+    }
+  }, []);
 
   const [legacyOpen, setLegacyOpen] = useWidgetState('goals.legacy-vision', false);
   const [tenYearOpen, setTenYearOpen] = useWidgetState('goals.10year-vision', false);
@@ -660,27 +687,21 @@ export default function GoalsArchivePage() {
     };
     setIsCreateOpen(false);
     setCreateFormData(defaultFormData);
-    await queryClient.cancelQueries({ queryKey: ALL_GOALS_KEY });
-    queryClient.setQueryData<VisionGoal[]>(ALL_GOALS_KEY, (old = []) => [...old, optimisticGoal]);
+    setGoals(prev => [...prev, optimisticGoal]);
     try {
       const newGoal = await apiRequest<VisionGoal>('/api/vision-goals', {
         method: 'POST',
         body: JSON.stringify({
-          category: createFormData.category,
+          category: optimisticGoal.category,
           title: optimisticGoal.title,
           description: optimisticGoal.description,
           rewardText: optimisticGoal.rewardText,
           bonusXp: 0,
         }),
       });
-      queryClient.setQueryData<VisionGoal[]>(ALL_GOALS_KEY, (old = []) =>
-        old.map(g => g.id === tempId ? newGoal : g)
-      );
-      queryClient.invalidateQueries({ queryKey: ALL_GOALS_KEY });
+      setGoals(prev => prev.map(g => g.id === tempId ? newGoal : g));
     } catch (error) {
-      queryClient.setQueryData<VisionGoal[]>(ALL_GOALS_KEY, (old = []) =>
-        old.filter(g => g.id !== tempId)
-      );
+      setGoals(prev => prev.filter(g => g.id !== tempId));
       console.error("Error creating goal:", error);
     } finally {
       setIsSubmitting(false);
@@ -696,24 +717,19 @@ export default function GoalsArchivePage() {
       description: editFormData.description.trim() || null,
       rewardText: editFormData.rewardText.trim() || null,
     };
+    const previousGoals = [...goals];
     setIsEditOpen(false);
     setEditFormData(defaultFormData);
     setEditingGoalId(null);
-    await queryClient.cancelQueries({ queryKey: ALL_GOALS_KEY });
-    const previous = queryClient.getQueryData<VisionGoal[]>(ALL_GOALS_KEY);
-    queryClient.setQueryData<VisionGoal[]>(ALL_GOALS_KEY, (old = []) =>
-      old.map(g => g.id === editedId ? { ...g, ...optimisticUpdates } : g)
-    );
+    setGoals(prev => prev.map(g => g.id === editedId ? { ...g, ...optimisticUpdates } : g));
     try {
-      await apiRequest(`/api/vision-goals/${editedId}`, {
+      const updatedGoal = await apiRequest<VisionGoal>(`/api/vision-goals/${editedId}`, {
         method: 'PATCH',
         body: JSON.stringify(optimisticUpdates),
       });
-      queryClient.invalidateQueries({ queryKey: ALL_GOALS_KEY });
+      setGoals(prev => prev.map(g => g.id === editedId ? { ...g, ...updatedGoal } : g));
     } catch (error) {
-      if (previous) {
-        queryClient.setQueryData(ALL_GOALS_KEY, previous);
-      }
+      setGoals(previousGoals);
       console.error("Error updating goal:", error);
     } finally {
       setIsSubmitting(false);
@@ -859,8 +875,15 @@ export default function GoalsArchivePage() {
                 <ObjectiveList
                   category={widget.id}
                   placeholder={widget.placeholder}
+                  goals={goals}
+                  completedMissions={getCompletedMissionsForCategory(widget.id)}
+                  isLoading={goalsQueryLoading && !goalsLoaded}
                   onCreateGoal={handleOpenCreate}
                   onEditGoal={handleOpenEdit}
+                  onToggle={handleToggle}
+                  onDelete={handleDelete}
+                  onReorder={handleReorder}
+                  setGoals={setGoals}
                 />
               </CollapsibleWidget>
             );
