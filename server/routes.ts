@@ -5760,6 +5760,7 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
       if (req.body.description !== undefined) updateData.description = req.body.description?.trim() || null;
       if (req.body.rewardText !== undefined) updateData.rewardText = req.body.rewardText?.trim() || null;
       if (req.body.bonusXp !== undefined) updateData.bonusXp = parseInt(req.body.bonusXp) || 0;
+      if (req.body.category !== undefined) updateData.category = req.body.category;
       if (req.body.completed !== undefined) {
         updateData.completed = req.body.completed;
         updateData.completedAt = req.body.completed ? new Date() : null;

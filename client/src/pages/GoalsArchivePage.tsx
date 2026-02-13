@@ -108,15 +108,16 @@ function DraggableObjective({
   const ref = useRef<HTMLDivElement>(null);
 
   const [{ isDragging }, drag, preview] = useDrag({
-    type: `${MILESTONE_ITEM}_${category}`,
-    item: () => ({ index }),
+    type: MILESTONE_ITEM,
+    item: () => ({ index, goalId: goal.id, sourceCategory: category }),
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   });
 
   const [, drop] = useDrop({
-    accept: `${MILESTONE_ITEM}_${category}`,
-    hover(item: { index: number }, monitor) {
+    accept: MILESTONE_ITEM,
+    hover(item: { index: number; goalId: number; sourceCategory: string }, monitor) {
       if (!ref.current) return;
+      if (item.sourceCategory !== category) return;
       const dragIndex = item.index;
       const hoverIndex = index;
       if (dragIndex === hoverIndex) return;
@@ -207,10 +208,11 @@ interface ObjectiveListProps {
   onToggle: (id: number, completed: boolean) => void;
   onDelete: (id: number) => void;
   onReorder: (category: string, ids: number[]) => void;
+  onMoveToCategory: (goalId: number, newCategory: string) => void;
   setGoals: React.Dispatch<React.SetStateAction<VisionGoal[]>>;
 }
 
-function ObjectiveList({ category, placeholder, goals, completedMissions, isLoading, onCreateGoal, onEditGoal, onToggle, onDelete, onReorder, setGoals }: ObjectiveListProps) {
+function ObjectiveList({ category, placeholder, goals, completedMissions, isLoading, onCreateGoal, onEditGoal, onToggle, onDelete, onReorder, onMoveToCategory, setGoals }: ObjectiveListProps) {
   const { toast } = useToast();
   const [expandedGoalId, setExpandedGoalId] = useState<number | null>(null);
   const [infoExpandedId, setInfoExpandedId] = useState<number | null>(null);
@@ -330,6 +332,22 @@ function ObjectiveList({ category, placeholder, goals, completedMissions, isLoad
     );
   }
 
+  const dropRef = useRef<HTMLDivElement>(null);
+  const [{ isOver, canDrop }, categoryDrop] = useDrop({
+    accept: MILESTONE_ITEM,
+    canDrop: (item: { goalId: number; sourceCategory: string }) => item.sourceCategory !== category,
+    drop: (item: { goalId: number; sourceCategory: string }) => {
+      if (item.sourceCategory !== category) {
+        onMoveToCategory(item.goalId, category);
+      }
+    },
+    collect: (monitor) => ({
+      isOver: monitor.isOver(),
+      canDrop: monitor.canDrop(),
+    }),
+  });
+  categoryDrop(dropRef);
+
   const renderGoalMissions = (goalId: number) => {
     const missions = getMissionsForGoal(goalId);
     if (missions.length === 0) return null;
@@ -358,8 +376,11 @@ function ObjectiveList({ category, placeholder, goals, completedMissions, isLoad
   };
 
   return (
-    <div className="space-y-3">
-      {categoryGoals.length === 0 && (
+    <div ref={dropRef} className={`space-y-3 rounded-lg transition-colors ${isOver && canDrop ? 'bg-primary/10 ring-2 ring-primary/40 ring-dashed' : ''}`}>
+      {isOver && canDrop && (
+        <p className="text-xs text-primary font-mono text-center py-1">Drop here to move goal</p>
+      )}
+      {categoryGoals.length === 0 && !isOver && (
         <p className="text-sm text-muted-foreground italic py-2">No mission objectives yet. Use "Create Goal" above to add one.</p>
       )}
 
@@ -573,6 +594,25 @@ export default function GoalsArchivePage() {
       console.error("Failed to save reorder:", err);
     }
   }, []);
+
+  const handleMoveToCategory = useCallback(async (goalId: number, newCategory: string) => {
+    const previousGoals = [...goals];
+    setGoals(prev => prev.map(g => g.id === goalId ? { ...g, category: newCategory, displayOrder: 999 } : g));
+
+    try {
+      await apiRequest(`/api/vision-goals/${goalId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ category: newCategory }),
+      });
+    } catch (err) {
+      setGoals(previousGoals);
+      toast({
+        title: "Failed to move goal",
+        description: err instanceof Error ? err.message : "Please try again",
+        variant: "destructive",
+      });
+    }
+  }, [goals, toast]);
 
   const [legacyOpen, setLegacyOpen] = useWidgetState('goals.legacy-vision', false);
   const [tenYearOpen, setTenYearOpen] = useWidgetState('goals.10year-vision', false);
@@ -891,6 +931,7 @@ export default function GoalsArchivePage() {
                 isOpenProp={state.isOpen}
                 onOpenChange={state.setOpen}
                 moveWidget={moveWidget}
+                acceptExternalDrop={MILESTONE_ITEM}
               >
                 <ObjectiveList
                   category={widget.id}
@@ -903,6 +944,7 @@ export default function GoalsArchivePage() {
                   onToggle={handleToggle}
                   onDelete={handleDelete}
                   onReorder={handleReorder}
+                  onMoveToCategory={handleMoveToCategory}
                   setGoals={setGoals}
                 />
               </CollapsibleWidget>

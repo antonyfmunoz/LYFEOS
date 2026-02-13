@@ -21,6 +21,7 @@ interface CollapsibleWidgetProps {
   id?: string;
   index?: number;
   moveWidget?: (dragIndex: number, hoverIndex: number) => void;
+  acceptExternalDrop?: string;
 }
 
 export function CollapsibleWidget({ 
@@ -33,7 +34,8 @@ export function CollapsibleWidget({
   onOpenChange,
   id,
   index,
-  moveWidget
+  moveWidget,
+  acceptExternalDrop
 }: CollapsibleWidgetProps) {
   const [localOpen, setLocalOpen] = useState(defaultOpen);
   const isControlled = isOpenProp !== undefined;
@@ -93,6 +95,22 @@ export function CollapsibleWidget({
     drag(node);
   }, [drag]);
 
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [{ isOverHeader }, externalDrop] = useDrop({
+    accept: acceptExternalDrop || '__none__',
+    hover() {
+      if (!isOpen) {
+        setIsOpen(true);
+      }
+    },
+    collect: (monitor) => ({
+      isOverHeader: monitor.isOver(),
+    }),
+  });
+  if (acceptExternalDrop) {
+    externalDrop(headerRef);
+  }
+
   dragPreview(drop(ref));
 
   return (
@@ -106,7 +124,11 @@ export function CollapsibleWidget({
       data-handler-id={handlerId}
     >
       <div 
-        className="p-3 flex items-center justify-between cursor-pointer border-b border-primary/20 hover:bg-primary/5 transition-colors"
+        ref={headerRef}
+        className={cn(
+          "p-3 flex items-center justify-between cursor-pointer border-b border-primary/20 hover:bg-primary/5 transition-colors",
+          isOverHeader && "bg-primary/10"
+        )}
         onClick={() => setIsOpen(!isOpen)}
       >
         <div className="flex items-center">
