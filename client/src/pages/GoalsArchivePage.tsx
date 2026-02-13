@@ -47,9 +47,10 @@ interface VisionWidget {
   placeholder: string;
 }
 
-interface CompletedMission {
+interface LinkedMission {
   id: number;
   title: string;
+  completed: boolean;
   completedAt: string | null;
   visionGoalId: number | null;
   difficulty: string;
@@ -201,7 +202,7 @@ interface ObjectiveListProps {
   category: string;
   placeholder: string;
   goals: VisionGoal[];
-  completedMissions: CompletedMission[];
+  linkedMissions: LinkedMission[];
   isLoading: boolean;
   onCreateGoal: (category: string) => void;
   onEditGoal: (goal: VisionGoal) => void;
@@ -212,7 +213,7 @@ interface ObjectiveListProps {
   setGoals: React.Dispatch<React.SetStateAction<VisionGoal[]>>;
 }
 
-function ObjectiveList({ category, placeholder, goals, completedMissions, isLoading, onCreateGoal, onEditGoal, onToggle, onDelete, onReorder, onMoveToCategory, setGoals }: ObjectiveListProps) {
+function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading, onCreateGoal, onEditGoal, onToggle, onDelete, onReorder, onMoveToCategory, setGoals }: ObjectiveListProps) {
   const { toast } = useToast();
   const [expandedGoalId, setExpandedGoalId] = useState<number | null>(null);
   const [infoExpandedId, setInfoExpandedId] = useState<number | null>(null);
@@ -221,24 +222,26 @@ function ObjectiveList({ category, placeholder, goals, completedMissions, isLoad
   const categoryGoals = goals.filter(g => g.category === category);
 
   const getMissionsForGoal = (goalId: number) => {
-    return completedMissions.filter(m => m.visionGoalId === goalId);
+    return linkedMissions.filter(m => m.visionGoalId === goalId);
   };
 
   const renderInfoPanel = (goal: VisionGoal) => {
     if (infoExpandedId !== goal.id) return null;
-    const missions = getMissionsForGoal(goal.id);
+    const allMissions = getMissionsForGoal(goal.id);
+    const completedMissions = allMissions.filter(m => m.completed);
+    const activeMissions = allMissions.filter(m => !m.completed);
 
     let avgDifficulty: string | null = null;
-    if (missions.length > 0) {
-      const sum = missions.reduce((acc, m) => acc + (difficultyOrder[m.difficulty] || 0), 0);
-      const avg = Math.round(sum / missions.length);
+    if (allMissions.length > 0) {
+      const sum = allMissions.reduce((acc, m) => acc + (difficultyOrder[m.difficulty] || 0), 0);
+      const avg = Math.round(sum / allMissions.length);
       avgDifficulty = reverseOrder[avg] || null;
     }
 
-    const uniqueCategories = Array.from(new Set(missions.map(m => m.category))).filter(c => c !== 'general');
+    const uniqueCategories = Array.from(new Set(allMissions.map(m => m.category))).filter(c => c !== 'general');
 
-    const totalXP = missions.reduce((acc, m) => acc + (m.experienceReward || 0), 0);
-    const totalEnergy = missions.reduce((acc, m) => acc + (m.energyCost || 0), 0);
+    const totalXP = completedMissions.reduce((acc, m) => acc + (m.experienceReward || 0), 0);
+    const totalEnergy = completedMissions.reduce((acc, m) => acc + (m.energyCost || 0), 0);
 
     return (
       <div className="mt-2 bg-primary/5 border border-primary/10 rounded-lg p-3 space-y-2 text-xs">
@@ -292,10 +295,39 @@ function ObjectiveList({ category, placeholder, goals, completedMissions, isLoad
           </div>
         )}
 
-        {missions.length > 0 && (
+        {allMissions.length > 0 && (
           <div className="flex items-center gap-1 text-muted-foreground">
             <Zap className="h-3 w-3 text-primary/60" />
-            <span>+{totalXP} XP · -{totalEnergy} EP · {missions.length} mission{missions.length !== 1 ? 's' : ''}</span>
+            <span>+{totalXP} XP · -{totalEnergy} EP · {completedMissions.length}/{allMissions.length} mission{allMissions.length !== 1 ? 's' : ''} done</span>
+          </div>
+        )}
+
+        {activeMissions.length > 0 && (
+          <div className="border-t border-primary/10 pt-2 mt-1">
+            <span className="text-muted-foreground text-[10px] uppercase tracking-wider">Active Missions</span>
+            <div className="mt-1 space-y-0.5">
+              {activeMissions.map(m => (
+                <div key={m.id} className="flex items-center gap-2 py-0.5">
+                  <Target className="h-3 w-3 text-primary/60 shrink-0" />
+                  <span className="text-xs text-foreground/70 truncate">{m.title}</span>
+                  <span className="text-[10px] text-primary/50 font-mono ml-auto shrink-0">Rank {m.difficulty}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {completedMissions.length > 0 && (
+          <div className="border-t border-primary/10 pt-2 mt-1">
+            <span className="text-muted-foreground text-[10px] uppercase tracking-wider">Completed Missions</span>
+            <div className="mt-1 space-y-0.5">
+              {completedMissions.map(m => (
+                <div key={m.id} className="flex items-center gap-2 py-0.5">
+                  <Check className="h-3 w-3 text-green-400 shrink-0" />
+                  <span className="text-xs text-muted-foreground truncate">{m.title}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -349,8 +381,10 @@ function ObjectiveList({ category, placeholder, goals, completedMissions, isLoad
   }
 
   const renderGoalMissions = (goalId: number) => {
-    const missions = getMissionsForGoal(goalId);
-    if (missions.length === 0) return null;
+    const allMissions = getMissionsForGoal(goalId);
+    if (allMissions.length === 0) return null;
+    const activeMissions = allMissions.filter(m => !m.completed);
+    const completedMissions = allMissions.filter(m => m.completed);
     const isExpanded = expandedGoalId === goalId;
     return (
       <div className="mt-2">
@@ -359,11 +393,17 @@ function ObjectiveList({ category, placeholder, goals, completedMissions, isLoad
           className="flex items-center gap-1 text-xs text-primary/70 hover:text-primary transition-colors"
         >
           {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-          <span>{missions.length} completed mission{missions.length !== 1 ? 's' : ''}</span>
+          <span>{allMissions.length} linked mission{allMissions.length !== 1 ? 's' : ''} ({activeMissions.length} active, {completedMissions.length} done)</span>
         </button>
         {isExpanded && (
           <div className="mt-1 space-y-0.5 pl-4 border-l border-primary/10">
-            {missions.map((m) => (
+            {activeMissions.map((m) => (
+              <div key={m.id} className="flex items-center gap-2 py-0.5">
+                <Target className="h-3 w-3 text-primary/60 shrink-0" />
+                <span className="text-xs text-foreground/70 truncate">{m.title}</span>
+              </div>
+            ))}
+            {completedMissions.map((m) => (
               <div key={m.id} className="flex items-center gap-2 py-0.5">
                 <Check className="h-3 w-3 text-green-400 shrink-0" />
                 <span className="text-xs text-muted-foreground truncate">{m.title}</span>
@@ -507,33 +547,33 @@ export default function GoalsArchivePage() {
     }
   }, [fetchedGoals, goalsLoaded]);
 
-  const { data: legacyMissions = [] } = useQuery<CompletedMission[]>({
-    queryKey: ['/api/quests/completed-by-vision-goal', 'legacy'],
-    queryFn: async () => { const res = await fetch('/api/quests/completed-by-vision-goal/legacy', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
+  const { data: legacyMissions = [] } = useQuery<LinkedMission[]>({
+    queryKey: ['/api/quests/linked-by-vision-goal', 'legacy'],
+    queryFn: async () => { const res = await fetch('/api/quests/linked-by-vision-goal/legacy', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
     enabled: !!user,
   });
-  const { data: tenYearMissions = [] } = useQuery<CompletedMission[]>({
-    queryKey: ['/api/quests/completed-by-vision-goal', '10year'],
-    queryFn: async () => { const res = await fetch('/api/quests/completed-by-vision-goal/10year', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
+  const { data: tenYearMissions = [] } = useQuery<LinkedMission[]>({
+    queryKey: ['/api/quests/linked-by-vision-goal', '10year'],
+    queryFn: async () => { const res = await fetch('/api/quests/linked-by-vision-goal/10year', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
     enabled: !!user,
   });
-  const { data: fiveYearMissions = [] } = useQuery<CompletedMission[]>({
-    queryKey: ['/api/quests/completed-by-vision-goal', '5year'],
-    queryFn: async () => { const res = await fetch('/api/quests/completed-by-vision-goal/5year', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
+  const { data: fiveYearMissions = [] } = useQuery<LinkedMission[]>({
+    queryKey: ['/api/quests/linked-by-vision-goal', '5year'],
+    queryFn: async () => { const res = await fetch('/api/quests/linked-by-vision-goal/5year', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
     enabled: !!user,
   });
-  const { data: eighteenMonthMissions = [] } = useQuery<CompletedMission[]>({
-    queryKey: ['/api/quests/completed-by-vision-goal', '18month'],
-    queryFn: async () => { const res = await fetch('/api/quests/completed-by-vision-goal/18month', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
+  const { data: eighteenMonthMissions = [] } = useQuery<LinkedMission[]>({
+    queryKey: ['/api/quests/linked-by-vision-goal', '18month'],
+    queryFn: async () => { const res = await fetch('/api/quests/linked-by-vision-goal/18month', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
     enabled: !!user,
   });
-  const { data: ninetyDayMissions = [] } = useQuery<CompletedMission[]>({
-    queryKey: ['/api/quests/completed-by-vision-goal', '90day'],
-    queryFn: async () => { const res = await fetch('/api/quests/completed-by-vision-goal/90day', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
+  const { data: ninetyDayMissions = [] } = useQuery<LinkedMission[]>({
+    queryKey: ['/api/quests/linked-by-vision-goal', '90day'],
+    queryFn: async () => { const res = await fetch('/api/quests/linked-by-vision-goal/90day', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
     enabled: !!user,
   });
 
-  const completedMissionsMap: Record<string, CompletedMission[]> = {
+  const linkedMissionsMap: Record<string, LinkedMission[]> = {
     legacy: legacyMissions,
     '10year': tenYearMissions,
     '5year': fiveYearMissions,
@@ -541,8 +581,8 @@ export default function GoalsArchivePage() {
     '90day': ninetyDayMissions,
   };
 
-  const getCompletedMissionsForCategory = (category: string): CompletedMission[] => {
-    return completedMissionsMap[category] || [];
+  const getLinkedMissionsForCategory = (category: string): LinkedMission[] => {
+    return linkedMissionsMap[category] || [];
   };
 
   const handleToggle = useCallback(async (id: number, completed: boolean) => {
@@ -937,7 +977,7 @@ export default function GoalsArchivePage() {
                   category={widget.id}
                   placeholder={widget.placeholder}
                   goals={goals}
-                  completedMissions={getCompletedMissionsForCategory(widget.id)}
+                  linkedMissions={getLinkedMissionsForCategory(widget.id)}
                   isLoading={goalsQueryLoading && !goalsLoaded}
                   onCreateGoal={handleOpenCreate}
                   onEditGoal={handleOpenEdit}

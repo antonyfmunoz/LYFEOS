@@ -5884,6 +5884,40 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
     }
   });
 
+  app.get("/api/quests/linked-by-vision-goal/:category", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { category } = req.params;
+      const validCategories = ["legacy", "10year", "5year", "18month", "90day"];
+      if (!validCategories.includes(category)) {
+        return res.status(400).json({ error: "Invalid category" });
+      }
+      const goals = await storage.getVisionGoals(userId, category);
+      const goalIds = goals.map(g => g.id);
+      if (goalIds.length === 0) {
+        return res.json([]);
+      }
+      const allQuests = await storage.getQuests(userId);
+      const linked = allQuests
+        .filter(q => q.visionGoalId && goalIds.includes(q.visionGoalId))
+        .map(q => ({
+          id: q.id,
+          title: q.title,
+          completed: q.completed,
+          completedAt: q.completedAt,
+          visionGoalId: q.visionGoalId,
+          difficulty: q.difficulty || "D",
+          experienceReward: q.experienceReward,
+          energyCost: q.energyCost,
+          category: q.category || "general",
+        }));
+      res.json(linked);
+    } catch (error) {
+      console.error("Error fetching linked missions by vision goal:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Stripe payment routes
   app.get("/api/stripe/publishable-key", async (_req: Request, res: Response) => {
     try {
