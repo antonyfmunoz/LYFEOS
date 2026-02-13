@@ -77,7 +77,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
 
   const { data: allVisionGoals = [] } = useQuery<{ id: number; category: string; title: string }[]>({
     queryKey: ['/api/vision-goals/all'],
-    enabled: !!user && !!visionGoalId,
+    enabled: !!user,
   });
 
   const { data: userCategories = [] } = useQuery<UserCategoryOption[]>({

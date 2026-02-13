@@ -1,4 +1,4 @@
-import { useState, ReactNode, useRef, useCallback } from "react";
+import { useState, ReactNode, useRef, useCallback, memo } from "react";
 import { ChevronDown, ChevronUp, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDrag, useDrop } from 'react-dnd';
@@ -24,7 +24,7 @@ interface CollapsibleWidgetProps {
   acceptExternalDrop?: string;
 }
 
-export function CollapsibleWidget({ 
+export const CollapsibleWidget = memo(function CollapsibleWidget({ 
   title, 
   icon, 
   children, 
@@ -96,17 +96,25 @@ export function CollapsibleWidget({
   }, [drag]);
 
   const headerRef = useRef<HTMLDivElement>(null);
+  const openedByDragRef = useRef(false);
   const [{ isOverHeader }, externalDrop] = useDrop({
     accept: acceptExternalDrop || '__none__',
     hover() {
-      if (!isOpen) {
+      if (!isOpen && !openedByDragRef.current) {
+        openedByDragRef.current = true;
         setIsOpen(true);
       }
     },
+    drop() {
+      openedByDragRef.current = false;
+    },
     collect: (monitor) => ({
-      isOverHeader: monitor.isOver(),
+      isOverHeader: monitor.isOver({ shallow: true }),
     }),
   });
+  if (!openedByDragRef.current && !isOpen) {
+    openedByDragRef.current = false;
+  }
   if (acceptExternalDrop) {
     externalDrop(headerRef);
   }
@@ -154,4 +162,4 @@ export function CollapsibleWidget({
       </div>
     </div>
   );
-}
+});
