@@ -307,10 +307,11 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
             <span className="text-muted-foreground text-[10px] uppercase tracking-wider">Active Missions</span>
             <div className="mt-1 space-y-0.5">
               {activeMissions.map(m => (
-                <div key={m.id} className="flex items-center gap-2 py-0.5">
-                  <Target className="h-3 w-3 text-primary/60 shrink-0" />
+                <div key={m.id} className="flex items-center gap-1.5 py-0.5">
+                  <Target className="h-3 w-3 text-primary shrink-0" />
+                  <span className="text-xs text-primary font-mono capitalize">{m.category}</span>
+                  <span className="text-xs text-muted-foreground">—</span>
                   <span className="text-xs text-foreground/70 truncate">{m.title}</span>
-                  <span className="text-[10px] text-primary/50 font-mono ml-auto shrink-0">Rank {m.difficulty}</span>
                 </div>
               ))}
             </div>
@@ -322,8 +323,10 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
             <span className="text-muted-foreground text-[10px] uppercase tracking-wider">Completed Missions</span>
             <div className="mt-1 space-y-0.5">
               {completedMissions.map(m => (
-                <div key={m.id} className="flex items-center gap-2 py-0.5">
+                <div key={m.id} className="flex items-center gap-1.5 py-0.5">
                   <Check className="h-3 w-3 text-green-400 shrink-0" />
+                  <span className="text-xs text-primary font-mono capitalize">{m.category}</span>
+                  <span className="text-xs text-muted-foreground">—</span>
                   <span className="text-xs text-muted-foreground truncate">{m.title}</span>
                 </div>
               ))}
@@ -398,14 +401,18 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
         {isExpanded && (
           <div className="mt-1 space-y-0.5 pl-4 border-l border-primary/10">
             {activeMissions.map((m) => (
-              <div key={m.id} className="flex items-center gap-2 py-0.5">
-                <Target className="h-3 w-3 text-primary/60 shrink-0" />
+              <div key={m.id} className="flex items-center gap-1.5 py-0.5">
+                <Target className="h-3 w-3 text-primary shrink-0" />
+                <span className="text-xs text-primary font-mono capitalize">{m.category}</span>
+                <span className="text-xs text-muted-foreground">—</span>
                 <span className="text-xs text-foreground/70 truncate">{m.title}</span>
               </div>
             ))}
             {completedMissions.map((m) => (
-              <div key={m.id} className="flex items-center gap-2 py-0.5">
+              <div key={m.id} className="flex items-center gap-1.5 py-0.5">
                 <Check className="h-3 w-3 text-green-400 shrink-0" />
+                <span className="text-xs text-primary font-mono capitalize">{m.category}</span>
+                <span className="text-xs text-muted-foreground">—</span>
                 <span className="text-xs text-muted-foreground truncate">{m.title}</span>
               </div>
             ))}
