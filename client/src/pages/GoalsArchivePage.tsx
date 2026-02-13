@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
 import { useWidgetState } from "@/hooks/use-widget-state";
-import { ArrowLeft, Eye, Compass, Flame, Target, Milestone, Plus, Check, Trash2, Edit2, Loader2, ChevronDown, ChevronRight, Info, Zap, GripVertical, Gift, Star } from "lucide-react";
+import { ArrowLeft, Eye, Compass, Flame, Target, Milestone, Plus, Check, Trash2, Edit2, Loader2, ChevronDown, ChevronRight, Info, Zap, GripVertical, Gift, Star, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -135,59 +135,63 @@ function DraggableObjective({
   preview(drop(ref));
 
   return (
-    <div ref={ref} style={{ opacity: isDragging ? 0.4 : 1 }}>
-      <div className="group flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-primary/5 transition-colors">
-        <div ref={(node) => { drag(node); }} className="cursor-grab active:cursor-grabbing shrink-0 text-muted-foreground hover:text-primary transition-colors">
-          <GripVertical className="h-4 w-4" />
+    <div
+      ref={ref}
+      className={`glassmorphic rounded-xl p-4 mb-3 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition neon-border ${isDragging ? "opacity-50" : ""}`}
+    >
+      <div className="flex items-start">
+        <div ref={(node) => { drag(node); }} className="mt-1 cursor-move flex-shrink-0">
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
         </div>
-        <button
-          onClick={(e) => { e.stopPropagation(); e.preventDefault(); onToggle(goal.id, true); }}
-          disabled={isMutating}
-          className="shrink-0 relative h-8 w-8 flex items-center justify-center touch-manipulation disabled:opacity-50"
-          style={{ WebkitTapHighlightColor: 'transparent', zIndex: 10, position: 'relative' }}
-        >
-          <span className="h-5 w-5 rounded-full border-2 border-primary/40 hover:border-primary hover:bg-primary/20 transition-colors block" />
-        </button>
-        <div className="flex-1 min-w-0">
-          <span className="text-sm text-foreground">{goal.title}</span>
-          {(goal.rewardText || goal.bonusXp > 0) && (
-            <div className="flex items-center gap-2 mt-0.5">
-              {goal.rewardText && (
-                <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Gift className="h-3 w-3 text-primary/50" />
-                  {goal.rewardText}
-                </span>
-              )}
-              {goal.bonusXp > 0 && (
-                <span className="text-xs text-amber-400/80 font-medium">+{goal.bonusXp} XP</span>
-              )}
+        <div className="ml-2 flex-grow">
+          <div className="flex justify-between items-start">
+            <h3 className="font-medium">{goal.title}</h3>
+            <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+              <button
+                className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                onClick={(e) => { e.stopPropagation(); setInfoExpandedId(infoExpandedId === goal.id ? null : goal.id); }}
+              >
+                <Info className="h-3.5 w-3.5" />
+              </button>
+              <button
+                className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                onClick={(e) => { e.stopPropagation(); onEdit(goal); }}
+              >
+                <Edit2 className="h-3.5 w-3.5" />
+              </button>
+              <button
+                className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-destructive/30 hover:text-destructive hover:border-destructive/50 transition-colors"
+                onClick={(e) => { e.stopPropagation(); onDelete(goal.id); }}
+                disabled={isMutating}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
             </div>
-          )}
-        </div>
-        <div className="flex gap-1 shrink-0">
-          <button
-            onClick={() => setInfoExpandedId(infoExpandedId === goal.id ? null : goal.id)}
-            className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
-          >
-            <Info className="h-3 w-3" />
-          </button>
-          <button
-            onClick={() => onEdit(goal)}
-            className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
-          >
-            <Edit2 className="h-3 w-3" />
-          </button>
-          <button
-            onClick={() => onDelete(goal.id)}
-            disabled={isMutating}
-            className="h-6 w-6 inline-flex items-center justify-center rounded border bg-red-500/20 border-red-500/50 text-red-400 hover:bg-red-500/30 transition-colors disabled:opacity-50"
-          >
-            <Trash2 className="h-3 w-3" />
-          </button>
+          </div>
+          <div className="flex items-center gap-3 mt-1 flex-wrap">
+            {goal.rewardText && (
+              <span className="flex items-center gap-1 text-primary text-xs font-mono whitespace-nowrap">
+                <Gift className="h-3 w-3" />
+                {goal.rewardText}
+              </span>
+            )}
+            {goal.bonusXp > 0 && (
+              <span className="text-primary text-xs font-mono whitespace-nowrap">+{goal.bonusXp} XP</span>
+            )}
+          </div>
+          {renderInfoPanel(goal)}
+          {renderGoalMissions(goal.id)}
+          <div className="flex items-center gap-2 mt-2">
+            <button
+              className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40"
+              disabled={isMutating}
+              onClick={(e) => { e.stopPropagation(); onToggle(goal.id, true); }}
+            >
+              Complete
+            </button>
+          </div>
         </div>
       </div>
-      {renderInfoPanel(goal)}
-      {renderGoalMissions(goal.id)}
     </div>
   );
 }
@@ -235,7 +239,7 @@ function ObjectiveList({ category, placeholder, goals, completedMissions, isLoad
     const totalEnergy = missions.reduce((acc, m) => acc + (m.energyCost || 0), 0);
 
     return (
-      <div className="ml-8 mt-1 bg-primary/5 border border-primary/10 rounded-lg p-3 space-y-2 text-xs">
+      <div className="mt-2 bg-primary/5 border border-primary/10 rounded-lg p-3 space-y-2 text-xs">
         <div className="flex items-start gap-2">
           <span className="text-muted-foreground shrink-0">Desc:</span>
           <span className={goal.description ? "text-foreground/80" : "italic text-muted-foreground"}>
@@ -331,7 +335,7 @@ function ObjectiveList({ category, placeholder, goals, completedMissions, isLoad
     if (missions.length === 0) return null;
     const isExpanded = expandedGoalId === goalId;
     return (
-      <div className="ml-8 mt-1">
+      <div className="mt-2">
         <button
           onClick={(e) => { e.stopPropagation(); setExpandedGoalId(isExpanded ? null : goalId); }}
           className="flex items-center gap-1 text-xs text-primary/70 hover:text-primary transition-colors"
@@ -387,43 +391,59 @@ function ObjectiveList({ category, placeholder, goals, completedMissions, isLoad
             Completed ({completedGoals.length})
           </p>
           {completedGoals.map((goal) => (
-            <div key={goal.id}>
-              <div className="group flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-primary/5 transition-colors">
-                <button
-                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); onToggle(goal.id, false); }}
-                  disabled={isMutating}
-                  className="shrink-0 relative h-8 w-8 flex items-center justify-center touch-manipulation disabled:opacity-50"
-                  style={{ WebkitTapHighlightColor: 'transparent', zIndex: 10, position: 'relative' }}
-                >
-                  <span className="h-5 w-5 rounded-full border-2 border-primary/60 bg-primary/20 flex items-center justify-center hover:bg-primary/30 transition-colors">
-                    <Check className="h-3 w-3 text-primary" />
-                  </span>
-                </button>
-                <span className={cn("flex-1 text-sm line-through text-muted-foreground")}>{goal.title}</span>
-                <div className="flex gap-1">
+            <div
+              key={goal.id}
+              className="glassmorphic rounded-xl p-4 mb-3 neon-border"
+            >
+              <div className="flex items-start">
+                <div className="w-4 flex-shrink-0" />
+                <div className="ml-2 flex-grow">
+                  <div className="flex justify-between items-start">
+                    <h3 className="font-medium text-muted-foreground line-through">{goal.title}</h3>
+                    <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                      <button
+                        className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                        onClick={(e) => { e.stopPropagation(); setInfoExpandedId(infoExpandedId === goal.id ? null : goal.id); }}
+                      >
+                        <Info className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                        onClick={(e) => { e.stopPropagation(); onEditGoal(goal); }}
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-destructive/30 hover:text-destructive hover:border-destructive/50 transition-colors"
+                        onClick={(e) => { e.stopPropagation(); onDelete(goal.id); }}
+                        disabled={isMutating}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 mt-1 flex-wrap opacity-50">
+                    {goal.rewardText && (
+                      <span className="flex items-center gap-1 text-primary text-xs font-mono whitespace-nowrap">
+                        <Gift className="h-3 w-3" />
+                        {goal.rewardText}
+                      </span>
+                    )}
+                    {goal.bonusXp > 0 && (
+                      <span className="text-primary text-xs font-mono whitespace-nowrap">+{goal.bonusXp} XP</span>
+                    )}
+                  </div>
+                  {renderInfoPanel(goal)}
+                  {renderGoalMissions(goal.id)}
                   <button
-                    onClick={() => setInfoExpandedId(infoExpandedId === goal.id ? null : goal.id)}
-                    className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                    className="mt-2 text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5"
+                    onClick={(e) => { e.stopPropagation(); onToggle(goal.id, false); }}
                   >
-                    <Info className="h-3 w-3" />
-                  </button>
-                  <button
-                    onClick={() => onEditGoal(goal)}
-                    className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
-                  >
-                    <Edit2 className="h-3 w-3" />
-                  </button>
-                  <button
-                    onClick={() => onDelete(goal.id)}
-                    disabled={isMutating}
-                    className="h-6 w-6 inline-flex items-center justify-center rounded border bg-red-500/20 border-red-500/50 text-red-400 hover:bg-red-500/30 transition-colors disabled:opacity-50"
-                  >
-                    <Trash2 className="h-3 w-3" />
+                    <Undo2 className="h-3 w-3" />
+                    Undo
                   </button>
                 </div>
               </div>
-              {renderInfoPanel(goal)}
-              {renderGoalMissions(goal.id)}
             </div>
           ))}
         </div>
