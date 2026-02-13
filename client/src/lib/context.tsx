@@ -1027,6 +1027,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     setQuests((prev) => prev.map((q) => (q.id === id ? updatedQuest : q)));
 
     queryClient.invalidateQueries({ queryKey: ['/api/quests/linked-by-vision-goal'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
     
     return updatedQuest;
   };
