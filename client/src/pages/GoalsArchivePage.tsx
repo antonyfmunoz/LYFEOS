@@ -268,8 +268,8 @@ function ObjectiveList({ category, placeholder, goals, completedMissions, isLoad
 
         {goal.bonusXp > 0 && (
           <div className="flex items-center gap-2">
-            <Star className="h-3 w-3 text-amber-400" />
-            <span className="text-amber-400/80 font-medium">+{goal.bonusXp} Bonus XP on completion</span>
+            <Star className="h-3 w-3 text-foreground" />
+            <span className="text-foreground font-medium">+{goal.bonusXp} Bonus XP on completion</span>
           </div>
         )}
 
