@@ -111,6 +111,7 @@ export const CollapsibleWidget = memo(function CollapsibleWidget({
       openedByDragRef.current = false;
       if (monitor.didDrop()) return;
       onExternalDrop?.(item);
+      return { handled: true };
     },
     collect: (monitor) => ({
       isOverHeader: monitor.isOver({ shallow: true }),

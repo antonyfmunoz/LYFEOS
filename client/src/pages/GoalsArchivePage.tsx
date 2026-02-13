@@ -87,6 +87,31 @@ const reverseOrder: Record<number, string> = { 1: 'D', 2: 'C', 3: 'B', 4: 'A', 5
 
 const MILESTONE_ITEM = "MILESTONE_ITEM";
 
+function DroppableCategory({ category, onDropGoal, children }: { category: string; onDropGoal: (item: { goalId: number; sourceCategory: string }, targetCategory: string) => void; children: React.ReactNode }) {
+  const dropRef = useRef<HTMLDivElement>(null);
+  const [{ isOver, canDrop }, drop] = useDrop({
+    accept: MILESTONE_ITEM,
+    canDrop: (item: { goalId: number; sourceCategory: string }) => item.sourceCategory !== category,
+    drop: (item: { goalId: number; sourceCategory: string }) => {
+      if (item.sourceCategory !== category) {
+        onDropGoal(item, category);
+        return { handled: true };
+      }
+    },
+    collect: (monitor: any) => ({
+      isOver: monitor.isOver(),
+      canDrop: monitor.canDrop(),
+    }),
+  });
+  drop(dropRef);
+  const isActive = isOver && canDrop;
+  return (
+    <div ref={dropRef} className={`${isActive ? 'ring-2 ring-primary/60 bg-primary/5 rounded-xl transition-all' : canDrop ? 'ring-1 ring-primary/20 rounded-xl transition-all' : ''}`}>
+      {children}
+    </div>
+  );
+}
+
 interface DraggableObjectiveProps {
   goal: VisionGoal;
   index: number;
@@ -116,6 +141,7 @@ function DraggableObjective({
 
   const [, drop] = useDrop({
     accept: MILESTONE_ITEM,
+    canDrop: (item: { index: number; goalId: number; sourceCategory: string }) => item.sourceCategory === category,
     hover(item: { index: number; goalId: number; sourceCategory: string }, monitor) {
       if (!ref.current) return;
       if (item.sourceCategory !== category) return;
@@ -209,11 +235,10 @@ interface ObjectiveListProps {
   onToggle: (id: number, completed: boolean) => void;
   onDelete: (id: number) => void;
   onReorder: (category: string, ids: number[]) => void;
-  onMoveToCategory: (goalId: number, newCategory: string) => void;
   setGoals: React.Dispatch<React.SetStateAction<VisionGoal[]>>;
 }
 
-function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading, onCreateGoal, onEditGoal, onToggle, onDelete, onReorder, onMoveToCategory, setGoals }: ObjectiveListProps) {
+function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading, onCreateGoal, onEditGoal, onToggle, onDelete, onReorder, setGoals }: ObjectiveListProps) {
   const { toast } = useToast();
   const [expandedGoalId, setExpandedGoalId] = useState<number | null>(null);
   const [infoExpandedId, setInfoExpandedId] = useState<number | null>(null);
@@ -359,22 +384,6 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
     onReorder(category, reordered.map(g => g.id));
   }, [category, onReorder, setGoals]);
 
-  const dropRef = useRef<HTMLDivElement>(null);
-  const [{ isOver, canDrop }, categoryDrop] = useDrop({
-    accept: MILESTONE_ITEM,
-    canDrop: (item: { goalId: number; sourceCategory: string }) => item.sourceCategory !== category,
-    drop: (item: { goalId: number; sourceCategory: string }) => {
-      if (item.sourceCategory !== category) {
-        onMoveToCategory(item.goalId, category);
-      }
-    },
-    collect: (monitor) => ({
-      isOver: monitor.isOver(),
-      canDrop: monitor.canDrop(),
-    }),
-  });
-  categoryDrop(dropRef);
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-6">
@@ -423,11 +432,8 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
   };
 
   return (
-    <div ref={dropRef} className={`space-y-3 rounded-lg transition-colors ${isOver && canDrop ? 'bg-primary/10 ring-2 ring-primary/40 ring-dashed' : ''}`}>
-      {isOver && canDrop && (
-        <p className="text-xs text-primary font-mono text-center py-1">Drop here to move goal</p>
-      )}
-      {categoryGoals.length === 0 && !isOver && (
+    <div className="space-y-3">
+      {categoryGoals.length === 0 && (
         <p className="text-sm text-muted-foreground italic py-2">No mission objectives yet. Use "Create Goal" above to add one.</p>
       )}
 
@@ -995,20 +1001,26 @@ export default function GoalsArchivePage() {
                   }
                 }}
               >
-                <ObjectiveList
+                <DroppableCategory
                   category={widget.id}
-                  placeholder={widget.placeholder}
-                  goals={goals}
-                  linkedMissions={getLinkedMissionsForCategory(widget.id)}
-                  isLoading={goalsQueryLoading && !goalsLoaded}
-                  onCreateGoal={handleOpenCreate}
-                  onEditGoal={handleOpenEdit}
-                  onToggle={handleToggle}
-                  onDelete={handleDelete}
-                  onReorder={handleReorder}
-                  onMoveToCategory={handleMoveToCategory}
-                  setGoals={setGoals}
-                />
+                  onDropGoal={(item, targetCategory) => {
+                    handleMoveToCategory(item.goalId, targetCategory);
+                  }}
+                >
+                  <ObjectiveList
+                    category={widget.id}
+                    placeholder={widget.placeholder}
+                    goals={goals}
+                    linkedMissions={getLinkedMissionsForCategory(widget.id)}
+                    isLoading={goalsQueryLoading && !goalsLoaded}
+                    onCreateGoal={handleOpenCreate}
+                    onEditGoal={handleOpenEdit}
+                    onToggle={handleToggle}
+                    onDelete={handleDelete}
+                    onReorder={handleReorder}
+                    setGoals={setGoals}
+                  />
+                </DroppableCategory>
               </CollapsibleWidget>
             );
           })}
