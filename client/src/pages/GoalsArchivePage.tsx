@@ -118,6 +118,7 @@ interface DraggableObjectiveProps {
   goal: VisionGoal;
   index: number;
   moveGoal: (dragIndex: number, hoverIndex: number) => void;
+  onDragEnd: () => void;
   onToggle: (id: number, completed: boolean) => void;
   onEdit: (goal: VisionGoal) => void;
   onDelete: (id: number) => void;
@@ -130,14 +131,17 @@ interface DraggableObjectiveProps {
 }
 
 function DraggableObjective({
-  goal, index, moveGoal, onToggle, onEdit, onDelete, isMutating,
+  goal, index, moveGoal, onDragEnd, onToggle, onEdit, onDelete, isMutating,
   infoExpandedId, setInfoExpandedId, renderInfoPanel, renderGoalMissions, category,
 }: DraggableObjectiveProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const onDragEndRef = useRef(onDragEnd);
+  onDragEndRef.current = onDragEnd;
 
   const [{ isDragging }, drag, preview] = useDrag({
     type: MILESTONE_ITEM,
     item: () => ({ index, goalId: goal.id, sourceCategory: category }),
+    end: () => { onDragEndRef.current(); },
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   });
 
@@ -363,12 +367,22 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
     );
   };
 
-  const activeGoals = [...categoryGoals.filter(g => !g.completed)].sort((a, b) => a.displayOrder - b.displayOrder);
+  const computedActiveGoals = [...categoryGoals.filter(g => !g.completed)].sort((a, b) => a.displayOrder - b.displayOrder);
   const completedGoals = categoryGoals.filter(g => g.completed);
+  const [localReorder, setLocalReorder] = useState<VisionGoal[] | null>(null);
+  const isDraggingRef = useRef(false);
+  const activeGoals = localReorder || computedActiveGoals;
   const activeGoalsRef = useRef<VisionGoal[]>([]);
   activeGoalsRef.current = activeGoals;
 
+  useEffect(() => {
+    if (!isDraggingRef.current) {
+      setLocalReorder(null);
+    }
+  }, [goals]);
+
   const moveGoal = useCallback((dragIndex: number, hoverIndex: number) => {
+    isDraggingRef.current = true;
     const currentActive = activeGoalsRef.current;
     const newGoals = update(currentActive, {
       $splice: [
@@ -377,15 +391,16 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
       ],
     });
     const reordered = newGoals.map((g, i) => ({ ...g, displayOrder: i }));
-    queryClient.setQueryData<VisionGoal[]>(['/api/vision-goals/all'], (old) => {
-      if (!old) return old;
-      return old.map(g => {
-        const match = reordered.find(r => r.id === g.id);
-        return match ? { ...g, displayOrder: match.displayOrder } : g;
-      });
-    });
+    setLocalReorder(reordered);
     activeGoalsRef.current = reordered;
-    onReorder(category, reordered.map(g => g.id));
+  }, []);
+
+  const commitReorder = useCallback(() => {
+    isDraggingRef.current = false;
+    const current = activeGoalsRef.current;
+    if (current.length > 0) {
+      onReorder(category, current.map(g => g.id));
+    }
   }, [category, onReorder]);
 
   if (isLoading) {
@@ -449,6 +464,7 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
               goal={goal}
               index={index}
               moveGoal={moveGoal}
+              onDragEnd={commitReorder}
               onToggle={onToggle}
               onEdit={onEditGoal}
               onDelete={onDelete}
@@ -645,10 +661,12 @@ export default function GoalsArchivePage() {
         method: 'PUT',
         body: JSON.stringify({ ids }),
       });
+      queryClient.invalidateQueries({ queryKey: GOALS_KEY });
     } catch (err) {
       console.error("Failed to save reorder:", err);
+      queryClient.invalidateQueries({ queryKey: GOALS_KEY });
     }
-  }, []);
+  }, [GOALS_KEY]);
 
   const handleMoveToCategory = useCallback(async (goalId: number, newCategory: string) => {
     const previousGoals = queryClient.getQueryData<VisionGoal[]>(GOALS_KEY);
