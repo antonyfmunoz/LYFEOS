@@ -237,10 +237,9 @@ interface ObjectiveListProps {
   onToggle: (id: number, completed: boolean) => void;
   onDelete: (id: number) => void;
   onReorder: (category: string, ids: number[]) => void;
-  setGoals: React.Dispatch<React.SetStateAction<VisionGoal[]>>;
 }
 
-function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading, onCreateGoal, onEditGoal, onToggle, onDelete, onReorder, setGoals }: ObjectiveListProps) {
+function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading, onCreateGoal, onEditGoal, onToggle, onDelete, onReorder }: ObjectiveListProps) {
   const { toast } = useToast();
   const [expandedGoalId, setExpandedGoalId] = useState<number | null>(null);
   const [infoExpandedId, setInfoExpandedId] = useState<number | null>(null);
@@ -378,13 +377,16 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
       ],
     });
     const reordered = newGoals.map((g, i) => ({ ...g, displayOrder: i }));
-    setGoals(prev => prev.map(g => {
-      const match = reordered.find(r => r.id === g.id);
-      return match ? { ...g, displayOrder: match.displayOrder } : g;
-    }));
+    queryClient.setQueryData<VisionGoal[]>(['/api/vision-goals/all'], (old) => {
+      if (!old) return old;
+      return old.map(g => {
+        const match = reordered.find(r => r.id === g.id);
+        return match ? { ...g, displayOrder: match.displayOrder } : g;
+      });
+    });
     activeGoalsRef.current = reordered;
     onReorder(category, reordered.map(g => g.id));
-  }, [category, onReorder, setGoals]);
+  }, [category, onReorder]);
 
   if (isLoading) {
     return (
@@ -535,9 +537,6 @@ export default function GoalsArchivePage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
-  const [goals, setGoals] = useState<VisionGoal[]>([]);
-  const lastFetchedRef = useRef<VisionGoal[] | null>(null);
-
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [createFormData, setCreateFormData] = useState<GoalFormData>(defaultFormData);
@@ -545,8 +544,10 @@ export default function GoalsArchivePage() {
   const [editingGoalId, setEditingGoalId] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const GOALS_KEY = ['/api/vision-goals/all'] as const;
+
   const { data: fetchedGoals, isLoading: goalsQueryLoading } = useQuery<VisionGoal[]>({
-    queryKey: ['/api/vision-goals/all'],
+    queryKey: GOALS_KEY,
     queryFn: async () => {
       const res = await fetch('/api/vision-goals/all', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch goals');
@@ -555,12 +556,7 @@ export default function GoalsArchivePage() {
     enabled: !!user,
   });
 
-  useEffect(() => {
-    if (fetchedGoals && fetchedGoals !== lastFetchedRef.current) {
-      lastFetchedRef.current = fetchedGoals;
-      setGoals(fetchedGoals);
-    }
-  }, [fetchedGoals]);
+  const goals = fetchedGoals || [];
 
   const { data: legacyMissions = [] } = useQuery<LinkedMission[]>({
     queryKey: ['/api/quests/linked-by-vision-goal', 'legacy'],
@@ -600,47 +596,48 @@ export default function GoalsArchivePage() {
     return linkedMissionsMap[category] || [];
   };
 
-  const goalsRef = useRef(goals);
-  goalsRef.current = goals;
-
   const handleToggle = useCallback(async (id: number, completed: boolean) => {
-    const previousGoals = [...goalsRef.current];
-    setGoals(prev => prev.map(g => g.id === id ? { ...g, completed, completedAt: completed ? new Date().toISOString() : null } : g));
+    const previousGoals = queryClient.getQueryData<VisionGoal[]>(GOALS_KEY);
+    queryClient.setQueryData<VisionGoal[]>(GOALS_KEY, (old) =>
+      old?.map(g => g.id === id ? { ...g, completed, completedAt: completed ? new Date().toISOString() : null } : g)
+    );
 
     try {
       const result = await apiRequest<VisionGoal & { xpAwarded?: number }>(`/api/vision-goals/${id}`, {
         method: 'PATCH',
         body: JSON.stringify({ completed }),
       });
-      setGoals(prev => prev.map(g => g.id === id ? { ...g, ...result } : g));
+      queryClient.setQueryData<VisionGoal[]>(GOALS_KEY, (old) =>
+        old?.map(g => g.id === id ? { ...g, ...result } : g)
+      );
       if (completed && result && result.title) {
         objectiveToast(result.title, result.rewardText, result.bonusXp);
       }
     } catch (err) {
-      setGoals(previousGoals);
+      if (previousGoals) queryClient.setQueryData(GOALS_KEY, previousGoals);
       toast({
         title: "Failed to update goal",
         description: err instanceof Error ? err.message : "Please try again",
         variant: "destructive",
       });
     }
-  }, [toast]);
+  }, [toast, GOALS_KEY]);
 
   const handleDelete = useCallback(async (id: number) => {
-    const previousGoals = [...goalsRef.current];
-    setGoals(prev => prev.filter(g => g.id !== id));
+    const previousGoals = queryClient.getQueryData<VisionGoal[]>(GOALS_KEY);
+    queryClient.setQueryData<VisionGoal[]>(GOALS_KEY, (old) => old?.filter(g => g.id !== id));
 
     try {
       await apiRequest(`/api/vision-goals/${id}`, { method: 'DELETE' });
     } catch (err) {
-      setGoals(previousGoals);
+      if (previousGoals) queryClient.setQueryData(GOALS_KEY, previousGoals);
       toast({
         title: "Failed to delete goal",
         description: err instanceof Error ? err.message : "Please try again",
         variant: "destructive",
       });
     }
-  }, [toast]);
+  }, [toast, GOALS_KEY]);
 
   const handleReorder = useCallback(async (category: string, ids: number[]) => {
     try {
@@ -654,31 +651,26 @@ export default function GoalsArchivePage() {
   }, []);
 
   const handleMoveToCategory = useCallback(async (goalId: number, newCategory: string) => {
-    const previousGoals = [...goalsRef.current];
-    const previousVisionGoalsAll = queryClient.getQueryData<{ id: number; category: string; title: string }[]>(['/api/vision-goals/all']);
-    setGoals(prev => prev.map(g => g.id === goalId ? { ...g, category: newCategory, displayOrder: 999 } : g));
-    queryClient.setQueryData<{ id: number; category: string; title: string }[]>(
-      ['/api/vision-goals/all'],
-      (old) => old?.map(g => g.id === goalId ? { ...g, category: newCategory } : g)
+    const previousGoals = queryClient.getQueryData<VisionGoal[]>(GOALS_KEY);
+    queryClient.setQueryData<VisionGoal[]>(GOALS_KEY, (old) =>
+      old?.map(g => g.id === goalId ? { ...g, category: newCategory, displayOrder: 999 } : g)
     );
 
     try {
-      const result = await apiRequest(`/api/vision-goals/${goalId}`, {
+      await apiRequest(`/api/vision-goals/${goalId}`, {
         method: 'PATCH',
         body: JSON.stringify({ category: newCategory }),
       });
-      setGoals(prev => prev.map(g => g.id === goalId ? { ...g, ...result } : g));
-      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
+      queryClient.invalidateQueries({ queryKey: GOALS_KEY });
     } catch (err) {
-      setGoals(previousGoals);
-      if (previousVisionGoalsAll) queryClient.setQueryData(['/api/vision-goals/all'], previousVisionGoalsAll);
+      if (previousGoals) queryClient.setQueryData(GOALS_KEY, previousGoals);
       toast({
         title: "Failed to move goal",
         description: err instanceof Error ? err.message : "Please try again",
         variant: "destructive",
       });
     }
-  }, [toast]);
+  }, [toast, GOALS_KEY]);
 
   const [legacyOpen, setLegacyOpen] = useWidgetState('goals.legacy-vision', false);
   const [tenYearOpen, setTenYearOpen] = useWidgetState('goals.10year-vision', false);
@@ -813,7 +805,7 @@ export default function GoalsArchivePage() {
     };
     setIsCreateOpen(false);
     setCreateFormData(defaultFormData);
-    setGoals(prev => [...prev, optimisticGoal]);
+    queryClient.setQueryData<VisionGoal[]>(GOALS_KEY, (old) => [...(old || []), optimisticGoal]);
     try {
       const newGoal = await apiRequest<VisionGoal>('/api/vision-goals', {
         method: 'POST',
@@ -825,9 +817,11 @@ export default function GoalsArchivePage() {
           bonusXp: 0,
         }),
       });
-      setGoals(prev => prev.map(g => g.id === tempId ? newGoal : g));
+      queryClient.setQueryData<VisionGoal[]>(GOALS_KEY, (old) =>
+        old?.map(g => g.id === tempId ? newGoal : g)
+      );
     } catch (error) {
-      setGoals(prev => prev.filter(g => g.id !== tempId));
+      queryClient.setQueryData<VisionGoal[]>(GOALS_KEY, (old) => old?.filter(g => g.id !== tempId));
       console.error("Error creating goal:", error);
     } finally {
       setIsSubmitting(false);
@@ -843,23 +837,23 @@ export default function GoalsArchivePage() {
       description: editFormData.description.trim() || null,
       rewardText: editFormData.rewardText.trim() || null,
     };
-    const previousGoals = [...goals];
+    const previousGoals = queryClient.getQueryData<VisionGoal[]>(GOALS_KEY);
     setIsEditOpen(false);
     setEditFormData(defaultFormData);
     setEditingGoalId(null);
-    setGoals(prev => prev.map(g => g.id === editedId ? { ...g, ...optimisticUpdates } : g));
-    queryClient.setQueryData<{ id: number; category: string; title: string }[]>(
-      ['/api/vision-goals/all'],
-      (old) => old?.map(g => g.id === editedId ? { ...g, title: optimisticUpdates.title } : g)
+    queryClient.setQueryData<VisionGoal[]>(GOALS_KEY, (old) =>
+      old?.map(g => g.id === editedId ? { ...g, ...optimisticUpdates } : g)
     );
     try {
       const updatedGoal = await apiRequest<VisionGoal>(`/api/vision-goals/${editedId}`, {
         method: 'PATCH',
         body: JSON.stringify(optimisticUpdates),
       });
-      setGoals(prev => prev.map(g => g.id === editedId ? { ...g, ...updatedGoal } : g));
+      queryClient.setQueryData<VisionGoal[]>(GOALS_KEY, (old) =>
+        old?.map(g => g.id === editedId ? { ...g, ...updatedGoal } : g)
+      );
     } catch (error) {
-      setGoals(previousGoals);
+      if (previousGoals) queryClient.setQueryData(GOALS_KEY, previousGoals);
       console.error("Error updating goal:", error);
     } finally {
       setIsSubmitting(false);
@@ -1025,7 +1019,6 @@ export default function GoalsArchivePage() {
                     onToggle={handleToggle}
                     onDelete={handleDelete}
                     onReorder={handleReorder}
-                    setGoals={setGoals}
                   />
                 </DroppableCategory>
               </CollapsibleWidget>
