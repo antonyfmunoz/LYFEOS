@@ -324,14 +324,6 @@ function ObjectiveList({ category, placeholder, goals, completedMissions, isLoad
     onReorder(category, reordered.map(g => g.id));
   }, [category, onReorder, setGoals]);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-6">
-        <Loader2 className="h-5 w-5 animate-spin text-primary" />
-      </div>
-    );
-  }
-
   const dropRef = useRef<HTMLDivElement>(null);
   const [{ isOver, canDrop }, categoryDrop] = useDrop({
     accept: MILESTONE_ITEM,
@@ -347,6 +339,14 @@ function ObjectiveList({ category, placeholder, goals, completedMissions, isLoad
     }),
   });
   categoryDrop(dropRef);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-6">
+        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   const renderGoalMissions = (goalId: number) => {
     const missions = getMissionsForGoal(goalId);
