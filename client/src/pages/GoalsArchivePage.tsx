@@ -230,16 +230,24 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
       });
       return result;
     },
-    onSuccess: (data, variables) => {
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: ALL_GOALS_KEY });
+      const previous = queryClient.getQueryData<VisionGoal[]>(ALL_GOALS_KEY);
       queryClient.setQueryData<VisionGoal[]>(ALL_GOALS_KEY, (old = []) =>
         old.map(g => g.id === variables.id ? { ...g, completed: variables.completed } : g)
       );
+      return { previous };
+    },
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ALL_GOALS_KEY });
       if (variables.completed === true && data && data.title) {
         objectiveToast(data.title, data.rewardText, data.bonusXp);
       }
     },
-    onError: (err) => {
+    onError: (err, _variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(ALL_GOALS_KEY, context.previous);
+      }
       toast({
         title: "Failed to update goal",
         description: err instanceof Error ? err.message : "Please try again",
@@ -251,14 +259,23 @@ function ObjectiveList({ category, placeholder, onCreateGoal, onEditGoal }: { ca
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiRequest(`/api/vision-goals/${id}`, { method: 'DELETE' });
+      return id;
     },
-    onSuccess: (_data, id) => {
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ALL_GOALS_KEY });
+      const previous = queryClient.getQueryData<VisionGoal[]>(ALL_GOALS_KEY);
       queryClient.setQueryData<VisionGoal[]>(ALL_GOALS_KEY, (old = []) =>
         old.filter(g => g.id !== id)
       );
+      return { previous };
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ALL_GOALS_KEY });
     },
-    onError: (err) => {
+    onError: (err, _id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(ALL_GOALS_KEY, context.previous);
+      }
       toast({
         title: "Failed to delete goal",
         description: err instanceof Error ? err.message : "Please try again",
@@ -627,22 +644,43 @@ export default function GoalsArchivePage() {
   const handleCreateGoal = async () => {
     if (!createFormData.title.trim()) return;
     setIsSubmitting(true);
+    const tempId = -Date.now();
+    const optimisticGoal: VisionGoal = {
+      id: tempId,
+      userId: user?.id || 0,
+      category: createFormData.category,
+      title: createFormData.title.trim(),
+      description: createFormData.description.trim() || null,
+      rewardText: createFormData.rewardText.trim() || null,
+      bonusXp: 0,
+      completed: false,
+      completedAt: null,
+      displayOrder: 999,
+      createdAt: new Date().toISOString(),
+    };
+    setIsCreateOpen(false);
+    setCreateFormData(defaultFormData);
+    await queryClient.cancelQueries({ queryKey: ALL_GOALS_KEY });
+    queryClient.setQueryData<VisionGoal[]>(ALL_GOALS_KEY, (old = []) => [...old, optimisticGoal]);
     try {
       const newGoal = await apiRequest<VisionGoal>('/api/vision-goals', {
         method: 'POST',
         body: JSON.stringify({
           category: createFormData.category,
-          title: createFormData.title.trim(),
-          description: createFormData.description.trim() || null,
-          rewardText: createFormData.rewardText.trim() || null,
+          title: optimisticGoal.title,
+          description: optimisticGoal.description,
+          rewardText: optimisticGoal.rewardText,
           bonusXp: 0,
         }),
       });
-      setIsCreateOpen(false);
-      setCreateFormData(defaultFormData);
-      queryClient.setQueryData<VisionGoal[]>(ALL_GOALS_KEY, (old = []) => [...old, newGoal]);
+      queryClient.setQueryData<VisionGoal[]>(ALL_GOALS_KEY, (old = []) =>
+        old.map(g => g.id === tempId ? newGoal : g)
+      );
       queryClient.invalidateQueries({ queryKey: ALL_GOALS_KEY });
     } catch (error) {
+      queryClient.setQueryData<VisionGoal[]>(ALL_GOALS_KEY, (old = []) =>
+        old.filter(g => g.id !== tempId)
+      );
       console.error("Error creating goal:", error);
     } finally {
       setIsSubmitting(false);
@@ -652,24 +690,30 @@ export default function GoalsArchivePage() {
   const handleEditGoal = async () => {
     if (!editFormData.title.trim() || !editingGoalId) return;
     setIsSubmitting(true);
+    const editedId = editingGoalId;
+    const optimisticUpdates = {
+      title: editFormData.title.trim(),
+      description: editFormData.description.trim() || null,
+      rewardText: editFormData.rewardText.trim() || null,
+    };
+    setIsEditOpen(false);
+    setEditFormData(defaultFormData);
+    setEditingGoalId(null);
+    await queryClient.cancelQueries({ queryKey: ALL_GOALS_KEY });
+    const previous = queryClient.getQueryData<VisionGoal[]>(ALL_GOALS_KEY);
+    queryClient.setQueryData<VisionGoal[]>(ALL_GOALS_KEY, (old = []) =>
+      old.map(g => g.id === editedId ? { ...g, ...optimisticUpdates } : g)
+    );
     try {
-      const updatedGoal = await apiRequest<VisionGoal>(`/api/vision-goals/${editingGoalId}`, {
+      await apiRequest(`/api/vision-goals/${editedId}`, {
         method: 'PATCH',
-        body: JSON.stringify({
-          title: editFormData.title.trim(),
-          description: editFormData.description.trim() || null,
-          rewardText: editFormData.rewardText.trim() || null,
-        }),
+        body: JSON.stringify(optimisticUpdates),
       });
-      const editedId = editingGoalId;
-      setIsEditOpen(false);
-      setEditFormData(defaultFormData);
-      setEditingGoalId(null);
-      queryClient.setQueryData<VisionGoal[]>(ALL_GOALS_KEY, (old = []) =>
-        old.map(g => g.id === editedId ? { ...g, ...updatedGoal } : g)
-      );
       queryClient.invalidateQueries({ queryKey: ALL_GOALS_KEY });
     } catch (error) {
+      if (previous) {
+        queryClient.setQueryData(ALL_GOALS_KEY, previous);
+      }
       console.error("Error updating goal:", error);
     } finally {
       setIsSubmitting(false);
