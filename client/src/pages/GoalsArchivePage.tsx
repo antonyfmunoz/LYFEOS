@@ -644,16 +644,21 @@ export default function GoalsArchivePage() {
 
   const handleMoveToCategory = useCallback(async (goalId: number, newCategory: string) => {
     const previousGoals = [...goals];
+    const previousVisionGoalsAll = queryClient.getQueryData<{ id: number; category: string; title: string }[]>(['/api/vision-goals/all']);
     setGoals(prev => prev.map(g => g.id === goalId ? { ...g, category: newCategory, displayOrder: 999 } : g));
+    queryClient.setQueryData<{ id: number; category: string; title: string }[]>(
+      ['/api/vision-goals/all'],
+      (old) => old?.map(g => g.id === goalId ? { ...g, category: newCategory } : g)
+    );
 
     try {
       await apiRequest(`/api/vision-goals/${goalId}`, {
         method: 'PATCH',
         body: JSON.stringify({ category: newCategory }),
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
     } catch (err) {
       setGoals(previousGoals);
+      if (previousVisionGoalsAll) queryClient.setQueryData(['/api/vision-goals/all'], previousVisionGoalsAll);
       toast({
         title: "Failed to move goal",
         description: err instanceof Error ? err.message : "Please try again",
@@ -830,13 +835,16 @@ export default function GoalsArchivePage() {
     setEditFormData(defaultFormData);
     setEditingGoalId(null);
     setGoals(prev => prev.map(g => g.id === editedId ? { ...g, ...optimisticUpdates } : g));
+    queryClient.setQueryData<{ id: number; category: string; title: string }[]>(
+      ['/api/vision-goals/all'],
+      (old) => old?.map(g => g.id === editedId ? { ...g, title: optimisticUpdates.title } : g)
+    );
     try {
       const updatedGoal = await apiRequest<VisionGoal>(`/api/vision-goals/${editedId}`, {
         method: 'PATCH',
         body: JSON.stringify(optimisticUpdates),
       });
       setGoals(prev => prev.map(g => g.id === editedId ? { ...g, ...updatedGoal } : g));
-      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
     } catch (error) {
       setGoals(previousGoals);
       console.error("Error updating goal:", error);
