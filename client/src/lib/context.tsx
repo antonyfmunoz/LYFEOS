@@ -676,6 +676,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             repeatDays: quest.repeatDays || null,
             repeatEndDate: quest.repeatEndDate || null,
             parentRitualId: quest.parentRitualId || null,
+            visionGoalId: quest.visionGoalId ?? null,
           }));
           setQuests(transformedQuests);
         }
@@ -889,6 +890,10 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       if (currentQuest.isRitualized) {
         await refetchQuests();
       }
+
+      if (currentQuest.visionGoalId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/quests/linked-by-vision-goal'] });
+      }
     } catch (error) {
       setQuests(quests);
       console.error("Error toggling quest completion:", error);
@@ -965,9 +970,14 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       repeatDays: quest.repeatDays || null,
       repeatEndDate: quest.repeatEndDate || null,
       parentRitualId: quest.parentRitualId || null,
+      visionGoalId: quest.visionGoalId ?? null,
     };
     
     setQuests((prev) => [...prev, newQuest]);
+
+    if (newQuest.visionGoalId) {
+      queryClient.invalidateQueries({ queryKey: ['/api/quests/linked-by-vision-goal'] });
+    }
     
     return newQuest;
   };
@@ -1011,9 +1021,12 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       repeatDays: quest.repeatDays || null,
       repeatEndDate: quest.repeatEndDate || null,
       parentRitualId: quest.parentRitualId || null,
+      visionGoalId: quest.visionGoalId ?? null,
     };
     
     setQuests((prev) => prev.map((q) => (q.id === id ? updatedQuest : q)));
+
+    queryClient.invalidateQueries({ queryKey: ['/api/quests/linked-by-vision-goal'] });
     
     return updatedQuest;
   };
