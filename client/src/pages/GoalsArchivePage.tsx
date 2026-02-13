@@ -854,6 +854,7 @@ export default function GoalsArchivePage() {
       title: editFormData.title.trim(),
       description: editFormData.description.trim() || null,
       rewardText: editFormData.rewardText.trim() || null,
+      category: editFormData.category,
     };
     const previousGoals = queryClient.getQueryData<VisionGoal[]>(GOALS_KEY);
     setIsEditOpen(false);
@@ -996,7 +997,7 @@ export default function GoalsArchivePage() {
                 Edit Goal
               </DialogTitle>
             </DialogHeader>
-            {renderGoalForm(editFormData, setEditFormData, handleEditGoal, "Save Changes", false)}
+            {renderGoalForm(editFormData, setEditFormData, handleEditGoal, "Save Changes", true)}
           </DialogContent>
         </Dialog>
 
