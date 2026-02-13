@@ -89,12 +89,14 @@ const MILESTONE_ITEM = "MILESTONE_ITEM";
 
 function DroppableCategory({ category, onDropGoal, children }: { category: string; onDropGoal: (item: { goalId: number; sourceCategory: string }, targetCategory: string) => void; children: React.ReactNode }) {
   const dropRef = useRef<HTMLDivElement>(null);
-  const [{ isOver, canDrop }, drop] = useDrop({
+  const onDropGoalRef = useRef(onDropGoal);
+  onDropGoalRef.current = onDropGoal;
+  const [{ isOver, canDrop }, drop] = useDrop(() => ({
     accept: MILESTONE_ITEM,
     canDrop: (item: { goalId: number; sourceCategory: string }) => item.sourceCategory !== category,
     drop: (item: { goalId: number; sourceCategory: string }) => {
       if (item.sourceCategory !== category) {
-        onDropGoal(item, category);
+        onDropGoalRef.current(item, category);
         return { handled: true };
       }
     },
@@ -102,7 +104,7 @@ function DroppableCategory({ category, onDropGoal, children }: { category: strin
       isOver: monitor.isOver(),
       canDrop: monitor.canDrop(),
     }),
-  });
+  }), [category]);
   drop(dropRef);
   const isActive = isOver && canDrop;
   return (
@@ -598,8 +600,11 @@ export default function GoalsArchivePage() {
     return linkedMissionsMap[category] || [];
   };
 
+  const goalsRef = useRef(goals);
+  goalsRef.current = goals;
+
   const handleToggle = useCallback(async (id: number, completed: boolean) => {
-    const previousGoals = [...goals];
+    const previousGoals = [...goalsRef.current];
     setGoals(prev => prev.map(g => g.id === id ? { ...g, completed, completedAt: completed ? new Date().toISOString() : null } : g));
 
     try {
@@ -619,10 +624,10 @@ export default function GoalsArchivePage() {
         variant: "destructive",
       });
     }
-  }, [goals, toast]);
+  }, [toast]);
 
   const handleDelete = useCallback(async (id: number) => {
-    const previousGoals = [...goals];
+    const previousGoals = [...goalsRef.current];
     setGoals(prev => prev.filter(g => g.id !== id));
 
     try {
@@ -635,7 +640,7 @@ export default function GoalsArchivePage() {
         variant: "destructive",
       });
     }
-  }, [goals, toast]);
+  }, [toast]);
 
   const handleReorder = useCallback(async (category: string, ids: number[]) => {
     try {
@@ -649,7 +654,7 @@ export default function GoalsArchivePage() {
   }, []);
 
   const handleMoveToCategory = useCallback(async (goalId: number, newCategory: string) => {
-    const previousGoals = [...goals];
+    const previousGoals = [...goalsRef.current];
     const previousVisionGoalsAll = queryClient.getQueryData<{ id: number; category: string; title: string }[]>(['/api/vision-goals/all']);
     setGoals(prev => prev.map(g => g.id === goalId ? { ...g, category: newCategory, displayOrder: 999 } : g));
     queryClient.setQueryData<{ id: number; category: string; title: string }[]>(
@@ -658,10 +663,11 @@ export default function GoalsArchivePage() {
     );
 
     try {
-      await apiRequest(`/api/vision-goals/${goalId}`, {
+      const result = await apiRequest(`/api/vision-goals/${goalId}`, {
         method: 'PATCH',
         body: JSON.stringify({ category: newCategory }),
       });
+      setGoals(prev => prev.map(g => g.id === goalId ? { ...g, ...result } : g));
     } catch (err) {
       setGoals(previousGoals);
       if (previousVisionGoalsAll) queryClient.setQueryData(['/api/vision-goals/all'], previousVisionGoalsAll);
@@ -671,7 +677,7 @@ export default function GoalsArchivePage() {
         variant: "destructive",
       });
     }
-  }, [goals, toast]);
+  }, [toast]);
 
   const [legacyOpen, setLegacyOpen] = useWidgetState('goals.legacy-vision', false);
   const [tenYearOpen, setTenYearOpen] = useWidgetState('goals.10year-vision', false);

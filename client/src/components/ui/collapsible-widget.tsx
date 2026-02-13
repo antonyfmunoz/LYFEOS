@@ -99,7 +99,9 @@ export const CollapsibleWidget = memo(function CollapsibleWidget({
 
   const headerRef = useRef<HTMLDivElement>(null);
   const openedByDragRef = useRef(false);
-  const [{ isOverHeader }, externalDrop] = useDrop({
+  const onExternalDropRef = useRef(onExternalDrop);
+  onExternalDropRef.current = onExternalDrop;
+  const [{ isOverHeader }, externalDrop] = useDrop(() => ({
     accept: acceptExternalDrop || '__none__',
     hover() {
       if (!isOpen && !openedByDragRef.current) {
@@ -110,13 +112,13 @@ export const CollapsibleWidget = memo(function CollapsibleWidget({
     drop(item: any, monitor) {
       openedByDragRef.current = false;
       if (monitor.didDrop()) return;
-      onExternalDrop?.(item);
+      onExternalDropRef.current?.(item);
       return { handled: true };
     },
     collect: (monitor) => ({
       isOverHeader: monitor.isOver({ shallow: true }),
     }),
-  });
+  }), [acceptExternalDrop, isOpen]);
   if (!openedByDragRef.current && !isOpen) {
     openedByDragRef.current = false;
   }
