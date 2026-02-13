@@ -1011,6 +1011,11 @@ export default function GoalsArchivePage() {
                 onOpenChange={state.setOpen}
                 moveWidget={moveWidget}
                 acceptExternalDrop={MILESTONE_ITEM}
+                onExternalDrop={(item: { goalId: number; sourceCategory: string }) => {
+                  if (item.sourceCategory !== widget.id) {
+                    handleMoveToCategory(item.goalId, widget.id);
+                  }
+                }}
               >
                 <ObjectiveList
                   category={widget.id}

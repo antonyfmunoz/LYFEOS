@@ -22,6 +22,7 @@ interface CollapsibleWidgetProps {
   index?: number;
   moveWidget?: (dragIndex: number, hoverIndex: number) => void;
   acceptExternalDrop?: string;
+  onExternalDrop?: (item: any) => void;
 }
 
 export const CollapsibleWidget = memo(function CollapsibleWidget({ 
@@ -35,7 +36,8 @@ export const CollapsibleWidget = memo(function CollapsibleWidget({
   id,
   index,
   moveWidget,
-  acceptExternalDrop
+  acceptExternalDrop,
+  onExternalDrop
 }: CollapsibleWidgetProps) {
   const [localOpen, setLocalOpen] = useState(defaultOpen);
   const isControlled = isOpenProp !== undefined;
@@ -96,6 +98,7 @@ export const CollapsibleWidget = memo(function CollapsibleWidget({
   }, [drag]);
 
   const headerRef = useRef<HTMLDivElement>(null);
+  const bodyDropRef = useRef<HTMLDivElement>(null);
   const openedByDragRef = useRef(false);
   const [{ isOverHeader }, externalDrop] = useDrop({
     accept: acceptExternalDrop || '__none__',
@@ -105,11 +108,23 @@ export const CollapsibleWidget = memo(function CollapsibleWidget({
         setIsOpen(true);
       }
     },
-    drop() {
+    drop(item: any, monitor) {
       openedByDragRef.current = false;
+      if (monitor.didDrop()) return;
+      onExternalDrop?.(item);
     },
     collect: (monitor) => ({
       isOverHeader: monitor.isOver({ shallow: true }),
+    }),
+  });
+  const [{ isOverBody }, bodyExternalDrop] = useDrop({
+    accept: acceptExternalDrop || '__none__',
+    drop(item: any, monitor) {
+      if (monitor.didDrop()) return;
+      onExternalDrop?.(item);
+    },
+    collect: (monitor) => ({
+      isOverBody: monitor.isOver({ shallow: true }),
     }),
   });
   if (!openedByDragRef.current && !isOpen) {
@@ -117,6 +132,7 @@ export const CollapsibleWidget = memo(function CollapsibleWidget({
   }
   if (acceptExternalDrop) {
     externalDrop(headerRef);
+    bodyExternalDrop(bodyDropRef);
   }
 
   dragPreview(drop(ref));
@@ -155,7 +171,13 @@ export const CollapsibleWidget = memo(function CollapsibleWidget({
         </div>
       </div>
       
-      <div className={`transition-all duration-300 ${isOpen ? 'max-h-[3000px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}>
+      <div 
+        ref={bodyDropRef}
+        className={cn(
+          `transition-all duration-300 ${isOpen ? 'max-h-[3000px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`,
+          isOverBody && "bg-primary/5"
+        )}
+      >
         <div className="p-4">
           {children}
         </div>
