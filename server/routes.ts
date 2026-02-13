@@ -1915,6 +1915,7 @@ ${questData.description ? `Description: ${questData.description}` : ''}`
     repeatInterval: true,
     repeatDays: true,
     repeatEndDate: true,
+    visionGoalId: true,
   }).partial();
 
   app.patch("/api/quests/reorder", isAuthenticated, async (req: Request, res: Response) => {
