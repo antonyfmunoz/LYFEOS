@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, memo, useMemo } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { usePageTitle } from "@/hooks/use-page-title";
@@ -201,7 +201,7 @@ function DraggableObjective({
 interface ObjectiveListProps {
   category: string;
   placeholder: string;
-  categoryGoals: VisionGoal[];
+  goals: VisionGoal[];
   linkedMissions: LinkedMission[];
   isLoading: boolean;
   onCreateGoal: (category: string) => void;
@@ -213,11 +213,13 @@ interface ObjectiveListProps {
   setGoals: React.Dispatch<React.SetStateAction<VisionGoal[]>>;
 }
 
-const ObjectiveList = memo(function ObjectiveList({ category, placeholder, categoryGoals, linkedMissions, isLoading, onCreateGoal, onEditGoal, onToggle, onDelete, onReorder, onMoveToCategory, setGoals }: ObjectiveListProps) {
+function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading, onCreateGoal, onEditGoal, onToggle, onDelete, onReorder, onMoveToCategory, setGoals }: ObjectiveListProps) {
   const { toast } = useToast();
   const [expandedGoalId, setExpandedGoalId] = useState<number | null>(null);
   const [infoExpandedId, setInfoExpandedId] = useState<number | null>(null);
   const [isMutating, setIsMutating] = useState(false);
+
+  const categoryGoals = goals.filter(g => g.category === category);
 
   const getMissionsForGoal = (goalId: number) => {
     return linkedMissions.filter(m => m.visionGoalId === goalId);
@@ -516,7 +518,7 @@ const ObjectiveList = memo(function ObjectiveList({ category, placeholder, categ
       )}
     </div>
   );
-});
+}
 
 export default function GoalsArchivePage() {
   usePageTitle('Vision');
@@ -527,8 +529,6 @@ export default function GoalsArchivePage() {
 
   const [goals, setGoals] = useState<VisionGoal[]>([]);
   const [goalsLoaded, setGoalsLoaded] = useState(false);
-  const emptyGoals = useMemo<VisionGoal[]>(() => [], []);
-  const emptyMissions = useMemo<LinkedMission[]>(() => [], []);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -580,39 +580,17 @@ export default function GoalsArchivePage() {
     enabled: !!user,
   });
 
-  const linkedMissionsMap = useMemo<Record<string, LinkedMission[]>>(() => ({
+  const linkedMissionsMap: Record<string, LinkedMission[]> = {
     legacy: legacyMissions,
     '10year': tenYearMissions,
     '5year': fiveYearMissions,
     '18month': eighteenMonthMissions,
     '90day': ninetyDayMissions,
-  }), [legacyMissions, tenYearMissions, fiveYearMissions, eighteenMonthMissions, ninetyDayMissions]);
+  };
 
-  const getLinkedMissionsForCategory = useCallback((category: string): LinkedMission[] => {
+  const getLinkedMissionsForCategory = (category: string): LinkedMission[] => {
     return linkedMissionsMap[category] || [];
-  }, [linkedMissionsMap]);
-
-  const prevGoalsByCategoryRef = useRef<Record<string, VisionGoal[]>>({});
-  const goalsByCategory = useMemo(() => {
-    const map: Record<string, VisionGoal[]> = {};
-    for (const g of goals) {
-      if (!map[g.category]) map[g.category] = [];
-      map[g.category].push(g);
-    }
-    const prev = prevGoalsByCategoryRef.current;
-    const result: Record<string, VisionGoal[]> = {};
-    for (const cat of Object.keys(map)) {
-      const prevCat = prev[cat];
-      const newCat = map[cat];
-      if (prevCat && prevCat.length === newCat.length && prevCat.every((g, i) => g === newCat[i] || (g.id === newCat[i].id && g.displayOrder === newCat[i].displayOrder && g.completed === newCat[i].completed && g.title === newCat[i].title && g.description === newCat[i].description && g.rewardText === newCat[i].rewardText && g.bonusXp === newCat[i].bonusXp && g.completedAt === newCat[i].completedAt))) {
-        result[cat] = prevCat;
-      } else {
-        result[cat] = newCat;
-      }
-    }
-    prevGoalsByCategoryRef.current = result;
-    return result;
-  }, [goals]);
+  };
 
   const handleToggle = useCallback(async (id: number, completed: boolean) => {
     const previousGoals = [...goals];
@@ -787,12 +765,12 @@ export default function GoalsArchivePage() {
     }));
   }, []);
 
-  const handleOpenCreate = useCallback((category?: string) => {
+  const handleOpenCreate = (category?: string) => {
     setCreateFormData({ ...defaultFormData, category: category || "90day" });
     setIsCreateOpen(true);
-  }, []);
+  };
 
-  const handleOpenEdit = useCallback((goal: VisionGoal) => {
+  const handleOpenEdit = (goal: VisionGoal) => {
     setEditFormData({
       title: goal.title,
       description: goal.description || "",
@@ -801,7 +779,7 @@ export default function GoalsArchivePage() {
     });
     setEditingGoalId(goal.id);
     setIsEditOpen(true);
-  }, []);
+  };
 
   const handleCreateGoal = async () => {
     if (!createFormData.title.trim()) return;
@@ -1020,8 +998,8 @@ export default function GoalsArchivePage() {
                 <ObjectiveList
                   category={widget.id}
                   placeholder={widget.placeholder}
-                  categoryGoals={goalsByCategory[widget.id] || emptyGoals}
-                  linkedMissions={linkedMissionsMap[widget.id] || emptyMissions}
+                  goals={goals}
+                  linkedMissions={getLinkedMissionsForCategory(widget.id)}
                   isLoading={goalsQueryLoading && !goalsLoaded}
                   onCreateGoal={handleOpenCreate}
                   onEditGoal={handleOpenEdit}

@@ -98,7 +98,6 @@ export const CollapsibleWidget = memo(function CollapsibleWidget({
   }, [drag]);
 
   const headerRef = useRef<HTMLDivElement>(null);
-  const bodyDropRef = useRef<HTMLDivElement>(null);
   const openedByDragRef = useRef(false);
   const [{ isOverHeader }, externalDrop] = useDrop({
     accept: acceptExternalDrop || '__none__',
@@ -117,22 +116,11 @@ export const CollapsibleWidget = memo(function CollapsibleWidget({
       isOverHeader: monitor.isOver({ shallow: true }),
     }),
   });
-  const [{ isOverBody }, bodyExternalDrop] = useDrop({
-    accept: acceptExternalDrop || '__none__',
-    drop(item: any, monitor) {
-      if (monitor.didDrop()) return;
-      onExternalDrop?.(item);
-    },
-    collect: (monitor) => ({
-      isOverBody: monitor.isOver({ shallow: true }),
-    }),
-  });
   if (!openedByDragRef.current && !isOpen) {
     openedByDragRef.current = false;
   }
   if (acceptExternalDrop) {
     externalDrop(headerRef);
-    bodyExternalDrop(bodyDropRef);
   }
 
   dragPreview(drop(ref));
@@ -171,13 +159,7 @@ export const CollapsibleWidget = memo(function CollapsibleWidget({
         </div>
       </div>
       
-      <div 
-        ref={bodyDropRef}
-        className={cn(
-          `transition-all duration-300 ${isOpen ? 'max-h-[3000px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`,
-          isOverBody && "bg-primary/5"
-        )}
-      >
+      <div className={`transition-all duration-300 ${isOpen ? 'max-h-[3000px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}>
         <div className="p-4">
           {children}
         </div>
