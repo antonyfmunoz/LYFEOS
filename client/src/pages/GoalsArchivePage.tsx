@@ -536,7 +536,7 @@ export default function GoalsArchivePage() {
   const { toast } = useToast();
 
   const [goals, setGoals] = useState<VisionGoal[]>([]);
-  const [goalsLoaded, setGoalsLoaded] = useState(false);
+  const lastFetchedRef = useRef<VisionGoal[] | null>(null);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -556,11 +556,11 @@ export default function GoalsArchivePage() {
   });
 
   useEffect(() => {
-    if (fetchedGoals && !goalsLoaded) {
+    if (fetchedGoals && fetchedGoals !== lastFetchedRef.current) {
+      lastFetchedRef.current = fetchedGoals;
       setGoals(fetchedGoals);
-      setGoalsLoaded(true);
     }
-  }, [fetchedGoals, goalsLoaded]);
+  }, [fetchedGoals]);
 
   const { data: legacyMissions = [] } = useQuery<LinkedMission[]>({
     queryKey: ['/api/quests/linked-by-vision-goal', 'legacy'],
@@ -668,6 +668,7 @@ export default function GoalsArchivePage() {
         body: JSON.stringify({ category: newCategory }),
       });
       setGoals(prev => prev.map(g => g.id === goalId ? { ...g, ...result } : g));
+      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
     } catch (err) {
       setGoals(previousGoals);
       if (previousVisionGoalsAll) queryClient.setQueryData(['/api/vision-goals/all'], previousVisionGoalsAll);
@@ -1018,7 +1019,7 @@ export default function GoalsArchivePage() {
                     placeholder={widget.placeholder}
                     goals={goals}
                     linkedMissions={getLinkedMissionsForCategory(widget.id)}
-                    isLoading={goalsQueryLoading && !goalsLoaded}
+                    isLoading={goalsQueryLoading && goals.length === 0}
                     onCreateGoal={handleOpenCreate}
                     onEditGoal={handleOpenEdit}
                     onToggle={handleToggle}
