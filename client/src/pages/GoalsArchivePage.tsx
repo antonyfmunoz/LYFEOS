@@ -118,7 +118,7 @@ interface DraggableObjectiveProps {
   goal: VisionGoal;
   index: number;
   moveGoal: (dragIndex: number, hoverIndex: number) => void;
-  onDragEnd: () => void;
+  onDragEnd: (wasCrossCategoryDrop?: boolean) => void;
   onToggle: (id: number, completed: boolean) => void;
   onEdit: (goal: VisionGoal) => void;
   onDelete: (id: number) => void;
@@ -141,7 +141,14 @@ function DraggableObjective({
   const [{ isDragging }, drag, preview] = useDrag({
     type: MILESTONE_ITEM,
     item: () => ({ index, goalId: goal.id, sourceCategory: category }),
-    end: () => { onDragEndRef.current(); },
+    end: (_item, monitor) => {
+      const dropResult = monitor.getDropResult() as { handled?: boolean } | null;
+      if (dropResult?.handled) {
+        onDragEndRef.current(true);
+        return;
+      }
+      onDragEndRef.current(false);
+    },
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   });
 
@@ -395,8 +402,10 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
     activeGoalsRef.current = reordered;
   }, []);
 
-  const commitReorder = useCallback(() => {
+  const commitReorder = useCallback((wasCrossCategoryDrop?: boolean) => {
     isDraggingRef.current = false;
+    setLocalReorder(null);
+    if (wasCrossCategoryDrop) return;
     const current = activeGoalsRef.current;
     if (current.length > 0) {
       onReorder(category, current.map(g => g.id));
