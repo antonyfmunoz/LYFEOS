@@ -889,7 +889,6 @@ export default function GoalsArchivePage() {
       queryClient.setQueryData<VisionGoal[]>(GOALS_KEY, (old) =>
         old?.map(g => g.id === editedId ? { ...g, ...updatedGoal } : g)
       );
-      await queryClient.invalidateQueries({ queryKey: GOALS_KEY });
     } catch (error) {
       if (previousGoals) queryClient.setQueryData(GOALS_KEY, previousGoals);
       console.error("Error updating goal:", error);
