@@ -26,10 +26,12 @@ import {
   pushSubscriptions, type PushSubscription, type InsertPushSubscription,
   dismissedKnowledge, type DismissedKnowledge, type InsertDismissedKnowledge,
   visionGoals, type VisionGoal, type InsertVisionGoal,
-  userCategories, type UserCategory, type InsertUserCategory
+  userCategories, type UserCategory, type InsertUserCategory,
+  userActivityEvents, type UserActivityEvent, type InsertUserActivityEvent,
+  smartReminders, type SmartReminder, type InsertSmartReminder
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, isNull, isNotNull, gt, lt } from "drizzle-orm";
+import { eq, and, desc, asc, isNull, isNotNull, gt, lt, sql } from "drizzle-orm";
 import crypto from "crypto";
 
 function hashToken(token: string): string {
@@ -258,6 +260,16 @@ export interface IStorage {
   updateUserCategory(id: number, userId: number, data: { value: string; label: string }): Promise<UserCategory | null>;
   updateQuestCategoryForUser(userId: number, oldCategory: string, newCategory: string): Promise<void>;
   deleteUserCategory(id: number, userId: number): Promise<void>;
+
+  // Smart Reminder methods
+  logActivityEvent(userId: number, eventType: string, metadata?: any): Promise<UserActivityEvent>;
+  getActivityEvents(userId: number, eventType: string, days: number): Promise<UserActivityEvent[]>;
+  getSmartReminders(userId: number): Promise<SmartReminder[]>;
+  getSmartReminderByType(userId: number, reminderType: string): Promise<SmartReminder | undefined>;
+  upsertSmartReminder(userId: number, reminderType: string, data: Partial<InsertSmartReminder>): Promise<SmartReminder>;
+  updateSmartReminderLastSent(id: number): Promise<void>;
+  getAllEnabledSmartReminders(): Promise<SmartReminder[]>;
+  initDefaultReminders(userId: number): Promise<SmartReminder[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2161,6 +2173,82 @@ export class DatabaseStorage implements IStorage {
     await db.delete(userCategories).where(
       and(eq(userCategories.id, id), eq(userCategories.userId, userId))
     );
+  }
+
+  async logActivityEvent(userId: number, eventType: string, metadata?: any): Promise<UserActivityEvent> {
+    const [result] = await db.insert(userActivityEvents).values({
+      userId,
+      eventType,
+      metadata: metadata ?? null,
+    }).returning();
+    return result;
+  }
+
+  async getActivityEvents(userId: number, eventType: string, days: number): Promise<UserActivityEvent[]> {
+    return db.select().from(userActivityEvents).where(
+      and(
+        eq(userActivityEvents.userId, userId),
+        eq(userActivityEvents.eventType, eventType),
+        gt(userActivityEvents.occurredAt, sql`NOW() - interval '${sql.raw(String(days))} days'`)
+      )
+    ).orderBy(desc(userActivityEvents.occurredAt));
+  }
+
+  async getSmartReminders(userId: number): Promise<SmartReminder[]> {
+    return db.select().from(smartReminders).where(eq(smartReminders.userId, userId));
+  }
+
+  async getSmartReminderByType(userId: number, reminderType: string): Promise<SmartReminder | undefined> {
+    const [result] = await db.select().from(smartReminders).where(
+      and(eq(smartReminders.userId, userId), eq(smartReminders.reminderType, reminderType))
+    );
+    return result;
+  }
+
+  async upsertSmartReminder(userId: number, reminderType: string, data: Partial<InsertSmartReminder>): Promise<SmartReminder> {
+    const existing = await this.getSmartReminderByType(userId, reminderType);
+    if (existing) {
+      const [result] = await db.update(smartReminders)
+        .set(data)
+        .where(eq(smartReminders.id, existing.id))
+        .returning();
+      return result;
+    }
+    const [result] = await db.insert(smartReminders).values({
+      userId,
+      reminderType,
+      ...data,
+    }).returning();
+    return result;
+  }
+
+  async updateSmartReminderLastSent(id: number): Promise<void> {
+    await db.update(smartReminders)
+      .set({ lastSentAt: new Date() })
+      .where(eq(smartReminders.id, id));
+  }
+
+  async getAllEnabledSmartReminders(): Promise<SmartReminder[]> {
+    return db.select().from(smartReminders).where(eq(smartReminders.enabled, true));
+  }
+
+  async initDefaultReminders(userId: number): Promise<SmartReminder[]> {
+    const existing = await this.getSmartReminders(userId);
+    const defaults = [
+      { reminderType: "missions", preferredHour: 9 },
+      { reminderType: "reflection", preferredHour: 20 },
+      { reminderType: "goal_review", preferredHour: 10 },
+    ];
+    for (const def of defaults) {
+      if (!existing.find(r => r.reminderType === def.reminderType)) {
+        await db.insert(smartReminders).values({
+          userId,
+          reminderType: def.reminderType,
+          preferredHour: def.preferredHour,
+        });
+      }
+    }
+    return this.getSmartReminders(userId);
   }
 }
 

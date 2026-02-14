@@ -1282,3 +1282,42 @@ export const insertWidgetStatesSchema = createInsertSchema(widgetStates).omit({
 
 export type WidgetStates = typeof widgetStates.$inferSelect;
 export type InsertWidgetStates = z.infer<typeof insertWidgetStatesSchema>;
+
+export const userActivityEvents = pgTable("user_activity_events", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  eventType: text("event_type").notNull(),
+  occurredAt: timestamp("occurred_at").notNull().defaultNow(),
+  metadata: jsonb("metadata"),
+});
+
+export const insertUserActivityEventSchema = createInsertSchema(userActivityEvents).omit({
+  id: true,
+  occurredAt: true,
+});
+
+export type UserActivityEvent = typeof userActivityEvents.$inferSelect;
+export type InsertUserActivityEvent = z.infer<typeof insertUserActivityEventSchema>;
+
+export const smartReminders = pgTable("smart_reminders", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  reminderType: text("reminder_type").notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  source: text("source").notNull().default("default"),
+  preferredHour: integer("preferred_hour").notNull().default(9),
+  preferredDays: text("preferred_days").array().notNull().default(["mon", "tue", "wed", "thu", "fri", "sat", "sun"]),
+  cooldownHours: integer("cooldown_hours").notNull().default(20),
+  lastSentAt: timestamp("last_sent_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("smart_reminders_user_type_idx").on(table.userId, table.reminderType),
+]);
+
+export const insertSmartReminderSchema = createInsertSchema(smartReminders).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type SmartReminder = typeof smartReminders.$inferSelect;
+export type InsertSmartReminder = z.infer<typeof insertSmartReminderSchema>;
