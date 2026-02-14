@@ -679,6 +679,7 @@ export default function GoalsArchivePage() {
 
   const movingGoalsRef = useRef<Set<number>>(new Set());
   const handleMoveToCategory = useCallback(async (goalId: number, newCategory: string) => {
+    console.log("[MOVE-GOAL] handleMoveToCategory called", { goalId, newCategory });
     if (movingGoalsRef.current.has(goalId)) return;
     movingGoalsRef.current.add(goalId);
     const previousGoals = queryClient.getQueryData<VisionGoal[]>(GOALS_KEY);
@@ -863,6 +864,7 @@ export default function GoalsArchivePage() {
   };
 
   const handleEditGoal = async () => {
+    console.log("[EDIT-GOAL] handleEditGoal called", { editingGoalId, category: editFormData.category, title: editFormData.title });
     if (!editFormData.title.trim() || !editingGoalId) return;
     setIsSubmitting(true);
     const editedId = editingGoalId;
@@ -902,7 +904,7 @@ export default function GoalsArchivePage() {
   };
 
   const renderGoalForm = (formData: GoalFormData, setFormData: (fn: (prev: GoalFormData) => GoalFormData) => void, onSubmit: () => void, submitLabel: string, showCategorySelect: boolean) => (
-    <div className="space-y-4 mt-4">
+    <form className="space-y-4 mt-4" onSubmit={(e) => { e.preventDefault(); e.stopPropagation(); onSubmit(); }}>
       <div className="space-y-2">
         <Label htmlFor="goal-title">Title <span className="text-primary">*</span></Label>
         <Input
@@ -954,13 +956,13 @@ export default function GoalsArchivePage() {
       </div>
 
       <button
-        onClick={onSubmit}
+        type="submit"
         className="w-full mt-4 text-sm font-mono px-4 py-2.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center"
         disabled={!formData.title.trim() || isSubmitting}
       >
         {isSubmitting ? "Saving..." : submitLabel}
       </button>
-    </div>
+    </form>
   );
 
   return (
@@ -988,6 +990,8 @@ export default function GoalsArchivePage() {
             <DialogContent
               className="glassmorphic border-primary/30 w-full h-full max-w-full max-h-full left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:max-w-lg sm:max-h-[90vh] sm:h-auto sm:rounded-lg overflow-y-auto"
               onOpenAutoFocus={(e) => e.preventDefault()}
+              onPointerDownOutside={(e) => e.preventDefault()}
+              onInteractOutside={(e) => e.preventDefault()}
             >
               <DialogHeader>
                 <DialogTitle className="font-orbitron text-xl">Create New Goal</DialogTitle>
@@ -1012,6 +1016,8 @@ export default function GoalsArchivePage() {
           <DialogContent
             className="glassmorphic border-primary/30 w-full h-full max-w-full max-h-full left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:max-w-lg sm:max-h-[90vh] sm:h-auto sm:rounded-lg overflow-y-auto"
             onOpenAutoFocus={(e) => e.preventDefault()}
+            onPointerDownOutside={(e) => e.preventDefault()}
+            onInteractOutside={(e) => e.preventDefault()}
           >
             <DialogHeader>
               <DialogTitle className="font-orbitron text-xl flex items-center gap-2">
