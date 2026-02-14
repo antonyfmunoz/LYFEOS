@@ -647,6 +647,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.processDailyHealthUpdate(user.id);
         console.log("New day detected - updated streak and health for user:", user.username);
       }
+
+      storage.logActivityEvent(user.id, 'login').catch(() => {});
+      storage.initDefaultReminders(user.id).catch(() => {});
       
       // Check if user has completed onboarding
       const userProfile = await storage.getUserProfile(user.id);
@@ -862,6 +865,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.processDailyHealthUpdate(user.id);
         console.log("New day detected - updated streak and health for user:", user.username);
       }
+
+      storage.logActivityEvent(user.id, 'login').catch(() => {});
+      storage.initDefaultReminders(user.id).catch(() => {});
       
       // Fetch user profile to check if onboarding is completed
       const userProfile = await storage.getUserProfile(user.id);
@@ -1801,6 +1807,7 @@ ${questData.description ? `Description: ${questData.description}` : ''}`
           tag: `quest-complete-${quest.id}`,
           url: "/quests",
         }).catch(() => {});
+        storage.logActivityEvent(quest.userId, 'mission_complete', { questId: quest.id, title: quest.title }).catch(() => {});
       }
 
       return res.status(200).json({ 
@@ -4748,6 +4755,7 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
           .where(eq(userDailyLogs.id, existingLog[0].id));
           
         const updatedLog = await db.select().from(userDailyLogs).where(eq(userDailyLogs.id, existingLog[0].id));
+        storage.logActivityEvent(userId, 'daily_log', { date }).catch(() => {});
         
         return res.status(200).json({ log: updatedLog[0], message: "Daily log updated successfully" });
       } else {
@@ -5770,6 +5778,7 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
       console.log(`[VISION-GOAL-TOGGLE] updateData=`, JSON.stringify(updateData));
       const goal = await storage.updateVisionGoal(id, userId, updateData);
       if (!goal) return res.status(404).json({ error: "Vision goal not found" });
+      storage.logActivityEvent(userId, 'goal_review', { goalId: id, title: goal.title }).catch(() => {});
 
       let xpAwarded = 0;
       if (req.body.completed === true && !wasCompleted) {
@@ -6027,6 +6036,100 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
     } catch (error) {
       console.error("Error creating portal session:", error);
       res.status(500).json({ error: "Failed to create portal session" });
+    }
+  });
+
+  // Smart Reminders API
+  app.get("/api/smart-reminders", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      let reminders = await storage.getSmartReminders(userId);
+      if (reminders.length === 0) {
+        reminders = await storage.initDefaultReminders(userId);
+      }
+      return res.json(reminders);
+    } catch (error) {
+      console.error("Error fetching smart reminders:", error);
+      return res.status(500).json({ error: "Failed to fetch smart reminders" });
+    }
+  });
+
+  app.patch("/api/smart-reminders/:reminderType", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { reminderType } = req.params;
+      const validTypes = ['missions', 'reflection', 'goal_review'];
+      if (!validTypes.includes(reminderType)) {
+        return res.status(400).json({ error: "Invalid reminder type" });
+      }
+
+      const updateData: any = {};
+      if (req.body.enabled !== undefined) updateData.enabled = req.body.enabled;
+      if (req.body.preferredHour !== undefined) {
+        const hour = parseInt(req.body.preferredHour);
+        if (isNaN(hour) || hour < 0 || hour > 23) {
+          return res.status(400).json({ error: "preferredHour must be 0-23" });
+        }
+        updateData.preferredHour = hour;
+        updateData.source = 'manual';
+      }
+      if (req.body.preferredDays !== undefined) {
+        const validDays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+        const days = req.body.preferredDays;
+        if (!Array.isArray(days) || !days.every((d: string) => validDays.includes(d))) {
+          return res.status(400).json({ error: "Invalid preferredDays" });
+        }
+        updateData.preferredDays = days;
+      }
+      if (req.body.cooldownHours !== undefined) {
+        const cd = parseInt(req.body.cooldownHours);
+        if (isNaN(cd) || cd < 1 || cd > 168) {
+          return res.status(400).json({ error: "cooldownHours must be 1-168" });
+        }
+        updateData.cooldownHours = cd;
+      }
+      if (req.body.source === 'learned') {
+        updateData.source = 'learned';
+      }
+
+      const reminder = await storage.upsertSmartReminder(userId, reminderType, updateData);
+      return res.json(reminder);
+    } catch (error) {
+      console.error("Error updating smart reminder:", error);
+      return res.status(500).json({ error: "Failed to update smart reminder" });
+    }
+  });
+
+  app.get("/api/smart-reminders/activity-summary", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const days = parseInt(req.query.days as string) || 30;
+
+      const eventTypes = ['mission_complete', 'daily_log', 'goal_review', 'login'];
+      const summary: Record<string, { count: number; peakHour: number | null }> = {};
+
+      for (const eventType of eventTypes) {
+        const events = await storage.getActivityEvents(userId, eventType, days);
+        const hourCounts = new Array(24).fill(0);
+        for (const event of events) {
+          const hour = new Date(event.occurredAt).getHours();
+          hourCounts[hour]++;
+        }
+        let peakHour: number | null = null;
+        let peakCount = 0;
+        for (let h = 0; h < 24; h++) {
+          if (hourCounts[h] > peakCount) {
+            peakCount = hourCounts[h];
+            peakHour = h;
+          }
+        }
+        summary[eventType] = { count: events.length, peakHour: events.length >= 3 ? peakHour : null };
+      }
+
+      return res.json(summary);
+    } catch (error) {
+      console.error("Error fetching activity summary:", error);
+      return res.status(500).json({ error: "Failed to fetch activity summary" });
     }
   });
 
