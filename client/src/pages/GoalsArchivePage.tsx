@@ -857,8 +857,6 @@ export default function GoalsArchivePage() {
       category: editFormData.category,
     };
     const previousGoals = queryClient.getQueryData<VisionGoal[]>(GOALS_KEY);
-    const oldGoal = previousGoals?.find(g => g.id === editedId);
-    const categoryChanged = oldGoal && oldGoal.category !== editFormData.category;
     setIsEditOpen(false);
     setEditFormData(defaultFormData);
     setEditingGoalId(null);
@@ -873,13 +871,8 @@ export default function GoalsArchivePage() {
       queryClient.setQueryData<VisionGoal[]>(GOALS_KEY, (old) =>
         old?.map(g => g.id === editedId ? { ...g, ...updatedGoal } : g)
       );
-      if (categoryChanged) {
-        const newLabel = CATEGORY_OPTIONS.find(c => c.value === editFormData.category)?.label || editFormData.category;
-        toast({ title: `Moved to ${newLabel}` });
-      }
     } catch (error) {
       if (previousGoals) queryClient.setQueryData(GOALS_KEY, previousGoals);
-      toast({ title: "Failed to save changes", variant: "destructive" });
       console.error("Error updating goal:", error);
     } finally {
       setIsSubmitting(false);
