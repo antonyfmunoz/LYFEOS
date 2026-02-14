@@ -5762,8 +5762,6 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
       if (!existingGoal) return res.status(404).json({ error: "Vision goal not found" });
       const wasCompleted = existingGoal.completed ?? false;
 
-      console.log(`[VISION-GOAL-TOGGLE] id=${id}, req.body.completed=${req.body.completed}, wasCompleted=${wasCompleted}`);
-
       const updateData: any = {};
       if (req.body.title !== undefined) updateData.title = req.body.title.trim();
       if (req.body.description !== undefined) updateData.description = req.body.description?.trim() || null;
@@ -5775,7 +5773,6 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
         updateData.completedAt = req.body.completed ? new Date() : null;
       }
       if (req.body.displayOrder !== undefined) updateData.displayOrder = req.body.displayOrder;
-      console.log(`[VISION-GOAL-TOGGLE] updateData=`, JSON.stringify(updateData));
       const goal = await storage.updateVisionGoal(id, userId, updateData);
       if (!goal) return res.status(404).json({ error: "Vision goal not found" });
       storage.logActivityEvent(userId, 'goal_review', { goalId: id, title: goal.title }).catch(() => {});

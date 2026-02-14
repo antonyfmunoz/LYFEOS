@@ -677,18 +677,23 @@ export default function GoalsArchivePage() {
     }
   }, [GOALS_KEY]);
 
+  const movingGoalsRef = useRef<Set<number>>(new Set());
   const handleMoveToCategory = useCallback(async (goalId: number, newCategory: string) => {
+    if (movingGoalsRef.current.has(goalId)) return;
+    movingGoalsRef.current.add(goalId);
     const previousGoals = queryClient.getQueryData<VisionGoal[]>(GOALS_KEY);
     queryClient.setQueryData<VisionGoal[]>(GOALS_KEY, (old) =>
       old?.map(g => g.id === goalId ? { ...g, category: newCategory, displayOrder: 999 } : g)
     );
 
     try {
-      await apiRequest(`/api/vision-goals/${goalId}`, {
+      const result = await apiRequest(`/api/vision-goals/${goalId}`, {
         method: 'PATCH',
         body: JSON.stringify({ category: newCategory }),
       });
-      queryClient.invalidateQueries({ queryKey: GOALS_KEY });
+      queryClient.setQueryData<VisionGoal[]>(GOALS_KEY, (old) =>
+        old?.map(g => g.id === goalId ? { ...g, ...result } : g)
+      );
     } catch (err) {
       if (previousGoals) queryClient.setQueryData(GOALS_KEY, previousGoals);
       toast({
@@ -696,6 +701,8 @@ export default function GoalsArchivePage() {
         description: err instanceof Error ? err.message : "Please try again",
         variant: "destructive",
       });
+    } finally {
+      movingGoalsRef.current.delete(goalId);
     }
   }, [toast, GOALS_KEY]);
 
@@ -880,9 +887,15 @@ export default function GoalsArchivePage() {
       queryClient.setQueryData<VisionGoal[]>(GOALS_KEY, (old) =>
         old?.map(g => g.id === editedId ? { ...g, ...updatedGoal } : g)
       );
+      await queryClient.invalidateQueries({ queryKey: GOALS_KEY });
     } catch (error) {
       if (previousGoals) queryClient.setQueryData(GOALS_KEY, previousGoals);
       console.error("Error updating goal:", error);
+      toast({
+        title: "Failed to update goal",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }

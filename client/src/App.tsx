@@ -6,10 +6,12 @@ import { AuthProvider, useAuth } from "./lib/authContext";
 import { ThemeProvider } from "./lib/themeContext";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
+import { TouchBackend } from "react-dnd-touch-backend";
 import { CelebrationProvider } from "./lib/celebrationContext";
 import CelebrationOverlay from "./components/CelebrationOverlay";
 import DashboardPage from "./pages/DashboardPage";
 import QuestsPage from "./pages/QuestsPage";
+
 import AIPage from "./pages/AIPage";
 import ChronilogPage from "./pages/ChronilogPage";
 import TimelinePage from "./pages/TimelinePage";
@@ -48,6 +50,9 @@ import LoginSuccessPage from "./pages/LoginSuccessPage";
 import SubscriptionPage from "./pages/SubscriptionPage";
 import LandingPage from "./pages/LandingPage";
 import RolodexPage from "./pages/RolodexPage";
+
+const isTouchDevice = () =>
+  typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -468,7 +473,7 @@ function App() {
         <CelebrationProvider>
           <LYFEOSProvider>
             <ThemeProvider>
-              <DndProvider backend={HTML5Backend}>
+              <DndProvider backend={isTouchDevice() ? TouchBackend : HTML5Backend} options={isTouchDevice() ? { enableMouseEvents: true } : undefined}>
                 <Router />
                 <VoiceOverlay />
                 <CelebrationOverlay />
