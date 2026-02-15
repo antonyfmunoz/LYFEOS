@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { useLocation } from "wouter";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useLYFEOS } from "@/lib/context";
+import { useAuth } from "@/lib/authContext";
+import { useQuery } from "@tanstack/react-query";
 import { Archive, ArrowLeft, Calendar, Clock, Bell, ChevronRight, ChevronDown, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -68,9 +70,13 @@ function getWeekOfMonth(date: Date): number {
   return Math.ceil((date.getDate() + firstDayOfWeek) / 7);
 }
 
-function MissionCard({ mission }: { mission: Quest }) {
+interface VisionGoalOption { id: number; category: string; title: string; }
+const categoryLabelsMap: Record<string, string> = { legacy: "Legacy", "10year": "10-Year", "5year": "5-Year", "18month": "18-Month", "90day": "90-Day" };
+
+function MissionCard({ mission, visionGoals }: { mission: Quest; visionGoals: VisionGoalOption[] }) {
   const [showDescription, setShowDescription] = useState(false);
-  const { title, description, energyCost, attentionCost, timeCost, experienceReward, startDate, startTime, endDate, endTime, notificationEnabled, difficulty, category } = mission;
+  const { title, description, energyCost, attentionCost, timeCost, experienceReward, startDate, startTime, endDate, endTime, notificationEnabled, difficulty, category, visionGoalId } = mission;
+  const linkedObjective = visionGoalId ? visionGoals.find(g => g.id === visionGoalId) : null;
   
   const difficultyStyle = "bg-primary/20 border-primary/50 text-primary";
   const difficultyMultipliers: Record<string, number> = { D: 1, C: 1.5, B: 2, A: 3, S: 5 };
@@ -159,32 +165,35 @@ function MissionCard({ mission }: { mission: Quest }) {
           </div>
         )}
         {showDescription && (
-          <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 space-y-2 opacity-50">
+          <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 space-y-1.5 opacity-50">
             {description && (
-              <p className="text-muted-foreground">
-                {category === 'onboarding'
+              <p className="text-muted-foreground text-xs">
+                <span className="text-primary font-mono">Description:</span> {category === 'onboarding'
                   ? (ONBOARDING_MISSIONS.find(m => m.title === title.replace(/^Onboarding:\s*/, ''))?.description || description)
                   : description}
               </p>
             )}
-            <div className="border-t border-primary/10 pt-2 space-y-1">
-              {category && category !== "general" && category !== "onboarding" && (
-                <p className="text-muted-foreground text-xs">
-                  <span className="text-primary font-mono capitalize">{category}</span> — {
-                    categoryDescriptions[category] || 'Auto-classified mission category.'
-                  }
-                </p>
-              )}
+            {linkedObjective && (
               <p className="text-muted-foreground text-xs">
-                <span className="text-primary font-mono">Rank {difficulty || 'D'}</span> — {
-                  (difficulty || 'D') === 'S' ? 'Extreme effort. Multi-day or life-changing.' :
-                  (difficulty || 'D') === 'A' ? 'High effort. Significant commitment.' :
-                  (difficulty || 'D') === 'B' ? 'Moderate effort. Requires focus and planning.' :
-                  (difficulty || 'D') === 'C' ? 'Light effort. Simple but requires attention.' :
-                  'Minimal effort. Quick and easy.'
+                <span className="text-primary font-mono">{categoryLabelsMap[linkedObjective.category] || linkedObjective.category} Vision</span> — Mission Objective: {linkedObjective.title}
+              </p>
+            )}
+            {category && category !== "general" && category !== "onboarding" && (
+              <p className="text-muted-foreground text-xs">
+                <span className="text-primary font-mono">Mission Type</span> — <span className="capitalize">{category}</span>: {
+                  categoryDescriptions[category] || 'Auto-classified mission category.'
                 }
               </p>
-            </div>
+            )}
+            <p className="text-muted-foreground text-xs">
+              <span className="text-primary font-mono">Mission Difficulty</span> — Rank {difficulty || 'D'}: {
+                (difficulty || 'D') === 'S' ? 'Extreme effort. Multi-day or life-changing.' :
+                (difficulty || 'D') === 'A' ? 'High effort. Significant commitment.' :
+                (difficulty || 'D') === 'B' ? 'Moderate effort. Requires focus and planning.' :
+                (difficulty || 'D') === 'C' ? 'Light effort. Simple but requires attention.' :
+                'Minimal effort. Quick and easy.'
+              }
+            </p>
           </div>
         )}
       </div>
@@ -196,7 +205,12 @@ export default function MissionArchivePage() {
   usePageTitle('Missions');
 
   const { quests } = useLYFEOS();
+  const { user } = useAuth();
   const [, navigate] = useLocation();
+  const { data: allVisionGoals = [] } = useQuery<VisionGoalOption[]>({
+    queryKey: ['/api/vision-goals/all'],
+    enabled: !!user,
+  });
   const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set());
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
@@ -479,7 +493,7 @@ export default function MissionArchivePage() {
                                               <CollapsibleContent>
                                                 <div className="ml-6 mt-2 space-y-2">
                                                   {dayData.missions.map((mission) => (
-                                                    <MissionCard key={mission.id} mission={mission} />
+                                                    <MissionCard key={mission.id} mission={mission} visionGoals={allVisionGoals} />
                                                   ))}
                                                 </div>
                                               </CollapsibleContent>

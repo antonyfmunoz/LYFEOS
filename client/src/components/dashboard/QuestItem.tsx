@@ -259,58 +259,56 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
             </div>
           )}
           {showDescription && (
-            <div className={`text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 space-y-2 ${completed ? "opacity-50" : ""}`}>
+            <div className={`text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 space-y-1.5 ${completed ? "opacity-50" : ""}`}>
               {(() => {
                 const onboardingDesc = category === "onboarding" && title
                   ? ONBOARDING_DESCRIPTIONS[title.replace(/^Onboarding:\s*/, '')] 
                   : null;
                 const displayDesc = onboardingDesc || description;
                 return displayDesc ? (
-                  <p className="text-muted-foreground">{displayDesc}</p>
+                  <p className="text-muted-foreground text-xs">
+                    <span className="text-primary font-mono">Description:</span> {displayDesc}
+                  </p>
                 ) : null;
               })()}
-              <div className="border-t border-primary/10 pt-2 space-y-1">
-                {linkedObjective && (
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span className="text-xs text-primary font-mono capitalize">{categoryLabels[linkedObjective.category] || linkedObjective.category} Objective</span>
-                    <span className="text-xs text-muted-foreground">—</span>
-                    <span className="text-xs text-muted-foreground">{linkedObjective.title}</span>
-                  </div>
-                )}
-                {category && category !== "general" && category !== "onboarding" && (
-                  <p className="text-muted-foreground text-xs">
-                    <span className="text-primary font-mono capitalize">{category}</span> — {
-                      ({
-                        work: 'Professional tasks, projects, and job-related responsibilities.',
-                        health: 'Medical care, wellness checkups, and overall well-being.',
-                        fitness: 'Exercise, workouts, physical training, and movement goals.',
-                        finance: 'Budgeting, saving, investing, and money management.',
-                        learning: 'Education, studying, courses, and skill development.',
-                        creative: 'Art, music, writing, design, and creative expression.',
-                        social: 'Relationships, events, gatherings, and interpersonal connections.',
-                        personal: 'Self-care, errands, and individual life management.',
-                        mindset: 'Mental health, meditation, mindfulness, and inner growth.',
-                        career: 'Long-term professional growth, networking, and advancement.',
-                        nutrition: 'Meal planning, diet, cooking, and food choices.',
-                        recovery: 'Rest, rehabilitation, stress relief, and recharging.',
-                        planning: 'Strategy, organization, scheduling, and goal-setting.',
-                        spiritual: 'Faith, purpose, reflection, and spiritual practices.',
-                        household: 'Home maintenance, cleaning, chores, and living space.',
-                        event: 'Scheduled occasions, celebrations, and milestone events.',
-                      } as Record<string, string>)[category] || userCategories.find(uc => uc.value === category)?.description || 'Auto-classified mission category.'
-                    }
-                  </p>
-                )}
+              {linkedObjective && (
                 <p className="text-muted-foreground text-xs">
-                  <span className="text-primary font-mono">Rank {difficulty || 'D'}</span> — {
-                    (difficulty || 'D') === 'S' ? 'Extreme effort. Multi-day or life-changing.' :
-                    (difficulty || 'D') === 'A' ? 'High effort. Significant commitment.' :
-                    (difficulty || 'D') === 'B' ? 'Moderate effort. Requires focus and planning.' :
-                    (difficulty || 'D') === 'C' ? 'Light effort. Simple but requires attention.' :
-                    'Minimal effort. Quick and easy.'
+                  <span className="text-primary font-mono">{categoryLabels[linkedObjective.category] || linkedObjective.category} Vision</span> — Mission Objective: {linkedObjective.title}
+                </p>
+              )}
+              {category && category !== "general" && category !== "onboarding" && (
+                <p className="text-muted-foreground text-xs">
+                  <span className="text-primary font-mono">Mission Type</span> — <span className="capitalize">{category}</span>: {
+                    ({
+                      work: 'Professional tasks, projects, and job-related responsibilities.',
+                      health: 'Medical care, wellness checkups, and overall well-being.',
+                      fitness: 'Exercise, workouts, physical training, and movement goals.',
+                      finance: 'Budgeting, saving, investing, and money management.',
+                      learning: 'Education, studying, courses, and skill development.',
+                      creative: 'Art, music, writing, design, and creative expression.',
+                      social: 'Relationships, events, gatherings, and interpersonal connections.',
+                      personal: 'Self-care, errands, and individual life management.',
+                      mindset: 'Mental health, meditation, mindfulness, and inner growth.',
+                      career: 'Long-term professional growth, networking, and advancement.',
+                      nutrition: 'Meal planning, diet, cooking, and food choices.',
+                      recovery: 'Rest, rehabilitation, stress relief, and recharging.',
+                      planning: 'Strategy, organization, scheduling, and goal-setting.',
+                      spiritual: 'Faith, purpose, reflection, and spiritual practices.',
+                      household: 'Home maintenance, cleaning, chores, and living space.',
+                      event: 'Scheduled occasions, celebrations, and milestone events.',
+                    } as Record<string, string>)[category] || userCategories.find(uc => uc.value === category)?.description || 'Auto-classified mission category.'
                   }
                 </p>
-              </div>
+              )}
+              <p className="text-muted-foreground text-xs">
+                <span className="text-primary font-mono">Mission Difficulty</span> — Rank {difficulty || 'D'}: {
+                  (difficulty || 'D') === 'S' ? 'Extreme effort. Multi-day or life-changing.' :
+                  (difficulty || 'D') === 'A' ? 'High effort. Significant commitment.' :
+                  (difficulty || 'D') === 'B' ? 'Moderate effort. Requires focus and planning.' :
+                  (difficulty || 'D') === 'C' ? 'Light effort. Simple but requires attention.' :
+                  'Minimal effort. Quick and easy.'
+                }
+              </p>
             </div>
           )}
           {!completed && (

@@ -1849,51 +1849,56 @@ export default function QuestsPage() {
                             </div>
                           )}
                           {terminatedInfoOpen[quest.id] && (
-                            <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 opacity-60 space-y-2">
+                            <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 opacity-60 space-y-1.5">
                               {quest.description && (
-                                <p className="text-muted-foreground">
-                                  {quest.category === 'onboarding'
+                                <p className="text-muted-foreground text-xs">
+                                  <span className="text-primary font-mono">Description:</span> {quest.category === 'onboarding'
                                     ? (ONBOARDING_MISSIONS.find(m => m.title === quest.title.replace(/^Onboarding:\s*/, ''))?.description || quest.description)
                                     : quest.description}
                                 </p>
                               )}
-                              <div className="border-t border-primary/10 pt-2 space-y-1">
-                                {quest.category && quest.category !== "general" && quest.category !== "onboarding" && (
+                              {(() => {
+                                const catLabels: Record<string, string> = { legacy: "Legacy", "10year": "10-Year", "5year": "5-Year", "18month": "18-Month", "90day": "90-Day" };
+                                const linkedObj = quest.visionGoalId ? allVisionGoals.find(g => g.id === quest.visionGoalId) : null;
+                                return linkedObj ? (
                                   <p className="text-muted-foreground text-xs">
-                                    <span className="text-primary font-mono capitalize">{quest.category}</span> — {
-                                      ({
-                                        work: 'Professional tasks, projects, and job-related responsibilities.',
-                                        health: 'Medical care, wellness checkups, and overall well-being.',
-                                        fitness: 'Exercise, workouts, physical training, and movement goals.',
-                                        finance: 'Budgeting, saving, investing, and money management.',
-                                        learning: 'Education, studying, courses, and skill development.',
-                                        creative: 'Art, music, writing, design, and creative expression.',
-                                        social: 'Relationships, events, gatherings, and interpersonal connections.',
-                                        personal: 'Self-care, errands, and individual life management.',
-                                        mindset: 'Mental health, meditation, mindfulness, and inner growth.',
-                                        career: 'Long-term professional growth, networking, and advancement.',
-                                        nutrition: 'Meal planning, diet, cooking, and food choices.',
-                                        recovery: 'Rest, rehabilitation, stress relief, and recharging.',
-                                        planning: 'Strategy, organization, scheduling, and goal-setting.',
-                                        spiritual: 'Faith, purpose, reflection, and spiritual practices.',
-                                        household: 'Home maintenance, cleaning, chores, and living space.',
-                                        event: 'Scheduled occasions, celebrations, and milestone events.',
-                                      } as Record<string, string>)[quest.category] || userCategories.find(uc => uc.value === quest.category)?.description || 'Auto-classified mission category.'
-                                    }
+                                    <span className="text-primary font-mono">{catLabels[linkedObj.category] || linkedObj.category} Vision</span> — Mission Objective: {linkedObj.title}
                                   </p>
-                                )}
-                                {(quest.difficulty || 'D') && (
-                                  <p className="text-muted-foreground text-xs">
-                                    <span className="text-primary font-mono">Rank {quest.difficulty || 'D'}</span> — {
-                                      quest.difficulty === 'S' ? 'Extreme effort. Multi-day or life-changing.' :
-                                      quest.difficulty === 'A' ? 'High effort. Significant commitment.' :
-                                      quest.difficulty === 'B' ? 'Moderate effort. Requires focus and planning.' :
-                                      quest.difficulty === 'C' ? 'Light effort. Simple but requires attention.' :
-                                      'Minimal effort. Quick and easy.'
-                                    }
-                                  </p>
-                                )}
-                              </div>
+                                ) : null;
+                              })()}
+                              {quest.category && quest.category !== "general" && quest.category !== "onboarding" && (
+                                <p className="text-muted-foreground text-xs">
+                                  <span className="text-primary font-mono">Mission Type</span> — <span className="capitalize">{quest.category}</span>: {
+                                    ({
+                                      work: 'Professional tasks, projects, and job-related responsibilities.',
+                                      health: 'Medical care, wellness checkups, and overall well-being.',
+                                      fitness: 'Exercise, workouts, physical training, and movement goals.',
+                                      finance: 'Budgeting, saving, investing, and money management.',
+                                      learning: 'Education, studying, courses, and skill development.',
+                                      creative: 'Art, music, writing, design, and creative expression.',
+                                      social: 'Relationships, events, gatherings, and interpersonal connections.',
+                                      personal: 'Self-care, errands, and individual life management.',
+                                      mindset: 'Mental health, meditation, mindfulness, and inner growth.',
+                                      career: 'Long-term professional growth, networking, and advancement.',
+                                      nutrition: 'Meal planning, diet, cooking, and food choices.',
+                                      recovery: 'Rest, rehabilitation, stress relief, and recharging.',
+                                      planning: 'Strategy, organization, scheduling, and goal-setting.',
+                                      spiritual: 'Faith, purpose, reflection, and spiritual practices.',
+                                      household: 'Home maintenance, cleaning, chores, and living space.',
+                                      event: 'Scheduled occasions, celebrations, and milestone events.',
+                                    } as Record<string, string>)[quest.category] || userCategories.find(uc => uc.value === quest.category)?.description || 'Auto-classified mission category.'
+                                  }
+                                </p>
+                              )}
+                              <p className="text-muted-foreground text-xs">
+                                <span className="text-primary font-mono">Mission Difficulty</span> — Rank {quest.difficulty || 'D'}: {
+                                  quest.difficulty === 'S' ? 'Extreme effort. Multi-day or life-changing.' :
+                                  quest.difficulty === 'A' ? 'High effort. Significant commitment.' :
+                                  quest.difficulty === 'B' ? 'Moderate effort. Requires focus and planning.' :
+                                  quest.difficulty === 'C' ? 'Light effort. Simple but requires attention.' :
+                                  'Minimal effort. Quick and easy.'
+                                }
+                              </p>
                             </div>
                           )}
                           {hasSchedule && (
