@@ -1301,6 +1301,36 @@ export const insertUserActivityEventSchema = createInsertSchema(userActivityEven
 export type UserActivityEvent = typeof userActivityEvents.$inferSelect;
 export type InsertUserActivityEvent = z.infer<typeof insertUserActivityEventSchema>;
 
+export const journalEntries = pgTable("journal_entries", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  title: text("title"),
+  content: text("content").notNull(),
+  mood: integer("mood"), // 1-5 scale
+  tags: text("tags").array().default([]),
+  promptCategory: text("prompt_category"), // e.g. "gratitude", "growth", "reflection", "vision", "challenge"
+  aiPrompt: text("ai_prompt"), // The AI-generated prompt that inspired this entry
+  aiReflection: text("ai_reflection"), // AI-generated reflection/insight on the entry
+  wordCount: integer("word_count").default(0),
+  xpAwarded: integer("xp_awarded").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const journalEntryRelations = relations(journalEntries, ({ one }) => ({
+  user: one(users, {
+    fields: [journalEntries.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertJournalEntrySchema = createInsertSchema(journalEntries).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type JournalEntry = typeof journalEntries.$inferSelect;
+export type InsertJournalEntry = z.infer<typeof insertJournalEntrySchema>;
+
 export const smartReminders = pgTable("smart_reminders", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
