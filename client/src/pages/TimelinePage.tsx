@@ -56,6 +56,7 @@ interface TimelineItem {
   description: string;
   type: TimelineItemType;
   quest?: Quest;
+  visionGoal?: VisionGoal;
 }
 
 type ZoomLevel = 'life' | 'year' | 'month' | 'week' | 'day';
@@ -420,6 +421,7 @@ export default function TimelinePage() {
         description: goal.description || '',
         type: 'event',
         rmType: 'milestone',
+        visionGoal: goal,
       });
     });
 
@@ -683,7 +685,7 @@ export default function TimelinePage() {
 
       <div className="mb-4">
         <h1 className="text-2xl font-orbitron mb-1">Timeline</h1>
-        <p className="text-[#7DAAB2]">
+        <p className="text-muted-foreground">
           {activeView === 'history' ? 'Your complete journey through time' : 'Your path forward'}
         </p>
       </div>
@@ -761,7 +763,7 @@ export default function TimelinePage() {
           </div>
 
           {breadcrumb.length > 0 && (
-            <div className="flex items-center gap-1.5 mb-4 text-xs text-[#7DAAB2] font-mono flex-wrap">
+            <div className="flex items-center gap-1.5 mb-4 text-xs text-muted-foreground font-mono flex-wrap">
               <span
                 className="cursor-pointer hover:text-primary transition-colors"
                 onClick={() => {
@@ -909,7 +911,7 @@ export default function TimelinePage() {
                               {node.label}
                             </h3>
                             {node.sublabel && (
-                              <p className="text-[11px] text-[#7DAAB2] font-mono mt-0.5">{node.sublabel}</p>
+                              <p className="text-[11px] text-muted-foreground font-mono mt-0.5">{node.sublabel}</p>
                             )}
                           </div>
                           <div className="flex items-center gap-2">
@@ -996,7 +998,7 @@ export default function TimelinePage() {
           </div>
 
           {rmBreadcrumb.length > 0 && (
-            <div className="flex items-center gap-1.5 mb-4 text-xs text-[#7DAAB2] font-mono flex-wrap">
+            <div className="flex items-center gap-1.5 mb-4 text-xs text-muted-foreground font-mono flex-wrap">
               <span
                 className="cursor-pointer hover:text-primary transition-colors"
                 onClick={() => {
@@ -1061,7 +1063,7 @@ export default function TimelinePage() {
                               </h3>
                               <div className="flex items-center gap-1 flex-shrink-0 ml-2">
                                 <span className="text-[10px] font-mono h-6 px-1.5 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary capitalize">
-                                  {itemRmType === 'milestone' ? 'Mission Objective' : itemRmType === 'mission' ? 'Mission' : 'Event'}
+                                  {itemRmType === 'milestone' ? 'Objective' : itemRmType === 'mission' ? 'Mission' : 'Event'}
                                 </span>
                                 {rmItem?.quest?.category && rmItem.quest.category !== "general" && rmItem.quest.category !== "onboarding" && (
                                   <span className="text-[10px] font-mono h-6 px-1.5 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary capitalize">
@@ -1097,14 +1099,49 @@ export default function TimelinePage() {
                                 <span className="text-primary text-xs font-mono whitespace-nowrap">+{Math.floor(rmItem.quest.experienceReward * (difficultyMultipliers[rmItem.quest.difficulty || 'D'] || 1))} XP</span>
                               </div>
                             )}
-                            <div className="flex items-center gap-1 text-xs mt-1 flex-wrap text-muted-foreground">
-                              {itemRmType === 'milestone' && <Target className="h-3 w-3 text-primary flex-shrink-0" />}
-                              {itemRmType === 'mission' && <CheckSquare className="h-3 w-3 text-primary flex-shrink-0" />}
-                              {itemRmType === 'event' && <Calendar className="h-3 w-3 text-primary flex-shrink-0" />}
-                              <span className="text-[11px] font-mono text-[#7DAAB2] whitespace-nowrap">
-                                {fmtDateShort(node.items[0].rawDate)}
-                              </span>
-                            </div>
+                            {itemRmType === 'milestone' && (() => {
+                              const goal = rmItem?.visionGoal;
+                              if (!goal) return null;
+                              const linkedMissions = quests.filter(q => q.visionGoalId === goal.id);
+                              const completedLinked = linkedMissions.filter(q => q.completed);
+                              const activeLinked = linkedMissions.filter(q => !q.completed);
+                              const totalEP = linkedMissions.reduce((s, m) => s + (m.energyCost || 0), 0);
+                              const totalAT = linkedMissions.reduce((s, m) => s + (m.attentionCost || 0), 0);
+                              const totalTT = linkedMissions.reduce((s, m) => s + (m.timeCost || 0), 0);
+                              const totalXP = linkedMissions.reduce((s, m) => s + Math.floor((m.experienceReward || 0) * (difficultyMultipliers[m.difficulty || 'D'] || 1)), 0) + (goal.bonusXp || 0);
+                              const categoryLabels: Record<string, string> = { legacy: 'Legacy', '10year': '10 Year', '5year': '5 Year', '18month': '18 Month', '90day': '90 Day' };
+                              return (
+                                <>
+                                  <div className="flex items-center gap-3 mt-1 flex-wrap text-xs font-mono text-muted-foreground">
+                                    <span className="text-primary/80">-{totalEP} EP</span>
+                                    <span className="text-primary/80">-{totalAT} AT</span>
+                                    <span className="text-primary/80">-{totalTT} TT</span>
+                                    <span className="text-primary/80">+{totalXP} XP</span>
+                                  </div>
+                                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                                    <span>{categoryLabels[goal.category] || goal.category}</span>
+                                    <span>Created: {new Date(goal.createdAt).toLocaleDateString()}</span>
+                                  </div>
+                                  <div className="mt-1 text-xs text-muted-foreground">
+                                    {linkedMissions.length} linked mission{linkedMissions.length !== 1 ? 's' : ''} ({activeLinked.length} active, {completedLinked.length} done)
+                                  </div>
+                                  {goal.rewardText && (
+                                    <div className="mt-1 text-xs text-primary/70 font-mono">
+                                      Reward: {goal.rewardText}
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
+                            {(itemRmType === 'mission' || itemRmType === 'event') && (
+                              <div className="flex items-center gap-1 text-xs mt-1 flex-wrap text-muted-foreground">
+                                {itemRmType === 'mission' && <CheckSquare className="h-3 w-3 text-primary flex-shrink-0" />}
+                                {itemRmType === 'event' && <Calendar className="h-3 w-3 text-primary flex-shrink-0" />}
+                                <span className="text-[11px] font-mono text-muted-foreground whitespace-nowrap">
+                                  {fmtDateShort(node.items[0].rawDate)}
+                                </span>
+                              </div>
+                            )}
                             {rmExpandedInfoIds.has(node.key) && (
                               <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 space-y-2">
                                 {node.items[0]?.description && (
@@ -1139,7 +1176,7 @@ export default function TimelinePage() {
                                 {node.label}
                               </h3>
                               {node.sublabel && (
-                                <p className="text-[11px] text-[#7DAAB2] font-mono mt-0.5">{node.sublabel}</p>
+                                <p className="text-[11px] text-muted-foreground font-mono mt-0.5">{node.sublabel}</p>
                               )}
                             </div>
                             <div className="flex items-center gap-2">
