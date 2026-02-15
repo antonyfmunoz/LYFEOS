@@ -221,9 +221,9 @@ function DraggableObjective({
             </div>
           </div>
           <div className="flex items-center gap-3 mt-1 flex-wrap text-xs font-mono text-muted-foreground">
-            <span className="text-orange-400/80">-{totalAT} AT</span>
-            <span className="text-orange-400/80">-{totalTT} TT</span>
-            <span className="text-orange-400/80">-{totalEP} EP</span>
+            <span className="text-primary/80">-{totalAT} AT</span>
+            <span className="text-primary/80">-{totalTT} TT</span>
+            <span className="text-primary/80">-{totalEP} EP</span>
             <span className="text-primary/80">+{totalXP} XP</span>
           </div>
           <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
@@ -475,9 +475,9 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
                       </div>
                     </div>
                     <div className="flex items-center gap-3 mt-1 flex-wrap text-xs font-mono text-muted-foreground opacity-50">
-                      <span className="text-orange-400/80">-{totalAT} AT</span>
-                      <span className="text-orange-400/80">-{totalTT} TT</span>
-                      <span className="text-orange-400/80">-{totalEP} EP</span>
+                      <span className="text-primary/80">-{totalAT} AT</span>
+                      <span className="text-primary/80">-{totalTT} TT</span>
+                      <span className="text-primary/80">-{totalEP} EP</span>
                       <span className="text-primary/80">+{totalXP} XP</span>
                     </div>
                     <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground opacity-50">
