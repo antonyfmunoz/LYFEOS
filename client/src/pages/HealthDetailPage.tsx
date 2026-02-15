@@ -6,7 +6,7 @@ import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import AIStatTip from "@/components/stats/AIStatTip";
 import { ArrowLeft, Heart, Activity, Target, Flame, Loader2, TrendingUp, Brain, Zap, Smile } from "lucide-react";
-import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
+import { LineChart, Line, ScatterChart, Scatter, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
 function getStatusBadge(pct: number): { label: string; color: string; bg: string } {
   if (pct >= 75) return { label: "OPTIMAL", color: "text-primary", bg: "bg-primary/20 border-primary/30" };
@@ -394,6 +394,51 @@ export default function HealthDetailPage() {
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {data?.sleepWellnessCorrelation && data.sleepWellnessCorrelation.length > 0 && (
+            <div className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30">
+              <h2 className="font-orbitron text-lg mb-4 text-primary flex items-center gap-2">
+                <Heart className="h-5 w-5" />
+                Sleep & Wellness Correlation
+                <span className="text-xs text-muted-foreground font-mono ml-2">(past {days} days)</span>
+              </h2>
+              <ResponsiveContainer width="100%" height={280}>
+                <ScatterChart margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis
+                    dataKey="sleepHours"
+                    name="Sleep Hours"
+                    type="number"
+                    domain={['auto', 'auto']}
+                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    label={{ value: "Sleep Hours", position: "insideBottom", offset: -5, style: { fontSize: 11, fill: "hsl(var(--muted-foreground))" } }}
+                  />
+                  <YAxis
+                    dataKey="mood"
+                    name="Mood"
+                    type="number"
+                    domain={[0, 10]}
+                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    label={{ value: "Mood", angle: -90, position: "insideLeft", style: { fontSize: 11, fill: "hsl(var(--muted-foreground))" } }}
+                  />
+                  <Tooltip
+                    content={({ active, payload }: any) => {
+                      if (!active || !payload?.length) return null;
+                      const d = payload[0].payload;
+                      return (
+                        <div className="bg-card/95 backdrop-blur border border-primary/30 rounded-lg px-3 py-2 shadow-lg">
+                          <p className="text-xs text-muted-foreground mb-1">{d.date}</p>
+                          <p className="text-sm text-primary">Sleep: {d.sleepHours}h</p>
+                          <p className="text-sm text-primary">Mood: {d.mood}/10</p>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Scatter data={data.sleepWellnessCorrelation} fill="hsl(var(--primary))" fillOpacity={0.7} />
+                </ScatterChart>
+              </ResponsiveContainer>
             </div>
           )}
 

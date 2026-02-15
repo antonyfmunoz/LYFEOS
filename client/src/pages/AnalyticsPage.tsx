@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef, type ReactNode } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/authContext";
@@ -7,7 +7,7 @@ import update from 'immutability-helper';
 import { CollapsibleWidget } from '@/components/ui/collapsible-widget';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import {
-  ArrowLeft, TrendingUp, Target, Brain, Zap, Heart,
+  ArrowLeft, TrendingUp, Target, Zap,
   Calendar, Award, BarChart3, Activity, Flame, Loader2,
   Trophy, Crown, Shield, GripVertical, Milestone
 } from "lucide-react";
@@ -15,7 +15,7 @@ import {
   LineChart, Line, BarChart, Bar, RadarChart, Radar, PolarGrid,
   PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
   XAxis, YAxis, Tooltip, CartesianGrid, Area, AreaChart,
-  Cell, PieChart, Pie, Legend, ScatterChart, Scatter
+  Cell, PieChart, Pie, Legend
 } from "recharts";
 
 const RANGE_OPTIONS = [
@@ -23,19 +23,6 @@ const RANGE_OPTIONS = [
   { label: "14D", value: 14 },
   { label: "30D", value: 30 },
   { label: "90D", value: 90 },
-];
-
-const DIFFICULTY_COLORS: Record<string, string> = {
-  S: "#ef4444",
-  A: "#f97316",
-  B: "#eab308",
-  C: "#22c55e",
-  D: "#6366f1",
-};
-
-const CATEGORY_COLORS = [
-  "#00e0ff", "#8b5cf6", "#f97316", "#22c55e", "#ef4444",
-  "#eab308", "#ec4899", "#06b6d4", "#14b8a6", "#a855f7",
 ];
 
 function formatDate(dateStr: string) {
@@ -49,7 +36,7 @@ function CustomTooltipContent({ active, payload, label }: any) {
     <div className="bg-card/95 backdrop-blur border border-primary/30 rounded-lg px-3 py-2 shadow-lg">
       <p className="text-xs text-muted-foreground mb-1">{formatDate(label)}</p>
       {payload.map((entry: any, i: number) => (
-        <p key={i} className="text-sm" style={{ color: entry.color }}>
+        <p key={i} className="text-sm text-primary">
           {entry.name}: {entry.value}
         </p>
       ))}
@@ -63,7 +50,7 @@ function GenericTooltip({ active, payload, label }: any) {
     <div className="bg-card/95 backdrop-blur border border-primary/30 rounded-lg px-3 py-2 shadow-lg">
       <p className="text-xs text-muted-foreground mb-1">{label}</p>
       {payload.map((entry: any, i: number) => (
-        <p key={i} className="text-sm" style={{ color: entry.color }}>
+        <p key={i} className="text-sm text-primary">
           {entry.name}: {entry.value}
         </p>
       ))}
@@ -77,7 +64,8 @@ export default function AnalyticsPage() {
   const [days, setDays] = useState(30);
 
   const { data: analytics, isLoading } = useQuery<any>({
-    queryKey: [`/api/analytics?days=${days}`],
+    queryKey: ['/api/analytics', days],
+    queryFn: () => fetch(`/api/analytics?days=${days}`, { credentials: 'include' }).then(r => r.json()),
     enabled: !!user,
   });
 
@@ -89,17 +77,16 @@ export default function AnalyticsPage() {
   type AnalyticsWidgetMeta = {
     id: string;
     title: string;
-    icon: React.ReactNode;
+    icon: ReactNode;
   };
 
   const [analyticsWidgets, setAnalyticsWidgets] = useState<AnalyticsWidgetMeta[]>([
-    { id: 'mood-xp', title: 'Mood & XP Trends', icon: <Activity className="h-5 w-5 text-primary" /> },
+    { id: 'xp-progression', title: 'XP Progression', icon: <TrendingUp className="h-5 w-5 text-primary" /> },
     { id: 'missions-categories', title: 'Missions & Categories', icon: <Target className="h-5 w-5 text-primary" /> },
     { id: 'difficulty-breakdown', title: 'Difficulty & Breakdown', icon: <Zap className="h-5 w-5 text-primary" /> },
-    { id: 'completion-rate', title: 'Completion Rate', icon: <Heart className="h-5 w-5 text-primary" /> },
+    { id: 'completion-rate', title: 'Completion Rate', icon: <Target className="h-5 w-5 text-primary" /> },
     { id: 'activity-heatmap', title: 'Activity Heatmap', icon: <Activity className="h-5 w-5 text-primary" /> },
     { id: 'weekly-patterns', title: 'Weekly Patterns', icon: <BarChart3 className="h-5 w-5 text-primary" /> },
-    { id: 'token-wellness', title: 'Token & Wellness', icon: <Zap className="h-5 w-5 text-primary" /> },
     { id: 'personal-records', title: 'Personal Records', icon: <Trophy className="h-5 w-5 text-primary" /> },
     { id: 'milestone-analytics', title: 'Objective Analytics', icon: <Milestone className="h-5 w-5 text-primary" /> },
   ]);
@@ -150,7 +137,6 @@ export default function AnalyticsPage() {
     }));
   }, []);
 
-  const moodTrends = analytics?.moodTrends ?? [];
   const missionCompletionTrend = analytics?.missionCompletionTrend ?? [];
   const categoryStats = analytics?.categoryStats ?? {};
   const difficultyStats = analytics?.difficultyStats ?? {};
@@ -158,8 +144,7 @@ export default function AnalyticsPage() {
   const weeklyPatterns = analytics?.weeklyPatterns ?? [];
   const streakHistory = analytics?.streakHistory ?? [];
   const personalRecords = analytics?.personalRecords ?? {};
-  const tokenEfficiency = analytics?.tokenEfficiency ?? [];
-  const sleepWellnessCorrelation = analytics?.sleepWellnessCorrelation ?? [];
+  const tokenEfficiency = analytics?.tokenEfficiency ?? {};
 
   const categoryData = useMemo(() => Object.entries(categoryStats as Record<string, any>).map(([name, data], i) => ({
     name: name.charAt(0).toUpperCase() + name.slice(1),
@@ -168,7 +153,6 @@ export default function AnalyticsPage() {
     completionRate: data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0,
     xp: data.totalXp,
     energy: data.totalEnergy,
-    fill: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
   })), [categoryStats]);
 
   const difficultyData = useMemo(() => Object.entries(difficultyStats as Record<string, any>)
@@ -181,7 +165,6 @@ export default function AnalyticsPage() {
       total: data.total,
       completed: data.completed,
       completionRate: data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0,
-      fill: DIFFICULTY_COLORS[rank] || "#6366f1",
     })), [difficultyStats]);
 
   const radarData = useMemo(() => categoryData.map(c => ({
@@ -209,46 +192,21 @@ export default function AnalyticsPage() {
 
   const renderWidgetContent = (widgetId: string) => {
     switch (widgetId) {
-      case 'mood-xp':
+      case 'xp-progression':
         return (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ChartCard title="Mood Trends" icon={<Activity className="h-5 w-5" />}>
-              {moodTrends.length > 0 ? (
-                <ResponsiveContainer width="100%" height={250}>
-                  <LineChart data={moodTrends}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.3} />
-                    <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                    <YAxis domain={[0, 10]} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                    <Tooltip content={<CustomTooltipContent />} />
-                    <Line type="monotone" dataKey="mental" stroke="#6366f1" strokeWidth={2} dot={false} name="Mental" />
-                    <Line type="monotone" dataKey="physical" stroke="#22c55e" strokeWidth={2} dot={false} name="Physical" />
-                    <Line type="monotone" dataKey="emotional" stroke="#f97316" strokeWidth={2} dot={false} name="Emotional" />
-                    <Line type="monotone" dataKey="average" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={false} name="Average" strokeDasharray="5 5" />
-                    <Legend wrapperStyle={{ fontSize: 12, color: "hsl(var(--muted-foreground))" }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : <EmptyState message="No mood data yet. Complete daily check-ins to see trends." />}
-            </ChartCard>
-            <ChartCard title="XP Progression" icon={<TrendingUp className="h-5 w-5" />}>
-              {cumulativeXp.some((d: any) => d.cumXp > 0) ? (
-                <ResponsiveContainer width="100%" height={250}>
-                  <AreaChart data={cumulativeXp}>
-                    <defs>
-                      <linearGradient id="xpGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.3} />
-                    <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                    <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                    <Tooltip content={<CustomTooltipContent />} />
-                    <Area type="monotone" dataKey="cumXp" stroke="hsl(var(--primary))" fill="url(#xpGradient)" strokeWidth={2} name="Cumulative XP" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : <EmptyState message="No XP data yet. Complete missions to track progression." />}
-            </ChartCard>
-          </div>
+          <ChartCard title="XP Progression" icon={<TrendingUp className="h-5 w-5" />}>
+            {cumulativeXp.some((d: any) => d.cumXp > 0) ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <AreaChart data={cumulativeXp}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.3} />
+                  <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <Tooltip content={<CustomTooltipContent />} />
+                  <Area type="monotone" dataKey="cumXp" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.15} strokeWidth={2} name="Cumulative XP" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : <EmptyState message="No XP data yet. Complete missions to track progression." />}
+          </ChartCard>
         );
       case 'missions-categories':
         return (
@@ -285,8 +243,8 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <ChartCard title="Difficulty Distribution" icon={<Zap className="h-5 w-5" />}>
               {difficultyData.length > 0 ? (
-                <div className="flex items-center gap-6">
-                  <ResponsiveContainer width="50%" height={220}>
+                <div className="flex flex-col sm:flex-row items-center gap-6">
+                  <ResponsiveContainer width="100%" height={220} className="sm:max-w-[50%]">
                     <PieChart>
                       <Pie
                         data={difficultyData}
@@ -300,17 +258,17 @@ export default function AnalyticsPage() {
                         stroke="hsl(var(--background))"
                       >
                         {difficultyData.map((entry, i) => (
-                          <Cell key={i} fill={entry.fill} />
+                          <Cell key={i} fill={`hsl(var(--primary) / ${1 - i * 0.15})`} />
                         ))}
                       </Pie>
                       <Tooltip content={<CustomTooltipContent />} />
                     </PieChart>
                   </ResponsiveContainer>
-                  <div className="flex-1 space-y-3">
-                    {difficultyData.map(d => (
+                  <div className="flex-1 space-y-3 w-full">
+                    {difficultyData.map((d, i) => (
                       <div key={d.rank} className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: d.fill }} />
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: `hsl(var(--primary) / ${1 - i * 0.15})` }} />
                           <span className="text-sm font-medium">Rank {d.rank}</span>
                         </div>
                         <div className="text-right">
@@ -326,11 +284,11 @@ export default function AnalyticsPage() {
             <ChartCard title="Category Breakdown" icon={<Calendar className="h-5 w-5" />}>
               {categoryData.length > 0 ? (
                 <div className="space-y-4">
-                  {categoryData.map(cat => (
+                  {categoryData.map((cat, i) => (
                     <div key={cat.name} className="space-y-1.5">
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.fill }} />
+                          <div className="w-3 h-3 rounded-full bg-primary" style={{ opacity: 1 - i * 0.08 }} />
                           <span className="font-medium">{cat.name}</span>
                         </div>
                         <div className="flex items-center gap-3 text-muted-foreground">
@@ -340,8 +298,8 @@ export default function AnalyticsPage() {
                       </div>
                       <div className="w-full bg-muted/30 h-1.5 rounded-full overflow-hidden">
                         <div
-                          className="h-full rounded-full transition-all"
-                          style={{ width: `${cat.completionRate}%`, backgroundColor: cat.fill }}
+                          className="h-full rounded-full bg-primary transition-all"
+                          style={{ width: `${cat.completionRate}%`, opacity: 1 - i * 0.08 }}
                         />
                       </div>
                     </div>
@@ -353,7 +311,7 @@ export default function AnalyticsPage() {
         );
       case 'completion-rate':
         return (
-          <div className="flex items-center justify-center py-6">
+          <div className="flex flex-col sm:flex-row items-center justify-center py-6 gap-8">
             <div className="relative w-40 h-40">
               <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
                 <circle cx="50" cy="50" r="42" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" opacity="0.2" />
@@ -362,27 +320,27 @@ export default function AnalyticsPage() {
                   stroke="hsl(var(--primary))"
                   strokeWidth="8"
                   strokeLinecap="round"
-                  strokeDasharray={`${summary.completionRate * 2.64} 264`}
+                  strokeDasharray={`${(summary.completionRate || 0) * 2.64} 264`}
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-4xl font-mono font-bold text-primary">{summary.completionRate}%</span>
+                <span className="text-4xl font-mono font-bold text-primary">{summary.completionRate || 0}%</span>
                 <span className="text-xs text-muted-foreground mt-1">overall</span>
               </div>
             </div>
-            <div className="ml-10 space-y-4">
-              <StatRow label="Total Missions" value={summary.totalMissions} />
-              <StatRow label="Completed" value={summary.completedMissions} />
-              <StatRow label="In Progress" value={summary.totalMissions - summary.completedMissions} />
-              <StatRow label="Total XP Earned" value={summary.totalXpEarned.toLocaleString()} />
+            <div className="space-y-4">
+              <StatRow label="Total Missions" value={summary.totalMissions || 0} />
+              <StatRow label="Completed" value={summary.completedMissions || 0} />
+              <StatRow label="In Progress" value={(summary.totalMissions || 0) - (summary.completedMissions || 0)} />
+              <StatRow label="Total XP Earned" value={(summary.totalXpEarned || 0).toLocaleString()} />
             </div>
           </div>
         );
       case 'activity-heatmap':
-        if (!streakHistory) return null;
+        if (!streakHistory || streakHistory.length === 0) return null;
         return <ActivityHeatmap streakHistory={streakHistory} />;
       case 'weekly-patterns':
-        if (!weeklyPatterns) return null;
+        if (!weeklyPatterns || weeklyPatterns.length === 0) return null;
         return (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <ChartCard title="Weekly Productivity" icon={<BarChart3 className="h-5 w-5" />}>
@@ -412,66 +370,6 @@ export default function AnalyticsPage() {
             </ChartCard>
           </div>
         );
-      case 'token-wellness':
-        if (!tokenEfficiency) return null;
-        return (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ChartCard title="Token Efficiency" icon={<Zap className="h-5 w-5" />}>
-              <div className="flex items-center justify-center py-6">
-                <div className="relative w-40 h-40">
-                  <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                    <circle cx="50" cy="50" r="42" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" opacity="0.2" />
-                    <circle
-                      cx="50" cy="50" r="42" fill="none"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth="8"
-                      strokeLinecap="round"
-                      strokeDasharray={`${tokenEfficiency.efficiency * 2.64} 264`}
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-4xl font-mono font-bold text-primary">{tokenEfficiency.efficiency}%</span>
-                    <span className="text-xs text-muted-foreground mt-1">efficiency</span>
-                  </div>
-                </div>
-                <div className="ml-10 space-y-4">
-                  <StatRow label="Total Energy" value={tokenEfficiency.totalEnergyCost.toLocaleString()} />
-                  <StatRow label="Completed Energy" value={tokenEfficiency.completedEnergyCost.toLocaleString()} />
-                  <StatRow label="Efficiency" value={`${tokenEfficiency.efficiency}%`} />
-                </div>
-              </div>
-            </ChartCard>
-            {sleepWellnessCorrelation && sleepWellnessCorrelation.length > 0 ? (
-              <ChartCard title="Sleep & Wellness" icon={<Heart className="h-5 w-5" />}>
-                <ResponsiveContainer width="100%" height={250}>
-                  <ScatterChart>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.3} />
-                    <XAxis dataKey="sleepHours" name="Sleep Hours" type="number" domain={['auto', 'auto']} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} label={{ value: "Sleep Hours", position: "insideBottom", offset: -5, style: { fontSize: 11, fill: "hsl(var(--muted-foreground))" } }} />
-                    <YAxis dataKey="mood" name="Mood" type="number" domain={[0, 10]} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} label={{ value: "Mood", angle: -90, position: "insideLeft", style: { fontSize: 11, fill: "hsl(var(--muted-foreground))" } }} />
-                    <Tooltip
-                      content={({ active, payload }: any) => {
-                        if (!active || !payload?.length) return null;
-                        const d = payload[0].payload;
-                        return (
-                          <div className="bg-card/95 backdrop-blur border border-primary/30 rounded-lg px-3 py-2 shadow-lg">
-                            <p className="text-xs text-muted-foreground mb-1">{d.date}</p>
-                            <p className="text-sm text-primary">Sleep: {d.sleepHours}h</p>
-                            <p className="text-sm text-primary">Mood: {d.mood}/10</p>
-                          </div>
-                        );
-                      }}
-                    />
-                    <Scatter data={sleepWellnessCorrelation} fill="hsl(var(--primary))" fillOpacity={0.7} />
-                  </ScatterChart>
-                </ResponsiveContainer>
-              </ChartCard>
-            ) : (
-              <ChartCard title="Sleep & Wellness" icon={<Heart className="h-5 w-5" />}>
-                <EmptyState message="No sleep & wellness data yet. Log your sleep and mood in daily check-ins." />
-              </ChartCard>
-            )}
-          </div>
-        );
       case 'personal-records':
         if (!personalRecords) return null;
         return (
@@ -479,19 +377,19 @@ export default function AnalyticsPage() {
             <RecordCard
               icon={<Trophy className="h-6 w-6" />}
               label="Best Day"
-              value={`${personalRecords.bestDayMissions} missions`}
+              value={`${personalRecords.bestDayMissions || 0} missions`}
               sub={personalRecords.bestDayDate ? formatDate(personalRecords.bestDayDate) : "—"}
             />
             <RecordCard
               icon={<Crown className="h-6 w-6" />}
               label="Best XP Day"
-              value={`${personalRecords.bestDayXp.toLocaleString()} XP`}
+              value={`${(personalRecords.bestDayXp || 0).toLocaleString()} XP`}
               sub="single day record"
             />
             <RecordCard
               icon={<Flame className="h-6 w-6" />}
               label="Longest Streak"
-              value={`${personalRecords.longestStreak} days`}
+              value={`${personalRecords.longestStreak || 0} days`}
               sub="consecutive active"
             />
             <RecordCard
@@ -503,7 +401,7 @@ export default function AnalyticsPage() {
             <RecordCard
               icon={<Calendar className="h-6 w-6" />}
               label="Active Days"
-              value={`${personalRecords.totalDaysActive}`}
+              value={`${personalRecords.totalDaysActive || 0}`}
               sub="days with completions"
             />
           </div>
@@ -513,7 +411,7 @@ export default function AnalyticsPage() {
         if (goals.length === 0) return <EmptyState message="No mission objectives yet. Create vision objectives to see analytics." />;
         const categories = ['legacy', '10year', '5year', '18month', '90day'];
         const categoryLabels: Record<string, string> = { legacy: 'Legacy', '10year': '10 Year', '5year': '5 Year', '18month': '18 Month', '90day': '90 Day' };
-        const categoryData = categories.map(cat => {
+        const mileCategoryData = categories.map(cat => {
           const catGoals = goals.filter((g: any) => g.category === cat);
           const completed = catGoals.filter((g: any) => g.completed).length;
           return { category: categoryLabels[cat], total: catGoals.length, completed, rate: catGoals.length > 0 ? Math.round((completed / catGoals.length) * 100) : 0 };
@@ -537,11 +435,11 @@ export default function AnalyticsPage() {
                   <span className="text-primary font-mono font-semibold">{completedGoals}/{totalGoals} ({overallRate}%)</span>
                 </div>
                 <div className="w-full bg-muted/30 h-3 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full bg-gradient-to-r from-primary/60 to-primary transition-all" style={{ width: `${overallRate}%` }} />
+                  <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${overallRate}%` }} />
                 </div>
               </div>
               <div className="space-y-3">
-                {categoryData.map(cat => (
+                {mileCategoryData.map(cat => (
                   <div key={cat.category}>
                     <div className="flex justify-between text-xs mb-1">
                       <span className="text-muted-foreground">{cat.category}</span>
@@ -553,9 +451,9 @@ export default function AnalyticsPage() {
                   </div>
                 ))}
               </div>
-              {categoryData.length > 0 && (
+              {mileCategoryData.length > 0 && (
                 <ResponsiveContainer width="100%" height={200} className="mt-4">
-                  <BarChart data={categoryData}>
+                  <BarChart data={mileCategoryData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.3} />
                     <XAxis dataKey="category" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                     <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
@@ -593,11 +491,11 @@ export default function AnalyticsPage() {
                   <p className="text-xs text-muted-foreground">Total</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-background/50 border border-muted/20">
-                  <p className="text-2xl font-mono font-bold text-green-400">{completedGoals}</p>
+                  <p className="text-2xl font-mono font-bold text-primary">{completedGoals}</p>
                   <p className="text-xs text-muted-foreground">Done</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-background/50 border border-muted/20">
-                  <p className="text-2xl font-mono font-bold text-foreground">{totalGoals - completedGoals}</p>
+                  <p className="text-2xl font-mono font-bold text-primary">{totalGoals - completedGoals}</p>
                   <p className="text-xs text-muted-foreground">Pending</p>
                 </div>
               </div>
@@ -611,41 +509,44 @@ export default function AnalyticsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl py-8 px-4">
+    <div className="mx-auto max-w-5xl py-8 px-4">
       <div className="mb-6">
-        <Link href="/dashboard" className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors rounded-md px-3 py-2">
+        <Link href="/chronilog" className="inline-flex items-center gap-2 bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs rounded-md px-3 py-2 transition-colors">
           <ArrowLeft className="h-4 w-4" />
-          <span>Back to Dashboard</span>
+          <span>Back</span>
         </Link>
       </div>
 
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
         <div className="flex items-center">
           <BarChart3 className="h-8 w-8 mr-3 text-primary" />
-          <h1 className="text-3xl font-orbitron">Tracker</h1>
+          <h1 className="text-3xl font-orbitron text-primary">Tracker</h1>
         </div>
-        <div className="flex gap-1 bg-card/30 backdrop-blur border border-primary/20 rounded-lg p-1">
-          {RANGE_OPTIONS.map(opt => (
-            <button
-              key={opt.value}
-              onClick={() => setDays(opt.value)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                days === opt.value
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-primary/10"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground font-mono">Period:</span>
+          <div className="flex gap-1">
+            {RANGE_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setDays(opt.value)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-all duration-200 border ${
+                  days === opt.value
+                    ? "bg-primary/20 border-primary/50 text-primary"
+                    : "bg-background/40 border-muted/20 text-muted-foreground hover:border-primary/30 hover:text-primary/80"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <SummaryCard icon={<Target className="h-5 w-5" />} label="Missions Done" value={summary.completedMissions} sub={`of ${summary.totalMissions}`} />
-        <SummaryCard icon={<Award className="h-5 w-5" />} label="XP Earned" value={summary.totalXpEarned.toLocaleString()} sub={`Level ${summary.currentLevel}`} />
-        <SummaryCard icon={<Flame className="h-5 w-5" />} label="Streak" value={`${summary.currentStreak}d`} sub="consecutive" />
-        <SummaryCard icon={<Brain className="h-5 w-5" />} label="Avg Mood" value={summary.avgMoodScore} sub={`${summary.daysTracked} days tracked`} />
+        <SummaryCard icon={<Target className="h-5 w-5" />} label="Missions Done" value={summary.completedMissions || 0} sub={`of ${summary.totalMissions || 0}`} />
+        <SummaryCard icon={<Award className="h-5 w-5" />} label="XP Earned" value={(summary.totalXpEarned || 0).toLocaleString()} sub={`Level ${summary.currentLevel || 1}`} />
+        <SummaryCard icon={<Flame className="h-5 w-5" />} label="Streak" value={`${summary.currentStreak || 0}d`} sub="consecutive" />
+        <SummaryCard icon={<Zap className="h-5 w-5" />} label="Efficiency" value={`${tokenEfficiency.efficiency || 0}%`} sub="token usage" />
       </div>
 
       <div className="space-y-6">
@@ -724,50 +625,44 @@ function ActivityHeatmap({ streakHistory }: { streakHistory: { date: string; cou
   }
 
   return (
-    <div className="glassmorphic rounded-xl p-6 border border-primary/20 mb-6 mt-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Activity className="h-5 w-5 text-primary" />
-        <h2 className="font-orbitron text-lg text-primary">Activity Heatmap</h2>
-      </div>
-      <div className="overflow-x-auto">
-        <div className="min-w-[600px]">
-          <div className="flex gap-0.5 mb-1 ml-8">
-            {monthLabels.map((m, i) => (
-              <div
-                key={i}
-                className="text-[10px] text-muted-foreground"
-                style={{ position: "relative", left: `${m.weekIndex * 14}px` }}
-              >
-                {m.label}
-              </div>
+    <div className="overflow-x-auto">
+      <div className="min-w-[400px]">
+        <div className="flex gap-0.5 mb-1 ml-8">
+          {monthLabels.map((m, i) => (
+            <div
+              key={i}
+              className="text-[10px] text-muted-foreground"
+              style={{ position: "relative", left: `${m.weekIndex * 14}px` }}
+            >
+              {m.label}
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-0.5">
+          <div className="flex flex-col gap-0.5 mr-1">
+            {["S","M","T","W","T","F","S"].map((d, i) => (
+              <div key={i} className="w-6 h-[12px] text-[9px] text-muted-foreground flex items-center justify-end pr-1">{i % 2 === 1 ? d : ""}</div>
             ))}
           </div>
-          <div className="flex gap-0.5">
-            <div className="flex flex-col gap-0.5 mr-1">
-              {["S","M","T","W","T","F","S"].map((d, i) => (
-                <div key={i} className="w-6 h-[12px] text-[9px] text-muted-foreground flex items-center justify-end pr-1">{i % 2 === 1 ? d : ""}</div>
+          {weeks.map((week, wi) => (
+            <div key={wi} className="flex flex-col gap-0.5">
+              {week.map((day, di) => (
+                <div
+                  key={di}
+                  className="w-[12px] h-[12px] rounded-[2px] transition-colors"
+                  style={{ backgroundColor: getColor(day.count) }}
+                  title={day.date ? `${day.date}: ${day.count} missions` : ""}
+                />
               ))}
             </div>
-            {weeks.map((week, wi) => (
-              <div key={wi} className="flex flex-col gap-0.5">
-                {week.map((day, di) => (
-                  <div
-                    key={di}
-                    className="w-[12px] h-[12px] rounded-[2px] transition-colors"
-                    style={{ backgroundColor: getColor(day.count) }}
-                    title={day.date ? `${day.date}: ${day.count} missions` : ""}
-                  />
-                ))}
-              </div>
-            ))}
-          </div>
-          <div className="flex items-center gap-1 mt-3 ml-8">
-            <span className="text-[10px] text-muted-foreground mr-1">Less</span>
-            {[0, 1, 3, 5].map((v, i) => (
-              <div key={i} className="w-[12px] h-[12px] rounded-[2px]" style={{ backgroundColor: getColor(v) }} />
-            ))}
-            <span className="text-[10px] text-muted-foreground ml-1">More</span>
-          </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-1 mt-3 ml-8">
+          <span className="text-[10px] text-muted-foreground mr-1">Less</span>
+          {[0, 1, 3, 5].map((v, i) => (
+            <div key={i} className="w-[12px] h-[12px] rounded-[2px]" style={{ backgroundColor: getColor(v) }} />
+          ))}
+          <span className="text-[10px] text-muted-foreground ml-1">More</span>
         </div>
       </div>
     </div>
@@ -779,7 +674,7 @@ function RecordCard({ icon, label, value, sub }: { icon: React.ReactNode; label:
     <div className="glassmorphic rounded-xl p-4 border border-primary/20 hover:border-primary/40 transition-colors text-center">
       <div className="flex justify-center text-primary mb-2">{icon}</div>
       <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{label}</div>
-      <div className="text-lg font-mono font-bold text-foreground">{value}</div>
+      <div className="text-lg font-mono font-bold text-primary">{value}</div>
       <div className="text-xs text-muted-foreground mt-1">{sub}</div>
     </div>
   );
@@ -789,7 +684,7 @@ function SummaryCard({ icon, label, value, sub }: { icon: React.ReactNode; label
   return (
     <div className="glassmorphic rounded-xl p-4 border border-primary/20 hover:border-primary/40 transition-colors">
       <div className="flex items-center gap-2 text-primary mb-2">{icon}<span className="text-xs text-muted-foreground uppercase tracking-wide">{label}</span></div>
-      <div className="text-2xl font-mono font-bold text-foreground">{value}</div>
+      <div className="text-2xl font-mono font-bold text-primary">{value}</div>
       <div className="text-xs text-muted-foreground mt-1">{sub}</div>
     </div>
   );
@@ -797,7 +692,7 @@ function SummaryCard({ icon, label, value, sub }: { icon: React.ReactNode; label
 
 function ChartCard({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="glassmorphic rounded-xl p-6 border border-primary/20">
+    <div className="glassmorphic rounded-xl p-4 sm:p-6 border border-primary/20">
       <div className="flex items-center gap-2 mb-4">
         <span className="text-primary">{icon}</span>
         <h2 className="font-orbitron text-lg text-primary">{title}</h2>
@@ -819,7 +714,7 @@ function StatRow({ label, value }: { label: string; value: any }) {
   return (
     <div className="flex items-center justify-between gap-8">
       <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-mono font-medium text-foreground">{value}</span>
+      <span className="text-sm font-mono font-medium text-primary">{value}</span>
     </div>
   );
 }

@@ -4986,7 +4986,8 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
         average: Math.round(((log.mentalState ?? 5) + (log.physicalState ?? 5) + (log.emotionalState ?? 5)) / 3 * 10) / 10,
       }));
 
-      const activeMissions = allMissions.filter(m => !m.deletedAt);
+      const excludedCategories = ['onboarding', 'todo'];
+      const activeMissions = allMissions.filter(m => !m.deletedAt && !excludedCategories.includes((m.category || '').toLowerCase()));
       const completedMissions = activeMissions.filter(m => m.completed);
 
       const completionsByDay: Record<string, number> = {};
@@ -5279,6 +5280,18 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
       const avgXpPerMission = completedMissions.length > 0 ? Math.round(totalXpEarned / completedMissions.length) : 0;
       const avgEnergyPerMission = completedMissions.length > 0 ? Math.round(totalEnergySpent / completedMissions.length) : 0;
 
+      const sleepWellnessCorrelation = dailyLogs
+        .filter(log => log.wakeTime && log.sleepTime && log.mentalState != null && log.physicalState != null && log.emotionalState != null)
+        .map(log => {
+          const [wH, wM] = (log.wakeTime as string).split(":").map(Number);
+          const [sH, sM] = (log.sleepTime as string).split(":").map(Number);
+          let diffMin = (wH * 60 + wM) - (sH * 60 + sM);
+          if (diffMin < 0) diffMin += 24 * 60;
+          const sleepHours = Math.round(diffMin / 60 * 10) / 10;
+          const mood = Math.round(((log.mentalState ?? 5) + (log.physicalState ?? 5) + (log.emotionalState ?? 5)) / 3 * 10) / 10;
+          return { date: log.date, sleepHours, mood };
+        });
+
       res.json({
         xpTrend,
         energyTrend,
@@ -5289,6 +5302,7 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
         moodTrend,
         topMissions,
         weekdayPatterns,
+        sleepWellnessCorrelation,
         summary: {
           totalMissions: activeMissions.length,
           completedMissions: completedMissions.length,
