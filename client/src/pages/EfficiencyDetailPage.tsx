@@ -11,9 +11,9 @@ import { AreaChart, Area, BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tool
 const DAY_OPTIONS = [7, 14, 30, 90];
 
 function getStatusBadge(score: number): { label: string; color: string; bg: string } {
-  if (score >= 80) return { label: "OPTIMAL", color: "text-emerald-400", bg: "bg-emerald-500/20 border-emerald-500/30" };
-  if (score >= 50) return { label: "MODERATE", color: "text-yellow-400", bg: "bg-yellow-500/20 border-yellow-500/30" };
-  return { label: "LOW", color: "text-red-400", bg: "bg-red-500/20 border-red-500/30" };
+  if (score >= 80) return { label: "OPTIMAL", color: "text-primary", bg: "bg-primary/20 border-primary/30" };
+  if (score >= 50) return { label: "MODERATE", color: "text-primary/80", bg: "bg-primary/15 border-primary/25" };
+  return { label: "LOW", color: "text-primary/60", bg: "bg-primary/10 border-primary/20" };
 }
 
 export default function EfficiencyDetailPage() {
@@ -125,12 +125,12 @@ export default function EfficiencyDetailPage() {
                 <span className="font-mono text-white font-semibold">95%</span>
               </div>
               <div className="flex items-center gap-2 bg-background/40 rounded-lg px-4 py-3 border border-muted/20">
-                <TrendingUp className="h-4 w-4 text-emerald-400" />
+                <TrendingUp className="h-4 w-4 text-primary" />
                 <span className="text-muted-foreground text-sm">Gap:</span>
                 <span className="font-mono text-white font-semibold">{Math.max(95 - stats.efficiencyScore, 0)}%</span>
               </div>
               <div className="flex items-center gap-2 bg-background/40 rounded-lg px-4 py-3 border border-muted/20">
-                <Zap className="h-4 w-4 text-yellow-400" />
+                <Zap className="h-4 w-4 text-primary" />
                 <span className="text-muted-foreground text-sm">Completion:</span>
                 <span className="font-mono text-white font-semibold">{taskCompletionScore}%</span>
               </div>
@@ -189,7 +189,7 @@ export default function EfficiencyDetailPage() {
                   />
                   <YAxis tick={{ fill: "#9ca3af", fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: "rgba(0,0,0,0.9)", border: "1px solid rgba(0,224,255,0.3)", borderRadius: 8 }}
+                    contentStyle={{ backgroundColor: "rgba(0,0,0,0.9)", border: "1px solid hsl(var(--primary) / 0.3)", borderRadius: 8 }}
                     labelStyle={{ color: "#9ca3af", fontSize: 12 }}
                     labelFormatter={(val: string) => {
                       const d = new Date(val + "T00:00:00");
@@ -237,7 +237,7 @@ export default function EfficiencyDetailPage() {
                   />
                   <YAxis tick={{ fill: "#9ca3af", fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: "rgba(0,0,0,0.9)", border: "1px solid rgba(0,224,255,0.3)", borderRadius: 8 }}
+                    contentStyle={{ backgroundColor: "rgba(0,0,0,0.9)", border: "1px solid hsl(var(--primary) / 0.3)", borderRadius: 8 }}
                     labelStyle={{ color: "#9ca3af", fontSize: 12 }}
                     labelFormatter={(val: string) => {
                       const d = new Date(val + "T00:00:00");
@@ -259,10 +259,10 @@ export default function EfficiencyDetailPage() {
 
             <div className="space-y-5">
               {efficiencyMetrics.map((metric) => {
-                const barColor =
-                  metric.score >= 80 ? "from-emerald-500 to-emerald-400" :
-                  metric.score >= 50 ? "from-yellow-500 to-yellow-400" :
-                  "from-red-500 to-red-400";
+                const barOpacity =
+                  metric.score >= 80 ? "from-primary to-primary/80" :
+                  metric.score >= 50 ? "from-primary/80 to-primary/60" :
+                  "from-primary/60 to-primary/40";
 
                 return (
                   <div key={metric.name} className="group">
@@ -282,7 +282,7 @@ export default function EfficiencyDetailPage() {
                     </div>
                     <div className="w-full bg-muted/20 h-2 rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full bg-gradient-to-r ${barColor} transition-all duration-700 ease-out`}
+                        className={`h-full rounded-full bg-gradient-to-r ${barOpacity} transition-all duration-700 ease-out`}
                         style={{ width: `${metric.score}%` }}
                       />
                     </div>
@@ -311,10 +311,10 @@ export default function EfficiencyDetailPage() {
               <div className="space-y-4">
                 {Object.entries(categoryStats).map(([category, catData]: [string, any]) => {
                   const catCompletionRate = catData.total > 0 ? Math.round((catData.completed / catData.total) * 100) : 0;
-                  const catColor =
-                    catCompletionRate >= 80 ? "from-emerald-500 to-emerald-400" :
-                    catCompletionRate >= 50 ? "from-yellow-500 to-yellow-400" :
-                    "from-red-500 to-red-400";
+                  const catBarOpacity =
+                    catCompletionRate >= 80 ? "from-primary to-primary/80" :
+                    catCompletionRate >= 50 ? "from-primary/80 to-primary/60" :
+                    "from-primary/60 to-primary/40";
 
                   return (
                     <div key={category} className="p-4 rounded-xl border border-muted/20 bg-background/30 hover:border-primary/30 transition-colors">
@@ -324,24 +324,24 @@ export default function EfficiencyDetailPage() {
                           <h3 className="text-sm font-semibold text-white capitalize">{category}</h3>
                         </div>
                         <div className="flex items-center gap-3 text-xs">
-                          <span className={`font-mono font-bold ${catCompletionRate >= 80 ? "text-emerald-400" : catCompletionRate >= 50 ? "text-yellow-400" : "text-red-400"}`}>
+                          <span className="font-mono font-bold text-primary">
                             {catCompletionRate}%
                           </span>
                         </div>
                       </div>
                       <div className="w-full bg-muted/20 h-2 rounded-full overflow-hidden mb-3">
                         <div
-                          className={`h-full rounded-full bg-gradient-to-r ${catColor} transition-all duration-500`}
+                          className={`h-full rounded-full bg-gradient-to-r ${catBarOpacity} transition-all duration-500`}
                           style={{ width: `${catCompletionRate}%` }}
                         />
                       </div>
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         <div className="flex items-center gap-1">
-                          <CheckCircle className="h-3 w-3 text-emerald-400" />
+                          <CheckCircle className="h-3 w-3 text-primary" />
                           <span>{catData.completed}/{catData.total} missions</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <Zap className="h-3 w-3 text-yellow-400" />
+                          <Zap className="h-3 w-3 text-primary/80" />
                           <span>{catData.totalEnergy ?? 0} energy</span>
                         </div>
                         <div className="flex items-center gap-1">
@@ -376,7 +376,7 @@ export default function EfficiencyDetailPage() {
                   <XAxis dataKey="day" tick={{ fill: "#9ca3af", fontSize: 12 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fill: "#9ca3af", fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: "rgba(0,0,0,0.9)", border: "1px solid rgba(0,224,255,0.3)", borderRadius: 8 }}
+                    contentStyle={{ backgroundColor: "rgba(0,0,0,0.9)", border: "1px solid hsl(var(--primary) / 0.3)", borderRadius: 8 }}
                     labelStyle={{ color: "#9ca3af", fontSize: 12 }}
                     itemStyle={{ fontSize: 13 }}
                   />
@@ -397,11 +397,11 @@ export default function EfficiencyDetailPage() {
                     <>
                       <div className="bg-background/40 rounded-lg px-3 py-2 border border-muted/20 text-center">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Most Productive</p>
-                        <p className="text-sm font-mono font-bold text-emerald-400">{maxDay?.day ?? "—"}</p>
+                        <p className="text-sm font-mono font-bold text-primary">{maxDay?.day ?? "—"}</p>
                       </div>
                       <div className="bg-background/40 rounded-lg px-3 py-2 border border-muted/20 text-center">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Least Active</p>
-                        <p className="text-sm font-mono font-bold text-red-400">{minDay?.day ?? "—"}</p>
+                        <p className="text-sm font-mono font-bold text-primary/60">{minDay?.day ?? "—"}</p>
                       </div>
                       <div className="bg-background/40 rounded-lg px-3 py-2 border border-muted/20 text-center">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Total</p>
