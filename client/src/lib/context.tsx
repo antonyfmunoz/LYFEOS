@@ -892,7 +892,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       }
 
       if (currentQuest.visionGoalId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/quests/linked-by-vision-goal'] });
+        queryClient.refetchQueries({ queryKey: ['/api/quests/linked-by-vision-goal'] });
       }
     } catch (error) {
       setQuests(quests);

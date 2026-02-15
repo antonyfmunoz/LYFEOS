@@ -544,7 +544,7 @@ export default function GoalsArchivePage() {
   usePageTitle('Vision');
 
   const { user } = useAuth();
-  const { updateUserStats } = useLYFEOS();
+  const { updateUserStats, refetchQuests } = useLYFEOS();
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
@@ -568,40 +568,36 @@ export default function GoalsArchivePage() {
       .finally(() => setGoalsQueryLoading(false));
   }, [user]);
 
+  const linkedQueryOptions = { staleTime: 0, refetchOnMount: 'always' as const };
   const { data: legacyMissions = [] } = useQuery<LinkedMission[]>({
     queryKey: ['/api/quests/linked-by-vision-goal', 'legacy'],
     queryFn: async () => { const res = await fetch('/api/quests/linked-by-vision-goal/legacy', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
     enabled: !!user,
-    staleTime: 0,
-    refetchOnMount: 'always',
+    ...linkedQueryOptions,
   });
   const { data: tenYearMissions = [] } = useQuery<LinkedMission[]>({
     queryKey: ['/api/quests/linked-by-vision-goal', '10year'],
     queryFn: async () => { const res = await fetch('/api/quests/linked-by-vision-goal/10year', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
     enabled: !!user,
-    staleTime: 0,
-    refetchOnMount: 'always',
+    ...linkedQueryOptions,
   });
   const { data: fiveYearMissions = [] } = useQuery<LinkedMission[]>({
     queryKey: ['/api/quests/linked-by-vision-goal', '5year'],
     queryFn: async () => { const res = await fetch('/api/quests/linked-by-vision-goal/5year', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
     enabled: !!user,
-    staleTime: 0,
-    refetchOnMount: 'always',
+    ...linkedQueryOptions,
   });
   const { data: eighteenMonthMissions = [] } = useQuery<LinkedMission[]>({
     queryKey: ['/api/quests/linked-by-vision-goal', '18month'],
     queryFn: async () => { const res = await fetch('/api/quests/linked-by-vision-goal/18month', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
     enabled: !!user,
-    staleTime: 0,
-    refetchOnMount: 'always',
+    ...linkedQueryOptions,
   });
   const { data: ninetyDayMissions = [] } = useQuery<LinkedMission[]>({
     queryKey: ['/api/quests/linked-by-vision-goal', '90day'],
     queryFn: async () => { const res = await fetch('/api/quests/linked-by-vision-goal/90day', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
     enabled: !!user,
-    staleTime: 0,
-    refetchOnMount: 'always',
+    ...linkedQueryOptions,
   });
 
   const linkedMissionsMap: Record<string, LinkedMission[]> = {
@@ -640,13 +636,18 @@ export default function GoalsArchivePage() {
       if (!completed && result.reconnectedMissions && result.reconnectedMissions.length > 0) {
         queryClient.setQueryData<LinkedMission[]>(
           ['/api/quests/linked-by-vision-goal', category],
-          (old) => [...(old || []), ...result.reconnectedMissions!]
+          (old) => {
+            const existing = old || [];
+            const existingIds = new Set(existing.map(m => m.id));
+            const newMissions = result.reconnectedMissions!.filter(m => !existingIds.has(m.id));
+            return [...existing, ...newMissions];
+          }
         );
       }
 
-      queryClient.invalidateQueries({ queryKey: ['/api/quests/linked-by-vision-goal'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/quests'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/quests/linked-by-vision-goal'] });
       queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
+      refetchQuests();
       if (result.updatedStats) {
         updateUserStats(result.updatedStats);
       }
