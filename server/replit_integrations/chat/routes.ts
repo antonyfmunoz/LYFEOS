@@ -2,6 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import Anthropic from "@anthropic-ai/sdk";
 import { chatStorage } from "./storage";
 import { storage } from "../../storage";
+import * as cheerio from 'cheerio';
 
 const anthropic = new Anthropic({
   apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
@@ -268,6 +269,13 @@ ${customCats || 'None created'}
 
 === CAPABILITIES ===
 You can take actions for the Player using tools. When asked to do something (create, delete, complete, update missions, schedule events, update daily logs, etc.), use the appropriate tool immediately. Confirm what you did clearly and concisely.
+
+AUTONOMOUS AGENT CAPABILITIES:
+- Search the internet with web_search and read full articles with read_webpage to gather real-world information
+- Create vision milestones with create_vision_goal across all 5 time horizons (90day, 18month, 5year, 10year, legacy)
+- Build full plans using batch_create_missions to create multiple related missions at once, optionally linked to a vision goal
+- Chain multiple tools together autonomously: for example, research a topic online, then create a vision goal, then break it into missions -- all in one interaction
+- You have up to 10 tool iterations per request, so tackle complex multi-step requests end-to-end without asking the user to repeat themselves
 
 When creating missions, use sensible defaults:
 - category: ALWAYS choose the most fitting category from: 'work', 'health', 'fitness', 'finance', 'learning', 'creative', 'social', 'personal', 'mindset', 'career', 'nutrition', 'recovery', 'planning', 'spiritual', 'household'${customCats ? `, or custom categories: ${customCats}` : ''}. Never use 'general'. Default to 'personal' if unclear.
@@ -555,6 +563,85 @@ const tools: Anthropic.Messages.Tool[] = [
       type: "object" as const,
       properties: {},
       required: []
+    }
+  },
+  {
+    name: "web_search",
+    description: "Search the internet for information. Use when the user asks about current events, needs to research a topic, wants to find articles, or needs information that isn't available in their LYFEOS data. Returns top search results with titles, URLs, and snippets.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        query: { type: "string", description: "The search query to look up on the internet" }
+      },
+      required: ["query"]
+    }
+  },
+  {
+    name: "read_webpage",
+    description: "Read and extract the main text content from a web page URL. Use after web_search to read a specific article or page in detail, or when the user provides a URL they want you to read.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        url: { type: "string", description: "The full URL of the web page to read" }
+      },
+      required: ["url"]
+    }
+  },
+  {
+    name: "create_vision_goal",
+    description: "Create a new vision milestone/goal for the user. Use when user wants to set a new milestone, vision goal, or long-term target. Vision goals are organized by time horizon.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        title: { type: "string", description: "The milestone title" },
+        description: { type: "string", description: "Description of the milestone" },
+        category: { type: "string", description: "Time horizon: '90day', '18month', '5year', '10year', or 'legacy'" },
+        rewardText: { type: "string", description: "Personal reward for completing this milestone (e.g., 'Buy new shoes')" },
+        bonusXp: { type: "number", description: "Bonus XP awarded on completion (0-500)", default: 0 }
+      },
+      required: ["title", "category"]
+    }
+  },
+  {
+    name: "batch_create_missions",
+    description: "Create multiple missions at once. Use when the user asks you to build a plan, break down a goal into tasks, or create several related missions. Much more efficient than creating one at a time.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        missions: {
+          type: "array",
+          description: "Array of mission objects to create",
+          items: {
+            type: "object",
+            properties: {
+              title: { type: "string", description: "Mission title" },
+              description: { type: "string", description: "Mission description" },
+              category: { type: "string", description: "Category" },
+              difficulty: { type: "string", description: "Difficulty: S, A, B, C, or D" },
+              startDate: { type: "string", description: "Start date YYYY-MM-DD" },
+              dueDate: { type: "string", description: "Due date YYYY-MM-DD" },
+              energyCost: { type: "number" },
+              attentionCost: { type: "number" },
+              timeCost: { type: "number" },
+              experienceReward: { type: "number" }
+            },
+            required: ["title", "description", "category"]
+          }
+        },
+        visionGoalId: { type: "number", description: "Optional vision goal ID to link all missions to" }
+      },
+      required: ["missions"]
+    }
+  },
+  {
+    name: "uncomplete_mission",
+    description: "Unmark a completed mission, returning it to active status and refunding resources. Use when user says 'uncomplete', 'undo completion', 'mark as not done'.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        mission_id: { type: "number", description: "The ID of the mission to uncomplete" }
+      },
+      required: ["mission_id"]
     }
   }
 ];
@@ -858,6 +945,179 @@ Write a 2-3 paragraph affirmation in second person ("You are..."). Make it power
         return JSON.stringify({ success: true, action: "stop_affirmation", message: "Affirmation playback stopped." });
       }
 
+      case "web_search": {
+        try {
+          const query = encodeURIComponent(input.query);
+          const response = await fetch(`https://html.duckduckgo.com/html/?q=${query}`, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+          });
+          const html = await response.text();
+          const $ = cheerio.load(html);
+          const results: { title: string; url: string; snippet: string }[] = [];
+          
+          $('.result').each((i, el) => {
+            if (results.length >= 8) return false;
+            const titleEl = $(el).find('.result__title .result__a');
+            const snippetEl = $(el).find('.result__snippet');
+            const title = titleEl.text().trim();
+            const href = titleEl.attr('href') || '';
+            const snippet = snippetEl.text().trim();
+            
+            if (title && href) {
+              let url = href;
+              if (href.startsWith('//duckduckgo.com/l/?')) {
+                const match = href.match(/uddg=([^&]+)/);
+                if (match) url = decodeURIComponent(match[1]);
+              }
+              results.push({ title, url, snippet });
+            }
+          });
+          
+          if (results.length === 0) {
+            return JSON.stringify({ success: true, action: "web_search", results: [], message: `No results found for "${input.query}".` });
+          }
+          return JSON.stringify({ success: true, action: "web_search", query: input.query, results, resultCount: results.length });
+        } catch (err: any) {
+          return JSON.stringify({ error: `Web search failed: ${err.message}` });
+        }
+      }
+
+      case "read_webpage": {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 10000);
+          const response = await fetch(input.url, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept': 'text/html,application/xhtml+xml'
+            },
+            signal: controller.signal,
+          });
+          clearTimeout(timeout);
+          
+          const contentType = response.headers.get('content-type') || '';
+          if (!contentType.includes('text/html') && !contentType.includes('application/xhtml')) {
+            return JSON.stringify({ error: `URL returned non-HTML content (${contentType}). Cannot extract text.` });
+          }
+          
+          const html = await response.text();
+          const $ = cheerio.load(html);
+          
+          $('script, style, nav, footer, header, iframe, noscript, svg, [role="navigation"], [role="banner"], .sidebar, .nav, .menu, .footer, .header, .ad, .advertisement, .cookie-banner').remove();
+          
+          const title = $('title').text().trim();
+          const metaDescription = $('meta[name="description"]').attr('content') || '';
+          
+          let mainContent = '';
+          const mainSelectors = ['article', 'main', '[role="main"]', '.post-content', '.article-content', '.entry-content', '.content'];
+          for (const selector of mainSelectors) {
+            const el = $(selector);
+            if (el.length > 0) {
+              mainContent = el.text().replace(/\s+/g, ' ').trim();
+              break;
+            }
+          }
+          
+          if (!mainContent || mainContent.length < 100) {
+            mainContent = $('body').text().replace(/\s+/g, ' ').trim();
+          }
+          
+          if (mainContent.length > 4000) {
+            mainContent = mainContent.substring(0, 4000) + '... [content truncated]';
+          }
+          
+          return JSON.stringify({ 
+            success: true, 
+            action: "read_webpage", 
+            url: input.url,
+            title,
+            description: metaDescription,
+            content: mainContent,
+            contentLength: mainContent.length
+          });
+        } catch (err: any) {
+          if (err.name === 'AbortError') {
+            return JSON.stringify({ error: `Webpage fetch timed out after 10 seconds for URL: ${input.url}` });
+          }
+          return JSON.stringify({ error: `Failed to read webpage: ${err.message}` });
+        }
+      }
+
+      case "create_vision_goal": {
+        const validHorizons = ['90day', '18month', '5year', '10year', 'legacy'];
+        if (!validHorizons.includes(input.category)) {
+          return JSON.stringify({ error: `Invalid time horizon. Must be one of: ${validHorizons.join(', ')}` });
+        }
+        const goal = await storage.createVisionGoal({
+          userId,
+          title: input.title,
+          description: input.description || "",
+          category: input.category,
+          rewardText: input.rewardText || null,
+          bonusXp: Math.min(input.bonusXp || 0, 500),
+          completed: false,
+          displayOrder: 0,
+        });
+        return JSON.stringify({ 
+          success: true, 
+          action: "create_vision_goal", 
+          message: `Vision milestone "${goal.title}" created in ${input.category} horizon.${input.rewardText ? ` Reward: ${input.rewardText}` : ''}${input.bonusXp ? ` Bonus XP: ${input.bonusXp}` : ''}`,
+          goalId: goal.id 
+        });
+      }
+
+      case "batch_create_missions": {
+        const difficultyXP: Record<string, number> = { S: 200, A: 100, B: 50, C: 25, D: 10 };
+        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+        const created: { id: number; title: string; xp: number }[] = [];
+        
+        for (const m of input.missions) {
+          const difficulty = m.difficulty || "D";
+          const xpReward = m.experienceReward || difficultyXP[difficulty] || 10;
+          const quest = await storage.createQuest({
+            userId,
+            title: m.title,
+            description: m.description || "",
+            category: m.category || "personal",
+            difficulty,
+            energyCost: m.energyCost ?? 1,
+            attentionCost: m.attentionCost ?? 0,
+            timeCost: m.timeCost ?? 0,
+            experienceReward: xpReward,
+            startDate: m.startDate || today,
+            endDate: null,
+            dueDate: m.dueDate || null,
+            completed: false,
+          });
+          if (input.visionGoalId) {
+            await storage.updateQuest(quest.id, { visionGoalId: input.visionGoalId } as any);
+          }
+          created.push({ id: quest.id, title: quest.title, xp: xpReward });
+        }
+        
+        const totalXP = created.reduce((s, c) => s + c.xp, 0);
+        return JSON.stringify({ 
+          success: true, 
+          action: "batch_create_missions",
+          message: `Created ${created.length} missions (${totalXP} total XP).${input.visionGoalId ? ` Linked to vision goal #${input.visionGoalId}.` : ''}`,
+          missions: created
+        });
+      }
+
+      case "uncomplete_mission": {
+        const quest = await storage.getQuest(input.mission_id);
+        if (!quest || quest.userId !== userId) return JSON.stringify({ error: "Mission not found or access denied" });
+        if (!quest.completed) return JSON.stringify({ error: "Mission is not completed." });
+        const result = await storage.toggleQuestCompletion(input.mission_id);
+        return JSON.stringify({ 
+          success: true, 
+          action: "uncomplete_mission",
+          message: `Mission "${quest.title}" marked as incomplete. Resources refunded.`
+        });
+      }
+
       default:
         return JSON.stringify({ error: `Unknown tool: ${toolName}` });
     }
@@ -995,16 +1255,18 @@ export function registerChatRoutes(app: Express): void {
       let toolActionsPerformed: string[] = [];
 
       let currentMessages = [...chatMessages];
-      let maxIterations = 5;
+      let maxIterations = 10;
       let fullResponse = "";
+      let toolsUsedCount = 0;
 
       while (maxIterations > 0) {
         maxIterations--;
 
-        const chatModel = selectModel(content);
+        const useSmartModel = toolsUsedCount > 0 || classifyComplexity(content) === "complex";
+        const chatModel = useSmartModel ? MODEL_SONNET : selectModel(content);
         const response = await anthropic.messages.create({
           model: chatModel,
-          max_tokens: 2048,
+          max_tokens: useSmartModel ? 4096 : 2048,
           system: systemPrompt,
           messages: currentMessages,
           tools,
@@ -1015,11 +1277,22 @@ export function registerChatRoutes(app: Express): void {
             (block): block is Anthropic.Messages.ToolUseBlock => block.type === "tool_use"
           );
 
+          const textBlocks = response.content.filter(
+            (block): block is Anthropic.Messages.TextBlock => block.type === "text"
+          );
+          const thinkingText = textBlocks.map(b => b.text).join("").trim();
+          if (thinkingText) {
+            res.write(`data: ${JSON.stringify({ thinking: thinkingText })}\n\n`);
+          }
+
           const toolResults: Anthropic.Messages.ToolResultBlockParam[] = [];
 
           for (const toolUse of toolUseBlocks) {
+            res.write(`data: ${JSON.stringify({ toolStart: { name: toolUse.name, input: toolUse.input } })}\n\n`);
+            
             const result = await executeTool(toolUse.name, toolUse.input, userId);
             toolActionsPerformed.push(result);
+            toolsUsedCount++;
             
             res.write(`data: ${JSON.stringify({ toolAction: JSON.parse(result) })}\n\n`);
 

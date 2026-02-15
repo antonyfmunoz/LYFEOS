@@ -150,7 +150,8 @@ export function useNovaActions() {
     for (const ta of toolActions) {
       executeToolAction(ta);
     }
-    if (toolActions.some(ta => ta.action === 'complete_mission' || ta.action === 'create_mission' || ta.action === 'terminate_mission' || ta.action === 'restore_mission' || ta.action === 'update_mission')) {
+    const missionActions = ['complete_mission', 'create_mission', 'terminate_mission', 'restore_mission', 'update_mission', 'batch_create_missions', 'uncomplete_mission'];
+    if (toolActions.some(ta => ta.action && missionActions.includes(ta.action))) {
       refetchQuests();
       queryClient.invalidateQueries({ queryKey: ["/api/quests"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-stats"] });
@@ -163,6 +164,9 @@ export function useNovaActions() {
     }
     if (toolActions.some(ta => ta.action === 'update_profile' || ta.action === 'generate_affirmation')) {
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+    }
+    if (toolActions.some(ta => ta.action === 'create_vision_goal')) {
+      queryClient.invalidateQueries({ queryKey: ["/api/vision-goals"] });
     }
   }, [executeToolAction, refetchQuests]);
 

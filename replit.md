@@ -1,171 +1,36 @@
 # LYFEOS - Gamified Life Operating System
 
 ## Overview
-
-LYFEOS is a gamified personal productivity and life management application built as a full-stack web app. It transforms daily tasks, habits, and goals into a game-like experience with XP systems, levels, stats (Energy Points, Health Points, Time Tokens, Attention Tokens), quests, and AI assistance. The application follows a "Solo Leveling" anime-inspired aesthetic with dark themes, neon accents, and futuristic HUD-style interfaces.
+LYFEOS is a gamified personal productivity and life management web application that transforms daily tasks, habits, and goals into a game-like experience. It features XP systems, levels, stats (Energy Points, Health Points, Time Tokens, Attention Tokens), quests, and an AI assistant. The application has a "Solo Leveling" anime-inspired aesthetic with dark themes, neon accents, and futuristic HUD-style interfaces. Its core purpose is to enhance user engagement and motivation in managing their life.
 
 ## User Preferences
-
 Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
-### Frontend Architecture
-- **Framework**: React 18 with TypeScript
-- **Routing**: Wouter (lightweight React router)
-- **State Management**: React Context API (`LYFEOSProvider`, `AuthProvider`, `ThemeProvider`) combined with TanStack React Query for server state
-- **UI Components**: Radix UI primitives with shadcn/ui component library
-- **Styling**: Tailwind CSS with dark-only theme system using CSS variables
-- **Drag and Drop**: react-dnd with HTML5 backend for widget reordering
-- **Build Tool**: Vite with custom plugins for theming
+### UI/UX Decisions
+The application uses a dark theme with neon accents and a futuristic HUD-style interface, inspired by "Solo Leveling." It leverages Radix UI primitives and shadcn/ui for components, styled with Tailwind CSS, supporting a dark-only theme system.
 
-### Backend Architecture
-- **Runtime**: Node.js with Express
-- **API Design**: RESTful JSON API with session-based authentication
-- **Session Management**: express-session with secure cookie configuration
-- **Password Hashing**: bcrypt for secure password storage
-- **AI Integration**: Anthropic via Replit AI Integrations (no API key required, billed to credits). Smart model routing: Claude Haiku 4.5 for simple tasks (greetings, commands, stat tips, affirmations, mission stat suggestions) and Claude Sonnet 4.5 for complex reasoning (analysis, planning, advice, detailed questions). Complexity classifier in `server/replit_integrations/chat/routes.ts` selects model based on message content.
-- **NOVA AI System**: NOVA (Neural Operating Virtual Assistant) is the living intelligence layer of LYFEOS. One unified personality with three seamlessly blended facets:
-  - **Advisor (Clarity Engine)**: Pattern recognition, blind spots, data-backed mirrors, self-perception vs data comparison
-  - **Coach (Motivation Engine)**: Win reinforcement, struggle reframing, narrative continuity, archetype-adaptive tone
-  - **Executive Assistant (Execution Engine)**: Mission/event management, daily log updates, system commands
-  - **Salience Engine**: Prioritizes signals (health > bottlenecks > reflections > alignment), avoids information overload
-  - **Full Data Ingestion**: System prompt includes user profile, stats, missions, daily logs (7-day trends + averages), vision milestones (all horizons), calendar events, custom categories, and conversation history
-- **Voice Control**: AI-powered voice commands via Web Speech API + NOVA AI orchestration (`POST /api/voice-command`). Supports navigation, widget toggle, mission management, timer control, and conversational queries. NOVA interprets natural language and returns structured JSON actions.
-- **File Uploads**: Multer for handling media uploads
-
-### Data Storage
-- **Database**: PostgreSQL via Neon serverless
-- **ORM**: Drizzle ORM with type-safe schema definitions
-- **Schema Location**: `shared/schema.ts` contains all table definitions
-- **Migrations**: Drizzle Kit for database migrations (`migrations/` directory)
-
-### Authentication & Security
-- **Primary**: Email/password registration (username is optional at signup, collected during Mission 0 onboarding) with bcrypt hashing and express-session
-- **OAuth**: Firebase Authentication for Google/Apple/Facebook sign-in (optional)
-- **Session Storage**: Server-side sessions with secure HTTP-only cookies
-- **Email Verification**: SHA-256 hashed tokens with 24-hour expiry, sent via Resend
-- **Password Reset**: SHA-256 hashed tokens with 1-hour expiry, single-use, sent via Resend
-- **Token Security**: All tokens (verification + reset) are hashed with SHA-256 before DB storage; raw tokens only exist in memory and email links
-- **Rate Limiting**: forgot-password (3/min), reset-password (5/min), resend-verification (3/min)
-- **Security Headers**: Helmet middleware with compression and 1MB request size limits
-- **Input Validation**: Zod-based validation on all auth endpoints with format checks
-- **Two-Factor Authentication**: Optional 2FA setup via Settings widget on Profile page. Email verification via Resend (6-digit code, SHA-256 hashed, 10-min expiry). Phone verification via Twilio SMS (6-digit code, SHA-256 hashed, 10-min expiry). Twilio credentials deferred — SMS won't send until TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER secrets are configured.
-
-### Key Data Models
-- **Users**: Core account with profile, avatar, auth provider tracking
-- **UserStats**: Gamification stats (XP, level, energy, health, time tokens, attention tokens, streaks)
-- **UserProfile**: Onboarding data (archetype, flow style, motivations)
-- **Quests**: Task/mission system with XP rewards, supports ritualized (recurring) missions with hourly/daily/weekly/monthly/yearly repeat patterns. Missions can be linked to vision milestones via `visionGoalId` (nullable FK to visionGoals table).
-- **Onboarding Missions**: 8 missions (0-7) with step counts: M0(5), M1(variable archetype Qs), M2(21), M3(8), M4(12), M5(14), M6(5), M7(10). New steps added to collect: keyDrivers, careerVocation, activeVentures, collaborationStyle, roleOrientation, greatestContribution, trainingStyle, energyPatterns, longevityFocus, aesthetic, signatureExpression, creativeOutlets.
-- **VisionGoals**: Milestone-based achievement goals organized by time horizon (legacy, 10year, 5year, 18month, 90day). CRUD with optimistic updates. Has `completedAt` timestamp set automatically when toggling completion. Shows completed linked missions under each milestone. Info panel shows description (editable), creation/completion dates, average difficulty rank, category tags, and aggregated stats (XP, energy, mission count) from linked missions. Milestone analytics widget on Tracker page shows progress by time horizon and recent completions. **Rewards**: Each milestone can have a personal reward text (e.g., "Buy new shoes") and bonus XP (0-500). Bonus XP is awarded once on completion via `awardExperiencePoints` (double-award prevented by checking `wasCompleted` state). Rewards are editable in the info panel and shown on milestone cards.
-- **UserCategories**: Custom mission categories created by users. Stored per-user with AI-generated descriptions (via Anthropic Haiku, generated once on creation). Custom categories appear in mission create/edit dropdowns alongside preset categories. Descriptions persist and show on info button click.
-- **CalendarEvents**: Scheduling and time-blocking
-- **MissionPages**: Markdown-based mission documentation
-- **KanbanBoards/Columns/Tasks**: Project management
-- **Documents/Folders**: Note-taking and knowledge base
-- **Contacts/Spreadsheets/Canvases/Graphs**: Additional productivity tools
-
-### Player Stats System
-- **All stats start at 100/100** (Energy Points, Health Points, Time Tokens, Attention Tokens)
-- **Energy Points**: Calculated from yesterday's daily log ratings (mental + physical + emotional, each 1-10) at midnight. Average scaled to max EP. Also subtracted by mission energy cost on completion during the day.
-- **Time Tokens**: Subtracted by mission energy cost on completion, reset to max daily
-- **Attention Tokens**: Subtracted by mission energy cost on completion, reset to max daily
-- **Health Points**: Reset to max at midnight (same as Time/Attention Tokens). Not derived from daily log ratings.
-- **Efficiency Score**: Daily metric (0-100) calculated as: 40% today's mission completion rate + 30% token allocation effectiveness (cost of completed vs all missions) + 30% token utilization rate (tokens used vs max)
-- **Daily Reset**: All tokens (energy, time, attention) reset to max at midnight via server-side processLoginStreak + client-side interval sync
-- All resources are refunded when uncompleting a mission
-
-### XP and Leveling System
-- Exponential growth curve with tiered multipliers
-- Levels 1-10: Light growth (1.0372x)
-- Levels 11-50: Moderate growth (1.0572x)
-- Levels 51-100: Steep growth (1.0872x)
-- Base XP for Level 1: 1,000 XP
-
-### Stat Detail Pages
-- All stat detail pages (Experience, Health, Efficiency, Energy, Time, Attention) fetch real data from `/api/stat-analytics?days=N` endpoint
-- Use recharts (AreaChart, BarChart, LineChart) for data visualization
-- Include time range selectors (7, 14, 30, 90 days)
-- AIStatTip component at bottom of each page for AI-powered insights
-- Pages are 400-500 lines each with sections: hero stat card, trend charts, breakdowns by difficulty/category/weekday, top missions, tips
-
-### Tracker Page (formerly Analytics)
-- Renamed from "Analytics" to "Tracker" across all UI references
-- Milestone Analytics widget added showing vision goal progress by time horizon and recent completions
-
-### Project Structure
-```
-├── client/           # React frontend
-│   ├── src/
-│   │   ├── components/  # Reusable UI components
-│   │   ├── pages/       # Route page components
-│   │   ├── lib/         # Context, utilities, types
-│   │   └── hooks/       # Custom React hooks
-│   └── public/          # Static assets
-├── server/           # Express backend
-│   ├── index.ts      # Server entry point
-│   ├── routes.ts     # Route registration orchestrator
-│   ├── routes/       # Modular route handlers
-│   │   ├── middleware.ts  # Shared middleware (auth, XP helpers)
-│   │   ├── auth.ts        # Authentication routes (login, register, 2FA, Firebase)
-│   │   ├── profile.ts     # User profile, stats, daily logs, analytics
-│   │   ├── quests.ts      # Quest/mission CRUD, toggle, archive
-│   │   ├── content.ts     # Content CRUD (calendar, contacts, documents, media, etc.)
-│   │   └── goals.ts       # Vision goals, push notifications, Stripe, smart reminders
-│   ├── utils.ts      # Shared utilities (formatLocalDate, logger, classifyMission)
-│   ├── storage.ts    # Data access layer
-│   ├── db.ts         # Database connection
-│   └── openai.ts     # AI integration
-├── shared/           # Shared code between client/server
-│   └── schema.ts     # Drizzle database schema
-└── migrations/       # Database migrations
-```
-
-### Progressive Web App (PWA)
-- **Manifest**: `client/public/manifest.json` — app name, icons (192x192, 512x512), standalone display, dark background
-- **Service Worker**: `client/public/sw.js` — offline caching (network-first with cache fallback), push notification handling, notification click routing
-- **Registration**: In `client/src/main.tsx`, service worker registered on page load
-- **Install Prompt**: `client/src/components/PWAInstallPrompt.tsx` — smart banner for mobile users (7-day dismissal, iOS share instructions, beforeinstallprompt for Android/Chrome)
-- **Push Notifications**: Full stack implementation:
-  - `client/src/hooks/usePushNotifications.ts`: subscribe/unsubscribe/test hook using Web Push API
-  - `server/notificationScheduler.ts`: Periodic scheduler (60s) for mission reminders, hourly streak reminders at 8 PM, plus `sendPushToUser()` helper for event-driven notifications
-  - Push routes: `GET /api/push/vapid-public-key`, `POST /api/push/subscribe`, `DELETE /api/push/subscribe`, `POST /api/push/test`
-  - Event triggers: Mission completion, level-up, milestone/goal completion (in `server/routes.ts`)
-  - VAPID keys stored as secrets: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
-  - DB table: `push_subscriptions` (userId, endpoint, p256dh, auth)
-- **Settings**: Push notification toggle in Profile page Settings widget uses `usePushNotifications` hook for real browser push subscription management
-
-### Payment Processing
-- **Stripe Integration**: Subscription-based payments via Replit Stripe connector
-  - Webhook route registered BEFORE express.json() in `server/index.ts`
-  - `server/stripeClient.ts`: Fetches Stripe credentials from Replit connection API
-  - `server/stripeService.ts`: Handles checkout sessions, customer creation, portal sessions
-  - `server/webhookHandlers.ts`: Processes Stripe webhooks via stripe-replit-sync
-  - `stripe-replit-sync` manages the `stripe` schema automatically (products, prices, subscriptions, etc.)
-  - Products/prices created via `scripts/seed-products.ts` (LYFEOS Pro: $9.99/mo, $79.99/yr)
-  - Users table has `stripe_customer_id` and `stripe_subscription_id` columns
-  - Frontend: `/subscription` page with plan comparison, checkout, and billing portal
+### Technical Implementations
+- **Frontend**: React 18 with TypeScript, Wouter for routing, React Context API and TanStack React Query for state management. Vite is used for building. Drag and drop functionality is provided by `react-dnd`.
+- **Backend**: Node.js with Express, providing a RESTful JSON API. Session-based authentication is managed with `express-session` and `bcrypt` for password hashing.
+- **AI Integration**: The NOVA AI System uses Anthropic models (Haiku for simple tasks, Sonnet for complex reasoning) via Replit AI Integrations. NOVA acts as an Advisor, Coach, and Executive Assistant, equipped with a Salience Engine and full data ingestion capabilities (user profile, stats, missions, logs, vision milestones, calendar, conversation history). It includes autonomous agent capabilities with tools for web search, web page reading, vision goal creation, batch mission creation, and uncompleting missions, supporting deep tool chaining. Smart model routing upgrades from Haiku to Sonnet when tools are used or complex interactions are detected. Voice control is integrated via the Web Speech API and NOVA.
+- **Data Storage**: PostgreSQL (Neon serverless) with Drizzle ORM for type-safe schema definitions and migrations.
+- **Authentication**: Email/password and optional OAuth (Firebase for Google/Apple/Facebook). Features include email verification, password reset, 2FA (email/phone via Resend/Twilio), rate limiting, security headers (Helmet), and Zod-based input validation.
+- **Key Data Models**: Users, UserStats, UserProfile, Quests (with repeat patterns and vision goal linkage), Onboarding Missions, VisionGoals (milestone-based with time horizons, rewards, and XP bonuses), UserCategories (custom, AI-described), CalendarEvents, MissionPages, KanbanBoards, Documents, Contacts, Spreadsheets, Canvases, Graphs.
+- **Gamification System**:
+    - **Player Stats**: Energy Points, Health Points, Time Tokens, Attention Tokens (all starting at 100/100, with specific reset and calculation logic). An Efficiency Score tracks daily performance.
+    - **XP and Leveling**: Exponential growth curve across three tiers of levels (1-10, 11-50, 51-100) with increasing XP multipliers.
+    - **Stat Detail Pages**: Dedicated pages for Experience, Health, Efficiency, Energy, Time, and Attention, featuring real-time data fetching, recharts visualizations, time range selectors, and AI-powered insights.
+- **Tracker Page**: Renamed from "Analytics," it includes a Milestone Analytics widget for vision goal progress and recent completions.
+- **Progressive Web App (PWA)**: Includes a manifest, service worker for offline caching and push notifications, an install prompt, and a comprehensive push notification system with VAPID keys and subscription management.
+- **Payment Processing**: Stripe integration for subscription-based payments, managing checkout sessions, customer creation, and webhook processing.
 
 ## External Dependencies
 
-### Database
-- **Neon PostgreSQL**: Serverless Postgres database (requires `DATABASE_URL` environment variable)
-
-### AI Services
-- **OpenAI API**: GPT-4o model for AI assistant functionality (requires `OPENAI_API_KEY` environment variable)
-
-### Authentication (Optional)
-- **Firebase**: Google/Apple/Facebook OAuth authentication
-  - Requires `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID` environment variables
-
-### Key NPM Packages
-- `@neondatabase/serverless`: Neon database driver
-- `drizzle-orm` / `drizzle-kit`: Database ORM and migrations
-- `@tanstack/react-query`: Server state management
-- `@radix-ui/*`: Accessible UI primitives
-- `tailwindcss`: Utility-first CSS framework
-- `openai`: OpenAI API client
-- `bcrypt`: Password hashing
-- `express-session`: Session management
-- `multer`: File upload handling
+- **Database**: Neon PostgreSQL (requires `DATABASE_URL`).
+- **AI Services**: Anthropic (via Replit AI Integrations).
+- **Authentication (Optional)**: Firebase (for Google/Apple/Facebook OAuth, requires `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`).
+- **Email Service**: Resend (for email verification and password resets).
+- **SMS Service**: Twilio (for 2FA via SMS, requires `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`).
+- **Payment Gateway**: Stripe.

@@ -1503,6 +1503,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
                   queryClient.invalidateQueries({ queryKey: ['/api/profile'] });
                   queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
                   queryClient.invalidateQueries({ queryKey: ['/api/events'] });
+                  queryClient.invalidateQueries({ queryKey: ['/api/vision-goals'] });
+                  queryClient.invalidateQueries({ queryKey: ['/api/user-stats'] });
                   if (data.toolAction?.action === 'update_daily_log') {
                     window.dispatchEvent(new CustomEvent("nova-daily-log-updated"));
                   }
