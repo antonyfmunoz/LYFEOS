@@ -17,29 +17,29 @@ const STAT_CONFIGS = {
   energy: {
     title: "Energy Points",
     icon: Zap,
-    color: "#F97316",
+    color: "hsl(var(--primary))",
     statKey: "energyPoints" as const,
   },
   time: {
     title: "Time Tokens",
     icon: Clock,
-    color: "#22D3EE",
+    color: "hsl(var(--primary))",
     statKey: "timeTokens" as const,
   },
   attention: {
     title: "Attention Tokens",
     icon: BrainCircuit,
-    color: "#6366F1",
+    color: "hsl(var(--primary))",
     statKey: "attentionTokens" as const,
   },
 };
 
 const DIFFICULTY_COLORS: Record<string, string> = {
-  D: "#60a5fa",
-  C: "#34d399",
-  B: "#fbbf24",
-  A: "#f97316",
-  S: "#ef4444",
+  D: "hsl(var(--primary) / 0.5)",
+  C: "hsl(var(--primary) / 0.65)",
+  B: "hsl(var(--primary) / 0.8)",
+  A: "hsl(var(--primary) / 0.9)",
+  S: "hsl(var(--primary))",
 };
 
 const DIFFICULTY_ORDER = ["D", "C", "B", "A", "S"];
@@ -76,8 +76,8 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
   const topMissions = data?.topMissions || [];
 
   const statusLabel = percentage > 70 ? "OPTIMAL" : percentage > 30 ? "MODERATE" : "LOW";
-  const statusBg = percentage > 70 ? "bg-emerald-500/20" : percentage > 30 ? "bg-amber-500/20" : "bg-red-500/20";
-  const statusText = percentage > 70 ? "text-emerald-400" : percentage > 30 ? "text-amber-400" : "text-red-400";
+  const statusBg = percentage > 70 ? "bg-primary/20" : percentage > 30 ? "bg-primary/15" : "bg-primary/10";
+  const statusText = percentage > 70 ? "text-primary" : percentage > 30 ? "text-primary/80" : "text-primary/60";
 
   const gradientId = `stat-gradient-${stat}`;
   const barGradientId = `bar-gradient-${stat}`;
@@ -415,7 +415,7 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
                       </div>
                       <div className="text-right">
                         <p className="text-xs text-muted-foreground">XP</p>
-                        <p className="font-mono text-sm text-emerald-400">{mission.xp}</p>
+                        <p className="font-mono text-sm text-primary">{mission.xp}</p>
                       </div>
                     </div>
                   </div>

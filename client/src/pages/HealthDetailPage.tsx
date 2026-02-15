@@ -9,33 +9,33 @@ import { ArrowLeft, Heart, Activity, Target, Flame, Loader2, TrendingUp, Brain, 
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
 function getStatusBadge(pct: number): { label: string; color: string; bg: string } {
-  if (pct >= 75) return { label: "OPTIMAL", color: "text-emerald-400", bg: "bg-emerald-500/20 border-emerald-500/30" };
-  if (pct >= 40) return { label: "MODERATE", color: "text-yellow-400", bg: "bg-yellow-500/20 border-yellow-500/30" };
-  return { label: "LOW", color: "text-red-400", bg: "bg-red-500/20 border-red-500/30" };
+  if (pct >= 75) return { label: "OPTIMAL", color: "text-primary", bg: "bg-primary/20 border-primary/30" };
+  if (pct >= 40) return { label: "MODERATE", color: "text-primary/80", bg: "bg-primary/15 border-primary/25" };
+  return { label: "LOW", color: "text-primary/60", bg: "bg-primary/10 border-primary/20" };
 }
 
 function getScoreColor(score: number): string {
-  if (score > 7) return "text-emerald-400";
-  if (score > 4) return "text-yellow-400";
-  return "text-red-400";
+  if (score > 7) return "text-primary";
+  if (score > 4) return "text-primary/80";
+  return "text-primary/60";
 }
 
 function getScoreBg(score: number): string {
-  if (score > 7) return "bg-emerald-500/10";
-  if (score > 4) return "bg-yellow-500/10";
-  return "bg-red-500/10";
+  if (score > 7) return "bg-primary/15";
+  if (score > 4) return "bg-primary/10";
+  return "bg-primary/5";
 }
 
 function getHealthGlow(pct: number): string {
-  if (pct >= 75) return "shadow-[0_0_40px_rgba(34,197,94,0.15)]";
-  if (pct >= 40) return "shadow-[0_0_30px_rgba(234,179,8,0.12)]";
-  return "shadow-[0_0_25px_rgba(239,68,68,0.12)]";
+  if (pct >= 75) return "shadow-[0_0_40px_hsl(var(--primary)/0.15)]";
+  if (pct >= 40) return "shadow-[0_0_30px_hsl(var(--primary)/0.12)]";
+  return "shadow-[0_0_25px_hsl(var(--primary)/0.12)]";
 }
 
 function getGradientColors(pct: number): string {
-  if (pct >= 75) return "from-emerald-500 to-cyan-500";
-  if (pct >= 40) return "from-yellow-500 to-orange-500";
-  return "from-red-500 to-pink-500";
+  if (pct >= 75) return "from-primary to-primary/60";
+  if (pct >= 40) return "from-primary/80 to-primary/50";
+  return "from-primary/60 to-primary/40";
 }
 
 export default function HealthDetailPage() {
@@ -95,10 +95,10 @@ export default function HealthDetailPage() {
       <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <Heart className="h-9 w-9 text-red-500 animate-pulse" />
-            <Heart className="h-9 w-9 text-pink-400 absolute top-0 left-0 opacity-40 animate-pulse" style={{ animationDelay: "0.3s" }} />
+            <Heart className="h-9 w-9 text-primary animate-pulse" />
+            <Heart className="h-9 w-9 text-primary/50 absolute top-0 left-0 opacity-40 animate-pulse" style={{ animationDelay: "0.3s" }} />
           </div>
-          <h1 className="text-3xl font-orbitron bg-gradient-to-r from-red-400 via-pink-500 to-rose-500 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-orbitron bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent">
             Health Points
           </h1>
         </div>
@@ -120,7 +120,7 @@ export default function HealthDetailPage() {
       </div>
 
       <div className={`glassmorphic rounded-2xl p-8 mb-8 border border-primary/30 relative overflow-hidden ${healthGlow}`}>
-        <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 via-transparent to-pink-500/5 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
         <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${gradientColors}`} />
 
         <div className="relative z-10">
@@ -131,7 +131,7 @@ export default function HealthDetailPage() {
                 Current Health Status
               </h2>
               <div className="flex items-baseline gap-2">
-                <span className={`text-7xl font-orbitron font-bold bg-gradient-to-b from-white to-pink-200 bg-clip-text text-transparent leading-none`}>
+                <span className={`text-7xl font-orbitron font-bold bg-gradient-to-b from-white to-primary/60 bg-clip-text text-transparent leading-none`}>
                   {healthPct}
                 </span>
                 <span className="text-2xl text-muted-foreground font-mono">%</span>
@@ -147,12 +147,12 @@ export default function HealthDetailPage() {
               </div>
               <div className="flex gap-3">
                 <div className="flex items-center gap-2 bg-background/40 rounded-lg px-3 py-2 border border-muted/20">
-                  <Flame className="h-4 w-4 text-orange-400" />
+                  <Flame className="h-4 w-4 text-primary" />
                   <span className="text-muted-foreground text-xs">Streak:</span>
                   <span className="font-mono text-white text-sm">{currentStreak}d</span>
                 </div>
                 <div className="flex items-center gap-2 bg-background/40 rounded-lg px-3 py-2 border border-muted/20">
-                  <Target className="h-4 w-4 text-cyan-400" />
+                  <Target className="h-4 w-4 text-primary" />
                   <span className="text-muted-foreground text-xs">Done:</span>
                   <span className="font-mono text-white text-sm">{completedMissions}</span>
                 </div>
@@ -211,7 +211,7 @@ export default function HealthDetailPage() {
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "rgba(0,0,0,0.9)",
-                      border: "1px solid rgba(0,224,255,0.3)",
+                      border: "1px solid hsl(var(--primary) / 0.3)",
                       borderRadius: 8,
                     }}
                     labelStyle={{ color: "#9ca3af", fontSize: 12 }}
@@ -223,7 +223,7 @@ export default function HealthDetailPage() {
                   <Line
                     type="monotone"
                     dataKey="mental"
-                    stroke="#22d3ee"
+                    stroke="hsl(var(--primary))"
                     strokeWidth={2}
                     dot={false}
                     name="Mental"
@@ -231,7 +231,7 @@ export default function HealthDetailPage() {
                   <Line
                     type="monotone"
                     dataKey="physical"
-                    stroke="#f97316"
+                    stroke="hsl(var(--primary) / 0.7)"
                     strokeWidth={2}
                     dot={false}
                     name="Physical"
@@ -239,7 +239,7 @@ export default function HealthDetailPage() {
                   <Line
                     type="monotone"
                     dataKey="emotional"
-                    stroke="#ec4899"
+                    stroke="hsl(var(--primary) / 0.5)"
                     strokeWidth={2}
                     dot={false}
                     name="Emotional"
@@ -247,7 +247,7 @@ export default function HealthDetailPage() {
                   <Line
                     type="monotone"
                     dataKey="average"
-                    stroke="#a78bfa"
+                    stroke="hsl(var(--primary) / 0.3)"
                     strokeWidth={2}
                     strokeDasharray="5 5"
                     dot={false}
@@ -257,19 +257,19 @@ export default function HealthDetailPage() {
               </ResponsiveContainer>
               <div className="flex items-center justify-center gap-6 mt-4 text-xs">
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-0.5 bg-cyan-400 rounded" />
+                  <div className="w-3 h-0.5 bg-primary rounded" />
                   <span className="text-muted-foreground">Mental</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-0.5 bg-orange-500 rounded" />
+                  <div className="w-3 h-0.5 bg-primary/70 rounded" />
                   <span className="text-muted-foreground">Physical</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-0.5 bg-pink-500 rounded" />
+                  <div className="w-3 h-0.5 bg-primary/50 rounded" />
                   <span className="text-muted-foreground">Emotional</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-0.5 bg-violet-400 rounded border-dashed" />
+                  <div className="w-3 h-0.5 bg-primary/30 rounded border-dashed" />
                   <span className="text-muted-foreground">Average</span>
                 </div>
               </div>
@@ -297,10 +297,7 @@ export default function HealthDetailPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className={`text-lg font-mono font-bold ${
-                          metric.score >= 75 ? "text-emerald-400" :
-                          metric.score >= 40 ? "text-yellow-400" : "text-red-400"
-                        }`}>
+                        <span className={`text-lg font-mono font-bold text-primary`}>
                           {metric.score}%
                         </span>
                       </div>
@@ -308,9 +305,9 @@ export default function HealthDetailPage() {
                     <div className="w-full bg-muted/20 h-2 rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all duration-700 ${
-                          metric.score >= 75 ? "bg-gradient-to-r from-emerald-600 to-emerald-400" :
-                          metric.score >= 40 ? "bg-gradient-to-r from-yellow-600 to-yellow-400" :
-                          "bg-gradient-to-r from-red-600 to-red-400"
+                          metric.score >= 75 ? "bg-gradient-to-r from-primary to-primary/80" :
+                          metric.score >= 40 ? "bg-gradient-to-r from-primary/80 to-primary/60" :
+                          "bg-gradient-to-r from-primary/60 to-primary/40"
                         }`}
                         style={{ width: `${metric.score}%` }}
                       />
@@ -385,16 +382,6 @@ export default function HealthDetailPage() {
                 {categoryEntries.map(([category, value]: [string, any]) => {
                   const count = typeof value === "number" ? value : value?.count ?? value?.completed ?? 0;
                   const pct = maxCategoryCount > 0 ? Math.round((count / maxCategoryCount) * 100) : 0;
-                  const colors = [
-                    "from-cyan-500 to-blue-500",
-                    "from-emerald-500 to-teal-500",
-                    "from-orange-500 to-amber-500",
-                    "from-pink-500 to-rose-500",
-                    "from-violet-500 to-purple-500",
-                    "from-red-500 to-orange-500",
-                    "from-blue-500 to-indigo-500",
-                  ];
-                  const colorIdx = categoryEntries.findIndex(([c]) => c === category) % colors.length;
                   return (
                     <div key={category} className="space-y-1">
                       <div className="flex items-center justify-between">
@@ -403,7 +390,7 @@ export default function HealthDetailPage() {
                       </div>
                       <div className="w-full bg-muted/20 h-2.5 rounded-full overflow-hidden">
                         <div
-                          className={`h-full rounded-full bg-gradient-to-r ${colors[colorIdx]} transition-all duration-700`}
+                          className="h-full rounded-full bg-gradient-to-r from-primary to-primary/60 transition-all duration-700"
                           style={{ width: `${pct}%` }}
                         />
                       </div>
@@ -422,7 +409,7 @@ export default function HealthDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="rounded-xl border border-muted/20 bg-background/30 p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Flame className="h-5 w-5 text-orange-400" />
+                  <Flame className="h-5 w-5 text-primary" />
                   <h3 className="text-white text-sm font-semibold">Maintain Your Streak</h3>
                 </div>
                 <p className="text-xs text-muted-foreground mb-3">
@@ -430,13 +417,13 @@ export default function HealthDetailPage() {
                 </p>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">Current streak:</span>
-                  <span className="font-mono text-sm text-orange-400 font-bold">{currentStreak} days</span>
+                  <span className="font-mono text-sm text-primary font-bold">{currentStreak} days</span>
                 </div>
               </div>
 
               <div className="rounded-xl border border-muted/20 bg-background/30 p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Target className="h-5 w-5 text-cyan-400" />
+                  <Target className="h-5 w-5 text-primary" />
                   <h3 className="text-white text-sm font-semibold">Boost Completion Rate</h3>
                 </div>
                 <p className="text-xs text-muted-foreground mb-3">
@@ -444,10 +431,7 @@ export default function HealthDetailPage() {
                 </p>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">Completion rate:</span>
-                  <span className={`font-mono text-sm font-bold ${
-                    completionRate >= 75 ? "text-emerald-400" :
-                    completionRate >= 40 ? "text-yellow-400" : "text-red-400"
-                  }`}>
+                  <span className="font-mono text-sm font-bold text-primary">
                     {completionRate}%
                   </span>
                 </div>
@@ -455,7 +439,7 @@ export default function HealthDetailPage() {
 
               <div className="rounded-xl border border-muted/20 bg-background/30 p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Activity className="h-5 w-5 text-emerald-400" />
+                  <Activity className="h-5 w-5 text-primary" />
                   <h3 className="text-white text-sm font-semibold">Diversify Activities</h3>
                 </div>
                 <p className="text-xs text-muted-foreground mb-3">
@@ -463,13 +447,13 @@ export default function HealthDetailPage() {
                 </p>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">Active categories:</span>
-                  <span className="font-mono text-sm text-emerald-400 font-bold">{Object.keys(categoryStats).length}</span>
+                  <span className="font-mono text-sm text-primary font-bold">{Object.keys(categoryStats).length}</span>
                 </div>
               </div>
 
               <div className="rounded-xl border border-muted/20 bg-background/30 p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Smile className="h-5 w-5 text-pink-400" />
+                  <Smile className="h-5 w-5 text-primary" />
                   <h3 className="text-white text-sm font-semibold">Track Your Mood</h3>
                 </div>
                 <p className="text-xs text-muted-foreground mb-3">
@@ -477,10 +461,7 @@ export default function HealthDetailPage() {
                 </p>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">Avg mood score:</span>
-                  <span className={`font-mono text-sm font-bold ${
-                    avgMoodScore >= 7 ? "text-emerald-400" :
-                    avgMoodScore >= 4 ? "text-yellow-400" : "text-red-400"
-                  }`}>
+                  <span className="font-mono text-sm font-bold text-primary">
                     {avgMoodScore > 0 ? avgMoodScore.toFixed(1) : "—"} / 10
                   </span>
                 </div>

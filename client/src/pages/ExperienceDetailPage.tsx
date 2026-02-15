@@ -15,11 +15,11 @@ import {
 } from "recharts";
 
 const DIFFICULTY_COLORS: Record<string, string> = {
-  D: "#60a5fa",
-  C: "#22c55e",
-  B: "#eab308",
-  A: "#f97316",
-  S: "#ef4444",
+  D: "hsl(var(--primary) / 0.5)",
+  C: "hsl(var(--primary) / 0.65)",
+  B: "hsl(var(--primary) / 0.8)",
+  A: "hsl(var(--primary) / 0.9)",
+  S: "hsl(var(--primary))",
 };
 
 const DIFFICULTY_LABELS: Record<string, string> = {
@@ -132,17 +132,17 @@ export default function ExperienceDetailPage() {
 
           <div className="flex flex-col gap-2 text-sm">
             <div className="flex items-center gap-2 bg-background/40 rounded-lg px-3 py-2 border border-muted/20">
-              <Star className="h-4 w-4 text-yellow-500" />
+              <Star className="h-4 w-4 text-primary" />
               <span className="text-muted-foreground">Total XP:</span>
               <span className="font-mono text-white">{(stats.experience.totalXP ?? 0).toLocaleString()}</span>
             </div>
             <div className="flex items-center gap-2 bg-background/40 rounded-lg px-3 py-2 border border-muted/20">
-              <Target className="h-4 w-4 text-emerald-500" />
+              <Target className="h-4 w-4 text-primary" />
               <span className="text-muted-foreground">Done:</span>
               <span className="font-mono text-white">{completedMissions}</span>
             </div>
             <div className="flex items-center gap-2 bg-background/40 rounded-lg px-3 py-2 border border-muted/20">
-              <TrendingUp className="h-4 w-4 text-blue-400" />
+              <TrendingUp className="h-4 w-4 text-primary" />
               <span className="text-muted-foreground">Rate:</span>
               <span className="font-mono text-white">{Math.round(completionRate)}%</span>
             </div>
@@ -188,7 +188,7 @@ export default function ExperienceDetailPage() {
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "rgba(0,0,0,0.9)",
-                      border: "1px solid rgba(0,224,255,0.3)",
+                      border: "1px solid hsl(var(--primary) / 0.3)",
                       borderRadius: 8,
                     }}
                     labelStyle={{ color: "#9ca3af", fontSize: 12 }}
@@ -380,7 +380,7 @@ export default function ExperienceDetailPage() {
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "rgba(0,0,0,0.9)",
-                      border: "1px solid rgba(0,224,255,0.3)",
+                      border: "1px solid hsl(var(--primary) / 0.3)",
                       borderRadius: 8,
                     }}
                     labelStyle={{ color: "#9ca3af", fontSize: 12 }}
@@ -457,7 +457,7 @@ export default function ExperienceDetailPage() {
 
             <div className="mt-4 grid grid-cols-2 gap-4">
               <div className="flex items-center gap-3 p-3 bg-background/30 rounded-lg border border-muted/20">
-                <Zap className="h-5 w-5 text-yellow-500 flex-shrink-0" />
+                <Zap className="h-5 w-5 text-primary flex-shrink-0" />
                 <div>
                   <p className="text-xs text-muted-foreground">Completion Rate</p>
                   <p className="text-sm font-mono text-white">{Math.round(completionRate)}%</p>
