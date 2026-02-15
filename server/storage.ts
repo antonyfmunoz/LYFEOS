@@ -439,7 +439,7 @@ export class DatabaseStorage implements IStorage {
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     
     const lastActiveDate = stats.lastActiveDate;
     let newStreak = stats.streakDays;
@@ -451,14 +451,14 @@ export class DatabaseStorage implements IStorage {
     } else {
       const lastDate = new Date(lastActiveDate);
       lastDate.setHours(0, 0, 0, 0);
-      const lastDateStr = lastDate.toISOString().split('T')[0];
+      const lastDateStr = `${lastDate.getFullYear()}-${String(lastDate.getMonth() + 1).padStart(2, '0')}-${String(lastDate.getDate()).padStart(2, '0')}`;
       
       if (lastDateStr === todayStr) {
         isNewDay = false;
       } else {
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
         
         if (lastDateStr === yesterdayStr) {
           newStreak = stats.streakDays + 1;
@@ -642,10 +642,10 @@ export class DatabaseStorage implements IStorage {
       return 10;
     }
     
-    // Get yesterday's date to fetch energy log scores
+    // Get yesterday's date to fetch energy log scores (use local date formatting for consistency with processLoginStreak)
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayDateStr = yesterday.toISOString().split('T')[0];
+    const yesterdayDateStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
     
     // Fetch yesterday's energy log
     const [yesterdayLog] = await db.select()
@@ -748,7 +748,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getUserDailyLogByDate(userId: number, date: Date): Promise<UserDailyLog | undefined> {
-    const formattedDate = date.toISOString().split('T')[0]; // Convert to YYYY-MM-DD format
+    const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     const [log] = await db.select()
       .from(userDailyLogs)
       .where(and(

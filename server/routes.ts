@@ -364,7 +364,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         notionConnected: false
       });
 
-      const today = new Date().toISOString().split('T')[0];
+      const todayDate = new Date();
+      const today = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`;
       await storage.createUserDailyLog({
         userId: user.id,
         date: today,
@@ -489,7 +490,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create user daily logs
       console.log("Creating initial daily logs for new user:", user.id);
-      const today = new Date().toISOString().split('T')[0];
+      const todayDate = new Date();
+      const today = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`;
       await storage.createUserDailyLog({
         userId: user.id,
         date: today,
@@ -627,6 +629,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) {
         console.log("Login failed: User not found");
         return res.status(401).json({ error: "Invalid credentials. Please check your username/email and password, or register a new account." });
+      }
+      
+      // Block password login for OAuth-only accounts (Firebase/Google/Apple)
+      if (user.authProvider && user.authProvider !== 'email') {
+        console.log("Login failed: OAuth account cannot use password login");
+        return res.status(401).json({ error: "This account uses social sign-in. Please log in with Google or Apple instead." });
       }
       
       // Verify password
@@ -788,7 +796,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create the user with Firebase credentials
         user = await storage.createUser({
           username: username,
-          password: 'firebase-auth', // Placeholder password for Firebase users
+          password: await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10), // Random hashed password for Firebase users
           displayName: displayName || username,
           title: 'COMMANDER',
           email: email,
