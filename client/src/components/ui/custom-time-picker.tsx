@@ -191,11 +191,13 @@ export function CustomTimePicker({ value, onChange, className }: CustomTimePicke
       <div className="relative">
         <Input
           type="text"
+          readOnly
+          inputMode="none"
           value={formatDisplayTime(displayHours, displayMinutes, displayAmpm)}
           onChange={handleInputChange}
           onBlur={handleBlur}
           onClick={() => setIsOpen(true)}
-          className="pr-10 font-mono bg-background text-foreground border-primary/30 focus:border-primary/50 placeholder:text-muted-foreground"
+          className="pr-10 font-mono bg-background text-foreground border-primary/30 focus:border-primary/50 placeholder:text-muted-foreground cursor-pointer"
           placeholder="HH:MM AM"
         />
         <Button

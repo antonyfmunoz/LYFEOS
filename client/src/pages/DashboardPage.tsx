@@ -973,35 +973,35 @@ export default function DashboardPage() {
   const [widgets, setWidgets] = useState<WidgetMeta[]>([
     {
       id: 'data-entry-log',
-      title: "Daily Data Log",
+      title: "Data",
       icon: <BookOpen className="h-5 w-5 text-primary" />,
       defaultOpen: true,
       infoDescription: "Capture your daily thoughts, information consumed, and ideas. These entries are saved to your journal and can be reviewed in the Chronilog."
     },
     {
       id: 'research-log',
-      title: "Daily Research Log",
+      title: "Research",
       icon: <Search className="h-5 w-5 text-primary" />,
       defaultOpen: true,
       infoDescription: "Document your research findings, revision summaries, and execution plans. Track the lifecycle of ideas from discovery through implementation."
     },
     {
       id: 'reflection-log',
-      title: "Daily Reflection Log",
+      title: "Reflection",
       icon: <Calendar className="h-5 w-5 text-primary" />,
       defaultOpen: true,
       infoDescription: "Reflect on what went well, what could improve, and lessons learned. Daily reflection builds self-awareness and accelerates growth."
     },
     {
       id: 'intention-setter',
-      title: "Daily Intention Log",
+      title: "Intention",
       icon: <TargetIcon className="h-5 w-5 text-primary" />,
       defaultOpen: true,
       infoDescription: "Set your focus and priorities for the day. Clear intentions help direct your energy and attention toward what matters most."
     },
     {
       id: 'energy-log',
-      title: "Daily Energy Log",
+      title: "Energy",
       icon: <Brain className="h-5 w-5 text-primary" />,
       defaultOpen: true,
       infoDescription: "Track your energy levels, sleep, exercise, and mood throughout the day. Understanding your patterns helps optimize your performance."

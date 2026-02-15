@@ -235,19 +235,19 @@ export default function ProfilePage() {
     },
     {
       target: "[data-tour='profile-widget-stats']",
-      title: "Player Stats",
+      title: "Stats",
       description: "Track your XP, energy, health, time tokens, and attention tokens here. Tap any stat for detailed breakdowns, streaks, and AI-powered tips.",
       position: "bottom",
     },
     {
       target: "[data-tour='profile-widget-player-record']",
-      title: "Player Record",
+      title: "Record",
       description: "Your personal bio and background story. This is your player identity card — edit it to define who you are in the system.",
       position: "bottom",
     },
     {
       target: "[data-tour='profile-widget-player-affirmation']",
-      title: "Player Affirmation",
+      title: "Affirmation",
       description: "Set a personal affirmation or mantra that motivates you. It appears on your profile as a reminder of your purpose every time you visit.",
       position: "bottom",
     },
@@ -554,21 +554,21 @@ export default function ProfilePage() {
   const [widgets, setWidgets] = useState<WidgetData[]>([
     {
       id: 'stats',
-      title: "Player Stats",
+      title: "Stats",
       icon: <BarChart4 className="h-5 w-5 text-primary" />,
       defaultOpen: true,
       infoDescription: "Overview of your current resource levels — XP, energy, health, time tokens, and attention tokens. These stats reflect your daily activity and progress."
     },
     {
       id: 'player-record',
-      title: "Player Record",
+      title: "Record",
       icon: <FileText className="h-5 w-5 text-primary" />,
       defaultOpen: true,
       infoDescription: "Your personal bio and background story. This is your player identity card — edit it to define who you are in the system."
     },
     {
       id: 'player-affirmation',
-      title: "Player Affirmation",
+      title: "Affirmation",
       icon: <Terminal className="h-5 w-5 text-primary" />,
       defaultOpen: true,
       infoDescription: "Your personal affirmation or mantra. Set a message that motivates and reminds you of your purpose every time you visit your profile."
@@ -1758,7 +1758,7 @@ export default function ProfilePage() {
             >
               <div className="flex items-center">
                 <User className="mr-2 h-5 w-5 text-primary" />
-                <h2 className="text-lg font-orbitron text-foreground">Player Profile</h2>
+                <h2 className="text-lg font-orbitron text-foreground">Profile</h2>
               </div>
               <div className="flex items-center gap-2">
                 {isEditing ? (
