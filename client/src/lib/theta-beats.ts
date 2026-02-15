@@ -1,92 +1,130 @@
-let audioCtx: AudioContext | null = null;
-let leftOsc: OscillatorNode | null = null;
-let rightOsc: OscillatorNode | null = null;
-let masterGain: GainNode | null = null;
+let audioElement: HTMLAudioElement | null = null;
+let blobUrl: string | null = null;
 let isPlaying = false;
 
 const BASE_FREQ = 350;
 const THETA_OFFSET = 6;
-const FADE_DURATION = 2.0;
-const BEAT_VOLUME = 0.5;
+const SAMPLE_RATE = 44100;
+const DURATION_SECONDS = 30;
+const VOLUME = 0.4;
 
-function ensureContext(): AudioContext {
-  if (!audioCtx || audioCtx.state === 'closed') {
-    audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    console.log('[theta] Created AudioContext, state:', audioCtx.state, 'sampleRate:', audioCtx.sampleRate);
+function generateThetaWav(): Blob {
+  const numSamples = SAMPLE_RATE * DURATION_SECONDS;
+  const buffer = new ArrayBuffer(44 + numSamples * 2);
+  const view = new DataView(buffer);
+
+  function writeString(offset: number, str: string) {
+    for (let i = 0; i < str.length; i++) {
+      view.setUint8(offset + i, str.charCodeAt(i));
+    }
   }
-  return audioCtx;
+
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + numSamples * 2, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, SAMPLE_RATE, true);
+  view.setUint32(28, SAMPLE_RATE * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeString(36, 'data');
+  view.setUint32(40, numSamples * 2, true);
+
+  const freq1 = BASE_FREQ;
+  const freq2 = BASE_FREQ + THETA_OFFSET;
+  const twoPi = 2 * Math.PI;
+
+  for (let i = 0; i < numSamples; i++) {
+    const t = i / SAMPLE_RATE;
+    const sample = VOLUME * (
+      Math.sin(twoPi * freq1 * t) +
+      Math.sin(twoPi * freq2 * t)
+    ) / 2;
+
+    let fadeMultiplier = 1;
+    if (t < 2) fadeMultiplier = t / 2;
+
+    const value = Math.max(-1, Math.min(1, sample * fadeMultiplier));
+    view.setInt16(44 + i * 2, value * 32767, true);
+  }
+
+  return new Blob([buffer], { type: 'audio/wav' });
+}
+
+let cachedBlob: Blob | null = null;
+
+function getOrCreateBlob(): Blob {
+  if (!cachedBlob) {
+    cachedBlob = generateThetaWav();
+    console.log('[theta] Generated WAV blob, size:', cachedBlob.size, 'bytes');
+  }
+  return cachedBlob;
 }
 
 export async function startThetaBeats(): Promise<void> {
   console.log('[theta] startThetaBeats called, isPlaying:', isPlaying);
   if (isPlaying) return;
 
-  const ctx = ensureContext();
-  console.log('[theta] AudioContext state before resume:', ctx.state);
+  try {
+    const blob = getOrCreateBlob();
 
-  if (ctx.state === 'suspended') {
-    try {
-      await ctx.resume();
-      console.log('[theta] AudioContext resumed, state:', ctx.state);
-    } catch (e) {
-      console.error('[theta] Failed to resume AudioContext:', e);
-      return;
+    if (blobUrl) {
+      URL.revokeObjectURL(blobUrl);
     }
+    blobUrl = URL.createObjectURL(blob);
+
+    audioElement = new Audio(blobUrl);
+    audioElement.loop = true;
+    audioElement.volume = 1.0;
+
+    console.log('[theta] Audio element created, attempting to play...');
+
+    await audioElement.play();
+
+    isPlaying = true;
+    console.log('[theta] Audio playing! Base freq:', BASE_FREQ, 'Hz, beat freq:', THETA_OFFSET, 'Hz');
+  } catch (e) {
+    console.error('[theta] Failed to play audio:', e);
+    cleanup();
   }
+}
 
-  if (ctx.state !== 'running') {
-    console.error('[theta] AudioContext not running after resume, state:', ctx.state);
-    return;
+function cleanup() {
+  if (audioElement) {
+    audioElement.pause();
+    audioElement.src = '';
+    audioElement = null;
   }
-
-  masterGain = ctx.createGain();
-  masterGain.gain.setValueAtTime(0.001, ctx.currentTime);
-  masterGain.gain.linearRampToValueAtTime(BEAT_VOLUME, ctx.currentTime + FADE_DURATION);
-  masterGain.connect(ctx.destination);
-
-  leftOsc = ctx.createOscillator();
-  leftOsc.type = 'sine';
-  leftOsc.frequency.setValueAtTime(BASE_FREQ, ctx.currentTime);
-
-  rightOsc = ctx.createOscillator();
-  rightOsc.type = 'sine';
-  rightOsc.frequency.setValueAtTime(BASE_FREQ + THETA_OFFSET, ctx.currentTime);
-
-  leftOsc.connect(masterGain);
-  rightOsc.connect(masterGain);
-
-  leftOsc.start();
-  rightOsc.start();
-  isPlaying = true;
-  console.log('[theta] Oscillators started! Frequencies:', BASE_FREQ, 'Hz and', BASE_FREQ + THETA_OFFSET, 'Hz, volume:', BEAT_VOLUME);
+  if (blobUrl) {
+    URL.revokeObjectURL(blobUrl);
+    blobUrl = null;
+  }
+  isPlaying = false;
 }
 
 export function stopThetaBeats(): void {
   console.log('[theta] stopThetaBeats called, isPlaying:', isPlaying);
-  if (!isPlaying || !audioCtx) return;
+  if (!isPlaying || !audioElement) return;
 
-  const now = audioCtx.currentTime;
+  const fadeDuration = 2000;
+  const steps = 40;
+  const stepTime = fadeDuration / steps;
+  let currentStep = 0;
+  const startVolume = audioElement.volume;
 
-  if (masterGain) {
-    masterGain.gain.cancelScheduledValues(now);
-    masterGain.gain.setValueAtTime(masterGain.gain.value, now);
-    masterGain.gain.linearRampToValueAtTime(0, now + FADE_DURATION);
-  }
-
-  setTimeout(() => {
-    try {
-      leftOsc?.stop();
-      rightOsc?.stop();
-      leftOsc?.disconnect();
-      rightOsc?.disconnect();
-      masterGain?.disconnect();
-    } catch {}
-    leftOsc = null;
-    rightOsc = null;
-    masterGain = null;
-    isPlaying = false;
-    console.log('[theta] Stopped and cleaned up');
-  }, FADE_DURATION * 1000 + 100);
+  const fadeInterval = setInterval(() => {
+    currentStep++;
+    if (!audioElement || currentStep >= steps) {
+      clearInterval(fadeInterval);
+      cleanup();
+      console.log('[theta] Stopped and cleaned up');
+      return;
+    }
+    audioElement.volume = startVolume * (1 - currentStep / steps);
+  }, stepTime);
 }
 
 export function isThetaBeatsPlaying(): boolean {
