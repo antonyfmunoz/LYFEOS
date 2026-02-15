@@ -326,14 +326,14 @@ export default function QuestsPage() {
     },
     {
       target: "[data-tour='today-missions']",
-      title: "Today's Missions",
+      title: "Today's",
       description: "Your active missions for today appear here. Check them off as you complete them to earn XP. You can also start a focus timer on any mission.",
       position: "bottom",
     },
     {
       target: "[data-tour='upcoming-missions']",
-      title: "Upcoming Missions",
-      description: "Missions scheduled for future dates show up here. They'll automatically move to Today's Missions when the day arrives.",
+      title: "Upcoming",
+      description: "Missions scheduled for future dates show up here. They'll automatically move to Today when the day arrives.",
       position: "top",
     },
     {
@@ -1485,14 +1485,14 @@ export default function QuestsPage() {
           <div className="p-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Target className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-orbitron">Today's Missions</h2>
+              <h2 className="text-lg font-orbitron">Today's</h2>
               <StatInfoDialog
                 trigger={
                   <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">
                     <Info className="h-3.5 w-3.5" />
                   </button>
                 }
-                title="Today's Missions"
+                title="Today's"
                 description="Missions scheduled for today or without a specific date. Complete these to earn XP and level up your character."
                 additionalInfo="Focus on high-priority missions first to maximize your daily productivity."
                 hideMoreDetails
@@ -1579,14 +1579,14 @@ export default function QuestsPage() {
             <div className="p-3 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Calendar className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-orbitron">Future Missions</h2>
+                <h2 className="text-lg font-orbitron">Future</h2>
                 <StatInfoDialog
                   trigger={
                     <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">
                       <Info className="h-3.5 w-3.5" />
                     </button>
                   }
-                  title="Future Missions"
+                  title="Future"
                   description="Missions scheduled for upcoming days. Plan ahead to ensure you're prepared for what's coming."
                   additionalInfo="Review and adjust future missions regularly to keep your schedule aligned with your goals."
                   hideMoreDetails
@@ -1645,14 +1645,14 @@ export default function QuestsPage() {
           <div className="p-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-orbitron">Completed Missions</h2>
+              <h2 className="text-lg font-orbitron">Completed</h2>
               <StatInfoDialog
                 trigger={
                   <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">
                     <Info className="h-3.5 w-3.5" />
                   </button>
                 }
-                title="Completed Missions"
+                title="Completed"
                 description="Missions you've finished today. Each completed mission contributes to your XP gains and overall progress."
                 additionalInfo="Review your completed missions to celebrate your achievements and identify patterns in your productivity."
                 hideMoreDetails
@@ -1705,14 +1705,14 @@ export default function QuestsPage() {
             <div className="p-3 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Inbox className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-orbitron">Archived Missions</h2>
+                <h2 className="text-lg font-orbitron">Archived</h2>
                 <StatInfoDialog
                   trigger={
                     <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">
                       <Info className="h-3.5 w-3.5" />
                     </button>
                   }
-                  title="Archived Missions"
+                  title="Archived"
                   description="Missions created from your to-do ideas. Edit to schedule or complete them directly."
                   additionalInfo="These missions were automatically generated from ideas you captured. Review and prioritize them as needed."
                   hideMoreDetails
@@ -1770,14 +1770,14 @@ export default function QuestsPage() {
           <div className="p-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Archive className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-orbitron">Terminated Missions</h2>
+              <h2 className="text-lg font-orbitron">Terminated</h2>
               <StatInfoDialog
                 trigger={
                   <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">
                     <Info className="h-3.5 w-3.5" />
                   </button>
                 }
-                title="Terminated Missions"
+                title="Terminated"
                 description="Recently deleted missions are held here for 24 hours before being permanently removed."
                 additionalInfo="You can restore any terminated mission back to your active list within 24 hours of deletion."
                 hideMoreDetails
