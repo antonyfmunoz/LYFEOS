@@ -569,19 +569,18 @@ export default function GoalsArchivePage() {
   const [editingGoalId, setEditingGoalId] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const GOALS_KEY = ['/api/vision-goals/all'] as const;
+  const [goals, setGoals] = useState<VisionGoal[]>([]);
+  const [goalsQueryLoading, setGoalsQueryLoading] = useState(true);
 
-  const { data: fetchedGoals, isLoading: goalsQueryLoading } = useQuery<VisionGoal[]>({
-    queryKey: GOALS_KEY,
-    queryFn: async () => {
-      const res = await fetch('/api/vision-goals/all', { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch goals');
-      return res.json();
-    },
-    enabled: !!user,
-  });
-
-  const goals = fetchedGoals || [];
+  useEffect(() => {
+    if (!user) return;
+    setGoalsQueryLoading(true);
+    fetch('/api/vision-goals/all', { credentials: 'include' })
+      .then(res => { if (!res.ok) throw new Error('Failed to fetch goals'); return res.json(); })
+      .then((data: VisionGoal[]) => setGoals(data))
+      .catch(err => console.error("Failed to load goals:", err))
+      .finally(() => setGoalsQueryLoading(false));
+  }, [user]);
 
   const { data: legacyMissions = [] } = useQuery<LinkedMission[]>({
     queryKey: ['/api/quests/linked-by-vision-goal', 'legacy'],
@@ -622,85 +621,80 @@ export default function GoalsArchivePage() {
   };
 
   const handleToggle = useCallback(async (id: number, completed: boolean) => {
-    const previousGoals = queryClient.getQueryData<VisionGoal[]>(GOALS_KEY);
-    queryClient.setQueryData<VisionGoal[]>(GOALS_KEY, (old) =>
-      old?.map(g => g.id === id ? { ...g, completed, completedAt: completed ? new Date().toISOString() : null } : g)
-    );
+    const previousGoals = [...goals];
+    setGoals(prev => prev.map(g => g.id === id ? { ...g, completed, completedAt: completed ? new Date().toISOString() : null } : g));
 
     try {
       const result = await apiRequest<VisionGoal & { xpAwarded?: number }>(`/api/vision-goals/${id}`, {
         method: 'PATCH',
         body: JSON.stringify({ completed }),
       });
-      queryClient.setQueryData<VisionGoal[]>(GOALS_KEY, (old) =>
-        old?.map(g => g.id === id ? { ...g, ...result } : g)
-      );
+      setGoals(prev => prev.map(g => g.id === id ? { ...g, ...result } : g));
       if (completed && result && result.title) {
         objectiveToast(result.title, result.rewardText, result.bonusXp);
       }
     } catch (err) {
-      if (previousGoals) queryClient.setQueryData(GOALS_KEY, previousGoals);
+      setGoals(previousGoals);
       toast({
         title: "Failed to update goal",
         description: err instanceof Error ? err.message : "Please try again",
         variant: "destructive",
       });
-    } finally {
-      queryClient.invalidateQueries({ queryKey: GOALS_KEY });
     }
-  }, [toast, GOALS_KEY]);
+  }, [goals, toast]);
 
   const handleDelete = useCallback(async (id: number) => {
-    const previousGoals = queryClient.getQueryData<VisionGoal[]>(GOALS_KEY);
-    queryClient.setQueryData<VisionGoal[]>(GOALS_KEY, (old) => old?.filter(g => g.id !== id));
+    const previousGoals = [...goals];
+    setGoals(prev => prev.filter(g => g.id !== id));
 
     try {
       await apiRequest(`/api/vision-goals/${id}`, { method: 'DELETE' });
     } catch (err) {
-      if (previousGoals) queryClient.setQueryData(GOALS_KEY, previousGoals);
+      setGoals(previousGoals);
       toast({
         title: "Failed to delete goal",
         description: err instanceof Error ? err.message : "Please try again",
         variant: "destructive",
       });
-    } finally {
-      queryClient.invalidateQueries({ queryKey: GOALS_KEY });
     }
-  }, [toast, GOALS_KEY]);
+  }, [goals, toast]);
 
   const handleReorder = useCallback(async (category: string, ids: number[]) => {
+    const previousGoals = [...goals];
+    setGoals(prev => {
+      const updated = [...prev];
+      ids.forEach((id, index) => {
+        const goalIndex = updated.findIndex(g => g.id === id);
+        if (goalIndex !== -1) updated[goalIndex] = { ...updated[goalIndex], displayOrder: index };
+      });
+      return updated;
+    });
     try {
       await apiRequest('/api/vision-goals/reorder', {
         method: 'PUT',
         body: JSON.stringify({ ids }),
       });
-      queryClient.invalidateQueries({ queryKey: GOALS_KEY });
     } catch (err) {
       console.error("Failed to save reorder:", err);
-      queryClient.invalidateQueries({ queryKey: GOALS_KEY });
+      setGoals(previousGoals);
     }
-  }, [GOALS_KEY]);
+  }, [goals]);
 
   const movingGoalsRef = useRef<Set<number>>(new Set());
   const handleMoveToCategory = useCallback(async (goalId: number, newCategory: string) => {
-    console.log("[MOVE-GOAL] handleMoveToCategory called", { goalId, newCategory });
     if (movingGoalsRef.current.has(goalId)) return;
     movingGoalsRef.current.add(goalId);
-    const previousGoals = queryClient.getQueryData<VisionGoal[]>(GOALS_KEY);
-    queryClient.setQueryData<VisionGoal[]>(GOALS_KEY, (old) =>
-      old?.map(g => g.id === goalId ? { ...g, category: newCategory, displayOrder: 999 } : g)
-    );
+    const previousGoals = [...goals];
+    setGoals(prev => prev.map(g => g.id === goalId ? { ...g, category: newCategory, displayOrder: 999 } : g));
 
     try {
-      const result = await apiRequest(`/api/vision-goals/${goalId}`, {
+      const result = await apiRequest<VisionGoal>(`/api/vision-goals/${goalId}`, {
         method: 'PATCH',
         body: JSON.stringify({ category: newCategory }),
       });
-      queryClient.setQueryData<VisionGoal[]>(GOALS_KEY, (old) =>
-        old?.map(g => g.id === goalId ? { ...g, ...result } : g)
-      );
+      setGoals(prev => prev.map(g => g.id === goalId ? { ...g, ...result } : g));
     } catch (err) {
-      if (previousGoals) queryClient.setQueryData(GOALS_KEY, previousGoals);
+      setGoals(previousGoals);
       toast({
         title: "Failed to move goal",
         description: err instanceof Error ? err.message : "Please try again",
@@ -708,9 +702,8 @@ export default function GoalsArchivePage() {
       });
     } finally {
       movingGoalsRef.current.delete(goalId);
-      queryClient.invalidateQueries({ queryKey: GOALS_KEY });
     }
-  }, [toast, GOALS_KEY]);
+  }, [goals, toast]);
 
   const [legacyOpen, setLegacyOpen] = useWidgetState('goals.legacy-vision', false);
   const [tenYearOpen, setTenYearOpen] = useWidgetState('goals.10year-vision', false);
@@ -845,7 +838,7 @@ export default function GoalsArchivePage() {
     };
     setIsCreateOpen(false);
     setCreateFormData(defaultFormData);
-    queryClient.setQueryData<VisionGoal[]>(GOALS_KEY, (old) => [...(old || []), optimisticGoal]);
+    setGoals(prev => [...prev, optimisticGoal]);
     try {
       const newGoal = await apiRequest<VisionGoal>('/api/vision-goals', {
         method: 'POST',
@@ -857,20 +850,16 @@ export default function GoalsArchivePage() {
           bonusXp: 0,
         }),
       });
-      queryClient.setQueryData<VisionGoal[]>(GOALS_KEY, (old) =>
-        old?.map(g => g.id === tempId ? newGoal : g)
-      );
+      setGoals(prev => prev.map(g => g.id === tempId ? newGoal : g));
     } catch (error) {
-      queryClient.setQueryData<VisionGoal[]>(GOALS_KEY, (old) => old?.filter(g => g.id !== tempId));
+      setGoals(prev => prev.filter(g => g.id !== tempId));
       console.error("Error creating goal:", error);
     } finally {
       setIsSubmitting(false);
-      queryClient.invalidateQueries({ queryKey: GOALS_KEY });
     }
   };
 
   const handleEditGoal = async () => {
-    console.log("[EDIT-GOAL] handleEditGoal called", { editingGoalId, category: editFormData.category, title: editFormData.title });
     if (!editFormData.title.trim() || !editingGoalId) return;
     setIsSubmitting(true);
     const editedId = editingGoalId;
@@ -880,23 +869,19 @@ export default function GoalsArchivePage() {
       rewardText: editFormData.rewardText.trim() || null,
       category: editFormData.category,
     };
-    const previousGoals = queryClient.getQueryData<VisionGoal[]>(GOALS_KEY);
+    const previousGoals = [...goals];
     setIsEditOpen(false);
     setEditFormData(defaultFormData);
     setEditingGoalId(null);
-    queryClient.setQueryData<VisionGoal[]>(GOALS_KEY, (old) =>
-      old?.map(g => g.id === editedId ? { ...g, ...optimisticUpdates } : g)
-    );
+    setGoals(prev => prev.map(g => g.id === editedId ? { ...g, ...optimisticUpdates } : g));
     try {
       const updatedGoal = await apiRequest<VisionGoal>(`/api/vision-goals/${editedId}`, {
         method: 'PATCH',
         body: JSON.stringify(optimisticUpdates),
       });
-      queryClient.setQueryData<VisionGoal[]>(GOALS_KEY, (old) =>
-        old?.map(g => g.id === editedId ? { ...g, ...updatedGoal } : g)
-      );
+      setGoals(prev => prev.map(g => g.id === editedId ? { ...g, ...updatedGoal } : g));
     } catch (error) {
-      if (previousGoals) queryClient.setQueryData(GOALS_KEY, previousGoals);
+      setGoals(previousGoals);
       console.error("Error updating goal:", error);
       toast({
         title: "Failed to update goal",
@@ -905,7 +890,6 @@ export default function GoalsArchivePage() {
       });
     } finally {
       setIsSubmitting(false);
-      queryClient.invalidateQueries({ queryKey: GOALS_KEY });
     }
   };
 
