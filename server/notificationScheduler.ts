@@ -110,7 +110,9 @@ async function sendStreakReminders() {
             url: "/quests",
           });
         }
-      } catch {}
+      } catch (subErr) {
+        logger.error("Error processing streak reminder for subscription:", subErr);
+      }
     }
   } catch (err) {
     logger.error("Streak reminder error:", err);

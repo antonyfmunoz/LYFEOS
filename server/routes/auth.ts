@@ -340,7 +340,9 @@ export function registerAuthRoutes(app: Express): void {
           const data = await response.json();
           const result = api.parse(data);
           if (result.location) return res.json(result);
-        } catch {}
+        } catch (geoErr) {
+          logger.debug("Geo API request failed:", geoErr);
+        }
       }
 
       return res.status(502).json({ error: "Failed to detect location" });

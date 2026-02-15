@@ -2201,7 +2201,7 @@ export class DatabaseStorage implements IStorage {
       and(
         eq(userActivityEvents.userId, userId),
         eq(userActivityEvents.eventType, eventType),
-        gt(userActivityEvents.occurredAt, sql`NOW() - interval '${sql.raw(String(days))} days'`)
+        gt(userActivityEvents.occurredAt, sql`NOW() - make_interval(days => ${days})`)
       )
     ).orderBy(desc(userActivityEvents.occurredAt));
   }

@@ -1071,7 +1071,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       },
       credentials: "include",
       body: JSON.stringify({
-        userId: 1, // This will be replaced with the actual user ID from session
+        userId: user?.id,
         sender: 'user',
         content,
         timestamp: new Date(),
