@@ -5878,7 +5878,41 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
         }).catch(() => {});
       }
 
-      const updatedStats = await storage.getUserStats(userId);
+      const dbStats = await storage.getUserStats(userId);
+      const xpData = await storage.recalculateXP(userId);
+      const updatedStats = dbStats ? {
+        attentionTokens: {
+          current: dbStats.attentionTokensCurrent,
+          max: dbStats.attentionTokensMax,
+        },
+        timeTokens: {
+          current: dbStats.timeTokensCurrent,
+          max: dbStats.timeTokensMax,
+        },
+        energyPoints: {
+          current: dbStats.energyPointsCurrent,
+          max: dbStats.energyPointsMax,
+        },
+        healthPoints: {
+          current: dbStats.healthPointsCurrent,
+          max: dbStats.healthPointsMax,
+        },
+        experience: {
+          current: xpData.experienceCurrent,
+          max: xpData.experienceMax,
+          level: xpData.level,
+          totalXP: xpData.totalXP,
+          showLevelUp: false,
+        },
+        streakDays: dbStats.streakDays || 0,
+        efficiencyScore: dbStats.efficiencyScore || 0,
+        aiAssistantName: dbStats.aiAssistantName,
+        notificationsEnabled: dbStats.notificationsEnabled,
+        darkThemeEnabled: dbStats.darkThemeEnabled,
+        autoSyncEnabled: dbStats.autoSyncEnabled,
+        aiAssistantEnabled: dbStats.aiAssistantEnabled,
+        primaryColor: dbStats.primaryColor,
+      } : null;
       res.json({ ...goal, xpAwarded, xpRemoved, updatedStats });
     } catch (error) {
       console.error("Error updating vision goal:", error);
