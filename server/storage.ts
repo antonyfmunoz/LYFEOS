@@ -1109,6 +1109,7 @@ export class DatabaseStorage implements IStorage {
       energyCost: quest.energyCost,
       attentionCost: quest.attentionCost,
       timeCost: quest.timeCost,
+      visionGoalId: quest.visionGoalId,
     });
     
     return newQuest;

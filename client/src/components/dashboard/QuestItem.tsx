@@ -267,7 +267,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
                 const displayDesc = onboardingDesc || description;
                 return displayDesc ? (
                   <p className="text-muted-foreground text-xs">
-                    <span className="text-primary font-mono">Description:</span> {displayDesc}
+                    <span className="text-primary font-mono">Mission Description:</span> {displayDesc}
                   </p>
                 ) : null;
               })()}

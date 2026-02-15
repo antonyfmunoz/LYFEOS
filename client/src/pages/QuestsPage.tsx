@@ -1852,7 +1852,7 @@ export default function QuestsPage() {
                             <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 opacity-60 space-y-1.5">
                               {quest.description && (
                                 <p className="text-muted-foreground text-xs">
-                                  <span className="text-primary font-mono">Description:</span> {quest.category === 'onboarding'
+                                  <span className="text-primary font-mono">Mission Description:</span> {quest.category === 'onboarding'
                                     ? (ONBOARDING_MISSIONS.find(m => m.title === quest.title.replace(/^Onboarding:\s*/, ''))?.description || quest.description)
                                     : quest.description}
                                 </p>

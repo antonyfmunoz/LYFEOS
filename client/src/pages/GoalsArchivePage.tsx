@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
 import { useWidgetState } from "@/hooks/use-widget-state";
-import { ArrowLeft, Eye, Compass, Flame, Target, Milestone, Check, Trash2, Edit2, Loader2, ChevronDown, ChevronRight, Info, Zap, GripVertical, Gift, Star, Undo2 } from "lucide-react";
+import { ArrowLeft, Eye, Compass, Flame, Target, Milestone, Check, Trash2, Edit2, Loader2, Info, GripVertical, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -56,6 +56,8 @@ interface LinkedMission {
   difficulty: string;
   experienceReward: number;
   energyCost: number;
+  timeCost: number;
+  attentionCost: number;
   category: string;
 }
 
@@ -126,13 +128,13 @@ interface DraggableObjectiveProps {
   infoExpandedId: number | null;
   setInfoExpandedId: (id: number | null) => void;
   renderInfoPanel: (goal: VisionGoal) => React.ReactNode;
-  renderGoalMissions: (goalId: number) => React.ReactNode;
+  getMissionsForGoal: (goalId: number) => LinkedMission[];
   category: string;
 }
 
 function DraggableObjective({
   goal, index, moveGoal, onDragEnd, onToggle, onEdit, onDelete, isMutating,
-  infoExpandedId, setInfoExpandedId, renderInfoPanel, renderGoalMissions, category,
+  infoExpandedId, setInfoExpandedId, renderInfoPanel, getMissionsForGoal, category,
 }: DraggableObjectiveProps) {
   const ref = useRef<HTMLDivElement>(null);
   const onDragEndRef = useRef(onDragEnd);
@@ -175,6 +177,15 @@ function DraggableObjective({
 
   preview(drop(ref));
 
+  const allMissions = getMissionsForGoal(goal.id);
+  const activeMissions = allMissions.filter(m => !m.completed);
+  const completedMissions = allMissions.filter(m => m.completed);
+  const totalEP = allMissions.reduce((acc, m) => acc + (m.energyCost || 0), 0);
+  const totalTT = allMissions.reduce((acc, m) => acc + (m.timeCost || 0), 0);
+  const totalAT = allMissions.reduce((acc, m) => acc + (m.attentionCost || 0), 0);
+  const difficultyMultipliers: Record<string, number> = { D: 1, C: 1.5, B: 2, A: 3, S: 5 };
+  const totalXP = allMissions.reduce((acc, m) => acc + Math.floor((m.experienceReward || 0) * (difficultyMultipliers[m.difficulty] || 1)), 0) + (goal.bonusXp || 0);
+
   return (
     <div
       ref={ref}
@@ -209,19 +220,22 @@ function DraggableObjective({
               </button>
             </div>
           </div>
-          <div className="flex items-center gap-3 mt-1 flex-wrap">
-            {goal.rewardText && (
-              <span className="flex items-center gap-1 text-primary text-xs font-mono whitespace-nowrap">
-                <Gift className="h-3 w-3" />
-                {goal.rewardText}
-              </span>
-            )}
-            {goal.bonusXp > 0 && (
-              <span className="text-primary text-xs font-mono whitespace-nowrap">+{goal.bonusXp} XP</span>
+          <div className="flex items-center gap-3 mt-1 flex-wrap text-xs font-mono text-muted-foreground">
+            <span className="text-orange-400/80">-{totalAT} AT</span>
+            <span className="text-orange-400/80">-{totalTT} TT</span>
+            <span className="text-orange-400/80">-{totalEP} EP</span>
+            <span className="text-primary/80">+{totalXP} XP</span>
+          </div>
+          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+            <span>Created: {new Date(goal.createdAt).toLocaleDateString()}</span>
+            {goal.completedAt && (
+              <span className="text-green-400/80">Completed: {new Date(goal.completedAt).toLocaleDateString()}</span>
             )}
           </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            {allMissions.length} linked mission{allMissions.length !== 1 ? 's' : ''} ({activeMissions.length} active, {completedMissions.length} done)
+          </div>
           {renderInfoPanel(goal)}
-          {renderGoalMissions(goal.id)}
           <div className="flex items-center gap-2 mt-2">
             <button
               className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40"
@@ -252,7 +266,6 @@ interface ObjectiveListProps {
 
 function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading, onCreateGoal, onEditGoal, onToggle, onDelete, onReorder }: ObjectiveListProps) {
   const { toast } = useToast();
-  const [expandedGoalId, setExpandedGoalId] = useState<number | null>(null);
   const [infoExpandedId, setInfoExpandedId] = useState<number | null>(null);
   const [isMutating, setIsMutating] = useState(false);
 
@@ -277,60 +290,32 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
 
     const uniqueCategories = Array.from(new Set(allMissions.map(m => m.category))).filter(c => c !== 'general');
 
-    const totalXP = completedMissions.reduce((acc, m) => acc + (m.experienceReward || 0), 0);
-    const totalEnergy = completedMissions.reduce((acc, m) => acc + (m.energyCost || 0), 0);
+    const difficultyDescriptions: Record<string, string> = {
+      S: 'Extreme effort. Multi-day or life-changing.',
+      A: 'High effort. Significant commitment.',
+      B: 'Moderate effort. Requires focus and planning.',
+      C: 'Light effort. Simple but requires attention.',
+      D: 'Minimal effort. Quick and easy.',
+    };
 
     return (
-      <div className="mt-2 bg-primary/5 border border-primary/10 rounded-lg p-3 space-y-2 text-xs">
-        <div className="flex items-start gap-2">
-          <span className="text-muted-foreground shrink-0">Desc:</span>
-          <span className={goal.description ? "text-foreground/80" : "italic text-muted-foreground"}>
-            {goal.description || "No description"}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-muted-foreground shrink-0">Created:</span>
-          <span className="text-foreground/80">{new Date(goal.createdAt).toLocaleDateString()}</span>
-        </div>
-
-        {goal.completedAt && (
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground shrink-0">Completed:</span>
-            <span className="text-green-400/80">{new Date(goal.completedAt).toLocaleDateString()}</span>
-          </div>
-        )}
-
-        {goal.bonusXp > 0 && (
-          <div className="flex items-center gap-2">
-            <Star className="h-3 w-3 text-foreground" />
-            <span className="text-foreground font-medium">+{goal.bonusXp} Bonus XP on completion</span>
-          </div>
-        )}
-
-        {avgDifficulty && (
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground shrink-0">Avg Difficulty:</span>
-            <span className="text-primary/80 font-medium">Rank {avgDifficulty}</span>
-          </div>
-        )}
-
+      <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 space-y-1.5">
+        <p className="text-muted-foreground text-xs">
+          <span className="text-primary font-mono">Objective Description:</span> {goal.description || "No description"}
+        </p>
         {uniqueCategories.length > 0 && (
-          <div className="flex items-center gap-1 flex-wrap">
-            {uniqueCategories.map(cat => (
-              <span key={cat} className="px-1.5 py-0.5 rounded bg-primary/10 text-primary/80 text-[10px] font-medium">
-                {cat}
-              </span>
-            ))}
-          </div>
+          <p className="text-muted-foreground text-xs">
+            <span className="text-primary font-mono">Objective Type — <span className="capitalize">{uniqueCategories.join(', ')}</span>:</span> {
+              uniqueCategories.length === 1 ? 'Single-focus objective.' : 'Multi-category objective.'
+            }
+          </p>
         )}
-
-        {allMissions.length > 0 && (
-          <div className="flex items-center gap-1 text-muted-foreground">
-            <Zap className="h-3 w-3 text-primary/60" />
-            <span>+{totalXP} XP · -{totalEnergy} EP · {completedMissions.length}/{allMissions.length} mission{allMissions.length !== 1 ? 's' : ''} done</span>
-          </div>
-        )}
+        <p className="text-muted-foreground text-xs">
+          <span className="text-primary font-mono">Average Mission Difficulty — Rank {avgDifficulty || 'D'}:</span> {difficultyDescriptions[avgDifficulty || 'D']}
+        </p>
+        <p className="text-muted-foreground text-xs">
+          <span className="text-primary font-mono">Objective Reward:</span> {goal.rewardText || "No reward set"}
+        </p>
 
         {activeMissions.length > 0 && (
           <div className="border-t border-primary/10 pt-2 mt-1">
@@ -413,67 +398,6 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
     );
   }
 
-  const renderGoalMissions = (goalId: number) => {
-    const allMissions = getMissionsForGoal(goalId);
-    const activeMissions = allMissions.filter(m => !m.completed);
-    const completedMissions = allMissions.filter(m => m.completed);
-    const totalXP = completedMissions.reduce((acc, m) => acc + (m.experienceReward || 0), 0);
-    const totalEnergy = completedMissions.reduce((acc, m) => acc + (m.energyCost || 0), 0);
-    const isExpanded = expandedGoalId === goalId;
-
-    if (allMissions.length === 0) {
-      return (
-        <div className="mt-2 text-xs text-muted-foreground/60 italic flex items-center gap-1">
-          <Target className="h-3 w-3" />
-          <span>No linked missions</span>
-        </div>
-      );
-    }
-
-    return (
-      <div className="mt-2">
-        <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground mb-1">
-          <span className="flex items-center gap-1">
-            <Zap className="h-3 w-3 text-primary/60" />
-            <span className="text-primary/80 font-mono">+{totalXP} XP</span>
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="text-orange-400/80 font-mono">-{totalEnergy} EP</span>
-          </span>
-          <span className="font-mono">{completedMissions.length}/{allMissions.length} done</span>
-        </div>
-        <button
-          onClick={(e) => { e.stopPropagation(); setExpandedGoalId(isExpanded ? null : goalId); }}
-          className="flex items-center gap-1 text-xs text-primary/70 hover:text-primary transition-colors"
-        >
-          {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-          <span>{allMissions.length} linked mission{allMissions.length !== 1 ? 's' : ''} ({activeMissions.length} active, {completedMissions.length} done)</span>
-        </button>
-        {isExpanded && (
-          <div className="mt-1 space-y-0.5 pl-4 border-l border-primary/10">
-            {activeMissions.map((m) => (
-              <div key={m.id} className="flex items-center gap-1.5 py-0.5">
-                <Target className="h-3 w-3 text-primary shrink-0" />
-                <span className="text-xs text-primary font-mono capitalize">{m.category}</span>
-                <span className="text-xs text-muted-foreground">—</span>
-                <span className="text-xs text-foreground/70 truncate">{m.title}</span>
-                <span className="text-[10px] text-muted-foreground/60 font-mono ml-auto shrink-0">Rank {m.difficulty}</span>
-              </div>
-            ))}
-            {completedMissions.map((m) => (
-              <div key={m.id} className="flex items-center gap-1.5 py-0.5">
-                <Check className="h-3 w-3 text-green-400 shrink-0" />
-                <span className="text-xs text-primary font-mono capitalize">{m.category}</span>
-                <span className="text-xs text-muted-foreground">—</span>
-                <span className="text-xs text-muted-foreground truncate">{m.title}</span>
-                <span className="text-[10px] text-muted-foreground/60 font-mono ml-auto shrink-0">Rank {m.difficulty}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
 
   return (
     <div className="space-y-3">
@@ -497,7 +421,7 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
               infoExpandedId={infoExpandedId}
               setInfoExpandedId={setInfoExpandedId}
               renderInfoPanel={renderInfoPanel}
-              renderGoalMissions={renderGoalMissions}
+              getMissionsForGoal={getMissionsForGoal}
               category={category}
             />
           ))}
@@ -509,62 +433,75 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
           <p className="text-xs text-muted-foreground font-medium px-3 pb-1">
             Completed ({completedGoals.length})
           </p>
-          {completedGoals.map((goal) => (
-            <div
-              key={goal.id}
-              className="glassmorphic rounded-xl p-4 mb-3 neon-border"
-            >
-              <div className="flex items-start">
-                <div className="w-4 flex-shrink-0" />
-                <div className="ml-2 flex-grow">
-                  <div className="flex justify-between items-start">
-                    <h3 className="font-medium text-muted-foreground line-through">{goal.title}</h3>
-                    <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                      <button
-                        className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
-                        onClick={(e) => { e.stopPropagation(); setInfoExpandedId(infoExpandedId === goal.id ? null : goal.id); }}
-                      >
-                        <Info className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
-                        onClick={(e) => { e.stopPropagation(); onEditGoal(goal); }}
-                      >
-                        <Edit2 className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-destructive/30 hover:text-destructive hover:border-destructive/50 transition-colors"
-                        onClick={(e) => { e.stopPropagation(); onDelete(goal.id); }}
-                        disabled={isMutating}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+          {completedGoals.map((goal) => {
+            const allMissions = getMissionsForGoal(goal.id);
+            const activeMissions = allMissions.filter(m => !m.completed);
+            const completedMissions = allMissions.filter(m => m.completed);
+            const totalEP = allMissions.reduce((acc, m) => acc + (m.energyCost || 0), 0);
+            const totalTT = allMissions.reduce((acc, m) => acc + (m.timeCost || 0), 0);
+            const totalAT = allMissions.reduce((acc, m) => acc + (m.attentionCost || 0), 0);
+            const diffMults: Record<string, number> = { D: 1, C: 1.5, B: 2, A: 3, S: 5 };
+            const totalXP = allMissions.reduce((acc, m) => acc + Math.floor((m.experienceReward || 0) * (diffMults[m.difficulty] || 1)), 0) + (goal.bonusXp || 0);
+            return (
+              <div
+                key={goal.id}
+                className="glassmorphic rounded-xl p-4 mb-3 neon-border"
+              >
+                <div className="flex items-start">
+                  <div className="w-4 flex-shrink-0" />
+                  <div className="ml-2 flex-grow">
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-medium text-muted-foreground line-through">{goal.title}</h3>
+                      <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                        <button
+                          className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                          onClick={(e) => { e.stopPropagation(); setInfoExpandedId(infoExpandedId === goal.id ? null : goal.id); }}
+                        >
+                          <Info className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                          onClick={(e) => { e.stopPropagation(); onEditGoal(goal); }}
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-destructive/30 hover:text-destructive hover:border-destructive/50 transition-colors"
+                          onClick={(e) => { e.stopPropagation(); onDelete(goal.id); }}
+                          disabled={isMutating}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </div>
+                    <div className="flex items-center gap-3 mt-1 flex-wrap text-xs font-mono text-muted-foreground opacity-50">
+                      <span className="text-orange-400/80">-{totalAT} AT</span>
+                      <span className="text-orange-400/80">-{totalTT} TT</span>
+                      <span className="text-orange-400/80">-{totalEP} EP</span>
+                      <span className="text-primary/80">+{totalXP} XP</span>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground opacity-50">
+                      <span>Created: {new Date(goal.createdAt).toLocaleDateString()}</span>
+                      {goal.completedAt && (
+                        <span className="text-green-400/80">Completed: {new Date(goal.completedAt).toLocaleDateString()}</span>
+                      )}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground opacity-50">
+                      {allMissions.length} linked mission{allMissions.length !== 1 ? 's' : ''} ({activeMissions.length} active, {completedMissions.length} done)
+                    </div>
+                    {renderInfoPanel(goal)}
+                    <button
+                      className="mt-2 text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5"
+                      onClick={(e) => { e.stopPropagation(); onToggle(goal.id, false); }}
+                    >
+                      <Undo2 className="h-3 w-3" />
+                      Undo
+                    </button>
                   </div>
-                  <div className="flex items-center gap-3 mt-1 flex-wrap opacity-50">
-                    {goal.rewardText && (
-                      <span className="flex items-center gap-1 text-primary text-xs font-mono whitespace-nowrap">
-                        <Gift className="h-3 w-3" />
-                        {goal.rewardText}
-                      </span>
-                    )}
-                    {goal.bonusXp > 0 && (
-                      <span className="text-primary text-xs font-mono whitespace-nowrap">+{goal.bonusXp} XP</span>
-                    )}
-                  </div>
-                  {renderInfoPanel(goal)}
-                  {renderGoalMissions(goal.id)}
-                  <button
-                    className="mt-2 text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5"
-                    onClick={(e) => { e.stopPropagation(); onToggle(goal.id, false); }}
-                  >
-                    <Undo2 className="h-3 w-3" />
-                    Undo
-                  </button>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

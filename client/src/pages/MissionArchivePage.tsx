@@ -168,7 +168,7 @@ function MissionCard({ mission, visionGoals }: { mission: Quest; visionGoals: Vi
           <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 space-y-1.5 opacity-50">
             {description && (
               <p className="text-muted-foreground text-xs">
-                <span className="text-primary font-mono">Description:</span> {category === 'onboarding'
+                <span className="text-primary font-mono">Mission Description:</span> {category === 'onboarding'
                   ? (ONBOARDING_MISSIONS.find(m => m.title === title.replace(/^Onboarding:\s*/, ''))?.description || description)
                   : description}
               </p>

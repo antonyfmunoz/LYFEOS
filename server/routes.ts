@@ -5882,6 +5882,8 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
           difficulty: q.difficulty || "D",
           experienceReward: q.experienceReward,
           energyCost: q.energyCost,
+          timeCost: q.timeCost || 0,
+          attentionCost: q.attentionCost || 0,
           category: q.category || "general",
         }));
       res.json(completedLinked);
@@ -5916,6 +5918,8 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
           difficulty: q.difficulty || "D",
           experienceReward: q.experienceReward,
           energyCost: q.energyCost,
+          timeCost: q.timeCost || 0,
+          attentionCost: q.attentionCost || 0,
           category: q.category || "general",
         }));
       res.json(linked);
