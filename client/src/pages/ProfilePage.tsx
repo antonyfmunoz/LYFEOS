@@ -1579,10 +1579,6 @@ export default function ProfilePage() {
                         body: JSON.stringify({ blueLightFilter: newVal }),
                       });
                       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
-                      toast({
-                        title: newVal ? "Blue light filter enabled" : "Blue light filter disabled",
-                        description: newVal ? "The filter will activate automatically between 7 PM and 7 AM." : "Blue light filter has been turned off.",
-                      });
                     } catch {
                       toast({ title: "Error", description: "Could not update setting.", variant: "destructive" });
                     }

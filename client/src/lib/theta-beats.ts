@@ -11,42 +11,42 @@ const THETA_OFFSET = 6;
 const FADE_DURATION = 2.0;
 const BEAT_VOLUME = 0.15;
 
-function getOrCreateContext(): AudioContext {
+function ensureContext(): AudioContext {
   if (!audioCtx || audioCtx.state === 'closed') {
-    audioCtx = new AudioContext();
+    audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
   }
   return audioCtx;
 }
 
-function warmUpContext(): void {
-  const ctx = getOrCreateContext();
-  if (ctx.state === 'suspended') {
-    ctx.resume().catch(() => {});
-  }
-}
-
 if (typeof window !== 'undefined') {
   const warmUp = () => {
-    warmUpContext();
-    window.removeEventListener('click', warmUp);
-    window.removeEventListener('touchstart', warmUp);
-    window.removeEventListener('keydown', warmUp);
+    try {
+      const ctx = ensureContext();
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+    } catch {}
   };
-  window.addEventListener('click', warmUp, { once: false });
-  window.addEventListener('touchstart', warmUp, { once: false });
-  window.addEventListener('keydown', warmUp, { once: false });
+  window.addEventListener('click', warmUp, { once: true });
+  window.addEventListener('touchstart', warmUp, { once: true });
+  window.addEventListener('keydown', warmUp, { once: true });
 }
 
 export async function startThetaBeats(): Promise<void> {
   if (isPlaying) return;
 
-  const ctx = getOrCreateContext();
+  const ctx = ensureContext();
+
   if (ctx.state === 'suspended') {
     try {
       await ctx.resume();
     } catch {
       return;
     }
+  }
+
+  if (ctx.state !== 'running') {
+    return;
   }
 
   merger = ctx.createChannelMerger(2);

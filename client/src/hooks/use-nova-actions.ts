@@ -25,11 +25,11 @@ function speakWithLoop(text: string, voice?: SpeechSynthesisVoice | null) {
   window.speechSynthesis.speak(utterance);
 }
 
-function startAffirmationSession(text: string) {
+async function startAffirmationSession(text: string) {
   if (!('speechSynthesis' in window)) return;
   stopAffirmationSession();
   affirmationLoopActive = true;
-  startThetaBeats();
+  await startThetaBeats();
   const voices = window.speechSynthesis.getVoices();
   const preferred = voices.find(v => v.lang.startsWith('en') && v.name.includes('Female'))
     || voices.find(v => v.lang.startsWith('en'));
