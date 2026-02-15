@@ -341,8 +341,8 @@ export default function TimelineDetailPage() {
     <div>
       <div className="flex items-center mb-6">
         <Button 
-          variant="ghost" 
-          className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10 mr-3" 
+          className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs mr-3" 
+          size="sm"
           onClick={goBack}
         >
           <ArrowLeft className="h-4 w-4" />

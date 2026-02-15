@@ -140,8 +140,8 @@ export default function RitualsArchivePage() {
     <>
       <div className="mb-4">
         <Button 
-          variant="ghost" 
-          className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10" 
+          className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs" 
+          size="sm"
           onClick={() => navigate('/chronilog')}
         >
           <ArrowLeft className="h-4 w-4" />

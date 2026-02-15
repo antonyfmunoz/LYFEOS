@@ -17,6 +17,13 @@ export default function RootLayout({ children }: RootLayoutProps) {
   const rawPage = location.split('/')[1] || 'dashboard';
   const pageAliases: Record<string, string> = {
     'goals-archive': 'chronilog',
+    'knowledge-vault': 'chronilog',
+    'timeline': 'chronilog',
+    'rolodex': 'chronilog',
+    'mission-archive': 'chronilog',
+    'journal-archive': 'chronilog',
+    'rituals-archive': 'chronilog',
+    'enhanced-mission': 'chronilog',
     'energy': 'profile',
     'attention': 'profile',
     'time': 'profile',
