@@ -163,10 +163,10 @@ export default function StreakDetailPage() {
           <div className="text-center md:text-left">
             <p className="text-xs font-mono uppercase tracking-widest text-primary mb-2">{streakLevel}</p>
             <div className="flex items-baseline gap-2">
-              <span className="text-7xl font-orbitron font-bold bg-gradient-to-b from-white to-primary/60 bg-clip-text text-transparent leading-none">
+              <span className="text-7xl font-orbitron font-bold text-primary leading-none">
                 {stats.streakDays}
               </span>
-              <span className="text-2xl text-muted-foreground font-mono">days</span>
+              <span className="text-2xl text-primary/60 font-mono">days</span>
             </div>
             <p className="text-sm text-muted-foreground mt-2">Current login streak</p>
           </div>
@@ -196,17 +196,17 @@ export default function StreakDetailPage() {
                 <div className="flex items-center gap-2 bg-background/40 rounded-lg px-3 py-2 border border-muted/20">
                   <Trophy className="h-4 w-4 text-primary" />
                   <span className="text-muted-foreground">Best:</span>
-                  <span className="font-mono text-white">{streakData.longestStreak} days</span>
+                  <span className="font-mono text-primary">{streakData.longestStreak} days</span>
                 </div>
                 <div className="flex items-center gap-2 bg-background/40 rounded-lg px-3 py-2 border border-muted/20">
                   <Calendar className="h-4 w-4 text-primary" />
                   <span className="text-muted-foreground">Active:</span>
-                  <span className="font-mono text-white">{streakData.activeDays} days</span>
+                  <span className="font-mono text-primary">{streakData.activeDays} days</span>
                 </div>
                 <div className="flex items-center gap-2 bg-background/40 rounded-lg px-3 py-2 border border-muted/20">
                   <CheckCircle2 className="h-4 w-4 text-primary" />
                   <span className="text-muted-foreground">Done:</span>
-                  <span className="font-mono text-white">{streakData.totalCompleted}</span>
+                  <span className="font-mono text-primary">{streakData.totalCompleted}</span>
                 </div>
               </>
             )}
@@ -228,18 +228,18 @@ export default function StreakDetailPage() {
             </h2>
 
             <div className="overflow-x-auto pb-2 relative" onMouseLeave={() => setHoveredDay(null)}>
-              <div className="flex gap-0.5 min-w-[700px]">
-                <div className="flex flex-col gap-0.5 mr-1 text-[10px] text-muted-foreground font-mono pt-5">
-                  <div className="h-[13px]"></div>
-                  <div className="h-[13px] flex items-center">Mon</div>
-                  <div className="h-[13px]"></div>
-                  <div className="h-[13px] flex items-center">Wed</div>
-                  <div className="h-[13px]"></div>
-                  <div className="h-[13px] flex items-center">Fri</div>
-                  <div className="h-[13px]"></div>
+              <div className="flex gap-px sm:gap-0.5">
+                <div className="flex flex-col gap-px sm:gap-0.5 mr-1 text-[8px] sm:text-[10px] text-muted-foreground font-mono pt-4 sm:pt-5">
+                  <div className="h-[10px] sm:h-[13px]"></div>
+                  <div className="h-[10px] sm:h-[13px] flex items-center">Mon</div>
+                  <div className="h-[10px] sm:h-[13px]"></div>
+                  <div className="h-[10px] sm:h-[13px] flex items-center">Wed</div>
+                  <div className="h-[10px] sm:h-[13px]"></div>
+                  <div className="h-[10px] sm:h-[13px] flex items-center">Fri</div>
+                  <div className="h-[10px] sm:h-[13px]"></div>
                 </div>
-                <div className="flex-1">
-                  <div className="flex gap-0.5 mb-1 text-[10px] text-muted-foreground font-mono relative" style={{ height: '14px' }}>
+                <div className="flex-1 min-w-0">
+                  <div className="flex gap-px sm:gap-0.5 mb-1 text-[8px] sm:text-[10px] text-muted-foreground font-mono relative" style={{ height: '14px' }}>
                     {monthMarkers.map((m, i) => (
                       <div
                         key={i}
@@ -250,13 +250,13 @@ export default function StreakDetailPage() {
                       </div>
                     ))}
                   </div>
-                  <div className="flex gap-0.5 relative">
+                  <div className="flex gap-px sm:gap-0.5 relative">
                     {heatmapWeeks.map((week, wi) => (
-                      <div key={wi} className="flex flex-col gap-0.5">
+                      <div key={wi} className="flex flex-col gap-px sm:gap-0.5">
                         {week.map((day, di) => (
                           <div
                             key={`${wi}-${di}`}
-                            className={`w-[13px] h-[13px] rounded-[2px] border transition-all duration-150 ${
+                            className={`w-[5px] h-[5px] sm:w-[10px] sm:h-[10px] md:w-[13px] md:h-[13px] rounded-[1px] sm:rounded-[2px] border transition-all duration-150 ${
                               day.count === -1
                                 ? "opacity-0"
                                 : `${getHeatColor(day.count)} ${getHeatBorder(day.count)} hover:ring-1 hover:ring-primary/50 cursor-pointer`
@@ -264,7 +264,8 @@ export default function StreakDetailPage() {
                             onMouseEnter={(e) => {
                               if (day.count !== -1) {
                                 const rect = e.currentTarget.getBoundingClientRect();
-                                setHoveredDay({ date: day.date, count: day.count, x: rect.left, y: rect.top });
+                                const tooltipX = Math.min(rect.left, window.innerWidth - 200);
+                                setHoveredDay({ date: day.date, count: day.count, x: tooltipX, y: rect.top });
                               }
                             }}
                           />
@@ -277,13 +278,13 @@ export default function StreakDetailPage() {
 
               {hoveredDay && (
                 <div
-                  className="fixed z-50 bg-card/95 backdrop-blur border border-primary/30 rounded-lg px-3 py-2 shadow-xl pointer-events-none"
-                  style={{ left: hoveredDay.x, top: hoveredDay.y - 50 }}
+                  className="fixed z-50 bg-card/95 backdrop-blur border border-primary/30 rounded-lg px-3 py-2 shadow-xl pointer-events-none max-w-[200px]"
+                  style={{ left: Math.min(hoveredDay.x, window.innerWidth - 210), top: hoveredDay.y - 50 }}
                 >
                   <p className="text-xs text-muted-foreground">
                     {new Date(hoveredDay.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </p>
-                  <p className="text-sm font-mono text-white">
+                  <p className="text-sm font-mono text-primary">
                     {hoveredDay.count} mission{hoveredDay.count !== 1 ? "s" : ""} completed
                   </p>
                 </div>
@@ -294,7 +295,7 @@ export default function StreakDetailPage() {
               <span>Less</span>
               <div className="flex gap-0.5">
                 {[0, 1, 2, 3, 5].map(n => (
-                  <div key={n} className={`w-[13px] h-[13px] rounded-[2px] border ${getHeatColor(n)} ${getHeatBorder(n)}`} />
+                  <div key={n} className={`w-[10px] h-[10px] sm:w-[13px] sm:h-[13px] rounded-[2px] border ${getHeatColor(n)} ${getHeatBorder(n)}`} />
                 ))}
               </div>
               <span>More</span>

@@ -35,9 +35,9 @@ export default function EfficiencyDetailPage() {
   const tokenUtilization = data?.tokenUtilization ?? [];
   const weekdayPatterns = data?.weekdayPatterns ?? [];
 
-  const totalEnergyAllocated = data?.summary?.totalEnergy ?? 1;
-  const energyOfCompleted = data?.summary?.completedEnergy ?? 0;
-  const tokenEfficiency = totalEnergyAllocated > 0 ? Math.min(Math.round((energyOfCompleted / totalEnergyAllocated) * 100), 100) : 0;
+  const totalMissions = data?.summary?.totalMissions ?? 0;
+  const completedMissionsCount = data?.summary?.completedMissions ?? 0;
+  const tokenEfficiency = totalMissions > 0 ? Math.min(Math.round((completedMissionsCount / totalMissions) * 100), 100) : 0;
   const consistencyScore = Math.min(Math.round(((data?.summary?.currentStreak ?? stats.streakDays) / 30) * 100), 100);
   const missionBalanceScore = Math.min(Math.round((Object.keys(categoryStats).length / 5) * 100), 100);
   const systemUsageScore = stats.efficiencyScore;
@@ -109,10 +109,10 @@ export default function EfficiencyDetailPage() {
             <div className="text-center md:text-left">
               <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-2">System Score</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-7xl font-orbitron font-bold bg-gradient-to-b from-white to-primary/60 bg-clip-text text-transparent leading-none">
+                <span className="text-7xl font-orbitron font-bold text-primary leading-none">
                   {stats.efficiencyScore}
                 </span>
-                <span className="text-2xl text-muted-foreground font-mono">%</span>
+                <span className="text-2xl text-primary/60 font-mono">%</span>
               </div>
               <p className="text-sm text-muted-foreground mt-2">
                 {stats.efficiencyScore >= 80 ? "Systems operating at peak performance" : stats.efficiencyScore >= 50 ? "Room for improvement detected" : "Systems require attention"}
@@ -123,17 +123,17 @@ export default function EfficiencyDetailPage() {
               <div className="flex items-center gap-2 bg-background/40 rounded-lg px-4 py-3 border border-muted/20">
                 <Target className="h-4 w-4 text-primary" />
                 <span className="text-muted-foreground text-sm">Target:</span>
-                <span className="font-mono text-white font-semibold">95%</span>
+                <span className="font-mono text-primary font-semibold">95%</span>
               </div>
               <div className="flex items-center gap-2 bg-background/40 rounded-lg px-4 py-3 border border-muted/20">
                 <TrendingUp className="h-4 w-4 text-primary" />
                 <span className="text-muted-foreground text-sm">Gap:</span>
-                <span className="font-mono text-white font-semibold">{Math.max(95 - stats.efficiencyScore, 0)}%</span>
+                <span className="font-mono text-primary font-semibold">{Math.max(95 - stats.efficiencyScore, 0)}%</span>
               </div>
               <div className="flex items-center gap-2 bg-background/40 rounded-lg px-4 py-3 border border-muted/20">
                 <Zap className="h-4 w-4 text-primary" />
                 <span className="text-muted-foreground text-sm">Completion:</span>
-                <span className="font-mono text-white font-semibold">{taskCompletionScore}%</span>
+                <span className="font-mono text-primary font-semibold">{taskCompletionScore}%</span>
               </div>
             </div>
           </div>
@@ -377,7 +377,7 @@ export default function EfficiencyDetailPage() {
                       </div>
                       <div className="bg-background/40 rounded-lg px-3 py-2 border border-muted/20 text-center">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Total</p>
-                        <p className="text-sm font-mono font-bold text-white">{totalCompleted}</p>
+                        <p className="text-sm font-mono font-bold text-primary">{totalCompleted}</p>
                       </div>
                       <div className="bg-background/40 rounded-lg px-3 py-2 border border-muted/20 text-center">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Avg / Day</p>

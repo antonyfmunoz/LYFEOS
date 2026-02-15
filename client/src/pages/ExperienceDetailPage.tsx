@@ -104,7 +104,7 @@ export default function ExperienceDetailPage() {
           <div className="text-center md:text-left">
             <p className="text-xs font-mono uppercase tracking-widest text-primary mb-2">Current Level</p>
             <div className="flex items-baseline gap-2">
-              <span className="text-7xl font-orbitron font-bold bg-gradient-to-b from-white to-primary/60 bg-clip-text text-transparent leading-none">
+              <span className="text-7xl font-orbitron font-bold text-primary leading-none">
                 {currentLevel}
               </span>
             </div>
@@ -136,17 +136,17 @@ export default function ExperienceDetailPage() {
             <div className="flex items-center gap-2 bg-background/40 rounded-lg px-3 py-2 border border-muted/20">
               <Star className="h-4 w-4 text-primary" />
               <span className="text-muted-foreground">Total XP:</span>
-              <span className="font-mono text-white">{(stats.experience.totalXP ?? 0).toLocaleString()}</span>
+              <span className="font-mono text-primary">{(stats.experience.totalXP ?? 0).toLocaleString()}</span>
             </div>
             <div className="flex items-center gap-2 bg-background/40 rounded-lg px-3 py-2 border border-muted/20">
               <Target className="h-4 w-4 text-primary" />
               <span className="text-muted-foreground">Done:</span>
-              <span className="font-mono text-white">{completedMissions}</span>
+              <span className="font-mono text-primary">{completedMissions}</span>
             </div>
             <div className="flex items-center gap-2 bg-background/40 rounded-lg px-3 py-2 border border-muted/20">
               <TrendingUp className="h-4 w-4 text-primary" />
               <span className="text-muted-foreground">Rate:</span>
-              <span className="font-mono text-white">{Math.round(completionRate)}%</span>
+              <span className="font-mono text-primary">{Math.round(completionRate)}%</span>
             </div>
           </div>
         </div>
@@ -285,7 +285,7 @@ export default function ExperienceDetailPage() {
                             {entry.completed}/{entry.total} done
                           </span>
                         </div>
-                        <span className="text-sm font-mono text-white">
+                        <span className="text-sm font-mono text-primary">
                           {(entry.totalXp || 0).toLocaleString()} XP
                         </span>
                       </div>
@@ -335,7 +335,7 @@ export default function ExperienceDetailPage() {
                             <span className="text-muted-foreground">
                               {(entry.totalEnergy || 0)} energy
                             </span>
-                            <span className="font-mono text-white">
+                            <span className="font-mono text-primary">
                               {(entry.totalXp || 0).toLocaleString()} XP
                             </span>
                           </div>
@@ -400,7 +400,7 @@ export default function ExperienceDetailPage() {
                 <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-2">
                   Avg XP / Mission
                 </p>
-                <span className="text-3xl font-orbitron font-bold text-white">
+                <span className="text-3xl font-orbitron font-bold text-primary">
                   {Math.round(avgXpPerMission)}
                 </span>
                 <p className="text-xs text-muted-foreground mt-1">experience points</p>
@@ -420,7 +420,7 @@ export default function ExperienceDetailPage() {
                 <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-2">
                   Est. Missions
                 </p>
-                <span className="text-3xl font-orbitron font-bold text-white">
+                <span className="text-3xl font-orbitron font-bold text-primary">
                   {estimatedMissionsToLevel}
                 </span>
                 <p className="text-xs text-muted-foreground mt-1">to level {currentLevel + 1}</p>
@@ -450,14 +450,14 @@ export default function ExperienceDetailPage() {
                 <Zap className="h-5 w-5 text-primary flex-shrink-0" />
                 <div>
                   <p className="text-xs text-muted-foreground">Completion Rate</p>
-                  <p className="text-sm font-mono text-white">{Math.round(completionRate)}%</p>
+                  <p className="text-sm font-mono text-primary">{Math.round(completionRate)}%</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-3 bg-background/30 rounded-lg border border-muted/20">
                 <Star className="h-5 w-5 text-primary flex-shrink-0" />
                 <div>
                   <p className="text-xs text-muted-foreground">Total XP Earned</p>
-                  <p className="text-sm font-mono text-white">{totalXpFromCompleted.toLocaleString()}</p>
+                  <p className="text-sm font-mono text-primary">{totalXpFromCompleted.toLocaleString()}</p>
                 </div>
               </div>
             </div>

@@ -98,10 +98,10 @@ export default function AttentionDetailPage() {
             <div className="text-center md:text-left">
               <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-2">Available</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-7xl font-orbitron font-bold bg-gradient-to-b from-white to-primary/60 bg-clip-text text-transparent leading-none">
+                <span className="text-7xl font-orbitron font-bold text-primary leading-none">
                   {attentionPct}
                 </span>
-                <span className="text-2xl text-muted-foreground font-mono">%</span>
+                <span className="text-2xl text-primary/60 font-mono">%</span>
               </div>
               <p className="text-sm text-muted-foreground mt-2">
                 {attentionPct >= 60 ? "Focus reserves are strong" : attentionPct >= 30 ? "Moderate attention remaining" : "Attention reserves running low"}
@@ -112,22 +112,22 @@ export default function AttentionDetailPage() {
               <div className="flex items-center gap-2 bg-background/40 rounded-lg px-4 py-3 border border-muted/20">
                 <BrainCircuit className="h-4 w-4 text-primary" />
                 <span className="text-muted-foreground text-sm">Current:</span>
-                <span className="font-mono text-white font-semibold">{currentAT} AT</span>
+                <span className="font-mono text-primary font-semibold">{currentAT} AT</span>
               </div>
               <div className="flex items-center gap-2 bg-background/40 rounded-lg px-4 py-3 border border-muted/20">
                 <Target className="h-4 w-4 text-primary" />
                 <span className="text-muted-foreground text-sm">Max:</span>
-                <span className="font-mono text-white font-semibold">{maxAT} AT</span>
+                <span className="font-mono text-primary font-semibold">{maxAT} AT</span>
               </div>
               <div className="flex items-center gap-2 bg-background/40 rounded-lg px-4 py-3 border border-muted/20">
                 <Focus className="h-4 w-4 text-primary" />
                 <span className="text-muted-foreground text-sm">Allocated:</span>
-                <span className="font-mono text-white font-semibold">{allocatedPct}%</span>
+                <span className="font-mono text-primary font-semibold">{allocatedPct}%</span>
               </div>
               <div className="flex items-center gap-2 bg-background/40 rounded-lg px-4 py-3 border border-muted/20">
                 <TrendingUp className="h-4 w-4 text-primary" />
                 <span className="text-muted-foreground text-sm">Streak:</span>
-                <span className="font-mono text-white font-semibold">{data?.summary?.currentStreak ?? stats.streakDays}d</span>
+                <span className="font-mono text-primary font-semibold">{data?.summary?.currentStreak ?? stats.streakDays}d</span>
               </div>
             </div>
           </div>
@@ -326,7 +326,7 @@ export default function AttentionDetailPage() {
                       </div>
                       <div className="bg-background/40 rounded-lg px-3 py-2 border border-muted/20 text-center">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Total</p>
-                        <p className="text-sm font-mono font-bold text-white">{totalCompleted}</p>
+                        <p className="text-sm font-mono font-bold text-primary">{totalCompleted}</p>
                       </div>
                       <div className="bg-background/40 rounded-lg px-3 py-2 border border-muted/20 text-center">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Avg / Day</p>

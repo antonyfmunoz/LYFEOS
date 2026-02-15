@@ -100,10 +100,10 @@ export default function TimeDetailPage() {
             <div className="text-center md:text-left">
               <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-2">Available Capacity</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-7xl font-orbitron font-bold bg-gradient-to-b from-white to-primary/60 bg-clip-text text-transparent leading-none">
+                <span className="text-7xl font-orbitron font-bold text-primary leading-none">
                   {timePct}
                 </span>
-                <span className="text-2xl text-muted-foreground font-mono">%</span>
+                <span className="text-2xl text-primary/60 font-mono">%</span>
               </div>
               <p className="text-sm text-muted-foreground mt-2">
                 {timePct >= 60 ? "Plenty of time tokens available" : timePct >= 30 ? "Time reserves running moderate" : "Time tokens critically low"}
@@ -114,22 +114,22 @@ export default function TimeDetailPage() {
               <div className="flex items-center gap-2 bg-background/40 rounded-lg px-4 py-3 border border-muted/20">
                 <Clock className="h-4 w-4 text-primary" />
                 <span className="text-muted-foreground text-sm">Current:</span>
-                <span className="font-mono text-white font-semibold">{currentTT} TT</span>
+                <span className="font-mono text-primary font-semibold">{currentTT} TT</span>
               </div>
               <div className="flex items-center gap-2 bg-background/40 rounded-lg px-4 py-3 border border-muted/20">
                 <Target className="h-4 w-4 text-primary" />
                 <span className="text-muted-foreground text-sm">Max:</span>
-                <span className="font-mono text-white font-semibold">{maxTT} TT</span>
+                <span className="font-mono text-primary font-semibold">{maxTT} TT</span>
               </div>
               <div className="flex items-center gap-2 bg-background/40 rounded-lg px-4 py-3 border border-muted/20">
                 <Timer className="h-4 w-4 text-primary" />
                 <span className="text-muted-foreground text-sm">Missions:</span>
-                <span className="font-mono text-white font-semibold">{allocatedToMissions}%</span>
+                <span className="font-mono text-primary font-semibold">{allocatedToMissions}%</span>
               </div>
               <div className="flex items-center gap-2 bg-background/40 rounded-lg px-4 py-3 border border-muted/20">
                 <TrendingUp className="h-4 w-4 text-primary" />
                 <span className="text-muted-foreground text-sm">Streak:</span>
-                <span className="font-mono text-white font-semibold">{stats.streakDays}d</span>
+                <span className="font-mono text-primary font-semibold">{stats.streakDays}d</span>
               </div>
             </div>
           </div>
@@ -328,7 +328,7 @@ export default function TimeDetailPage() {
                       </div>
                       <div className="bg-background/40 rounded-lg px-3 py-2 border border-muted/20 text-center">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Total</p>
-                        <p className="text-sm font-mono font-bold text-white">{totalCompleted}</p>
+                        <p className="text-sm font-mono font-bold text-primary">{totalCompleted}</p>
                       </div>
                       <div className="bg-background/40 rounded-lg px-3 py-2 border border-muted/20 text-center">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Avg / Day</p>

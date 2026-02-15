@@ -132,10 +132,10 @@ export default function HealthDetailPage() {
                 Current Health Status
               </h2>
               <div className="flex items-baseline gap-2">
-                <span className={`text-7xl font-orbitron font-bold bg-gradient-to-b from-white to-primary/60 bg-clip-text text-transparent leading-none`}>
+                <span className="text-7xl font-orbitron font-bold text-primary leading-none">
                   {healthPct}
                 </span>
-                <span className="text-2xl text-muted-foreground font-mono">%</span>
+                <span className="text-2xl text-primary/60 font-mono">%</span>
               </div>
               <p className="text-sm text-muted-foreground mt-2">
                 {stats.healthPoints.current} / {stats.healthPoints.max} HP
@@ -150,12 +150,12 @@ export default function HealthDetailPage() {
                 <div className="flex items-center gap-2 bg-background/40 rounded-lg px-3 py-2 border border-muted/20">
                   <Flame className="h-4 w-4 text-primary" />
                   <span className="text-muted-foreground text-xs">Streak:</span>
-                  <span className="font-mono text-white text-sm">{currentStreak}d</span>
+                  <span className="font-mono text-primary text-sm">{currentStreak}d</span>
                 </div>
                 <div className="flex items-center gap-2 bg-background/40 rounded-lg px-3 py-2 border border-muted/20">
                   <Target className="h-4 w-4 text-primary" />
                   <span className="text-muted-foreground text-xs">Done:</span>
-                  <span className="font-mono text-white text-sm">{completedMissions}</span>
+                  <span className="font-mono text-primary text-sm">{completedMissions}</span>
                 </div>
               </div>
             </div>

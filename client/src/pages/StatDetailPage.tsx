@@ -184,21 +184,21 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
             <Target className="h-4 w-4" style={{ color: config.color }} />
             <div>
               <p className="text-xs text-muted-foreground">Total Missions</p>
-              <p className="font-mono text-white text-sm">{summary.totalMissions || 0}</p>
+              <p className="font-mono text-primary text-sm">{summary.totalMissions || 0}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 bg-background/40 rounded-lg px-3 py-2 border border-muted/20">
             <Zap className="h-4 w-4" style={{ color: config.color }} />
             <div>
               <p className="text-xs text-muted-foreground">Energy Spent</p>
-              <p className="font-mono text-white text-sm">{summary.totalEnergySpent || 0}</p>
+              <p className="font-mono text-primary text-sm">{summary.totalEnergySpent || 0}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 bg-background/40 rounded-lg px-3 py-2 border border-muted/20">
             <TrendingUp className="h-4 w-4" style={{ color: config.color }} />
             <div>
               <p className="text-xs text-muted-foreground">Streak</p>
-              <p className="font-mono text-white text-sm">{summary.currentStreak || 0} days</p>
+              <p className="font-mono text-primary text-sm">{summary.currentStreak || 0} days</p>
             </div>
           </div>
         </div>

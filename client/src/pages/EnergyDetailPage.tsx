@@ -39,9 +39,9 @@ export default function EnergyDetailPage() {
   const maxEP = stats.energyPoints.max;
   const energyPct = maxEP > 0 ? Math.round((currentEP / maxEP) * 100) : 0;
 
-  const totalEnergyAllocated = data?.summary?.totalEnergy ?? 1;
-  const energyOfCompleted = data?.summary?.completedEnergy ?? 0;
-  const allocatedToMissions = totalEnergyAllocated > 0 ? Math.min(Math.round((energyOfCompleted / totalEnergyAllocated) * 100), 100) : 0;
+  const totalMissions = data?.summary?.totalMissions ?? 0;
+  const completedMissions = data?.summary?.completedMissions ?? 0;
+  const allocatedToMissions = totalMissions > 0 ? Math.min(Math.round((completedMissions / totalMissions) * 100), 100) : 0;
 
   const status = getStatusBadge(energyPct);
   const streakDays = data?.summary?.currentStreak ?? stats.streakDays;
@@ -102,10 +102,10 @@ export default function EnergyDetailPage() {
             <div className="text-center md:text-left">
               <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-2">Current Level</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-7xl font-orbitron font-bold bg-gradient-to-b from-white to-primary/60 bg-clip-text text-transparent leading-none">
+                <span className="text-7xl font-orbitron font-bold text-primary leading-none">
                   {energyPct}
                 </span>
-                <span className="text-2xl text-muted-foreground font-mono">%</span>
+                <span className="text-2xl text-primary/60 font-mono">%</span>
               </div>
               <p className="text-sm text-muted-foreground mt-2">
                 {energyPct >= 80 ? "Energy reserves at peak capacity" : energyPct >= 50 ? "Moderate energy available" : "Energy reserves running low"}
@@ -116,22 +116,22 @@ export default function EnergyDetailPage() {
               <div className="flex items-center gap-2 bg-background/40 rounded-lg px-4 py-3 border border-muted/20">
                 <Zap className="h-4 w-4 text-primary" />
                 <span className="text-muted-foreground text-sm">Current:</span>
-                <span className="font-mono text-white font-semibold">{currentEP} EP</span>
+                <span className="font-mono text-primary font-semibold">{currentEP} EP</span>
               </div>
               <div className="flex items-center gap-2 bg-background/40 rounded-lg px-4 py-3 border border-muted/20">
                 <Battery className="h-4 w-4 text-primary" />
                 <span className="text-muted-foreground text-sm">Max:</span>
-                <span className="font-mono text-white font-semibold">{maxEP} EP</span>
+                <span className="font-mono text-primary font-semibold">{maxEP} EP</span>
               </div>
               <div className="flex items-center gap-2 bg-background/40 rounded-lg px-4 py-3 border border-muted/20">
                 <Target className="h-4 w-4 text-primary" />
                 <span className="text-muted-foreground text-sm">Missions:</span>
-                <span className="font-mono text-white font-semibold">{allocatedToMissions}%</span>
+                <span className="font-mono text-primary font-semibold">{allocatedToMissions}%</span>
               </div>
               <div className="flex items-center gap-2 bg-background/40 rounded-lg px-4 py-3 border border-muted/20">
                 <TrendingUp className="h-4 w-4 text-primary" />
                 <span className="text-muted-foreground text-sm">Streak:</span>
-                <span className="font-mono text-white font-semibold">{streakDays} days</span>
+                <span className="font-mono text-primary font-semibold">{streakDays} days</span>
               </div>
             </div>
           </div>
@@ -331,7 +331,7 @@ export default function EnergyDetailPage() {
                       </div>
                       <div className="bg-background/40 rounded-lg px-3 py-2 border border-muted/20 text-center">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Total</p>
-                        <p className="text-sm font-mono font-bold text-white">{totalCompleted}</p>
+                        <p className="text-sm font-mono font-bold text-primary">{totalCompleted}</p>
                       </div>
                       <div className="bg-background/40 rounded-lg px-3 py-2 border border-muted/20 text-center">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Avg / Day</p>
