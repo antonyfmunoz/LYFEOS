@@ -645,6 +645,8 @@ export default function GoalsArchivePage() {
         description: err instanceof Error ? err.message : "Please try again",
         variant: "destructive",
       });
+    } finally {
+      queryClient.invalidateQueries({ queryKey: GOALS_KEY });
     }
   }, [toast, GOALS_KEY]);
 
@@ -661,6 +663,8 @@ export default function GoalsArchivePage() {
         description: err instanceof Error ? err.message : "Please try again",
         variant: "destructive",
       });
+    } finally {
+      queryClient.invalidateQueries({ queryKey: GOALS_KEY });
     }
   }, [toast, GOALS_KEY]);
 
@@ -704,6 +708,7 @@ export default function GoalsArchivePage() {
       });
     } finally {
       movingGoalsRef.current.delete(goalId);
+      queryClient.invalidateQueries({ queryKey: GOALS_KEY });
     }
   }, [toast, GOALS_KEY]);
 
@@ -860,6 +865,7 @@ export default function GoalsArchivePage() {
       console.error("Error creating goal:", error);
     } finally {
       setIsSubmitting(false);
+      queryClient.invalidateQueries({ queryKey: GOALS_KEY });
     }
   };
 
@@ -899,6 +905,7 @@ export default function GoalsArchivePage() {
       });
     } finally {
       setIsSubmitting(false);
+      queryClient.invalidateQueries({ queryKey: GOALS_KEY });
     }
   };
 
