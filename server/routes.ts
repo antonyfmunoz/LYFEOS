@@ -6,7 +6,6 @@ import { registerProfileRoutes } from "./routes/profile";
 import { registerQuestRoutes } from "./routes/quests";
 import { registerContentRoutes } from "./routes/content";
 import { registerGoalRoutes } from "./routes/goals";
-import { registerJournalRoutes } from "./routes/journal";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   registerAuthRoutes(app);
@@ -14,7 +13,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerQuestRoutes(app);
   registerContentRoutes(app);
   registerGoalRoutes(app);
-  registerJournalRoutes(app);
   registerChatRoutes(app);
 
   const httpServer = createServer(app);

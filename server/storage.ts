@@ -28,8 +28,7 @@ import {
   visionGoals, type VisionGoal, type InsertVisionGoal,
   userCategories, type UserCategory, type InsertUserCategory,
   userActivityEvents, type UserActivityEvent, type InsertUserActivityEvent,
-  smartReminders, type SmartReminder, type InsertSmartReminder,
-  journalEntries, type JournalEntry, type InsertJournalEntry
+  smartReminders, type SmartReminder, type InsertSmartReminder
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, isNull, isNotNull, gt, lt, sql } from "drizzle-orm";
@@ -262,13 +261,6 @@ export interface IStorage {
   updateUserCategory(id: number, userId: number, data: { value: string; label: string }): Promise<UserCategory | null>;
   updateQuestCategoryForUser(userId: number, oldCategory: string, newCategory: string): Promise<void>;
   deleteUserCategory(id: number, userId: number): Promise<void>;
-
-  // Journal Entry methods
-  getJournalEntries(userId: number): Promise<JournalEntry[]>;
-  getJournalEntry(id: number): Promise<JournalEntry | undefined>;
-  createJournalEntry(entry: InsertJournalEntry): Promise<JournalEntry>;
-  updateJournalEntry(id: number, entry: Partial<InsertJournalEntry>): Promise<JournalEntry>;
-  deleteJournalEntry(id: number): Promise<void>;
 
   // Smart Reminder methods
   logActivityEvent(userId: number, eventType: string, metadata?: any): Promise<UserActivityEvent>;
@@ -2269,29 +2261,6 @@ export class DatabaseStorage implements IStorage {
       }
     }
     return this.getSmartReminders(userId);
-  }
-
-  async getJournalEntries(userId: number): Promise<JournalEntry[]> {
-    return db.select().from(journalEntries).where(eq(journalEntries.userId, userId)).orderBy(desc(journalEntries.createdAt));
-  }
-
-  async getJournalEntry(id: number): Promise<JournalEntry | undefined> {
-    const [entry] = await db.select().from(journalEntries).where(eq(journalEntries.id, id));
-    return entry;
-  }
-
-  async createJournalEntry(entry: InsertJournalEntry): Promise<JournalEntry> {
-    const [newEntry] = await db.insert(journalEntries).values(entry).returning();
-    return newEntry;
-  }
-
-  async updateJournalEntry(id: number, entry: Partial<InsertJournalEntry>): Promise<JournalEntry> {
-    const [updated] = await db.update(journalEntries).set(entry).where(eq(journalEntries.id, id)).returning();
-    return updated;
-  }
-
-  async deleteJournalEntry(id: number): Promise<void> {
-    await db.delete(journalEntries).where(eq(journalEntries.id, id));
   }
 }
 
