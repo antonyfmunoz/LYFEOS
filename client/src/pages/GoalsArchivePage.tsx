@@ -626,9 +626,12 @@ export default function GoalsArchivePage() {
         body: JSON.stringify({ completed }),
       });
       setGoals(prev => prev.map(g => g.id === id ? { ...g, ...result } : g));
-      queryClient.invalidateQueries({ queryKey: ['/api/quests/linked-by-vision-goal'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/quests'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ['/api/quests/linked-by-vision-goal'] }),
+        queryClient.refetchQueries({ queryKey: ['/api/quests'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/stats'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] }),
+      ]);
       if (result.updatedStats) {
         updateUserStats(result.updatedStats);
       }
