@@ -38,6 +38,7 @@ interface VisionGoal {
   completedAt: string | null;
   displayOrder: number;
   createdAt: string;
+  disconnectedMissionIds: number[] | null;
 }
 
 interface VisionWidget {
@@ -544,7 +545,7 @@ export default function GoalsArchivePage() {
   usePageTitle('Vision');
 
   const { user } = useAuth();
-  const { updateUserStats, refetchQuests } = useLYFEOS();
+  const { updateUserStats, refetchQuests, quests } = useLYFEOS();
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
@@ -635,18 +636,41 @@ export default function GoalsArchivePage() {
         );
       }
     } else {
+      let missionsToRestore: LinkedMission[] = [];
       const storedMissions = disconnectedMissionsRef.current[id];
       if (storedMissions && storedMissions.length > 0) {
+        missionsToRestore = storedMissions;
+      } else if (targetGoal?.disconnectedMissionIds && targetGoal.disconnectedMissionIds.length > 0) {
+        const disconnectedIds = new Set(targetGoal.disconnectedMissionIds);
+        missionsToRestore = quests
+          .filter(q => disconnectedIds.has(Number(q.id)))
+          .map(q => ({
+            id: Number(q.id),
+            title: q.title,
+            completed: q.completed,
+            completedAt: q.completedAt || null,
+            visionGoalId: id,
+            difficulty: q.difficulty || "D",
+            experienceReward: q.experienceReward || 0,
+            energyCost: q.energyCost || 0,
+            timeCost: q.timeCost || 0,
+            attentionCost: q.attentionCost || 0,
+            category: q.category || "general",
+            isRitualized: q.isRitualized || false,
+            parentRitualId: q.parentRitualId || null,
+          }));
+      }
+      if (missionsToRestore.length > 0) {
         const existingIds = new Set(currentMissions.map(m => m.id));
-        const toRestore = storedMissions.filter(m => !existingIds.has(m.id));
+        const toRestore = missionsToRestore.filter(m => !existingIds.has(m.id));
         if (toRestore.length > 0) {
           queryClient.setQueryData<LinkedMission[]>(
             ['/api/quests/linked-by-vision-goal', category],
             [...currentMissions, ...toRestore]
           );
         }
-        delete disconnectedMissionsRef.current[id];
       }
+      delete disconnectedMissionsRef.current[id];
     }
 
     try {
@@ -888,6 +912,7 @@ export default function GoalsArchivePage() {
       rewardText: createFormData.rewardText.trim() || null,
       bonusXp: 0,
       completed: false,
+      disconnectedMissionIds: null,
       completedAt: null,
       displayOrder: 999,
       createdAt: new Date().toISOString(),
