@@ -579,49 +579,42 @@ export default function GoalsArchivePage() {
     fetchGoals();
   }, [fetchGoals]);
 
-  const linkedQueryOptions = { staleTime: 0, refetchOnMount: 'always' as const };
-  const { data: legacyMissions = [] } = useQuery<LinkedMission[]>({
-    queryKey: ['/api/quests/linked-by-vision-goal', 'legacy'],
-    queryFn: async () => { const res = await fetch('/api/quests/linked-by-vision-goal/legacy', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
-    enabled: !!user,
-    ...linkedQueryOptions,
+  const linkedCategories = ['legacy', '10year', '5year', '18month', '90day'];
+  const [linkedMissionsMap, setLinkedMissionsMap] = useState<Record<string, LinkedMission[]>>({
+    legacy: [], '10year': [], '5year': [], '18month': [], '90day': [],
   });
-  const { data: tenYearMissions = [] } = useQuery<LinkedMission[]>({
-    queryKey: ['/api/quests/linked-by-vision-goal', '10year'],
-    queryFn: async () => { const res = await fetch('/api/quests/linked-by-vision-goal/10year', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
-    enabled: !!user,
-    ...linkedQueryOptions,
-  });
-  const { data: fiveYearMissions = [] } = useQuery<LinkedMission[]>({
-    queryKey: ['/api/quests/linked-by-vision-goal', '5year'],
-    queryFn: async () => { const res = await fetch('/api/quests/linked-by-vision-goal/5year', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
-    enabled: !!user,
-    ...linkedQueryOptions,
-  });
-  const { data: eighteenMonthMissions = [] } = useQuery<LinkedMission[]>({
-    queryKey: ['/api/quests/linked-by-vision-goal', '18month'],
-    queryFn: async () => { const res = await fetch('/api/quests/linked-by-vision-goal/18month', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
-    enabled: !!user,
-    ...linkedQueryOptions,
-  });
-  const { data: ninetyDayMissions = [] } = useQuery<LinkedMission[]>({
-    queryKey: ['/api/quests/linked-by-vision-goal', '90day'],
-    queryFn: async () => { const res = await fetch('/api/quests/linked-by-vision-goal/90day', { credentials: 'include' }); if (!res.ok) return []; return res.json(); },
-    enabled: !!user,
-    ...linkedQueryOptions,
-  });
+  const linkedMissionsRef = useRef(linkedMissionsMap);
+  linkedMissionsRef.current = linkedMissionsMap;
 
-  const linkedMissionsMap: Record<string, LinkedMission[]> = {
-    legacy: legacyMissions,
-    '10year': tenYearMissions,
-    '5year': fiveYearMissions,
-    '18month': eighteenMonthMissions,
-    '90day': ninetyDayMissions,
-  };
+  const fetchLinkedMissions = useCallback(async () => {
+    if (!user) return;
+    try {
+      const results = await Promise.all(
+        linkedCategories.map(async (cat) => {
+          const res = await fetch(`/api/quests/linked-by-vision-goal/${cat}`, { credentials: 'include' });
+          if (!res.ok) return [];
+          return res.json();
+        })
+      );
+      const map: Record<string, LinkedMission[]> = {};
+      linkedCategories.forEach((cat, i) => { map[cat] = results[i]; });
+      setLinkedMissionsMap(map);
+    } catch (err) {
+      console.error('Failed to fetch linked missions:', err);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchLinkedMissions();
+  }, [fetchLinkedMissions]);
 
   const getLinkedMissionsForCategory = (category: string): LinkedMission[] => {
     return linkedMissionsMap[category] || [];
   };
+
+  const setLinkedMissionsForCategory = useCallback((category: string, missions: LinkedMission[]) => {
+    setLinkedMissionsMap(prev => ({ ...prev, [category]: missions }));
+  }, []);
 
   const disconnectedMissionsRef = useRef<Record<number, LinkedMission[]>>({});
   const goalsRef = useRef(goals);
@@ -637,7 +630,7 @@ export default function GoalsArchivePage() {
     );
     setGoals(updatedGoals);
 
-    const currentMissions = queryClient.getQueryData<LinkedMission[]>(['/api/quests/linked-by-vision-goal', category]) || [];
+    const currentMissions = linkedMissionsRef.current[category] || [];
     const snapshotMissions = [...currentMissions];
 
     if (completed) {
@@ -645,10 +638,7 @@ export default function GoalsArchivePage() {
       disconnectedMissionsRef.current[id] = activeRitualMissions;
       if (activeRitualMissions.length > 0) {
         const disconnectIds = new Set(activeRitualMissions.map(m => m.id));
-        queryClient.setQueryData<LinkedMission[]>(
-          ['/api/quests/linked-by-vision-goal', category],
-          currentMissions.filter(m => !disconnectIds.has(m.id))
-        );
+        setLinkedMissionsForCategory(category, currentMissions.filter(m => !disconnectIds.has(m.id)));
       }
     } else {
       let missionsToRestore: LinkedMission[] = [];
@@ -679,10 +669,7 @@ export default function GoalsArchivePage() {
         const existingIds = new Set(currentMissions.map(m => m.id));
         const toRestore = missionsToRestore.filter(m => !existingIds.has(m.id));
         if (toRestore.length > 0) {
-          queryClient.setQueryData<LinkedMission[]>(
-            ['/api/quests/linked-by-vision-goal', category],
-            [...currentMissions, ...toRestore]
-          );
+          setLinkedMissionsForCategory(category, [...currentMissions, ...toRestore]);
         }
       }
       delete disconnectedMissionsRef.current[id];
@@ -696,14 +683,9 @@ export default function GoalsArchivePage() {
       setGoals(prev => prev.map(g => g.id === id ? { ...g, ...result } : g));
 
       if (result.remainingLinkedMissions) {
-        queryClient.setQueryData<LinkedMission[]>(
-          ['/api/quests/linked-by-vision-goal', category],
-          (old) => {
-            const remaining = result.remainingLinkedMissions!;
-            const otherGoalMissions = (old || []).filter(m => m.visionGoalId !== id);
-            return [...otherGoalMissions, ...remaining];
-          }
-        );
+        const currentCatMissions = linkedMissionsRef.current[category] || [];
+        const otherGoalMissions = currentCatMissions.filter(m => m.visionGoalId !== id);
+        setLinkedMissionsForCategory(category, [...otherGoalMissions, ...result.remainingLinkedMissions]);
       }
 
       if (completed && result.disconnectedMissionIds && result.disconnectedMissionIds.length > 0) {
@@ -723,10 +705,7 @@ export default function GoalsArchivePage() {
       }
     } catch (err) {
       setGoals(snapshotGoals);
-      queryClient.setQueryData<LinkedMission[]>(
-        ['/api/quests/linked-by-vision-goal', category],
-        snapshotMissions
-      );
+      setLinkedMissionsForCategory(category, snapshotMissions);
       if (completed) {
         delete disconnectedMissionsRef.current[id];
       }
