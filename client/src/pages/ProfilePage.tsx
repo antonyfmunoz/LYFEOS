@@ -59,7 +59,8 @@ import {
   Phone,
   CheckCircle,
   Clock,
-  Target
+  Target,
+  Moon
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -1554,6 +1555,53 @@ export default function ProfilePage() {
             </div>
             
             
+            {/* Blue Light Filter */}
+            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Moon className="h-4 w-4 text-primary" />
+                <Label className="text-sm text-foreground">Blue Light Filter</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Automatically reduces blue light between 7 PM and 7 AM (your local time) to protect your eyes and support healthy sleep.
+              </p>
+              <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
+                <div className="flex items-center">
+                  <Moon className="h-4 w-4 text-primary mr-2" />
+                  <span className="text-sm">Auto Blue Light Filter</span>
+                </div>
+                <button
+                  onClick={async () => {
+                    const current = (userProfileData as any)?.blueLightFilter === true;
+                    const newVal = !current;
+                    try {
+                      await apiRequest("/api/profile", {
+                        method: "PATCH",
+                        body: JSON.stringify({ blueLightFilter: newVal }),
+                      });
+                      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+                      toast({
+                        title: newVal ? "Blue light filter enabled" : "Blue light filter disabled",
+                        description: newVal ? "The filter will activate automatically between 7 PM and 7 AM." : "Blue light filter has been turned off.",
+                      });
+                    } catch {
+                      toast({ title: "Error", description: "Could not update setting.", variant: "destructive" });
+                    }
+                  }}
+                  className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
+                    (userProfileData as any)?.blueLightFilter ? 'bg-primary/30' : 'bg-card'
+                  }`}
+                  aria-pressed={(userProfileData as any)?.blueLightFilter === true}
+                  role="switch"
+                >
+                  <div
+                    className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
+                      (userProfileData as any)?.blueLightFilter ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
+                    }`}
+                  ></div>
+                </button>
+              </div>
+            </div>
+
             {/* Primary Theme Color Selector */}
             <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
               <div className="flex items-center gap-2 mb-2">

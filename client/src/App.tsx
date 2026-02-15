@@ -50,6 +50,7 @@ import LoginSuccessPage from "./pages/LoginSuccessPage";
 import SubscriptionPage from "./pages/SubscriptionPage";
 import LandingPage from "./pages/LandingPage";
 import RolodexPage from "./pages/RolodexPage";
+import BlueLightFilter from "./components/BlueLightFilter";
 
 const isTouchDevice = () =>
   typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
@@ -477,6 +478,7 @@ function App() {
                 <Router />
                 <VoiceOverlay />
                 <CelebrationOverlay />
+                <BlueLightFilter />
                 <Toaster />
               </DndProvider>
             </ThemeProvider>

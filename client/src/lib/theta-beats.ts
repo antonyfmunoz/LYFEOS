@@ -9,7 +9,7 @@ let isPlaying = false;
 const BASE_FREQ = 200;
 const THETA_OFFSET = 6;
 const FADE_DURATION = 2.0;
-const BEAT_VOLUME = 0.12;
+const BEAT_VOLUME = 0.15;
 
 function getOrCreateContext(): AudioContext {
   if (!audioCtx || audioCtx.state === 'closed') {
@@ -18,12 +18,35 @@ function getOrCreateContext(): AudioContext {
   return audioCtx;
 }
 
-export function startThetaBeats(): void {
+function warmUpContext(): void {
+  const ctx = getOrCreateContext();
+  if (ctx.state === 'suspended') {
+    ctx.resume().catch(() => {});
+  }
+}
+
+if (typeof window !== 'undefined') {
+  const warmUp = () => {
+    warmUpContext();
+    window.removeEventListener('click', warmUp);
+    window.removeEventListener('touchstart', warmUp);
+    window.removeEventListener('keydown', warmUp);
+  };
+  window.addEventListener('click', warmUp, { once: false });
+  window.addEventListener('touchstart', warmUp, { once: false });
+  window.addEventListener('keydown', warmUp, { once: false });
+}
+
+export async function startThetaBeats(): Promise<void> {
   if (isPlaying) return;
 
   const ctx = getOrCreateContext();
   if (ctx.state === 'suspended') {
-    ctx.resume();
+    try {
+      await ctx.resume();
+    } catch {
+      return;
+    }
   }
 
   merger = ctx.createChannelMerger(2);

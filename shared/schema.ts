@@ -213,6 +213,9 @@ export const userProfile = pgTable("user_profile", {
   // === CHARACTER AFFIRMATION ===
   characterAffirmation: text("character_affirmation"), // AI-generated third-person narrative
   
+  // === DISPLAY SETTINGS ===
+  blueLightFilter: boolean("blue_light_filter").default(false),
+
   // === ONBOARDING TRACKING ===
   onboardingMission: integer("onboarding_mission").default(0), // Current mission (0-7)
   onboardingStep: integer("onboarding_step").default(0), // Current step within mission
