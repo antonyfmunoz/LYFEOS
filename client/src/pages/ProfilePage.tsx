@@ -59,7 +59,6 @@ import {
   Phone,
   CheckCircle,
   Clock,
-  BellRing,
   Target
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -76,110 +75,6 @@ function PersistentProfileDraggableWidget({ widgetId, ...props }: Omit<Draggable
   return <DraggableWidget {...props} isOpenProp={isOpen} onOpenChange={setIsOpen} />;
 }
 
-const REMINDER_META: Record<string, { label: string; description: string; icon: any }> = {
-  missions: { label: 'Mission Reminders', description: 'Nudges to tackle your daily missions at your peak time', icon: Target },
-  reflection: { label: 'Reflection Prompts', description: 'Gentle prompts to log your daily reflections', icon: BookOpen },
-  goal_review: { label: 'Goal Review', description: 'Weekly check-ins on your vision milestones', icon: Sparkles },
-};
-
-function formatHour(h: number) {
-  if (h === 0) return '12 AM';
-  if (h === 12) return '12 PM';
-  return h > 12 ? `${h - 12} PM` : `${h} AM`;
-}
-
-function SmartRemindersSection() {
-  const { toast } = useToast();
-  const { data: reminders, isLoading } = useQuery<any[]>({ queryKey: ['/api/smart-reminders'] });
-  const { data: activitySummary } = useQuery<Record<string, { count: number; peakHour: number | null }>>({ queryKey: ['/api/smart-reminders/activity-summary'] });
-
-  const updateReminder = async (reminderType: string, updates: Record<string, any>) => {
-    try {
-      await apiRequest(`/api/smart-reminders/${reminderType}`, { method: 'PATCH', body: JSON.stringify(updates) });
-      queryClient.invalidateQueries({ queryKey: ['/api/smart-reminders'] });
-    } catch {
-      toast({ title: "Update failed", variant: "destructive" });
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
-        <div className="flex items-center gap-2 mb-2">
-          <BellRing className="h-4 w-4 text-primary" />
-          <Label className="text-sm text-foreground">Smart Reminders</Label>
-        </div>
-        <div className="flex items-center justify-center py-6">
-          <Loader2 className="h-5 w-5 animate-spin text-primary/50" />
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
-      <div className="flex items-center gap-2 mb-1">
-        <BellRing className="h-4 w-4 text-primary" />
-        <Label className="text-sm text-foreground">Smart Reminders</Label>
-      </div>
-      <p className="text-xs text-muted-foreground mb-3">
-        AI-learned nudges based on when you're most active. Adjusts automatically over time.
-      </p>
-
-      {(reminders || []).map((r: any) => {
-        const meta = REMINDER_META[r.reminderType] || { label: r.reminderType, description: '', icon: BellRing };
-        const Icon = meta.icon;
-        return (
-          <div key={r.reminderType} className="mb-3 p-3 bg-card/50 rounded-lg border border-primary/5">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Icon className="h-4 w-4 text-primary/70" />
-                <span className="text-sm font-medium">{meta.label}</span>
-                {r.source === 'learned' && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
-                    AI Learned
-                  </span>
-                )}
-              </div>
-              <button
-                onClick={() => updateReminder(r.reminderType, { enabled: !r.enabled })}
-                className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
-                  r.enabled ? 'bg-primary/30' : 'bg-card'
-                }`}
-                role="switch"
-                aria-pressed={r.enabled}
-              >
-                <div className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
-                  r.enabled ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
-                }`} />
-              </button>
-            </div>
-            <p className="text-xs text-muted-foreground mb-2">{meta.description}</p>
-
-          </div>
-        );
-      })}
-
-      {activitySummary && (
-        <div className="mt-2 p-2 bg-background/60 rounded border border-primary/5">
-          <p className="text-[10px] text-muted-foreground font-medium mb-1 uppercase tracking-wider">Activity Insights (30 days)</p>
-          <div className="grid grid-cols-2 gap-1">
-            {Object.entries(activitySummary).map(([key, val]) => (
-              <div key={key} className="text-xs text-muted-foreground flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-primary/30" />
-                <span className="capitalize">{key.replace('_', ' ')}</span>:
-                <span className="text-foreground font-medium">{val.count}</span>
-                {val.peakHour !== null && (
-                  <span className="text-primary/60">({formatHour(val.peakHour)})</span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 type ProfileFieldItem = {
   label: string;
@@ -1658,8 +1553,6 @@ export default function ProfilePage() {
               )}
             </div>
             
-            {/* Smart Reminders */}
-            <SmartRemindersSection />
             
             {/* Primary Theme Color Selector */}
             <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
