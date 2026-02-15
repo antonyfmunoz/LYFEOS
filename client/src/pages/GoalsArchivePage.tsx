@@ -555,18 +555,25 @@ export default function GoalsArchivePage() {
   const [editingGoalId, setEditingGoalId] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [goals, setGoals] = useState<VisionGoal[]>([]);
-  const [goalsQueryLoading, setGoalsQueryLoading] = useState(true);
+  const goalsQueryKey = ['/api/vision-goals/all'] as const;
+  const { data: goals = [], isLoading: goalsQueryLoading } = useQuery<VisionGoal[]>({
+    queryKey: goalsQueryKey,
+    queryFn: async () => {
+      const res = await fetch('/api/vision-goals/all', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch goals');
+      return res.json();
+    },
+    enabled: !!user,
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
 
-  useEffect(() => {
-    if (!user) return;
-    setGoalsQueryLoading(true);
-    fetch('/api/vision-goals/all', { credentials: 'include' })
-      .then(res => { if (!res.ok) throw new Error('Failed to fetch goals'); return res.json(); })
-      .then((data: VisionGoal[]) => setGoals(data))
-      .catch(err => console.error("Failed to load goals:", err))
-      .finally(() => setGoalsQueryLoading(false));
-  }, [user]);
+  const setGoals = useCallback((updater: VisionGoal[] | ((prev: VisionGoal[]) => VisionGoal[])) => {
+    queryClient.setQueryData<VisionGoal[]>(goalsQueryKey, (old) => {
+      const prev = old || [];
+      return typeof updater === 'function' ? updater(prev) : updater;
+    });
+  }, []);
 
   const linkedQueryOptions = { staleTime: 0, refetchOnMount: 'always' as const };
   const { data: legacyMissions = [] } = useQuery<LinkedMission[]>({
@@ -951,7 +958,7 @@ export default function GoalsArchivePage() {
       rewardText: editFormData.rewardText.trim() || null,
       category: editFormData.category,
     };
-    const previousGoals = [...goals];
+    const previousGoals = [...goalsRef.current];
     setIsEditOpen(false);
     setEditFormData(defaultFormData);
     setEditingGoalId(null);
