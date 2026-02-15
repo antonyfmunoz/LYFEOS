@@ -619,35 +619,26 @@ export default function GoalsArchivePage() {
     setGoals(prev => prev.map(g => g.id === id ? { ...g, completed, completedAt: completed ? new Date().toISOString() : null } : g));
 
     try {
-      const result = await apiRequest<VisionGoal & { xpAwarded?: number; xpRemoved?: number; updatedStats?: any; disconnectedMissionIds?: number[]; reconnectedMissions?: LinkedMission[] }>(`/api/vision-goals/${id}`, {
+      const result = await apiRequest<VisionGoal & { xpAwarded?: number; xpRemoved?: number; updatedStats?: any; disconnectedMissionIds?: number[]; remainingLinkedMissions?: LinkedMission[] }>(`/api/vision-goals/${id}`, {
         method: 'PATCH',
         body: JSON.stringify({ completed }),
       });
       setGoals(prev => prev.map(g => g.id === id ? { ...g, ...result } : g));
 
-      if (completed && result.disconnectedMissionIds && result.disconnectedMissionIds.length > 0) {
-        const disconnectedSet = new Set(result.disconnectedMissionIds);
-        queryClient.setQueryData<LinkedMission[]>(
-          ['/api/quests/linked-by-vision-goal', category],
-          (old) => old ? old.filter(m => !disconnectedSet.has(m.id)) : []
-        );
-      }
-
-      if (!completed && result.reconnectedMissions && result.reconnectedMissions.length > 0) {
+      if (result.remainingLinkedMissions) {
         queryClient.setQueryData<LinkedMission[]>(
           ['/api/quests/linked-by-vision-goal', category],
           (old) => {
-            const existing = old || [];
-            const existingIds = new Set(existing.map(m => m.id));
-            const newMissions = result.reconnectedMissions!.filter(m => !existingIds.has(m.id));
-            return [...existing, ...newMissions];
+            const remaining = result.remainingLinkedMissions!;
+            const remainingIds = new Set(remaining.map(m => m.id));
+            const otherGoalMissions = (old || []).filter(m => !remainingIds.has(m.id) && m.visionGoalId !== id);
+            return [...otherGoalMissions, ...remaining];
           }
         );
       }
 
-      await queryClient.refetchQueries({ queryKey: ['/api/quests/linked-by-vision-goal'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
       refetchQuests();
+      queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
       if (result.updatedStats) {
         updateUserStats(result.updatedStats);
       }

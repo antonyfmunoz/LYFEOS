@@ -5923,28 +5923,25 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
         aiAssistantEnabled: dbStats.aiAssistantEnabled,
         primaryColor: dbStats.primaryColor,
       } : null;
-      let reconnectedMissions: any[] = [];
-      if (reconnectedMissionIds.length > 0) {
-        const allQuests = await storage.getQuests(userId);
-        reconnectedMissions = allQuests
-          .filter(q => reconnectedMissionIds.includes(q.id))
-          .map(q => ({
-            id: q.id,
-            title: q.title,
-            completed: q.completed,
-            completedAt: q.completedAt,
-            visionGoalId: q.visionGoalId,
-            difficulty: q.difficulty,
-            experienceReward: q.experienceReward,
-            energyCost: q.energyCost,
-            timeCost: q.timeCost,
-            attentionCost: q.attentionCost,
-            category: q.category,
-            isRitualized: q.isRitualized,
-            parentRitualId: q.parentRitualId,
-          }));
-      }
-      res.json({ ...goal, xpAwarded, xpRemoved, updatedStats, disconnectedMissionIds, reconnectedMissions });
+      const allQuests = await storage.getQuests(userId);
+      const remainingLinkedMissions = allQuests
+        .filter(q => q.visionGoalId === id)
+        .map(q => ({
+          id: q.id,
+          title: q.title,
+          completed: q.completed,
+          completedAt: q.completedAt,
+          visionGoalId: q.visionGoalId,
+          difficulty: q.difficulty || "D",
+          experienceReward: q.experienceReward,
+          energyCost: q.energyCost,
+          timeCost: q.timeCost || 0,
+          attentionCost: q.attentionCost || 0,
+          category: q.category || "general",
+          isRitualized: q.isRitualized || false,
+          parentRitualId: q.parentRitualId || null,
+        }));
+      res.json({ ...goal, xpAwarded, xpRemoved, updatedStats, disconnectedMissionIds, remainingLinkedMissions });
     } catch (error) {
       console.error("Error updating vision goal:", error);
       res.status(500).json({ error: "Internal server error" });
