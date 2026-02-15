@@ -427,7 +427,7 @@ function Router() {
         </ProtectedRoute>
       </Route>
 
-      <Route path="/analytics">
+      <Route path="/tracker">
         <ProtectedRoute>
           <RootLayout>
             <AnalyticsPage />

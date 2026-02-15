@@ -126,7 +126,7 @@ const DraggableCategoryCard = ({ id, index, item, moveCategory, navigate }: Drag
     } else if (item.id === "goals") {
       navigate('/goals-archive');
     } else if (item.id === "analytics") {
-      navigate('/analytics');
+      navigate('/tracker');
     } else if (item.id === "rolodex") {
       navigate('/rolodex');
     }
