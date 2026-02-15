@@ -276,7 +276,6 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
   const [isMutating, setIsMutating] = useState(false);
 
   const categoryGoals = goals.filter(g => g.category === category);
-  console.log('[DIAG ObjectiveList]', category, 'categoryGoals:', categoryGoals.length, 'active:', categoryGoals.filter(g => !g.completed).length, 'completed:', categoryGoals.filter(g => g.completed).length);
 
   const getMissionsForGoal = (goalId: number) => {
     return linkedMissions.filter(m => m.visionGoalId === goalId);
@@ -546,8 +545,6 @@ export default function GoalsArchivePage() {
 
   const { user } = useAuth();
   const { updateUserStats, refetchQuests, quests } = useLYFEOS();
-  const renderCountRef = useRef(0);
-  renderCountRef.current++;
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
@@ -558,27 +555,29 @@ export default function GoalsArchivePage() {
   const [editingGoalId, setEditingGoalId] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const goalsQueryKey = ['/api/vision-goals/all'] as const;
-  const { data: goals = [], isLoading: goalsQueryLoading } = useQuery<VisionGoal[]>({
-    queryKey: goalsQueryKey,
-    queryFn: async () => {
+  const [goals, setGoals] = useState<VisionGoal[]>([]);
+  const [goalsQueryLoading, setGoalsQueryLoading] = useState(true);
+
+  const fetchGoals = useCallback(async () => {
+    if (!user) {
+      setGoalsQueryLoading(false);
+      return;
+    }
+    try {
       const res = await fetch('/api/vision-goals/all', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch goals');
-      return res.json();
-    },
-    enabled: !!user,
-    staleTime: 0,
-    refetchOnMount: 'always',
-  });
+      const data = await res.json();
+      setGoals(data);
+    } catch (err) {
+      console.error('Failed to fetch goals:', err);
+    } finally {
+      setGoalsQueryLoading(false);
+    }
+  }, [user]);
 
-  console.log('[DIAG GoalsArchivePage] render #' + renderCountRef.current, 'goals count:', goals.length, 'completed:', goals.filter(g => g.completed).map(g => g.id));
-
-  const setGoals = useCallback((updater: VisionGoal[] | ((prev: VisionGoal[]) => VisionGoal[])) => {
-    queryClient.setQueryData<VisionGoal[]>(goalsQueryKey, (old) => {
-      const prev = old || [];
-      return typeof updater === 'function' ? updater(prev) : updater;
-    });
-  }, []);
+  useEffect(() => {
+    fetchGoals();
+  }, [fetchGoals]);
 
   const linkedQueryOptions = { staleTime: 0, refetchOnMount: 'always' as const };
   const { data: legacyMissions = [] } = useQuery<LinkedMission[]>({
@@ -629,16 +628,14 @@ export default function GoalsArchivePage() {
   goalsRef.current = goals;
 
   const handleToggle = async (id: number, completed: boolean) => {
-    console.log('[DIAG handleToggle] called with id=', id, 'completed=', completed);
     const snapshotGoals = [...goalsRef.current];
     const targetGoal = goalsRef.current.find(g => g.id === id);
     const category = targetGoal?.category || '';
 
-    setGoals(prev => {
-      const next = prev.map(g => g.id === id ? { ...g, completed, completedAt: completed ? new Date().toISOString() : null } : g);
-      console.log('[DIAG handleToggle] setGoals updater ran. prev completed states:', prev.map(g => `${g.id}:${g.completed}`).join(','), '=> next:', next.map(g => `${g.id}:${g.completed}`).join(','));
-      return next;
-    });
+    const updatedGoals = goalsRef.current.map(g =>
+      g.id === id ? { ...g, completed, completedAt: completed ? new Date().toISOString() : null } : g
+    );
+    setGoals(updatedGoals);
 
     const currentMissions = queryClient.getQueryData<LinkedMission[]>(['/api/quests/linked-by-vision-goal', category]) || [];
     const snapshotMissions = [...currentMissions];
