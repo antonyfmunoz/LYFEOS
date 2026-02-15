@@ -183,6 +183,8 @@ export default function QuestsPage() {
   const { data: allVisionGoals = [] } = useQuery<VisionGoalOption[]>({
     queryKey: ['/api/vision-goals/all'],
     enabled: !!user,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const { data: userCategoriesFromQuery = [] } = useQuery<UserCategoryOption[]>({
