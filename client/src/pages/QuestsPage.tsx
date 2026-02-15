@@ -23,6 +23,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -466,7 +467,7 @@ export default function QuestsPage() {
       method: "PATCH",
       body: JSON.stringify({ orderedIds }),
     });
-    queryClient.invalidateQueries({ queryKey: [`/api/users/${user?.id}/quests`] });
+    queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'quests'] });
   }, [todayMissions, upcomingMissions, completedMissions, inboxMissions, user?.id]);
 
   const handleDeleteMission = useCallback(async (quest: Quest) => {
@@ -717,6 +718,7 @@ export default function QuestsPage() {
           >
             <DialogHeader>
               <DialogTitle className="font-orbitron text-xl">Create New Mission</DialogTitle>
+              <DialogDescription className="sr-only">Fill out the form to create a new mission</DialogDescription>
             </DialogHeader>
             
             <div className="space-y-4 mt-4">
@@ -1106,6 +1108,7 @@ export default function QuestsPage() {
               <Edit3 className="h-5 w-5" />
               Edit Mission
             </DialogTitle>
+            <DialogDescription className="sr-only">Edit the details of your mission</DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 mt-4">

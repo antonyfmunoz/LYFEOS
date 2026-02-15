@@ -43,7 +43,8 @@ export default function ExperienceDetailPage() {
   const [days, setDays] = useState(30);
 
   const { data, isLoading } = useQuery<any>({
-    queryKey: [`/api/stat-analytics?days=${days}`],
+    queryKey: ['/api/stat-analytics', { days }],
+    queryFn: () => fetch(`/api/stat-analytics?days=${days}`, { credentials: 'include' }).then(r => r.json()),
     enabled: !!user,
     refetchOnMount: 'always',
   });

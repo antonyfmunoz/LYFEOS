@@ -63,7 +63,8 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
   usePageTitle(config.title);
 
   const { data, isLoading } = useQuery<any>({
-    queryKey: [`/api/stat-analytics?days=${days}`],
+    queryKey: ['/api/stat-analytics', { days }],
+    queryFn: () => fetch(`/api/stat-analytics?days=${days}`, { credentials: 'include' }).then(r => r.json()),
     enabled: !!user,
     refetchOnMount: 'always',
   });

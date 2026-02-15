@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter
@@ -321,6 +322,7 @@ export default function EnhancedMissionPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete Mission Page</DialogTitle>
+            <DialogDescription className="sr-only">Confirm deletion of this mission page</DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <p>Are you sure you want to delete "{title}"? This action cannot be undone.</p>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
 import { Award, Sparkles, ArrowRight } from "lucide-react";
 import confetti from "canvas-confetti";
@@ -73,6 +73,8 @@ export function LevelUpModal({ level, primaryColor = "#00e0ff", isOpen, onClose 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md border-primary/30 bg-background/95 backdrop-blur-md">
+        <DialogTitle className="sr-only">Level Up</DialogTitle>
+        <DialogDescription className="sr-only">Congratulations on reaching a new level</DialogDescription>
         <div className="space-y-4 relative">
           <AnimatePresence mode="wait">
             {step === 0 && (

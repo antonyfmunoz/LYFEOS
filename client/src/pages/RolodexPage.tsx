@@ -133,7 +133,7 @@ export default function RolodexPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
 
   const { isLoading } = useQuery<{ contacts: Contact[] }>({
-    queryKey: [`/api/users/${user?.id}/contacts`],
+    queryKey: ['/api/users', user?.id, 'contacts'],
     enabled: !!user?.id,
     queryFn: async () => {
       const res = await fetch(`/api/users/${user?.id}/contacts`, { credentials: 'include' });

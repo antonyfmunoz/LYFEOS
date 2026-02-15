@@ -14,6 +14,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -1103,6 +1104,7 @@ export default function GoalsArchivePage() {
             >
               <DialogHeader>
                 <DialogTitle className="font-orbitron text-xl">Create New Objective</DialogTitle>
+                <DialogDescription className="sr-only">Fill out the form to create a new vision objective</DialogDescription>
               </DialogHeader>
               {renderGoalForm(createFormData, setCreateFormData, handleCreateGoal, "Create Objective", true)}
             </DialogContent>
@@ -1132,6 +1134,7 @@ export default function GoalsArchivePage() {
                 <Edit2 className="h-5 w-5" />
                 Edit Goal
               </DialogTitle>
+              <DialogDescription className="sr-only">Edit the details of your vision goal</DialogDescription>
             </DialogHeader>
             {renderGoalForm(editFormData, setEditFormData, handleEditGoal, "Save Changes", true)}
           </DialogContent>
