@@ -273,12 +273,12 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
               })()}
               {linkedObjective && (
                 <p className="text-muted-foreground text-xs">
-                  <span className="text-primary font-mono">{categoryLabels[linkedObjective.category] || linkedObjective.category} Vision</span> — Mission Objective: {linkedObjective.title}
+                  <span className="text-primary font-mono">{categoryLabels[linkedObjective.category] || linkedObjective.category} Vision — Mission Objective:</span> {linkedObjective.title}
                 </p>
               )}
               {category && category !== "general" && category !== "onboarding" && (
                 <p className="text-muted-foreground text-xs">
-                  <span className="text-primary font-mono">Mission Type</span> — <span className="capitalize">{category}</span>: {
+                  <span className="text-primary font-mono">Mission Type — <span className="capitalize">{category}</span>:</span> {
                     ({
                       work: 'Professional tasks, projects, and job-related responsibilities.',
                       health: 'Medical care, wellness checkups, and overall well-being.',
@@ -301,7 +301,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
                 </p>
               )}
               <p className="text-muted-foreground text-xs">
-                <span className="text-primary font-mono">Mission Difficulty</span> — Rank {difficulty || 'D'}: {
+                <span className="text-primary font-mono">Mission Difficulty — Rank {difficulty || 'D'}:</span> {
                   (difficulty || 'D') === 'S' ? 'Extreme effort. Multi-day or life-changing.' :
                   (difficulty || 'D') === 'A' ? 'High effort. Significant commitment.' :
                   (difficulty || 'D') === 'B' ? 'Moderate effort. Requires focus and planning.' :

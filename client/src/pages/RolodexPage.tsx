@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/authContext';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { Contact } from '@shared/schema';
 import {
-  ArrowLeft, Users, Star, Search, Plus, Briefcase, Mail, Phone,
+  ArrowLeft, Users, Star, Search, Briefcase, Mail, Phone,
   MapPin, Trash2, Edit3, X, ChevronDown, Calendar, SlidersHorizontal,
   Shield, Globe, Linkedin, Twitter, Instagram, Link, Clock, Building2,
   UserCircle, Radar, MessageSquare, Zap
@@ -351,7 +351,7 @@ export default function RolodexPage() {
           className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"
           size="sm"
         >
-          <Plus className="h-4 w-4" />
+          Create Contact
         </Button>
       </div>
 
@@ -444,16 +444,6 @@ export default function RolodexPage() {
               ? 'No contacts match your search.'
               : 'No contacts yet. Add your first contact to get started.'}
           </p>
-          {!searchQuery && filterCategory === 'all' && (
-            <Button
-              onClick={openCreateForm}
-              className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"
-              size="sm"
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              ADD FIRST CONTACT
-            </Button>
-          )}
         </div>
       ) : (
         <div className="space-y-2">

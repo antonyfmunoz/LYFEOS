@@ -1862,13 +1862,13 @@ export default function QuestsPage() {
                                 const linkedObj = quest.visionGoalId ? allVisionGoals.find(g => g.id === quest.visionGoalId) : null;
                                 return linkedObj ? (
                                   <p className="text-muted-foreground text-xs">
-                                    <span className="text-primary font-mono">{catLabels[linkedObj.category] || linkedObj.category} Vision</span> — Mission Objective: {linkedObj.title}
+                                    <span className="text-primary font-mono">{catLabels[linkedObj.category] || linkedObj.category} Vision — Mission Objective:</span> {linkedObj.title}
                                   </p>
                                 ) : null;
                               })()}
                               {quest.category && quest.category !== "general" && quest.category !== "onboarding" && (
                                 <p className="text-muted-foreground text-xs">
-                                  <span className="text-primary font-mono">Mission Type</span> — <span className="capitalize">{quest.category}</span>: {
+                                  <span className="text-primary font-mono">Mission Type — <span className="capitalize">{quest.category}</span>:</span> {
                                     ({
                                       work: 'Professional tasks, projects, and job-related responsibilities.',
                                       health: 'Medical care, wellness checkups, and overall well-being.',
@@ -1891,7 +1891,7 @@ export default function QuestsPage() {
                                 </p>
                               )}
                               <p className="text-muted-foreground text-xs">
-                                <span className="text-primary font-mono">Mission Difficulty</span> — Rank {quest.difficulty || 'D'}: {
+                                <span className="text-primary font-mono">Mission Difficulty — Rank {quest.difficulty || 'D'}:</span> {
                                   quest.difficulty === 'S' ? 'Extreme effort. Multi-day or life-changing.' :
                                   quest.difficulty === 'A' ? 'High effort. Significant commitment.' :
                                   quest.difficulty === 'B' ? 'Moderate effort. Requires focus and planning.' :
