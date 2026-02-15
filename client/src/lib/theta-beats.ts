@@ -1,55 +1,48 @@
 let audioCtx: AudioContext | null = null;
 let leftOsc: OscillatorNode | null = null;
 let rightOsc: OscillatorNode | null = null;
-let leftGain: GainNode | null = null;
-let rightGain: GainNode | null = null;
-let merger: ChannelMergerNode | null = null;
+let masterGain: GainNode | null = null;
 let isPlaying = false;
 
 const BASE_FREQ = 200;
 const THETA_OFFSET = 6;
 const FADE_DURATION = 2.0;
-const BEAT_VOLUME = 0.15;
+const BEAT_VOLUME = 0.35;
 
 function ensureContext(): AudioContext {
   if (!audioCtx || audioCtx.state === 'closed') {
     audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    console.log('[theta] Created AudioContext, state:', audioCtx.state, 'sampleRate:', audioCtx.sampleRate);
   }
   return audioCtx;
 }
 
-if (typeof window !== 'undefined') {
-  const warmUp = () => {
-    try {
-      const ctx = ensureContext();
-      if (ctx.state === 'suspended') {
-        ctx.resume().catch(() => {});
-      }
-    } catch {}
-  };
-  window.addEventListener('click', warmUp, { once: true });
-  window.addEventListener('touchstart', warmUp, { once: true });
-  window.addEventListener('keydown', warmUp, { once: true });
-}
-
 export async function startThetaBeats(): Promise<void> {
+  console.log('[theta] startThetaBeats called, isPlaying:', isPlaying);
   if (isPlaying) return;
 
   const ctx = ensureContext();
+  console.log('[theta] AudioContext state before resume:', ctx.state);
 
   if (ctx.state === 'suspended') {
     try {
       await ctx.resume();
-    } catch {
+      console.log('[theta] AudioContext resumed, state:', ctx.state);
+    } catch (e) {
+      console.error('[theta] Failed to resume AudioContext:', e);
       return;
     }
   }
 
   if (ctx.state !== 'running') {
+    console.error('[theta] AudioContext not running after resume, state:', ctx.state);
     return;
   }
 
-  merger = ctx.createChannelMerger(2);
+  masterGain = ctx.createGain();
+  masterGain.gain.setValueAtTime(0.001, ctx.currentTime);
+  masterGain.gain.linearRampToValueAtTime(BEAT_VOLUME, ctx.currentTime + FADE_DURATION);
+  masterGain.connect(ctx.destination);
 
   leftOsc = ctx.createOscillator();
   leftOsc.type = 'sine';
@@ -59,42 +52,37 @@ export async function startThetaBeats(): Promise<void> {
   rightOsc.type = 'sine';
   rightOsc.frequency.setValueAtTime(BASE_FREQ + THETA_OFFSET, ctx.currentTime);
 
-  leftGain = ctx.createGain();
-  leftGain.gain.setValueAtTime(0, ctx.currentTime);
-  leftGain.gain.linearRampToValueAtTime(BEAT_VOLUME, ctx.currentTime + FADE_DURATION);
+  if (typeof StereoPannerNode !== 'undefined') {
+    const leftPan = ctx.createStereoPanner();
+    leftPan.pan.setValueAtTime(-1, ctx.currentTime);
+    const rightPan = ctx.createStereoPanner();
+    rightPan.pan.setValueAtTime(1, ctx.currentTime);
 
-  rightGain = ctx.createGain();
-  rightGain.gain.setValueAtTime(0, ctx.currentTime);
-  rightGain.gain.linearRampToValueAtTime(BEAT_VOLUME, ctx.currentTime + FADE_DURATION);
-
-  leftOsc.connect(leftGain);
-  leftGain.connect(merger, 0, 0);
-
-  rightOsc.connect(rightGain);
-  rightGain.connect(merger, 0, 1);
-
-  merger.connect(ctx.destination);
+    leftOsc.connect(leftPan).connect(masterGain);
+    rightOsc.connect(rightPan).connect(masterGain);
+    console.log('[theta] Using StereoPannerNode for L/R separation');
+  } else {
+    leftOsc.connect(masterGain);
+    rightOsc.connect(masterGain);
+    console.log('[theta] StereoPannerNode not available, mixing both channels');
+  }
 
   leftOsc.start();
   rightOsc.start();
   isPlaying = true;
+  console.log('[theta] Oscillators started! Frequencies:', BASE_FREQ, 'Hz and', BASE_FREQ + THETA_OFFSET, 'Hz, volume:', BEAT_VOLUME);
 }
 
 export function stopThetaBeats(): void {
+  console.log('[theta] stopThetaBeats called, isPlaying:', isPlaying);
   if (!isPlaying || !audioCtx) return;
 
-  const ctx = audioCtx;
-  const now = ctx.currentTime;
+  const now = audioCtx.currentTime;
 
-  if (leftGain) {
-    leftGain.gain.cancelScheduledValues(now);
-    leftGain.gain.setValueAtTime(leftGain.gain.value, now);
-    leftGain.gain.linearRampToValueAtTime(0, now + FADE_DURATION);
-  }
-  if (rightGain) {
-    rightGain.gain.cancelScheduledValues(now);
-    rightGain.gain.setValueAtTime(rightGain.gain.value, now);
-    rightGain.gain.linearRampToValueAtTime(0, now + FADE_DURATION);
+  if (masterGain) {
+    masterGain.gain.cancelScheduledValues(now);
+    masterGain.gain.setValueAtTime(masterGain.gain.value, now);
+    masterGain.gain.linearRampToValueAtTime(0, now + FADE_DURATION);
   }
 
   setTimeout(() => {
@@ -103,16 +91,13 @@ export function stopThetaBeats(): void {
       rightOsc?.stop();
       leftOsc?.disconnect();
       rightOsc?.disconnect();
-      leftGain?.disconnect();
-      rightGain?.disconnect();
-      merger?.disconnect();
+      masterGain?.disconnect();
     } catch {}
     leftOsc = null;
     rightOsc = null;
-    leftGain = null;
-    rightGain = null;
-    merger = null;
+    masterGain = null;
     isPlaying = false;
+    console.log('[theta] Stopped and cleaned up');
   }, FADE_DURATION * 1000 + 100);
 }
 
