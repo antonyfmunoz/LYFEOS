@@ -1790,12 +1790,16 @@ ${questData.description ? `Description: ${questData.description}` : ''}`
       }
       
       // Toggle completion - this now handles all stat updates (XP, time, energy, attention)
-      const { quest: updatedQuest, statsUpdated, levelUp } = await storage.toggleQuestCompletion(questId);
+      // Capture level before toggle for accurate level-up detection
+      const preToggleStats = await storage.getUserStats(quest.userId);
+      const previousLevel = preToggleStats?.level || 1;
+
+      const { quest: updatedQuest, statsUpdated } = await storage.toggleQuestCompletion(questId);
       
-      // Get updated user stats and profile to return to the client
+      // Get updated user stats and recalculate XP to ensure consistency
       const userStats = await storage.getUserStats(quest.userId);
-      const userProfile = await storage.getUserProfile(quest.userId);
-      const totalXP = userProfile?.totalXP || 0;
+      const xpData = await storage.recalculateXP(quest.userId);
+      const levelUp = updatedQuest.completed && xpData.level > previousLevel;
       
       if (updatedQuest.completed) {
         const xpGained = Math.floor(quest.experienceReward * ({ D: 1, C: 1.5, B: 2, A: 3, S: 5 }[quest.difficulty || 'D'] || 1));
@@ -1829,10 +1833,10 @@ ${questData.description ? `Description: ${questData.description}` : ''}`
             max: userStats.energyPointsMax
           },
           experience: {
-            current: userStats.experienceCurrent,
-            max: userStats.experienceMax,
-            level: userStats.level,
-            totalXP: totalXP,
+            current: xpData.experienceCurrent,
+            max: xpData.experienceMax,
+            level: xpData.level,
+            totalXP: xpData.totalXP,
             showLevelUp: levelUp
           }
         } : undefined

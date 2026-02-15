@@ -913,9 +913,9 @@ export class DatabaseStorage implements IStorage {
           previousDayEnergyUsed: previousDayEnergyUsed
         });
         
-        // Also update totalXP in user profile for consistency
+        // Also update totalXP in user profile for consistency (use difficulty-adjusted XP)
         if (userProfileData) {
-          const newTotalXP = (userProfileData.totalXP || 0) + quest.experienceReward;
+          const newTotalXP = (userProfileData.totalXP || 0) + adjustedXpReward;
           await this.updateUserProfile(updatedQuest.userId, { totalXP: newTotalXP });
         }
         
@@ -967,8 +967,11 @@ export class DatabaseStorage implements IStorage {
         const newAttentionTokens = isEventUndo ? userStats.attentionTokensCurrent : Math.min(userStats.attentionTokensMax, userStats.attentionTokensCurrent + attentionRefund);
         const newEnergyPoints = isEventUndo ? userStats.energyPointsCurrent : Math.min(userStats.energyPointsMax, userStats.energyPointsCurrent + energyRefund);
         
-        // Deduct XP (but don't go below 0 - we don't de-level to keep progression simple)
-        const newExperience = Math.max(0, userStats.experienceCurrent - quest.experienceReward);
+        // Deduct XP using difficulty-adjusted reward (but don't go below 0)
+        const difficultyMultipliers: Record<string, number> = { D: 1, C: 1.5, B: 2, A: 3, S: 5 };
+        const xpMultiplier = difficultyMultipliers[quest.difficulty || 'D'] || 1;
+        const adjustedXpRefund = Math.floor(quest.experienceReward * xpMultiplier);
+        const newExperience = Math.max(0, userStats.experienceCurrent - adjustedXpRefund);
         
         // Reduce today's tracked energy usage when uncompleting (skip for events)
         const previousDayEnergyUsed = isEventUndo ? (userStats.previousDayEnergyUsed || 0) : Math.max(0, (userStats.previousDayEnergyUsed || 0) - energyRefund);
@@ -981,9 +984,9 @@ export class DatabaseStorage implements IStorage {
           previousDayEnergyUsed: previousDayEnergyUsed
         });
         
-        // Also update totalXP in user profile for consistency
+        // Also update totalXP in user profile for consistency (use difficulty-adjusted XP)
         if (userProfileData) {
-          const newTotalXP = Math.max(0, (userProfileData.totalXP || 0) - quest.experienceReward);
+          const newTotalXP = Math.max(0, (userProfileData.totalXP || 0) - adjustedXpRefund);
           await this.updateUserProfile(updatedQuest.userId, { totalXP: newTotalXP });
         }
         

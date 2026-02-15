@@ -635,13 +635,6 @@ export default function GoalsArchivePage() {
       if (completed && result && result.title) {
         objectiveToast(result.title, result.rewardText, result.xpAwarded || result.bonusXp);
       }
-      if (!completed && result && result.xpRemoved && result.xpRemoved > 0) {
-        toast({
-          title: "Objective Completion Undone",
-          description: `${result.title} — ${result.xpRemoved} XP removed`,
-          duration: 3000,
-        });
-      }
     } catch (err) {
       setGoals(previousGoals);
       toast({
