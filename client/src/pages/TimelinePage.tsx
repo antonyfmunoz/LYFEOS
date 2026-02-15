@@ -1,12 +1,13 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { ArrowLeft, CalendarClock, ZoomIn, ZoomOut, ChevronDown, Info, Calendar, Clock, Rocket, Target, CheckSquare } from 'lucide-react';
+import { ArrowLeft, CalendarClock, ZoomIn, ZoomOut, ChevronDown, ChevronRight, Info, Calendar, Clock, Rocket, Target, CheckSquare, Check } from 'lucide-react';
 import { Quest } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { useLYFEOS } from '@/lib/context';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { useAuth } from '@/lib/authContext';
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 
 const ONBOARDING_MISSIONS = [
   { id: 0, title: "Access & Quickstart", description: "Log in, explore the dashboard, and complete your first quick mission to get familiar with LYFEOS." },
@@ -102,6 +103,15 @@ const difficultyDescriptions: Record<string, string> = {
 };
 
 const difficultyMultipliers: Record<string, number> = { D: 1, C: 1.5, B: 2, A: 3, S: 5 };
+const difficultyOrder: Record<string, number> = { 'D': 1, 'C': 2, 'B': 3, 'A': 4, 'S': 5 };
+const reverseOrder: Record<number, string> = { 1: 'D', 2: 'C', 3: 'B', 4: 'A', 5: 'S' };
+
+function formatStatCost(cost: number | null | undefined): string {
+  const val = ((cost ?? 0) / 1440) * 100;
+  if (!cost || val === 0) return "0%";
+  if (val < 1) return val.toFixed(1) + "%";
+  return Math.round(val) + "%";
+}
 
 function getDescriptionFromContent(content: string): string {
   if (!content) return '';
@@ -177,10 +187,12 @@ export default function TimelinePage() {
   const [rmFocusWeek, setRmFocusWeek] = useState<number | null>(null);
   const [rmFocusDay, setRmFocusDay] = useState<number | null>(null);
   const [rmExpandedInfoIds, setRmExpandedInfoIds] = useState<Set<string>>(new Set());
+  const [rmActiveMissionsExpanded, setRmActiveMissionsExpanded] = useState<Record<string, boolean>>({});
+  const [rmCompletedMissionsExpanded, setRmCompletedMissionsExpanded] = useState<Record<string, boolean>>({});
   
   const { data: visionGoals = [] } = useQuery<VisionGoal[]>({
     queryKey: ['/api/vision-goals/all'],
-    enabled: !!user && activeView === 'roadmap',
+    enabled: !!user,
   });
 
   const timelineItems: TimelineItem[] = useMemo(() => {
@@ -815,92 +827,96 @@ export default function TimelinePage() {
                       }`}
                     />
 
-                    {zoomLevel === 'day' ? (
-                      <div className="ml-2 glassmorphic rounded-xl p-4 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition neon-border">
-                        <div className="flex-grow">
-                          <div className="flex justify-between items-start">
-                            <h3 className="font-medium text-muted-foreground line-through">
-                              {node.label}
-                            </h3>
-                            <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                              {node.items[0]?.quest?.category && node.items[0].quest.category !== "general" && node.items[0].quest.category !== "onboarding" && (
-                                <span className="text-[10px] font-mono h-6 px-1.5 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary opacity-50 capitalize">
-                                  {node.items[0].quest.category}
-                                </span>
-                              )}
-                              {node.items[0]?.quest && (
-                                <span className="text-[10px] font-mono h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary opacity-50">
-                                  {node.items[0].quest.difficulty || 'D'}
-                                </span>
-                              )}
-                              <button
-                                className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setExpandedInfoIds(prev => {
-                                    const next = new Set(prev);
-                                    if (next.has(node.key)) next.delete(node.key);
-                                    else next.add(node.key);
-                                    return next;
-                                  });
-                                }}
-                              >
-                                <Info className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                          {node.items[0]?.quest && (
-                            <div className="flex items-center gap-3 mt-1 flex-wrap opacity-50">
-                              <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((node.items[0].quest.energyCost ?? 0) / 1440) * 100).toFixed(1)}% ET</span>
-                              <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((node.items[0].quest.attentionCost ?? 0) / 1440) * 100).toFixed(1)}% AT</span>
-                              <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((node.items[0].quest.timeCost ?? 0) / 1440) * 100).toFixed(1)}% TT</span>
-                              <span className="text-primary text-xs font-mono whitespace-nowrap">+{Math.floor(node.items[0].quest.experienceReward * (difficultyMultipliers[node.items[0].quest.difficulty || 'D'] || 1))} XP</span>
-                            </div>
-                          )}
-                          {node.items[0]?.quest && (() => {
-                            const q = node.items[0].quest!;
-                            const hasSchedule = q.startDate || q.startTime || q.endDate || q.endTime;
-                            if (!hasSchedule) return null;
-                            const fmtDate = (ds: string) => { const [y, m, d] = ds.split('-').map(Number); return new Date(y, m-1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); };
-                            const fmtTime = (ts: string) => { const [h, mn] = ts.split(':'); const hr = parseInt(h); return `${hr % 12 || 12}:${mn} ${hr >= 12 ? 'PM' : 'AM'}`; };
-                            return (
-                              <div className="flex items-center gap-1 text-xs mt-1 flex-wrap text-muted-foreground opacity-50">
-                                {q.startDate && <span className="flex items-center gap-1 whitespace-nowrap"><Calendar className="h-3 w-3 flex-shrink-0" />{fmtDate(q.startDate)}</span>}
-                                {q.startTime && <span className="flex items-center gap-1 whitespace-nowrap"><Clock className="h-3 w-3 flex-shrink-0" />{fmtTime(q.startTime)}</span>}
-                                {(q.endDate || q.endTime) && <span className="text-primary flex-shrink-0">→</span>}
-                                {q.endDate && <span className="flex items-center gap-1 whitespace-nowrap"><Calendar className="h-3 w-3 flex-shrink-0" />{fmtDate(q.endDate)}</span>}
-                                {q.endTime && <span className="flex items-center gap-1 whitespace-nowrap"><Clock className="h-3 w-3 flex-shrink-0" />{fmtTime(q.endTime)}</span>}
+                    {zoomLevel === 'day' ? (() => {
+                      const hQuest = node.items[0]?.quest;
+                      const hLinkedObjective = hQuest?.visionGoalId
+                        ? visionGoals.find(g => g.id === hQuest?.visionGoalId)
+                        : null;
+                      const hCategoryLabels: Record<string, string> = { legacy: "Legacy", "10year": "10-Year", "5year": "5-Year", "18month": "18-Month", "90day": "90-Day" };
+                      const hXpMultiplier = difficultyMultipliers[hQuest?.difficulty || 'D'] || 1;
+                      const hAdjustedXp = hQuest ? Math.floor(hQuest.experienceReward * hXpMultiplier) : 0;
+                      return (
+                        <div className="ml-2 glassmorphic rounded-xl p-4 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition neon-border">
+                          <div className="flex-grow">
+                            <div className="flex justify-between items-start">
+                              <h3 className="font-medium text-muted-foreground line-through">
+                                {node.label}
+                              </h3>
+                              <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                                <button
+                                  className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExpandedInfoIds(prev => {
+                                      const next = new Set(prev);
+                                      if (next.has(node.key)) next.delete(node.key);
+                                      else next.add(node.key);
+                                      return next;
+                                    });
+                                  }}
+                                >
+                                  <Info className="h-3.5 w-3.5" />
+                                </button>
                               </div>
-                            );
-                          })()}
-                          {expandedInfoIds.has(node.key) && (
-                            <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 space-y-2 opacity-50">
-                              {node.items[0]?.quest?.description && (
-                                <p className="text-muted-foreground">
-                                  {node.items[0].quest.category === 'onboarding'
-                                    ? getOnboardingDescription(node.items[0].quest.title, node.items[0].quest.description)
-                                    : node.items[0].quest.description}
-                                </p>
-                              )}
-                              <div className="border-t border-primary/10 pt-2 space-y-1">
-                                {node.items[0]?.quest?.category && node.items[0].quest.category !== "general" && node.items[0].quest.category !== "onboarding" && (
+                            </div>
+                            {hQuest && hQuest.category !== "event" && (
+                              <div className="flex items-center gap-3 mt-1 flex-wrap opacity-50">
+                                <span className="text-primary text-xs font-mono whitespace-nowrap">-{formatStatCost(hQuest.attentionCost)} AT</span>
+                                <span className="text-primary text-xs font-mono whitespace-nowrap">-{formatStatCost(hQuest.timeCost)} TT</span>
+                                <span className="text-primary text-xs font-mono whitespace-nowrap">-{formatStatCost(hQuest.energyCost)} EP</span>
+                                <span className="text-primary text-xs font-mono whitespace-nowrap">+{hAdjustedXp} XP</span>
+                              </div>
+                            )}
+                            {hQuest && (() => {
+                              const q = hQuest;
+                              const hasSchedule = q.startDate || q.startTime || q.endDate || q.endTime;
+                              if (!hasSchedule) return null;
+                              const fmtDate = (ds: string) => { const [y, m, d] = ds.split('-').map(Number); return new Date(y, m-1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); };
+                              const fmtTime = (ts: string) => { const [h, mn] = ts.split(':'); const hr = parseInt(h); return `${hr % 12 || 12}:${mn} ${hr >= 12 ? 'PM' : 'AM'}`; };
+                              return (
+                                <div className="flex items-center gap-1 text-xs mt-1 flex-wrap text-muted-foreground">
+                                  {q.startDate && <span className="flex items-center gap-1 whitespace-nowrap"><Calendar className="h-3 w-3 flex-shrink-0" />{fmtDate(q.startDate)}</span>}
+                                  {q.startTime && <span className="flex items-center gap-1 whitespace-nowrap"><Clock className="h-3 w-3 flex-shrink-0" />{fmtTime(q.startTime)}</span>}
+                                  {(q.endDate || q.endTime) && <span className="text-primary flex-shrink-0">→</span>}
+                                  {q.endDate && <span className="flex items-center gap-1 whitespace-nowrap"><Calendar className="h-3 w-3 flex-shrink-0" />{fmtDate(q.endDate)}</span>}
+                                  {q.endTime && <span className="flex items-center gap-1 whitespace-nowrap"><Clock className="h-3 w-3 flex-shrink-0" />{fmtTime(q.endTime)}</span>}
+                                </div>
+                              );
+                            })()}
+                            {expandedInfoIds.has(node.key) && (
+                              <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 space-y-1.5">
+                                {(() => {
+                                  const onboardingDesc = hQuest?.category === "onboarding" && hQuest?.title
+                                    ? getOnboardingDescription(hQuest.title, hQuest.description || '')
+                                    : null;
+                                  const displayDesc = onboardingDesc || hQuest?.description || node.items[0]?.description;
+                                  return displayDesc ? (
+                                    <p className="text-muted-foreground text-xs">
+                                      <span className="text-primary font-mono">Mission Description:</span> {displayDesc}
+                                    </p>
+                                  ) : null;
+                                })()}
+                                {hLinkedObjective && (
                                   <p className="text-muted-foreground text-xs">
-                                    <span className="text-primary font-mono capitalize">{node.items[0].quest.category}</span> — {
-                                      categoryDescriptions[node.items[0].quest.category] || userCategories.find(uc => uc.value === node.items[0]?.quest?.category)?.description || 'Auto-classified mission category.'
+                                    <span className="text-primary font-mono">Mission Objective — {hCategoryLabels[hLinkedObjective.category] || hLinkedObjective.category} Vision:</span> {hLinkedObjective.title}
+                                  </p>
+                                )}
+                                {hQuest?.category && hQuest.category !== "general" && hQuest.category !== "onboarding" && (
+                                  <p className="text-muted-foreground text-xs">
+                                    <span className="text-primary font-mono">Mission Type — <span className="capitalize">{hQuest.category}</span>:</span> {
+                                      categoryDescriptions[hQuest.category] || userCategories.find(uc => uc.value === hQuest?.category)?.description || 'Auto-classified mission category.'
                                     }
                                   </p>
                                 )}
-                                {node.items[0]?.quest && (
-                                  <p className="text-muted-foreground text-xs">
-                                    <span className="text-primary font-mono">Rank {node.items[0].quest.difficulty || 'D'}</span> — {difficultyDescriptions[node.items[0].quest.difficulty || 'D']}
-                                  </p>
-                                )}
+                                <p className="text-muted-foreground text-xs">
+                                  <span className="text-primary font-mono">Mission Difficulty — Rank {hQuest?.difficulty || 'D'}:</span> {difficultyDescriptions[hQuest?.difficulty || 'D']}
+                                </p>
                               </div>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ) : (
+                      );
+                    })() : (
                       <div
                         className="ml-2 py-3 px-4 glassmorphic rounded-xl cursor-pointer hover:shadow-[0_0_8px_var(--primary-glow-light)] transition-all group border border-primary/10 hover:border-primary/30"
                         onClick={() => handleNodeClick(node)}
@@ -1054,118 +1070,232 @@ export default function TimelinePage() {
                         }`}
                       />
 
-                      {rmZoom === 'day' ? (
-                        <div className="ml-2 glassmorphic rounded-xl p-4 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition neon-border">
-                          <div className="flex-grow">
-                            <div className="flex justify-between items-start">
-                              <h3 className="font-medium text-foreground">
-                                {node.label}
-                              </h3>
-                              <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                                <span className="text-[10px] font-mono h-6 px-1.5 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary capitalize">
-                                  {itemRmType === 'milestone' ? 'Objective' : itemRmType === 'mission' ? 'Mission' : 'Event'}
-                                </span>
-                                {rmItem?.quest?.category && rmItem.quest.category !== "general" && rmItem.quest.category !== "onboarding" && (
-                                  <span className="text-[10px] font-mono h-6 px-1.5 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary capitalize">
-                                    {rmItem.quest.category}
-                                  </span>
-                                )}
-                                {rmItem?.quest && (
-                                  <span className="text-[10px] font-mono h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary">
-                                    {rmItem.quest.difficulty || 'D'}
-                                  </span>
-                                )}
-                                <button
-                                  className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setRmExpandedInfoIds(prev => {
-                                      const next = new Set(prev);
-                                      if (next.has(node.key)) next.delete(node.key);
-                                      else next.add(node.key);
-                                      return next;
-                                    });
-                                  }}
-                                >
-                                  <Info className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            </div>
-                            {rmItem?.quest && (
-                              <div className="flex items-center gap-3 mt-1 flex-wrap">
-                                <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((rmItem.quest.energyCost ?? 0) / 1440) * 100).toFixed(1)}% ET</span>
-                                <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((rmItem.quest.attentionCost ?? 0) / 1440) * 100).toFixed(1)}% AT</span>
-                                <span className="text-primary text-xs font-mono whitespace-nowrap">-{(((rmItem.quest.timeCost ?? 0) / 1440) * 100).toFixed(1)}% TT</span>
-                                <span className="text-primary text-xs font-mono whitespace-nowrap">+{Math.floor(rmItem.quest.experienceReward * (difficultyMultipliers[rmItem.quest.difficulty || 'D'] || 1))} XP</span>
-                              </div>
-                            )}
-                            {itemRmType === 'milestone' && (() => {
-                              const goal = rmItem?.visionGoal;
-                              if (!goal) return null;
-                              const linkedMissions = quests.filter(q => q.visionGoalId === goal.id);
-                              const completedLinked = linkedMissions.filter(q => q.completed);
-                              const activeLinked = linkedMissions.filter(q => !q.completed);
-                              const totalEP = linkedMissions.reduce((s, m) => s + (m.energyCost || 0), 0);
-                              const totalAT = linkedMissions.reduce((s, m) => s + (m.attentionCost || 0), 0);
-                              const totalTT = linkedMissions.reduce((s, m) => s + (m.timeCost || 0), 0);
-                              const totalXP = linkedMissions.reduce((s, m) => s + Math.floor((m.experienceReward || 0) * (difficultyMultipliers[m.difficulty || 'D'] || 1)), 0) + (goal.bonusXp || 0);
-                              const categoryLabels: Record<string, string> = { legacy: 'Legacy', '10year': '10 Year', '5year': '5 Year', '18month': '18 Month', '90day': '90 Day' };
-                              return (
-                                <>
-                                  <div className="flex items-center gap-3 mt-1 flex-wrap text-xs font-mono text-muted-foreground">
-                                    <span className="text-primary/80">-{totalEP} EP</span>
-                                    <span className="text-primary/80">-{totalAT} AT</span>
-                                    <span className="text-primary/80">-{totalTT} TT</span>
-                                    <span className="text-primary/80">+{totalXP} XP</span>
+                      {rmZoom === 'day' ? (() => {
+                        const rmQuest = rmItem?.quest;
+                        const rmLinkedObjective = rmQuest?.visionGoalId
+                          ? visionGoals.find(g => g.id === rmQuest?.visionGoalId)
+                          : null;
+                        const rmCategoryLabels: Record<string, string> = { legacy: "Legacy", "10year": "10-Year", "5year": "5-Year", "18month": "18-Month", "90day": "90-Day" };
+                        const rmXpMultiplier = difficultyMultipliers[rmQuest?.difficulty || 'D'] || 1;
+                        const rmAdjustedXp = rmQuest ? Math.floor(rmQuest.experienceReward * rmXpMultiplier) : 0;
+
+                        if (itemRmType === 'milestone') {
+                          const goal = rmItem?.visionGoal;
+                          if (!goal) return null;
+                          const linkedMissions = quests.filter(q => q.visionGoalId === goal.id);
+                          const completedLinked = linkedMissions.filter(q => q.completed);
+                          const activeLinked = linkedMissions.filter(q => !q.completed);
+                          const totalEP = linkedMissions.reduce((s, m) => s + (m.energyCost || 0), 0);
+                          const totalAT = linkedMissions.reduce((s, m) => s + (m.attentionCost || 0), 0);
+                          const totalTT = linkedMissions.reduce((s, m) => s + (m.timeCost || 0), 0);
+                          const totalXP = linkedMissions.reduce((s, m) => s + Math.floor((m.experienceReward || 0) * (difficultyMultipliers[m.difficulty || 'D'] || 1)), 0) + (goal.bonusXp || 0);
+
+                          let avgDifficulty: string | null = null;
+                          if (linkedMissions.length > 0) {
+                            const sum = linkedMissions.reduce((acc, m) => acc + (difficultyOrder[m.difficulty || 'D'] || 1), 0);
+                            const avg = Math.round(sum / linkedMissions.length);
+                            avgDifficulty = reverseOrder[avg] || null;
+                          }
+                          const uniqueCategories = Array.from(new Set(linkedMissions.map(m => m.category))).filter(c => c !== 'general');
+
+                          const completeGoalMutation = async (goalId: number) => {
+                            await apiRequest(`/api/vision-goals/${goalId}`, { method: 'PATCH', body: JSON.stringify({ completed: true }) });
+                            queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
+                          };
+
+                          return (
+                            <div className="ml-2 glassmorphic rounded-xl p-4 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition neon-border">
+                              <div className="flex-grow">
+                                <div className="flex justify-between items-start">
+                                  <h3 className="font-medium">{node.label}</h3>
+                                  <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                                    <button
+                                      className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setRmExpandedInfoIds(prev => {
+                                          const next = new Set(prev);
+                                          if (next.has(node.key)) next.delete(node.key);
+                                          else next.add(node.key);
+                                          return next;
+                                        });
+                                      }}
+                                    >
+                                      <Info className="h-3.5 w-3.5" />
+                                    </button>
                                   </div>
-                                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                                    <span>{categoryLabels[goal.category] || goal.category}</span>
-                                    <span>Created: {new Date(goal.createdAt).toLocaleDateString()}</span>
-                                  </div>
-                                  <div className="mt-1 text-xs text-muted-foreground">
-                                    {linkedMissions.length} linked mission{linkedMissions.length !== 1 ? 's' : ''} ({activeLinked.length} active, {completedLinked.length} done)
-                                  </div>
-                                  {goal.rewardText && (
-                                    <div className="mt-1 text-xs text-primary/70 font-mono">
-                                      Reward: {goal.rewardText}
-                                    </div>
-                                  )}
-                                </>
-                              );
-                            })()}
-                            {(itemRmType === 'mission' || itemRmType === 'event') && (
-                              <div className="flex items-center gap-1 text-xs mt-1 flex-wrap text-muted-foreground">
-                                {itemRmType === 'mission' && <CheckSquare className="h-3 w-3 text-primary flex-shrink-0" />}
-                                {itemRmType === 'event' && <Calendar className="h-3 w-3 text-primary flex-shrink-0" />}
-                                <span className="text-[11px] font-mono text-muted-foreground whitespace-nowrap">
-                                  {fmtDateShort(node.items[0].rawDate)}
-                                </span>
-                              </div>
-                            )}
-                            {rmExpandedInfoIds.has(node.key) && (
-                              <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 space-y-2">
-                                {node.items[0]?.description && (
-                                  <p className="text-muted-foreground">{node.items[0].description}</p>
-                                )}
-                                {rmItem?.quest && (
-                                  <div className="border-t border-primary/10 pt-2 space-y-1">
-                                    {rmItem.quest.category && rmItem.quest.category !== "general" && rmItem.quest.category !== "onboarding" && (
+                                </div>
+                                <div className="flex items-center gap-3 mt-1 flex-wrap text-xs font-mono text-muted-foreground">
+                                  <span className="text-primary/80">-{totalAT} AT</span>
+                                  <span className="text-primary/80">-{totalTT} TT</span>
+                                  <span className="text-primary/80">-{totalEP} EP</span>
+                                  <span className="text-primary/80">+{totalXP} XP</span>
+                                </div>
+                                <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                                  <span>Created: {new Date(goal.createdAt).toLocaleDateString()}</span>
+                                </div>
+                                <div className="mt-1 text-xs text-muted-foreground">
+                                  {linkedMissions.length} linked mission{linkedMissions.length !== 1 ? 's' : ''} ({activeLinked.length} active, {completedLinked.length} done)
+                                </div>
+                                {rmExpandedInfoIds.has(node.key) && (
+                                  <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 space-y-1.5">
+                                    <p className="text-muted-foreground text-xs">
+                                      <span className="text-primary font-mono">Objective Description:</span> {goal.description || "No description"}
+                                    </p>
+                                    {uniqueCategories.length > 0 && (
                                       <p className="text-muted-foreground text-xs">
-                                        <span className="text-primary font-mono capitalize">{rmItem.quest.category}</span> — {
-                                          categoryDescriptions[rmItem.quest.category] || userCategories.find(uc => uc.value === rmItem?.quest?.category)?.description || 'Auto-classified mission category.'
-                                        }
+                                        <span className="text-primary font-mono">Objective Type:</span> <span className="capitalize">{uniqueCategories.join(', ')}</span>
                                       </p>
                                     )}
                                     <p className="text-muted-foreground text-xs">
-                                      <span className="text-primary font-mono">Rank {rmItem.quest.difficulty || 'D'}</span> — {difficultyDescriptions[rmItem.quest.difficulty || 'D']}
+                                      <span className="text-primary font-mono">Objective Difficulty:</span> Rank {avgDifficulty || 'D'}
                                     </p>
+                                    <p className="text-muted-foreground text-xs">
+                                      <span className="text-primary font-mono">Objective Reward:</span> {goal.rewardText || "No reward set"}
+                                    </p>
+                                    {activeLinked.length > 0 && (
+                                      <div className="border-t border-primary/10 pt-2 mt-1">
+                                        <button
+                                          className="flex items-center gap-1 w-full text-left"
+                                          onClick={(e) => { e.stopPropagation(); setRmActiveMissionsExpanded(prev => ({ ...prev, [node.key]: !prev[node.key] })); }}
+                                        >
+                                          {rmActiveMissionsExpanded[node.key] ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
+                                          <span className="text-muted-foreground text-[10px] uppercase tracking-wider">Active Missions ({activeLinked.length})</span>
+                                        </button>
+                                        {rmActiveMissionsExpanded[node.key] && (
+                                          <div className="mt-1 space-y-0.5 pl-4">
+                                            {activeLinked.map(m => (
+                                              <div key={m.id} className="flex items-center gap-1.5 py-0.5">
+                                                <Target className="h-3 w-3 text-primary shrink-0" />
+                                                <span className="text-xs text-primary font-mono capitalize">{m.category}</span>
+                                                <span className="text-xs text-muted-foreground">—</span>
+                                                <span className="text-xs text-foreground/70 truncate">{m.title}</span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                    {completedLinked.length > 0 && (
+                                      <div className="border-t border-primary/10 pt-2 mt-1">
+                                        <button
+                                          className="flex items-center gap-1 w-full text-left"
+                                          onClick={(e) => { e.stopPropagation(); setRmCompletedMissionsExpanded(prev => ({ ...prev, [node.key]: !prev[node.key] })); }}
+                                        >
+                                          {rmCompletedMissionsExpanded[node.key] ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
+                                          <span className="text-muted-foreground text-[10px] uppercase tracking-wider">Completed Missions ({completedLinked.length})</span>
+                                        </button>
+                                        {rmCompletedMissionsExpanded[node.key] && (
+                                          <div className="mt-1 space-y-0.5 pl-4">
+                                            {completedLinked.map(m => (
+                                              <div key={m.id} className="flex items-center gap-1.5 py-0.5">
+                                                <Check className="h-3 w-3 text-primary shrink-0" />
+                                                <span className="text-xs text-primary font-mono capitalize">{m.category}</span>
+                                                <span className="text-xs text-muted-foreground">—</span>
+                                                <span className="text-xs text-muted-foreground truncate">{m.title}</span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
                                 )}
+                                <div className="flex items-center gap-2 mt-2">
+                                  <button
+                                    className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                                    onClick={(e) => { e.stopPropagation(); completeGoalMutation(goal.id); }}
+                                  >
+                                    Complete
+                                  </button>
+                                </div>
                               </div>
-                            )}
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="ml-2 glassmorphic rounded-xl p-4 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition neon-border">
+                            <div className="flex-grow">
+                              <div className="flex justify-between items-start">
+                                <h3 className="font-medium">
+                                  {node.label}
+                                </h3>
+                                <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                                  <button
+                                    className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setRmExpandedInfoIds(prev => {
+                                        const next = new Set(prev);
+                                        if (next.has(node.key)) next.delete(node.key);
+                                        else next.add(node.key);
+                                        return next;
+                                      });
+                                    }}
+                                  >
+                                    <Info className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                              {rmQuest && rmQuest.category !== "event" && (
+                                <div className="flex items-center gap-3 mt-1 flex-wrap">
+                                  <span className="text-primary text-xs font-mono whitespace-nowrap">-{formatStatCost(rmQuest.attentionCost)} AT</span>
+                                  <span className="text-primary text-xs font-mono whitespace-nowrap">-{formatStatCost(rmQuest.timeCost)} TT</span>
+                                  <span className="text-primary text-xs font-mono whitespace-nowrap">-{formatStatCost(rmQuest.energyCost)} EP</span>
+                                  <span className="text-primary text-xs font-mono whitespace-nowrap">+{rmAdjustedXp} XP</span>
+                                </div>
+                              )}
+                              {rmQuest && (() => {
+                                const q = rmQuest;
+                                const hasSchedule = q.startDate || q.startTime || q.endDate || q.endTime;
+                                if (!hasSchedule) return null;
+                                const fmtDate = (ds: string) => { const [y, m, d] = ds.split('-').map(Number); return new Date(y, m-1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); };
+                                const fmtTimeLocal = (ts: string) => { const [h, mn] = ts.split(':'); const hr = parseInt(h); return `${hr % 12 || 12}:${mn} ${hr >= 12 ? 'PM' : 'AM'}`; };
+                                return (
+                                  <div className="flex items-center gap-1 text-xs mt-1 flex-wrap text-muted-foreground">
+                                    {q.startDate && <span className="flex items-center gap-1 whitespace-nowrap"><Calendar className="h-3 w-3 flex-shrink-0" />{fmtDate(q.startDate)}</span>}
+                                    {q.startTime && <span className="flex items-center gap-1 whitespace-nowrap"><Clock className="h-3 w-3 flex-shrink-0" />{fmtTimeLocal(q.startTime)}</span>}
+                                    {(q.endDate || q.endTime) && <span className="text-primary flex-shrink-0">→</span>}
+                                    {q.endDate && <span className="flex items-center gap-1 whitespace-nowrap"><Calendar className="h-3 w-3 flex-shrink-0" />{fmtDate(q.endDate)}</span>}
+                                    {q.endTime && <span className="flex items-center gap-1 whitespace-nowrap"><Clock className="h-3 w-3 flex-shrink-0" />{fmtTimeLocal(q.endTime)}</span>}
+                                  </div>
+                                );
+                              })()}
+                              {rmExpandedInfoIds.has(node.key) && (
+                                <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 space-y-1.5">
+                                  {(() => {
+                                    const onboardingDesc = rmQuest?.category === "onboarding" && rmQuest?.title
+                                      ? getOnboardingDescription(rmQuest.title, rmQuest.description || '')
+                                      : null;
+                                    const displayDesc = onboardingDesc || rmQuest?.description || node.items[0]?.description;
+                                    return displayDesc ? (
+                                      <p className="text-muted-foreground text-xs">
+                                        <span className="text-primary font-mono">Mission Description:</span> {displayDesc}
+                                      </p>
+                                    ) : null;
+                                  })()}
+                                  {rmLinkedObjective && (
+                                    <p className="text-muted-foreground text-xs">
+                                      <span className="text-primary font-mono">Mission Objective — {rmCategoryLabels[rmLinkedObjective.category] || rmLinkedObjective.category} Vision:</span> {rmLinkedObjective.title}
+                                    </p>
+                                  )}
+                                  {rmQuest?.category && rmQuest.category !== "general" && rmQuest.category !== "onboarding" && (
+                                    <p className="text-muted-foreground text-xs">
+                                      <span className="text-primary font-mono">Mission Type — <span className="capitalize">{rmQuest.category}</span>:</span> {
+                                        categoryDescriptions[rmQuest.category] || userCategories.find(uc => uc.value === rmQuest?.category)?.description || 'Auto-classified mission category.'
+                                      }
+                                    </p>
+                                  )}
+                                  <p className="text-muted-foreground text-xs">
+                                    <span className="text-primary font-mono">Mission Difficulty — Rank {rmQuest?.difficulty || 'D'}:</span> {difficultyDescriptions[rmQuest?.difficulty || 'D']}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ) : (
+                        );
+                      })() : (
                         <div
                           className="ml-2 py-3 px-4 glassmorphic rounded-xl cursor-pointer hover:shadow-[0_0_8px_var(--primary-glow-light)] transition-all group border border-primary/10 hover:border-primary/30"
                           onClick={() => handleRmNodeClick(node)}

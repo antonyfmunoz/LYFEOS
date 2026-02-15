@@ -1325,31 +1325,27 @@ export default function DashboardPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
+                <label className="text-sm flex items-center gap-1.5 text-muted-foreground">
+                  <AlarmClock className="h-4 w-4 text-primary/70" />
                   <span>Wake Time</span>
                 </label>
-                <div className="flex items-center gap-2 w-full">
-                  <AlarmClock className="h-4 w-4 text-primary/70" />
-                  <CustomTimePicker
-                    value={reflection.wakeTime}
-                    onChange={(value) => updateReflection("wakeTime", value)}
-                    className="flex-grow"
-                  />
-                </div>
+                <CustomTimePicker
+                  value={reflection.wakeTime}
+                  onChange={(value) => updateReflection("wakeTime", value)}
+                  className="w-full"
+                />
               </div>
               
               <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
+                <label className="text-sm flex items-center gap-1.5 text-muted-foreground">
+                  <MoonStar className="h-4 w-4 text-primary/70" />
                   <span>Sleep Time</span>
                 </label>
-                <div className="flex items-center gap-2 w-full">
-                  <MoonStar className="h-4 w-4 text-primary/70" />
-                  <CustomTimePicker
-                    value={reflection.sleepTime}
-                    onChange={(value) => updateReflection("sleepTime", value)}
-                    className="flex-grow"
-                  />
-                </div>
+                <CustomTimePicker
+                  value={reflection.sleepTime}
+                  onChange={(value) => updateReflection("sleepTime", value)}
+                  className="w-full"
+                />
               </div>
             </div>
             
@@ -1377,8 +1373,8 @@ export default function DashboardPage() {
                 )}
               </div>
               <div className="flex items-center justify-end text-sm mt-3">
-                <span className="text-[#7DAAB2] mr-2">Daily Total:</span>
-                <span className="text-[#D6F4FF] font-mono">
+                <span className="text-muted-foreground mr-2">Daily Total:</span>
+                <span className="text-primary font-mono">
                   {Math.round(((reflection.mentalState + reflection.physicalState + reflection.emotionalState) / 30) * 100)}%
                 </span>
               </div>
