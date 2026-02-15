@@ -276,6 +276,7 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
   const [isMutating, setIsMutating] = useState(false);
 
   const categoryGoals = goals.filter(g => g.category === category);
+  console.log('[DIAG ObjectiveList]', category, 'categoryGoals:', categoryGoals.length, 'active:', categoryGoals.filter(g => !g.completed).length, 'completed:', categoryGoals.filter(g => g.completed).length);
 
   const getMissionsForGoal = (goalId: number) => {
     return linkedMissions.filter(m => m.visionGoalId === goalId);
@@ -545,6 +546,8 @@ export default function GoalsArchivePage() {
 
   const { user } = useAuth();
   const { updateUserStats, refetchQuests, quests } = useLYFEOS();
+  const renderCountRef = useRef(0);
+  renderCountRef.current++;
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
@@ -567,6 +570,8 @@ export default function GoalsArchivePage() {
     staleTime: 0,
     refetchOnMount: 'always',
   });
+
+  console.log('[DIAG GoalsArchivePage] render #' + renderCountRef.current, 'goals count:', goals.length, 'completed:', goals.filter(g => g.completed).map(g => g.id));
 
   const setGoals = useCallback((updater: VisionGoal[] | ((prev: VisionGoal[]) => VisionGoal[])) => {
     queryClient.setQueryData<VisionGoal[]>(goalsQueryKey, (old) => {
@@ -624,11 +629,16 @@ export default function GoalsArchivePage() {
   goalsRef.current = goals;
 
   const handleToggle = async (id: number, completed: boolean) => {
+    console.log('[DIAG handleToggle] called with id=', id, 'completed=', completed);
     const snapshotGoals = [...goalsRef.current];
     const targetGoal = goalsRef.current.find(g => g.id === id);
     const category = targetGoal?.category || '';
 
-    setGoals(prev => prev.map(g => g.id === id ? { ...g, completed, completedAt: completed ? new Date().toISOString() : null } : g));
+    setGoals(prev => {
+      const next = prev.map(g => g.id === id ? { ...g, completed, completedAt: completed ? new Date().toISOString() : null } : g);
+      console.log('[DIAG handleToggle] setGoals updater ran. prev completed states:', prev.map(g => `${g.id}:${g.completed}`).join(','), '=> next:', next.map(g => `${g.id}:${g.completed}`).join(','));
+      return next;
+    });
 
     const currentMissions = queryClient.getQueryData<LinkedMission[]>(['/api/quests/linked-by-vision-goal', category]) || [];
     const snapshotMissions = [...currentMissions];

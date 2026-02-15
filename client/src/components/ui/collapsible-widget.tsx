@@ -1,4 +1,4 @@
-import { useState, ReactNode, useRef, useCallback, memo } from "react";
+import { useState, ReactNode, useRef, useCallback } from "react";
 import { ChevronDown, ChevronUp, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDrag, useDrop } from 'react-dnd';
@@ -25,7 +25,7 @@ interface CollapsibleWidgetProps {
   onExternalDrop?: (item: any) => void;
 }
 
-export const CollapsibleWidget = memo(function CollapsibleWidget({ 
+export const CollapsibleWidget = function CollapsibleWidget({ 
   title, 
   icon, 
   children, 
@@ -169,4 +169,4 @@ export const CollapsibleWidget = memo(function CollapsibleWidget({
       </div>
     </div>
   );
-});
+};
