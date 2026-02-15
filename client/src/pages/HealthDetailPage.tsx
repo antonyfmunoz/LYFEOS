@@ -92,25 +92,27 @@ export default function HealthDetailPage() {
         </Link>
       </div>
 
-      <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Heart className="h-9 w-9 text-primary animate-pulse" />
-            <Heart className="h-9 w-9 text-primary/50 absolute top-0 left-0 opacity-40 animate-pulse" style={{ animationDelay: "0.3s" }} />
-          </div>
-          <h1 className="text-3xl font-orbitron bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent">
-            Health Points
-          </h1>
+      <div className="mb-8 flex items-center gap-3">
+        <div className="relative">
+          <Heart className="h-9 w-9 text-primary animate-pulse" />
+          <Heart className="h-9 w-9 text-primary/50 absolute top-0 left-0 opacity-40 animate-pulse" style={{ animationDelay: "0.3s" }} />
         </div>
-        <div className="flex items-center gap-1 bg-background/40 rounded-lg border border-muted/30 p-1">
+        <h1 className="text-3xl font-orbitron bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent">
+          Health Points
+        </h1>
+      </div>
+
+      <div className="flex items-center gap-2 mb-6">
+        <span className="text-sm text-muted-foreground font-mono">Period:</span>
+        <div className="flex gap-1">
           {dayOptions.map((d) => (
             <button
               key={d}
               onClick={() => setDays(d)}
-              className={`px-3 py-1.5 rounded-md text-xs font-mono transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-all duration-200 border ${
                 days === d
-                  ? "bg-primary/20 text-primary border border-primary/30"
-                  : "text-muted-foreground hover:text-white hover:bg-muted/20"
+                  ? "bg-primary/20 border-primary/50 text-primary"
+                  : "bg-background/40 border-muted/20 text-muted-foreground hover:border-primary/30 hover:text-primary/80"
               }`}
             >
               {d}d

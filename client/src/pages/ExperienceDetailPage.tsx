@@ -69,22 +69,24 @@ export default function ExperienceDetailPage() {
         </Link>
       </div>
 
-      <div className="mb-8 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Award className="h-9 w-9 text-primary" />
-          <h1 className="text-3xl font-orbitron bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent">
-            Experience
-          </h1>
-        </div>
-        <div className="flex items-center gap-1 bg-background/50 border border-primary/20 rounded-lg p-1">
+      <div className="mb-8 flex items-center gap-3">
+        <Award className="h-9 w-9 text-primary" />
+        <h1 className="text-3xl font-orbitron bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent">
+          Experience
+        </h1>
+      </div>
+
+      <div className="flex items-center gap-2 mb-6">
+        <span className="text-sm text-muted-foreground font-mono">Period:</span>
+        <div className="flex gap-1">
           {[7, 14, 30, 90].map((d) => (
             <button
               key={d}
               onClick={() => setDays(d)}
-              className={`px-3 py-1.5 rounded-md text-xs font-mono transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-all duration-200 border ${
                 days === d
-                  ? "bg-primary text-primary-foreground shadow-lg"
-                  : "text-muted-foreground hover:text-white hover:bg-muted/30"
+                  ? "bg-primary/20 border-primary/50 text-primary"
+                  : "bg-background/40 border-muted/20 text-muted-foreground hover:border-primary/30 hover:text-primary/80"
               }`}
             >
               {d}d

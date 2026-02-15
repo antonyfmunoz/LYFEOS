@@ -116,25 +116,26 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
 
   return (
     <>
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center">
-          <Link href="/dashboard" className="mr-3 inline-flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors rounded-md px-3 py-2">
-            <ArrowLeft className="h-4 w-4" />
-            <span>Back</span>
-          </Link>
-          <h1 className="text-2xl font-orbitron" style={{ color: config.color }}>{config.title}</h1>
-        </div>
-        <div className="flex items-center gap-1 bg-background/40 rounded-lg border border-primary/20 p-1">
+      <div className="mb-6 flex items-center">
+        <Link href="/dashboard" className="mr-3 inline-flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors rounded-md px-3 py-2">
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back</span>
+        </Link>
+        <h1 className="text-2xl font-orbitron" style={{ color: config.color }}>{config.title}</h1>
+      </div>
+
+      <div className="flex items-center gap-2 mb-6">
+        <span className="text-sm text-muted-foreground font-mono">Period:</span>
+        <div className="flex gap-1">
           {DAY_OPTIONS.map((d) => (
             <button
               key={d}
               onClick={() => setDays(d)}
-              className={`px-3 py-1.5 rounded-md text-xs font-mono transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-all duration-200 border ${
                 days === d
-                  ? "text-white font-semibold"
-                  : "text-muted-foreground hover:text-white"
+                  ? "bg-primary/20 border-primary/50 text-primary"
+                  : "bg-background/40 border-muted/20 text-muted-foreground hover:border-primary/30 hover:text-primary/80"
               }`}
-              style={days === d ? { backgroundColor: `${config.color}33`, color: config.color } : {}}
             >
               {d}d
             </button>

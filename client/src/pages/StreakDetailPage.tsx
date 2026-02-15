@@ -349,7 +349,7 @@ export default function StreakDetailPage() {
                       achieved
                         ? "border-primary/40 bg-primary/5"
                         : isNext
-                        ? "border-primary/30 bg-primary/5 ring-1 ring-primary/20 animate-pulse"
+                        ? "border-primary/30 bg-primary/5 ring-1 ring-primary/20"
                         : "border-muted/30 bg-muted/5 opacity-60"
                     }`}
                   >
