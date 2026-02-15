@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useRef, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import MobileNav from "./MobileNav";
 import AICompanionPanel from "../ai/AICompanionPanel";
@@ -13,6 +13,13 @@ interface RootLayoutProps {
 export default function RootLayout({ children }: RootLayoutProps) {
   const { username, activeTimerQuest, timerStartedAt, timerPausedElapsed, timerIsPaused, isOnBreak, breakStartedAt, breakElapsed, endMissionTimer, pauseResumeTimer } = useLYFEOS();
   const [location] = useLocation();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+  }, [location]);
   
   const rawPage = location.split('/')[1] || 'dashboard';
   const pageAliases: Record<string, string> = {
@@ -47,7 +54,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
             </div>
           </div>
           
-          <div className="flex-grow overflow-y-auto relative">
+          <div ref={scrollContainerRef} className="flex-grow overflow-y-auto relative">
             {activeTimerQuest && (
               <div className="sticky top-0 z-30 lg:hidden flex justify-center px-4 pt-2 pb-2">
                 <MissionTimer
