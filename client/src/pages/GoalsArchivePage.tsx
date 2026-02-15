@@ -394,9 +394,8 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
   activeGoalsRef.current = activeGoals;
 
   useEffect(() => {
-    if (!isDraggingRef.current) {
-      setLocalReorder(null);
-    }
+    setLocalReorder(null);
+    isDraggingRef.current = false;
   }, [goals]);
 
   const moveGoal = useCallback((dragIndex: number, hoverIndex: number) => {
@@ -614,16 +613,18 @@ export default function GoalsArchivePage() {
   };
 
   const disconnectedMissionsRef = useRef<Record<number, LinkedMission[]>>({});
+  const goalsRef = useRef(goals);
+  goalsRef.current = goals;
 
-  const handleToggle = useCallback(async (id: number, completed: boolean) => {
-    const previousGoals = [...goals];
-    const targetGoal = goals.find(g => g.id === id);
+  const handleToggle = async (id: number, completed: boolean) => {
+    const snapshotGoals = [...goalsRef.current];
+    const targetGoal = goalsRef.current.find(g => g.id === id);
     const category = targetGoal?.category || '';
 
     setGoals(prev => prev.map(g => g.id === id ? { ...g, completed, completedAt: completed ? new Date().toISOString() : null } : g));
 
     const currentMissions = queryClient.getQueryData<LinkedMission[]>(['/api/quests/linked-by-vision-goal', category]) || [];
-    const previousMissions = [...currentMissions];
+    const snapshotMissions = [...currentMissions];
 
     if (completed) {
       const activeRitualMissions = currentMissions.filter(m => m.visionGoalId === id && !m.completed && m.isRitualized);
@@ -692,7 +693,7 @@ export default function GoalsArchivePage() {
       }
 
       if (completed && result.disconnectedMissionIds && result.disconnectedMissionIds.length > 0) {
-        const serverDisconnected = previousMissions.filter(m => result.disconnectedMissionIds!.includes(m.id));
+        const serverDisconnected = snapshotMissions.filter(m => result.disconnectedMissionIds!.includes(m.id));
         if (serverDisconnected.length > 0) {
           disconnectedMissionsRef.current[id] = serverDisconnected;
         }
@@ -707,10 +708,10 @@ export default function GoalsArchivePage() {
         objectiveToast(result.title, result.rewardText, result.xpAwarded || result.bonusXp);
       }
     } catch (err) {
-      setGoals(previousGoals);
+      setGoals(snapshotGoals);
       queryClient.setQueryData<LinkedMission[]>(
         ['/api/quests/linked-by-vision-goal', category],
-        previousMissions
+        snapshotMissions
       );
       if (completed) {
         delete disconnectedMissionsRef.current[id];
@@ -721,26 +722,26 @@ export default function GoalsArchivePage() {
         variant: "destructive",
       });
     }
-  }, [goals, toast]);
+  };
 
-  const handleDelete = useCallback(async (id: number) => {
-    const previousGoals = [...goals];
+  const handleDelete = async (id: number) => {
+    const snapshotGoals = [...goalsRef.current];
     setGoals(prev => prev.filter(g => g.id !== id));
 
     try {
       await apiRequest(`/api/vision-goals/${id}`, { method: 'DELETE' });
     } catch (err) {
-      setGoals(previousGoals);
+      setGoals(snapshotGoals);
       toast({
         title: "Failed to delete goal",
         description: err instanceof Error ? err.message : "Please try again",
         variant: "destructive",
       });
     }
-  }, [goals, toast]);
+  };
 
-  const handleReorder = useCallback(async (category: string, ids: number[]) => {
-    const previousGoals = [...goals];
+  const handleReorder = async (category: string, ids: number[]) => {
+    const snapshotGoals = [...goalsRef.current];
     setGoals(prev => {
       const updated = [...prev];
       ids.forEach((id, index) => {
@@ -756,15 +757,15 @@ export default function GoalsArchivePage() {
       });
     } catch (err) {
       console.error("Failed to save reorder:", err);
-      setGoals(previousGoals);
+      setGoals(snapshotGoals);
     }
-  }, [goals]);
+  };
 
   const movingGoalsRef = useRef<Set<number>>(new Set());
-  const handleMoveToCategory = useCallback(async (goalId: number, newCategory: string) => {
+  const handleMoveToCategory = async (goalId: number, newCategory: string) => {
     if (movingGoalsRef.current.has(goalId)) return;
     movingGoalsRef.current.add(goalId);
-    const previousGoals = [...goals];
+    const snapshotGoals = [...goalsRef.current];
     setGoals(prev => prev.map(g => g.id === goalId ? { ...g, category: newCategory, displayOrder: 999 } : g));
 
     try {
@@ -774,7 +775,7 @@ export default function GoalsArchivePage() {
       });
       setGoals(prev => prev.map(g => g.id === goalId ? { ...g, ...result } : g));
     } catch (err) {
-      setGoals(previousGoals);
+      setGoals(snapshotGoals);
       toast({
         title: "Failed to move goal",
         description: err instanceof Error ? err.message : "Please try again",
@@ -783,7 +784,7 @@ export default function GoalsArchivePage() {
     } finally {
       movingGoalsRef.current.delete(goalId);
     }
-  }, [goals, toast]);
+  };
 
   const [legacyOpen, setLegacyOpen] = useWidgetState('goals.legacy-vision', false);
   const [tenYearOpen, setTenYearOpen] = useWidgetState('goals.10year-vision', false);
