@@ -68,6 +68,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DraggableWidget, type DraggableWidgetProps } from '@/components/ui/draggable-widget';
 import update from 'immutability-helper';
 import type { UserProfile as UserProfileSchema } from "@shared/schema";
+import { startThetaBeats, stopThetaBeats } from '@/lib/theta-beats';
 
 
 
@@ -312,6 +313,7 @@ export default function ProfilePage() {
 
   const stopAffirmationPlayback = useCallback(() => {
     window.speechSynthesis.cancel();
+    stopThetaBeats();
     setIsPlayingAffirmation(false);
   }, []);
 
@@ -348,6 +350,7 @@ export default function ProfilePage() {
     } else {
       affirmationTextRef.current = text;
       setIsPlayingAffirmation(true);
+      startThetaBeats();
       speakAffirmation(text);
     }
   }, [isPlayingAffirmation, stopAffirmationPlayback, speakAffirmation]);
@@ -357,6 +360,7 @@ export default function ProfilePage() {
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
       }
+      stopThetaBeats();
     };
   }, []);
   
