@@ -766,7 +766,21 @@ export default function GoalsArchivePage() {
     if (movingGoalsRef.current.has(goalId)) return;
     movingGoalsRef.current.add(goalId);
     const snapshotGoals = [...goalsRef.current];
+    const oldGoal = goalsRef.current.find(g => g.id === goalId);
+    const oldCategory = oldGoal?.category || '';
+    const previousLinkedMissions = { ...linkedMissionsRef.current };
     setGoals(prev => prev.map(g => g.id === goalId ? { ...g, category: newCategory, displayOrder: 999 } : g));
+
+    if (oldCategory && oldCategory !== newCategory) {
+      const oldMissions = linkedMissionsRef.current[oldCategory] || [];
+      const missionsToMove = oldMissions.filter(m => m.visionGoalId === goalId);
+      if (missionsToMove.length > 0) {
+        const remainingOld = oldMissions.filter(m => m.visionGoalId !== goalId);
+        const newCatMissions = linkedMissionsRef.current[newCategory] || [];
+        setLinkedMissionsForCategory(oldCategory, remainingOld);
+        setLinkedMissionsForCategory(newCategory, [...newCatMissions, ...missionsToMove]);
+      }
+    }
 
     try {
       const result = await apiRequest<VisionGoal>(`/api/vision-goals/${goalId}`, {
@@ -774,8 +788,11 @@ export default function GoalsArchivePage() {
         body: JSON.stringify({ category: newCategory }),
       });
       setGoals(prev => prev.map(g => g.id === goalId ? { ...g, ...result } : g));
+      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
+      fetchLinkedMissions();
     } catch (err) {
       setGoals(snapshotGoals);
+      setLinkedMissionsMap(previousLinkedMissions);
       toast({
         title: "Failed to move goal",
         description: err instanceof Error ? err.message : "Please try again",
@@ -977,6 +994,7 @@ export default function GoalsArchivePage() {
         body: JSON.stringify(optimisticUpdates),
       });
       setGoals(prev => prev.map(g => g.id === editedId ? { ...g, ...updatedGoal } : g));
+      queryClient.invalidateQueries({ queryKey: ['/api/vision-goals/all'] });
       fetchLinkedMissions();
     } catch (error) {
       setGoals(previousGoals);
