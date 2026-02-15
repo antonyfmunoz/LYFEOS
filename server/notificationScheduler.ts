@@ -1,6 +1,7 @@
 import webpush from "web-push";
 import { storage } from "./storage";
 import type { SmartReminder } from "@shared/schema";
+import { formatLocalDate, logger } from "./utils";
 
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
   webpush.setVapidDetails(
@@ -39,7 +40,7 @@ export async function sendPushToUser(userId: number, payload: NotificationPayloa
       }
     }
   } catch (err) {
-    console.error("sendPushToUser error:", err);
+    logger.error("sendPushToUser error:", err);
   }
 }
 
@@ -73,7 +74,7 @@ async function checkAndSendNotifications() {
       }
     }
   } catch (err) {
-    console.error("Notification scheduler error:", err);
+    logger.error("Notification scheduler error:", err);
   }
 }
 
@@ -95,7 +96,7 @@ async function sendStreakReminders() {
         if (!stats || (stats.streakDays || 0) < 1) continue;
 
         const userQuests = await storage.getQuests(subscription.userId);
-        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const todayStr = formatLocalDate(now);
         const todayQuests = userQuests.filter(q => !q.deletedAt && q.startDate === todayStr);
         if (todayQuests.length === 0) continue;
 
@@ -112,7 +113,7 @@ async function sendStreakReminders() {
       } catch {}
     }
   } catch (err) {
-    console.error("Streak reminder error:", err);
+    logger.error("Streak reminder error:", err);
   }
 }
 
@@ -198,11 +199,11 @@ async function evaluateSmartReminders() {
 
         await storage.updateSmartReminderLastSent(reminder.id);
       } catch (err) {
-        console.error(`Smart reminder error for user ${reminder.userId}:`, err);
+        logger.error(`Smart reminder error for user ${reminder.userId}:`, err);
       }
     }
   } catch (err) {
-    console.error("Smart reminder evaluation error:", err);
+    logger.error("Smart reminder evaluation error:", err);
   }
 }
 
@@ -260,12 +261,12 @@ async function learnUserPatterns() {
             });
           }
         } catch (err) {
-          console.error(`Pattern learning error for user ${userId}, type ${reminder.reminderType}:`, err);
+          logger.error(`Pattern learning error for user ${userId}, type ${reminder.reminderType}:`, err);
         }
       }
     }
   } catch (err) {
-    console.error("Pattern learning error:", err);
+    logger.error("Pattern learning error:", err);
   }
 }
 
@@ -277,10 +278,10 @@ let learningInterval: ReturnType<typeof setInterval> | null = null;
 export function startNotificationScheduler() {
   if (schedulerInterval) return;
   if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
-    console.warn("VAPID keys not configured - notification scheduler disabled");
+    logger.warn("VAPID keys not configured - notification scheduler disabled");
     return;
   }
-  console.log("Notification scheduler started (checking every 60s)");
+  logger.info("Notification scheduler started (checking every 60s)");
   schedulerInterval = setInterval(checkAndSendNotifications, 60_000);
   checkAndSendNotifications();
 

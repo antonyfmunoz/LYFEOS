@@ -99,7 +99,15 @@ Preferred communication style: Simple, everyday language.
 │   └── public/          # Static assets
 ├── server/           # Express backend
 │   ├── index.ts      # Server entry point
-│   ├── routes.ts     # API route definitions
+│   ├── routes.ts     # Route registration orchestrator
+│   ├── routes/       # Modular route handlers
+│   │   ├── middleware.ts  # Shared middleware (auth, XP helpers)
+│   │   ├── auth.ts        # Authentication routes (login, register, 2FA, Firebase)
+│   │   ├── profile.ts     # User profile, stats, daily logs, analytics
+│   │   ├── quests.ts      # Quest/mission CRUD, toggle, archive
+│   │   ├── content.ts     # Content CRUD (calendar, contacts, documents, media, etc.)
+│   │   └── goals.ts       # Vision goals, push notifications, Stripe, smart reminders
+│   ├── utils.ts      # Shared utilities (formatLocalDate, logger, classifyMission)
 │   ├── storage.ts    # Data access layer
 │   ├── db.ts         # Database connection
 │   └── openai.ts     # AI integration

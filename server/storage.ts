@@ -32,6 +32,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, isNull, isNotNull, gt, lt, sql } from "drizzle-orm";
+import { formatLocalDate, logger } from "./utils";
 import crypto from "crypto";
 
 function hashToken(token: string): string {
@@ -439,7 +440,7 @@ export class DatabaseStorage implements IStorage {
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const todayStr = formatLocalDate(today);
     
     const lastActiveDate = stats.lastActiveDate;
     let newStreak = stats.streakDays;
@@ -451,14 +452,14 @@ export class DatabaseStorage implements IStorage {
     } else {
       const lastDate = new Date(lastActiveDate);
       lastDate.setHours(0, 0, 0, 0);
-      const lastDateStr = `${lastDate.getFullYear()}-${String(lastDate.getMonth() + 1).padStart(2, '0')}-${String(lastDate.getDate()).padStart(2, '0')}`;
+      const lastDateStr = formatLocalDate(lastDate);
       
       if (lastDateStr === todayStr) {
         isNewDay = false;
       } else {
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+        const yesterdayStr = formatLocalDate(yesterday);
         
         if (lastDateStr === yesterdayStr) {
           newStreak = stats.streakDays + 1;
@@ -483,7 +484,7 @@ export class DatabaseStorage implements IStorage {
       // Fetch yesterday's daily log to calculate HP and EP
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+      const yesterdayStr = formatLocalDate(yesterday);
       
       const yesterdayLogs = await db.select()
         .from(userDailyLogs)
@@ -537,13 +538,13 @@ export class DatabaseStorage implements IStorage {
     
     // Scope to today's quests (by startDate or completedAt)
     const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const todayStr = formatLocalDate(today);
     
     const todaysQuests = allQuests.filter(q => {
       if (q.startDate === todayStr) return true;
       if (q.completedAt) {
         const completedDate = new Date(q.completedAt);
-        const completedStr = `${completedDate.getFullYear()}-${String(completedDate.getMonth() + 1).padStart(2, '0')}-${String(completedDate.getDate()).padStart(2, '0')}`;
+        const completedStr = formatLocalDate(completedDate);
         return completedStr === todayStr;
       }
       return false;
@@ -645,7 +646,7 @@ export class DatabaseStorage implements IStorage {
     // Get yesterday's date to fetch energy log scores (use local date formatting for consistency with processLoginStreak)
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayDateStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+    const yesterdayDateStr = formatLocalDate(yesterday);
     
     // Fetch yesterday's energy log
     const [yesterdayLog] = await db.select()
@@ -748,7 +749,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getUserDailyLogByDate(userId: number, date: Date): Promise<UserDailyLog | undefined> {
-    const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const formattedDate = formatLocalDate(date);
     const [log] = await db.select()
       .from(userDailyLogs)
       .where(and(
@@ -931,8 +932,8 @@ export class DatabaseStorage implements IStorage {
         
         statsUpdated = true;
         
-        console.log(`Quest completed: energyCost=${energyCost}, xp=${quest.experienceReward}, isEvent=${isEvent}`);
-        console.log(`Stats updated: time=${newTimeTokens}, attention=${newAttentionTokens}, energy=${newEnergyPoints}, xp=${newExperience}, level=${newLevel}`);
+        logger.debug(`Quest completed: energyCost=${energyCost}, xp=${quest.experienceReward}, isEvent=${isEvent}`);
+        logger.debug(`Stats updated: time=${newTimeTokens}, attention=${newAttentionTokens}, energy=${newEnergyPoints}, xp=${newExperience}, level=${newLevel}`);
       }
       
       if (quest.isRitualized && quest.repeatFrequency) {
@@ -1186,7 +1187,7 @@ export class DatabaseStorage implements IStorage {
     
     const now = new Date();
     const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
-    const nowDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const nowDateStr = formatLocalDate(now);
     const nowTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     const futureTimeStr = `${String(fiveMinutesFromNow.getHours()).padStart(2, '0')}:${String(fiveMinutesFromNow.getMinutes()).padStart(2, '0')}`;
     
