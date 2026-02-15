@@ -231,7 +231,7 @@ function DraggableObjective({
           <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
             <span>Created: {new Date(goal.createdAt).toLocaleDateString()}</span>
             {goal.completedAt && (
-              <span className="text-green-400/80">Completed: {new Date(goal.completedAt).toLocaleDateString()}</span>
+              <span className="text-foreground">Completed: {new Date(goal.completedAt).toLocaleDateString()}</span>
             )}
           </div>
           <div className="mt-1 text-xs text-muted-foreground">
@@ -514,7 +514,7 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
                     <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground opacity-50">
                       <span>Created: {new Date(goal.createdAt).toLocaleDateString()}</span>
                       {goal.completedAt && (
-                        <span className="text-green-400/80">Completed: {new Date(goal.completedAt).toLocaleDateString()}</span>
+                        <span className="text-foreground">Completed: {new Date(goal.completedAt).toLocaleDateString()}</span>
                       )}
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground opacity-50">
@@ -624,6 +624,8 @@ export default function GoalsArchivePage() {
         body: JSON.stringify({ completed }),
       });
       setGoals(prev => prev.map(g => g.id === id ? { ...g, ...result } : g));
+      queryClient.invalidateQueries({ queryKey: ['/api/quests/linked-by-vision-goal'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
       if (completed && result && result.title) {
         objectiveToast(result.title, result.rewardText, result.bonusXp);
       }
