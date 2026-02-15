@@ -370,7 +370,7 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
                 <div className="mt-1 space-y-0.5 pl-4">
                   {grouped.map(g => (
                     <div key={g.key} className="flex items-center gap-1.5 py-0.5">
-                      <Check className="h-3 w-3 text-green-400 shrink-0" />
+                      <Check className="h-3 w-3 text-primary shrink-0" />
                       <span className="text-xs text-primary font-mono capitalize">{g.category}</span>
                       <span className="text-xs text-muted-foreground">—</span>
                       <span className="text-xs text-muted-foreground truncate">{g.title}{g.count > 1 ? ` (x${g.count})` : ''}</span>
@@ -718,35 +718,35 @@ export default function GoalsArchivePage() {
   const [widgets, setWidgets] = useState<VisionWidget[]>([
     {
       id: 'legacy',
-      title: 'Legacy Vision',
+      title: 'Mission Objective — Legacy Vision',
       icon: <Eye className="h-5 w-5 text-primary" />,
       stateKey: 'goals.legacy-vision',
       placeholder: "e.g., Build a company that impacts 1M lives",
     },
     {
       id: '10year',
-      title: '10-Year Vision',
+      title: 'Mission Objective — 10-Year Vision',
       icon: <Target className="h-5 w-5 text-primary" />,
       stateKey: 'goals.10year-vision',
       placeholder: "e.g., Reach $1M net worth",
     },
     {
       id: '5year',
-      title: '5-Year Vision',
+      title: 'Mission Objective — 5-Year Vision',
       icon: <Compass className="h-5 w-5 text-primary" />,
       stateKey: 'goals.5year-vision',
       placeholder: "e.g., Launch my own product",
     },
     {
       id: '18month',
-      title: '18-Month Vision',
+      title: 'Mission Objective — 18-Month Vision',
       icon: <Milestone className="h-5 w-5 text-primary" />,
       stateKey: 'goals.18month-vision',
       placeholder: "e.g., Earn $10k/month consistently",
     },
     {
       id: '90day',
-      title: '90-Day Vision',
+      title: 'Mission Objective — 90-Day Vision',
       icon: <Flame className="h-5 w-5 text-primary" />,
       stateKey: 'goals.90day-vision',
       placeholder: "e.g., Close 5 new clients",
