@@ -70,6 +70,7 @@ export default function StreakDetailPage() {
   const { data: streakData, isLoading } = useQuery<any>({
     queryKey: ["/api/streaks"],
     enabled: !!user,
+    refetchOnMount: 'always',
   });
 
   const nextMilestone = useMemo(() => {
@@ -156,7 +157,7 @@ export default function StreakDetailPage() {
 
       <div className={`glassmorphic rounded-2xl p-8 mb-8 border border-primary/30 relative overflow-hidden ${streakGlow}`}>
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/50 via-primary to-primary/50" />
+        <div className="absolute top-0 left-0 w-full h-1 bg-primary" />
 
         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="text-center md:text-left">
@@ -178,11 +179,9 @@ export default function StreakDetailPage() {
             </div>
             <div className="w-full bg-muted/30 h-3 rounded-full overflow-hidden border border-muted/20">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-primary/60 via-primary to-primary/80 transition-all duration-1000 ease-out relative"
+                className="h-full rounded-full bg-primary transition-all duration-1000 ease-out"
                 style={{ width: `${progressPct}%` }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse" />
-              </div>
+              />
             </div>
             <div className="flex justify-between w-full text-xs text-muted-foreground">
               <span>{prevMilestone?.days || 0} days</span>
@@ -319,13 +318,7 @@ export default function StreakDetailPage() {
                     labelStyle={{ color: "#9ca3af", fontSize: 12 }}
                     itemStyle={{ color: "hsl(var(--primary))", fontSize: 13 }}
                   />
-                  <Bar dataKey="missions" name="Missions" fill="url(#streakBarGradient)" radius={[4, 4, 0, 0]} />
-                  <defs>
-                    <linearGradient id="streakBarGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
-                    </linearGradient>
-                  </defs>
+                  <Bar dataKey="missions" name="Missions" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -428,7 +421,7 @@ export default function StreakDetailPage() {
                           <div
                             className={`h-full rounded-full transition-all duration-500 ${
                               habit.currentStreak > 0
-                                ? "bg-gradient-to-r from-primary to-primary/60"
+                                ? "bg-primary"
                                 : "bg-muted-foreground/30"
                             }`}
                             style={{ width: `${streakPct}%` }}

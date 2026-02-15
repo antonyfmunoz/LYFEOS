@@ -45,6 +45,7 @@ export default function ExperienceDetailPage() {
   const { data, isLoading } = useQuery<any>({
     queryKey: [`/api/stat-analytics?days=${days}`],
     enabled: !!user,
+    refetchOnMount: 'always',
   });
 
   const currentXP = stats.experience.current;
@@ -97,7 +98,7 @@ export default function ExperienceDetailPage() {
 
       <div className="glassmorphic rounded-2xl p-8 mb-8 border border-primary/30 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/50 via-primary to-primary/50" />
+        <div className="absolute top-0 left-0 w-full h-1 bg-primary" />
 
         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="text-center md:text-left">
@@ -120,10 +121,9 @@ export default function ExperienceDetailPage() {
             </div>
             <div className="w-full bg-muted/30 h-4 rounded-full overflow-hidden border border-muted/20">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-primary/60 via-primary to-primary/80 transition-all duration-1000 ease-out relative"
+                className="h-full rounded-full bg-primary transition-all duration-1000 ease-out relative"
                 style={{ width: `${xpProgress}%` }}
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse" />
               </div>
             </div>
             <div className="flex justify-between mt-2 text-xs text-muted-foreground">
@@ -167,12 +167,6 @@ export default function ExperienceDetailPage() {
               </h2>
               <ResponsiveContainer width="100%" height={240}>
                 <AreaChart data={data.xpTrend} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                  <defs>
-                    <linearGradient id="xpAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.05} />
-                    </linearGradient>
-                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                   <XAxis
                     dataKey="date"
@@ -202,7 +196,8 @@ export default function ExperienceDetailPage() {
                     name="XP Earned"
                     stroke="hsl(var(--primary))"
                     strokeWidth={2}
-                    fill="url(#xpAreaGradient)"
+                    fill="hsl(var(--primary))"
+                    fillOpacity={0.15}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -388,13 +383,7 @@ export default function ExperienceDetailPage() {
                     labelStyle={{ color: "#9ca3af", fontSize: 12 }}
                     itemStyle={{ color: "hsl(var(--primary))", fontSize: 13 }}
                   />
-                  <Bar dataKey="xp" name="XP Earned" fill="url(#weekdayBarGradient)" radius={[4, 4, 0, 0]} />
-                  <defs>
-                    <linearGradient id="weekdayBarGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
-                    </linearGradient>
-                  </defs>
+                  <Bar dataKey="xp" name="XP Earned" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -445,10 +434,9 @@ export default function ExperienceDetailPage() {
               </div>
               <div className="w-full bg-muted/20 h-3 rounded-full overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-primary/60 to-primary transition-all duration-700 relative"
+                  className="h-full rounded-full bg-primary transition-all duration-700"
                   style={{ width: `${xpProgress}%` }}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent animate-pulse" />
                 </div>
               </div>
               <div className="flex justify-between mt-2 text-xs text-muted-foreground">

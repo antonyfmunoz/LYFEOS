@@ -65,6 +65,7 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
   const { data, isLoading } = useQuery<any>({
     queryKey: [`/api/stat-analytics?days=${days}`],
     enabled: !!user,
+    refetchOnMount: 'always',
   });
 
   const summary = data?.summary || {};
@@ -78,9 +79,6 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
   const statusLabel = percentage > 70 ? "OPTIMAL" : percentage > 30 ? "MODERATE" : "LOW";
   const statusBg = percentage > 70 ? "bg-primary/20" : percentage > 30 ? "bg-primary/15" : "bg-primary/10";
   const statusText = percentage > 70 ? "text-primary" : percentage > 30 ? "text-primary/80" : "text-primary/60";
-
-  const gradientId = `stat-gradient-${stat}`;
-  const barGradientId = `bar-gradient-${stat}`;
 
   const avgEnergy = summary.totalMissions > 0
     ? Math.round((summary.totalEnergySpent || 0) / summary.totalMissions)
@@ -144,8 +142,8 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
       </div>
 
       <div className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30 relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none" style={{ background: `linear-gradient(135deg, ${config.color}08, transparent, ${config.color}05)` }} />
-        <div className="absolute top-0 left-0 w-full h-1" style={{ background: `linear-gradient(90deg, ${config.color}, ${config.color}66)` }} />
+        <div className="absolute inset-0 pointer-events-none" style={{ backgroundColor: `${config.color}08` }} />
+        <div className="absolute top-0 left-0 w-full h-1" style={{ backgroundColor: config.color }} />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center gap-6">
           <div className="flex items-center gap-4 flex-1">
@@ -173,9 +171,8 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
               <div className="w-full h-3 rounded-full overflow-hidden bg-muted/30">
                 <div
                   className="h-full rounded-full transition-all duration-1000 ease-out relative"
-                  style={{ width: `${percentage}%`, background: `linear-gradient(90deg, ${config.color}, ${config.color}aa)` }}
+                  style={{ width: `${percentage}%`, backgroundColor: config.color }}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse" />
                 </div>
               </div>
             </div>
@@ -222,12 +219,6 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
               </h2>
               <ResponsiveContainer width="100%" height={240}>
                 <AreaChart data={energyTrend} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                  <defs>
-                    <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={config.color} stopOpacity={0.4} />
-                      <stop offset="100%" stopColor={config.color} stopOpacity={0.05} />
-                    </linearGradient>
-                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                   <XAxis dataKey="date" tick={{ fill: "#9ca3af", fontSize: 11 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fill: "#9ca3af", fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
@@ -241,7 +232,8 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
                     dataKey="energyUsed"
                     name="Tokens Used"
                     stroke={config.color}
-                    fill={`url(#${gradientId})`}
+                    fill="hsl(var(--primary))"
+                    fillOpacity={0.15}
                     strokeWidth={2}
                   />
                 </AreaChart>
@@ -258,12 +250,6 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
               </h2>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={tokenUtilization} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                  <defs>
-                    <linearGradient id={barGradientId} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={config.color} />
-                      <stop offset="100%" stopColor={`${config.color}88`} />
-                    </linearGradient>
-                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                   <XAxis dataKey="date" tick={{ fill: "#9ca3af", fontSize: 11 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fill: "#9ca3af", fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
@@ -271,7 +257,7 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
                     contentStyle={{ backgroundColor: "rgba(0,0,0,0.9)", border: `1px solid ${config.color}44`, borderRadius: 8 }}
                     labelStyle={{ color: "#9ca3af", fontSize: 12 }}
                   />
-                  <Bar dataKey="used" name="Used" stackId="a" fill={`url(#${barGradientId})`} radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="used" name="Used" stackId="a" fill="hsl(var(--primary))" radius={[0, 0, 0, 0]} />
                   <Bar dataKey="remaining" name="Remaining" stackId="a" fill="rgba(255,255,255,0.08)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>

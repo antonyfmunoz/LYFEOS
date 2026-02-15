@@ -26,6 +26,7 @@ export default function TimeDetailPage() {
   const { data, isLoading } = useQuery<any>({
     queryKey: [`/api/stat-analytics?days=${days}`],
     enabled: !!user,
+    refetchOnMount: 'always',
   });
 
   const currentTT = stats.timeTokens.current;
@@ -40,20 +41,6 @@ export default function TimeDetailPage() {
   const completionTrend = data?.completionTrend ?? [];
   const tokenUtilization = data?.tokenUtilization ?? [];
   const weekdayPatterns = data?.weekdayPatterns ?? [];
-
-  const totalEnergyAllocated = data?.summary?.totalEnergy ?? 1;
-  const energyOfCompleted = data?.summary?.completedEnergy ?? 0;
-  const tokenEfficiency = totalEnergyAllocated > 0 ? Math.min(Math.round((energyOfCompleted / totalEnergyAllocated) * 100), 100) : 0;
-  const consistencyScore = Math.min(Math.round(((data?.summary?.currentStreak ?? stats.streakDays) / 30) * 100), 100);
-  const missionBalanceScore = Math.min(Math.round((Object.keys(categoryStats).length / 5) * 100), 100);
-  const taskCompletionScore = Math.round(completionRate);
-
-  const timeMetrics = [
-    { name: "Task Completion", score: taskCompletionScore, icon: CheckCircle, desc: "Mission completion rate" },
-    { name: "Token Efficiency", score: tokenEfficiency, icon: Timer, desc: "Time spent on completed missions" },
-    { name: "Consistency", score: consistencyScore, icon: Calendar, desc: "Daily streak consistency" },
-    { name: "Mission Balance", score: missionBalanceScore, icon: Layers, desc: "Category diversity" },
-  ];
 
   const status = getStatusBadge(timePct);
 
@@ -96,7 +83,7 @@ export default function TimeDetailPage() {
 
       <div className="glassmorphic rounded-2xl p-8 mb-8 border border-primary/30 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/50 via-primary to-primary/50" />
+        <div className="absolute top-0 left-0 w-full h-1 bg-primary" />
 
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-6">
@@ -154,11 +141,9 @@ export default function TimeDetailPage() {
             </div>
             <div className="w-full bg-muted/30 h-3 rounded-full overflow-hidden border border-muted/20">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-primary/60 via-primary to-primary/80 transition-all duration-1000 ease-out relative"
+                className="h-full rounded-full bg-primary transition-all duration-1000 ease-out"
                 style={{ width: `${timePct}%` }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse" />
-              </div>
+              />
             </div>
           </div>
         </div>
@@ -180,12 +165,6 @@ export default function TimeDetailPage() {
               </h2>
               <ResponsiveContainer width="100%" height={250}>
                 <AreaChart data={completionTrend} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                  <defs>
-                    <linearGradient id="timeAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.05} />
-                    </linearGradient>
-                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                   <XAxis
                     dataKey="date"
@@ -212,7 +191,8 @@ export default function TimeDetailPage() {
                     name="Time Consumed"
                     stroke="hsl(var(--primary))"
                     strokeWidth={2}
-                    fill="url(#timeAreaGradient)"
+                    fill="hsl(var(--primary))"
+                    fillOpacity={0.15}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -228,12 +208,6 @@ export default function TimeDetailPage() {
               </h2>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={tokenUtilization} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                  <defs>
-                    <linearGradient id="timeTokenGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.9} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.5} />
-                    </linearGradient>
-                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                   <XAxis
                     dataKey="date"
@@ -254,62 +228,12 @@ export default function TimeDetailPage() {
                       return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
                     }}
                   />
-                  <Bar dataKey="used" name="Used" stackId="tokens" fill="url(#timeTokenGradient)" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="used" name="Used" stackId="tokens" fill="hsl(var(--primary))" radius={[0, 0, 0, 0]} />
                   <Bar dataKey="remaining" name="Remaining" stackId="tokens" fill="rgba(255,255,255,0.1)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           )}
-
-          <div className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30">
-            <h2 className="font-orbitron text-lg mb-6 text-primary flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              Time Management Components
-            </h2>
-
-            <div className="space-y-5">
-              {timeMetrics.map((metric) => {
-                const barOpacity =
-                  metric.score >= 80 ? "from-primary to-primary/80" :
-                  metric.score >= 50 ? "from-primary/80 to-primary/60" :
-                  "from-primary/60 to-primary/40";
-
-                return (
-                  <div key={metric.name} className="group">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
-                          <metric.icon className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-semibold text-white">{metric.name}</h3>
-                          <p className="text-xs text-muted-foreground">{metric.desc}</p>
-                        </div>
-                      </div>
-                      <span className="px-3 py-1 rounded-lg text-sm font-mono bg-primary/10 text-primary border border-primary/20">
-                        {metric.score}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-muted/20 h-2 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full bg-gradient-to-r ${barOpacity} transition-all duration-700 ease-out`}
-                        style={{ width: `${metric.score}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-muted/20">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Weighted Average</span>
-                <span className="text-lg font-mono font-bold text-primary">
-                  {Math.round(timeMetrics.reduce((sum, m) => sum + m.score, 0) / timeMetrics.length)}%
-                </span>
-              </div>
-            </div>
-          </div>
 
           {Object.keys(categoryStats).length > 0 && (
             <div className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30">
@@ -321,16 +245,11 @@ export default function TimeDetailPage() {
               <div className="space-y-4">
                 {Object.entries(categoryStats).map(([category, catData]: [string, any]) => {
                   const catCompletionRate = catData.total > 0 ? Math.round((catData.completed / catData.total) * 100) : 0;
-                  const catBarOpacity =
-                    catCompletionRate >= 80 ? "from-primary to-primary/80" :
-                    catCompletionRate >= 50 ? "from-primary/80 to-primary/60" :
-                    "from-primary/60 to-primary/40";
-
                   return (
                     <div key={category} className="p-4 rounded-xl border border-muted/20 bg-background/30 hover:border-primary/30 transition-colors">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-gradient-to-r from-primary to-primary/60" />
+                          <div className="w-3 h-3 rounded-full bg-primary" />
                           <h3 className="text-sm font-semibold text-white capitalize">{category}</h3>
                         </div>
                         <div className="flex items-center gap-3 text-xs">
@@ -341,7 +260,7 @@ export default function TimeDetailPage() {
                       </div>
                       <div className="w-full bg-muted/20 h-2 rounded-full overflow-hidden mb-3">
                         <div
-                          className={`h-full rounded-full bg-gradient-to-r ${catBarOpacity} transition-all duration-500`}
+                          className="h-full rounded-full bg-primary transition-all duration-500"
                           style={{ width: `${catCompletionRate}%` }}
                         />
                       </div>
@@ -376,12 +295,6 @@ export default function TimeDetailPage() {
 
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={weekdayPatterns} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                  <defs>
-                    <linearGradient id="timeWeekdayGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.9} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
-                    </linearGradient>
-                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                   <XAxis dataKey="day" tick={{ fill: "#9ca3af", fontSize: 12 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fill: "#9ca3af", fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
@@ -390,7 +303,7 @@ export default function TimeDetailPage() {
                     labelStyle={{ color: "#9ca3af", fontSize: 12 }}
                     itemStyle={{ fontSize: 13 }}
                   />
-                  <Bar dataKey="completed" name="Missions" fill="url(#timeWeekdayGradient)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="completed" name="Missions" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
 

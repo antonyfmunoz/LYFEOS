@@ -26,6 +26,7 @@ export default function EfficiencyDetailPage() {
   const { data, isLoading } = useQuery<any>({
     queryKey: [`/api/stat-analytics?days=${days}`],
     enabled: !!user,
+    refetchOnMount: 'always',
   });
 
   const completionRate = data?.summary?.completionRate ?? computedStats?.completionRate ?? 0;
@@ -91,7 +92,7 @@ export default function EfficiencyDetailPage() {
 
       <div className="glassmorphic rounded-2xl p-8 mb-8 border border-primary/30 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/50 via-primary to-primary/50" />
+        <div className="absolute top-0 left-0 w-full h-1 bg-primary" />
 
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-6">
@@ -144,11 +145,9 @@ export default function EfficiencyDetailPage() {
             </div>
             <div className="w-full bg-muted/30 h-3 rounded-full overflow-hidden border border-muted/20">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-primary/60 via-primary to-primary/80 transition-all duration-1000 ease-out relative"
+                className="h-full rounded-full bg-primary transition-all duration-1000 ease-out"
                 style={{ width: `${stats.efficiencyScore}%` }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse" />
-              </div>
+              />
             </div>
           </div>
         </div>
@@ -170,12 +169,6 @@ export default function EfficiencyDetailPage() {
               </h2>
               <ResponsiveContainer width="100%" height={250}>
                 <AreaChart data={completionTrend} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                  <defs>
-                    <linearGradient id="completionAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.05} />
-                    </linearGradient>
-                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                   <XAxis
                     dataKey="date"
@@ -202,7 +195,8 @@ export default function EfficiencyDetailPage() {
                     name="Completed"
                     stroke="hsl(var(--primary))"
                     strokeWidth={2}
-                    fill="url(#completionAreaGradient)"
+                    fill="hsl(var(--primary))"
+                    fillOpacity={0.15}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -218,12 +212,6 @@ export default function EfficiencyDetailPage() {
               </h2>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={tokenUtilization} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                  <defs>
-                    <linearGradient id="tokenUsedGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.9} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.5} />
-                    </linearGradient>
-                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                   <XAxis
                     dataKey="date"
@@ -244,7 +232,7 @@ export default function EfficiencyDetailPage() {
                       return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
                     }}
                   />
-                  <Bar dataKey="used" name="Used" stackId="tokens" fill="url(#tokenUsedGradient)" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="used" name="Used" stackId="tokens" fill="hsl(var(--primary))" radius={[0, 0, 0, 0]} />
                   <Bar dataKey="remaining" name="Remaining" stackId="tokens" fill="rgba(255,255,255,0.1)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -259,11 +247,6 @@ export default function EfficiencyDetailPage() {
 
             <div className="space-y-5">
               {efficiencyMetrics.map((metric) => {
-                const barOpacity =
-                  metric.score >= 80 ? "from-primary to-primary/80" :
-                  metric.score >= 50 ? "from-primary/80 to-primary/60" :
-                  "from-primary/60 to-primary/40";
-
                 return (
                   <div key={metric.name} className="group">
                     <div className="flex items-center justify-between mb-2">
@@ -282,7 +265,7 @@ export default function EfficiencyDetailPage() {
                     </div>
                     <div className="w-full bg-muted/20 h-2 rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full bg-gradient-to-r ${barOpacity} transition-all duration-700 ease-out`}
+                        className="h-full rounded-full bg-primary transition-all duration-700 ease-out"
                         style={{ width: `${metric.score}%` }}
                       />
                     </div>
@@ -311,16 +294,11 @@ export default function EfficiencyDetailPage() {
               <div className="space-y-4">
                 {Object.entries(categoryStats).map(([category, catData]: [string, any]) => {
                   const catCompletionRate = catData.total > 0 ? Math.round((catData.completed / catData.total) * 100) : 0;
-                  const catBarOpacity =
-                    catCompletionRate >= 80 ? "from-primary to-primary/80" :
-                    catCompletionRate >= 50 ? "from-primary/80 to-primary/60" :
-                    "from-primary/60 to-primary/40";
-
                   return (
                     <div key={category} className="p-4 rounded-xl border border-muted/20 bg-background/30 hover:border-primary/30 transition-colors">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-gradient-to-r from-primary to-primary/60" />
+                          <div className="w-3 h-3 rounded-full bg-primary" />
                           <h3 className="text-sm font-semibold text-white capitalize">{category}</h3>
                         </div>
                         <div className="flex items-center gap-3 text-xs">
@@ -331,7 +309,7 @@ export default function EfficiencyDetailPage() {
                       </div>
                       <div className="w-full bg-muted/20 h-2 rounded-full overflow-hidden mb-3">
                         <div
-                          className={`h-full rounded-full bg-gradient-to-r ${catBarOpacity} transition-all duration-500`}
+                          className="h-full rounded-full bg-primary transition-all duration-500"
                           style={{ width: `${catCompletionRate}%` }}
                         />
                       </div>
@@ -366,12 +344,6 @@ export default function EfficiencyDetailPage() {
 
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={weekdayPatterns} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                  <defs>
-                    <linearGradient id="weekdayBarGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.9} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
-                    </linearGradient>
-                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                   <XAxis dataKey="day" tick={{ fill: "#9ca3af", fontSize: 12 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fill: "#9ca3af", fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
@@ -380,7 +352,7 @@ export default function EfficiencyDetailPage() {
                     labelStyle={{ color: "#9ca3af", fontSize: 12 }}
                     itemStyle={{ fontSize: 13 }}
                   />
-                  <Bar dataKey="completed" name="Missions" fill="url(#weekdayBarGradient)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="completed" name="Missions" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
 

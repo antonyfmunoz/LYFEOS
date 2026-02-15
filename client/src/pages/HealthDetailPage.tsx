@@ -33,9 +33,7 @@ function getHealthGlow(pct: number): string {
 }
 
 function getGradientColors(pct: number): string {
-  if (pct >= 75) return "from-primary to-primary/60";
-  if (pct >= 40) return "from-primary/80 to-primary/50";
-  return "from-primary/60 to-primary/40";
+  return "bg-primary";
 }
 
 export default function HealthDetailPage() {
@@ -47,6 +45,7 @@ export default function HealthDetailPage() {
   const { data, isLoading } = useQuery<any>({
     queryKey: [`/api/stat-analytics?days=${days}`],
     enabled: !!user,
+    refetchOnMount: 'always',
   });
 
   const healthPct = stats.healthPoints.max > 0
@@ -123,7 +122,7 @@ export default function HealthDetailPage() {
 
       <div className={`glassmorphic rounded-2xl p-8 mb-8 border border-primary/30 relative overflow-hidden ${healthGlow}`}>
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
-        <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${gradientColors}`} />
+        <div className={`absolute top-0 left-0 w-full h-1 ${gradientColors}`} />
 
         <div className="relative z-10">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -164,10 +163,9 @@ export default function HealthDetailPage() {
 
           <div className="mt-6 w-full bg-muted/20 h-4 rounded-full overflow-hidden border border-muted/10">
             <div
-              className={`h-full rounded-full bg-gradient-to-r ${gradientColors} transition-all duration-1000 ease-out relative`}
+              className={`h-full rounded-full ${gradientColors} transition-all duration-1000 ease-out`}
               style={{ width: `${healthPct}%` }}
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse" />
             </div>
           </div>
           <div className="flex justify-between mt-2">
@@ -306,11 +304,7 @@ export default function HealthDetailPage() {
                     </div>
                     <div className="w-full bg-muted/20 h-2 rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all duration-700 ${
-                          metric.score >= 75 ? "bg-gradient-to-r from-primary to-primary/80" :
-                          metric.score >= 40 ? "bg-gradient-to-r from-primary/80 to-primary/60" :
-                          "bg-gradient-to-r from-primary/60 to-primary/40"
-                        }`}
+                        className="h-full rounded-full transition-all duration-700 bg-primary"
                         style={{ width: `${metric.score}%` }}
                       />
                     </div>
@@ -392,7 +386,7 @@ export default function HealthDetailPage() {
                       </div>
                       <div className="w-full bg-muted/20 h-2.5 rounded-full overflow-hidden">
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-primary to-primary/60 transition-all duration-700"
+                          className="h-full rounded-full bg-primary transition-all duration-700"
                           style={{ width: `${pct}%` }}
                         />
                       </div>

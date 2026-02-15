@@ -5148,7 +5148,8 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
         storage.getUserStats(userId),
       ]);
 
-      const activeMissions = allMissions.filter(m => !m.deletedAt);
+      const EXCLUDED_CATEGORIES = ["onboarding", "todo"];
+      const activeMissions = allMissions.filter(m => !m.deletedAt && !EXCLUDED_CATEGORIES.includes((m.category || "").toLowerCase()));
       const completedMissions = activeMissions.filter(m => m.completed);
 
       const dateRange: string[] = [];
@@ -5321,7 +5322,9 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
       const stats = await storage.getUserStats(userId);
       const currentStreak = stats?.streakDays ?? 0;
 
-      const allQuests = await storage.getQuests(userId);
+      const allQuestsRaw = await storage.getQuests(userId);
+      const EXCLUDED_CATS = ["onboarding", "todo"];
+      const allQuests = allQuestsRaw.filter(q => !EXCLUDED_CATS.includes((q.category || "").toLowerCase()));
 
       const today = new Date();
       const heatmapStart = new Date(today);
