@@ -4,10 +4,10 @@ let rightOsc: OscillatorNode | null = null;
 let masterGain: GainNode | null = null;
 let isPlaying = false;
 
-const BASE_FREQ = 200;
+const BASE_FREQ = 350;
 const THETA_OFFSET = 6;
 const FADE_DURATION = 2.0;
-const BEAT_VOLUME = 0.35;
+const BEAT_VOLUME = 0.5;
 
 function ensureContext(): AudioContext {
   if (!audioCtx || audioCtx.state === 'closed') {
@@ -52,20 +52,8 @@ export async function startThetaBeats(): Promise<void> {
   rightOsc.type = 'sine';
   rightOsc.frequency.setValueAtTime(BASE_FREQ + THETA_OFFSET, ctx.currentTime);
 
-  if (typeof StereoPannerNode !== 'undefined') {
-    const leftPan = ctx.createStereoPanner();
-    leftPan.pan.setValueAtTime(-1, ctx.currentTime);
-    const rightPan = ctx.createStereoPanner();
-    rightPan.pan.setValueAtTime(1, ctx.currentTime);
-
-    leftOsc.connect(leftPan).connect(masterGain);
-    rightOsc.connect(rightPan).connect(masterGain);
-    console.log('[theta] Using StereoPannerNode for L/R separation');
-  } else {
-    leftOsc.connect(masterGain);
-    rightOsc.connect(masterGain);
-    console.log('[theta] StereoPannerNode not available, mixing both channels');
-  }
+  leftOsc.connect(masterGain);
+  rightOsc.connect(masterGain);
 
   leftOsc.start();
   rightOsc.start();
