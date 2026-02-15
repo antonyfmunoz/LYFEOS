@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
 import { useWidgetState } from "@/hooks/use-widget-state";
-import { ArrowLeft, Eye, Compass, Flame, Target, Milestone, Plus, Check, Trash2, Edit2, Loader2, ChevronDown, ChevronRight, Info, Zap, GripVertical, Gift, Star, Undo2 } from "lucide-react";
+import { ArrowLeft, Eye, Compass, Flame, Target, Milestone, Check, Trash2, Edit2, Loader2, ChevronDown, ChevronRight, Info, Zap, GripVertical, Gift, Star, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -289,13 +289,6 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
           </span>
         </div>
 
-        <div className="flex items-start gap-2">
-          <span className="text-muted-foreground shrink-0 flex items-center gap-1"><Gift className="h-3 w-3" /> Reward:</span>
-          <span className={goal.rewardText ? "text-foreground/80" : "italic text-muted-foreground"}>
-            {goal.rewardText || "No reward set"}
-          </span>
-        </div>
-
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground shrink-0">Created:</span>
           <span className="text-foreground/80">{new Date(goal.createdAt).toLocaleDateString()}</span>
@@ -422,12 +415,33 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
 
   const renderGoalMissions = (goalId: number) => {
     const allMissions = getMissionsForGoal(goalId);
-    if (allMissions.length === 0) return null;
     const activeMissions = allMissions.filter(m => !m.completed);
     const completedMissions = allMissions.filter(m => m.completed);
+    const totalXP = completedMissions.reduce((acc, m) => acc + (m.experienceReward || 0), 0);
+    const totalEnergy = completedMissions.reduce((acc, m) => acc + (m.energyCost || 0), 0);
     const isExpanded = expandedGoalId === goalId;
+
+    if (allMissions.length === 0) {
+      return (
+        <div className="mt-2 text-xs text-muted-foreground/60 italic flex items-center gap-1">
+          <Target className="h-3 w-3" />
+          <span>No linked missions</span>
+        </div>
+      );
+    }
+
     return (
       <div className="mt-2">
+        <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground mb-1">
+          <span className="flex items-center gap-1">
+            <Zap className="h-3 w-3 text-primary/60" />
+            <span className="text-primary/80 font-mono">+{totalXP} XP</span>
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="text-orange-400/80 font-mono">-{totalEnergy} EP</span>
+          </span>
+          <span className="font-mono">{completedMissions.length}/{allMissions.length} done</span>
+        </div>
         <button
           onClick={(e) => { e.stopPropagation(); setExpandedGoalId(isExpanded ? null : goalId); }}
           className="flex items-center gap-1 text-xs text-primary/70 hover:text-primary transition-colors"
@@ -443,6 +457,7 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
                 <span className="text-xs text-primary font-mono capitalize">{m.category}</span>
                 <span className="text-xs text-muted-foreground">—</span>
                 <span className="text-xs text-foreground/70 truncate">{m.title}</span>
+                <span className="text-[10px] text-muted-foreground/60 font-mono ml-auto shrink-0">Rank {m.difficulty}</span>
               </div>
             ))}
             {completedMissions.map((m) => (
@@ -451,6 +466,7 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
                 <span className="text-xs text-primary font-mono capitalize">{m.category}</span>
                 <span className="text-xs text-muted-foreground">—</span>
                 <span className="text-xs text-muted-foreground truncate">{m.title}</span>
+                <span className="text-[10px] text-muted-foreground/60 font-mono ml-auto shrink-0">Rank {m.difficulty}</span>
               </div>
             ))}
           </div>
@@ -462,7 +478,7 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
   return (
     <div className="space-y-3">
       {categoryGoals.length === 0 && (
-        <p className="text-sm text-muted-foreground italic py-2">No mission objectives yet. Use "Create Goal" above to add one.</p>
+        <p className="text-sm text-muted-foreground italic py-2">No mission objectives yet. Use "Create Objective" above to add one.</p>
       )}
 
       {activeGoals.length > 0 && (
@@ -973,8 +989,7 @@ export default function GoalsArchivePage() {
           }}>
             <DialogTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => handleOpenCreate()}>
-                <Plus className="h-4 w-4" />
-                Create Goal
+                Create Objective
               </Button>
             </DialogTrigger>
             <DialogContent
@@ -984,9 +999,9 @@ export default function GoalsArchivePage() {
               onInteractOutside={(e) => e.preventDefault()}
             >
               <DialogHeader>
-                <DialogTitle className="font-orbitron text-xl">Create New Goal</DialogTitle>
+                <DialogTitle className="font-orbitron text-xl">Create New Objective</DialogTitle>
               </DialogHeader>
-              {renderGoalForm(createFormData, setCreateFormData, handleCreateGoal, "Create Goal", true)}
+              {renderGoalForm(createFormData, setCreateFormData, handleCreateGoal, "Create Objective", true)}
             </DialogContent>
           </Dialog>
         </div>

@@ -14,7 +14,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
   const { username, activeTimerQuest, timerStartedAt, timerPausedElapsed, timerIsPaused, isOnBreak, breakStartedAt, breakElapsed, endMissionTimer, pauseResumeTimer } = useLYFEOS();
   const [location] = useLocation();
   
-  const currentPage = location.split('/')[1] || 'dashboard';
+  const rawPage = location.split('/')[1] || 'dashboard';
+  const pageAliases: Record<string, string> = { 'goals-archive': 'chronilog' };
+  const currentPage = pageAliases[rawPage] || rawPage;
   
   return (
     <div className="flex flex-col h-screen">
