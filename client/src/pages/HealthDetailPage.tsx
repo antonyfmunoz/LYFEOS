@@ -27,9 +27,9 @@ function getScoreBg(score: number): string {
 }
 
 function getHealthGlow(pct: number): string {
-  if (pct >= 75) return "shadow-[0_0_40px_hsl(var(--primary)/0.15)]";
-  if (pct >= 40) return "shadow-[0_0_30px_hsl(var(--primary)/0.12)]";
-  return "shadow-[0_0_25px_hsl(var(--primary)/0.12)]";
+  if (pct >= 75) return "shadow-[0_0_40px_hsl(var(--primary)/0.3)]";
+  if (pct >= 40) return "shadow-[0_0_30px_hsl(var(--primary)/0.25)]";
+  return "shadow-[0_0_25px_hsl(var(--primary)/0.2)]";
 }
 
 function getGradientColors(pct: number): string {
@@ -96,7 +96,7 @@ export default function HealthDetailPage() {
           <Heart className="h-9 w-9 text-primary animate-pulse" />
           <Heart className="h-9 w-9 text-primary/50 absolute top-0 left-0 opacity-40 animate-pulse" style={{ animationDelay: "0.3s" }} />
         </div>
-        <h1 className="text-3xl font-orbitron bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent">
+        <h1 className="text-3xl font-orbitron text-primary">
           Health Points
         </h1>
       </div>

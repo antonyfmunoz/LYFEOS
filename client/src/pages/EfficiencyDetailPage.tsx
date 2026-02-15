@@ -66,7 +66,7 @@ export default function EfficiencyDetailPage() {
         <div className="relative">
           <BarChart3 className="h-9 w-9 text-primary" />
         </div>
-        <h1 className="text-3xl font-orbitron bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent">
+        <h1 className="text-3xl font-orbitron text-primary">
           System Efficiency
         </h1>
       </div>
@@ -90,7 +90,7 @@ export default function EfficiencyDetailPage() {
         </div>
       </div>
 
-      <div className="glassmorphic rounded-2xl p-8 mb-8 border border-primary/30 relative overflow-hidden">
+      <div className="glassmorphic rounded-2xl p-8 mb-8 border border-primary/30 relative overflow-hidden shadow-[0_0_30px_hsl(var(--primary)/0.25)]">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
         <div className="absolute top-0 left-0 w-full h-1 bg-primary" />
 

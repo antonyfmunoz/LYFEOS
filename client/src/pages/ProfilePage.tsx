@@ -76,8 +76,6 @@ function PersistentProfileDraggableWidget({ widgetId, ...props }: Omit<Draggable
   return <DraggableWidget {...props} isOpenProp={isOpen} onOpenChange={setIsOpen} />;
 }
 
-const DAY_LABELS: Record<string, string> = { mon: 'M', tue: 'T', wed: 'W', thu: 'T', fri: 'F', sat: 'S', sun: 'S' };
-const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 const REMINDER_META: Record<string, { label: string; description: string; icon: any }> = {
   missions: { label: 'Mission Reminders', description: 'Nudges to tackle your daily missions at your peak time', icon: Target },
   reflection: { label: 'Reflection Prompts', description: 'Gentle prompts to log your daily reflections', icon: BookOpen },
@@ -158,62 +156,6 @@ function SmartRemindersSection() {
             </div>
             <p className="text-xs text-muted-foreground mb-2">{meta.description}</p>
 
-            {r.enabled && (
-              <div className="space-y-2 mt-2 pt-2 border-t border-primary/5">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">Preferred time:</span>
-                  <select
-                    value={r.preferredHour}
-                    onChange={(e) => updateReminder(r.reminderType, { preferredHour: parseInt(e.target.value) })}
-                    className="text-xs bg-background border border-primary/20 rounded px-2 py-1 text-foreground"
-                  >
-                    {Array.from({ length: 24 }, (_, i) => (
-                      <option key={i} value={i}>{formatHour(i)}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Active days:</span>
-                  <div className="flex gap-1">
-                    {DAY_KEYS.map((day) => {
-                      const active = (r.preferredDays || DAY_KEYS).includes(day);
-                      return (
-                        <button
-                          key={day}
-                          onClick={() => {
-                            const current = r.preferredDays || [...DAY_KEYS];
-                            const next = active ? current.filter((d: string) => d !== day) : [...current, day];
-                            if (next.length > 0) updateReminder(r.reminderType, { preferredDays: next });
-                          }}
-                          className={`w-6 h-6 rounded text-[10px] font-medium transition-colors ${
-                            active ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-card text-muted-foreground border border-primary/10'
-                          }`}
-                        >
-                          {DAY_LABELS[day]}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Cooldown:</span>
-                  <select
-                    value={r.cooldownHours}
-                    onChange={(e) => updateReminder(r.reminderType, { cooldownHours: parseInt(e.target.value) })}
-                    className="text-xs bg-background border border-primary/20 rounded px-2 py-1 text-foreground"
-                  >
-                    <option value={4}>4 hours</option>
-                    <option value={8}>8 hours</option>
-                    <option value={12}>12 hours</option>
-                    <option value={24}>24 hours</option>
-                    <option value={48}>48 hours</option>
-                  </select>
-                </div>
-              </div>
-            )}
           </div>
         );
       })}

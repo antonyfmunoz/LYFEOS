@@ -150,7 +150,7 @@ export default function StreakDetailPage() {
           <Flame className="h-9 w-9 text-primary animate-pulse" />
           <Flame className="h-9 w-9 text-primary/50 absolute top-0 left-0 opacity-50 animate-pulse" style={{ animationDelay: "0.3s" }} />
         </div>
-        <h1 className="text-3xl font-orbitron bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent">
+        <h1 className="text-3xl font-orbitron text-primary">
           Streak Tracker
         </h1>
       </div>
@@ -392,12 +392,12 @@ export default function StreakDetailPage() {
                     >
                       <div className="flex-shrink-0 relative">
                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                          habit.currentStreak > 0 ? "bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30" : "bg-muted/20 border border-muted/20"
+                          habit.currentStreak > 0 ? "bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30" : "bg-primary/10 border border-primary/20"
                         }`}>
                           {habit.currentStreak > 0 ? (
                             <Flame className="h-6 w-6 text-primary" />
                           ) : (
-                            <Clock className="h-5 w-5 text-muted-foreground" />
+                            <Clock className="h-5 w-5 text-primary/60" />
                           )}
                         </div>
                         {habit.currentStreak >= 3 && (
@@ -432,7 +432,7 @@ export default function StreakDetailPage() {
 
                       <div className="text-right flex-shrink-0">
                         <div className="flex items-baseline gap-1">
-                          <span className={`text-2xl font-mono font-bold ${habit.currentStreak > 0 ? "text-primary" : "text-muted-foreground"}`}>
+                          <span className={`text-2xl font-mono font-bold ${habit.currentStreak > 0 ? "text-primary" : "text-primary/60"}`}>
                             {habit.currentStreak}
                           </span>
                           <span className="text-xs text-muted-foreground">day streak</span>

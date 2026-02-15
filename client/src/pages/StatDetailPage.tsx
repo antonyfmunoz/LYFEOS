@@ -141,7 +141,7 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
         </div>
       </div>
 
-      <div className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30 relative overflow-hidden">
+      <div className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30 relative overflow-hidden shadow-[0_0_30px_hsl(var(--primary)/0.25)]">
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundColor: `${config.color}08` }} />
         <div className="absolute top-0 left-0 w-full h-1" style={{ backgroundColor: config.color }} />
 
