@@ -612,11 +612,42 @@ export default function GoalsArchivePage() {
     return linkedMissionsMap[category] || [];
   };
 
+  const disconnectedMissionsRef = useRef<Record<number, LinkedMission[]>>({});
+
   const handleToggle = useCallback(async (id: number, completed: boolean) => {
     const previousGoals = [...goals];
     const targetGoal = goals.find(g => g.id === id);
     const category = targetGoal?.category || '';
+
     setGoals(prev => prev.map(g => g.id === id ? { ...g, completed, completedAt: completed ? new Date().toISOString() : null } : g));
+
+    const currentMissions = queryClient.getQueryData<LinkedMission[]>(['/api/quests/linked-by-vision-goal', category]) || [];
+    const previousMissions = [...currentMissions];
+
+    if (completed) {
+      const activeRitualMissions = currentMissions.filter(m => m.visionGoalId === id && !m.completed && m.isRitualized);
+      disconnectedMissionsRef.current[id] = activeRitualMissions;
+      if (activeRitualMissions.length > 0) {
+        const disconnectIds = new Set(activeRitualMissions.map(m => m.id));
+        queryClient.setQueryData<LinkedMission[]>(
+          ['/api/quests/linked-by-vision-goal', category],
+          currentMissions.filter(m => !disconnectIds.has(m.id))
+        );
+      }
+    } else {
+      const storedMissions = disconnectedMissionsRef.current[id];
+      if (storedMissions && storedMissions.length > 0) {
+        const existingIds = new Set(currentMissions.map(m => m.id));
+        const toRestore = storedMissions.filter(m => !existingIds.has(m.id));
+        if (toRestore.length > 0) {
+          queryClient.setQueryData<LinkedMission[]>(
+            ['/api/quests/linked-by-vision-goal', category],
+            [...currentMissions, ...toRestore]
+          );
+        }
+        delete disconnectedMissionsRef.current[id];
+      }
+    }
 
     try {
       const result = await apiRequest<VisionGoal & { xpAwarded?: number; xpRemoved?: number; updatedStats?: any; disconnectedMissionIds?: number[]; remainingLinkedMissions?: LinkedMission[] }>(`/api/vision-goals/${id}`, {
@@ -630,11 +661,17 @@ export default function GoalsArchivePage() {
           ['/api/quests/linked-by-vision-goal', category],
           (old) => {
             const remaining = result.remainingLinkedMissions!;
-            const remainingIds = new Set(remaining.map(m => m.id));
-            const otherGoalMissions = (old || []).filter(m => !remainingIds.has(m.id) && m.visionGoalId !== id);
+            const otherGoalMissions = (old || []).filter(m => m.visionGoalId !== id);
             return [...otherGoalMissions, ...remaining];
           }
         );
+      }
+
+      if (completed && result.disconnectedMissionIds && result.disconnectedMissionIds.length > 0) {
+        const serverDisconnected = previousMissions.filter(m => result.disconnectedMissionIds!.includes(m.id));
+        if (serverDisconnected.length > 0) {
+          disconnectedMissionsRef.current[id] = serverDisconnected;
+        }
       }
 
       refetchQuests();
@@ -647,6 +684,13 @@ export default function GoalsArchivePage() {
       }
     } catch (err) {
       setGoals(previousGoals);
+      queryClient.setQueryData<LinkedMission[]>(
+        ['/api/quests/linked-by-vision-goal', category],
+        previousMissions
+      );
+      if (completed) {
+        delete disconnectedMissionsRef.current[id];
+      }
       toast({
         title: "Failed to update goal",
         description: err instanceof Error ? err.message : "Please try again",
