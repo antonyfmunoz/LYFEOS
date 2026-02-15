@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { apiRequest } from "@/lib/queryClient";
 import { useLYFEOS } from "@/lib/context";
 import { StatType } from "@/lib/types";
 import { Link } from "wouter";
@@ -64,7 +65,7 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
 
   const { data, isLoading } = useQuery<any>({
     queryKey: ['/api/stat-analytics', { days }],
-    queryFn: () => fetch(`/api/stat-analytics?days=${days}`, { credentials: 'include' }).then(r => r.json()),
+    queryFn: () => apiRequest(`/api/stat-analytics?days=${days}`),
     enabled: !!user,
     refetchOnMount: 'always',
   });

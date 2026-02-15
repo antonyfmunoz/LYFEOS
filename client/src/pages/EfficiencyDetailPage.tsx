@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/authContext";
@@ -25,7 +26,7 @@ export default function EfficiencyDetailPage() {
 
   const { data, isLoading } = useQuery<any>({
     queryKey: ['/api/stat-analytics', { days }],
-    queryFn: () => fetch(`/api/stat-analytics?days=${days}`, { credentials: 'include' }).then(r => r.json()),
+    queryFn: () => apiRequest(`/api/stat-analytics?days=${days}`),
     enabled: !!user,
     refetchOnMount: 'always',
   });
