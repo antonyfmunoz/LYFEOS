@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
+import { useLYFEOS } from "@/lib/context";
 import { useWidgetState } from "@/hooks/use-widget-state";
 import { ArrowLeft, Eye, Compass, Flame, Target, Milestone, Check, Trash2, Edit2, Loader2, Info, GripVertical, Undo2, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -543,6 +544,7 @@ export default function GoalsArchivePage() {
   usePageTitle('Vision');
 
   const { user } = useAuth();
+  const { updateUserStats } = useLYFEOS();
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
@@ -619,15 +621,26 @@ export default function GoalsArchivePage() {
     setGoals(prev => prev.map(g => g.id === id ? { ...g, completed, completedAt: completed ? new Date().toISOString() : null } : g));
 
     try {
-      const result = await apiRequest<VisionGoal & { xpAwarded?: number }>(`/api/vision-goals/${id}`, {
+      const result = await apiRequest<VisionGoal & { xpAwarded?: number; xpRemoved?: number; updatedStats?: any }>(`/api/vision-goals/${id}`, {
         method: 'PATCH',
         body: JSON.stringify({ completed }),
       });
       setGoals(prev => prev.map(g => g.id === id ? { ...g, ...result } : g));
       queryClient.invalidateQueries({ queryKey: ['/api/quests/linked-by-vision-goal'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/quests'] });
       queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
+      if (result.updatedStats) {
+        updateUserStats(result.updatedStats);
+      }
       if (completed && result && result.title) {
-        objectiveToast(result.title, result.rewardText, result.bonusXp);
+        objectiveToast(result.title, result.rewardText, result.xpAwarded || result.bonusXp);
+      }
+      if (!completed && result && result.xpRemoved && result.xpRemoved > 0) {
+        toast({
+          title: "Objective Completion Undone",
+          description: `${result.title} — ${result.xpRemoved} XP removed`,
+          duration: 3000,
+        });
       }
     } catch (err) {
       setGoals(previousGoals);

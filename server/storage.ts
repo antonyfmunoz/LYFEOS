@@ -250,7 +250,7 @@ export interface IStorage {
   getVisionGoals(userId: number, category: string): Promise<VisionGoal[]>;
   getVisionGoalById(id: number, userId: number): Promise<VisionGoal | undefined>;
   createVisionGoal(goal: InsertVisionGoal): Promise<VisionGoal>;
-  updateVisionGoal(id: number, userId: number, goal: Partial<InsertVisionGoal>): Promise<VisionGoal>;
+  updateVisionGoal(id: number, userId: number, goal: Partial<InsertVisionGoal> & { disconnectedMissionIds?: number[] | null; completedAt?: Date | null }): Promise<VisionGoal>;
   deleteVisionGoal(id: number, userId: number): Promise<void>;
   reorderVisionGoals(ids: number[], userId: number): Promise<void>;
 
@@ -2122,7 +2122,7 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async updateVisionGoal(id: number, userId: number, goal: Partial<InsertVisionGoal>): Promise<VisionGoal> {
+  async updateVisionGoal(id: number, userId: number, goal: Partial<InsertVisionGoal> & { disconnectedMissionIds?: number[] | null; completedAt?: Date | null }): Promise<VisionGoal> {
     const [result] = await db.update(visionGoals)
       .set(goal)
       .where(and(eq(visionGoals.id, id), eq(visionGoals.userId, userId)))

@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
-import { eq, desc, and, gte, asc, sql } from "drizzle-orm";
+import { eq, desc, and, gte, asc, sql, inArray, isNotNull } from "drizzle-orm";
 import { userDailyLogs, quests as questsTable, userStats, users } from "@shared/schema";
 import { registerChatRoutes } from "./replit_integrations/chat";
 import { z } from "zod";
@@ -5778,7 +5778,30 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
       storage.logActivityEvent(userId, 'goal_review', { goalId: id, title: goal.title }).catch(() => {});
 
       let xpAwarded = 0;
-      if (req.body.completed === true && !wasCompleted) {
+      let xpRemoved = 0;
+      const isCompleting = req.body.completed === true && !wasCompleted;
+      const isUncompleting = req.body.completed === false && wasCompleted;
+
+      if (isCompleting) {
+        const activeRitualMissions = await db.select({ id: questsTable.id })
+          .from(questsTable)
+          .where(and(
+            eq(questsTable.visionGoalId, id),
+            eq(questsTable.userId, userId),
+            eq(questsTable.completed, false),
+            eq(questsTable.isRitualized, true)
+          ));
+        const disconnectedIds = activeRitualMissions.map(m => m.id);
+        if (disconnectedIds.length > 0) {
+          await db.update(questsTable)
+            .set({ visionGoalId: null })
+            .where(and(
+              inArray(questsTable.id, disconnectedIds),
+              eq(questsTable.userId, userId)
+            ));
+          await storage.updateVisionGoal(id, userId, { disconnectedMissionIds: disconnectedIds });
+        }
+
         let bonusXp = goal.bonusXp;
         if (bonusXp === 0) {
           try {
@@ -5814,7 +5837,39 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
         }
       }
 
-      if (req.body.completed === true && !wasCompleted && xpAwarded > 0) {
+      if (isUncompleting) {
+        const storedIds = existingGoal.disconnectedMissionIds;
+        if (storedIds && storedIds.length > 0) {
+          await db.update(questsTable)
+            .set({ visionGoalId: id })
+            .where(and(
+              inArray(questsTable.id, storedIds),
+              eq(questsTable.userId, userId),
+              eq(questsTable.completed, false),
+              sql`${questsTable.visionGoalId} IS NULL`
+            ));
+          await storage.updateVisionGoal(id, userId, { disconnectedMissionIds: null });
+        }
+
+        const bonusXp = existingGoal.bonusXp || 0;
+        if (bonusXp > 0) {
+          const profile = await storage.getUserProfile(userId);
+          if (profile) {
+            const oldTotalXP = profile.totalXP || 0;
+            const newTotalXP = Math.max(0, oldTotalXP - bonusXp);
+            await storage.updateUserProfile(userId, { totalXP: newTotalXP });
+            const newLevelInfo = calculateLevelFromTotalXP(newTotalXP);
+            await storage.updateUserStats(userId, {
+              experienceCurrent: newLevelInfo.current,
+              experienceMax: newLevelInfo.max,
+              level: newLevelInfo.level,
+            });
+            xpRemoved = bonusXp;
+          }
+        }
+      }
+
+      if (isCompleting && xpAwarded > 0) {
         sendPushToUser(userId, {
           title: "Milestone Achieved!",
           body: `${goal.title} completed! +${xpAwarded} bonus XP${goal.rewardText ? ` — Reward: ${goal.rewardText}` : ""}`,
@@ -5823,7 +5878,8 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
         }).catch(() => {});
       }
 
-      res.json({ ...goal, xpAwarded });
+      const updatedStats = await storage.getUserStats(userId);
+      res.json({ ...goal, xpAwarded, xpRemoved, updatedStats });
     } catch (error) {
       console.error("Error updating vision goal:", error);
       res.status(500).json({ error: "Internal server error" });

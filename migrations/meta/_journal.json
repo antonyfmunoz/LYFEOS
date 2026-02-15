@@ -43,6 +43,13 @@
       "when": 1770872035490,
       "tag": "0005_simple_stardust",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1771130370234,
+      "tag": "0006_foamy_vulture",
+      "breakpoints": true
     }
   ]
 }
