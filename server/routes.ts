@@ -5921,6 +5921,8 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
           timeCost: q.timeCost || 0,
           attentionCost: q.attentionCost || 0,
           category: q.category || "general",
+          isRitualized: q.isRitualized || false,
+          parentRitualId: q.parentRitualId || null,
         }));
       res.json(linked);
     } catch (error) {

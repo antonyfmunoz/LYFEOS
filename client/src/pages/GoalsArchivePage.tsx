@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
 import { useWidgetState } from "@/hooks/use-widget-state";
-import { ArrowLeft, Eye, Compass, Flame, Target, Milestone, Check, Trash2, Edit2, Loader2, Info, GripVertical, Undo2 } from "lucide-react";
+import { ArrowLeft, Eye, Compass, Flame, Target, Milestone, Check, Trash2, Edit2, Loader2, Info, GripVertical, Undo2, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -59,6 +59,8 @@ interface LinkedMission {
   timeCost: number;
   attentionCost: number;
   category: string;
+  isRitualized: boolean;
+  parentRitualId: number | null;
 }
 
 interface GoalFormData {
@@ -267,6 +269,8 @@ interface ObjectiveListProps {
 function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading, onCreateGoal, onEditGoal, onToggle, onDelete, onReorder }: ObjectiveListProps) {
   const { toast } = useToast();
   const [infoExpandedId, setInfoExpandedId] = useState<number | null>(null);
+  const [activeMissionsExpanded, setActiveMissionsExpanded] = useState<Record<number, boolean>>({});
+  const [completedMissionsExpanded, setCompletedMissionsExpanded] = useState<Record<number, boolean>>({});
   const [isMutating, setIsMutating] = useState(false);
 
   const categoryGoals = goals.filter(g => g.category === category);
@@ -319,35 +323,64 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
 
         {activeMissions.length > 0 && (
           <div className="border-t border-primary/10 pt-2 mt-1">
-            <span className="text-muted-foreground text-[10px] uppercase tracking-wider">Active Missions</span>
-            <div className="mt-1 space-y-0.5">
-              {activeMissions.map(m => (
-                <div key={m.id} className="flex items-center gap-1.5 py-0.5">
-                  <Target className="h-3 w-3 text-primary shrink-0" />
-                  <span className="text-xs text-primary font-mono capitalize">{m.category}</span>
-                  <span className="text-xs text-muted-foreground">—</span>
-                  <span className="text-xs text-foreground/70 truncate">{m.title}</span>
-                </div>
-              ))}
-            </div>
+            <button
+              className="flex items-center gap-1 w-full text-left"
+              onClick={(e) => { e.stopPropagation(); setActiveMissionsExpanded(prev => ({ ...prev, [goal.id]: !prev[goal.id] })); }}
+            >
+              {activeMissionsExpanded[goal.id] ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
+              <span className="text-muted-foreground text-[10px] uppercase tracking-wider">Active Missions ({activeMissions.length})</span>
+            </button>
+            {activeMissionsExpanded[goal.id] && (
+              <div className="mt-1 space-y-0.5 pl-4">
+                {activeMissions.map(m => (
+                  <div key={m.id} className="flex items-center gap-1.5 py-0.5">
+                    <Target className="h-3 w-3 text-primary shrink-0" />
+                    <span className="text-xs text-primary font-mono capitalize">{m.category}</span>
+                    <span className="text-xs text-muted-foreground">—</span>
+                    <span className="text-xs text-foreground/70 truncate">{m.title}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {completedMissions.length > 0 && (
-          <div className="border-t border-primary/10 pt-2 mt-1">
-            <span className="text-muted-foreground text-[10px] uppercase tracking-wider">Completed Missions</span>
-            <div className="mt-1 space-y-0.5">
-              {completedMissions.map(m => (
-                <div key={m.id} className="flex items-center gap-1.5 py-0.5">
-                  <Check className="h-3 w-3 text-green-400 shrink-0" />
-                  <span className="text-xs text-primary font-mono capitalize">{m.category}</span>
-                  <span className="text-xs text-muted-foreground">—</span>
-                  <span className="text-xs text-muted-foreground truncate">{m.title}</span>
+        {completedMissions.length > 0 && (() => {
+          const grouped: { key: string; category: string; title: string; count: number }[] = [];
+          completedMissions.forEach(m => {
+            const groupKey = m.isRitualized ? String(m.parentRitualId || m.id) : String(m.id);
+            const existing = grouped.find(g => g.key === groupKey);
+            if (existing) {
+              existing.count++;
+              existing.title = m.title;
+            } else {
+              grouped.push({ key: groupKey, category: m.category, title: m.title, count: 1 });
+            }
+          });
+          return (
+            <div className="border-t border-primary/10 pt-2 mt-1">
+              <button
+                className="flex items-center gap-1 w-full text-left"
+                onClick={(e) => { e.stopPropagation(); setCompletedMissionsExpanded(prev => ({ ...prev, [goal.id]: !prev[goal.id] })); }}
+              >
+                {completedMissionsExpanded[goal.id] ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
+                <span className="text-muted-foreground text-[10px] uppercase tracking-wider">Completed Missions ({completedMissions.length})</span>
+              </button>
+              {completedMissionsExpanded[goal.id] && (
+                <div className="mt-1 space-y-0.5 pl-4">
+                  {grouped.map(g => (
+                    <div key={g.key} className="flex items-center gap-1.5 py-0.5">
+                      <Check className="h-3 w-3 text-green-400 shrink-0" />
+                      <span className="text-xs text-primary font-mono capitalize">{g.category}</span>
+                      <span className="text-xs text-muted-foreground">—</span>
+                      <span className="text-xs text-muted-foreground truncate">{g.title}{g.count > 1 ? ` (x${g.count})` : ''}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
     );
   };
