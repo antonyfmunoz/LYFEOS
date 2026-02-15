@@ -309,13 +309,11 @@ function ObjectiveList({ category, placeholder, goals, linkedMissions, isLoading
         </p>
         {uniqueCategories.length > 0 && (
           <p className="text-muted-foreground text-xs">
-            <span className="text-primary font-mono">Objective Type — <span className="capitalize">{uniqueCategories.join(', ')}</span>:</span> {
-              uniqueCategories.length === 1 ? 'Single-focus objective.' : 'Multi-category objective.'
-            }
+            <span className="text-primary font-mono">Objective Type:</span> <span className="capitalize">{uniqueCategories.join(', ')}</span>
           </p>
         )}
         <p className="text-muted-foreground text-xs">
-          <span className="text-primary font-mono">Average Mission Difficulty — Rank {avgDifficulty || 'D'}:</span> {difficultyDescriptions[avgDifficulty || 'D']}
+          <span className="text-primary font-mono">Objective Difficulty:</span> Rank {avgDifficulty || 'D'}
         </p>
         <p className="text-muted-foreground text-xs">
           <span className="text-primary font-mono">Objective Reward:</span> {goal.rewardText || "No reward set"}
@@ -718,35 +716,35 @@ export default function GoalsArchivePage() {
   const [widgets, setWidgets] = useState<VisionWidget[]>([
     {
       id: 'legacy',
-      title: 'Mission Objective — Legacy Vision',
+      title: 'Legacy Vision',
       icon: <Eye className="h-5 w-5 text-primary" />,
       stateKey: 'goals.legacy-vision',
       placeholder: "e.g., Build a company that impacts 1M lives",
     },
     {
       id: '10year',
-      title: 'Mission Objective — 10-Year Vision',
+      title: '10-Year Vision',
       icon: <Target className="h-5 w-5 text-primary" />,
       stateKey: 'goals.10year-vision',
       placeholder: "e.g., Reach $1M net worth",
     },
     {
       id: '5year',
-      title: 'Mission Objective — 5-Year Vision',
+      title: '5-Year Vision',
       icon: <Compass className="h-5 w-5 text-primary" />,
       stateKey: 'goals.5year-vision',
       placeholder: "e.g., Launch my own product",
     },
     {
       id: '18month',
-      title: 'Mission Objective — 18-Month Vision',
+      title: '18-Month Vision',
       icon: <Milestone className="h-5 w-5 text-primary" />,
       stateKey: 'goals.18month-vision',
       placeholder: "e.g., Earn $10k/month consistently",
     },
     {
       id: '90day',
-      title: 'Mission Objective — 90-Day Vision',
+      title: '90-Day Vision',
       icon: <Flame className="h-5 w-5 text-primary" />,
       stateKey: 'goals.90day-vision',
       placeholder: "e.g., Close 5 new clients",

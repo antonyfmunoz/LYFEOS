@@ -175,7 +175,7 @@ function MissionCard({ mission, visionGoals }: { mission: Quest; visionGoals: Vi
             )}
             {linkedObjective && (
               <p className="text-muted-foreground text-xs">
-                <span className="text-primary font-mono">{categoryLabelsMap[linkedObjective.category] || linkedObjective.category} Vision — Mission Objective:</span> {linkedObjective.title}
+                <span className="text-primary font-mono">Mission Objective — {categoryLabelsMap[linkedObjective.category] || linkedObjective.category} Vision:</span> {linkedObjective.title}
               </p>
             )}
             {category && category !== "general" && category !== "onboarding" && (

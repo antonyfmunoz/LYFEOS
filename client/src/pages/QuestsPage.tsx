@@ -1862,7 +1862,7 @@ export default function QuestsPage() {
                                 const linkedObj = quest.visionGoalId ? allVisionGoals.find(g => g.id === quest.visionGoalId) : null;
                                 return linkedObj ? (
                                   <p className="text-muted-foreground text-xs">
-                                    <span className="text-primary font-mono">{catLabels[linkedObj.category] || linkedObj.category} Vision — Mission Objective:</span> {linkedObj.title}
+                                    <span className="text-primary font-mono">Mission Objective — {catLabels[linkedObj.category] || linkedObj.category} Vision:</span> {linkedObj.title}
                                   </p>
                                 ) : null;
                               })()}

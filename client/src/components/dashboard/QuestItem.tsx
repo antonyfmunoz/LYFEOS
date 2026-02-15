@@ -273,7 +273,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
               })()}
               {linkedObjective && (
                 <p className="text-muted-foreground text-xs">
-                  <span className="text-primary font-mono">{categoryLabels[linkedObjective.category] || linkedObjective.category} Vision — Mission Objective:</span> {linkedObjective.title}
+                  <span className="text-primary font-mono">Mission Objective — {categoryLabels[linkedObjective.category] || linkedObjective.category} Vision:</span> {linkedObjective.title}
                 </p>
               )}
               {category && category !== "general" && category !== "onboarding" && (
