@@ -696,9 +696,16 @@ export default function GoalsArchivePage() {
       }
 
       refetchQuests();
-      queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
       if (result.updatedStats) {
         updateUserStats(result.updatedStats);
+      } else if (user) {
+        try {
+          const statsRes = await fetch(`/api/users/${user.id}/stats`, { credentials: 'include' });
+          if (statsRes.ok) {
+            const statsData = await statsRes.json();
+            if (statsData.stats) updateUserStats(statsData.stats);
+          }
+        } catch {}
       }
       if (completed && result && result.title) {
         objectiveToast(result.title, result.rewardText, result.xpAwarded || result.bonusXp);
