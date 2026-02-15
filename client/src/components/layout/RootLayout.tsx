@@ -15,7 +15,16 @@ export default function RootLayout({ children }: RootLayoutProps) {
   const [location] = useLocation();
   
   const rawPage = location.split('/')[1] || 'dashboard';
-  const pageAliases: Record<string, string> = { 'goals-archive': 'chronilog' };
+  const pageAliases: Record<string, string> = {
+    'goals-archive': 'chronilog',
+    'energy': 'profile',
+    'attention': 'profile',
+    'time': 'profile',
+    'health': 'profile',
+    'streak': 'profile',
+    'experience': 'profile',
+    'efficiency': 'profile',
+  };
   const currentPage = pageAliases[rawPage] || rawPage;
   
   return (

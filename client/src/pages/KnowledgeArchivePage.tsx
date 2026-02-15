@@ -389,7 +389,7 @@ export default function KnowledgeArchivePage() {
             const entryCount = group.sources.reduce((sum, s) => sum + s.entries.length, 0);
 
             return (
-              <div key={authorKey} className="glassmorphic rounded-xl overflow-hidden border border-slate-700/50">
+              <div key={authorKey} className="glassmorphic rounded-xl overflow-hidden border border-primary/20">
                 <div
                   className="p-4 flex items-center justify-between cursor-pointer hover:bg-card/40 transition-colors"
                   onClick={() => toggleAuthor(authorKey)}
@@ -440,13 +440,13 @@ export default function KnowledgeArchivePage() {
                 </div>
 
                 {isAuthorExpanded && (
-                  <div className="px-4 pb-4 space-y-2 border-t border-slate-700/50 pt-3">
+                  <div className="px-4 pb-4 space-y-2 border-t border-primary/20 pt-3">
                     {group.sources.map((source) => {
                       const sourceKey = `${authorKey}::${source.sourceMaterial}`;
                       const isSourceExpanded = expandedSources.has(sourceKey);
 
                       return (
-                        <div key={sourceKey} className="rounded-lg border border-slate-700/30 overflow-hidden">
+                        <div key={sourceKey} className="rounded-lg border border-primary/15 overflow-hidden">
                           <div
                             className="px-3 py-2.5 flex items-center justify-between cursor-pointer hover:bg-card/40 transition-colors bg-card/20"
                             onClick={() => toggleSource(sourceKey)}
@@ -497,7 +497,7 @@ export default function KnowledgeArchivePage() {
                           </div>
 
                           {isSourceExpanded && (
-                            <div className="px-3 pb-3 pt-2 space-y-3 border-t border-slate-700/20">
+                            <div className="px-3 pb-3 pt-2 space-y-3 border-t border-primary/15">
                               {source.entries.map((entry, idx) => {
                                 const entryKey = `${sourceKey}::${entry.date}::${idx}`;
                                 const fieldMap: Record<string, string> = { research: 'researchNote', revision: 'revisionNote', execution: 'executionNote' };
@@ -508,7 +508,7 @@ export default function KnowledgeArchivePage() {
                                 ];
 
                                 return (
-                                  <div key={idx} className="p-3 rounded-lg bg-card/30 border border-slate-700/20 space-y-1.5">
+                                  <div key={idx} className="p-3 rounded-lg bg-card/30 border border-primary/10 space-y-1.5">
                                     <div className="flex items-center gap-1.5 text-xs text-[#7DAAB2]">
                                       <Calendar className="h-3 w-3" />
                                       <span className="font-mono">{formatDate(entry.date)}</span>

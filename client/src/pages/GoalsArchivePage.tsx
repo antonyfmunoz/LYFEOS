@@ -1091,7 +1091,7 @@ export default function GoalsArchivePage() {
             if (!open) setCreateFormData(defaultFormData);
           }}>
             <DialogTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => handleOpenCreate()}>
+              <Button className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs" size="sm" onClick={() => handleOpenCreate()}>
                 Create Objective
               </Button>
             </DialogTrigger>

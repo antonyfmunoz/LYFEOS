@@ -707,7 +707,7 @@ export default function QuestsPage() {
           if (!open) setCreateFormData(defaultFormData);
         }}>
           <DialogTrigger asChild>
-            <Button variant="ghost" data-tour="create-mission" className="flex items-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/10">
+            <Button data-tour="create-mission" className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs" size="sm">
               Create Mission
             </Button>
           </DialogTrigger>
