@@ -97,7 +97,7 @@ function SmartRemindersSection() {
 
   const updateReminder = async (reminderType: string, updates: Record<string, any>) => {
     try {
-      await apiRequest('PATCH', `/api/smart-reminders/${reminderType}`, updates);
+      await apiRequest(`/api/smart-reminders/${reminderType}`, { method: 'PATCH', body: JSON.stringify(updates) });
       queryClient.invalidateQueries({ queryKey: ['/api/smart-reminders'] });
     } catch {
       toast({ title: "Update failed", variant: "destructive" });
