@@ -105,26 +105,99 @@ const aiRateLimiter = (req: Request, res: Response, next: NextFunction) => {
   next();
 };
 
-function buildSystemPrompt(user: any, stats: any, profile: any, missions: any[], conversationHistory?: { role: string; content: string; conversationTitle?: string; createdAt: Date }[]): string {
+interface NOVAContext {
+  user: any;
+  stats: any;
+  profile: any;
+  missions: any[];
+  dailyLogs?: any[];
+  visionGoals?: any[];
+  calendarEvents?: any[];
+  userCategories?: any[];
+  conversationHistory?: { role: string; content: string; conversationTitle?: string; createdAt: Date }[];
+}
+
+function buildSystemPrompt(ctx: NOVAContext): string {
+  const { user, stats, profile, missions, dailyLogs, visionGoals, calendarEvents, userCategories, conversationHistory } = ctx;
+
   const activeMissions = missions.filter(m => !m.completed && !m.deletedAt);
   const completedMissions = missions.filter(m => m.completed && !m.deletedAt);
   const terminatedMissions = missions.filter(m => m.deletedAt);
 
   const todayStr = new Date().toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-  return `You are NOVA, the user's personal AI assistant. You are intelligent, supportive, direct, and motivating. You speak with a futuristic but warm tone, like a trusted advisor in a sci-fi world. Keep responses concise and actionable.
+  const playerName = user?.displayName || user?.username || 'Commander';
+
+  const recentLogs = (dailyLogs || [])
+    .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 7);
+
+  const safeAvg = (logs: any[], field: string): string => {
+    const valid = logs.filter((l: any) => l[field] != null && l[field] > 0);
+    if (valid.length === 0) return 'N/A';
+    return (valid.reduce((s: number, l: any) => s + l[field], 0) / valid.length).toFixed(1);
+  };
+  const avgMental = safeAvg(recentLogs, 'mentalState');
+  const avgPhysical = safeAvg(recentLogs, 'physicalState');
+  const avgEmotional = safeAvg(recentLogs, 'emotionalState');
+
+  const todayLog = recentLogs[0];
+
+  const upcomingEvents = (calendarEvents || [])
+    .filter((e: any) => new Date(e.date) >= new Date(new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })))
+    .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 10);
+
+  const goalsByHorizon: Record<string, any[]> = {};
+  (visionGoals || []).forEach((g: any) => {
+    if (!goalsByHorizon[g.category]) goalsByHorizon[g.category] = [];
+    goalsByHorizon[g.category].push(g);
+  });
+
+  const completedThisWeek = completedMissions.filter(m => {
+    if (!m.completedAt) return false;
+    const d = new Date(m.completedAt);
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    return d >= weekAgo;
+  });
+
+  const totalEnergyCost = activeMissions.reduce((s: number, m: any) => s + (m.energyCost || 0), 0);
+  const totalTimeCost = activeMissions.reduce((s: number, m: any) => s + (m.timeCost || 0), 0);
+  const totalAttentionCost = activeMissions.reduce((s: number, m: any) => s + (m.attentionCost || 0), 0);
+
+  const customCats = (userCategories || []).map((c: any) => c.label).join(', ');
+
+  return `You are NOVA (Neural Operating Virtual Assistant) -- the living intelligence of LYFEOS, the user's Life Operating System. You are not a chatbot. You are the primary interface between the Player and the complex systems running beneath the surface. You exist to maximize the human and their life holistically.
+
+You are one unified intelligence with three natural facets that you blend seamlessly based on context. You never announce which facet you are using -- you simply respond with the appropriate blend:
+
+ADVISOR (Clarity Engine): You synthesize data from missions, trackers, reflections, daily logs, and vision goals into actionable insights. You surface blind spots, bottlenecks, and leverage points. You provide context-rich mirrors grounded in real data -- for example, noting when energy logs dropped on certain days, or when mission completion slowed in a specific domain. You compare what the Player says about themselves versus what the data actually shows. You detect patterns across time -- energy dips tied to behaviors, streaks tied to identity shifts, recurring struggles in specific categories.
+
+COACH (Motivation Engine): You reinforce wins and reframe struggles. You create narrative continuity -- connecting what the Player said last month to what they are doing this week. You adjust your tone dynamically based on the Player's archetype calibration and current state. You are grounded and systemic, never overly emotional or preachy. You celebrate progress with substance, not empty praise. When the Player is struggling, you ask reflective questions that surface unconscious patterns rather than giving generic advice.
+
+EXECUTIVE ASSISTANT (Execution Engine): You operate LYFEOS like a co-pilot. You execute natural-language commands -- creating missions, scheduling events, updating logs, managing the system. You handle follow-ups, track commitments, and identify availability windows. You act decisively when asked, confirming actions clearly. You are the hands of the system.
+
+SALIENCE ENGINE: You do not dump everything on the Player. You highlight only the top 1-3 most important signals, prioritized by:
+1. Health/Energy dips (safety-critical)
+2. Mission bottlenecks (capacity exceeded, deadlines slipping)
+3. Reflection insights (emotional patterns, belief shifts)
+4. Long-term Roadmap alignment (vision/craft progress)
 
 TODAY: ${todayStr} (PST timezone)
 
-=== USER PROFILE ===
-Name: ${user?.displayName || user?.username || 'Commander'}
+=== PLAYER IDENTITY ===
+Name: ${playerName}
 Level: ${stats?.level || 1}
-XP: ${stats?.experience || 0}
-Energy Points: ${stats?.energyPoints ?? 'N/A'}
-Health Points: ${stats?.healthPoints ?? 'N/A'}
-Time Tokens: ${stats?.timeTokens ?? 'N/A'}
-Attention Tokens: ${stats?.attentionTokens ?? 'N/A'}
+Total XP: ${stats?.experienceCurrent || 0}/${stats?.experienceMax || 1000}
 Streak: ${stats?.streakDays || 0} days
+Efficiency Score: ${stats?.efficiencyScore || 0}%
+
+=== PLAYER RESOURCES ===
+Energy Points: ${stats?.energyPointsCurrent ?? 'N/A'}/${stats?.energyPointsMax ?? 'N/A'} (${totalEnergyCost} allocated to active missions)
+Health Points: ${stats?.healthPointsCurrent ?? 'N/A'}/${stats?.healthPointsMax ?? 'N/A'}
+Time Tokens: ${stats?.timeTokensCurrent ?? 'N/A'}/${stats?.timeTokensMax ?? 'N/A'} (${totalTimeCost} allocated)
+Attention Tokens: ${stats?.attentionTokensCurrent ?? 'N/A'}/${stats?.attentionTokensMax ?? 'N/A'} (${totalAttentionCost} allocated)
 
 === ARCHETYPE & IDENTITY ===
 Primary Archetype: ${profile?.archetypePrimary || 'Not set'}
@@ -132,19 +205,16 @@ Secondary Archetype: ${profile?.archetypeSecondary || 'Not set'}
 Shadow Archetype: ${profile?.archetypeShadow || 'Not set'}
 Life Stage: ${profile?.lifeStage || 'Not set'}
 Core Values: ${JSON.stringify(profile?.primaryValues || [])}
+Core Motivation: ${profile?.coreMotivation || 'Not set'}
 Desired Emotion: ${profile?.desiredEmotion || 'Not set'}
 Career/Vocation: ${profile?.careerVocation || 'Not set'}
 Primary Craft: ${profile?.primaryCraft || 'Not set'}
+Key Drivers: ${JSON.stringify(profile?.keyDrivers || [])}
+Collaboration Style: ${profile?.collaborationStyle || 'Not set'}
+Training Style: ${profile?.trainingStyle || 'Not set'}
+Energy Patterns: ${profile?.energyPatterns || 'Not set'}
 
-=== VISION & GOALS ===
-90-Day Vision: ${profile?.vision90Day || 'Not set'}
-18-Month Vision: ${profile?.vision18Month || 'Not set'}
-5-Year Vision: ${profile?.vision5Year || 'Not set'}
-10-Year Vision: ${profile?.vision10Year || 'Not set'}
-10-Year Legacy: ${profile?.vision10YearLegacy || 'Not set'}
-Current Goals: ${JSON.stringify(profile?.currentGoals || [])}
-
-=== PERSONALITY ===
+=== PERSONALITY & BELIEFS ===
 Core Belief: ${profile?.coreBelief || 'Not set'}
 Limiting Belief: ${profile?.limitingBelief || 'Not set'}
 Empowering Belief: ${profile?.empoweringBelief || 'Not set'}
@@ -154,6 +224,21 @@ Weaknesses: ${JSON.stringify(profile?.weaknesses || [])}
 === CHARACTER AFFIRMATION ===
 ${profile?.characterAffirmation || 'Not generated yet'}
 
+=== VISION & ROADMAP ===
+90-Day Vision: ${profile?.vision90Day || 'Not set'}
+18-Month Vision: ${profile?.vision18Month || 'Not set'}
+5-Year Vision: ${profile?.vision5Year || 'Not set'}
+10-Year Vision: ${profile?.vision10Year || 'Not set'}
+10-Year Legacy: ${profile?.vision10YearLegacy || 'Not set'}
+Current Goals: ${JSON.stringify(profile?.currentGoals || [])}
+
+=== VISION MILESTONES ===
+${Object.entries(goalsByHorizon).map(([horizon, goals]) => {
+  const active = goals.filter((g: any) => !g.completed);
+  const done = goals.filter((g: any) => g.completed);
+  return `[${horizon.toUpperCase()}] ${active.length} active, ${done.length} completed\n${active.slice(0, 5).map((g: any) => `  - "${g.title}"${g.rewardText ? ` (Reward: ${g.rewardText})` : ''}`).join('\n')}`;
+}).join('\n') || 'No vision milestones set'}
+
 === SYSTEMS & RITUALS ===
 Ideal Day: ${profile?.idealDay || 'Not set'}
 Locked Habit: ${profile?.lockedHabit || 'Not set'}
@@ -161,36 +246,51 @@ Morning Rituals: ${JSON.stringify(profile?.morningRituals || [])}
 Evening Rituals: ${JSON.stringify(profile?.eveningRituals || [])}
 Grounding Ritual: ${profile?.groundingRitual || 'Not set'}
 
+=== RECENT DAILY LOGS (7-day trend) ===
+Mental avg: ${avgMental}/10 | Physical avg: ${avgPhysical}/10 | Emotional avg: ${avgEmotional}/10
+${todayLog ? `Today's log: Mental ${todayLog.mentalState || '-'}/10, Physical ${todayLog.physicalState || '-'}/10, Emotional ${todayLog.emotionalState || '-'}/10, Wake: ${todayLog.wakeTime || '-'}, Sleep: ${todayLog.sleepTime || '-'}${todayLog.todayPrimaryMission ? `, Focus: "${todayLog.todayPrimaryMission}"` : ''}${todayLog.gratitude ? `, Gratitude: "${todayLog.gratitude.substring(0, 200)}"` : ''}` : 'No log for today yet'}
+${recentLogs.slice(1, 4).map((l: any) => `${l.date}: Mental ${l.mentalState || '-'}, Physical ${l.physicalState || '-'}, Emotional ${l.emotionalState || '-'}`).join('\n')}
+
 === ACTIVE MISSIONS (${activeMissions.length}) ===
-${activeMissions.map(m => `- [ID:${m.id}] "${m.title}" | ${m.category || 'general'} | Difficulty: ${m.difficulty || 'D'} | XP: ${m.experienceReward} | Start: ${m.startDate || 'none'} | Due: ${m.dueDate || 'none'} | Desc: ${m.description || 'none'}`).join('\n') || 'No active missions'}
+${activeMissions.map(m => `- [ID:${m.id}] "${m.title}" | ${m.category || 'general'} | Difficulty: ${m.difficulty || 'D'} | XP: ${m.experienceReward} | Energy: ${m.energyCost || 0} | Start: ${m.startDate || 'none'} | Due: ${m.dueDate || 'none'}${m.description ? ` | Desc: ${m.description.substring(0, 100)}` : ''}`).join('\n') || 'No active missions'}
 
-=== COMPLETED MISSIONS (${completedMissions.length}) ===
-${completedMissions.slice(0, 10).map(m => `- [ID:${m.id}] "${m.title}" | Completed: ${m.completedAt ? new Date(m.completedAt).toLocaleDateString() : 'unknown'}`).join('\n') || 'No completed missions'}
+=== COMPLETED THIS WEEK (${completedThisWeek.length}) ===
+${completedThisWeek.slice(0, 8).map(m => `- "${m.title}" | ${m.category} | +${m.experienceReward}XP | ${m.completedAt ? new Date(m.completedAt).toLocaleDateString() : ''}`).join('\n') || 'None completed this week'}
 
-=== TERMINATED MISSIONS (${terminatedMissions.length}) ===
-${terminatedMissions.slice(0, 5).map(m => `- [ID:${m.id}] "${m.title}"`).join('\n') || 'No terminated missions'}
+=== ALL COMPLETED (${completedMissions.length}) | TERMINATED (${terminatedMissions.length}) ===
+${completedMissions.slice(0, 5).map(m => `- [ID:${m.id}] "${m.title}" | Completed: ${m.completedAt ? new Date(m.completedAt).toLocaleDateString() : 'unknown'}`).join('\n') || 'No completed missions'}
+
+=== UPCOMING SCHEDULE ===
+${upcomingEvents.map((e: any) => `- ${e.date} ${e.startTime || ''}: "${e.title}" (${e.category || 'personal'}, ${e.duration || '?'})`).join('\n') || 'No upcoming events'}
+
+=== CUSTOM CATEGORIES ===
+${customCats || 'None created'}
 
 === CAPABILITIES ===
-You can take actions for the user using tools. When the user asks you to do something (create, delete, complete, update missions, etc.), use the appropriate tool. After performing an action, confirm what you did clearly.
+You can take actions for the Player using tools. When asked to do something (create, delete, complete, update missions, schedule events, update daily logs, etc.), use the appropriate tool immediately. Confirm what you did clearly and concisely.
 
 When creating missions, use sensible defaults:
-- category: ALWAYS choose the most fitting category from: 'work', 'health', 'fitness', 'finance', 'learning', 'creative', 'social', 'personal', 'mindset', 'career', 'nutrition', 'recovery', 'planning', 'spiritual', 'household'. Never use 'general'. Default to 'personal' if unclear.
+- category: ALWAYS choose the most fitting category from: 'work', 'health', 'fitness', 'finance', 'learning', 'creative', 'social', 'personal', 'mindset', 'career', 'nutrition', 'recovery', 'planning', 'spiritual', 'household'${customCats ? `, or custom categories: ${customCats}` : ''}. Never use 'general'. Default to 'personal' if unclear.
 - difficulty: "D" (easiest) unless specified. Ranks are S, A, B, C, D.
 - energyCost: 1, attentionCost: 0, timeCost: 0 unless specified
 - experienceReward: calculate based on difficulty (D=10, C=25, B=50, A=100, S=200)
 - startDate: today's date in YYYY-MM-DD format unless specified
 
-Guidelines:
-- NEVER use emojis in your responses. Use plain text only — no emoji characters whatsoever.
-- Address the user by name when appropriate
-- Reference their archetype, goals, and current missions to personalize advice
-- Be encouraging but honest — push them toward growth
-- When they ask about their data, reference the actual numbers above
-- If they want to make changes, use the tools — don't just tell them what to do
+=== INTERACTION GUIDELINES ===
+- NEVER use emojis. Plain text only.
+- Address the Player by name naturally.
+- Ground every insight in their actual data -- reference real numbers, real mission names, real patterns from their logs.
+- When you notice a discrepancy between what the Player says and what their data shows, surface it respectfully as a mirror, not a judgment.
+- Create narrative continuity -- connect past conversations, past struggles, and past wins to the present moment.
+- When the Player is struggling, ask one reflective question before giving advice. Surface the pattern, not just the symptom.
+- When the Player is winning, reinforce the identity shift -- connect the behavior to who they are becoming.
+- Keep responses concise and high-signal. Avoid generic motivational fluff.
+- If they want changes made, use the tools -- do not just describe what to do.
+- Adapt your tone to their archetype and current state: more direct for action-oriented archetypes, more reflective for introspective ones.
 
 === PREVIOUS CONVERSATION HISTORY ===
 ${conversationHistory && conversationHistory.length > 0 
-  ? `You have had previous conversations with this user. Here is a summary of past interactions so you maintain continuity and remember context from earlier chats:\n${conversationHistory.slice(-100).map(m => `[${m.conversationTitle || 'Chat'}] ${m.role === 'user' ? 'User' : 'You'}: ${m.content.substring(0, 500)}${m.content.length > 500 ? '...' : ''}`).join('\n')}`
+  ? `You have had previous conversations with this Player. Maintain continuity -- reference past insights, commitments, and patterns:\n${conversationHistory.slice(-100).map(m => `[${m.conversationTitle || 'Chat'}] ${m.role === 'user' ? 'Player' : 'You'}: ${m.content.substring(0, 500)}${m.content.length > 500 ? '...' : ''}`).join('\n')}`
   : 'No previous conversation history yet.'}`;
 }
 
@@ -857,19 +957,36 @@ export function registerChatRoutes(app: Express): void {
         content: m.content,
       }));
 
-      const [user, stats, profile, missions, allConversationMessages] = await Promise.all([
+      const [user, stats, profile, missions, allConversationMessages, dailyLogs, calendarEvents, categories] = await Promise.all([
         storage.getUser(userId),
         storage.getUserStats(userId),
         storage.getUserProfile(userId),
         storage.getQuests(userId),
         chatStorage.getAllMessagesByUser(userId),
+        storage.getUserDailyLogs(userId),
+        storage.getEvents(userId),
+        storage.getUserCategories(userId),
       ]);
-      const archivedMissions = await storage.getArchivedQuests(userId);
+      const [archivedMissions, visionGoalResults] = await Promise.all([
+        storage.getArchivedQuests(userId),
+        Promise.all(
+          ['legacy', '10year', '5year', '18month', '90day'].map(cat => storage.getVisionGoals(userId, cat))
+        ),
+      ]);
       const allMissions = [...missions, ...archivedMissions];
+      const allVisionGoals = visionGoalResults.flat();
 
       const otherConversationMessages = allConversationMessages.filter(m => m.conversationId !== conversationId);
 
-      const systemPrompt = buildSystemPrompt(user, stats, profile, allMissions, otherConversationMessages);
+      const systemPrompt = buildSystemPrompt({
+        user, stats, profile,
+        missions: allMissions,
+        dailyLogs,
+        visionGoals: allVisionGoals,
+        calendarEvents,
+        userCategories: categories,
+        conversationHistory: otherConversationMessages,
+      });
 
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
@@ -1152,15 +1269,22 @@ Return ONLY the JSON, no other text.`;
         return res.status(400).json({ error: "Transcript is required" });
       }
 
-      const [user, stats, missions, profile] = await Promise.all([
+      const [user, stats, missions, profile, dailyLogs, calendarEvents, categories] = await Promise.all([
         storage.getUser(userId),
         storage.getUserStats(userId),
         storage.getQuests(userId),
         storage.getUserProfile(userId),
+        storage.getUserDailyLogs(userId),
+        storage.getEvents(userId),
+        storage.getUserCategories(userId),
       ]);
 
-      const activeMissions = (missions || []).filter((m: any) => !m.completed && !m.deletedAt);
-      const archivedMissions = await storage.getArchivedQuests(userId);
+      const [archivedMissions, visionGoalResults] = await Promise.all([
+        storage.getArchivedQuests(userId),
+        Promise.all(
+          ['legacy', '10year', '5year', '18month', '90day'].map(cat => storage.getVisionGoals(userId, cat))
+        ),
+      ]);
 
       let recentMessages: { role: string; content: string }[] = [];
       let dbConversationId = conversationId ? parseInt(conversationId) : null;
@@ -1177,7 +1301,14 @@ Return ONLY the JSON, no other text.`;
         await chatStorage.createMessage(dbConversationId, "user", `[Voice] ${transcript}`);
       }
 
-      const voiceSystemPrompt = buildSystemPrompt(user, stats, profile, [...(missions || []), ...archivedMissions]);
+      const voiceSystemPrompt = buildSystemPrompt({
+        user, stats, profile,
+        missions: [...(missions || []), ...archivedMissions],
+        dailyLogs,
+        visionGoals: visionGoalResults.flat(),
+        calendarEvents,
+        userCategories: categories,
+      });
 
       const apiMessages: any[] = [
         ...recentMessages.map(m => ({ role: m.role as "user" | "assistant", content: m.content })),

@@ -25,6 +25,12 @@ Preferred communication style: Simple, everyday language.
 - **Session Management**: express-session with secure cookie configuration
 - **Password Hashing**: bcrypt for secure password storage
 - **AI Integration**: Anthropic via Replit AI Integrations (no API key required, billed to credits). Smart model routing: Claude Haiku 4.5 for simple tasks (greetings, commands, stat tips, affirmations, mission stat suggestions) and Claude Sonnet 4.5 for complex reasoning (analysis, planning, advice, detailed questions). Complexity classifier in `server/replit_integrations/chat/routes.ts` selects model based on message content.
+- **NOVA AI System**: NOVA (Neural Operating Virtual Assistant) is the living intelligence layer of LYFEOS. One unified personality with three seamlessly blended facets:
+  - **Advisor (Clarity Engine)**: Pattern recognition, blind spots, data-backed mirrors, self-perception vs data comparison
+  - **Coach (Motivation Engine)**: Win reinforcement, struggle reframing, narrative continuity, archetype-adaptive tone
+  - **Executive Assistant (Execution Engine)**: Mission/event management, daily log updates, system commands
+  - **Salience Engine**: Prioritizes signals (health > bottlenecks > reflections > alignment), avoids information overload
+  - **Full Data Ingestion**: System prompt includes user profile, stats, missions, daily logs (7-day trends + averages), vision milestones (all horizons), calendar events, custom categories, and conversation history
 - **Voice Control**: AI-powered voice commands via Web Speech API + NOVA AI orchestration (`POST /api/voice-command`). Supports navigation, widget toggle, mission management, timer control, and conversational queries. NOVA interprets natural language and returns structured JSON actions.
 - **File Uploads**: Multer for handling media uploads
 
