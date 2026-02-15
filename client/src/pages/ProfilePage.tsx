@@ -1779,7 +1779,7 @@ export default function ProfilePage() {
                     className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5"
                   >
                     <Edit className="h-3 w-3" />
-                    Edit Profile
+                    Edit
                   </button>
                 )}
                 <div className="text-primary">

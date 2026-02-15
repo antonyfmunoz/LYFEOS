@@ -258,7 +258,7 @@ export default function AnalyticsPage() {
                         stroke="hsl(var(--background))"
                       >
                         {difficultyData.map((entry, i) => (
-                          <Cell key={i} fill={`hsl(var(--primary) / ${1 - i * 0.15})`} />
+                          <Cell key={i} fill="hsl(var(--primary))" />
                         ))}
                       </Pie>
                       <Tooltip content={<CustomTooltipContent />} />
@@ -268,7 +268,7 @@ export default function AnalyticsPage() {
                     {difficultyData.map((d, i) => (
                       <div key={d.rank} className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: `hsl(var(--primary) / ${1 - i * 0.15})` }} />
+                          <div className="w-3 h-3 rounded-full bg-primary" />
                           <span className="text-sm font-medium">Rank {d.rank}</span>
                         </div>
                         <div className="text-right">
@@ -288,7 +288,7 @@ export default function AnalyticsPage() {
                     <div key={cat.name} className="space-y-1.5">
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-primary" style={{ opacity: 1 - i * 0.08 }} />
+                          <div className="w-3 h-3 rounded-full bg-primary" />
                           <span className="font-medium">{cat.name}</span>
                         </div>
                         <div className="flex items-center gap-3 text-muted-foreground">
@@ -299,7 +299,7 @@ export default function AnalyticsPage() {
                       <div className="w-full bg-muted/30 h-1.5 rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full bg-primary transition-all"
-                          style={{ width: `${cat.completionRate}%`, opacity: 1 - i * 0.08 }}
+                          style={{ width: `${cat.completionRate}%` }}
                         />
                       </div>
                     </div>
