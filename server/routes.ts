@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
-import { eq, desc, and, gte, asc, sql, inArray, isNotNull } from "drizzle-orm";
+import { eq, desc, and, gte, asc, sql, inArray, isNotNull, isNull } from "drizzle-orm";
 import { userDailyLogs, quests as questsTable, userStats, users } from "@shared/schema";
 import { registerChatRoutes } from "./replit_integrations/chat";
 import { z } from "zod";
@@ -5796,6 +5796,7 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
             eq(questsTable.isRitualized, true)
           ));
         const disconnectedIds = activeRitualMissions.map(m => m.id);
+        console.log(`[Goal Complete] Disconnecting ${disconnectedIds.length} ritual missions from goal ${id}:`, disconnectedIds);
         if (disconnectedIds.length > 0) {
           await db.update(questsTable)
             .set({ visionGoalId: null })
@@ -5844,14 +5845,16 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
       if (isUncompleting) {
         const storedIds = existingGoal.disconnectedMissionIds;
         if (storedIds && storedIds.length > 0) {
-          await db.update(questsTable)
+          const reconnectResult = await db.update(questsTable)
             .set({ visionGoalId: id })
             .where(and(
               inArray(questsTable.id, storedIds),
               eq(questsTable.userId, userId),
               eq(questsTable.completed, false),
-              sql`${questsTable.visionGoalId} IS NULL`
-            ));
+              isNull(questsTable.visionGoalId)
+            ))
+            .returning({ id: questsTable.id });
+          console.log(`[Goal Uncomplete] Reconnected ${reconnectResult.length} missions to goal ${id}:`, reconnectResult.map(r => r.id));
           await storage.updateVisionGoal(id, userId, { disconnectedMissionIds: null });
         }
 
