@@ -5783,6 +5783,8 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
 
       let xpAwarded = 0;
       let xpRemoved = 0;
+      let disconnectedMissionIds: number[] = [];
+      let reconnectedMissionIds: number[] = [];
       const isCompleting = req.body.completed === true && !wasCompleted;
       const isUncompleting = req.body.completed === false && wasCompleted;
 
@@ -5795,16 +5797,16 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
             eq(questsTable.completed, false),
             eq(questsTable.isRitualized, true)
           ));
-        const disconnectedIds = activeRitualMissions.map(m => m.id);
-        console.log(`[Goal Complete] Disconnecting ${disconnectedIds.length} ritual missions from goal ${id}:`, disconnectedIds);
-        if (disconnectedIds.length > 0) {
+        disconnectedMissionIds = activeRitualMissions.map(m => m.id);
+        console.log(`[Goal Complete] Disconnecting ${disconnectedMissionIds.length} ritual missions from goal ${id}:`, disconnectedMissionIds);
+        if (disconnectedMissionIds.length > 0) {
           await db.update(questsTable)
             .set({ visionGoalId: null })
             .where(and(
-              inArray(questsTable.id, disconnectedIds),
+              inArray(questsTable.id, disconnectedMissionIds),
               eq(questsTable.userId, userId)
             ));
-          await storage.updateVisionGoal(id, userId, { disconnectedMissionIds: disconnectedIds });
+          await storage.updateVisionGoal(id, userId, { disconnectedMissionIds });
         }
 
         let bonusXp = goal.bonusXp;
@@ -5853,8 +5855,9 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
               eq(questsTable.completed, false),
               isNull(questsTable.visionGoalId)
             ))
-            .returning({ id: questsTable.id });
-          console.log(`[Goal Uncomplete] Reconnected ${reconnectResult.length} missions to goal ${id}:`, reconnectResult.map(r => r.id));
+            .returning();
+          reconnectedMissionIds = reconnectResult.map(r => r.id);
+          console.log(`[Goal Uncomplete] Reconnected ${reconnectedMissionIds.length} missions to goal ${id}:`, reconnectedMissionIds);
           await storage.updateVisionGoal(id, userId, { disconnectedMissionIds: null });
         }
 
@@ -5920,7 +5923,28 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
         aiAssistantEnabled: dbStats.aiAssistantEnabled,
         primaryColor: dbStats.primaryColor,
       } : null;
-      res.json({ ...goal, xpAwarded, xpRemoved, updatedStats });
+      let reconnectedMissions: any[] = [];
+      if (reconnectedMissionIds.length > 0) {
+        const allQuests = await storage.getQuests(userId);
+        reconnectedMissions = allQuests
+          .filter(q => reconnectedMissionIds.includes(q.id))
+          .map(q => ({
+            id: q.id,
+            title: q.title,
+            completed: q.completed,
+            completedAt: q.completedAt,
+            visionGoalId: q.visionGoalId,
+            difficulty: q.difficulty,
+            experienceReward: q.experienceReward,
+            energyCost: q.energyCost,
+            timeCost: q.timeCost,
+            attentionCost: q.attentionCost,
+            category: q.category,
+            isRitualized: q.isRitualized,
+            parentRitualId: q.parentRitualId,
+          }));
+      }
+      res.json({ ...goal, xpAwarded, xpRemoved, updatedStats, disconnectedMissionIds, reconnectedMissions });
     } catch (error) {
       console.error("Error updating vision goal:", error);
       res.status(500).json({ error: "Internal server error" });
