@@ -598,6 +598,13 @@ export class DatabaseStorage implements IStorage {
       totalXP += Math.floor((q.experienceReward || 0) * mult);
     }
 
+    const completedGoals = await db.select().from(visionGoals).where(
+      and(eq(visionGoals.userId, userId), eq(visionGoals.completed, true))
+    );
+    for (const g of completedGoals) {
+      totalXP += g.bonusXp || 0;
+    }
+
     let level = 1;
     let experienceMax = 1000;
     let remaining = totalXP;

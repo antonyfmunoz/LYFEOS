@@ -5889,7 +5889,9 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
       }
 
       const dbStats = await storage.getUserStats(userId);
-      const xpData = await storage.recalculateXP(userId);
+      const userProfile = await storage.getUserProfile(userId);
+      const profileTotalXP = userProfile?.totalXP || 0;
+      const levelInfo = calculateLevelFromTotalXP(profileTotalXP);
       const updatedStats = dbStats ? {
         attentionTokens: {
           current: dbStats.attentionTokensCurrent,
@@ -5908,10 +5910,10 @@ ${newDesc ? `Description: ${newDesc}` : ''}`
           max: dbStats.healthPointsMax,
         },
         experience: {
-          current: xpData.experienceCurrent,
-          max: xpData.experienceMax,
-          level: xpData.level,
-          totalXP: xpData.totalXP,
+          current: levelInfo.current,
+          max: levelInfo.max,
+          level: levelInfo.level,
+          totalXP: profileTotalXP,
           showLevelUp: false,
         },
         streakDays: dbStats.streakDays || 0,

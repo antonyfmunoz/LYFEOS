@@ -945,25 +945,44 @@ export default function GoalsArchivePage() {
     if (!editFormData.title.trim() || !editingGoalId) return;
     setIsSubmitting(true);
     const editedId = editingGoalId;
+    const oldGoal = goalsRef.current.find(g => g.id === editedId);
+    const oldCategory = oldGoal?.category || '';
+    const newCategory = editFormData.category;
+    const categoryChanged = oldCategory !== newCategory && oldCategory !== '';
     const optimisticUpdates = {
       title: editFormData.title.trim(),
       description: editFormData.description.trim() || null,
       rewardText: editFormData.rewardText.trim() || null,
-      category: editFormData.category,
+      category: newCategory,
     };
     const previousGoals = [...goalsRef.current];
+    const previousLinkedMissions = { ...linkedMissionsRef.current };
     setIsEditOpen(false);
     setEditFormData(defaultFormData);
     setEditingGoalId(null);
     setGoals(prev => prev.map(g => g.id === editedId ? { ...g, ...optimisticUpdates } : g));
+    if (categoryChanged) {
+      const oldMissions = linkedMissionsRef.current[oldCategory] || [];
+      const missionsToMove = oldMissions.filter(m => m.visionGoalId === editedId);
+      if (missionsToMove.length > 0) {
+        const remainingOld = oldMissions.filter(m => m.visionGoalId !== editedId);
+        const newCatMissions = linkedMissionsRef.current[newCategory] || [];
+        setLinkedMissionsForCategory(oldCategory, remainingOld);
+        setLinkedMissionsForCategory(newCategory, [...newCatMissions, ...missionsToMove]);
+      }
+    }
     try {
       const updatedGoal = await apiRequest<VisionGoal>(`/api/vision-goals/${editedId}`, {
         method: 'PATCH',
         body: JSON.stringify(optimisticUpdates),
       });
       setGoals(prev => prev.map(g => g.id === editedId ? { ...g, ...updatedGoal } : g));
+      fetchLinkedMissions();
     } catch (error) {
       setGoals(previousGoals);
+      if (categoryChanged) {
+        setLinkedMissionsMap(previousLinkedMissions);
+      }
       console.error("Error updating goal:", error);
       toast({
         title: "Failed to update goal",
