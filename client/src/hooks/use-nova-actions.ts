@@ -2,6 +2,47 @@ import { useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { useLYFEOS } from '@/lib/context';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { startThetaBeats, stopThetaBeats } from '@/lib/theta-beats';
+
+let affirmationLoopActive = false;
+
+function speakWithLoop(text: string, voice?: SpeechSynthesisVoice | null) {
+  if (!affirmationLoopActive) return;
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 0.92;
+  utterance.pitch = 1.0;
+  if (voice) utterance.voice = voice;
+  utterance.onend = () => {
+    if (affirmationLoopActive) {
+      setTimeout(() => speakWithLoop(text, voice), 1500);
+    }
+  };
+  utterance.onerror = () => {
+    if (affirmationLoopActive) {
+      setTimeout(() => speakWithLoop(text, voice), 2000);
+    }
+  };
+  window.speechSynthesis.speak(utterance);
+}
+
+function startAffirmationSession(text: string) {
+  if (!('speechSynthesis' in window)) return;
+  stopAffirmationSession();
+  affirmationLoopActive = true;
+  startThetaBeats();
+  const voices = window.speechSynthesis.getVoices();
+  const preferred = voices.find(v => v.lang.startsWith('en') && v.name.includes('Female'))
+    || voices.find(v => v.lang.startsWith('en'));
+  speakWithLoop(text, preferred || null);
+}
+
+function stopAffirmationSession() {
+  affirmationLoopActive = false;
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+  }
+  stopThetaBeats();
+}
 
 export interface NovaToolAction {
   success?: boolean;
@@ -64,28 +105,16 @@ export function useNovaActions() {
       }
 
       case 'play_affirmation': {
-        if (toolAction.affirmationText && 'speechSynthesis' in window) {
-          window.speechSynthesis.cancel();
-          const utterance = new SpeechSynthesisUtterance(toolAction.affirmationText);
-          utterance.rate = 1.0;
-          utterance.pitch = 1.0;
-          const voices = window.speechSynthesis.getVoices();
-          const preferred = voices.find(v => v.lang.startsWith('en') && v.name.includes('Female'))
-            || voices.find(v => v.lang.startsWith('en'));
-          if (preferred) utterance.voice = preferred;
-          window.speechSynthesis.speak(utterance);
+        if (toolAction.affirmationText) {
+          startAffirmationSession(toolAction.affirmationText);
         }
         break;
       }
 
       case 'generate_affirmation': {
         queryClient.invalidateQueries({ queryKey: ['/api/profile'] });
-        if (toolAction.affirmationText && 'speechSynthesis' in window) {
-          window.speechSynthesis.cancel();
-          const utterance = new SpeechSynthesisUtterance(toolAction.affirmationText);
-          utterance.rate = 1.0;
-          utterance.pitch = 1.0;
-          window.speechSynthesis.speak(utterance);
+        if (toolAction.affirmationText) {
+          startAffirmationSession(toolAction.affirmationText);
         }
         break;
       }
@@ -96,9 +125,7 @@ export function useNovaActions() {
       }
 
       case 'stop_affirmation': {
-        if ('speechSynthesis' in window) {
-          window.speechSynthesis.cancel();
-        }
+        stopAffirmationSession();
         break;
       }
 
