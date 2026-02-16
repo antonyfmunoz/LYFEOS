@@ -53,11 +53,12 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 text-white" style={{ backgroundColor: 'hsl(0 0% 7%)' }}>
-      <div className="text-center mb-8">
+    <div className="min-h-screen flex flex-col items-center p-4 text-white" style={{ backgroundColor: 'hsl(0 0% 7%)' }}>
+      <div className="text-center pt-12 pb-4">
         <h1 className="text-4xl font-orbitron mb-2"><span className="text-white">LYFE</span><span style={{ color: accent?.color || 'white' }}>OS</span></h1>
         <p className="text-white">Your personal life operating system</p>
       </div>
+      <div className="flex-1 flex items-center w-full justify-center">
       {submitted ? (
         <div className="w-full max-w-md rounded-xl p-6 border backdrop-blur-md text-center space-y-4"
              style={{ backgroundColor: "hsla(0, 0%, 11%, 0.7)", boxShadow: `0 0 20px ${accent?.glow || 'rgba(255,255,255,0.08)'}`, borderColor: accent?.border20 || 'rgba(255,255,255,0.2)' }}>
@@ -131,6 +132,7 @@ export default function ForgotPasswordPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
