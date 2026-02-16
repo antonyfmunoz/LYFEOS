@@ -6,9 +6,7 @@ const firebaseProjectId = import.meta.env.VITE_FIREBASE_ACTUAL_PROJECT_ID || imp
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: window.location.hostname === 'localhost'
-    ? `${firebaseProjectId}.firebaseapp.com`
-    : window.location.host,
+  authDomain: `${firebaseProjectId}.firebaseapp.com`,
   projectId: firebaseProjectId,
   storageBucket: `${firebaseProjectId}.firebasestorage.googleapis.com`,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
