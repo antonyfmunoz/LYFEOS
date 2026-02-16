@@ -1,14 +1,15 @@
-import webpush from "web-push";
+import admin from "firebase-admin";
 import { storage } from "./storage";
 import type { SmartReminder } from "@shared/schema";
 import { formatLocalDate, logger } from "./utils";
 
-if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
-  webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || "mailto:lyfeos@replit.app",
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY
-  );
+function getFirebaseMessaging(): admin.messaging.Messaging | null {
+  try {
+    const app = admin.app();
+    return admin.messaging(app);
+  } catch {
+    return null;
+  }
 }
 
 interface NotificationPayload {
@@ -21,21 +22,36 @@ interface NotificationPayload {
 }
 
 export async function sendPushToUser(userId: number, payload: NotificationPayload) {
-  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return;
+  const messaging = getFirebaseMessaging();
+  if (!messaging) return;
 
   try {
     const subs = await storage.getPushSubscriptions(userId);
-    const payloadStr = JSON.stringify(payload);
 
     for (const sub of subs) {
       try {
-        await webpush.sendNotification(
-          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-          payloadStr
-        );
+        await messaging.send({
+          token: sub.fcmToken,
+          notification: {
+            title: payload.title,
+            body: payload.body,
+          },
+          data: {
+            tag: payload.tag || "lyfeos-notification",
+            url: payload.url || "/",
+            questId: payload.questId ? String(payload.questId) : "",
+          },
+          webpush: {
+            notification: {
+              icon: "/icon-192.png",
+              badge: "/icon-192.png",
+            },
+          },
+        });
       } catch (err: any) {
-        if (err?.statusCode === 410) {
-          await storage.deletePushSubscription(sub.endpoint);
+        if (err?.code === "messaging/registration-token-not-registered" ||
+            err?.code === "messaging/invalid-registration-token") {
+          await storage.deletePushSubscription(sub.fcmToken);
         }
       }
     }
@@ -50,27 +66,13 @@ async function checkAndSendNotifications() {
 
     for (const { subscription, quests } of results) {
       for (const quest of quests) {
-        const payload = JSON.stringify({
+        await sendPushToUser(subscription.userId, {
           title: "Mission Reminder",
           body: `Time for: ${quest.title}`,
           tag: `mission-${quest.id}`,
           url: "/quests",
           questId: quest.id,
         });
-
-        try {
-          await webpush.sendNotification(
-            {
-              endpoint: subscription.endpoint,
-              keys: { p256dh: subscription.p256dh, auth: subscription.auth },
-            },
-            payload
-          );
-        } catch (err: any) {
-          if (err?.statusCode === 410) {
-            await storage.deletePushSubscription(subscription.endpoint);
-          }
-        }
       }
     }
   } catch (err) {
@@ -279,10 +281,13 @@ let learningInterval: ReturnType<typeof setInterval> | null = null;
 
 export function startNotificationScheduler() {
   if (schedulerInterval) return;
-  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
-    logger.warn("VAPID keys not configured - notification scheduler disabled");
+
+  const messaging = getFirebaseMessaging();
+  if (!messaging) {
+    logger.warn("Firebase messaging not available - notification scheduler disabled");
     return;
   }
+
   logger.info("Notification scheduler started (checking every 60s)");
   schedulerInterval = setInterval(checkAndSendNotifications, 60_000);
   checkAndSendNotifications();

@@ -95,10 +95,10 @@ export interface IStorage {
   restoreQuest(id: number): Promise<Quest>;
   purgeExpiredArchivedQuests(): Promise<void>;
   
-  // Push Subscription methods
+  // Push Subscription methods (FCM tokens)
   getPushSubscriptions(userId: number): Promise<PushSubscription[]>;
   savePushSubscription(sub: InsertPushSubscription): Promise<PushSubscription>;
-  deletePushSubscription(endpoint: string): Promise<void>;
+  deletePushSubscription(fcmToken: string): Promise<void>;
   getAllPushSubscriptionsForNotification(): Promise<{ subscription: PushSubscription; quests: Quest[] }[]>;
   
   // AI Message methods
@@ -1163,22 +1163,18 @@ export class DatabaseStorage implements IStorage {
   
   async savePushSubscription(sub: InsertPushSubscription): Promise<PushSubscription> {
     const existing = await db.select().from(pushSubscriptions)
-      .where(and(eq(pushSubscriptions.userId, sub.userId), eq(pushSubscriptions.endpoint, sub.endpoint)));
+      .where(and(eq(pushSubscriptions.userId, sub.userId), eq(pushSubscriptions.fcmToken, sub.fcmToken)));
     
     if (existing.length > 0) {
-      const [updated] = await db.update(pushSubscriptions)
-        .set({ p256dh: sub.p256dh, auth: sub.auth })
-        .where(eq(pushSubscriptions.id, existing[0].id))
-        .returning();
-      return updated;
+      return existing[0];
     }
     
     const [newSub] = await db.insert(pushSubscriptions).values(sub).returning();
     return newSub;
   }
   
-  async deletePushSubscription(endpoint: string): Promise<void> {
-    await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
+  async deletePushSubscription(fcmToken: string): Promise<void> {
+    await db.delete(pushSubscriptions).where(eq(pushSubscriptions.fcmToken, fcmToken));
   }
   
   async getAllPushSubscriptionsForNotification(): Promise<{ subscription: PushSubscription; quests: Quest[] }[]> {

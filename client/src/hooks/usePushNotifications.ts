@@ -1,45 +1,73 @@
 import { useState, useEffect, useCallback } from "react";
 import { apiRequest } from "@/lib/queryClient";
+import { getMessaging, getToken, deleteToken, isSupported } from "firebase/messaging";
+import { app as firebaseApp } from "@/lib/firebase";
 
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+};
+
+async function ensureFCMServiceWorker(): Promise<ServiceWorkerRegistration | null> {
+  try {
+    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    await navigator.serviceWorker.ready;
+    const worker = registration.active || registration.installing || registration.waiting;
+    if (worker) {
+      worker.postMessage({ type: 'FIREBASE_CONFIG', config: firebaseConfig });
+    }
+    return registration;
+  } catch {
+    return null;
   }
-  return outputArray;
 }
 
 export function usePushNotifications() {
-  const [isSupported, setIsSupported] = useState(false);
+  const [isSupported_, setIsSupported] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [loading, setLoading] = useState(false);
+  const [currentToken, setCurrentToken] = useState<string | null>(null);
 
   useEffect(() => {
-    const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+    const supported = 'serviceWorker' in navigator && 'Notification' in window && !!firebaseApp;
     setIsSupported(supported);
 
     if (supported) {
       setPermission(Notification.permission);
-      checkExistingSubscription();
+      checkExistingToken();
     }
   }, []);
 
-  const checkExistingSubscription = async () => {
+  const checkExistingToken = async () => {
     try {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
-      setIsSubscribed(!!subscription);
+      if (!firebaseApp) return;
+      const supported = await isSupported();
+      if (!supported) return;
+
+      if (Notification.permission === 'granted') {
+        const swRegistration = await ensureFCMServiceWorker();
+        if (!swRegistration) return;
+
+        const messaging = getMessaging(firebaseApp);
+        const token = await getToken(messaging, {
+          vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+          serviceWorkerRegistration: swRegistration,
+        });
+        if (token) {
+          setCurrentToken(token);
+          setIsSubscribed(true);
+        }
+      }
     } catch {
       setIsSubscribed(false);
     }
   };
 
   const subscribe = useCallback(async () => {
-    if (!isSupported) return false;
+    if (!firebaseApp) return false;
     setLoading(true);
     try {
       const perm = await Notification.requestPermission();
@@ -49,61 +77,66 @@ export function usePushNotifications() {
         return false;
       }
 
-      const res = await fetch('/api/push/vapid-public-key');
-      const { publicKey } = await res.json();
-      if (!publicKey) {
+      const swRegistration = await ensureFCMServiceWorker();
+      if (!swRegistration) {
         setLoading(false);
         return false;
       }
 
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      const messaging = getMessaging(firebaseApp);
+      const token = await getToken(messaging, {
+        vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+        serviceWorkerRegistration: swRegistration,
       });
 
-      const subJson = subscription.toJSON();
+      if (!token) {
+        setLoading(false);
+        return false;
+      }
+
       await apiRequest('/api/push/subscribe', {
         method: 'POST',
-        body: JSON.stringify({
-          endpoint: subJson.endpoint,
-          keys: subJson.keys,
-        }),
+        body: JSON.stringify({ fcmToken: token }),
       });
 
+      setCurrentToken(token);
       setIsSubscribed(true);
       setLoading(false);
       return true;
     } catch (err) {
-      console.error('Push subscription failed:', err);
-      setLoading(false);
-      return false;
-    }
-  }, [isSupported]);
-
-  const unsubscribe = useCallback(async () => {
-    setLoading(true);
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
-      if (subscription) {
-        await apiRequest('/api/push/subscribe', {
-          method: 'DELETE',
-          body: JSON.stringify({
-            endpoint: subscription.endpoint,
-          }),
-        });
-        await subscription.unsubscribe();
-      }
-      setIsSubscribed(false);
-      setLoading(false);
-      return true;
-    } catch (err) {
-      console.error('Push unsubscribe failed:', err);
+      console.error('FCM subscription failed:', err);
       setLoading(false);
       return false;
     }
   }, []);
+
+  const unsubscribe = useCallback(async () => {
+    setLoading(true);
+    try {
+      if (currentToken) {
+        await apiRequest('/api/push/subscribe', {
+          method: 'DELETE',
+          body: JSON.stringify({ fcmToken: currentToken }),
+        });
+      }
+
+      if (firebaseApp) {
+        try {
+          const messaging = getMessaging(firebaseApp);
+          await deleteToken(messaging);
+        } catch {}
+      }
+
+      setCurrentToken(null);
+      setIsSubscribed(false);
+      setLoading(false);
+      return true;
+    } catch (err) {
+      console.error('FCM unsubscribe failed:', err);
+      setLoading(false);
+      return false;
+    }
+  }, [currentToken]);
 
   const sendTestNotification = useCallback(async () => {
     try {
@@ -115,7 +148,7 @@ export function usePushNotifications() {
   }, []);
 
   return {
-    isSupported,
+    isSupported: isSupported_,
     isSubscribed,
     permission,
     loading,

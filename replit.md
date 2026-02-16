@@ -24,7 +24,7 @@ The application uses a dark theme with neon accents and a futuristic HUD-style i
     - **XP and Leveling**: Exponential growth curve across three tiers of levels (1-10, 11-50, 51-100) with increasing XP multipliers.
     - **Stat Detail Pages**: Dedicated pages for Experience, Health, Efficiency, Energy, Time, and Attention, featuring real-time data fetching, recharts visualizations, time range selectors, and AI-powered insights.
 - **Tracker Page**: Renamed from "Analytics," it includes a Milestone Analytics widget for vision goal progress and recent completions.
-- **Progressive Web App (PWA)**: Includes a manifest, service worker for offline caching and push notifications, an install prompt, and a comprehensive push notification system with VAPID keys and subscription management.
+- **Progressive Web App (PWA)**: Includes a manifest, service worker for offline caching, an install prompt, and Firebase Cloud Messaging (FCM) for push notifications with token-based subscription management.
 - **Payment Processing**: Stripe integration for subscription-based payments, managing checkout sessions, customer creation, and webhook processing.
 
 ## External Dependencies
