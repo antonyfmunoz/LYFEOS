@@ -533,17 +533,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await processOAuthResult(result);
     } catch (error: any) {
       console.error("Google login error:", error?.code, error?.message, error);
-      let errorMsg = "Could not sign in with Google. Please try again.";
-      if (error?.code === 'auth/unauthorized-domain') {
-        errorMsg = "This domain is not authorized for Google sign-in. Please add it to your Firebase authorized domains.";
-      } else if (error?.code === 'auth/internal-error') {
-        errorMsg = "Firebase configuration error. Please check your Firebase project settings.";
-      } else if (error?.code || error?.message) {
-        errorMsg = `Sign-in failed: ${error?.code || ''} ${error?.message || ''}`.trim();
-      }
+      const errorDetail = error?.code
+        ? `${error.code}: ${error.message || 'Unknown'}`
+        : error?.message || String(error);
       toast({
         title: "Login Error",
-        description: errorMsg,
+        description: `Google sign-in failed: ${errorDetail}`,
         variant: "destructive",
       });
     } finally {
@@ -558,17 +553,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await processOAuthResult(result);
     } catch (error: any) {
       console.error("Apple login error:", error?.code, error?.message, error);
-      let errorMsg = "Could not sign in with Apple. Please try again.";
-      if (error?.code === 'auth/unauthorized-domain') {
-        errorMsg = "This domain is not authorized for Apple sign-in. Please add it to your Firebase authorized domains.";
-      } else if (error?.code === 'auth/internal-error') {
-        errorMsg = "Firebase configuration error. Please check your Firebase project settings.";
-      } else if (error?.code || error?.message) {
-        errorMsg = `Sign-in failed: ${error?.code || ''} ${error?.message || ''}`.trim();
-      }
+      const errorDetail = error?.code
+        ? `${error.code}: ${error.message || 'Unknown'}`
+        : error?.message || String(error);
       toast({
         title: "Login Error",
-        description: errorMsg,
+        description: `Apple sign-in failed: ${errorDetail}`,
         variant: "destructive",
       });
     } finally {
