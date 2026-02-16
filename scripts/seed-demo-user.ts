@@ -218,7 +218,6 @@ async function seedDemoUser() {
 
   console.log('\n✅ Demo user seeded successfully!');
   console.log(`Email: ${DEMO_EMAIL}`);
-  console.log(`Password: ${DEMO_PASSWORD}`);
   console.log(`Username: ${DEMO_USERNAME}`);
 
   await pool.end();
