@@ -69,6 +69,8 @@ import { DraggableWidget, type DraggableWidgetProps } from '@/components/ui/drag
 import update from 'immutability-helper';
 import type { UserProfile as UserProfileSchema } from "@shared/schema";
 import { startThetaBeats, stopThetaBeats } from '@/lib/theta-beats';
+import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
+import { auth as firebaseAuth } from "@/lib/firebase";
 
 
 
@@ -381,6 +383,7 @@ export default function ProfilePage() {
   const [twoFactorError, setTwoFactorError] = useState('');
   const [emailCodeSent, setEmailCodeSent] = useState(false);
   const [phoneCodeSent, setPhoneCodeSent] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   
   // Fetch account data
   const { data: accountData, isLoading: isAccountLoading } = useQuery<{ email?: string; phoneNumber?: string; authProvider?: string }>({
@@ -1363,16 +1366,15 @@ export default function ProfilePage() {
                           setTwoFactorLoading(true);
                           setTwoFactorError('');
                           try {
-                            const res = await fetch('/api/auth/2fa/send-phone-code', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              credentials: 'include',
-                              body: JSON.stringify({ phoneNumber: phoneInput.trim() }),
+                            const recaptchaVerifier = new RecaptchaVerifier(firebaseAuth, 'recaptcha-container', {
+                              size: 'invisible',
                             });
-                            if (!res.ok) { const data = await res.json(); throw new Error(data.error); }
+                            const result = await signInWithPhoneNumber(firebaseAuth, phoneInput.trim(), recaptchaVerifier);
+                            setConfirmationResult(result);
                             toast({ title: "Code Sent", description: "Check your phone for the verification text." });
                           } catch (err: any) {
-                            setTwoFactorError(err.message || 'Failed to send SMS');
+                            console.error("Firebase phone auth error:", err);
+                            setTwoFactorError(err.message || 'Failed to send verification code');
                           } finally {
                             setTwoFactorLoading(false);
                           }
@@ -1399,28 +1401,32 @@ export default function ProfilePage() {
                       />
                       <button
                         onClick={async () => {
-                          if (phoneCode.length !== 6) return;
+                          if (phoneCode.length !== 6 || !confirmationResult) return;
                           setTwoFactorLoading(true);
                           setTwoFactorError('');
                           try {
-                            const res = await fetch('/api/auth/2fa/verify-phone-code', {
+                            const userCredential = await confirmationResult.confirm(phoneCode);
+                            const firebaseIdToken = await userCredential.user.getIdToken();
+                            const res = await fetch('/api/auth/2fa/verify-phone-firebase', {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
                               credentials: 'include',
-                              body: JSON.stringify({ code: phoneCode }),
+                              body: JSON.stringify({ firebaseIdToken }),
                             });
                             if (!res.ok) { const data = await res.json(); throw new Error(data.error); }
                             setPhoneCode('');
+                            setConfirmationResult(null);
                             setTwoFactorStep('complete');
                             refetchTwoFactorStatus();
                             toast({ title: "Phone Verified", description: "You can now enable two-factor authentication." });
                           } catch (err: any) {
-                            setTwoFactorError(err.message || 'Invalid code');
+                            console.error("Firebase verify error:", err);
+                            setTwoFactorError(err.message || 'Invalid verification code');
                           } finally {
                             setTwoFactorLoading(false);
                           }
                         }}
-                        disabled={phoneCode.length !== 6 || twoFactorLoading}
+                        disabled={phoneCode.length !== 6 || twoFactorLoading || !confirmationResult}
                         className="text-xs font-mono px-3 py-2 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center gap-1"
                       >
                         {twoFactorLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Verify'}
@@ -1428,8 +1434,9 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
+                  <div id="recaptcha-container"></div>
                   <button
-                    onClick={() => { setTwoFactorStep('idle'); setPhoneCode(''); setPhoneInput(''); setPhoneCodeSent(false); setTwoFactorError(''); }}
+                    onClick={() => { setTwoFactorStep('idle'); setPhoneCode(''); setPhoneInput(''); setPhoneCodeSent(false); setTwoFactorError(''); setConfirmationResult(null); }}
                     className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1"
                   >
                     <X className="h-3 w-3" />Cancel

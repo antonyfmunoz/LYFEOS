@@ -4,8 +4,9 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { storage } from "../storage";
 import { logger, formatLocalDate } from "../utils";
-import { sendVerificationEmail, sendPasswordResetEmail, send2FAVerificationEmail, send2FAVerificationSMS } from "../email";
+import { sendVerificationEmail, sendPasswordResetEmail, send2FAVerificationEmail } from "../email";
 import { isAuthenticated } from "./middleware";
+import { verifyFirebaseIdToken } from "../firebaseAdmin";
 import type { InsertUser } from "@shared/schema";
 
 declare module "express-session" {
@@ -726,59 +727,27 @@ export function registerAuthRoutes(app: Express): void {
     res.json({ message: "Email verified successfully" });
   });
 
-  app.post("/api/auth/2fa/send-phone-code", isAuthenticated, async (req, res) => {
-    const { phoneNumber } = req.body;
-    if (!phoneNumber || typeof phoneNumber !== 'string') {
-      return res.status(400).json({ error: "Phone number is required" });
+  app.post("/api/auth/2fa/verify-phone-firebase", isAuthenticated, async (req, res) => {
+    const { firebaseIdToken } = req.body;
+    if (!firebaseIdToken || typeof firebaseIdToken !== 'string') {
+      return res.status(400).json({ error: "Firebase ID token is required" });
     }
 
-    const cleaned = phoneNumber.replace(/[^\d+]/g, '');
-    if (cleaned.length < 10) {
-      return res.status(400).json({ error: "Invalid phone number" });
+    const decoded = await verifyFirebaseIdToken(firebaseIdToken);
+    if (!decoded) {
+      return res.status(401).json({ error: "Invalid or expired Firebase token" });
     }
 
-    const user = await storage.getUser(req.session.userId!);
-    if (!user) return res.status(404).json({ error: "User not found" });
-
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const hashedCode = crypto.createHash('sha256').update(code).digest('hex');
-    const expiry = new Date(Date.now() + 10 * 60 * 1000);
-
-    await storage.updateUser(user.id, {
-      phoneNumber: cleaned,
-      twoFactorPhoneCode: hashedCode,
-      twoFactorPhoneExpiry: expiry,
-    } as any);
-
-    const sent = await send2FAVerificationSMS(cleaned, code);
-    if (!sent) return res.status(500).json({ error: "Failed to send SMS. Twilio may not be configured yet." });
-
-    res.json({ message: "Verification code sent to your phone" });
-  });
-
-  app.post("/api/auth/2fa/verify-phone-code", isAuthenticated, async (req, res) => {
-    const { code } = req.body;
-    if (!code || typeof code !== 'string' || code.length !== 6) {
-      return res.status(400).json({ error: "Invalid code format" });
+    const phoneNumber = decoded.phone_number;
+    if (!phoneNumber) {
+      return res.status(400).json({ error: "No phone number found in Firebase token" });
     }
 
     const user = await storage.getUser(req.session.userId!);
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    if (!user.twoFactorPhoneCode || !user.twoFactorPhoneExpiry) {
-      return res.status(400).json({ error: "No verification code pending" });
-    }
-
-    if (new Date() > new Date(user.twoFactorPhoneExpiry)) {
-      return res.status(400).json({ error: "Verification code has expired" });
-    }
-
-    const hashedCode = crypto.createHash('sha256').update(code).digest('hex');
-    if (hashedCode !== user.twoFactorPhoneCode) {
-      return res.status(400).json({ error: "Invalid verification code" });
-    }
-
     await storage.updateUser(user.id, {
+      phoneNumber,
       phoneVerified: true,
       twoFactorPhoneCode: null,
       twoFactorPhoneExpiry: null,
