@@ -24,6 +24,10 @@ const appleProvider = new OAuthProvider("apple.com");
 appleProvider.addScope("email");
 appleProvider.addScope("name");
 
+function isMobileDevice(): boolean {
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
+
 async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, providerName: string): Promise<UserCredential | null> {
   if (!import.meta.env.VITE_FIREBASE_API_KEY) {
     toast({
@@ -31,6 +35,13 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
       description: `Firebase API keys are not set. Please configure Firebase to use ${providerName} Sign-in.`,
       variant: "destructive"
     });
+    return null;
+  }
+
+  if (isMobileDevice()) {
+    console.log(`Using redirect flow for ${providerName} on mobile`);
+    localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
+    await signInWithRedirect(auth, provider);
     return null;
   }
 
@@ -47,9 +58,10 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
     if (
       error.code === 'auth/popup-blocked' ||
       error.code === 'auth/cancelled-popup-request' ||
-      error.code === 'auth/operation-not-supported-in-this-environment'
+      error.code === 'auth/operation-not-supported-in-this-environment' ||
+      error?.message?.includes('did not match the expected pattern')
     ) {
-      console.log(`Popup blocked, falling back to redirect for ${providerName}`);
+      console.log(`Popup failed, falling back to redirect for ${providerName}`);
       localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
       await signInWithRedirect(auth, provider);
       return null;
