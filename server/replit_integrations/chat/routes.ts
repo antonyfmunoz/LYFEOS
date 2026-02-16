@@ -1334,15 +1334,13 @@ export function registerChatRoutes(app: Express): void {
         relevantKnowledge,
       });
 
-      // Collect image IDs from chat-attached images AND from user data (missions, goals, logs)
       const allImageIds = new Set<number>();
+      const hasDirectAttachments = Array.isArray(imageIds) && imageIds.length > 0;
       
-      // 1. Images directly attached to this chat message
-      if (Array.isArray(imageIds)) {
+      if (hasDirectAttachments) {
         imageIds.forEach((id: number) => allImageIds.add(id));
       }
       
-      // 2. Extract inline image references from user data when the message references images/visual content
       const contentLower = content.toLowerCase();
       const imageContextTriggers = [
         "image", "photo", "picture", "screenshot", "look at", "see",
@@ -1352,7 +1350,7 @@ export function registerChatRoutes(app: Express): void {
         "desk", "room", "receipt", "document", "note", "journal",
         "log", "mission", "goal", "description"
       ];
-      const shouldExtractDataImages = imageContextTriggers.some(t => contentLower.includes(t));
+      const shouldExtractDataImages = !hasDirectAttachments && imageContextTriggers.some(t => contentLower.includes(t));
       
       if (shouldExtractDataImages) {
         const inlineImageRegex = /\/api\/inline-upload\/(\d+)/g;
@@ -1499,10 +1497,7 @@ export function registerChatRoutes(app: Express): void {
         );
         fullResponse = textBlocks.map(b => b.text).join("");
 
-        const chunks = fullResponse.match(/.{1,50}/g) || [fullResponse];
-        for (const chunk of chunks) {
-          res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
-        }
+        res.write(`data: ${JSON.stringify({ content: fullResponse })}\n\n`);
 
         break;
       }

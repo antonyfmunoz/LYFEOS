@@ -526,7 +526,7 @@ export default function AIPage() {
                           <div className="text-xs text-primary mb-1 font-semibold">{aiCompanionName}</div>
                         )}
                         {message.sender === 'ai' ? (
-                          <div className="text-sm prose prose-sm prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-headings:text-foreground prose-strong:text-foreground">
+                          <div className="text-sm prose prose-sm prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-headings:my-3 prose-headings:text-foreground prose-strong:text-foreground prose-hr:my-3">
                             <ReactMarkdown>{message.content}</ReactMarkdown>
                           </div>
                         ) : (
