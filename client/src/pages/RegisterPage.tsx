@@ -148,7 +148,7 @@ export default function RegisterPage() {
       <div className="flex-1 flex items-center w-full justify-center">
       <div className="w-full max-w-md rounded-xl p-6 border backdrop-blur-md animate-fadeIn"
            style={{ backgroundColor: "hsla(0, 0%, 11%, 0.7)", boxShadow: `0 0 20px ${accent?.glow || 'rgba(255,255,255,0.08)'}`, borderColor: accent?.border20 || 'rgba(255,255,255,0.2)' }}>
-        <h2 className="text-xl font-orbitron text-center mb-6" style={{ color: accent?.color || 'white' }}>Create Your LYFEOS Account</h2>
+        <h2 className="text-xl font-orbitron text-center mb-6" style={{ color: accent?.color || 'white' }}>Create Account</h2>
         
         <div className="space-y-2.5 mb-5">
           <button
