@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { chatStorage } from "./storage";
 import { storage } from "../../storage";
 import * as cheerio from 'cheerio';
+import { detectRelevantLayers, searchKnowledgeBase, getLayerById, KNOWLEDGE_LAYERS } from "./knowledge-base";
 
 const anthropic = new Anthropic({
   apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
@@ -44,6 +45,11 @@ function classifyComplexity(message: string): "simple" | "complex" {
     "create a plan", "help me figure", "what's the best", "how can i",
     "struggling with", "having trouble", "can't decide", "overwhelmed",
     "long-term", "big picture", "reflect", "assessment", "feedback",
+    "protocol", "technique", "framework", "method", "practice", "routine",
+    "supplement", "nutrition", "exercise", "workout", "sleep", "anxiety",
+    "depression", "relationship", "attachment", "financial", "investing",
+    "meditation", "breathwork", "cold exposure", "stoicism", "cbt",
+    "polyvagal", "cognitive distortion", "habit", "discipline", "recovery",
   ];
 
   const complexCount = complexIndicators.filter(ind => lower.includes(ind)).length;
@@ -116,10 +122,11 @@ interface NOVAContext {
   calendarEvents?: any[];
   userCategories?: any[];
   conversationHistory?: { role: string; content: string; conversationTitle?: string; createdAt: Date }[];
+  relevantKnowledge?: string;
 }
 
 function buildSystemPrompt(ctx: NOVAContext): string {
-  const { user, stats, profile, missions, dailyLogs, visionGoals, calendarEvents, userCategories, conversationHistory } = ctx;
+  const { user, stats, profile, missions, dailyLogs, visionGoals, calendarEvents, userCategories, conversationHistory, relevantKnowledge } = ctx;
 
   const activeMissions = missions.filter(m => !m.completed && !m.deletedAt);
   const completedMissions = missions.filter(m => m.completed && !m.deletedAt);
@@ -277,6 +284,35 @@ AUTONOMOUS AGENT CAPABILITIES:
 - Chain multiple tools together autonomously: for example, research a topic online, then create a vision goal, then break it into missions -- all in one interaction
 - You have up to 10 tool iterations per request, so tackle complex multi-step requests end-to-end without asking the user to repeat themselves
 
+LIFE OPTIMIZATION KNOWLEDGE BASE:
+You have access to a comprehensive Life OS Knowledge Base via the lookup_knowledge_base tool, covering 16 domains:
+1. Philosophy (Stoicism, Existentialism, Buddhism, Taoism)
+2. Sleep Science (sleep architecture, optimization protocols, supplements)
+3. Exercise Science (5 pillars of fitness, training templates, progressive overload)
+4. Nutrition (macros, micros, intermittent fasting, hydration)
+5. Psychology & Emotional Mastery (CBT, Polyvagal Theory, IFS, cognitive distortions)
+6. Relationships & Intimacy (Attachment Theory, EFT, Gottman Method, Love Languages)
+7. Financial Optimization (investment hierarchy, three-fund portfolio, behavioral finance)
+8. Learning & Skill Acquisition (spaced repetition, deliberate practice, Feynman technique)
+9. Productivity & Focus (Deep Work, attention management, digital minimalism)
+10. Crisis Management (suicide prevention resources, mental health crisis protocols)
+11. Modern Challenges (AI/future of work, information literacy, climate anxiety)
+12. Breathwork & Wim Hof Method (breathing protocols, cold exposure progression)
+13. Advanced Nutrition (metabolic flexibility, electrolytes, anti-nutrients)
+14. Functional Fitness (7 movement patterns, combat training, mobility)
+15. Biomarkers & Testing (cardiovascular, metabolic, hormones, testing schedules)
+16. Supplementation (foundational, targeted, anti-aging tiers)
+
+KNOWLEDGE BASE USAGE RULES:
+- When the Player asks about health, psychology, relationships, finance, learning, productivity, or any life optimization topic, use lookup_knowledge_base to retrieve evidence-based protocols and frameworks BEFORE giving advice
+- Synthesize across multiple domains when the Player's situation spans them (e.g., stress management might draw from sleep, psychology, breathwork, and nutrition)
+- Adapt depth based on the Player's level -- beginners get simple actionable steps, advanced users get deeper protocol details
+- Provide actionable protocols, not just theory -- give them specific steps, dosages, timeframes, and techniques
+- For medical, financial, or legal topics, always add a disclaimer to consult a professional
+- For crisis situations (suicidal ideation, self-harm), IMMEDIATELY provide crisis resources (988 Lifeline, Crisis Text Line 741741) before anything else
+- When the Player asks "why" something works, reference the underlying science or framework from the knowledge base
+- You can chain lookup_knowledge_base with other tools: for example, look up a sleep protocol, then create missions to implement it
+
 When creating missions, use sensible defaults:
 - category: ALWAYS choose the most fitting category from: 'work', 'health', 'fitness', 'finance', 'learning', 'creative', 'social', 'personal', 'mindset', 'career', 'nutrition', 'recovery', 'planning', 'spiritual', 'household'${customCats ? `, or custom categories: ${customCats}` : ''}. Never use 'general'. Default to 'personal' if unclear.
 - difficulty: "D" (easiest) unless specified. Ranks are S, A, B, C, D.
@@ -299,7 +335,7 @@ When creating missions, use sensible defaults:
 === PREVIOUS CONVERSATION HISTORY ===
 ${conversationHistory && conversationHistory.length > 0 
   ? `You have had previous conversations with this Player. Maintain continuity -- reference past insights, commitments, and patterns:\n${conversationHistory.slice(-100).map(m => `[${m.conversationTitle || 'Chat'}] ${m.role === 'user' ? 'Player' : 'You'}: ${m.content.substring(0, 500)}${m.content.length > 500 ? '...' : ''}`).join('\n')}`
-  : 'No previous conversation history yet.'}`;
+  : 'No previous conversation history yet.'}${relevantKnowledge ? `\n\n${relevantKnowledge}` : ''}`;
 }
 
 const tools: Anthropic.Messages.Tool[] = [
@@ -642,6 +678,18 @@ const tools: Anthropic.Messages.Tool[] = [
         mission_id: { type: "number", description: "The ID of the mission to uncomplete" }
       },
       required: ["mission_id"]
+    }
+  },
+  {
+    name: "lookup_knowledge_base",
+    description: "Search the Life OS Knowledge Base for evidence-based protocols, frameworks, and guidance across health, psychology, relationships, finance, productivity, breathwork, nutrition, fitness, supplementation, and more. Use this when the user asks for advice, protocols, techniques, or strategies in any life optimization domain. Returns relevant excerpts from the knowledge base.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        query: { type: "string", description: "The topic or question to search for in the knowledge base (e.g., 'sleep optimization protocol', 'CBT techniques for anxiety', 'attachment styles in relationships', 'Wim Hof breathing method')" },
+        layer_id: { type: "string", description: "Optional: directly access a specific knowledge layer by ID. Available layers: philosophy, health_sleep, health_exercise, health_nutrition, psychology, relationships, finance, learning, productivity, crisis, modern_challenges, breathwork, nutrition_advanced, fitness, biomarkers, supplementation" }
+      },
+      required: ["query"]
     }
   }
 ];
@@ -1118,6 +1166,31 @@ Write a 2-3 paragraph affirmation in second person ("You are..."). Make it power
         });
       }
 
+      case "lookup_knowledge_base": {
+        if (input.layer_id) {
+          const layer = getLayerById(input.layer_id);
+          if (!layer) {
+            return JSON.stringify({ error: `Unknown knowledge layer: ${input.layer_id}. Available: ${KNOWLEDGE_LAYERS.map(l => l.id).join(', ')}` });
+          }
+          return JSON.stringify({ 
+            success: true, 
+            layerId: layer.id,
+            layerName: layer.name,
+            content: layer.content
+          });
+        }
+        
+        const results = searchKnowledgeBase(input.query);
+        if (results.length === 0) {
+          return JSON.stringify({ success: true, results: [], message: `No knowledge base entries found for "${input.query}". Try broader terms.` });
+        }
+        return JSON.stringify({ 
+          success: true, 
+          results: results.slice(0, 5),
+          message: `Found ${results.length} relevant knowledge entries.`
+        });
+      }
+
       default:
         return JSON.stringify({ error: `Unknown tool: ${toolName}` });
     }
@@ -1238,6 +1311,12 @@ export function registerChatRoutes(app: Express): void {
 
       const otherConversationMessages = allConversationMessages.filter(m => m.conversationId !== conversationId);
 
+      const detectedLayers = detectRelevantLayers(content);
+      let relevantKnowledge = "";
+      if (detectedLayers.length > 0) {
+        relevantKnowledge = `=== CONTEXTUAL KNOWLEDGE (auto-detected from Player's message) ===\nThe following evidence-based knowledge is relevant to the Player's current query. Use this to ground your response in proven frameworks and protocols. You may also use lookup_knowledge_base for deeper details.\n\n${detectedLayers.map(l => `--- ${l.name} ---\n${l.content}`).join('\n\n')}`;
+      }
+
       const systemPrompt = buildSystemPrompt({
         user, stats, profile,
         missions: allMissions,
@@ -1246,6 +1325,7 @@ export function registerChatRoutes(app: Express): void {
         calendarEvents,
         userCategories: categories,
         conversationHistory: otherConversationMessages,
+        relevantKnowledge,
       });
 
       res.setHeader("Content-Type", "text/event-stream");
@@ -1574,6 +1654,12 @@ Return ONLY the JSON, no other text.`;
         await chatStorage.createMessage(dbConversationId, "user", `[Voice] ${transcript}`);
       }
 
+      const voiceDetectedLayers = detectRelevantLayers(transcript);
+      let voiceKnowledge = "";
+      if (voiceDetectedLayers.length > 0) {
+        voiceKnowledge = `=== CONTEXTUAL KNOWLEDGE (auto-detected from Player's message) ===\nThe following evidence-based knowledge is relevant to the Player's current query. Use this to ground your response in proven frameworks and protocols.\n\n${voiceDetectedLayers.map(l => `--- ${l.name} ---\n${l.content}`).join('\n\n')}`;
+      }
+
       const voiceSystemPrompt = buildSystemPrompt({
         user, stats, profile,
         missions: [...(missions || []), ...archivedMissions],
@@ -1581,6 +1667,7 @@ Return ONLY the JSON, no other text.`;
         visionGoals: visionGoalResults.flat(),
         calendarEvents,
         userCategories: categories,
+        relevantKnowledge: voiceKnowledge,
       });
 
       const apiMessages: any[] = [
