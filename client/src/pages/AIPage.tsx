@@ -50,34 +50,6 @@ export default function AIPage() {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const chatImageInputRef = useRef<HTMLInputElement>(null);
 
-  const handleChatImageUpload = useCallback(async (file: File) => {
-    if (!file.type.startsWith('image/')) return;
-    setIsUploadingImage(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const response = await fetch('/api/inline-upload', {
-        method: 'POST',
-        credentials: 'include',
-        body: formData,
-      });
-      if (!response.ok) throw new Error('Upload failed');
-      const data = await response.json();
-      setAttachedImageIds(prev => [...prev, data.id]);
-      setAttachedImagePreviews(prev => [...prev, { id: data.id, name: file.name }]);
-    } catch (error) {
-      toast({ title: 'Failed to upload image', variant: 'destructive' });
-    } finally {
-      setIsUploadingImage(false);
-      if (chatImageInputRef.current) chatImageInputRef.current.value = '';
-    }
-  }, [toast]);
-
-  const removeAttachedImage = (id: number) => {
-    setAttachedImageIds(prev => prev.filter(i => i !== id));
-    setAttachedImagePreviews(prev => prev.filter(p => p.id !== id));
-  };
-
   const AI_TOUR_STEPS: TutorialStep[] = [
     {
       target: "[data-tour='ai-header']",
@@ -125,6 +97,34 @@ export default function AIPage() {
   const editChatInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+
+  const handleChatImageUpload = useCallback(async (file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    setIsUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch('/api/inline-upload', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+      if (!response.ok) throw new Error('Upload failed');
+      const data = await response.json();
+      setAttachedImageIds(prev => [...prev, data.id]);
+      setAttachedImagePreviews(prev => [...prev, { id: data.id, name: file.name }]);
+    } catch (error) {
+      toast({ title: 'Failed to upload image', variant: 'destructive' });
+    } finally {
+      setIsUploadingImage(false);
+      if (chatImageInputRef.current) chatImageInputRef.current.value = '';
+    }
+  }, [toast]);
+
+  const removeAttachedImage = (id: number) => {
+    setAttachedImageIds(prev => prev.filter(i => i !== id));
+    setAttachedImagePreviews(prev => prev.filter(p => p.id !== id));
+  };
 
   const toggleTTS = useCallback((messageId: string, text: string) => {
     if (speakingMessageId === messageId) {
