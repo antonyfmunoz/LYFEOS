@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextArea } from '@/components/ui/rich-text-toolbar';
 import { toast } from '@/hooks/use-toast';
 import {
   Card,
@@ -860,10 +860,10 @@ export default function KanbanBoardPage() {
             
             <div className="space-y-2">
               <label htmlFor="description">Description</label>
-              <Textarea
+              <RichTextArea
                 id="description"
                 value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                onChange={(val) => setFormData({...formData, description: val})}
                 placeholder="Task description"
                 rows={3}
               />
@@ -954,10 +954,10 @@ export default function KanbanBoardPage() {
             
             <div className="space-y-2">
               <label htmlFor="edit-description">Description</label>
-              <Textarea
+              <RichTextArea
                 id="edit-description"
                 value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                onChange={(val) => setFormData({...formData, description: val})}
                 placeholder="Task description"
                 rows={3}
               />
@@ -1050,11 +1050,11 @@ export default function KanbanBoardPage() {
             
             <div className="space-y-2">
               <label htmlFor="board-description">Description</label>
-              <Textarea
+              <RichTextArea
                 id="board-description"
                 value={activeBoard.description || ''}
-                onChange={(e) => 
-                  boardId && updateKanbanBoard(boardId, { ...activeBoard, description: e.target.value })
+                onChange={(val) => 
+                  boardId && updateKanbanBoard(boardId, { ...activeBoard, description: val })
                 }
                 placeholder="Board description"
                 rows={3}

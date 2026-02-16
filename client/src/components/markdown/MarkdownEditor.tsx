@@ -6,6 +6,7 @@ import rehypeKatex from 'rehype-katex';
 import { Button } from '@/components/ui/button';
 import { PenLine, Eye, Save, CheckSquare } from 'lucide-react';
 import { useLocation } from 'wouter';
+import { RichTextToolbar } from '@/components/ui/rich-text-toolbar';
 import './markdown-styles.css';
 
 interface MarkdownEditorProps {
@@ -321,7 +322,55 @@ export default function MarkdownEditor({
     }
   };
   
-  // Auto-focus on textarea when entering edit mode
+  const handleInsertAtCursor = useCallback((text: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      const newContent = editableContent + text;
+      setEditableContent(newContent);
+      onChange(newContent);
+      setIsDirty(true);
+      return;
+    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const newContent = editableContent.substring(0, start) + text + editableContent.substring(end);
+    setEditableContent(newContent);
+    onChange(newContent);
+    setIsDirty(true);
+    requestAnimationFrame(() => {
+      const newPos = start + text.length;
+      textarea.setSelectionRange(newPos, newPos);
+      textarea.focus();
+    });
+  }, [editableContent, onChange]);
+
+  const handlePaste = useCallback(async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (!file) continue;
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+          const response = await fetch('/api/inline-upload', {
+            method: 'POST',
+            body: formData,
+            credentials: 'include',
+          });
+          if (response.ok) {
+            const data = await response.json();
+            handleInsertAtCursor(`\n${data.markdown}\n`);
+          }
+        } catch {}
+        break;
+      }
+    }
+  }, [handleInsertAtCursor]);
+
   useEffect(() => {
     if (isEditing && textareaRef.current) {
       textareaRef.current.focus();
@@ -369,15 +418,23 @@ export default function MarkdownEditor({
       <div className="relative">
         <div className="border border-primary/30 rounded-md overflow-hidden bg-background">
           {isEditing ? (
-            <textarea
-              ref={textareaRef}
-              value={editableContent}
-              onChange={handleContentChange}
-              onKeyDown={handleKeyDown}
-              placeholder={placeholder}
-              className="w-full h-[500px] p-4 bg-transparent resize-vertical border-none outline-none placeholder:text-muted-foreground/50 dark:text-[#D6F4FF] light:text-slate-700 text-base"
-              disabled={readOnly}
-            />
+            <div className="relative">
+              <textarea
+                ref={textareaRef}
+                value={editableContent}
+                onChange={handleContentChange}
+                onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
+                placeholder={placeholder}
+                className="w-full h-[500px] p-4 bg-transparent resize-vertical border-none outline-none placeholder:text-muted-foreground/50 dark:text-[#D6F4FF] light:text-slate-700 text-base"
+                disabled={readOnly}
+              />
+              {!readOnly && (
+                <div className="px-2 pb-2 border-t border-slate-700/30">
+                  <RichTextToolbar onInsert={handleInsertAtCursor} compact />
+                </div>
+              )}
+            </div>
           ) : (
             <div 
               className="markdown-preview p-4 prose prose-invert prose-sm max-w-none overflow-auto"

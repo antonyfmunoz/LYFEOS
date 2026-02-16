@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Plus, X, Check, Clock, Calendar, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextArea } from "@/components/ui/rich-text-toolbar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useLYFEOS } from "@/lib/context";
@@ -144,11 +144,12 @@ export function QuickMissionFAB() {
                 {/* Description */}
                 <div>
                   <label className="text-xs text-muted-foreground block mb-1">Description</label>
-                  <Textarea
+                  <RichTextArea
                     value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    onChange={setDescription}
                     placeholder="Describe your mission..."
-                    className="bg-card/30 border-primary/30 focus-visible:ring-primary/30 resize-none h-[80px]"
+                    textareaClassName="bg-card/30 border-primary/30 focus-visible:ring-primary/30 resize-none h-[80px]"
+                    compact
                   />
                 </div>
                 

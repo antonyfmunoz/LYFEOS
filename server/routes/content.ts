@@ -2061,20 +2061,99 @@ export function registerContentRoutes(app: Express): void {
     }
   });
 
-  // Configure multer for file upload
   const multerStorage = multer.memoryStorage();
   const upload = multer({ 
     storage: multerStorage,
     limits: {
-      fileSize: 100 * 1024 * 1024, // 100MB limit
+      fileSize: 100 * 1024 * 1024,
     },
     fileFilter: (req: Express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-      // Only allow images and videos
       if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
         cb(null, true);
       } else {
         cb(new Error('Only image and video files are allowed'));
       }
+    }
+  });
+
+  const inlineUpload = multer({
+    storage: multerStorage,
+    limits: {
+      fileSize: 10 * 1024 * 1024,
+    },
+    fileFilter: (req: Express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+      if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only image files are allowed'));
+      }
+    }
+  });
+
+  app.post("/api/inline-upload", isAuthenticated, inlineUpload.single('file'), async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId as number;
+      const file = req.file as Express.Multer.File;
+
+      if (!file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const fileData = file.buffer.toString('base64');
+      const dataUrl = `data:${file.mimetype};base64,${fileData}`;
+
+      const itemData: InsertMediaItem = {
+        userId,
+        fileName: file.originalname,
+        fileType: 'image',
+        mimeType: file.mimetype,
+        fileData: dataUrl,
+        thumbnailUrl: dataUrl,
+        title: file.originalname,
+        size: file.size,
+        isFavorite: false,
+        tags: ['inline-upload'],
+      };
+
+      const mediaItem = await storage.createMediaItem(itemData);
+      res.status(201).json({ 
+        id: mediaItem.id, 
+        url: `/api/inline-upload/${mediaItem.id}`,
+        markdown: `![${file.originalname}](/api/inline-upload/${mediaItem.id})`
+      });
+    } catch (error) {
+      logger.error("Failed to upload inline image:", error);
+      res.status(500).json({ error: "Failed to upload image" });
+    }
+  });
+
+  app.get("/api/inline-upload/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID" });
+      }
+
+      const userId = req.session.userId as number;
+      const mediaItem = await storage.getMediaItem(id);
+      if (!mediaItem || !mediaItem.fileData || mediaItem.userId !== userId) {
+        return res.status(404).json({ error: "Image not found" });
+      }
+
+      const matches = mediaItem.fileData.match(/^data:(.+);base64,(.+)$/);
+      if (!matches) {
+        return res.status(500).json({ error: "Invalid image data" });
+      }
+
+      const mimeType = matches[1];
+      const buffer = Buffer.from(matches[2], 'base64');
+
+      res.set('Content-Type', mimeType);
+      res.set('Cache-Control', 'private, max-age=31536000');
+      res.send(buffer);
+    } catch (error) {
+      logger.error("Failed to serve inline image:", error);
+      res.status(500).json({ error: "Failed to serve image" });
     }
   });
 

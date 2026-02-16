@@ -13,7 +13,7 @@ import QuestItem, { QUEST_DND_TYPE, DragItem } from "../components/dashboard/Que
 import { usePageTitle } from "@/hooks/use-page-title";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextArea } from "@/components/ui/rich-text-toolbar";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -735,12 +735,12 @@ export default function QuestsPage() {
               
               <div className="space-y-2">
                 <Label htmlFor="create-description">Description <span className="text-primary">*</span></Label>
-                <Textarea
+                <RichTextArea
                   id="create-description"
                   placeholder="What needs to be done?"
                   value={createFormData.description}
-                  onChange={(e) => setCreateFormData(prev => ({ ...prev, description: e.target.value }))}
-                  className="bg-background/50 border-primary/30 min-h-[80px]"
+                  onChange={(val) => setCreateFormData(prev => ({ ...prev, description: val }))}
+                  textareaClassName="bg-background/50 border-primary/30 min-h-[80px]"
                 />
               </div>
 
@@ -1125,12 +1125,12 @@ export default function QuestsPage() {
             
             <div className="space-y-2">
               <Label htmlFor="edit-description">Description</Label>
-              <Textarea
+              <RichTextArea
                 id="edit-description"
                 placeholder="What needs to be done?"
                 value={editFormData.description}
-                onChange={(e) => setEditFormData(prev => ({ ...prev, description: e.target.value }))}
-                className="bg-background/50 border-primary/30 min-h-[80px]"
+                onChange={(val) => setEditFormData(prev => ({ ...prev, description: val }))}
+                textareaClassName="bg-background/50 border-primary/30 min-h-[80px]"
               />
             </div>
 

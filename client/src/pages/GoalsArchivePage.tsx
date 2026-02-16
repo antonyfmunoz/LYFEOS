@@ -8,7 +8,7 @@ import { useWidgetState } from "@/hooks/use-widget-state";
 import { ArrowLeft, Eye, Compass, Flame, Target, Milestone, Check, Trash2, Edit2, Loader2, Info, GripVertical, Undo2, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextArea } from "@/components/ui/rich-text-toolbar";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import {
@@ -1028,12 +1028,12 @@ export default function GoalsArchivePage() {
 
       <div className="space-y-2">
         <Label htmlFor="goal-description">Description</Label>
-        <Textarea
+        <RichTextArea
           id="goal-description"
           placeholder="What does achieving this goal look like?"
           value={formData.description}
-          onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-          className="bg-background/50 border-primary/30 min-h-[80px]"
+          onChange={(val) => setFormData(prev => ({ ...prev, description: val }))}
+          textareaClassName="bg-background/50 border-primary/30 min-h-[80px]"
         />
       </div>
 

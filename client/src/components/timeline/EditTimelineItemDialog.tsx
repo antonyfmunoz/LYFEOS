@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextArea } from "@/components/ui/rich-text-toolbar";
 
 // Define timeline item type (same as in the parent component)
 type TimelineItemType = 'mission' | 'quest' | 'event' | 'achievement' | 'chat' | 'life' | 'journal' | 'ritual' | 'knowledge' | 'goal';
@@ -138,12 +138,13 @@ const EditTimelineItemDialog: React.FC<EditTimelineItemDialogProps> = ({
             <Label htmlFor="description" className="text-right mt-2">
               Description
             </Label>
-            <Textarea
+            <RichTextArea
               id="description"
               name="description"
               value={formData.description}
-              onChange={handleChange}
-              className="col-span-3 min-h-[80px] bg-background/50 border-primary/30 focus:border-primary/60 focus-visible:ring-1 focus-visible:ring-primary/30"
+              onChange={(val) => setFormData(prev => ({ ...prev, description: val }))}
+              textareaClassName="col-span-3 min-h-[80px] bg-background/50 border-primary/30 focus:border-primary/60 focus-visible:ring-1 focus-visible:ring-primary/30"
+              className="col-span-3"
             />
           </div>
           
@@ -152,12 +153,13 @@ const EditTimelineItemDialog: React.FC<EditTimelineItemDialogProps> = ({
               <Label htmlFor="content" className="text-right mt-2">
                 Content
               </Label>
-              <Textarea
+              <RichTextArea
                 id="content"
                 name="content"
                 value={formData.content}
-                onChange={handleChange}
-                className="col-span-3 min-h-[120px] bg-background/50 border-primary/30 focus:border-primary/60 focus-visible:ring-1 focus-visible:ring-primary/30"
+                onChange={(val) => setFormData(prev => ({ ...prev, content: val }))}
+                textareaClassName="col-span-3 min-h-[120px] bg-background/50 border-primary/30 focus:border-primary/60 focus-visible:ring-1 focus-visible:ring-primary/30"
+                className="col-span-3"
               />
             </div>
           )}

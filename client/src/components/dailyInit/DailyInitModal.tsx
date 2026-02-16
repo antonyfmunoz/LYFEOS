@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextArea } from "@/components/ui/rich-text-toolbar";
 import { Sparkles, CheckCircle2, Star, Edit2, X, Save, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { useTheme } from "@/lib/themeContext";
@@ -429,11 +429,11 @@ export function DailyInitModal() {
                       onChange={(e) => updateBoost(boost.id, 'title', e.target.value)}
                       className="w-full mb-2"
                     />
-                    <Textarea
+                    <RichTextArea
                       placeholder="Boost description"
                       value={boost.description}
-                      onChange={(e) => updateBoost(boost.id, 'description', e.target.value)}
-                      className="w-full h-20 resize-none"
+                      onChange={(val) => updateBoost(boost.id, 'description', val)}
+                      textareaClassName="w-full h-20 resize-none"
                     />
                     <div className="flex justify-between items-center pt-1">
                       <Button 
@@ -510,11 +510,11 @@ export function DailyInitModal() {
                 value={newBoostTitle}
                 onChange={(e) => setNewBoostTitle(e.target.value)}
               />
-              <Textarea
+              <RichTextArea
                 placeholder="Description (optional)"
                 value={newBoostDescription}
-                onChange={(e) => setNewBoostDescription(e.target.value)}
-                className="h-16 resize-none"
+                onChange={setNewBoostDescription}
+                textareaClassName="h-16 resize-none"
               />
               <Button 
                 className="w-full" 

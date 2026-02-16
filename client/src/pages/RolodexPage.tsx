@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { RichTextArea } from '@/components/ui/rich-text-toolbar';
 
 const CATEGORY_OPTIONS = ['personal', 'work', 'family', 'friend', 'mentor', 'client'];
 const CATEGORY_COLORS: Record<string, string> = {
@@ -1025,10 +1026,10 @@ export default function RolodexPage() {
 
                 <div className="mt-3">
                   <label className={labelClass}>Notes</label>
-                  <textarea
+                  <RichTextArea
                     value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    className={cn(inputClass, "min-h-[80px] resize-y")}
+                    onChange={(val) => setFormData({ ...formData, notes: val })}
+                    textareaClassName={cn(inputClass, "min-h-[80px] resize-y")}
                     placeholder="Additional notes..."
                     rows={3}
                   />
