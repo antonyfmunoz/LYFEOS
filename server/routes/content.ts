@@ -162,11 +162,15 @@ export function registerContentRoutes(app: Express): void {
         return res.status(403).json({ error: "Not authorized to update this event" });
       }
       
-      const eventUpdate = req.body;
+      const updateSchema = insertCalendarEventSchema.partial().omit({ userId: true });
+      const eventUpdate = updateSchema.parse(req.body);
       const updatedEvent = await storage.updateEvent(eventId, eventUpdate);
       
       return res.status(200).json({ event: updatedEvent });
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
       return res.status(500).json({ error: "Internal server error" });
     }
   });

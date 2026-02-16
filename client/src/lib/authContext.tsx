@@ -132,11 +132,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       console.log("Attempting to login with:", identifier);
       
-      // Ensure identifier and password are properly trimmed
       const trimmedIdentifier = identifier.trim();
-      const trimmedPassword = password.trim();
       
-      if (!trimmedIdentifier || !trimmedPassword) {
+      if (!trimmedIdentifier || !password) {
         throw new Error("Username, email, or phone number and password are required");
       }
       
@@ -148,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
         body: JSON.stringify({ 
           identifier: trimmedIdentifier, 
-          password: trimmedPassword 
+          password: password 
         }),
         credentials: "include" // Important for maintaining session cookies
       });
@@ -243,9 +241,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("Attempting to register with email:", email);
       
       const trimmedEmail = email.trim();
-      const trimmedPassword = password.trim();
       
-      if (!trimmedEmail || !trimmedPassword) {
+      if (!trimmedEmail || !password) {
         const error = new Error("Email and password are required");
         toast({
           title: "Registration Error",
@@ -262,7 +259,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
         body: JSON.stringify({ 
           email: trimmedEmail, 
-          password: trimmedPassword,
+          password: password,
           termsAccepted: true,
           ...(extraData || {}),
         }),
@@ -346,8 +343,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Clear widget states for new users so all widgets start open with their defaults
       localStorage.removeItem("lyfeos-widget-states");
       
-      if (trimmedEmail && trimmedPassword) {
-        firebaseSignInWithEmail(trimmedEmail, trimmedPassword).then((cred) => {
+      if (trimmedEmail && password) {
+        firebaseSignInWithEmail(trimmedEmail, password).then((cred) => {
           if (cred) {
             sendVerificationEmail().catch((err) => {
               console.warn("Failed to send Firebase verification email:", err);

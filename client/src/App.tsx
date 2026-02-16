@@ -76,7 +76,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
         fetch("/api/auth/me", { credentials: "include" })
           .then(resp => {
             if (resp.ok) {
-              console.log("Session restored silently");
+              return resp.json().then(data => {
+                if (data && data.user) {
+                  localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
+                  window.location.reload();
+                }
+              });
             }
           })
           .catch(() => {})

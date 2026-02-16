@@ -437,9 +437,6 @@ export class DatabaseStorage implements IStorage {
           eq(userDailyLogs.date, yesterdayStr)
         ));
       
-      // HP resets to max at midnight (like Time/Attention Tokens)
-      updateData.healthPointsCurrent = stats.healthPointsMax;
-      
       if (yesterdayLogs.length > 0) {
         const log = yesterdayLogs[0];
         const mental = log.mentalState ?? 5;
@@ -749,7 +746,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getQuest(id: number): Promise<Quest | undefined> {
-    const [quest] = await db.select().from(quests).where(eq(quests.id, id));
+    const [quest] = await db.select().from(quests).where(and(eq(quests.id, id), isNull(quests.deletedAt)));
     return quest;
   }
   
@@ -843,11 +840,17 @@ export class DatabaseStorage implements IStorage {
         let newLevel = userStats.level;
         let newExperienceMax = userStats.experienceMax;
         
-        // Level up if necessary
+        // Level up if necessary (tiered multipliers matching recalculateXP)
         while (newExperience >= newExperienceMax) {
           newExperience -= newExperienceMax;
           newLevel += 1;
-          newExperienceMax = Math.floor(newExperienceMax * 1.0372); // Precise scaling to reach 1M XP at level 100
+          if (newLevel <= 10) {
+            newExperienceMax = Math.floor(newExperienceMax * 1.0372);
+          } else if (newLevel <= 50) {
+            newExperienceMax = Math.floor(newExperienceMax * 1.0572);
+          } else {
+            newExperienceMax = Math.floor(newExperienceMax * 1.0872);
+          }
           levelUp = true;
         }
         
