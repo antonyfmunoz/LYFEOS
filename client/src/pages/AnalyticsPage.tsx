@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/authContext";
 import { usePageTitle } from "@/hooks/use-page-title";
+import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
 import update from 'immutability-helper';
 import { CollapsibleWidget } from '@/components/ui/collapsible-widget';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -115,6 +116,42 @@ export default function AnalyticsPage() {
 
   const analyticsWidgetsRef = useRef(analyticsWidgets);
   analyticsWidgetsRef.current = analyticsWidgets;
+
+  const TRACKER_TOUR_STEPS: TutorialStep[] = [
+    {
+      target: "[data-tour='tracker-header']",
+      title: "Your Tracker",
+      description: "Visualize your progress with charts and stats. Track XP, missions, streaks, and performance over different time periods.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='tracker-period']",
+      title: "Time Period",
+      description: "Switch between 7-day, 14-day, 30-day, or 90-day views to analyze your performance across different time ranges.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='tracker-summary']",
+      title: "Quick Stats",
+      description: "Your key numbers at a glance — missions completed, XP earned, current streak, and efficiency score.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='tracker-widgets']",
+      title: "Analytics Widgets",
+      description: "Deep-dive charts showing XP progression, category breakdowns, activity heatmaps, weekly patterns, and personal records. Drag to reorder.",
+      position: "top",
+    },
+  ];
+
+  const [showTutorial, setShowTutorial] = useState(() => {
+    return !localStorage.getItem("lyfeos-tracker-tutorial-completed");
+  });
+
+  const handleTutorialComplete = useCallback(() => {
+    setShowTutorial(false);
+    localStorage.setItem("lyfeos-tracker-tutorial-completed", "true");
+  }, []);
 
   const moveAnalyticsWidget = useCallback((dragIndex: number, hoverIndex: number) => {
     const prev = analyticsWidgetsRef.current;
@@ -510,6 +547,7 @@ export default function AnalyticsPage() {
 
   return (
     <div className="mx-auto max-w-5xl py-8 px-4">
+      <PageTutorial steps={TRACKER_TOUR_STEPS} storageKey="tracker" isOpen={showTutorial} onComplete={handleTutorialComplete} />
       <div className="mb-6">
         <Link href="/chronilog" className="inline-flex items-center gap-2 bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs rounded-md px-3 py-2 transition-colors">
           <ArrowLeft className="h-4 w-4" />
@@ -517,12 +555,12 @@ export default function AnalyticsPage() {
         </Link>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4" data-tour="tracker-header">
         <div className="flex items-center">
           <BarChart3 className="h-8 w-8 mr-3 text-primary" />
           <h1 className="text-3xl font-orbitron text-primary">Tracker</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" data-tour="tracker-period">
           <span className="text-sm text-muted-foreground font-mono">Period:</span>
           <div className="flex gap-1">
             {RANGE_OPTIONS.map(opt => (
@@ -542,14 +580,14 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" data-tour="tracker-summary">
         <SummaryCard icon={<Target className="h-5 w-5" />} label="Missions Done" value={summary.completedMissions || 0} sub={`of ${summary.totalMissions || 0}`} />
         <SummaryCard icon={<Award className="h-5 w-5" />} label="XP Earned" value={(summary.totalXpEarned || 0).toLocaleString()} sub={`Level ${summary.currentLevel || 1}`} />
         <SummaryCard icon={<Flame className="h-5 w-5" />} label="Streak" value={`${summary.currentStreak || 0}d`} sub="consecutive" />
         <SummaryCard icon={<Zap className="h-5 w-5" />} label="Efficiency" value={`${tokenEfficiency.efficiency || 0}%`} sub="token usage" />
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-6" data-tour="tracker-widgets">
         {analyticsWidgets.map((widget, index) => {
           const content = renderWidgetContent(widget.id);
           if (!content) return null;

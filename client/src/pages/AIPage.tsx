@@ -72,7 +72,13 @@ export default function AIPage() {
     {
       target: "[data-tour='ai-input']",
       title: "Message Input",
-      description: "Type your message here to chat with your AI assistant. Ask for advice, brainstorm ideas, get help planning your day, or just have a conversation.",
+      description: "Type your message here to chat with your AI assistant. You can also paste images directly into the chat for the AI to analyze.",
+      position: "top",
+    },
+    {
+      target: "[data-tour='ai-image-upload']",
+      title: "Image Upload",
+      description: "Attach images for the AI to analyze — photos, screenshots, documents, or anything visual. The AI will describe and discuss what it sees.",
       position: "top",
     },
     {
@@ -643,6 +649,7 @@ export default function AIPage() {
                 disabled={isUploadingImage}
                 className="absolute right-[88px] bottom-2 h-8 w-8 rounded border bg-card/50 border-primary/30 text-primary hover:bg-primary/20 transition-colors disabled:opacity-40 inline-flex items-center justify-center"
                 title="Attach image"
+                data-tour="ai-image-upload"
               >
                 {isUploadingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
               </button>

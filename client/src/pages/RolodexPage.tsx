@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
 import { useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
@@ -133,6 +134,42 @@ export default function RolodexPage() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
+
+  const ROLODEX_TOUR_STEPS: TutorialStep[] = [
+    {
+      target: "[data-tour='rolodex-header']",
+      title: "Your Rolodex",
+      description: "Manage all your personal and professional contacts in one place. Add details like relationship type, trust level, and communication frequency.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='rolodex-create']",
+      title: "Add Contact",
+      description: "Create a new contact with their info, relationship type, notes, and social links. You can also attach images to contact notes.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='rolodex-search']",
+      title: "Search & Filter",
+      description: "Quickly find contacts by name, company, or role. Use the filter button to narrow by category — personal, work, family, friend, mentor, or client.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='rolodex-contacts']",
+      title: "Contact Cards",
+      description: "Browse your contacts here. Tap any card to view full details, edit their info, or mark them as a favorite for quick access.",
+      position: "top",
+    },
+  ];
+
+  const [showTutorial, setShowTutorial] = useState(() => {
+    return !localStorage.getItem("lyfeos-rolodex-tutorial-completed");
+  });
+
+  const handleTutorialComplete = useCallback(() => {
+    setShowTutorial(false);
+    localStorage.setItem("lyfeos-rolodex-tutorial-completed", "true");
+  }, []);
 
   const { isLoading } = useQuery<{ contacts: Contact[] }>({
     queryKey: ['/api/users', user?.id, 'contacts'],
@@ -332,6 +369,7 @@ export default function RolodexPage() {
 
   return (
     <div className="min-h-screen bg-background px-4 py-6 max-w-4xl mx-auto">
+      <PageTutorial steps={ROLODEX_TOUR_STEPS} storageKey="rolodex" isOpen={showTutorial} onComplete={handleTutorialComplete} />
       <div className="mb-4">
         <Button
           className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"
@@ -343,7 +381,7 @@ export default function RolodexPage() {
         </Button>
       </div>
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6" data-tour="rolodex-header">
         <div>
           <h1 className="text-2xl font-orbitron mb-1">Rolodex</h1>
           <p className="text-[#7DAAB2]">Your personal contacts</p>
@@ -352,12 +390,13 @@ export default function RolodexPage() {
           onClick={openCreateForm}
           className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"
           size="sm"
+          data-tour="rolodex-create"
         >
           Create Contact
         </Button>
       </div>
 
-      <div className="glassmorphic rounded-xl neon-border p-3 mb-4">
+      <div className="glassmorphic rounded-xl neon-border p-3 mb-4" data-tour="rolodex-search">
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -448,7 +487,7 @@ export default function RolodexPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2" data-tour="rolodex-contacts">
           {filteredContacts.map(contact => {
             return (
               <div

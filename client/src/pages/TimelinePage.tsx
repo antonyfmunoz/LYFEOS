@@ -9,6 +9,7 @@ import { usePageTitle } from '@/hooks/use-page-title';
 import { useAuth } from '@/lib/authContext';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
 
 const ONBOARDING_MISSIONS = [
   { id: 0, title: "Access & Quickstart", description: "Log in, explore the dashboard, and complete your first quick mission to get familiar with LYFEOS." },
@@ -173,6 +174,42 @@ export default function TimelinePage() {
     queryKey: ['/api/user-categories'],
     enabled: !!user,
   });
+
+  const TIMELINE_TOUR_STEPS: TutorialStep[] = [
+    {
+      target: "[data-tour='timeline-header']",
+      title: "Your Timeline",
+      description: "View your complete journey through time. Switch between History to see past accomplishments and Roadmap to see what's ahead.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='timeline-view-toggle']",
+      title: "History & Roadmap",
+      description: "Toggle between History mode to review past events and Roadmap mode to see upcoming missions, goals, and milestones.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='timeline-zoom']",
+      title: "Zoom Controls",
+      description: "Zoom in and out to view your timeline at different scales — from a single day all the way out to your entire life journey.",
+      position: "bottom",
+    },
+    {
+      target: "[data-tour='timeline-events']",
+      title: "Timeline Events",
+      description: "Each entry shows a completed mission or event with its date, category, and details. Tap any item to expand and see more.",
+      position: "top",
+    },
+  ];
+
+  const [showTutorial, setShowTutorial] = useState(() => {
+    return !localStorage.getItem("lyfeos-timeline-tutorial-completed");
+  });
+
+  const handleTutorialComplete = useCallback(() => {
+    setShowTutorial(false);
+    localStorage.setItem("lyfeos-timeline-tutorial-completed", "true");
+  }, []);
 
   const [activeView, setActiveView] = useState<'history' | 'roadmap'>('history');
   const [zoomLevel, setZoomLevel] = useState<ZoomLevel>('life');
@@ -685,6 +722,7 @@ export default function TimelinePage() {
 
   return (
     <div className="pb-20">
+      <PageTutorial steps={TIMELINE_TOUR_STEPS} storageKey="timeline" isOpen={showTutorial} onComplete={handleTutorialComplete} />
       <div className="mb-4">
         <Button
           className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"
@@ -696,14 +734,14 @@ export default function TimelinePage() {
         </Button>
       </div>
 
-      <div className="mb-4">
+      <div className="mb-4" data-tour="timeline-header">
         <h1 className="text-2xl font-orbitron mb-1">Timeline</h1>
         <p className="text-muted-foreground">
           {activeView === 'history' ? 'Your complete journey through time' : 'Your path forward'}
         </p>
       </div>
 
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-4" data-tour="timeline-view-toggle">
         <button
           className={`text-sm font-mono px-4 py-2 rounded-full transition-all ${activeView === 'history' ? 'bg-primary text-primary-foreground' : 'bg-primary/20 text-primary hover:bg-primary/30'}`}
           onClick={() => setActiveView('history')}
@@ -720,7 +758,7 @@ export default function TimelinePage() {
 
       {activeView === 'history' && (
         <>
-          <div className="glassmorphic rounded-xl neon-border p-3 mb-6 flex items-center justify-between">
+          <div className="glassmorphic rounded-xl neon-border p-3 mb-6 flex items-center justify-between" data-tour="timeline-zoom">
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
@@ -812,7 +850,7 @@ export default function TimelinePage() {
           )}
 
           {nodes.length > 0 ? (
-            <div className="relative pl-6">
+            <div className="relative pl-6" data-tour="timeline-events">
               <div className="absolute left-[11px] top-3 bottom-3 w-[2px] bg-gradient-to-b from-primary/60 via-primary/30 to-primary/10" />
 
               <div className="space-y-1">
