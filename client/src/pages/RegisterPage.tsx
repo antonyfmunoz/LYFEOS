@@ -27,7 +27,7 @@ export default function RegisterPage() {
   usePageTitle('Register');
   
   const { primaryColor, setPrimaryColor: setThemePrimaryColor } = useTheme();
-  const { loginWithGoogle, loginWithApple } = useAuth();
+  const { loginWithGoogle, loginWithApple, setPendingPassword } = useAuth();
   const [, navigate] = useLocation();
   
   const [email, setEmail] = useState("");
@@ -116,9 +116,9 @@ export default function RegisterPage() {
         }
       }
 
+      setPendingPassword(trimmedPassword);
       sessionStorage.setItem("lyfeos-pending-registration", JSON.stringify({
         email: trimmedEmail,
-        password: trimmedPassword,
         avatarColor: selectedColor,
       }));
 

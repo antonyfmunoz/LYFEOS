@@ -596,7 +596,7 @@ function ScenarioSelect({
 
 export default function OnboardingPage() {
   usePageTitle("Onboarding");
-  const { user, isLoading: authLoading, completeRegistration } = useAuth();
+  const { user, isLoading: authLoading, completeRegistration, getPendingPassword } = useAuth();
   const { quests, refetchQuests } = useLYFEOS();
   const [, navigate] = useLocation();
 
@@ -859,7 +859,13 @@ export default function OnboardingPage() {
       if (missionId === 0) {
         const pendingRegData = sessionStorage.getItem("lyfeos-pending-registration");
         if (pendingRegData) {
-          const { email, password, avatarColor } = JSON.parse(pendingRegData);
+          const { email, avatarColor } = JSON.parse(pendingRegData);
+          const password = getPendingPassword();
+          if (!password) {
+            sessionStorage.removeItem("lyfeos-pending-registration");
+            navigate("/register", { replace: true });
+            return;
+          }
           const birthdayStr = birthYear && birthMonth && birthDay
             ? `${birthYear}-${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`
             : "";

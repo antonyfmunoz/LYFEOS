@@ -122,21 +122,17 @@ export async function send2FAVerificationEmail(to: string, code: string, firstNa
 
 export async function send2FAVerificationSMS(to: string, code: string): Promise<boolean> {
   try {
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
-    const fromNumber = process.env.TWILIO_PHONE_NUMBER;
-
-    if (!accountSid || !authToken || !fromNumber) {
+    if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_PHONE_NUMBER) {
       console.error('Twilio credentials not configured');
       return false;
     }
 
     const twilio = await import('twilio');
-    const client = twilio.default(accountSid, authToken);
+    const client = twilio.default(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
     await client.messages.create({
       body: `Your LYFEOS verification code is: ${code}. This code expires in 10 minutes.`,
-      from: fromNumber,
+      from: process.env.TWILIO_PHONE_NUMBER,
       to,
     });
 

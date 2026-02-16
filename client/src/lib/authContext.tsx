@@ -36,6 +36,8 @@ interface AuthContextType {
   loginWithApple: () => Promise<void>;
   registerPreLogoutCallback: (callback: () => Promise<void> | void) => void;
   unregisterPreLogoutCallback: (callback: () => Promise<void> | void) => void;
+  setPendingPassword: (password: string) => void;
+  getPendingPassword: () => string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,6 +48,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [, navigate] = useLocation();
   
+  const pendingPasswordRef = React.useRef<string | null>(null);
+  const setPendingPassword = (password: string) => { pendingPasswordRef.current = password; };
+  const getPendingPassword = () => pendingPasswordRef.current;
+
   // Pre-logout callbacks - called BEFORE logout clears auth to allow saving data
   const preLogoutCallbacksRef = React.useRef<Set<() => Promise<void> | void>>(new Set());
   
@@ -384,6 +390,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       sessionStorage.removeItem("lyfeos-pending-registration");
+      pendingPasswordRef.current = null;
       setUser(result.user);
       localStorage.setItem("lyfeos_user", JSON.stringify(result.user));
       localStorage.removeItem("lyfeos-widget-states");
@@ -551,6 +558,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginWithApple,
         registerPreLogoutCallback,
         unregisterPreLogoutCallback,
+        setPendingPassword,
+        getPendingPassword,
       }}
     >
       {children}
