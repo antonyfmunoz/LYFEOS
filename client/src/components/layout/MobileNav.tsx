@@ -26,7 +26,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
   }, [currentPage, navItems]);
 
   return (
-    <div data-tour="mobile-nav" className="lg:hidden border-t border-primary border-opacity-20 glassmorphic relative">
+    <div data-tour="mobile-nav" className="lg:hidden border-t border-primary border-opacity-20 glassmorphic relative pb-[env(safe-area-inset-bottom)]">
       <div 
         ref={indicatorRef}
         className="absolute bottom-0 left-0 h-0.5 bg-primary shadow-[0_0_10px_var(--primary-shadow)] transition-transform duration-300" style={{ width: `${100 / navItems.length}%` }}
