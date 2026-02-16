@@ -56,7 +56,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           
           <div ref={scrollContainerRef} className="flex-grow overflow-y-auto relative">
             {activeTimerQuest && (
-              <div className="sticky top-0 z-30 lg:hidden flex justify-center px-4 pt-2 pb-2">
+              <div className="z-30 lg:hidden flex justify-center px-4 pt-2 pb-2">
                 <MissionTimer
                   timerStartedAt={timerStartedAt}
                   timerPausedElapsed={timerPausedElapsed}
@@ -79,7 +79,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
             )}
             
             {activeTimerQuest && (
-              <div className="sticky top-0 z-30 flex justify-center px-6 pt-2 pb-2 hidden lg:block">
+              <div className="z-30 flex justify-center px-6 pt-2 pb-2 hidden lg:block">
                 <MissionTimer
                   timerStartedAt={timerStartedAt}
                   timerPausedElapsed={timerPausedElapsed}
