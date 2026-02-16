@@ -120,19 +120,53 @@ export async function send2FAVerificationEmail(to: string, code: string, firstNa
   }
 }
 
+async function getTwilioCredentials() {
+  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
+  const xReplitToken = process.env.REPL_IDENTITY
+    ? 'repl ' + process.env.REPL_IDENTITY
+    : process.env.WEB_REPL_RENEWAL
+    ? 'depl ' + process.env.WEB_REPL_RENEWAL
+    : null;
+
+  if (!xReplitToken || !hostname) {
+    return null;
+  }
+
+  try {
+    const data = await fetch(
+      'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=twilio',
+      {
+        headers: {
+          'Accept': 'application/json',
+          'X_REPLIT_TOKEN': xReplitToken
+        }
+      }
+    ).then(res => res.json());
+
+    const settings = data.items?.[0]?.settings;
+    if (!settings?.account_sid || !settings?.auth_token || !settings?.phone_number) {
+      return null;
+    }
+    return { sid: settings.account_sid, token: settings.auth_token, fromNumber: settings.phone_number };
+  } catch {
+    return null;
+  }
+}
+
 export async function send2FAVerificationSMS(to: string, code: string): Promise<boolean> {
   try {
-    if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_PHONE_NUMBER) {
+    const creds = await getTwilioCredentials();
+    if (!creds) {
       console.error('Twilio credentials not configured');
       return false;
     }
 
     const twilio = await import('twilio');
-    const client = twilio.default(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+    const client = twilio.default(creds.sid, creds.token);
 
     await client.messages.create({
       body: `Your LYFEOS verification code is: ${code}. This code expires in 10 minutes.`,
-      from: process.env.TWILIO_PHONE_NUMBER,
+      from: creds.fromNumber,
       to,
     });
 
