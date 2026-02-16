@@ -54,7 +54,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center p-4 text-white" style={{ backgroundColor: 'hsl(0 0% 7%)' }}>
-      <div className="text-center pt-12 pb-4">
+      <div className="text-center pt-[env(safe-area-inset-top)] pb-4">
         <h1 className="text-4xl font-orbitron mb-2"><span className="text-white">LYFE</span><span style={{ color: accent?.color || 'white' }}>OS</span></h1>
         <p className="text-white">Your personal life operating system</p>
       </div>
