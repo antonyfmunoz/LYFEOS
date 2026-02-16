@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { toast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "./queryClient";
 import { auth } from "./firebase";
-import { signInWithGoogle, signInWithApple, firebaseSignInWithEmail, sendVerificationEmail } from "./firebaseAuth";
+import { signInWithGoogle, signInWithApple, firebaseSignInWithEmail, sendVerificationEmail, checkRedirectResult } from "./firebaseAuth";
 import { User as FirebaseUser, onAuthStateChanged, Auth } from "firebase/auth";
 import { applyPrimaryColor } from "./applyPrimaryColor";
 import { getLocalDateString } from "./utils";
@@ -63,6 +63,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     preLogoutCallbacksRef.current.delete(callback);
   }, []);
 
+  const processOAuthResult = async (result: any) => {
+    if (!result || !result.user) return;
+    
+    const { displayName, email, uid, photoURL } = result.user;
+    console.log("Successfully signed in via OAuth:", { displayName, email, uid });
+    
+    const response = await fetch("/api/auth/firebase", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uid, email, displayName, photoURL }),
+      credentials: "include"
+    });
+    
+    if (!response.ok) {
+      throw new Error("Failed to authenticate with server");
+    }
+    
+    const userData = await response.json();
+    
+    if (userData.primaryColor) {
+      applyPrimaryColor(userData.primaryColor);
+      localStorage.setItem('lyfeos-primary-color', userData.primaryColor);
+    }
+    
+    setUser(userData.user);
+    localStorage.setItem("lyfeos_user", JSON.stringify(userData.user));
+    
+    if (userData.isNewUser) {
+      console.log("New user detected, redirecting to onboarding");
+      navigate("/onboarding");
+    } else {
+      localStorage.setItem("lyfeos-ceremony-mode", "login");
+      navigate("/ceremony");
+    }
+  };
+
   // Firebase auth state listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUserData) => {
@@ -81,7 +117,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // First try to get cached user from localStorage for immediate UI update
         const cachedUser = localStorage.getItem("lyfeos_user");
         if (cachedUser) {
           try {
@@ -89,33 +124,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (parsedUser && parsedUser.id) {
               console.log("Using cached user data from localStorage:", parsedUser);
               setUser(parsedUser);
-              // Don't set isLoading to false yet - still verify with server
             }
           } catch (e) {
             console.error("Failed to parse cached user data:", e);
           }
         }
         
-        // Then verify with server
+        const redirectPending = localStorage.getItem('lyfeos-oauth-redirect-pending');
+        if (redirectPending) {
+          console.log("Checking OAuth redirect result for:", redirectPending);
+          try {
+            const redirectResult = await checkRedirectResult();
+            if (redirectResult && redirectResult.user) {
+              console.log("OAuth redirect successful, processing result");
+              await processOAuthResult(redirectResult);
+              return;
+            }
+          } catch (err) {
+            console.error("OAuth redirect processing failed:", err);
+            localStorage.removeItem('lyfeos-oauth-redirect-pending');
+          }
+        }
+
         const response = await fetch("/api/auth/me", {
-          credentials: "include" // Ensure cookies are sent with the request
+          credentials: "include"
         });
         
         if (response.ok) {
           const data = await response.json();
           console.log("Server auth check successful, user data:", data.user);
           setUser(data.user);
-          // Update localStorage with latest data
           localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
         } else {
           console.log("Not authenticated with server, clearing local user data");
-          // Clear any stored user data if not authenticated
           setUser(null);
           localStorage.removeItem("lyfeos_user");
         }
       } catch (error) {
         console.error("Failed to check authentication status:", error);
-        // On error, keep the cached user if we have one, otherwise clear
         if (!user) {
           localStorage.removeItem("lyfeos_user");
         }
@@ -480,52 +526,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
   
-  const processOAuthResult = async (result: any) => {
-    if (!result || !result.user) return;
-    
-    const { displayName, email, uid, photoURL } = result.user;
-    console.log("Successfully signed in via OAuth:", { displayName, email, uid });
-    
-    const response = await fetch("/api/auth/firebase", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uid, email, displayName, photoURL }),
-      credentials: "include"
-    });
-    
-    if (!response.ok) {
-      throw new Error("Failed to authenticate with server");
-    }
-    
-    const userData = await response.json();
-    
-    if (userData.primaryColor) {
-      applyPrimaryColor(userData.primaryColor);
-      localStorage.setItem('lyfeos-primary-color', userData.primaryColor);
-    }
-    
-    setUser(userData.user);
-    localStorage.setItem("lyfeos_user", JSON.stringify(userData.user));
-    
-    if (userData.isNewUser) {
-      console.log("New user detected, redirecting to onboarding");
-      navigate("/onboarding");
-    } else {
-      localStorage.setItem("lyfeos-ceremony-mode", "login");
-      navigate("/ceremony");
-    }
-  };
-
   const loginWithGoogle = async () => {
     try {
       setIsLoading(true);
       const result = await signInWithGoogle();
       await processOAuthResult(result);
-    } catch (error) {
-      console.error("Google login error:", error);
+    } catch (error: any) {
+      console.error("Google login error:", error?.code, error?.message, error);
+      const errorMsg = error?.code === 'auth/unauthorized-domain'
+        ? "This domain is not authorized for Google sign-in. Please add it to your Firebase authorized domains."
+        : error?.code === 'auth/internal-error'
+        ? "Firebase configuration error. Please check your Firebase project settings."
+        : "Could not sign in with Google. Please try again.";
       toast({
         title: "Login Error",
-        description: "Could not sign in with Google. Please try again.",
+        description: errorMsg,
         variant: "destructive",
       });
     } finally {
@@ -538,11 +553,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       const result = await signInWithApple();
       await processOAuthResult(result);
-    } catch (error) {
-      console.error("Apple login error:", error);
+    } catch (error: any) {
+      console.error("Apple login error:", error?.code, error?.message, error);
+      const errorMsg = error?.code === 'auth/unauthorized-domain'
+        ? "This domain is not authorized for Apple sign-in. Please add it to your Firebase authorized domains."
+        : error?.code === 'auth/internal-error'
+        ? "Firebase configuration error. Please check your Firebase project settings."
+        : "Could not sign in with Apple. Please try again.";
       toast({
         title: "Login Error",
-        description: "Could not sign in with Apple. Please try again.",
+        description: errorMsg,
         variant: "destructive",
       });
     } finally {

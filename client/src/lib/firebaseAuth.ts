@@ -2,6 +2,8 @@ import {
   GoogleAuthProvider,
   OAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signInWithEmailAndPassword,
   signInWithCustomToken as firebaseSignInWithCustomToken,
   sendEmailVerification as firebaseSendEmailVerification,
@@ -10,6 +12,7 @@ import {
   verifyPasswordResetCode as firebaseVerifyPasswordResetCode,
   applyActionCode as firebaseApplyActionCode,
   UserCredential,
+  browserPopupRedirectResolver,
 } from "firebase/auth";
 import { auth } from "./firebase";
 import { toast } from "@/hooks/use-toast";
@@ -21,47 +24,61 @@ const appleProvider = new OAuthProvider("apple.com");
 appleProvider.addScope("email");
 appleProvider.addScope("name");
 
-export const signInWithGoogle = async (): Promise<UserCredential | null> => {
+async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, providerName: string): Promise<UserCredential | null> {
+  if (!import.meta.env.VITE_FIREBASE_API_KEY) {
+    toast({
+      title: "Firebase Configuration Missing",
+      description: `Firebase API keys are not set. Please configure Firebase to use ${providerName} Sign-in.`,
+      variant: "destructive"
+    });
+    return null;
+  }
+
   try {
-    if (!import.meta.env.VITE_FIREBASE_API_KEY) {
-      toast({
-        title: "Firebase Configuration Missing",
-        description: "Firebase API keys are not set. Please configure Firebase to use Google Sign-in.",
-        variant: "destructive"
-      });
-      return null;
-    }
-    
-    const result = await signInWithPopup(auth, googleProvider);
+    const result = await signInWithPopup(auth, provider, browserPopupRedirectResolver);
     return result;
   } catch (error: any) {
-    console.error("Google sign-in error:", error);
+    console.error(`${providerName} sign-in popup error:`, error?.code, error?.message);
+
     if (error.code === 'auth/popup-closed-by-user') {
       return null;
     }
+
+    if (
+      error.code === 'auth/popup-blocked' ||
+      error.code === 'auth/cancelled-popup-request' ||
+      error.code === 'auth/operation-not-supported-in-this-environment'
+    ) {
+      console.log(`Popup blocked, falling back to redirect for ${providerName}`);
+      localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
+      await signInWithRedirect(auth, provider);
+      return null;
+    }
+
     throw error;
   }
+}
+
+export const signInWithGoogle = async (): Promise<UserCredential | null> => {
+  return signInWithProvider(googleProvider, "Google");
 };
 
 export const signInWithApple = async (): Promise<UserCredential | null> => {
+  return signInWithProvider(appleProvider, "Apple");
+};
+
+export const checkRedirectResult = async (): Promise<UserCredential | null> => {
   try {
-    if (!import.meta.env.VITE_FIREBASE_API_KEY) {
-      toast({
-        title: "Firebase Configuration Missing",
-        description: "Firebase API keys are not set. Please configure Firebase to use Apple Sign-in.",
-        variant: "destructive"
-      });
-      return null;
+    const result = await getRedirectResult(auth);
+    if (result) {
+      localStorage.removeItem('lyfeos-oauth-redirect-pending');
+      console.log("OAuth redirect result received:", result.user?.email);
     }
-    
-    const result = await signInWithPopup(auth, appleProvider);
     return result;
   } catch (error: any) {
-    console.error("Apple sign-in error:", error);
-    if (error.code === 'auth/popup-closed-by-user') {
-      return null;
-    }
-    throw error;
+    console.error("OAuth redirect result error:", error?.code, error?.message);
+    localStorage.removeItem('lyfeos-oauth-redirect-pending');
+    return null;
   }
 };
 
