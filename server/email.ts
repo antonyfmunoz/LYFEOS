@@ -120,6 +120,12 @@ export async function send2FAVerificationEmail(to: string, code: string, firstNa
   }
 }
 
+const SMS_CONFIG_KEYS = {
+  sid: "TWILIO_ACCOUNT_SID",
+  token: "TWILIO_AUTH_TOKEN",
+  phone: "TWILIO_PHONE_NUMBER",
+} as const;
+
 async function getTwilioCredentials() {
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY
@@ -128,29 +134,33 @@ async function getTwilioCredentials() {
     ? 'depl ' + process.env.WEB_REPL_RENEWAL
     : null;
 
-  if (!xReplitToken || !hostname) {
-    return null;
-  }
-
-  try {
-    const data = await fetch(
-      'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=twilio',
-      {
-        headers: {
-          'Accept': 'application/json',
-          'X_REPLIT_TOKEN': xReplitToken
+  if (xReplitToken && hostname) {
+    try {
+      const data = await fetch(
+        'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=twilio',
+        {
+          headers: {
+            'Accept': 'application/json',
+            'X_REPLIT_TOKEN': xReplitToken
+          }
         }
-      }
-    ).then(res => res.json());
+      ).then(res => res.json());
 
-    const settings = data.items?.[0]?.settings;
-    if (!settings?.account_sid || !settings?.auth_token || !settings?.phone_number) {
-      return null;
-    }
-    return { sid: settings.account_sid, token: settings.auth_token, fromNumber: settings.phone_number };
-  } catch {
-    return null;
+      const settings = data.items?.[0]?.settings;
+      if (settings?.account_sid && settings?.auth_token && settings?.phone_number) {
+        return { sid: settings.account_sid, token: settings.auth_token, fromNumber: settings.phone_number };
+      }
+    } catch {}
   }
+
+  const sid = process.env[SMS_CONFIG_KEYS.sid];
+  const token = process.env[SMS_CONFIG_KEYS.token];
+  const fromNumber = process.env[SMS_CONFIG_KEYS.phone];
+  if (sid && token && fromNumber) {
+    return { sid, token, fromNumber };
+  }
+
+  return null;
 }
 
 export async function send2FAVerificationSMS(to: string, code: string): Promise<boolean> {

@@ -33,5 +33,5 @@ The application uses a dark theme with neon accents and a futuristic HUD-style i
 - **AI Services**: Anthropic (via Replit AI Integrations).
 - **Authentication (Optional)**: Firebase (for Google/Apple/Facebook OAuth, requires `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`).
 - **Email Service**: Resend (for email verification and password resets).
-- **SMS Service**: Twilio (for 2FA via SMS, requires `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`).
+- **SMS Service**: Twilio (for 2FA via SMS). Credentials are fetched via Replit connector first, falling back to env vars (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`). The Twilio connector (`ccfg_twilio_01K69QJTED9YTJFE2SJ7E4SY08`) is available but not yet set up — user dismissed setup. Can be configured later for fully managed credentials.
 - **Payment Gateway**: Stripe.
