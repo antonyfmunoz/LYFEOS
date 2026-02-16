@@ -1,15 +1,15 @@
-import { GoogleAuthProvider, OAuthProvider, signInWithRedirect, signInWithPopup, getRedirectResult, UserCredential, AuthError } from "firebase/auth";
+import { GoogleAuthProvider, OAuthProvider, signInWithPopup, UserCredential } from "firebase/auth";
 import { auth } from "./firebase";
-import { Auth } from "firebase/auth";
 import { toast } from "@/hooks/use-toast";
 
 const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: "select_account" });
 
 const appleProvider = new OAuthProvider("apple.com");
 appleProvider.addScope("email");
 appleProvider.addScope("name");
 
-export const signInWithGoogle = async () => {
+export const signInWithGoogle = async (): Promise<UserCredential | null> => {
   try {
     if (!import.meta.env.VITE_FIREBASE_API_KEY) {
       toast({
@@ -20,19 +20,18 @@ export const signInWithGoogle = async () => {
       return null;
     }
     
-    googleProvider.setCustomParameters({
-      prompt: "select_account"
-    });
-    
-    await signInWithRedirect(auth, googleProvider);
-    return true;
-  } catch (error) {
+    const result = await signInWithPopup(auth, googleProvider);
+    return result;
+  } catch (error: any) {
     console.error("Google sign-in error:", error);
+    if (error.code === 'auth/popup-closed-by-user') {
+      return null;
+    }
     throw error;
   }
 };
 
-export const signInWithApple = async () => {
+export const signInWithApple = async (): Promise<UserCredential | null> => {
   try {
     if (!import.meta.env.VITE_FIREBASE_API_KEY) {
       toast({
@@ -43,46 +42,13 @@ export const signInWithApple = async () => {
       return null;
     }
     
-    await signInWithRedirect(auth, appleProvider);
-    return true;
-  } catch (error) {
-    console.error("Apple sign-in error:", error);
-    throw error;
-  }
-};
-
-export const handleRedirectResult = async () => {
-  try {
-    const result = await getRedirectResult(auth);
-    
-    if (result) {
-      const user = result.user;
-      const providerId = result.providerId;
-      
-      let token: string | undefined;
-      if (providerId === "google.com") {
-        const credential = GoogleAuthProvider.credentialFromResult(result);
-        token = credential?.accessToken;
-      } else if (providerId === "apple.com") {
-        const credential = OAuthProvider.credentialFromResult(result);
-        token = credential?.accessToken;
-      }
-      
-      return { user, token, providerId };
-    }
-    
-    return null;
+    const result = await signInWithPopup(auth, appleProvider);
+    return result;
   } catch (error: any) {
-    console.error("Redirect result error:", error);
-    
-    const errorMessage = error.message;
-    
-    toast({
-      title: "Authentication Error",
-      description: errorMessage || "Error authenticating. Please try again.",
-      variant: "destructive"
-    });
-    
+    console.error("Apple sign-in error:", error);
+    if (error.code === 'auth/popup-closed-by-user') {
+      return null;
+    }
     throw error;
   }
 };
