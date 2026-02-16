@@ -31,7 +31,7 @@ The application uses a dark theme with neon accents and a futuristic HUD-style i
 
 - **Database**: Neon PostgreSQL (requires `DATABASE_URL`).
 - **AI Services**: Anthropic (via Replit AI Integrations).
-- **Authentication (Optional)**: Firebase (for Google/Apple/Facebook OAuth, requires `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`).
+- **Authentication (Optional)**: Firebase (for Google/Apple/Facebook OAuth, requires `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`, `VITE_FIREBASE_ACTUAL_PROJECT_ID`). OAuth uses a reverse proxy (`/__/auth/*` → Firebase) to avoid third-party cookie blocking in Safari/Chrome. The `authDomain` is set to the app's own domain (not `firebaseapp.com`) for same-origin OAuth flows. `VITE_FIREBASE_ACTUAL_PROJECT_ID` holds the real Firebase project ID (e.g., `lyfeos-a55f4`) since `VITE_FIREBASE_PROJECT_ID` may contain the App ID.
 - **Email Service**: Firebase Authentication (handles email verification and password reset emails natively — Resend has been removed).
 - **SMS Service**: Firebase Phone Authentication (for 2FA via SMS). Phone verification is handled entirely on the frontend using Firebase's `RecaptchaVerifier` and `signInWithPhoneNumber` — no separate SMS provider needed. Twilio was previously used but has been removed. Server-side token verification uses Firebase Admin SDK (`server/firebaseAdmin.ts`); for full functionality, set `FIREBASE_SERVICE_ACCOUNT_KEY` secret with the service account JSON.
 - **Payment Gateway**: Stripe.

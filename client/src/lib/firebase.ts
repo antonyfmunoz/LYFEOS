@@ -2,13 +2,15 @@ import { initializeApp, FirebaseApp } from "firebase/app";
 import { getAuth, Auth, Unsubscribe, NextOrObserver, User, connectAuthEmulator } from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 
-// Firebase configuration using environment variables
+const firebaseProjectId = import.meta.env.VITE_FIREBASE_ACTUAL_PROJECT_ID || import.meta.env.VITE_FIREBASE_PROJECT_ID;
+
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebasestorage.googleapis.com`,
-  messagingSenderId: "128451234567", // Generic sender ID (will be replaced by actual value from Project settings)
+  authDomain: window.location.hostname === 'localhost'
+    ? `${firebaseProjectId}.firebaseapp.com`
+    : window.location.host,
+  projectId: firebaseProjectId,
+  storageBucket: `${firebaseProjectId}.firebasestorage.googleapis.com`,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 

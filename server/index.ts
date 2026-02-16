@@ -10,8 +10,48 @@ import { startNotificationScheduler } from "./notificationScheduler";
 import { runMigrations } from 'stripe-replit-sync';
 import { getStripeSync } from './stripeClient';
 import { WebhookHandlers } from './webhookHandlers';
+import { createProxyMiddleware } from "http-proxy-middleware";
 
 const app = express();
+
+function getFirebaseProjectIdForProxy(): string | null {
+  const actualProjectId = process.env.VITE_FIREBASE_ACTUAL_PROJECT_ID;
+  if (actualProjectId && !actualProjectId.includes(':')) {
+    return actualProjectId;
+  }
+  const saKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  if (saKey) {
+    try {
+      const parsed = JSON.parse(saKey);
+      if (parsed.project_id) return parsed.project_id;
+    } catch {}
+  }
+  const envProjectId = process.env.VITE_FIREBASE_PROJECT_ID;
+  if (envProjectId && !envProjectId.includes(':')) {
+    return envProjectId;
+  }
+  return null;
+}
+
+const firebaseProjectIdForProxy = getFirebaseProjectIdForProxy();
+if (firebaseProjectIdForProxy) {
+  app.use('/__/auth', createProxyMiddleware({
+    target: `https://${firebaseProjectIdForProxy}.firebaseapp.com`,
+    changeOrigin: true,
+    secure: true,
+    headers: {
+      'X-Forwarded-Host': '',
+    },
+    on: {
+      proxyReq: (proxyReq, req) => {
+        proxyReq.setHeader('X-Forwarded-Host', req.headers.host || '');
+      },
+    },
+  }));
+  log(`Firebase auth proxy configured for ${firebaseProjectIdForProxy}.firebaseapp.com`);
+} else {
+  log("WARNING: Could not determine Firebase project ID for auth proxy. Set FIREBASE_SERVICE_ACCOUNT_KEY or ensure VITE_FIREBASE_PROJECT_ID is the project ID (not the App ID).");
+}
 
 app.use(compression());
 

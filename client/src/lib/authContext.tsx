@@ -533,11 +533,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await processOAuthResult(result);
     } catch (error: any) {
       console.error("Google login error:", error?.code, error?.message, error);
-      const errorMsg = error?.code === 'auth/unauthorized-domain'
-        ? "This domain is not authorized for Google sign-in. Please add it to your Firebase authorized domains."
-        : error?.code === 'auth/internal-error'
-        ? "Firebase configuration error. Please check your Firebase project settings."
-        : "Could not sign in with Google. Please try again.";
+      let errorMsg = "Could not sign in with Google. Please try again.";
+      if (error?.code === 'auth/unauthorized-domain') {
+        errorMsg = "This domain is not authorized for Google sign-in. Please add it to your Firebase authorized domains.";
+      } else if (error?.code === 'auth/internal-error') {
+        errorMsg = "Firebase configuration error. Please check your Firebase project settings.";
+      } else if (error?.code || error?.message) {
+        errorMsg = `Sign-in failed: ${error?.code || ''} ${error?.message || ''}`.trim();
+      }
       toast({
         title: "Login Error",
         description: errorMsg,
@@ -555,11 +558,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await processOAuthResult(result);
     } catch (error: any) {
       console.error("Apple login error:", error?.code, error?.message, error);
-      const errorMsg = error?.code === 'auth/unauthorized-domain'
-        ? "This domain is not authorized for Apple sign-in. Please add it to your Firebase authorized domains."
-        : error?.code === 'auth/internal-error'
-        ? "Firebase configuration error. Please check your Firebase project settings."
-        : "Could not sign in with Apple. Please try again.";
+      let errorMsg = "Could not sign in with Apple. Please try again.";
+      if (error?.code === 'auth/unauthorized-domain') {
+        errorMsg = "This domain is not authorized for Apple sign-in. Please add it to your Firebase authorized domains.";
+      } else if (error?.code === 'auth/internal-error') {
+        errorMsg = "Firebase configuration error. Please check your Firebase project settings.";
+      } else if (error?.code || error?.message) {
+        errorMsg = `Sign-in failed: ${error?.code || ''} ${error?.message || ''}`.trim();
+      }
       toast({
         title: "Login Error",
         description: errorMsg,

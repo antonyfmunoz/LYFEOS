@@ -24,10 +24,6 @@ const appleProvider = new OAuthProvider("apple.com");
 appleProvider.addScope("email");
 appleProvider.addScope("name");
 
-function isMobileDevice(): boolean {
-  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-}
-
 async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, providerName: string): Promise<UserCredential | null> {
   if (!import.meta.env.VITE_FIREBASE_API_KEY) {
     toast({
@@ -38,18 +34,11 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
     return null;
   }
 
-  if (isMobileDevice()) {
-    console.log(`Using redirect flow for ${providerName} on mobile`);
-    localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
-    await signInWithRedirect(auth, provider);
-    return null;
-  }
-
   try {
     const result = await signInWithPopup(auth, provider, browserPopupRedirectResolver);
     return result;
   } catch (error: any) {
-    console.error(`${providerName} sign-in popup error:`, error?.code, error?.message);
+    console.error(`${providerName} sign-in error:`, error?.code, error?.message);
 
     if (error.code === 'auth/popup-closed-by-user') {
       return null;
@@ -62,9 +51,14 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
       error?.message?.includes('did not match the expected pattern')
     ) {
       console.log(`Popup failed, falling back to redirect for ${providerName}`);
-      localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
-      await signInWithRedirect(auth, provider);
-      return null;
+      try {
+        localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
+        await signInWithRedirect(auth, provider);
+        return null;
+      } catch (redirectError: any) {
+        console.error(`${providerName} redirect also failed:`, redirectError?.code, redirectError?.message);
+        throw redirectError;
+      }
     }
 
     throw error;

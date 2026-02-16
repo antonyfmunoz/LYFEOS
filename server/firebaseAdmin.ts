@@ -5,7 +5,14 @@ let firebaseAdminApp: admin.app.App | null = null;
 function getFirebaseAdmin(): admin.app.App | null {
   if (firebaseAdminApp) return firebaseAdminApp;
 
-  const projectId = process.env.VITE_FIREBASE_PROJECT_ID;
+  let projectId: string | undefined;
+  const saKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  if (saKey) {
+    try { projectId = JSON.parse(saKey).project_id; } catch {}
+  }
+  if (!projectId) {
+    projectId = process.env.VITE_FIREBASE_ACTUAL_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
+  }
   if (!projectId) {
     console.warn("Firebase project ID not configured. Phone verification will not work.");
     return null;
@@ -44,8 +51,16 @@ export async function verifyFirebaseIdToken(idToken: string): Promise<admin.auth
   try {
     const decoded = await admin.auth(app).verifyIdToken(idToken);
 
-    if (decoded.aud !== process.env.VITE_FIREBASE_PROJECT_ID) {
-      console.error("Firebase token audience mismatch");
+    let expectedAudience: string | undefined;
+    const saKeyForAud = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+    if (saKeyForAud) {
+      try { expectedAudience = JSON.parse(saKeyForAud).project_id; } catch {}
+    }
+    if (!expectedAudience) {
+      expectedAudience = process.env.VITE_FIREBASE_ACTUAL_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
+    }
+    if (expectedAudience && decoded.aud !== expectedAudience) {
+      console.error("Firebase token audience mismatch:", decoded.aud, "expected:", expectedAudience);
       return null;
     }
 
