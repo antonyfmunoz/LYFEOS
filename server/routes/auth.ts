@@ -431,6 +431,9 @@ export function registerAuthRoutes(app: Express): void {
 
       let firebaseUid = user.firebaseUid;
       if (!firebaseUid) {
+        if (!user.email) {
+          return res.status(400).json({ error: "User has no email address for Firebase authentication" });
+        }
         const fbUser = await getFirebaseUserByEmail(user.email);
         if (fbUser) {
           firebaseUid = fbUser.uid;
