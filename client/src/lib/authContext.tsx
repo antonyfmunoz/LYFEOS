@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { toast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "./queryClient";
 import { auth } from "./firebase";
-import { signInWithGoogle, signInWithApple } from "./firebaseAuth";
+import { signInWithGoogle, signInWithApple, firebaseSignInWithEmail, sendVerificationEmail } from "./firebaseAuth";
 import { User as FirebaseUser, onAuthStateChanged, Auth } from "firebase/auth";
 import { applyPrimaryColor } from "./applyPrimaryColor";
 import { getLocalDateString } from "./utils";
@@ -346,8 +346,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Clear widget states for new users so all widgets start open with their defaults
       localStorage.removeItem("lyfeos-widget-states");
       
-      // Set a persistent flag so the Router always redirects to /onboarding
-      // even if auth state changes trigger re-renders. Cleared when onboarding completes.
+      if (trimmedEmail && trimmedPassword) {
+        firebaseSignInWithEmail(trimmedEmail, trimmedPassword).then((cred) => {
+          if (cred) {
+            sendVerificationEmail().catch((err) => {
+              console.warn("Failed to send Firebase verification email:", err);
+            });
+          }
+        }).catch((err) => {
+          console.warn("Firebase sign-in after registration failed:", err);
+        });
+      }
+
       localStorage.setItem("lyfeos-pending-onboarding", "true");
       
       console.log("New user registered, redirecting to onboarding");

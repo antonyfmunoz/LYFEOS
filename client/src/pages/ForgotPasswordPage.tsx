@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { Loader2, ArrowLeft, Mail } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { sendPasswordReset } from "@/lib/firebaseAuth";
 
 const hexToRgba = (hex: string, alpha: number) => {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -36,19 +37,16 @@ export default function ForgotPasswordPage() {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch("/api/auth/forgot-password", {
+      await fetch("/api/auth/ensure-firebase-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      const data = await res.json();
-      if (res.ok) {
-        setSubmitted(true);
-      } else {
-        setError(data.error || "Something went wrong");
-      }
-    } catch {
-      setError("Network error. Please try again.");
+
+      await sendPasswordReset(email);
+      setSubmitted(true);
+    } catch (err: any) {
+      setError(err.message || "Something went wrong. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

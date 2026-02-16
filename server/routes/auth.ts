@@ -4,9 +4,8 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { storage } from "../storage";
 import { logger, formatLocalDate } from "../utils";
-import { sendVerificationEmail, sendPasswordResetEmail, send2FAVerificationEmail } from "../email";
 import { isAuthenticated } from "./middleware";
-import { verifyFirebaseIdToken } from "../firebaseAdmin";
+import { verifyFirebaseIdToken, createFirebaseUser, checkFirebaseEmailVerified, getFirebaseUserByEmail, createCustomToken } from "../firebaseAdmin";
 import type { InsertUser } from "@shared/schema";
 
 declare module "express-session" {
@@ -118,19 +117,15 @@ export function registerAuthRoutes(app: Express): void {
         optionalBoostsShown: false
       });
 
-      if (email) {
-        const verificationToken = crypto.randomBytes(32).toString('hex');
-        const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        await storage.setEmailVerificationToken(user.id, verificationToken, expiry);
-        sendVerificationEmail(email, verificationToken, firstName).catch(err => {
-          logger.error("Failed to send verification email:", err);
-        });
+      const firebaseUid = await createFirebaseUser(email, password);
+      if (firebaseUid) {
+        await storage.updateUserFirebaseUid(user.id, firebaseUid);
       }
 
       req.session.userId = user.id;
       req.session.username = user.username || user.email || String(user.id);
 
-      return res.status(201).json({ user: { id: user.id, username: user.username, email: user.email } });
+      return res.status(201).json({ user: { id: user.id, username: user.username, email: user.email }, firebaseUid });
     } catch (error) {
       logger.error("Registration error:", error);
       if (error instanceof z.ZodError) {
@@ -190,6 +185,11 @@ export function registerAuthRoutes(app: Express): void {
       
       logger.debug("User created successfully with ID:", user.id);
       
+      const firebaseUid = await createFirebaseUser(userData.email, userData.password);
+      if (firebaseUid) {
+        await storage.updateUserFirebaseUid(user.id, firebaseUid);
+      }
+      
       logger.debug("Creating initial stats for user:", user.id);
       await storage.createUserStats({
         userId: user.id,
@@ -238,22 +238,13 @@ export function registerAuthRoutes(app: Express): void {
         todayPrimaryMission: "Get started with LYFEOS",
         optionalBoostsShown: false
       });
-      
-      if (userData.email) {
-        const verificationToken = crypto.randomBytes(32).toString('hex');
-        const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        await storage.setEmailVerificationToken(user.id, verificationToken, expiry);
-        sendVerificationEmail(userData.email, verificationToken, userData.firstName).catch(err => {
-          logger.error("Failed to send verification email:", err);
-        });
-      }
 
       req.session.userId = user.id;
       req.session.username = user.username || user.email || String(user.id);
       
       logger.debug("Registration successful, session created for user:", user.id);
       
-      return res.status(201).json({ user: { id: user.id, username: user.username, email: user.email } });
+      return res.status(201).json({ user: { id: user.id, username: user.username, email: user.email }, firebaseUid });
     } catch (error) {
       logger.error("Registration error:", error);
       if (error instanceof z.ZodError) {
@@ -411,47 +402,58 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
   
-  app.get("/api/auth/verify-email", async (req: Request, res: Response) => {
-    try {
-      const token = req.query.token as string;
-      if (!token) {
-        return res.status(400).json({ error: "Verification token is required" });
-      }
-      if (!/^[a-f0-9]{64}$/.test(token)) {
-        return res.status(400).json({ error: "Invalid verification token" });
-      }
-      const user = await storage.verifyEmail(token);
-      if (!user) {
-        return res.status(400).json({ error: "Invalid or expired verification link" });
-      }
-      return res.json({ success: true, message: "Email verified successfully" });
-    } catch (error) {
-      logger.error("Email verification error:", error);
-      return res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
-  app.post("/api/auth/resend-verification", isAuthenticated, async (req: Request, res: Response) => {
+  app.post("/api/auth/sync-email-verified", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
       const user = await storage.getUser(userId);
       if (!user) return res.status(404).json({ error: "User not found" });
-      if (user.emailVerified) return res.json({ message: "Email already verified" });
-      if (!user.email) return res.status(400).json({ error: "No email address on file" });
+      if (user.emailVerified) return res.json({ emailVerified: true });
 
-      const verificationToken = crypto.randomBytes(32).toString('hex');
-      const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
-      await storage.setEmailVerificationToken(userId, verificationToken, expiry);
-      const sent = await sendVerificationEmail(user.email, verificationToken, user.firstName || undefined);
-      if (!sent) return res.status(500).json({ error: "Failed to send verification email" });
-      return res.json({ success: true, message: "Verification email sent" });
+      if (user.firebaseUid) {
+        const verified = await checkFirebaseEmailVerified(user.firebaseUid);
+        if (verified) {
+          await storage.updateUser(user.id, { emailVerified: true } as any);
+          return res.json({ emailVerified: true });
+        }
+      }
+      return res.json({ emailVerified: false });
     } catch (error) {
-      logger.error("Resend verification error:", error);
+      logger.error("Sync email verified error:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });
 
-  app.post("/api/auth/forgot-password", async (req: Request, res: Response) => {
+  app.post("/api/auth/firebase-custom-token", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+
+      let firebaseUid = user.firebaseUid;
+      if (!firebaseUid) {
+        const fbUser = await getFirebaseUserByEmail(user.email);
+        if (fbUser) {
+          firebaseUid = fbUser.uid;
+          await storage.updateUserFirebaseUid(user.id, firebaseUid);
+        } else {
+          const uid = await createFirebaseUser(user.email, crypto.randomBytes(32).toString('hex'));
+          if (!uid) return res.status(500).json({ error: "Failed to create Firebase user" });
+          firebaseUid = uid;
+          await storage.updateUserFirebaseUid(user.id, firebaseUid);
+        }
+      }
+
+      const token = await createCustomToken(firebaseUid);
+      if (!token) return res.status(500).json({ error: "Failed to generate token" });
+
+      return res.json({ token });
+    } catch (error) {
+      logger.error("Firebase custom token error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/auth/ensure-firebase-user", async (req: Request, res: Response) => {
     try {
       const { email } = req.body;
       if (!email) return res.status(400).json({ error: "Email is required" });
@@ -461,46 +463,52 @@ export function registerAuthRoutes(app: Express): void {
 
       const user = await storage.getUserByEmail(email);
       if (!user) {
-        return res.json({ success: true, message: "If an account with that email exists, a reset link has been sent." });
+        return res.json({ success: true });
       }
 
-      const resetToken = crypto.randomBytes(32).toString('hex');
-      const expiry = new Date(Date.now() + 60 * 60 * 1000);
-      await storage.setPasswordResetToken(user.id, resetToken, expiry);
-      await sendPasswordResetEmail(email, resetToken, user.firstName || undefined);
+      if (!user.firebaseUid) {
+        const fbUser = await getFirebaseUserByEmail(email);
+        if (fbUser) {
+          await storage.updateUserFirebaseUid(user.id, fbUser.uid);
+        }
+      }
 
-      return res.json({ success: true, message: "If an account with that email exists, a reset link has been sent." });
+      return res.json({ success: true });
     } catch (error) {
-      logger.error("Forgot password error:", error);
+      logger.error("Ensure Firebase user error:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });
 
-  app.post("/api/auth/reset-password", async (req: Request, res: Response) => {
+  app.post("/api/auth/reset-password-firebase", async (req: Request, res: Response) => {
     try {
-      const { token, newPassword } = req.body;
-      if (!token || !newPassword) {
-        return res.status(400).json({ error: "Token and new password are required" });
-      }
-      if (!/^[a-f0-9]{64}$/.test(token)) {
-        return res.status(400).json({ error: "Invalid reset token" });
+      const { firebaseIdToken, newPassword } = req.body;
+      if (!firebaseIdToken || !newPassword) {
+        return res.status(400).json({ error: "Firebase ID token and new password are required" });
       }
       if (newPassword.length < 6) {
         return res.status(400).json({ error: "Password must be at least 6 characters" });
       }
 
-      const user = await storage.getUserByResetToken(token);
+      const decoded = await verifyFirebaseIdToken(firebaseIdToken);
+      if (!decoded || !decoded.email) {
+        return res.status(401).json({ error: "Invalid Firebase token" });
+      }
+
+      const user = await storage.getUserByEmail(decoded.email);
       if (!user) {
-        return res.status(400).json({ error: "Invalid or expired reset link" });
+        return res.status(404).json({ error: "User not found" });
       }
 
       const hashedPassword = await bcrypt.hash(newPassword, 10);
       await storage.updateUserPassword(user.id, hashedPassword);
-      await storage.clearPasswordResetToken(user.id);
 
-      return res.json({ success: true, message: "Password reset successfully" });
+      req.session.userId = user.id;
+      req.session.username = user.username || user.email || String(user.id);
+
+      return res.json({ success: true, message: "Password reset successfully", user: { id: user.id, username: user.username } });
     } catch (error) {
-      logger.error("Reset password error:", error);
+      logger.error("Firebase reset password error:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });
@@ -676,55 +684,19 @@ export function registerAuthRoutes(app: Express): void {
     });
   });
 
-  app.post("/api/auth/2fa/send-email-code", isAuthenticated, async (req, res) => {
-    const user = await storage.getUser(req.session.userId!);
-    if (!user) return res.status(404).json({ error: "User not found" });
-    if (!user.email) return res.status(400).json({ error: "No email address on file" });
-
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const hashedCode = crypto.createHash('sha256').update(code).digest('hex');
-    const expiry = new Date(Date.now() + 10 * 60 * 1000);
-
-    await storage.updateUser(user.id, {
-      twoFactorEmailCode: hashedCode,
-      twoFactorEmailExpiry: expiry,
-    } as any);
-
-    const sent = await send2FAVerificationEmail(user.email, code, user.firstName || undefined);
-    if (!sent) return res.status(500).json({ error: "Failed to send verification email" });
-
-    res.json({ message: "Verification code sent to your email" });
-  });
-
-  app.post("/api/auth/2fa/verify-email-code", isAuthenticated, async (req, res) => {
-    const { code } = req.body;
-    if (!code || typeof code !== 'string' || code.length !== 6) {
-      return res.status(400).json({ error: "Invalid code format" });
-    }
-
+  app.post("/api/auth/2fa/verify-email-firebase", isAuthenticated, async (req, res) => {
     const user = await storage.getUser(req.session.userId!);
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    if (!user.twoFactorEmailCode || !user.twoFactorEmailExpiry) {
-      return res.status(400).json({ error: "No verification code pending" });
+    if (user.firebaseUid) {
+      const verified = await checkFirebaseEmailVerified(user.firebaseUid);
+      if (verified) {
+        await storage.updateUser(user.id, { emailVerified: true } as any);
+        return res.json({ emailVerified: true, message: "Email verified successfully" });
+      }
     }
 
-    if (new Date() > new Date(user.twoFactorEmailExpiry)) {
-      return res.status(400).json({ error: "Verification code has expired" });
-    }
-
-    const hashedCode = crypto.createHash('sha256').update(code).digest('hex');
-    if (hashedCode !== user.twoFactorEmailCode) {
-      return res.status(400).json({ error: "Invalid verification code" });
-    }
-
-    await storage.updateUser(user.id, {
-      emailVerified: true,
-      twoFactorEmailCode: null,
-      twoFactorEmailExpiry: null,
-    } as any);
-
-    res.json({ message: "Email verified successfully" });
+    return res.json({ emailVerified: false, message: "Email not yet verified. Please check your inbox." });
   });
 
   app.post("/api/auth/2fa/verify-phone-firebase", isAuthenticated, async (req, res) => {

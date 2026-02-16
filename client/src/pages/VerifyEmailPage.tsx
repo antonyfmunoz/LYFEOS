@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
+import { applyVerificationCode } from "@/lib/firebaseAuth";
+import { auth } from "@/lib/firebase";
 
 export default function VerifyEmailPage() {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
@@ -8,30 +10,49 @@ export default function VerifyEmailPage() {
   const [, navigate] = useLocation();
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
+    const run = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const oobCode = params.get("oobCode");
 
-    if (!token) {
-      setStatus("error");
-      setMessage("No verification token provided.");
-      return;
-    }
-
-    fetch(`/api/auth/verify-email?token=${token}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
+      if (!oobCode) {
+        const firebaseUser = auth.currentUser;
+        if (firebaseUser) {
+          await firebaseUser.reload();
+        }
+        if (firebaseUser?.emailVerified) {
+          fetch("/api/auth/sync-email-verified", {
+            method: "POST",
+            credentials: "include",
+          }).catch(() => {});
           setStatus("success");
           setMessage("Your email has been verified successfully!");
         } else {
           setStatus("error");
-          setMessage(data.error || "Verification failed. The link may have expired.");
+          setMessage("No verification code provided. Please use the link from your email.");
         }
-      })
-      .catch(() => {
+        return;
+      }
+
+      try {
+        await applyVerificationCode(oobCode);
+        await fetch("/api/auth/sync-email-verified", {
+          method: "POST",
+          credentials: "include",
+        }).catch(() => {});
+        setStatus("success");
+        setMessage("Your email has been verified successfully!");
+      } catch (err: any) {
+        if (err.code === 'auth/expired-action-code') {
+          setMessage("This verification link has expired. Please request a new one.");
+        } else if (err.code === 'auth/invalid-action-code') {
+          setMessage("This verification link is invalid or has already been used.");
+        } else {
+          setMessage("Verification failed. Please try again.");
+        }
         setStatus("error");
-        setMessage("Something went wrong. Please try again.");
-      });
+      }
+    };
+    run();
   }, []);
 
   return (

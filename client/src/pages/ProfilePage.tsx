@@ -1249,101 +1249,66 @@ export default function ProfilePage() {
               ) : twoFactorStep === 'email' ? (
                 <div className="space-y-3">
                   <p className="text-xs text-muted-foreground">
-                    Step 1: We'll send a 6-digit verification code to your email address ({twoFactorStatus?.email || 'your email'}).
+                    Step 1: We'll send a verification email to {twoFactorStatus?.email || 'your email address'}. Click the link in the email to verify.
                   </p>
-                  {!emailCodeSent ? (
-                    <button
-                      onClick={async () => {
-                        setTwoFactorLoading(true);
-                        setTwoFactorError('');
-                        try {
-                          const res = await fetch('/api/auth/2fa/send-email-code', { method: 'POST', credentials: 'include' });
-                          if (!res.ok) { const data = await res.json(); throw new Error(data.error); }
-                          setEmailCodeSent(true);
-                          toast({ title: "Code Sent", description: "Check your email for the verification code." });
-                        } catch (err: any) {
-                          setTwoFactorError(err.message || 'Failed to send code');
-                        } finally {
-                          setTwoFactorLoading(false);
+                  <button
+                    onClick={async () => {
+                      setTwoFactorLoading(true);
+                      setTwoFactorError('');
+                      try {
+                        const { sendVerificationEmail: sendVerifEmail } = await import('@/lib/firebaseAuth');
+                        const sent = await sendVerifEmail();
+                        if (sent) {
+                          toast({ title: "Verification Email Sent", description: "Check your inbox and click the verification link." });
+                        } else {
+                          setTwoFactorError('Could not send verification email. Make sure you are signed into Firebase.');
                         }
-                      }}
-                      disabled={twoFactorLoading}
-                      className="w-full text-xs font-mono px-3 py-2 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-2"
-                    >
-                      {twoFactorLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />}
-                      Send Verification Code
-                    </button>
-                  ) : null}
+                      } catch (err: any) {
+                        setTwoFactorError(err.message || 'Failed to send verification email');
+                      } finally {
+                        setTwoFactorLoading(false);
+                      }
+                    }}
+                    disabled={twoFactorLoading}
+                    className="w-full text-xs font-mono px-3 py-2 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-2"
+                  >
+                    {twoFactorLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />}
+                    Send Verification Email
+                  </button>
 
-                  <div>
-                    <Label className="text-xs mb-1 block">Enter 6-digit code</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        type="text"
-                        maxLength={6}
-                        placeholder="000000"
-                        value={emailCode}
-                        onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        className="bg-background/50 border-primary/30 font-mono text-center tracking-widest"
-                      />
-                      <button
-                        onClick={async () => {
-                          if (emailCode.length !== 6) return;
-                          setTwoFactorLoading(true);
-                          setTwoFactorError('');
-                          try {
-                            const res = await fetch('/api/auth/2fa/verify-email-code', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              credentials: 'include',
-                              body: JSON.stringify({ code: emailCode }),
-                            });
-                            if (!res.ok) { const data = await res.json(); throw new Error(data.error); }
-                            setEmailCode('');
-                            setTwoFactorStep('phone');
-                            refetchTwoFactorStatus();
-                            toast({ title: "Email Verified", description: "Now let's verify your phone number." });
-                          } catch (err: any) {
-                            setTwoFactorError(err.message || 'Invalid code');
-                          } finally {
-                            setTwoFactorLoading(false);
-                          }
-                        }}
-                        disabled={emailCode.length !== 6 || twoFactorLoading}
-                        className="text-xs font-mono px-3 py-2 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center gap-1"
-                      >
-                        {twoFactorLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Verify'}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => { setTwoFactorStep('idle'); setEmailCode(''); setEmailCodeSent(false); setTwoFactorError(''); }}
-                      className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1"
-                    >
-                      <X className="h-3 w-3" />Cancel
-                    </button>
-                    <button
-                      onClick={async () => {
-                        setTwoFactorLoading(true);
-                        setTwoFactorError('');
-                        try {
-                          const res = await fetch('/api/auth/2fa/send-email-code', { method: 'POST', credentials: 'include' });
-                          if (!res.ok) { const data = await res.json(); throw new Error(data.error); }
-                          toast({ title: "Code Resent", description: "Check your email for the new code." });
-                        } catch (err: any) {
-                          setTwoFactorError(err.message || 'Failed to resend');
-                        } finally {
-                          setTwoFactorLoading(false);
+                  <button
+                    onClick={async () => {
+                      setTwoFactorLoading(true);
+                      setTwoFactorError('');
+                      try {
+                        const res = await fetch('/api/auth/2fa/verify-email-firebase', { method: 'POST', credentials: 'include' });
+                        const data = await res.json();
+                        if (data.emailVerified) {
+                          setTwoFactorStep('phone');
+                          refetchTwoFactorStatus();
+                          toast({ title: "Email Verified", description: "Now let's verify your phone number." });
+                        } else {
+                          setTwoFactorError('Email not yet verified. Please check your inbox and click the verification link first.');
                         }
-                      }}
-                      disabled={twoFactorLoading}
-                      className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-muted-foreground hover:text-primary hover:bg-primary/30 transition-colors disabled:opacity-40"
-                    >
-                      Resend Code
-                    </button>
-                  </div>
+                      } catch (err: any) {
+                        setTwoFactorError(err.message || 'Failed to check verification status');
+                      } finally {
+                        setTwoFactorLoading(false);
+                      }
+                    }}
+                    disabled={twoFactorLoading}
+                    className="w-full text-xs font-mono px-3 py-2 rounded border bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-2"
+                  >
+                    {twoFactorLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle className="h-3 w-3" />}
+                    I've Verified My Email
+                  </button>
+
+                  <button
+                    onClick={() => { setTwoFactorStep('idle'); setTwoFactorError(''); }}
+                    className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1"
+                  >
+                    <X className="h-3 w-3" />Cancel
+                  </button>
                 </div>
               ) : twoFactorStep === 'phone' ? (
                 <div className="space-y-3">

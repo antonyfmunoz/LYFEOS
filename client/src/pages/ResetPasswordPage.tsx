@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useLocation, Link } from "wouter";
 import { Loader2, CheckCircle, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { verifyPasswordResetCode, confirmPasswordReset, firebaseSignInWithEmail } from "@/lib/firebaseAuth";
 
 const hexToRgba = (hex: string, alpha: number) => {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -33,7 +34,8 @@ export default function ResetPasswordPage() {
     };
   }, [savedColor]);
 
-  const token = new URLSearchParams(window.location.search).get("token");
+  const params = new URLSearchParams(window.location.search);
+  const oobCode = params.get("oobCode");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,27 +50,43 @@ export default function ResetPasswordPage() {
       return;
     }
 
+    if (!oobCode) {
+      setError("Invalid reset link. Please request a new one.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, newPassword }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setSuccess(true);
-      } else {
-        setError(data.error || "Failed to reset password. The link may have expired.");
+      const email = await verifyPasswordResetCode(oobCode);
+
+      await confirmPasswordReset(oobCode, newPassword);
+
+      const credential = await firebaseSignInWithEmail(email, newPassword);
+      if (credential) {
+        const idToken = await credential.user.getIdToken();
+        await fetch("/api/auth/reset-password-firebase", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ firebaseIdToken: idToken, newPassword }),
+          credentials: "include",
+        });
       }
-    } catch {
-      setError("Network error. Please try again.");
+
+      setSuccess(true);
+    } catch (err: any) {
+      if (err.code === 'auth/expired-action-code') {
+        setError("This reset link has expired. Please request a new one.");
+      } else if (err.code === 'auth/invalid-action-code') {
+        setError("This reset link is invalid or has already been used.");
+      } else {
+        setError(err.message || "Failed to reset password. Please try again.");
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (!token) {
+  if (!oobCode) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 text-white" style={{ backgroundColor: 'hsl(0 0% 7%)' }}>
         <div className="text-center mb-8">

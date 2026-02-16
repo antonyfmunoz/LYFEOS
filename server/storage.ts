@@ -33,11 +33,6 @@ import {
 import { db } from "./db";
 import { eq, and, desc, asc, isNull, isNotNull, gt, lt, sql } from "drizzle-orm";
 import { formatLocalDate, logger } from "./utils";
-import crypto from "crypto";
-
-function hashToken(token: string): string {
-  return crypto.createHash("sha256").update(token).digest("hex");
-}
 
 export interface IStorage {
   // User methods
@@ -51,11 +46,6 @@ export interface IStorage {
   updateUser(id: number, userData: Partial<Omit<InsertUser, 'password'>>): Promise<User>;
   updateUserPassword(id: number, password: string): Promise<User>;
   updateUserFirebaseUid(id: number, firebaseUid: string): Promise<User>;
-  setEmailVerificationToken(id: number, token: string, expiry: Date): Promise<User>;
-  verifyEmail(token: string): Promise<User | undefined>;
-  setPasswordResetToken(id: number, token: string, expiry: Date): Promise<User>;
-  getUserByResetToken(token: string): Promise<User | undefined>;
-  clearPasswordResetToken(id: number): Promise<void>;
   
   // Stats methods
   getUserStats(userId: number): Promise<UserStats | undefined>;
@@ -328,52 +318,6 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, id))
       .returning();
     return updatedUser;
-  }
-
-  async setEmailVerificationToken(id: number, token: string, expiry: Date): Promise<User> {
-    const [user] = await db
-      .update(users)
-      .set({ emailVerificationToken: hashToken(token), emailVerificationExpiry: expiry })
-      .where(eq(users.id, id))
-      .returning();
-    return user;
-  }
-
-  async verifyEmail(token: string): Promise<User | undefined> {
-    const hashed = hashToken(token);
-    const [user] = await db.select().from(users).where(eq(users.emailVerificationToken, hashed));
-    if (!user) return undefined;
-    if (user.emailVerificationExpiry && new Date() > user.emailVerificationExpiry) return undefined;
-    const [updated] = await db
-      .update(users)
-      .set({ emailVerified: true, emailVerificationToken: null, emailVerificationExpiry: null })
-      .where(eq(users.id, user.id))
-      .returning();
-    return updated;
-  }
-
-  async setPasswordResetToken(id: number, token: string, expiry: Date): Promise<User> {
-    const [user] = await db
-      .update(users)
-      .set({ passwordResetToken: hashToken(token), passwordResetExpiry: expiry })
-      .where(eq(users.id, id))
-      .returning();
-    return user;
-  }
-
-  async getUserByResetToken(token: string): Promise<User | undefined> {
-    const hashed = hashToken(token);
-    const [user] = await db.select().from(users).where(eq(users.passwordResetToken, hashed));
-    if (!user) return undefined;
-    if (user.passwordResetExpiry && new Date() > user.passwordResetExpiry) return undefined;
-    return user;
-  }
-
-  async clearPasswordResetToken(id: number): Promise<void> {
-    await db
-      .update(users)
-      .set({ passwordResetToken: null, passwordResetExpiry: null })
-      .where(eq(users.id, id));
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {

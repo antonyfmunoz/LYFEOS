@@ -55,3 +55,71 @@ export async function verifyFirebaseIdToken(idToken: string): Promise<admin.auth
     return null;
   }
 }
+
+export async function createFirebaseUser(email: string, password: string): Promise<string | null> {
+  const app = getFirebaseAdmin();
+  if (!app) {
+    console.warn("Firebase Admin not available — skipping Firebase user creation");
+    return null;
+  }
+
+  try {
+    const existing = await admin.auth(app).getUserByEmail(email).catch(() => null);
+    if (existing) {
+      return existing.uid;
+    }
+    const userRecord = await admin.auth(app).createUser({ email, password });
+    return userRecord.uid;
+  } catch (error) {
+    console.error("Failed to create Firebase user:", error);
+    return null;
+  }
+}
+
+export async function getFirebaseUserByEmail(email: string): Promise<admin.auth.UserRecord | null> {
+  const app = getFirebaseAdmin();
+  if (!app) return null;
+
+  try {
+    return await admin.auth(app).getUserByEmail(email);
+  } catch {
+    return null;
+  }
+}
+
+export async function checkFirebaseEmailVerified(uid: string): Promise<boolean> {
+  const app = getFirebaseAdmin();
+  if (!app) return false;
+
+  try {
+    const userRecord = await admin.auth(app).getUser(uid);
+    return userRecord.emailVerified;
+  } catch {
+    return false;
+  }
+}
+
+export async function createCustomToken(uid: string): Promise<string | null> {
+  const app = getFirebaseAdmin();
+  if (!app) return null;
+
+  try {
+    return await admin.auth(app).createCustomToken(uid);
+  } catch (error) {
+    console.error("Failed to create Firebase custom token:", error);
+    return null;
+  }
+}
+
+export async function updateFirebaseUserPassword(uid: string, newPassword: string): Promise<boolean> {
+  const app = getFirebaseAdmin();
+  if (!app) return false;
+
+  try {
+    await admin.auth(app).updateUser(uid, { password: newPassword });
+    return true;
+  } catch (error) {
+    console.error("Failed to update Firebase user password:", error);
+    return false;
+  }
+}
