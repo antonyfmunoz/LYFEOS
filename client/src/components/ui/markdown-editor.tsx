@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ObsidianMarkdown } from './obsidian-markdown';
 import { cn } from '@/lib/utils';
-import { Edit2, Save, CheckSquare } from 'lucide-react';
+import { Edit2, Save, CheckSquare, ImagePlus, Loader2 } from 'lucide-react';
 
 interface MarkdownEditorProps {
   value: string;
@@ -24,8 +24,10 @@ export function MarkdownEditor({
 }: MarkdownEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [cursorPosition, setCursorPosition] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const autoResize = () => {
     if (textareaRef.current) {
@@ -172,6 +174,66 @@ export function MarkdownEditor({
     }, 0);
   };
 
+  const insertAtCursor = useCallback((text: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      onChange(value + text);
+      return;
+    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const before = value.substring(0, start);
+    const after = value.substring(end);
+    const newValue = before + text + after;
+    onChange(newValue);
+    const newPos = start + text.length;
+    setTimeout(() => {
+      textarea.setSelectionRange(newPos, newPos);
+      textarea.focus();
+    }, 0);
+  }, [value, onChange]);
+
+  const uploadImage = useCallback(async (file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    if (file.size > 10 * 1024 * 1024) return;
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch('/api/inline-upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Upload failed');
+      const data = await response.json();
+      insertAtCursor(`\n${data.markdown}\n`);
+    } catch {
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }, [insertAtCursor]);
+
+  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) uploadImage(file);
+  }, [uploadImage]);
+
+  const handlePaste = useCallback(async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) uploadImage(file);
+        break;
+      }
+    }
+  }, [uploadImage]);
+
   // Detect clicks outside to exit edit mode and trigger blur save
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -199,16 +261,32 @@ export function MarkdownEditor({
     >
       {isEditing ? (
         <div className="relative rounded-md border border-primary/30 bg-background">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageUpload}
+          />
           <textarea
             ref={textareaRef}
             value={value}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             className="w-full p-3 bg-transparent resize-none outline-none border-none rounded-md placeholder:text-muted-foreground/50 dark:text-[#D6F4FF] light:text-slate-700 text-base overflow-hidden"
             placeholder={placeholder}
             style={{ minHeight }}
           />
           <div className="absolute top-2 right-2 flex space-x-1">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="p-1 bg-primary/10 rounded hover:bg-primary/20 text-primary disabled:opacity-50"
+              title="Upload image"
+            >
+              {isUploading ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />}
+            </button>
             <button
               onClick={handleSaveClick}
               className="p-1 bg-primary/10 rounded hover:bg-primary/20 text-primary"

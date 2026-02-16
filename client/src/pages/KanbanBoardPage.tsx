@@ -12,6 +12,7 @@ import {
   ChevronRight,
   GripVertical
 } from 'lucide-react';
+import { ObsidianMarkdown } from '@/components/ui/obsidian-markdown';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RichTextArea } from '@/components/ui/rich-text-toolbar';
@@ -182,7 +183,7 @@ function TaskCard({ task, onEdit, onDelete, onMoveRight }: TaskCardProps) {
         </CardHeader>
         <CardContent className="p-3 pt-1">
           {task.description && (
-            <p className="text-xs text-muted-foreground mb-2">{task.description}</p>
+            <ObsidianMarkdown className="text-xs text-muted-foreground mb-2 [&_img]:max-w-[200px] [&_img]:rounded [&_p]:m-0">{task.description}</ObsidianMarkdown>
           )}
           
           {/* Date display section */}
@@ -830,7 +831,7 @@ export default function KanbanBoardPage() {
         </div>
         
         {activeBoard.description && (
-          <p className="text-muted-foreground mb-6">{activeBoard.description}</p>
+          <ObsidianMarkdown className="text-muted-foreground mb-6 [&_img]:max-w-[200px] [&_img]:rounded [&_p]:m-0">{activeBoard.description}</ObsidianMarkdown>
         )}
 
         <div className="overflow-x-auto pb-4" style={{ height: 'calc(100vh - 160px)' }}>

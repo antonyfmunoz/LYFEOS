@@ -257,8 +257,8 @@ interface LYFEOSContextType {
   updateQuest: (id: string, quest: Partial<Quest>) => Promise<Quest>;
   deleteQuest: (id: string) => Promise<void>;
   refetchQuests: () => Promise<void>;
-  sendMessage: (content: string) => void;
-  sendMessageInSession: (sessionId: string, content: string) => void;
+  sendMessage: (content: string, imageIds?: number[]) => void;
+  sendMessageInSession: (sessionId: string, content: string, imageIds?: number[]) => void;
   username: string;
   setUsername: (name: string) => void;
   aiCompanionName: string;
@@ -1052,7 +1052,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   };
 
   // Send a message to AI companion
-  const sendMessage = (content: string) => {
+  const sendMessage = (content: string, imageIds?: number[]) => {
     // Add user message
     const userMessage: AIMessage = {
       id: `msg-user-${Date.now()}`,
@@ -1421,7 +1421,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   };
   
   // Send a message in a specific chat session
-  const sendMessageInSession = async (sessionId: string, content: string) => {
+  const sendMessageInSession = async (sessionId: string, content: string, imageIds?: number[]) => {
     await new Promise<void>(resolve => {
       const detail = { onComplete: resolve };
       window.dispatchEvent(new CustomEvent("nova-flush-pending-save", { detail }));
@@ -1473,7 +1473,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: "include",
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, imageIds }),
       });
       
       if (!response.ok) {

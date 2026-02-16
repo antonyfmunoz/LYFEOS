@@ -5,7 +5,7 @@ import { usePageTitle } from "@/hooks/use-page-title";
 import { 
   Send, ChevronRight, Edit2, Check, X,
   PlusCircle, Trash2, MessageSquare, MoreVertical, Menu,
-  Volume2, VolumeX, Mic
+  Volume2, VolumeX, Mic, ImagePlus, Loader2, X as XIcon
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,38 @@ export default function AIPage() {
   const [chatTitleInput, setChatTitleInput] = useState("");
   const [editingChatId, setEditingChatId] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [attachedImageIds, setAttachedImageIds] = useState<number[]>([]);
+  const [attachedImagePreviews, setAttachedImagePreviews] = useState<{id: number; name: string}[]>([]);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const chatImageInputRef = useRef<HTMLInputElement>(null);
+
+  const handleChatImageUpload = useCallback(async (file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    setIsUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch('/api/inline-upload', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+      if (!response.ok) throw new Error('Upload failed');
+      const data = await response.json();
+      setAttachedImageIds(prev => [...prev, data.id]);
+      setAttachedImagePreviews(prev => [...prev, { id: data.id, name: file.name }]);
+    } catch (error) {
+      toast({ title: 'Failed to upload image', variant: 'destructive' });
+    } finally {
+      setIsUploadingImage(false);
+      if (chatImageInputRef.current) chatImageInputRef.current.value = '';
+    }
+  }, [toast]);
+
+  const removeAttachedImage = (id: number) => {
+    setAttachedImageIds(prev => prev.filter(i => i !== id));
+    setAttachedImagePreviews(prev => prev.filter(p => p.id !== id));
+  };
 
   const AI_TOUR_STEPS: TutorialStep[] = [
     {
@@ -219,16 +251,18 @@ export default function AIPage() {
   
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputText.trim() && activeChatSessionId) {
-      // Check if this is the first message in the chat
+    if ((inputText.trim() || attachedImageIds.length > 0) && activeChatSessionId) {
       const currentChat = chatSessions.find(chat => chat.id === activeChatSessionId);
       const isFirstMessage = currentChat && currentChat.messages.length === 0;
       
-      // Show loading indicator immediately
       setIsLoading(true);
       
-      // Send the message
-      sendMessageInSession(activeChatSessionId, inputText);
+      const messageContent = attachedImageIds.length > 0 && !inputText.trim() 
+        ? "Please analyze these images." 
+        : inputText;
+      sendMessageInSession(activeChatSessionId, messageContent, attachedImageIds.length > 0 ? attachedImageIds : undefined);
+      setAttachedImageIds([]);
+      setAttachedImagePreviews([]);
       
       // If this is the first message, update the chat title based on this message
       if (isFirstMessage) {
@@ -551,22 +585,67 @@ export default function AIPage() {
           
           {/* Input area */}
           <form onSubmit={handleSendMessage} className="mt-4 pt-4 border-t border-primary/20 relative" data-tour="ai-input">
+            {attachedImagePreviews.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2 px-1">
+                {attachedImagePreviews.map(img => (
+                  <div key={img.id} className="flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 border border-primary/20 text-xs text-primary">
+                    <ImagePlus className="h-3 w-3" />
+                    <span className="max-w-[100px] truncate">{img.name}</span>
+                    <button type="button" onClick={() => removeAttachedImage(img.id)} className="hover:text-destructive">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <input
+              ref={chatImageInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleChatImageUpload(file);
+              }}
+            />
             <div className="relative rounded-2xl border border-primary/30 bg-card/30 shadow-inner overflow-hidden">
               <Input 
                 id="messageInput"
                 placeholder={`Message ${aiCompanionName}...`}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                className="border-0 bg-transparent pr-12 py-6 min-h-[60px] focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none text-foreground"
+                className="border-0 bg-transparent pr-28 py-6 min-h-[60px] focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none text-foreground"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    if (inputText.trim()) {
+                    if (inputText.trim() || attachedImageIds.length > 0) {
                       handleSendMessage(e);
                     }
                   }
                 }}
+                onPaste={(e) => {
+                  const items = e.clipboardData?.items;
+                  if (items) {
+                    for (let i = 0; i < items.length; i++) {
+                      if (items[i].type.startsWith('image/')) {
+                        e.preventDefault();
+                        const file = items[i].getAsFile();
+                        if (file) handleChatImageUpload(file);
+                        break;
+                      }
+                    }
+                  }
+                }}
               />
+              <button
+                type="button"
+                onClick={() => chatImageInputRef.current?.click()}
+                disabled={isUploadingImage}
+                className="absolute right-[88px] bottom-2 h-8 w-8 rounded border bg-card/50 border-primary/30 text-primary hover:bg-primary/20 transition-colors disabled:opacity-40 inline-flex items-center justify-center"
+                title="Attach image"
+              >
+                {isUploadingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+              </button>
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new CustomEvent('toggle-voice-control'))}
@@ -578,7 +657,7 @@ export default function AIPage() {
               </button>
               <button 
                 type="submit"
-                disabled={!inputText.trim()}
+                disabled={!inputText.trim() && attachedImageIds.length === 0}
                 className="absolute right-2 bottom-2 h-8 w-8 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center"
               >
                 <Send className="h-4 w-4" />

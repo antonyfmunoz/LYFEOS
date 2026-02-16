@@ -29,6 +29,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus, Zap, Star, Bell, BellOff, BellRing, Edit3, Trash2, X, ChevronDown, ChevronRight, Target, Calendar, Clock, CheckCircle2, GraduationCap, Inbox, Info, Archive, Undo2, Repeat, Loader2 } from "lucide-react";
+import { ObsidianMarkdown } from "@/components/ui/obsidian-markdown";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { achievementToast } from "@/lib/gamified-toast";
@@ -1856,11 +1857,12 @@ export default function QuestsPage() {
                           {terminatedInfoOpen[quest.id] && (
                             <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 opacity-60 space-y-1.5">
                               {quest.description && (
-                                <p className="text-muted-foreground text-xs">
-                                  <span className="text-primary font-mono">Mission Description:</span> {quest.category === 'onboarding'
+                                <div className="text-muted-foreground text-xs">
+                                  <span className="text-primary font-mono">Mission Description:</span>
+                                  <ObsidianMarkdown className="text-xs mt-1 [&_img]:max-w-[200px] [&_img]:rounded [&_p]:m-0">{quest.category === 'onboarding'
                                     ? (ONBOARDING_MISSIONS.find(m => m.title === quest.title.replace(/^Onboarding:\s*/, ''))?.description || quest.description)
-                                    : quest.description}
-                                </p>
+                                    : quest.description}</ObsidianMarkdown>
+                                </div>
                               )}
                               {(() => {
                                 const catLabels: Record<string, string> = { legacy: "Legacy", "10year": "10-Year", "5year": "5-Year", "18month": "18-Month", "90day": "90-Day" };

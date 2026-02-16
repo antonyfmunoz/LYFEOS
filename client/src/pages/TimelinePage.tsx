@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { ArrowLeft, CalendarClock, ZoomIn, ZoomOut, ChevronDown, ChevronRight, Info, Calendar, Clock, Rocket, Target, CheckSquare, Check } from 'lucide-react';
+import { ObsidianMarkdown } from '@/components/ui/obsidian-markdown';
 import { Quest } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { useLYFEOS } from '@/lib/context';
@@ -891,9 +892,10 @@ export default function TimelinePage() {
                                     : null;
                                   const displayDesc = onboardingDesc || hQuest?.description || node.items[0]?.description;
                                   return displayDesc ? (
-                                    <p className="text-muted-foreground text-xs">
-                                      <span className="text-primary font-mono">Mission Description:</span> {displayDesc}
-                                    </p>
+                                    <div className="text-muted-foreground text-xs">
+                                      <span className="text-primary font-mono">Mission Description:</span>
+                                      <ObsidianMarkdown className="text-xs mt-1 [&_img]:max-w-[200px] [&_img]:rounded [&_p]:m-0">{displayDesc}</ObsidianMarkdown>
+                                    </div>
                                   ) : null;
                                 })()}
                                 {hLinkedObjective && (
@@ -1139,9 +1141,10 @@ export default function TimelinePage() {
                                 </div>
                                 {rmExpandedInfoIds.has(node.key) && (
                                   <div className="text-sm mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10 space-y-1.5">
-                                    <p className="text-muted-foreground text-xs">
-                                      <span className="text-primary font-mono">Objective Description:</span> {goal.description || "No description"}
-                                    </p>
+                                    <div className="text-muted-foreground text-xs">
+                                      <span className="text-primary font-mono">Objective Description:</span>
+                                      <ObsidianMarkdown className="text-xs mt-1 [&_img]:max-w-[200px] [&_img]:rounded [&_p]:m-0">{goal.description || "No description"}</ObsidianMarkdown>
+                                    </div>
                                     {uniqueCategories.length > 0 && (
                                       <p className="text-muted-foreground text-xs">
                                         <span className="text-primary font-mono">Objective Type:</span> <span className="capitalize">{uniqueCategories.join(', ')}</span>
@@ -1270,9 +1273,10 @@ export default function TimelinePage() {
                                       : null;
                                     const displayDesc = onboardingDesc || rmQuest?.description || node.items[0]?.description;
                                     return displayDesc ? (
-                                      <p className="text-muted-foreground text-xs">
-                                        <span className="text-primary font-mono">Mission Description:</span> {displayDesc}
-                                      </p>
+                                      <div className="text-muted-foreground text-xs">
+                                        <span className="text-primary font-mono">Mission Description:</span>
+                                        <ObsidianMarkdown className="text-xs mt-1 [&_img]:max-w-[200px] [&_img]:rounded [&_p]:m-0">{displayDesc}</ObsidianMarkdown>
+                                      </div>
                                     ) : null;
                                   })()}
                                   {rmLinkedObjective && (

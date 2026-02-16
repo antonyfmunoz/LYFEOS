@@ -27,12 +27,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ObsidianMarkdown } from '@/components/ui/obsidian-markdown';
 import { useLYFEOS } from '@/lib/context';
 import { KanbanTask, KanbanStatus } from '@/lib/types';
 import { useLocation } from 'wouter';
 
 // BoardCard component for displaying individual boards on the main Kanban page
-function BoardCard({ board, onView, onEdit, onDelete }) {
+function BoardCard({ board, onView, onEdit, onDelete }: { board: any; onView: (board: any) => void; onEdit: (board: any) => void; onDelete: (boardId: any) => void }) {
   return (
     <Card className="w-full h-full hover:shadow-lg transition-all duration-200 hover:border-primary/50">
       <CardHeader className="p-4 pb-2">
@@ -74,7 +75,7 @@ function BoardCard({ board, onView, onEdit, onDelete }) {
       </CardHeader>
       <CardContent className="p-4 pt-2">
         {board.description ? (
-          <p className="text-sm text-muted-foreground">{board.description}</p>
+          <ObsidianMarkdown className="text-sm [&_img]:max-w-[200px] [&_img]:rounded [&_p]:m-0">{board.description}</ObsidianMarkdown>
         ) : (
           <p className="text-sm text-muted-foreground italic">No description</p>
         )}
@@ -135,7 +136,7 @@ export default function KanbanPage() {
     setIsEditBoardDialogOpen(false);
   };
 
-  const openEditBoardDialog = (board) => {
+  const openEditBoardDialog = (board: any) => {
     setEditBoardData({
       id: board.id,
       title: board.title,
@@ -145,13 +146,13 @@ export default function KanbanPage() {
     setIsEditBoardDialogOpen(true);
   };
 
-  const handleDeleteBoard = (boardId) => {
+  const handleDeleteBoard = (boardId: number) => {
     if (confirm('Are you sure you want to delete this board? This action cannot be undone.')) {
       deleteKanbanBoard(boardId);
     }
   };
 
-  const handleViewBoard = (boardId) => {
+  const handleViewBoard = (boardId: number) => {
     navigate(`/kanban/board/${boardId}`);
   };
 

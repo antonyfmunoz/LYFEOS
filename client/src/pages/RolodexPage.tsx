@@ -11,6 +11,7 @@ import {
   UserCircle, Radar, MessageSquare, Zap
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ObsidianMarkdown } from '@/components/ui/obsidian-markdown';
 import { Button } from '@/components/ui/button';
 import { RichTextArea } from '@/components/ui/rich-text-toolbar';
 
@@ -635,7 +636,7 @@ export default function RolodexPage() {
 
                     {contact.notes && (
                       <div className="mb-3 p-2 rounded-lg bg-primary/5 border border-primary/10">
-                        <p className="text-xs text-muted-foreground">{contact.notes}</p>
+                        <ObsidianMarkdown className="text-xs [&_img]:max-w-[200px] [&_img]:rounded [&_p]:m-0">{contact.notes}</ObsidianMarkdown>
                       </div>
                     )}
 

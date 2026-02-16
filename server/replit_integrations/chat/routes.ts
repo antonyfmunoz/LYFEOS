@@ -320,6 +320,12 @@ When creating missions, use sensible defaults:
 - experienceReward: calculate based on difficulty (D=10, C=25, B=50, A=100, S=200)
 - startDate: today's date in YYYY-MM-DD format unless specified
 
+=== VISION CAPABILITY ===
+You have the ability to see and analyze images. When images are included in the Player's message, analyze them carefully. Images may come from:
+- Direct chat uploads: the Player attached an image to their message
+- App data: images embedded in mission descriptions, goal descriptions, or daily logs
+When analyzing images, describe what you see concisely and relate it to the Player's context. For example, if they uploaded a photo of a meal, connect it to their nutrition goals. If they uploaded a workout photo, connect it to their fitness missions.
+
 === INTERACTION GUIDELINES ===
 - NEVER use emojis. Plain text only.
 - Address the Player by name naturally.
@@ -1272,7 +1278,7 @@ export function registerChatRoutes(app: Express): void {
     try {
       const conversationId = parseInt(req.params.id);
       const userId = req.session.userId!;
-      const { content } = req.body;
+      const { content, imageIds } = req.body;
 
       const conversation = await chatStorage.getConversation(conversationId);
       if (!conversation) {
@@ -1328,6 +1334,101 @@ export function registerChatRoutes(app: Express): void {
         relevantKnowledge,
       });
 
+      // Collect image IDs from chat-attached images AND from user data (missions, goals, logs)
+      const allImageIds = new Set<number>();
+      
+      // 1. Images directly attached to this chat message
+      if (Array.isArray(imageIds)) {
+        imageIds.forEach((id: number) => allImageIds.add(id));
+      }
+      
+      // 2. Extract inline image references from user data when the message references images/visual content
+      const contentLower = content.toLowerCase();
+      const imageContextTriggers = [
+        "image", "photo", "picture", "screenshot", "look at", "see",
+        "analyze", "what is this", "what's this", "uploaded", "attached",
+        "show me", "vision", "progress", "before and after", "meal",
+        "food", "workout", "exercise", "body", "physique", "setup",
+        "desk", "room", "receipt", "document", "note", "journal",
+        "log", "mission", "goal", "description"
+      ];
+      const shouldExtractDataImages = imageContextTriggers.some(t => contentLower.includes(t));
+      
+      if (shouldExtractDataImages) {
+        const inlineImageRegex = /\/api\/inline-upload\/(\d+)/g;
+        const extractImageIdsFromText = (text: string | null | undefined) => {
+          if (!text) return;
+          let match;
+          while ((match = inlineImageRegex.exec(text)) !== null) {
+            allImageIds.add(parseInt(match[1]));
+          }
+          inlineImageRegex.lastIndex = 0;
+        };
+        
+        for (const mission of allMissions.filter(m => !m.deletedAt)) {
+          extractImageIdsFromText(mission.description);
+        }
+        for (const goal of allVisionGoals) {
+          extractImageIdsFromText((goal as any).description);
+        }
+        const recentLogs = (dailyLogs || [])
+          .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+          .slice(0, 7);
+        for (const log of recentLogs) {
+          extractImageIdsFromText((log as any).gratitude);
+          extractImageIdsFromText((log as any).notes);
+          extractImageIdsFromText((log as any).wins);
+          extractImageIdsFromText((log as any).struggles);
+          extractImageIdsFromText((log as any).tomorrowFocus);
+        }
+      }
+      
+      // Build Anthropic vision content blocks from collected image IDs (limit to 5 most recent to avoid token bloat)
+      const imageContentBlocks: Anthropic.Messages.ImageBlockParam[] = [];
+      const sortedImageIds = Array.from(allImageIds).sort((a, b) => b - a).slice(0, 5);
+      
+      for (const imgId of sortedImageIds) {
+        try {
+          const mediaItem = await storage.getMediaItem(imgId);
+          if (mediaItem && mediaItem.fileData && mediaItem.userId === userId) {
+            const matches = mediaItem.fileData.match(/^data:(.+);base64,(.+)$/);
+            if (matches) {
+              const mediaType = matches[1] as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+              if (["image/jpeg", "image/png", "image/gif", "image/webp"].includes(mediaType)) {
+                imageContentBlocks.push({
+                  type: "image",
+                  source: {
+                    type: "base64",
+                    media_type: mediaType,
+                    data: matches[2],
+                  },
+                });
+              }
+            }
+          }
+        } catch (e) {
+          // Skip invalid images
+        }
+      }
+      
+      // If there are images, modify the last user message to include vision content
+      if (imageContentBlocks.length > 0) {
+        const lastMsg = chatMessages[chatMessages.length - 1];
+        if (lastMsg && lastMsg.role === "user") {
+          const textContent = typeof lastMsg.content === "string" ? lastMsg.content : "";
+          const imageSource = Array.isArray(imageIds) && imageIds.length > 0 
+            ? "chat-attached" 
+            : "from your missions, goals, and logs";
+          chatMessages[chatMessages.length - 1] = {
+            role: "user",
+            content: [
+              ...imageContentBlocks,
+              { type: "text", text: `${textContent}\n\n[${imageContentBlocks.length} image(s) ${imageSource} are included above for visual context]` },
+            ],
+          };
+        }
+      }
+
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
@@ -1342,7 +1443,8 @@ export function registerChatRoutes(app: Express): void {
       while (maxIterations > 0) {
         maxIterations--;
 
-        const useSmartModel = toolsUsedCount > 0 || classifyComplexity(content) === "complex";
+        const hasImages = imageContentBlocks.length > 0;
+        const useSmartModel = hasImages || toolsUsedCount > 0 || classifyComplexity(content) === "complex";
         const chatModel = useSmartModel ? MODEL_SONNET : selectModel(content);
         const response = await anthropic.messages.create({
           model: chatModel,
