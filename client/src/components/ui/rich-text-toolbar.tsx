@@ -50,7 +50,6 @@ export function RichTextToolbar({ onInsert, className, compact = false }: RichTe
 
       const data = await response.json();
       onInsert(`\n${data.markdown}\n`);
-      toast({ title: 'Image uploaded' });
     } catch (error) {
       toast({ title: 'Failed to upload image', variant: 'destructive' });
     } finally {
