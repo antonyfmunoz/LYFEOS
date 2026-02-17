@@ -37,28 +37,27 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete }: 
   const [visible, setVisible] = useState(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const stepsRef = useRef(steps);
+  stepsRef.current = steps;
 
   const findVisibleStep = useCallback((startIndex: number, direction: 1 | -1 = 1): number => {
+    const currentSteps = stepsRef.current;
     let idx = startIndex;
-    while (idx >= 0 && idx < steps.length) {
-      const step = steps[idx];
+    while (idx >= 0 && idx < currentSteps.length) {
+      const step = currentSteps[idx];
       const el = document.querySelector(step.target);
-      if (el) {
-        const rect = el.getBoundingClientRect();
-        if (rect.width > 0) {
-          console.log(`[Tutorial] Found visible step ${idx}: ${step.target} (${rect.width}x${rect.height})`);
-          return idx;
-        }
-        console.log(`[Tutorial] Step ${idx} element exists but width=0: ${step.target}`);
+      if (el && el.getBoundingClientRect().width > 0) {
+        return idx;
       }
       idx += direction;
     }
     return -1;
-  }, [steps]);
+  }, []);
 
   const updateTargetRect = useCallback(() => {
     if (!isOpen) return;
-    const step = steps[currentStep];
+    const currentSteps = stepsRef.current;
+    const step = currentSteps[currentStep];
     if (!step) return;
     const el = document.querySelector(step.target);
     if (el) {
@@ -72,10 +71,9 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete }: 
     if (nextVisible !== -1 && nextVisible !== currentStep) {
       setCurrentStep(nextVisible);
     }
-  }, [isOpen, currentStep, findVisibleStep, steps]);
+  }, [isOpen, currentStep, findVisibleStep]);
 
   useEffect(() => {
-    console.log(`[Tutorial] Effect fired: isOpen=${isOpen}, storageKey=${storageKey}, steps=${steps.length}`);
     if (!isOpen) {
       setVisible(false);
       return;
@@ -83,60 +81,33 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete }: 
 
     let cancelled = false;
     let retryTimer: ReturnType<typeof setTimeout>;
-    let observer: MutationObserver | null = null;
 
-    const cleanup = () => {
-      clearTimeout(retryTimer);
-      if (observer) { observer.disconnect(); observer = null; }
-    };
-
-    const checkAndShow = (source: string) => {
+    const checkAndShow = () => {
       if (cancelled) return false;
       const firstVisible = findVisibleStep(0);
-      console.log(`[Tutorial] checkAndShow(${source}): firstVisible=${firstVisible}`);
       if (firstVisible !== -1) {
         setCurrentStep(firstVisible);
         setVisible(true);
-        cleanup();
         return true;
       }
       return false;
     };
 
-    const startObserver = () => {
-      if (cancelled) return;
-      observer = new MutationObserver(() => {
-        checkAndShow("observer");
-      });
-      observer.observe(document.body, { childList: true, subtree: true });
-    };
-
     let attempts = 0;
-    const maxAttempts = 30;
+    const maxAttempts = 40;
     const poll = () => {
       if (cancelled) return;
       attempts++;
-      console.log(`[Tutorial] poll attempt ${attempts}/${maxAttempts}`);
-      if (!checkAndShow(`poll-${attempts}`) && attempts < maxAttempts) {
-        retryTimer = setTimeout(poll, 300);
-      } else if (attempts >= maxAttempts) {
-        console.log(`[Tutorial] max attempts reached, giving up`);
-        cleanup();
+      if (!checkAndShow() && attempts < maxAttempts) {
+        retryTimer = setTimeout(poll, 250);
       }
     };
 
-    retryTimer = setTimeout(() => {
-      console.log(`[Tutorial] Initial check starting`);
-      if (!checkAndShow("initial")) {
-        startObserver();
-        poll();
-      }
-    }, 400);
+    retryTimer = setTimeout(poll, 500);
 
     return () => {
       cancelled = true;
       clearTimeout(retryTimer);
-      if (observer) observer.disconnect();
     };
   }, [isOpen, findVisibleStep]);
 
@@ -154,7 +125,8 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete }: 
 
   useEffect(() => {
     if (!visible || !isOpen) return;
-    const step = steps[currentStep];
+    const currentSteps = stepsRef.current;
+    const step = currentSteps[currentStep];
     if (!step) return;
     const el = document.querySelector(step.target);
     if (!el) return;
@@ -172,7 +144,7 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete }: 
       clearTimeout(timer);
       resizeObserverRef.current?.disconnect();
     };
-  }, [currentStep, visible, isOpen, updateTargetRect, steps]);
+  }, [currentStep, visible, isOpen, updateTargetRect]);
 
   const handleNext = () => {
     const next = findVisibleStep(currentStep + 1, 1);

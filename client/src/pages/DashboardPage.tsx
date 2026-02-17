@@ -229,9 +229,7 @@ export default function DashboardPage() {
   ];
 
   const [showTutorial, setShowTutorial] = useState(() => {
-    const completed = localStorage.getItem("lyfeos-dashboard-tutorial-completed");
-    console.log(`[Dashboard] Tutorial check: completed=${completed}, showTutorial=${!completed}`);
-    return !completed;
+    return !localStorage.getItem("lyfeos-dashboard-tutorial-completed");
   });
   
   const handleTutorialComplete = useCallback(() => {
