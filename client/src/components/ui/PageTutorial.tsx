@@ -69,6 +69,8 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
     return -1;
   }, []);
 
+  const lastRectRef = useRef<{ top: number; left: number; width: number; height: number } | null>(null);
+
   const updateTargetRect = useCallback(() => {
     if (!isOpen) return;
     const currentSteps = stepsRef.current;
@@ -78,6 +80,17 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
     if (el) {
       const rect = el.getBoundingClientRect();
       if (rect.width > 0) {
+        const last = lastRectRef.current;
+        const threshold = 2;
+        if (last &&
+          Math.abs(rect.top - last.top) < threshold &&
+          Math.abs(rect.left - last.left) < threshold &&
+          Math.abs(rect.width - last.width) < threshold &&
+          Math.abs(rect.height - last.height) < threshold
+        ) {
+          return;
+        }
+        lastRectRef.current = { top: rect.top, left: rect.left, width: rect.width, height: rect.height };
         setTargetRect(rect);
         return;
       }
@@ -95,6 +108,7 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
     }
 
     lockedPositionRef.current = null;
+    lastRectRef.current = null;
     const firstVisible = findVisibleStep(0);
     if (firstVisible !== -1) {
       setCurrentStep(firstVisible);
@@ -188,47 +202,47 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
 
   const maskId = `tour-spotlight-mask-${storageKey}`;
 
-  const SIDE_DECISION_HEIGHT = 250;
-
-  const pickBestSide = (rect: DOMRect, preferred: "top" | "bottom" | "left" | "right", tw: number): "top" | "bottom" | "left" | "right" => {
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const gap = 12;
-    const spaceBelow = vh - rect.bottom - padding;
-    const spaceAbove = rect.top - padding;
-    const spaceRight = vw - rect.right - padding;
-    const spaceLeft = rect.left - padding;
-
-    if (preferred === "bottom" && spaceBelow >= SIDE_DECISION_HEIGHT + gap) return "bottom";
-    if (preferred === "top" && spaceAbove >= SIDE_DECISION_HEIGHT + gap) return "top";
-    if (preferred === "right" && spaceRight >= tw + gap) return "right";
-    if (preferred === "left" && spaceLeft >= tw + gap) return "left";
-
-    const sides: Array<{ side: "top" | "bottom" | "left" | "right"; space: number }> = [
-      { side: "bottom", space: spaceBelow },
-      { side: "top", space: spaceAbove },
-      { side: "right", space: spaceRight },
-      { side: "left", space: spaceLeft },
-    ];
-    sides.sort((a, b) => b.space - a.space);
-    return sides[0].side;
-  };
+  const gap = 20;
 
   const getTooltipStyle = (): React.CSSProperties => {
     if (!targetRect) return { position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 10002, maxHeight: "calc(100vh - 32px)" };
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const tooltipWidth = Math.max(240, Math.min(340, vw - 32));
-    const tooltipHeight = tooltipRef.current?.getBoundingClientRect().height || SIDE_DECISION_HEIGHT;
+    const tooltipHeight = tooltipRef.current?.getBoundingClientRect().height || 200;
     const maxH = vh - 32;
-    const gap = 12;
-    const edge = 16;
+    const edge = 8;
+
+    const targetTop = targetRect.top - padding;
+    const targetBottom = targetRect.bottom + padding;
+    const targetLeft = targetRect.left - padding;
+    const targetRight = targetRect.right + padding;
+
+    const spaceAbove = targetTop;
+    const spaceBelow = vh - targetBottom;
+    const spaceLeft = targetLeft;
+    const spaceRight = vw - targetRight;
 
     let pos: "top" | "bottom" | "left" | "right";
     if (lockedPositionRef.current && lockedPositionRef.current.step === currentStep) {
       pos = lockedPositionRef.current.side;
     } else {
-      pos = pickBestSide(targetRect, step.position, tooltipWidth);
+      const canFitAbove = spaceAbove >= tooltipHeight + gap;
+      const canFitBelow = spaceBelow >= tooltipHeight + gap;
+      const canFitLeft = spaceLeft >= tooltipWidth + gap;
+      const canFitRight = spaceRight >= tooltipWidth + gap;
+
+      const preferred = step.position;
+      if (preferred === "bottom" && canFitBelow) pos = "bottom";
+      else if (preferred === "top" && canFitAbove) pos = "top";
+      else if (preferred === "right" && canFitRight) pos = "right";
+      else if (preferred === "left" && canFitLeft) pos = "left";
+      else if (canFitAbove && spaceAbove >= spaceBelow) pos = "top";
+      else if (canFitBelow) pos = "bottom";
+      else if (canFitRight && spaceRight >= spaceLeft) pos = "right";
+      else if (canFitLeft) pos = "left";
+      else pos = spaceAbove >= spaceBelow ? "top" : "bottom";
+
       lockedPositionRef.current = { step: currentStep, side: pos };
     }
 
@@ -236,43 +250,45 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
     let left: number;
 
     if (pos === "bottom") {
-      top = targetRect.bottom + padding + gap;
+      top = targetBottom + gap;
       left = targetRect.left + targetRect.width / 2 - tooltipWidth / 2;
     } else if (pos === "top") {
-      top = targetRect.top - padding - gap - tooltipHeight;
+      top = targetTop - gap - tooltipHeight;
       left = targetRect.left + targetRect.width / 2 - tooltipWidth / 2;
     } else if (pos === "right") {
       top = targetRect.top + targetRect.height / 2 - tooltipHeight / 2;
-      left = targetRect.right + padding + gap;
+      left = targetRight + gap;
     } else {
       top = targetRect.top + targetRect.height / 2 - tooltipHeight / 2;
-      left = targetRect.left - padding - gap - tooltipWidth;
+      left = targetLeft - gap - tooltipWidth;
     }
 
     left = Math.max(edge, Math.min(left, vw - tooltipWidth - edge));
     top = Math.max(edge, Math.min(top, vh - tooltipHeight - edge));
 
-    const tRight = left + tooltipWidth;
-    const tBottom = top + tooltipHeight;
-    const rTop = targetRect.top - padding;
-    const rLeft = targetRect.left - padding;
-    const rRight = targetRect.right + padding;
-    const rBottom = targetRect.bottom + padding;
-    const overlapsH = tRight > rLeft && left < rRight;
-    const overlapsV = tBottom > rTop && top < rBottom;
+    const overlapsH = (left + tooltipWidth) > targetLeft && left < targetRight;
+    const overlapsV = (top + tooltipHeight) > targetTop && top < targetBottom;
 
     if (overlapsH && overlapsV) {
       if (pos === "bottom") {
-        top = rBottom + gap;
+        top = targetBottom + gap;
       } else if (pos === "top") {
-        top = rTop - tooltipHeight - gap;
+        top = targetTop - gap - tooltipHeight;
       } else if (pos === "right") {
-        left = rRight + gap;
+        left = targetRight + gap;
       } else {
-        left = rLeft - tooltipWidth - gap;
+        left = targetLeft - gap - tooltipWidth;
       }
-      left = Math.max(edge, Math.min(left, vw - tooltipWidth - edge));
-      top = Math.max(edge, Math.min(top, vh - tooltipHeight - edge));
+
+      const stillOverlapsH = (left + tooltipWidth) > targetLeft && left < targetRight;
+      const stillOverlapsV = (top + tooltipHeight) > targetTop && top < targetBottom;
+      if (stillOverlapsH && stillOverlapsV) {
+        if (spaceAbove >= spaceBelow) {
+          top = targetTop - gap - tooltipHeight;
+        } else {
+          top = targetBottom + gap;
+        }
+      }
     }
 
     return { position: "fixed", zIndex: 10002, maxWidth: tooltipWidth, width: tooltipWidth, top, left, maxHeight: maxH };
