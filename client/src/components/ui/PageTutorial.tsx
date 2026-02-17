@@ -43,8 +43,13 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete }: 
     while (idx >= 0 && idx < steps.length) {
       const step = steps[idx];
       const el = document.querySelector(step.target);
-      if (el && el.getBoundingClientRect().width > 0) {
-        return idx;
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        if (rect.width > 0) {
+          console.log(`[Tutorial] Found visible step ${idx}: ${step.target} (${rect.width}x${rect.height})`);
+          return idx;
+        }
+        console.log(`[Tutorial] Step ${idx} element exists but width=0: ${step.target}`);
       }
       idx += direction;
     }
@@ -70,6 +75,7 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete }: 
   }, [isOpen, currentStep, findVisibleStep, steps]);
 
   useEffect(() => {
+    console.log(`[Tutorial] Effect fired: isOpen=${isOpen}, storageKey=${storageKey}, steps=${steps.length}`);
     if (!isOpen) {
       setVisible(false);
       return;
@@ -84,9 +90,10 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete }: 
       if (observer) { observer.disconnect(); observer = null; }
     };
 
-    const checkAndShow = () => {
+    const checkAndShow = (source: string) => {
       if (cancelled) return false;
       const firstVisible = findVisibleStep(0);
+      console.log(`[Tutorial] checkAndShow(${source}): firstVisible=${firstVisible}`);
       if (firstVisible !== -1) {
         setCurrentStep(firstVisible);
         setVisible(true);
@@ -99,7 +106,7 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete }: 
     const startObserver = () => {
       if (cancelled) return;
       observer = new MutationObserver(() => {
-        checkAndShow();
+        checkAndShow("observer");
       });
       observer.observe(document.body, { childList: true, subtree: true });
     };
@@ -109,15 +116,18 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete }: 
     const poll = () => {
       if (cancelled) return;
       attempts++;
-      if (!checkAndShow() && attempts < maxAttempts) {
+      console.log(`[Tutorial] poll attempt ${attempts}/${maxAttempts}`);
+      if (!checkAndShow(`poll-${attempts}`) && attempts < maxAttempts) {
         retryTimer = setTimeout(poll, 300);
       } else if (attempts >= maxAttempts) {
+        console.log(`[Tutorial] max attempts reached, giving up`);
         cleanup();
       }
     };
 
     retryTimer = setTimeout(() => {
-      if (!checkAndShow()) {
+      console.log(`[Tutorial] Initial check starting`);
+      if (!checkAndShow("initial")) {
         startObserver();
         poll();
       }
