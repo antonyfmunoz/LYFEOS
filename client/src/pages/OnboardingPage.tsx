@@ -1095,8 +1095,10 @@ export default function OnboardingPage() {
     if (currentStep < maxSteps - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      await saveCompletedMission(currentMission);
-      await saveMissionData(currentMission);
+      await Promise.all([
+        saveCompletedMission(currentMission),
+        saveMissionData(currentMission),
+      ]);
       setShowMissionComplete(true);
     }
   };
@@ -1108,7 +1110,7 @@ export default function OnboardingPage() {
   };
 
   const handleStop = async () => {
-    if (continuedPastMission0 && currentMission > 0) {
+    if (currentMission > 0) {
       handleSkipToSystem();
     } else {
       localStorage.removeItem("lyfeos-pending-onboarding");
@@ -1154,7 +1156,6 @@ export default function OnboardingPage() {
     localStorage.removeItem(STORAGE_KEY);
     
     setIsLoading(true);
-    setIsGeneratingAffirmation(true);
     
     try {
       const allCompleted = completedOnboardingMissions.length >= MISSIONS.length;
@@ -1162,7 +1163,9 @@ export default function OnboardingPage() {
         method: "PATCH",
         body: JSON.stringify({ onboardingCompleted: allCompleted }),
       });
-      await generateAffirmationRequest();
+      generateAffirmationRequest().catch(err => 
+        console.error("Background affirmation generation failed:", err)
+      );
       navigate("/ceremony");
     } catch (error) {
       console.error("Error completing onboarding:", error);
@@ -1173,7 +1176,6 @@ export default function OnboardingPage() {
       });
     } finally {
       setIsLoading(false);
-      setIsGeneratingAffirmation(false);
     }
   };
   
