@@ -678,7 +678,21 @@ export default function OnboardingPage() {
   const [location, setLocation] = useState(saved.location || "");
   const [detectedLocation, setDetectedLocation] = useState("");
   const [timezone, setTimezone] = useState(saved.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
-  const [selectedThemeColor, setSelectedThemeColor] = useState(localStorage.getItem('lyfeos-primary-color') || "#00e0ff");
+  const [selectedThemeColor, setSelectedThemeColor] = useState("#00e0ff");
+
+  useEffect(() => {
+    const el = document.documentElement;
+    el.style.removeProperty('--primary');
+    el.style.removeProperty('--primary-hsl');
+    el.style.removeProperty('--primary-color');
+    el.style.removeProperty('--primary-glow-light');
+    el.style.removeProperty('--primary-glow-medium');
+    el.style.removeProperty('--primary-glow-strong');
+    el.style.removeProperty('--primary-bg-subtle');
+    el.style.removeProperty('--primary-bg-light');
+    el.style.removeProperty('--primary-border-subtle');
+    el.style.removeProperty('--primary-shadow');
+  }, []);
 
   useEffect(() => {
     (async () => {

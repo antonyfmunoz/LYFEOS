@@ -482,7 +482,10 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
               }
               
               if (dbStats.primaryColor) {
-                applyPrimaryColor(dbStats.primaryColor);
+                const isOnboarding = window.location.pathname.replace(/\/+$/, '') === '/onboarding';
+                if (!isOnboarding) {
+                  applyPrimaryColor(dbStats.primaryColor);
+                }
                 localStorage.setItem('lyfeos-primary-color', dbStats.primaryColor);
               }
               

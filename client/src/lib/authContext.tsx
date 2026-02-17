@@ -83,7 +83,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userData = await response.json();
     
     if (userData.primaryColor) {
-      applyPrimaryColor(userData.primaryColor);
+      if (!userData.isNewUser) {
+        applyPrimaryColor(userData.primaryColor);
+      }
       localStorage.setItem('lyfeos-primary-color', userData.primaryColor);
     }
     

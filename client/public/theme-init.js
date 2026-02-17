@@ -9,7 +9,7 @@
   }
 
   var path = window.location.pathname.replace(/\/+$/, '') || '/';
-  var isAuthPage = path === '/login' || path === '/register' || path === '/forgot-password' || path === '/';
+  var isAuthPage = path === '/login' || path === '/register' || path === '/forgot-password' || path === '/reset-password' || path === '/onboarding' || path === '/';
   var color = localStorage.getItem('lyfeos-primary-color');
   if (color && !isAuthPage) {
     var hex = color.replace(/^#/, '');
