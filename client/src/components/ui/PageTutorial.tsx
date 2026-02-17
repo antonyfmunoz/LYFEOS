@@ -84,11 +84,13 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [visible, setVisible] = useState(false);
+  const [scrollingToTarget, setScrollingToTarget] = useState(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const stepsRef = useRef(steps);
   stepsRef.current = steps;
   const lockedPositionRef = useRef<{ step: number; side: "top" | "bottom" | "left" | "right" } | null>(null);
+  const scrollEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const findVisibleStep = useCallback((startIndex: number, direction: 1 | -1 = 1): number => {
     const currentSteps = stepsRef.current;
@@ -151,34 +153,18 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
     setVisible(true);
   }, [isOpen]);
 
-  const rafRef = useRef<number | null>(null);
-  const scrollStableRef = useRef(false);
-
   useEffect(() => {
     if (!visible) return;
-    updateTargetRect();
     let resizeTimer: ReturnType<typeof setTimeout> | null = null;
     const onResize = () => {
       lockedPositionRef.current = null;
       lastRectRef.current = null;
-      scrollStableRef.current = false;
       if (resizeTimer) clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => updateTargetRect(), 100);
     };
-    const onScroll = () => {
-      if (scrollStableRef.current) return;
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      rafRef.current = requestAnimationFrame(() => {
-        updateTargetRect();
-        rafRef.current = null;
-      });
-    };
     window.addEventListener("resize", onResize);
-    window.addEventListener("scroll", onScroll, true);
     return () => {
       window.removeEventListener("resize", onResize);
-      window.removeEventListener("scroll", onScroll, true);
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
       if (resizeTimer) clearTimeout(resizeTimer);
     };
   }, [visible, updateTargetRect]);
@@ -191,24 +177,33 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
     const el = document.querySelector(step.target);
     if (!el) return;
 
-    scrollStableRef.current = false;
+    setScrollingToTarget(true);
+    lockedPositionRef.current = null;
+    lastRectRef.current = null;
 
     if (resizeObserverRef.current) {
       resizeObserverRef.current.disconnect();
     }
-    resizeObserverRef.current = new ResizeObserver(() => {
-      if (!scrollStableRef.current) updateTargetRect();
-    });
-    resizeObserverRef.current.observe(el);
+
+    const finalizePosition = () => {
+      updateTargetRect();
+      setScrollingToTarget(false);
+    };
+
+    const onScrollDuringTransition = () => {
+      if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current);
+      scrollEndTimerRef.current = setTimeout(finalizePosition, 200);
+    };
+
+    window.addEventListener("scroll", onScrollDuringTransition, true);
 
     el.scrollIntoView({ behavior: "smooth", block: "center" });
-    const timer = setTimeout(() => {
-      updateTargetRect();
-      scrollStableRef.current = true;
-    }, 1200);
+
+    scrollEndTimerRef.current = setTimeout(finalizePosition, 400);
 
     return () => {
-      clearTimeout(timer);
+      window.removeEventListener("scroll", onScrollDuringTransition, true);
+      if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current);
       resizeObserverRef.current?.disconnect();
     };
   }, [currentStep, visible, isOpen, updateTargetRect]);
@@ -381,9 +376,11 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
     return { position: "fixed", zIndex: 10002, maxWidth: tooltipWidth, width: tooltipWidth, top, left, maxHeight: maxH };
   };
 
+  const transitionStyle = scrollingToTarget ? { opacity: 0, pointerEvents: "none" as const, transition: "opacity 0.15s ease" } : { opacity: 1, transition: "opacity 0.2s ease 0.05s" };
+
   return ReactDOM.createPortal(
     <div className="fixed inset-0" style={{ zIndex: 10000 }}>
-      <svg className="absolute inset-0 w-full h-full" style={{ zIndex: 10000 }}>
+      <svg className="absolute inset-0 w-full h-full" style={{ zIndex: 10000, ...transitionStyle }}>
         <defs>
           <mask id={maskId}>
             <rect x="0" y="0" width="100%" height="100%" fill="white" />
@@ -411,10 +408,11 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
 
       {spotlightStyle && (
         <div
-          className="absolute rounded-xl border-2 border-primary shadow-[0_0_20px_var(--primary-shadow)] pointer-events-none transition-all duration-300"
+          className="absolute rounded-xl border-2 border-primary shadow-[0_0_20px_var(--primary-shadow)] pointer-events-none"
           style={{
             ...spotlightStyle,
             zIndex: 10001,
+            ...transitionStyle,
           }}
         />
       )}
@@ -423,8 +421,8 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
 
       <div
         ref={tooltipRef}
-        className="glassmorphic rounded-xl border border-primary/40 shadow-xl p-5 animate-in fade-in slide-in-from-bottom-2 duration-300 overflow-y-auto"
-        style={getTooltipStyle()}
+        className="glassmorphic rounded-xl border border-primary/40 shadow-xl p-5 overflow-y-auto"
+        style={{ ...getTooltipStyle(), ...transitionStyle }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-3">
