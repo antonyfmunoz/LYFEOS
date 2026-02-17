@@ -182,34 +182,48 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
   const maskId = `tour-spotlight-mask-${storageKey}`;
 
   const getTooltipStyle = (): React.CSSProperties => {
-    if (!targetRect) return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
-    const tooltipWidth = 340;
-    const tooltipMargin = 16;
-    const pos = step.position;
+    if (!targetRect) return { position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 10002, maxHeight: "calc(100vh - 32px)" };
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const tooltipWidth = Math.max(240, Math.min(340, vw - 32));
+    const measuredHeight = tooltipRef.current?.getBoundingClientRect().height || 200;
+    const tooltipHeight = Math.min(measuredHeight, vh - 32);
+    const maxH = vh - 32;
+    const gap = 12;
+    const edge = 16;
 
-    let style: React.CSSProperties = { position: "fixed", zIndex: 10002, maxWidth: tooltipWidth };
+    let top: number;
+    let left: number;
+
+    const spaceBelow = vh - targetRect.bottom - padding;
+    const spaceAbove = targetRect.top - padding;
+    const spaceRight = vw - targetRect.right - padding;
+    const spaceLeft = targetRect.left - padding;
+
+    let pos = step.position;
+    if (pos === "bottom" && spaceBelow < tooltipHeight + gap && spaceAbove > spaceBelow) pos = "top";
+    else if (pos === "top" && spaceAbove < tooltipHeight + gap && spaceBelow > spaceAbove) pos = "bottom";
+    else if (pos === "right" && spaceRight < tooltipWidth + gap && spaceLeft > spaceRight) pos = "left";
+    else if (pos === "left" && spaceLeft < tooltipWidth + gap && spaceRight > spaceLeft) pos = "right";
 
     if (pos === "bottom") {
-      style.top = targetRect.bottom + padding + tooltipMargin;
-      style.left = Math.max(16, Math.min(targetRect.left + targetRect.width / 2 - tooltipWidth / 2, window.innerWidth - tooltipWidth - 16));
+      top = targetRect.bottom + padding + gap;
+      left = targetRect.left + targetRect.width / 2 - tooltipWidth / 2;
     } else if (pos === "top") {
-      style.bottom = window.innerHeight - targetRect.top + padding + tooltipMargin;
-      style.left = Math.max(16, Math.min(targetRect.left + targetRect.width / 2 - tooltipWidth / 2, window.innerWidth - tooltipWidth - 16));
+      top = targetRect.top - padding - gap - tooltipHeight;
+      left = targetRect.left + targetRect.width / 2 - tooltipWidth / 2;
     } else if (pos === "right") {
-      style.top = Math.max(16, targetRect.top + targetRect.height / 2 - 80);
-      style.left = targetRect.right + padding + tooltipMargin;
-      if (style.left as number > window.innerWidth - tooltipWidth - 16) {
-        style.left = targetRect.left - padding - tooltipMargin - tooltipWidth;
-      }
-    } else if (pos === "left") {
-      style.top = Math.max(16, targetRect.top + targetRect.height / 2 - 80);
-      style.left = targetRect.left - padding - tooltipMargin - tooltipWidth;
-      if ((style.left as number) < 16) {
-        style.left = targetRect.right + padding + tooltipMargin;
-      }
+      top = targetRect.top + targetRect.height / 2 - tooltipHeight / 2;
+      left = targetRect.right + padding + gap;
+    } else {
+      top = targetRect.top + targetRect.height / 2 - tooltipHeight / 2;
+      left = targetRect.left - padding - gap - tooltipWidth;
     }
 
-    return style;
+    left = Math.max(edge, Math.min(left, vw - tooltipWidth - edge));
+    top = Math.max(edge, Math.min(top, vh - tooltipHeight - edge));
+
+    return { position: "fixed", zIndex: 10002, maxWidth: tooltipWidth, width: tooltipWidth, top, left, maxHeight: maxH };
   };
 
   return ReactDOM.createPortal(
@@ -254,7 +268,7 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
 
       <div
         ref={tooltipRef}
-        className="glassmorphic rounded-xl border border-primary/40 shadow-xl p-5 animate-in fade-in slide-in-from-bottom-2 duration-300"
+        className="glassmorphic rounded-xl border border-primary/40 shadow-xl p-5 animate-in fade-in slide-in-from-bottom-2 duration-300 overflow-y-auto"
         style={getTooltipStyle()}
         onClick={(e) => e.stopPropagation()}
       >
