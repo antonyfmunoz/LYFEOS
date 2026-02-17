@@ -16,12 +16,9 @@ function resolveProjectId(): string {
 
 const firebaseProjectId = resolveProjectId();
 
-const appHost = typeof window !== 'undefined' ? window.location.hostname : '';
-const useOwnDomain = appHost && !appHost.includes('localhost') && !appHost.includes('127.0.0.1');
-
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: useOwnDomain ? appHost : `${firebaseProjectId}.firebaseapp.com`,
+  authDomain: `${firebaseProjectId}.firebaseapp.com`,
   projectId: firebaseProjectId,
   storageBucket: `${firebaseProjectId}.firebasestorage.googleapis.com`,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,

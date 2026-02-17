@@ -38,29 +38,12 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
     return null;
   }
 
-  if (isMobileBrowser()) {
-    console.log(`Mobile browser detected, using redirect for ${providerName}`);
-    try {
-      localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
-      await signInWithRedirect(auth, provider);
-      return null;
-    } catch (redirectError: any) {
-      console.error(`${providerName} redirect failed:`, redirectError?.code, redirectError?.message);
-      localStorage.removeItem('lyfeos-oauth-redirect-pending');
-      toast({
-        title: `${providerName} Sign-in Failed`,
-        description: redirectError?.message || "Could not complete sign-in. Please try again.",
-        variant: "destructive"
-      });
-      return null;
-    }
-  }
-
   try {
+    console.log(`Attempting popup sign-in for ${providerName}${isMobileBrowser() ? ' (mobile)' : ''}`);
     const result = await signInWithPopup(auth, provider, browserPopupRedirectResolver);
     return result;
   } catch (error: any) {
-    console.error(`${providerName} sign-in error:`, error?.code, error?.message);
+    console.error(`${providerName} popup sign-in error:`, error?.code, error?.message);
 
     if (error.code === 'auth/popup-closed-by-user') {
       return null;
@@ -69,9 +52,10 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
     if (
       error.code === 'auth/popup-blocked' ||
       error.code === 'auth/cancelled-popup-request' ||
-      error.code === 'auth/operation-not-supported-in-this-environment'
+      error.code === 'auth/operation-not-supported-in-this-environment' ||
+      error.code === 'auth/unauthorized-domain'
     ) {
-      console.log(`Popup failed, falling back to redirect for ${providerName}`);
+      console.log(`Popup failed (${error.code}), falling back to redirect for ${providerName}`);
       try {
         localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
         await signInWithRedirect(auth, provider);
@@ -79,7 +63,12 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
       } catch (redirectError: any) {
         console.error(`${providerName} redirect also failed:`, redirectError?.code, redirectError?.message);
         localStorage.removeItem('lyfeos-oauth-redirect-pending');
-        throw redirectError;
+        toast({
+          title: `${providerName} Sign-in Failed`,
+          description: "Could not complete sign-in. Please try again.",
+          variant: "destructive"
+        });
+        return null;
       }
     }
 
