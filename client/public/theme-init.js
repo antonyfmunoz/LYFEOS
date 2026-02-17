@@ -8,8 +8,10 @@
     document.documentElement.classList.remove('light-theme');
   }
 
+  var path = window.location.pathname.replace(/\/+$/, '') || '/';
+  var isAuthPage = path === '/login' || path === '/register' || path === '/forgot-password' || path === '/';
   var color = localStorage.getItem('lyfeos-primary-color');
-  if (color) {
+  if (color && !isAuthPage) {
     var hex = color.replace(/^#/, '');
     var ri = parseInt(hex.substring(0, 2), 16);
     var gi = parseInt(hex.substring(2, 4), 16);
