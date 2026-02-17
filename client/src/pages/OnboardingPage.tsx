@@ -1095,15 +1095,15 @@ export default function OnboardingPage() {
     if (currentStep < maxSteps - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      await Promise.all([
-        saveCompletedMission(currentMission),
-        saveMissionData(currentMission),
-      ]);
       if (currentMission === 0 && selectedThemeColor) {
         localStorage.setItem('lyfeos-primary-color', selectedThemeColor);
         applyPrimaryColor(selectedThemeColor);
       }
       setShowMissionComplete(true);
+      Promise.all([
+        saveCompletedMission(currentMission),
+        saveMissionData(currentMission),
+      ]).catch(err => console.error("Error saving mission:", err));
     }
   };
   
@@ -1159,6 +1159,7 @@ export default function OnboardingPage() {
     localStorage.removeItem(STORAGE_KEY);
     
     setIsLoading(true);
+    setIsGeneratingAffirmation(true);
     
     try {
       const allCompleted = completedOnboardingMissions.length >= MISSIONS.length;
@@ -1166,19 +1167,14 @@ export default function OnboardingPage() {
         method: "PATCH",
         body: JSON.stringify({ onboardingCompleted: allCompleted }),
       });
-      generateAffirmationRequest().catch(err => 
-        console.error("Background affirmation generation failed:", err)
-      );
+      await generateAffirmationRequest();
       navigate("/ceremony");
     } catch (error) {
       console.error("Error completing onboarding:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save your profile. Please try again.",
-        variant: "destructive",
-      });
+      navigate("/ceremony");
     } finally {
       setIsLoading(false);
+      setIsGeneratingAffirmation(false);
     }
   };
   
