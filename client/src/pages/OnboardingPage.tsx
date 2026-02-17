@@ -957,8 +957,9 @@ export default function OnboardingPage() {
             console.log("Quest created successfully:", result);
             
             // Toggle completion to apply XP and stat updates
-            if (result && result.id) {
-              const toggleResult = await apiRequest(`/api/quests/${result.id}/toggle`, { method: "POST" });
+            const questId = result?.quest?.id || result?.id;
+            if (questId) {
+              const toggleResult = await apiRequest(`/api/quests/${questId}/toggle`, { method: "POST" });
               console.log("Quest toggled to completed with stats applied:", toggleResult);
               
               if (effectiveUserId) {
@@ -1337,6 +1338,7 @@ export default function OnboardingPage() {
         characterAffirmation: affirmationData.affirmation,
       }),
     });
+    queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
   };
 
 
