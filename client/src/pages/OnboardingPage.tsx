@@ -1714,12 +1714,13 @@ export default function OnboardingPage() {
                     <ChevronLeft className="h-3 w-3" />
                     Go back to mission
                   </button>
-                  <button
+                  <Button
                     onClick={handleSkipToSystem}
-                    className="text-muted-foreground text-sm hover:text-primary transition-colors"
+                    className="w-full bg-transparent border-2 border-primary text-primary hover:bg-primary/20"
                   >
-                    Skip to LYFEOS
-                  </button>
+                    Enter LYFEOS
+                    <ChevronRight className="h-4 w-4 ml-2" />
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1820,8 +1821,6 @@ export default function OnboardingPage() {
           >
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
-            ) : currentMission === 0 && currentStep === totalSteps - 1 ? (
-              <>Enter LYFEOS<ChevronRight className="h-4 w-4 ml-2" /></>
             ) : currentMission === MISSIONS.length - 1 && currentStep === totalSteps - 1 ? (
               <>Initialize System<ChevronRight className="h-4 w-4 ml-2" /></>
             ) : (
