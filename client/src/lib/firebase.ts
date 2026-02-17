@@ -2,11 +2,26 @@ import { initializeApp, FirebaseApp } from "firebase/app";
 import { getAuth, Auth, Unsubscribe, NextOrObserver, User, connectAuthEmulator } from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 
-const firebaseProjectId = import.meta.env.VITE_FIREBASE_ACTUAL_PROJECT_ID || import.meta.env.VITE_FIREBASE_PROJECT_ID;
+function resolveProjectId(): string {
+  const actual = import.meta.env.VITE_FIREBASE_ACTUAL_PROJECT_ID;
+  const fallback = import.meta.env.VITE_FIREBASE_PROJECT_ID;
+  const candidates = [actual, fallback].filter(Boolean);
+  for (const id of candidates) {
+    if (id && !id.includes(':') && !id.includes(' ')) {
+      return id;
+    }
+  }
+  return 'lyfeos-a55f4';
+}
+
+const firebaseProjectId = resolveProjectId();
+
+const appHost = typeof window !== 'undefined' ? window.location.hostname : '';
+const useOwnDomain = appHost && !appHost.includes('localhost') && !appHost.includes('127.0.0.1');
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: `${firebaseProjectId}.firebaseapp.com`,
+  authDomain: useOwnDomain ? appHost : `${firebaseProjectId}.firebaseapp.com`,
   projectId: firebaseProjectId,
   storageBucket: `${firebaseProjectId}.firebasestorage.googleapis.com`,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
