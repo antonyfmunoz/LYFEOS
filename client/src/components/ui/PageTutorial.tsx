@@ -53,6 +53,7 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const stepsRef = useRef(steps);
   stepsRef.current = steps;
+  const lockedPositionRef = useRef<{ step: number; side: "top" | "bottom" | "left" | "right" } | null>(null);
 
   const findVisibleStep = useCallback((startIndex: number, direction: 1 | -1 = 1): number => {
     const currentSteps = stepsRef.current;
@@ -93,6 +94,7 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
       return;
     }
 
+    lockedPositionRef.current = null;
     const firstVisible = findVisibleStep(0);
     if (firstVisible !== -1) {
       setCurrentStep(firstVisible);
@@ -103,12 +105,16 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
   useEffect(() => {
     if (!visible) return;
     updateTargetRect();
-    const onResize = () => updateTargetRect();
+    const onResize = () => {
+      lockedPositionRef.current = null;
+      updateTargetRect();
+    };
+    const onScroll = () => updateTargetRect();
     window.addEventListener("resize", onResize);
-    window.addEventListener("scroll", onResize, true);
+    window.addEventListener("scroll", onScroll, true);
     return () => {
       window.removeEventListener("resize", onResize);
-      window.removeEventListener("scroll", onResize, true);
+      window.removeEventListener("scroll", onScroll, true);
     };
   }, [visible, updateTargetRect]);
 
@@ -181,30 +187,52 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
 
   const maskId = `tour-spotlight-mask-${storageKey}`;
 
+  const SIDE_DECISION_HEIGHT = 250;
+
+  const pickBestSide = (rect: DOMRect, preferred: "top" | "bottom" | "left" | "right", tw: number): "top" | "bottom" | "left" | "right" => {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const gap = 12;
+    const spaceBelow = vh - rect.bottom - padding;
+    const spaceAbove = rect.top - padding;
+    const spaceRight = vw - rect.right - padding;
+    const spaceLeft = rect.left - padding;
+
+    if (preferred === "bottom" && spaceBelow >= SIDE_DECISION_HEIGHT + gap) return "bottom";
+    if (preferred === "top" && spaceAbove >= SIDE_DECISION_HEIGHT + gap) return "top";
+    if (preferred === "right" && spaceRight >= tw + gap) return "right";
+    if (preferred === "left" && spaceLeft >= tw + gap) return "left";
+
+    const sides: Array<{ side: "top" | "bottom" | "left" | "right"; space: number }> = [
+      { side: "bottom", space: spaceBelow },
+      { side: "top", space: spaceAbove },
+      { side: "right", space: spaceRight },
+      { side: "left", space: spaceLeft },
+    ];
+    sides.sort((a, b) => b.space - a.space);
+    return sides[0].side;
+  };
+
   const getTooltipStyle = (): React.CSSProperties => {
     if (!targetRect) return { position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 10002, maxHeight: "calc(100vh - 32px)" };
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const tooltipWidth = Math.max(240, Math.min(340, vw - 32));
-    const measuredHeight = tooltipRef.current?.getBoundingClientRect().height || 200;
-    const tooltipHeight = Math.min(measuredHeight, vh - 32);
+    const tooltipHeight = tooltipRef.current?.getBoundingClientRect().height || SIDE_DECISION_HEIGHT;
     const maxH = vh - 32;
     const gap = 12;
     const edge = 16;
 
+    let pos: "top" | "bottom" | "left" | "right";
+    if (lockedPositionRef.current && lockedPositionRef.current.step === currentStep) {
+      pos = lockedPositionRef.current.side;
+    } else {
+      pos = pickBestSide(targetRect, step.position, tooltipWidth);
+      lockedPositionRef.current = { step: currentStep, side: pos };
+    }
+
     let top: number;
     let left: number;
-
-    const spaceBelow = vh - targetRect.bottom - padding;
-    const spaceAbove = targetRect.top - padding;
-    const spaceRight = vw - targetRect.right - padding;
-    const spaceLeft = targetRect.left - padding;
-
-    let pos = step.position;
-    if (pos === "bottom" && spaceBelow < tooltipHeight + gap && spaceAbove > spaceBelow) pos = "top";
-    else if (pos === "top" && spaceAbove < tooltipHeight + gap && spaceBelow > spaceAbove) pos = "bottom";
-    else if (pos === "right" && spaceRight < tooltipWidth + gap && spaceLeft > spaceRight) pos = "left";
-    else if (pos === "left" && spaceLeft < tooltipWidth + gap && spaceRight > spaceLeft) pos = "right";
 
     if (pos === "bottom") {
       top = targetRect.bottom + padding + gap;
