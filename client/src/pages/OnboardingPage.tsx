@@ -1491,7 +1491,7 @@ export default function OnboardingPage() {
           <div className="space-y-5">
             <h2 className="text-2xl font-orbitron font-bold text-center">Choose your theme color</h2>
             <p className="text-sm text-muted-foreground text-center">This sets the accent color across your entire system</p>
-            <div className="flex justify-center gap-3 flex-wrap max-w-xs mx-auto">
+            <div className="grid grid-cols-3 gap-3 max-w-[180px] mx-auto">
               {themeColors.map((color) => (
                 <button
                   key={color.hex}
