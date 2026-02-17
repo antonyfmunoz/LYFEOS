@@ -226,6 +226,16 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
 
     const nearBottom = targetBottom > vh - 80;
     const nearTop = targetTop < 80;
+    const targetHeight = targetBottom - targetTop;
+    const isLargeTarget = targetHeight > vh * 0.35;
+    const canFitAbove = spaceAbove >= tooltipHeight + gap;
+    const canFitBelow = spaceBelow >= tooltipHeight + gap;
+
+    if (isLargeTarget && !nearBottom && !nearTop && canFitAbove && canFitBelow) {
+      const centeredTop = Math.max(edge, (vh - tooltipHeight) / 2);
+      const centeredLeft = Math.max(edge, Math.min((vw - tooltipWidth) / 2, vw - tooltipWidth - edge));
+      return { position: "fixed", zIndex: 10002, maxWidth: tooltipWidth, width: tooltipWidth, top: centeredTop, left: centeredLeft, maxHeight: maxH };
+    }
 
     let pos: "top" | "bottom" | "left" | "right";
 
@@ -236,8 +246,6 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
     } else if (lockedPositionRef.current && lockedPositionRef.current.step === currentStep) {
       pos = lockedPositionRef.current.side;
     } else {
-      const canFitAbove = spaceAbove >= tooltipHeight + gap;
-      const canFitBelow = spaceBelow >= tooltipHeight + gap;
       const canFitLeft = spaceLeft >= tooltipWidth + gap;
       const canFitRight = spaceRight >= tooltipWidth + gap;
 
@@ -293,7 +301,7 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
         } else if (belowFits) {
           top = belowPos;
         } else {
-          top = edge;
+          top = Math.max(edge, (vh - tooltipHeight) / 2);
         }
       } else {
         if (pos === "right") {
@@ -307,7 +315,7 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
         if (stillOverlapsH2 && stillOverlapsV2) {
           if (aboveFits) top = abovePos;
           else if (belowFits) top = belowPos;
-          else top = edge;
+          else top = Math.max(edge, (vh - tooltipHeight) / 2);
         }
       }
     }
