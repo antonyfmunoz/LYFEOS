@@ -7,6 +7,7 @@ export interface TutorialStep {
   title: string;
   description: string;
   position: "top" | "bottom" | "left" | "right";
+  mobilePosition?: "top" | "bottom" | "left" | "right" | "center";
 }
 
 const TUTORIAL_PAGES = [
@@ -84,7 +85,7 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [visible, setVisible] = useState(false);
-  const [scrollingToTarget, setScrollingToTarget] = useState(false);
+  const [scrollingToTarget, setScrollingToTarget] = useState(true);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const stepsRef = useRef(steps);
@@ -192,14 +193,14 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
 
     const onScrollDuringTransition = () => {
       if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current);
-      scrollEndTimerRef.current = setTimeout(finalizePosition, 200);
+      scrollEndTimerRef.current = setTimeout(finalizePosition, 100);
     };
 
     window.addEventListener("scroll", onScrollDuringTransition, true);
 
     el.scrollIntoView({ behavior: "smooth", block: "center" });
 
-    scrollEndTimerRef.current = setTimeout(finalizePosition, 400);
+    scrollEndTimerRef.current = setTimeout(finalizePosition, 200);
 
     return () => {
       window.removeEventListener("scroll", onScrollDuringTransition, true);
@@ -287,6 +288,12 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
 
     if (isLargeTarget && !nearBottom && !nearTop && spaceAbove >= conservativeHeight + gap && spaceBelow >= conservativeHeight + gap) {
       const centeredLeft = Math.max(edge, Math.min((vw - tooltipWidth) / 2, vw - tooltipWidth - edge));
+      return { position: "fixed", zIndex: 10002, maxWidth: tooltipWidth, width: tooltipWidth, top: "50%", left: centeredLeft, transform: "translateY(-50%)", maxHeight: maxH };
+    }
+
+    const isMobile = vw < 768;
+    if (isMobile && step.mobilePosition === "center") {
+      const centeredLeft = Math.max(edge, (vw - tooltipWidth) / 2);
       return { position: "fixed", zIndex: 10002, maxWidth: tooltipWidth, width: tooltipWidth, top: "50%", left: centeredLeft, transform: "translateY(-50%)", maxHeight: maxH };
     }
 

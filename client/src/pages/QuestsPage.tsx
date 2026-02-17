@@ -309,7 +309,7 @@ export default function QuestsPage() {
   const [upcomingExpanded, setUpcomingExpanded] = useWidgetState("quests.upcoming", true);
   const [completedExpanded, setCompletedExpanded] = useWidgetState("quests.completed", true);
   const [inboxExpanded, setInboxExpanded] = useWidgetState("quests.inbox", true);
-  const [archivedExpanded, setArchivedExpanded] = useWidgetState("quests.archived", false);
+  const [archivedExpanded, setArchivedExpanded] = useWidgetState("quests.archived", true);
   const [terminatedInfoOpen, setTerminatedInfoOpen] = useState<Record<string | number, boolean>>({});
   const [originalDates, setOriginalDates] = useState<Record<string, { startDate?: string; endDate?: string; startTime?: string; endTime?: string }>>({});
 

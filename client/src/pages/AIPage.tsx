@@ -63,6 +63,7 @@ export default function AIPage() {
       title: "Chat Sessions",
       description: "Your conversation history lives here. Create new chats for different topics, use quick prompts to get started, rename sessions, or delete old ones.",
       position: "right",
+      mobilePosition: "center",
     },
     {
       target: "[data-tour='ai-chat-area']",
