@@ -116,19 +116,35 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
     setVisible(true);
   }, [isOpen]);
 
+  const rafRef = useRef<number | null>(null);
+  const scrollStableRef = useRef(false);
+
   useEffect(() => {
     if (!visible) return;
     updateTargetRect();
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
     const onResize = () => {
       lockedPositionRef.current = null;
-      updateTargetRect();
+      lastRectRef.current = null;
+      scrollStableRef.current = false;
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => updateTargetRect(), 100);
     };
-    const onScroll = () => updateTargetRect();
+    const onScroll = () => {
+      if (scrollStableRef.current) return;
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        updateTargetRect();
+        rafRef.current = null;
+      });
+    };
     window.addEventListener("resize", onResize);
     window.addEventListener("scroll", onScroll, true);
     return () => {
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onScroll, true);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (resizeTimer) clearTimeout(resizeTimer);
     };
   }, [visible, updateTargetRect]);
 
@@ -140,14 +156,21 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
     const el = document.querySelector(step.target);
     if (!el) return;
 
+    scrollStableRef.current = false;
+
     if (resizeObserverRef.current) {
       resizeObserverRef.current.disconnect();
     }
-    resizeObserverRef.current = new ResizeObserver(() => updateTargetRect());
+    resizeObserverRef.current = new ResizeObserver(() => {
+      if (!scrollStableRef.current) updateTargetRect();
+    });
     resizeObserverRef.current.observe(el);
 
     el.scrollIntoView({ behavior: "smooth", block: "center" });
-    const timer = setTimeout(() => updateTargetRect(), 400);
+    const timer = setTimeout(() => {
+      updateTargetRect();
+      scrollStableRef.current = true;
+    }, 600);
 
     return () => {
       clearTimeout(timer);

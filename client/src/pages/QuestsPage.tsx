@@ -334,14 +334,14 @@ export default function QuestsPage() {
     },
     {
       target: "[data-tour='upcoming-missions']",
-      title: "Upcoming",
+      title: "Future",
       description: "Missions scheduled for future dates show up here. They'll automatically move to Today when the day arrives.",
       position: "top",
     },
     {
       target: "[data-tour='inbox-missions']",
-      title: "Mission Inbox",
-      description: "Quick-capture ideas and tasks here without scheduling them yet. Drag them to Today or Upcoming when you're ready to commit.",
+      title: "Archived",
+      description: "Missions created from your to-do ideas. Review and prioritize them, or drag them to Today or Future when you're ready to commit.",
       position: "top",
     },
     {

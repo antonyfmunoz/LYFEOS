@@ -354,13 +354,13 @@ export default function ChronilogPage() {
     },
     {
       target: "[data-tour='chronilog-knowledge']",
-      title: "Knowledge Vault",
+      title: "Knowledge",
       description: "Your personal library of notes, documents, and saved knowledge. Store and organize information for easy retrieval.",
       position: "bottom",
     },
     {
       target: "[data-tour='chronilog-goals']",
-      title: "Vision & Goals",
+      title: "Vision",
       description: "Long-term goals and vision board. Set objectives, track mission objectives, and align your daily actions with your bigger picture.",
       position: "bottom",
     },
