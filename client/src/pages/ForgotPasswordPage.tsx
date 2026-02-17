@@ -1,15 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Link } from "wouter";
 import { Loader2, ArrowLeft, Mail } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { sendPasswordReset } from "@/lib/firebaseAuth";
-
-const hexToRgba = (hex: string, alpha: number) => {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r},${g},${b},${alpha})`;
-};
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -17,19 +10,7 @@ export default function ForgotPasswordPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
 
-  const savedColor = localStorage.getItem('lyfeos-primary-color');
-  const accent = useMemo(() => {
-    if (!savedColor) return null;
-    return {
-      color: savedColor,
-      border20: hexToRgba(savedColor, 0.2),
-      border30: hexToRgba(savedColor, 0.3),
-      border50: hexToRgba(savedColor, 0.5),
-      bg20: hexToRgba(savedColor, 0.2),
-      bg30: hexToRgba(savedColor, 0.3),
-      glow: hexToRgba(savedColor, 0.08),
-    };
-  }, [savedColor]);
+  const accent = null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

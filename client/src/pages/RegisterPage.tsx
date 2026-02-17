@@ -1,17 +1,10 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-
-const hexToRgba = (hex: string, alpha: number) => {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r},${g},${b},${alpha})`;
-};
 
 export default function RegisterPage() {
   usePageTitle('Register');
@@ -26,19 +19,7 @@ export default function RegisterPage() {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const savedColor = localStorage.getItem('lyfeos-primary-color');
-  const accent = useMemo(() => {
-    if (!savedColor) return null;
-    return {
-      color: savedColor,
-      border20: hexToRgba(savedColor, 0.2),
-      border30: hexToRgba(savedColor, 0.3),
-      border50: hexToRgba(savedColor, 0.5),
-      bg20: hexToRgba(savedColor, 0.2),
-      bg30: hexToRgba(savedColor, 0.3),
-      glow: hexToRgba(savedColor, 0.08),
-    };
-  }, [savedColor]);
+  const accent = null;
   
   
   const handleSubmit = async (e: React.FormEvent) => {
