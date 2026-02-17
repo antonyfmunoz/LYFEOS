@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/authContext";
 import { usePageTitle } from "@/hooks/use-page-title";
-import PageTutorial, { TutorialStep, tutorialKey } from '@/components/ui/PageTutorial';
+import PageTutorial, { TutorialStep, tutorialKey, markTutorialComplete } from '@/components/ui/PageTutorial';
 import update from 'immutability-helper';
 import { CollapsibleWidget } from '@/components/ui/collapsible-widget';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -149,8 +149,21 @@ export default function AnalyticsPage() {
   });
 
   const handleTutorialComplete = useCallback(() => {
+    markTutorialComplete("tracker", user?.id);
     setShowTutorial(false);
-    localStorage.setItem(tutorialKey("tracker", user?.id), "true");
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetch("/api/profile", { credentials: "include" })
+        .then(res => res.ok ? res.json() : null)
+        .then(profile => {
+          if (profile?.completedTutorials?.includes("tracker")) {
+            setShowTutorial(false);
+          }
+        })
+        .catch(() => {});
+    }
   }, [user?.id]);
 
   const moveAnalyticsWidget = useCallback((dragIndex: number, hoverIndex: number) => {

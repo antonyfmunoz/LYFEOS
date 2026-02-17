@@ -597,7 +597,7 @@ function ScenarioSelect({
 
 export default function OnboardingPage() {
   usePageTitle("Onboarding");
-  const { user, isLoading: authLoading, completeRegistration, getPendingPassword } = useAuth();
+  const { user, isLoading: authLoading, completeRegistration, getPendingPassword, refreshUser } = useAuth();
   const { quests, refetchQuests } = useLYFEOS();
   const [, navigate] = useLocation();
 
@@ -889,7 +889,7 @@ export default function OnboardingPage() {
           });
         } else if (onboardingUsername.trim()) {
           try {
-            await fetch("/api/auth/set-username", {
+            const usernameRes = await fetch("/api/auth/set-username", {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               credentials: "include",
@@ -899,6 +899,11 @@ export default function OnboardingPage() {
                 lastName: onboardingLastName.trim(),
               }),
             });
+            if (usernameRes.ok) {
+              const updatedUser = await usernameRes.json();
+              localStorage.setItem("lyfeos_user", JSON.stringify(updatedUser));
+              await refreshUser();
+            }
           } catch (err) {
             console.error("Failed to set username:", err);
           }
@@ -934,8 +939,7 @@ export default function OnboardingPage() {
               title: questTitle,
               description: `Completed onboarding mission "${mission.title}"`,
               category: "onboarding",
-              completed: true,
-              completedAt: now.toISOString(),
+              completed: false,
               experienceReward: mission.xp,
               startDate: startDateStr,
               startTime: startTimeStr,
@@ -949,6 +953,12 @@ export default function OnboardingPage() {
               body: JSON.stringify(questData),
             });
             console.log("Quest created successfully:", result);
+            
+            // Toggle completion to apply XP and stat updates
+            if (result && result.id) {
+              const toggleResult = await apiRequest(`/api/quests/${result.id}/toggle`, { method: "PATCH" });
+              console.log("Quest toggled to completed with stats applied:", toggleResult);
+            }
           }
           console.log("Refetching quests after onboarding mission completion...");
           await refetchQuests();

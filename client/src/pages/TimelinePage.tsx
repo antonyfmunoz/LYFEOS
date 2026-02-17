@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { ArrowLeft, CalendarClock, ZoomIn, ZoomOut, ChevronDown, ChevronRight, Info, Calendar, Clock, Rocket, Target, CheckSquare, Check } from 'lucide-react';
 import { ObsidianMarkdown } from '@/components/ui/obsidian-markdown';
@@ -9,7 +9,7 @@ import { usePageTitle } from '@/hooks/use-page-title';
 import { useAuth } from '@/lib/authContext';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import PageTutorial, { TutorialStep, tutorialKey } from '@/components/ui/PageTutorial';
+import PageTutorial, { TutorialStep, tutorialKey, markTutorialComplete } from '@/components/ui/PageTutorial';
 
 const ONBOARDING_MISSIONS = [
   { id: 0, title: "Access & Quickstart", description: "Log in, explore the dashboard, and complete your first quick mission to get familiar with LYFEOS." },
@@ -207,8 +207,21 @@ export default function TimelinePage() {
   });
 
   const handleTutorialComplete = useCallback(() => {
+    markTutorialComplete("timeline", user?.id);
     setShowTutorial(false);
-    localStorage.setItem(tutorialKey("timeline", user?.id), "true");
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetch("/api/profile", { credentials: "include" })
+        .then(res => res.ok ? res.json() : null)
+        .then(profile => {
+          if (profile?.completedTutorials?.includes("timeline")) {
+            setShowTutorial(false);
+          }
+        })
+        .catch(() => {});
+    }
   }, [user?.id]);
 
   const [activeView, setActiveView] = useState<'history' | 'roadmap'>('history');

@@ -238,6 +238,7 @@ export const userProfile = pgTable("user_profile", {
   totalXP: integer("total_xp").notNull().default(0),
   onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
   completedOnboardingMissions: integer("completed_onboarding_missions").array().default([]),
+  completedTutorials: text("completed_tutorials").array().default([]),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -675,6 +676,7 @@ export const insertUserProfileSchema = createInsertSchema(userProfile).pick({
   totalXP: true,
   onboardingCompleted: true,
   completedOnboardingMissions: true,
+  completedTutorials: true,
 });
 
 export const insertUserDailyLogsSchema = createInsertSchema(userDailyLogs).pick({

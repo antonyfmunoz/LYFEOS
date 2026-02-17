@@ -1,5 +1,5 @@
-import { useState, useMemo, useCallback } from 'react';
-import PageTutorial, { TutorialStep, tutorialKey } from '@/components/ui/PageTutorial';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import PageTutorial, { TutorialStep, tutorialKey, markTutorialComplete } from '@/components/ui/PageTutorial';
 import { useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
@@ -167,8 +167,21 @@ export default function RolodexPage() {
   });
 
   const handleTutorialComplete = useCallback(() => {
+    markTutorialComplete("rolodex", user?.id);
     setShowTutorial(false);
-    localStorage.setItem(tutorialKey("rolodex", user?.id), "true");
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetch("/api/profile", { credentials: "include" })
+        .then(res => res.ok ? res.json() : null)
+        .then(profile => {
+          if (profile?.completedTutorials?.includes("rolodex")) {
+            setShowTutorial(false);
+          }
+        })
+        .catch(() => {});
+    }
   }, [user?.id]);
 
   const { isLoading } = useQuery<{ contacts: Contact[] }>({

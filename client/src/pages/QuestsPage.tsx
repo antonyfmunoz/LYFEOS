@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import PageTutorial, { TutorialStep, tutorialKey } from '@/components/ui/PageTutorial';
+import PageTutorial, { TutorialStep, tutorialKey, markTutorialComplete } from '@/components/ui/PageTutorial';
 import { useWidgetState } from "@/hooks/use-widget-state";
 import { useLYFEOS } from "../lib/context";
 import { useAuth } from "@/lib/authContext";
@@ -363,9 +363,16 @@ export default function QuestsPage() {
   });
 
   const handleTutorialComplete = useCallback(() => {
+    markTutorialComplete("missions", user?.id);
     setShowTutorial(false);
-    localStorage.setItem(tutorialKey("missions", user?.id), "true");
   }, [user?.id]);
+
+  useEffect(() => {
+    if (userProfile?.completedTutorials?.includes("missions")) {
+      setShowTutorial(false);
+    }
+  }, [userProfile]);
+
   const originalDatesRef = useRef(originalDates);
   originalDatesRef.current = originalDates;
 

@@ -21,7 +21,7 @@ import { DraggableWidget, DraggableWidgetProps } from '@/components/ui/draggable
 import update from 'immutability-helper';
 import { useWidgetState } from '@/hooks/use-widget-state';
 import { LevelUpModal } from '@/components/dashboard/LevelUpModal';
-import PageTutorial, { TutorialStep, tutorialKey } from '@/components/ui/PageTutorial';
+import PageTutorial, { TutorialStep, tutorialKey, markTutorialComplete } from '@/components/ui/PageTutorial';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { getLocalDateString } from '@/lib/utils';
@@ -233,13 +233,20 @@ export default function DashboardPage() {
   });
   
   const handleTutorialComplete = useCallback(() => {
+    markTutorialComplete("dashboard", user?.id);
     setShowTutorial(false);
-    localStorage.setItem(tutorialKey("dashboard", user?.id), "true");
+  }, [user?.id]);
+
+  useEffect(() => {
     if (user?.id) {
-      apiRequest(`/api/users/${user.id}/profile`, {
-        method: "PATCH",
-        body: JSON.stringify({ dashboardTutorialCompleted: true }),
-      }).catch(() => {});
+      fetch("/api/profile", { credentials: "include" })
+        .then(res => res.ok ? res.json() : null)
+        .then(profile => {
+          if (profile?.completedTutorials?.includes("dashboard")) {
+            setShowTutorial(false);
+          }
+        })
+        .catch(() => {});
     }
   }, [user?.id]);
   

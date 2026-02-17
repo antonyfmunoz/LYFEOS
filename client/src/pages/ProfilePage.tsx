@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import PageTutorial, { TutorialStep, tutorialKey } from '@/components/ui/PageTutorial';
+import PageTutorial, { TutorialStep, tutorialKey, markTutorialComplete } from '@/components/ui/PageTutorial';
 import { useWidgetState } from "@/hooks/use-widget-state";
 import RootLayout from "../components/layout/RootLayout";
 import { useLYFEOS } from "../lib/context";
@@ -268,9 +268,15 @@ export default function ProfilePage() {
   });
 
   const handleTutorialComplete = useCallback(() => {
+    markTutorialComplete("profile", user?.id);
     setShowTutorial(false);
-    localStorage.setItem(tutorialKey("profile", user?.id), "true");
   }, [user?.id]);
+
+  useEffect(() => {
+    if ((userProfileData as any)?.completedTutorials?.includes("profile")) {
+      setShowTutorial(false);
+    }
+  }, [userProfileData]);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editUsername, setEditUsername] = useState(username);

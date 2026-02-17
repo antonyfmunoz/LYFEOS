@@ -6,7 +6,7 @@ import { FileText, Clock, Tag, Calendar, Award, GripVertical, CheckSquare, BookO
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { useDrag, useDrop } from 'react-dnd';
 import { useState, useCallback, useRef, useEffect } from 'react';
-import PageTutorial, { TutorialStep, tutorialKey } from '@/components/ui/PageTutorial';
+import PageTutorial, { TutorialStep, tutorialKey, markTutorialComplete } from '@/components/ui/PageTutorial';
 import update from 'immutability-helper';
 import { cn } from '@/lib/utils';
 import { DropTargetMonitor } from 'react-dnd';
@@ -389,8 +389,21 @@ export default function ChronilogPage() {
   });
 
   const handleTutorialComplete = useCallback(() => {
+    markTutorialComplete("chronilog", user?.id);
     setShowTutorial(false);
-    localStorage.setItem(tutorialKey("chronilog", user?.id), "true");
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetch("/api/profile", { credentials: "include" })
+        .then(res => res.ok ? res.json() : null)
+        .then(profile => {
+          if (profile?.completedTutorials?.includes("chronilog")) {
+            setShowTutorial(false);
+          }
+        })
+        .catch(() => {});
+    }
   }, [user?.id]);
 
   return (

@@ -445,6 +445,13 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const name = user.displayName || user.username || user.firstName || "Player";
+      setUsername(name);
+    }
+  }, [isAuthenticated, user]);
+
   // Load user stats (including AI assistant name) when user logs in
   useEffect(() => {
     if (isAuthenticated && user) {

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import PageTutorial, { TutorialStep, tutorialKey } from '@/components/ui/PageTutorial';
+import PageTutorial, { TutorialStep, tutorialKey, markTutorialComplete } from '@/components/ui/PageTutorial';
 import { useAuth } from "@/lib/authContext";
 import { useLYFEOS } from "../lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
@@ -96,8 +96,21 @@ export default function AIPage() {
   });
 
   const handleTutorialComplete = useCallback(() => {
+    markTutorialComplete("ai", user?.id);
     setShowTutorial(false);
-    localStorage.setItem(tutorialKey("ai", user?.id), "true");
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetch("/api/profile", { credentials: "include" })
+        .then(res => res.ok ? res.json() : null)
+        .then(profile => {
+          if (profile?.completedTutorials?.includes("ai")) {
+            setShowTutorial(false);
+          }
+        })
+        .catch(() => {});
+    }
   }, [user?.id]);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);

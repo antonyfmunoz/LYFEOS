@@ -24,8 +24,43 @@ export function tutorialKey(page: string, userId?: number | null): string {
   return userId ? `lyfeos-${page}-tutorial-completed-${userId}` : `lyfeos-${page}-tutorial-completed`;
 }
 
-export function skipAllTutorials(userId?: number | null) {
+export async function markTutorialComplete(page: string, userId?: number | null) {
+  localStorage.setItem(tutorialKey(page, userId), "true");
+  if (userId) {
+    try {
+      const res = await fetch("/api/profile", { credentials: "include" });
+      if (res.ok) {
+        const profile = await res.json();
+        const existing = profile.completedTutorials || [];
+        if (!existing.includes(page)) {
+          await fetch("/api/profile", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ completedTutorials: [...existing, page] }),
+          });
+        }
+      }
+    } catch (e) {
+      console.error("Failed to save tutorial completion:", e);
+    }
+  }
+}
+
+export async function skipAllTutorials(userId?: number | null) {
   TUTORIAL_PAGES.forEach(page => localStorage.setItem(tutorialKey(page, userId), "true"));
+  if (userId) {
+    try {
+      await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ completedTutorials: [...TUTORIAL_PAGES] }),
+      });
+    } catch (e) {
+      console.error("Failed to save tutorial skip:", e);
+    }
+  }
 }
 
 export function clearAllTutorialKeys() {
@@ -170,7 +205,7 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
     const timer = setTimeout(() => {
       updateTargetRect();
       scrollStableRef.current = true;
-    }, 600);
+    }, 1200);
 
     return () => {
       clearTimeout(timer);
