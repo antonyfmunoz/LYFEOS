@@ -1162,29 +1162,20 @@ export default function OnboardingPage() {
     localStorage.removeItem("lyfeos-continued-past-mission0");
     localStorage.removeItem(STORAGE_KEY);
     
+    setShowMissionComplete(false);
     setIsLoading(true);
     setIsGeneratingAffirmation(true);
     
-    const minDisplayTime = new Promise(resolve => setTimeout(resolve, 2500));
+    const allCompleted = completedOnboardingMissions.length >= MISSIONS.length;
+    apiRequest("/api/profile", {
+      method: "PATCH",
+      body: JSON.stringify({ onboardingCompleted: allCompleted }),
+    }).then(() => generateAffirmationRequest()).catch(err => console.error("Error saving:", err));
     
-    try {
-      const allCompleted = completedOnboardingMissions.length >= MISSIONS.length;
-      await Promise.all([
-        apiRequest("/api/profile", {
-          method: "PATCH",
-          body: JSON.stringify({ onboardingCompleted: allCompleted }),
-        }).then(() => generateAffirmationRequest()),
-        minDisplayTime,
-      ]);
-      navigate("/ceremony");
-    } catch (error) {
-      console.error("Error completing onboarding:", error);
-      await minDisplayTime;
-      navigate("/ceremony");
-    } finally {
-      setIsLoading(false);
-      setIsGeneratingAffirmation(false);
-    }
+    await new Promise(resolve => setTimeout(resolve, 2500));
+    setIsLoading(false);
+    setIsGeneratingAffirmation(false);
+    navigate("/ceremony");
   };
   
   const getMissionProfileData = (missionId: number): Record<string, any> => {
