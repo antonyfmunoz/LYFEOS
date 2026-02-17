@@ -24,6 +24,10 @@ const appleProvider = new OAuthProvider("apple.com");
 appleProvider.addScope("email");
 appleProvider.addScope("name");
 
+function isMobileBrowser(): boolean {
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
+
 async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, providerName: string): Promise<UserCredential | null> {
   if (!import.meta.env.VITE_FIREBASE_API_KEY) {
     toast({
@@ -32,6 +36,24 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
       variant: "destructive"
     });
     return null;
+  }
+
+  if (isMobileBrowser()) {
+    console.log(`Mobile browser detected, using redirect for ${providerName}`);
+    try {
+      localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
+      await signInWithRedirect(auth, provider);
+      return null;
+    } catch (redirectError: any) {
+      console.error(`${providerName} redirect failed:`, redirectError?.code, redirectError?.message);
+      localStorage.removeItem('lyfeos-oauth-redirect-pending');
+      toast({
+        title: `${providerName} Sign-in Failed`,
+        description: redirectError?.message || "Could not complete sign-in. Please try again.",
+        variant: "destructive"
+      });
+      return null;
+    }
   }
 
   try {
@@ -47,8 +69,7 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
     if (
       error.code === 'auth/popup-blocked' ||
       error.code === 'auth/cancelled-popup-request' ||
-      error.code === 'auth/operation-not-supported-in-this-environment' ||
-      error?.message?.includes('did not match the expected pattern')
+      error.code === 'auth/operation-not-supported-in-this-environment'
     ) {
       console.log(`Popup failed, falling back to redirect for ${providerName}`);
       try {
@@ -57,10 +78,16 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
         return null;
       } catch (redirectError: any) {
         console.error(`${providerName} redirect also failed:`, redirectError?.code, redirectError?.message);
+        localStorage.removeItem('lyfeos-oauth-redirect-pending');
         throw redirectError;
       }
     }
 
+    toast({
+      title: `${providerName} Sign-in Failed`,
+      description: `Error: ${error?.code || 'unknown'} - ${error?.message || 'Please try again.'}`,
+      variant: "destructive"
+    });
     throw error;
   }
 }
