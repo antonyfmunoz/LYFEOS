@@ -93,15 +93,11 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
       return;
     }
 
-    const timer = setTimeout(() => {
-      const firstVisible = findVisibleStep(0);
-      if (firstVisible !== -1) {
-        setCurrentStep(firstVisible);
-      }
-      setVisible(true);
-    }, 1500);
-
-    return () => clearTimeout(timer);
+    const firstVisible = findVisibleStep(0);
+    if (firstVisible !== -1) {
+      setCurrentStep(firstVisible);
+    }
+    setVisible(true);
   }, [isOpen]);
 
   useEffect(() => {
