@@ -179,6 +179,7 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
     if (!el) return;
 
     setScrollingToTarget(true);
+    setTargetRect(null);
     lockedPositionRef.current = null;
     lastRectRef.current = null;
 

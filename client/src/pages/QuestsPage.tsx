@@ -339,15 +339,15 @@ export default function QuestsPage() {
       position: "top",
     },
     {
-      target: "[data-tour='inbox-missions']",
-      title: "Archived",
-      description: "Missions created from your to-do ideas. Review and prioritize them, or drag them to Today or Future when you're ready to commit.",
-      position: "top",
-    },
-    {
       target: "[data-tour='completed-missions']",
       title: "Completed",
       description: "Missions you've finished today appear here. Each completed mission earns you XP and contributes to your overall progress and stats.",
+      position: "top",
+    },
+    {
+      target: "[data-tour='inbox-missions']",
+      title: "Archived",
+      description: "Missions created from your to-do ideas. Review and prioritize them, or drag them to Today or Future when you're ready to commit.",
       position: "top",
     },
     {
