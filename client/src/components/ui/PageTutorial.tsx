@@ -209,7 +209,8 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const tooltipWidth = Math.max(240, Math.min(340, vw - 32));
-    const tooltipHeight = tooltipRef.current?.getBoundingClientRect().height || 200;
+    const measuredHeight = tooltipRef.current?.getBoundingClientRect().height;
+    const tooltipHeight = measuredHeight && measuredHeight > 50 ? measuredHeight : 280;
     const maxH = vh - 32;
     const edge = 8;
 
@@ -223,8 +224,16 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
     const spaceLeft = targetLeft;
     const spaceRight = vw - targetRight;
 
+    const nearBottom = targetBottom > vh - 80;
+    const nearTop = targetTop < 80;
+
     let pos: "top" | "bottom" | "left" | "right";
-    if (lockedPositionRef.current && lockedPositionRef.current.step === currentStep) {
+
+    if (nearBottom) {
+      pos = "top";
+    } else if (nearTop) {
+      pos = "bottom";
+    } else if (lockedPositionRef.current && lockedPositionRef.current.step === currentStep) {
       pos = lockedPositionRef.current.side;
     } else {
       const canFitAbove = spaceAbove >= tooltipHeight + gap;
@@ -242,9 +251,8 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
       else if (canFitRight && spaceRight >= spaceLeft) pos = "right";
       else if (canFitLeft) pos = "left";
       else pos = spaceAbove >= spaceBelow ? "top" : "bottom";
-
-      lockedPositionRef.current = { step: currentStep, side: pos };
     }
+    lockedPositionRef.current = { step: currentStep, side: pos };
 
     let top: number;
     let left: number;
@@ -270,23 +278,36 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
     const overlapsV = (top + tooltipHeight) > targetTop && top < targetBottom;
 
     if (overlapsH && overlapsV) {
-      if (pos === "bottom") {
-        top = targetBottom + gap;
-      } else if (pos === "top") {
-        top = targetTop - gap - tooltipHeight;
-      } else if (pos === "right") {
-        left = targetRight + gap;
-      } else {
-        left = targetLeft - gap - tooltipWidth;
-      }
+      const abovePos = targetTop - gap - tooltipHeight;
+      const belowPos = targetBottom + gap;
+      const aboveFits = abovePos >= edge;
+      const belowFits = belowPos + tooltipHeight <= vh - edge;
 
-      const stillOverlapsH = (left + tooltipWidth) > targetLeft && left < targetRight;
-      const stillOverlapsV = (top + tooltipHeight) > targetTop && top < targetBottom;
-      if (stillOverlapsH && stillOverlapsV) {
-        if (spaceAbove >= spaceBelow) {
-          top = targetTop - gap - tooltipHeight;
+      if (pos === "top" || pos === "bottom") {
+        if (pos === "top" && aboveFits) {
+          top = abovePos;
+        } else if (pos === "bottom" && belowFits) {
+          top = belowPos;
+        } else if (aboveFits) {
+          top = abovePos;
+        } else if (belowFits) {
+          top = belowPos;
         } else {
-          top = targetBottom + gap;
+          top = edge;
+        }
+      } else {
+        if (pos === "right") {
+          left = targetRight + gap;
+        } else {
+          left = targetLeft - gap - tooltipWidth;
+        }
+        left = Math.max(edge, Math.min(left, vw - tooltipWidth - edge));
+        const stillOverlapsH2 = (left + tooltipWidth) > targetLeft && left < targetRight;
+        const stillOverlapsV2 = (top + tooltipHeight) > targetTop && top < targetBottom;
+        if (stillOverlapsH2 && stillOverlapsV2) {
+          if (aboveFits) top = abovePos;
+          else if (belowFits) top = belowPos;
+          else top = edge;
         }
       }
     }
