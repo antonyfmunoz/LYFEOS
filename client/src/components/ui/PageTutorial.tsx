@@ -54,7 +54,6 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
   const stepsRef = useRef(steps);
   stepsRef.current = steps;
   const lockedPositionRef = useRef<{ step: number; side: "top" | "bottom" | "left" | "right" } | null>(null);
-  const lockedSpotlightRef = useRef<{ step: number; rect: { top: number; left: number; width: number; height: number } } | null>(null);
 
   const findVisibleStep = useCallback((startIndex: number, direction: 1 | -1 = 1): number => {
     const currentSteps = stepsRef.current;
@@ -96,7 +95,6 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
     }
 
     lockedPositionRef.current = null;
-    lockedSpotlightRef.current = null;
     const firstVisible = findVisibleStep(0);
     if (firstVisible !== -1) {
       setCurrentStep(firstVisible);
@@ -109,7 +107,6 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
     updateTargetRect();
     const onResize = () => {
       lockedPositionRef.current = null;
-      lockedSpotlightRef.current = null;
       updateTargetRect();
     };
     const onScroll = () => updateTargetRect();
@@ -180,20 +177,14 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
 
   const padding = 8;
 
-  let spotlightStyle: { top: number; left: number; width: number; height: number } | null = null;
-  if (targetRect) {
-    if (lockedSpotlightRef.current && lockedSpotlightRef.current.step === currentStep) {
-      spotlightStyle = lockedSpotlightRef.current.rect;
-    } else {
-      spotlightStyle = {
+  const spotlightStyle = targetRect
+    ? {
         top: targetRect.top - padding,
         left: targetRect.left - padding,
         width: targetRect.width + padding * 2,
         height: targetRect.height + padding * 2,
-      };
-      lockedSpotlightRef.current = { step: currentStep, rect: spotlightStyle };
-    }
-  }
+      }
+    : null;
 
   const maskId = `tour-spotlight-mask-${storageKey}`;
 
