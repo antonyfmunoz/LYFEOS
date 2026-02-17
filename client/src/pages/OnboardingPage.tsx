@@ -956,7 +956,7 @@ export default function OnboardingPage() {
             
             // Toggle completion to apply XP and stat updates
             if (result && result.id) {
-              const toggleResult = await apiRequest(`/api/quests/${result.id}/toggle`, { method: "PATCH" });
+              const toggleResult = await apiRequest(`/api/quests/${result.id}/toggle`, { method: "POST" });
               console.log("Quest toggled to completed with stats applied:", toggleResult);
             }
           }

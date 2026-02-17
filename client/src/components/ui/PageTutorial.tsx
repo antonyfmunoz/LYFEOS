@@ -213,6 +213,10 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
   const handleNext = () => {
     const next = findVisibleStep(currentStep + 1, 1);
     if (next !== -1) {
+      setScrollingToTarget(true);
+      setTargetRect(null);
+      lockedPositionRef.current = null;
+      lastRectRef.current = null;
       setCurrentStep(next);
     } else {
       onComplete();
@@ -222,6 +226,10 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
   const handlePrev = () => {
     const prev = findVisibleStep(currentStep - 1, -1);
     if (prev !== -1) {
+      setScrollingToTarget(true);
+      setTargetRect(null);
+      lockedPositionRef.current = null;
+      lastRectRef.current = null;
       setCurrentStep(prev);
     }
   };
