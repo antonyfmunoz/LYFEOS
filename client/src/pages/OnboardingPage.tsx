@@ -877,7 +877,7 @@ export default function OnboardingPage() {
             username: onboardingUsername.trim(),
             firstName: onboardingFirstName.trim(),
             lastName: onboardingLastName.trim(),
-            avatarColor,
+            avatarColor: selectedThemeColor || avatarColor,
             birthday: birthdayStr,
             location,
             timezone,
@@ -1099,6 +1099,10 @@ export default function OnboardingPage() {
         saveCompletedMission(currentMission),
         saveMissionData(currentMission),
       ]);
+      if (currentMission === 0 && selectedThemeColor) {
+        localStorage.setItem('lyfeos-primary-color', selectedThemeColor);
+        applyPrimaryColor(selectedThemeColor);
+      }
       setShowMissionComplete(true);
     }
   };
@@ -1181,7 +1185,7 @@ export default function OnboardingPage() {
   const getMissionProfileData = (missionId: number): Record<string, any> => {
     switch (missionId) {
       case 0:
-        return { username: onboardingUsername.trim(), firstName: onboardingFirstName.trim(), lastName: onboardingLastName.trim(), ageRange: birthYear && birthMonth && birthDay ? ageToRange(calculateAge(birthYear, birthMonth, birthDay)) : "", birthday: birthYear && birthMonth && birthDay ? `${birthYear}-${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}` : "", location, timezone };
+        return { username: onboardingUsername.trim(), firstName: onboardingFirstName.trim(), lastName: onboardingLastName.trim(), ageRange: birthYear && birthMonth && birthDay ? ageToRange(calculateAge(birthYear, birthMonth, birthDay)) : "", birthday: birthYear && birthMonth && birthDay ? `${birthYear}-${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}` : "", location, timezone, primaryColor: selectedThemeColor };
       case 1: {
         const archetypeResults = getArchetypeResults();
         return {
