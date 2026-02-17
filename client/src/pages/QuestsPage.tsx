@@ -344,6 +344,12 @@ export default function QuestsPage() {
       description: "Quick-capture ideas and tasks here without scheduling them yet. Drag them to Today or Upcoming when you're ready to commit.",
       position: "top",
     },
+    {
+      target: "[data-tour='terminated-missions']",
+      title: "Terminated",
+      description: "Deleted missions are held here for 24 hours before being permanently removed. You can restore any terminated mission back to your active list within that window.",
+      position: "top",
+    },
   ];
 
   const [showTutorial, setShowTutorial] = useState(() => {
@@ -1770,7 +1776,7 @@ export default function QuestsPage() {
       {/* Terminated Missions - recently deleted, held for 24 hours */}
       <DroppableSection section="terminated" onDropQuest={handleCrossSectionDrop} className="mb-6">
       <Collapsible open={archivedExpanded} onOpenChange={setArchivedExpanded}>
-        <div className="glassmorphic rounded-xl overflow-hidden neon-border">
+        <div className="glassmorphic rounded-xl overflow-hidden neon-border" data-tour="terminated-missions">
           <div className="p-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Archive className="h-5 w-5 text-primary" />
