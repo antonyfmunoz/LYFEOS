@@ -74,20 +74,60 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete }: 
       setVisible(false);
       return;
     }
-    let attempts = 0;
-    const maxAttempts = 15;
-    const tryFind = () => {
-      attempts++;
+
+    let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout>;
+    let observer: MutationObserver | null = null;
+
+    const cleanup = () => {
+      clearTimeout(retryTimer);
+      if (observer) { observer.disconnect(); observer = null; }
+    };
+
+    const checkAndShow = () => {
+      if (cancelled) return false;
       const firstVisible = findVisibleStep(0);
       if (firstVisible !== -1) {
         setCurrentStep(firstVisible);
         setVisible(true);
-      } else if (attempts < maxAttempts) {
-        retryTimer = setTimeout(tryFind, 500);
+        cleanup();
+        return true;
+      }
+      return false;
+    };
+
+    const startObserver = () => {
+      if (cancelled) return;
+      observer = new MutationObserver(() => {
+        checkAndShow();
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    };
+
+    let attempts = 0;
+    const maxAttempts = 30;
+    const poll = () => {
+      if (cancelled) return;
+      attempts++;
+      if (!checkAndShow() && attempts < maxAttempts) {
+        retryTimer = setTimeout(poll, 300);
+      } else if (attempts >= maxAttempts) {
+        cleanup();
       }
     };
-    let retryTimer = setTimeout(tryFind, 800);
-    return () => clearTimeout(retryTimer);
+
+    retryTimer = setTimeout(() => {
+      if (!checkAndShow()) {
+        startObserver();
+        poll();
+      }
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(retryTimer);
+      if (observer) observer.disconnect();
+    };
   }, [isOpen, findVisibleStep]);
 
   useEffect(() => {
