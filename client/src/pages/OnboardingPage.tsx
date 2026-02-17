@@ -862,6 +862,7 @@ export default function OnboardingPage() {
       const mission = MISSIONS.find(m => m.id === missionId);
       if (!mission) return;
       
+      let registeredUser: { id: number; username: string } | null = null;
       if (missionId === 0) {
         const pendingRegData = sessionStorage.getItem("lyfeos-pending-registration");
         if (pendingRegData) {
@@ -875,7 +876,7 @@ export default function OnboardingPage() {
           const birthdayStr = birthYear && birthMonth && birthDay
             ? `${birthYear}-${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`
             : "";
-          await completeRegistration({
+          registeredUser = await completeRegistration({
             email,
             password,
             username: onboardingUsername.trim(),
@@ -922,7 +923,8 @@ export default function OnboardingPage() {
         })
       });
       
-      if (user?.id) {
+      const effectiveUserId = user?.id || registeredUser?.id;
+      if (effectiveUserId) {
         try {
           const questTitle = `Onboarding: ${mission.title}`;
           
@@ -935,7 +937,7 @@ export default function OnboardingPage() {
             const startTimeStr = startTime.toTimeString().slice(0, 5);
             const endTimeStr = now.toTimeString().slice(0, 5);
             const questData = {
-              userId: user.id,
+              userId: effectiveUserId,
               title: questTitle,
               description: `Completed onboarding mission "${mission.title}"`,
               category: "onboarding",
@@ -959,9 +961,9 @@ export default function OnboardingPage() {
               const toggleResult = await apiRequest(`/api/quests/${result.id}/toggle`, { method: "POST" });
               console.log("Quest toggled to completed with stats applied:", toggleResult);
               
-              if (user?.id) {
+              if (effectiveUserId) {
                 try {
-                  const statsRes = await fetch(`/api/users/${user.id}/stats`, { credentials: "include" });
+                  const statsRes = await fetch(`/api/users/${effectiveUserId}/stats`, { credentials: "include" });
                   if (statsRes.ok) {
                     const statsData = await statsRes.json();
                     if (statsData.stats) {

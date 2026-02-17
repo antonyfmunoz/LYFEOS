@@ -31,7 +31,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (identifier: string, password: string) => Promise<void>;
   register: (email: string, password: string, extraData?: { avatarColor?: string }) => Promise<void>;
-  completeRegistration: (data: Record<string, any>) => Promise<void>;
+  completeRegistration: (data: Record<string, any>) => Promise<{ id: number; username: string } | null>;
   logout: () => void;
   loginWithGoogle: () => Promise<void>;
   loginWithApple: () => Promise<void>;
@@ -424,7 +424,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const completeRegistration = async (data: Record<string, any>) => {
+  const completeRegistration = async (data: Record<string, any>): Promise<{ id: number; username: string } | null> => {
     try {
       setIsLoading(true);
       const response = await fetch("/api/auth/complete-registration", {
@@ -451,6 +451,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(result.user);
       localStorage.setItem("lyfeos_user", JSON.stringify(result.user));
       localStorage.removeItem("lyfeos-widget-states");
+      return result.user;
     } catch (error: any) {
       console.error("Complete registration error:", error);
       toast({
