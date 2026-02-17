@@ -21,7 +21,7 @@ import { DraggableWidget, DraggableWidgetProps } from '@/components/ui/draggable
 import update from 'immutability-helper';
 import { useWidgetState } from '@/hooks/use-widget-state';
 import { LevelUpModal } from '@/components/dashboard/LevelUpModal';
-import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
+import PageTutorial, { TutorialStep, tutorialKey } from '@/components/ui/PageTutorial';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { getLocalDateString } from '@/lib/utils';
@@ -229,12 +229,12 @@ export default function DashboardPage() {
   ];
 
   const [showTutorial, setShowTutorial] = useState(() => {
-    return !localStorage.getItem("lyfeos-dashboard-tutorial-completed");
+    return !localStorage.getItem(tutorialKey("dashboard", user?.id));
   });
   
   const handleTutorialComplete = useCallback(() => {
     setShowTutorial(false);
-    localStorage.setItem("lyfeos-dashboard-tutorial-completed", "true");
+    localStorage.setItem(tutorialKey("dashboard", user?.id), "true");
     if (user?.id) {
       apiRequest(`/api/users/${user.id}/profile`, {
         method: "PATCH",
@@ -1434,7 +1434,7 @@ export default function DashboardPage() {
 
   return (
       <div className="dashboard-container pb-20">
-        <PageTutorial steps={DASHBOARD_TOUR_STEPS} storageKey="dashboard" isOpen={showTutorial} onComplete={handleTutorialComplete} />
+        <PageTutorial steps={DASHBOARD_TOUR_STEPS} storageKey="dashboard" isOpen={showTutorial} onComplete={handleTutorialComplete} userId={user?.id} />
         <DailyInitModal />
         
         {/* Level-up modal - shows when user levels up */}

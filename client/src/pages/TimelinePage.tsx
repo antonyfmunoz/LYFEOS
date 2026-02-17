@@ -9,7 +9,7 @@ import { usePageTitle } from '@/hooks/use-page-title';
 import { useAuth } from '@/lib/authContext';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
+import PageTutorial, { TutorialStep, tutorialKey } from '@/components/ui/PageTutorial';
 
 const ONBOARDING_MISSIONS = [
   { id: 0, title: "Access & Quickstart", description: "Log in, explore the dashboard, and complete your first quick mission to get familiar with LYFEOS." },
@@ -203,13 +203,13 @@ export default function TimelinePage() {
   ];
 
   const [showTutorial, setShowTutorial] = useState(() => {
-    return !localStorage.getItem("lyfeos-timeline-tutorial-completed");
+    return !localStorage.getItem(tutorialKey("timeline", user?.id));
   });
 
   const handleTutorialComplete = useCallback(() => {
     setShowTutorial(false);
-    localStorage.setItem("lyfeos-timeline-tutorial-completed", "true");
-  }, []);
+    localStorage.setItem(tutorialKey("timeline", user?.id), "true");
+  }, [user?.id]);
 
   const [activeView, setActiveView] = useState<'history' | 'roadmap'>('history');
   const [zoomLevel, setZoomLevel] = useState<ZoomLevel>('life');
@@ -722,7 +722,7 @@ export default function TimelinePage() {
 
   return (
     <div className="pb-20">
-      <PageTutorial steps={TIMELINE_TOUR_STEPS} storageKey="timeline" isOpen={showTutorial} onComplete={handleTutorialComplete} />
+      <PageTutorial steps={TIMELINE_TOUR_STEPS} storageKey="timeline" isOpen={showTutorial} onComplete={handleTutorialComplete} userId={user?.id} />
       <div className="mb-4">
         <Button
           className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"

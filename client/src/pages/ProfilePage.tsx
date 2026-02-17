@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
+import PageTutorial, { TutorialStep, tutorialKey } from '@/components/ui/PageTutorial';
 import { useWidgetState } from "@/hooks/use-widget-state";
 import RootLayout from "../components/layout/RootLayout";
 import { useLYFEOS } from "../lib/context";
@@ -264,13 +264,13 @@ export default function ProfilePage() {
   ];
 
   const [showTutorial, setShowTutorial] = useState(() => {
-    return !localStorage.getItem("lyfeos-profile-tutorial-completed");
+    return !localStorage.getItem(tutorialKey("profile", user?.id));
   });
 
   const handleTutorialComplete = useCallback(() => {
     setShowTutorial(false);
-    localStorage.setItem("lyfeos-profile-tutorial-completed", "true");
-  }, []);
+    localStorage.setItem(tutorialKey("profile", user?.id), "true");
+  }, [user?.id]);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editUsername, setEditUsername] = useState(username);
@@ -1747,7 +1747,7 @@ export default function ProfilePage() {
   return (
     <RootLayout>
       <div className="max-w-4xl mx-auto pb-20">
-        <PageTutorial steps={PROFILE_TOUR_STEPS} storageKey="profile" isOpen={showTutorial} onComplete={handleTutorialComplete} />
+        <PageTutorial steps={PROFILE_TOUR_STEPS} storageKey="profile" isOpen={showTutorial} onComplete={handleTutorialComplete} userId={user?.id} />
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-orbitron text-foreground">My Account</h1>

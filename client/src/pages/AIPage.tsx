@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
+import PageTutorial, { TutorialStep, tutorialKey } from '@/components/ui/PageTutorial';
+import { useAuth } from "@/lib/authContext";
 import { useLYFEOS } from "../lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { 
@@ -89,14 +90,15 @@ export default function AIPage() {
     },
   ];
 
+  const { user } = useAuth();
   const [showTutorial, setShowTutorial] = useState(() => {
-    return !localStorage.getItem("lyfeos-ai-tutorial-completed");
+    return !localStorage.getItem(tutorialKey("ai", user?.id));
   });
 
   const handleTutorialComplete = useCallback(() => {
     setShowTutorial(false);
-    localStorage.setItem("lyfeos-ai-tutorial-completed", "true");
-  }, []);
+    localStorage.setItem(tutorialKey("ai", user?.id), "true");
+  }, [user?.id]);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -300,7 +302,7 @@ export default function AIPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] pb-10">
-      <PageTutorial steps={AI_TOUR_STEPS} storageKey="ai" isOpen={showTutorial} onComplete={handleTutorialComplete} />
+      <PageTutorial steps={AI_TOUR_STEPS} storageKey="ai" isOpen={showTutorial} onComplete={handleTutorialComplete} userId={user?.id} />
       <div className="flex items-center justify-between mb-4 pb-4 border-b border-primary/20" data-tour="ai-header">
         <div className="flex items-center">
           {/* Hamburger Menu for mobile - static in header */}

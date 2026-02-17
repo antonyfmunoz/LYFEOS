@@ -6,7 +6,7 @@ import { FileText, Clock, Tag, Calendar, Award, GripVertical, CheckSquare, BookO
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { useDrag, useDrop } from 'react-dnd';
 import { useState, useCallback, useRef, useEffect } from 'react';
-import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
+import PageTutorial, { TutorialStep, tutorialKey } from '@/components/ui/PageTutorial';
 import update from 'immutability-helper';
 import { cn } from '@/lib/utils';
 import { DropTargetMonitor } from 'react-dnd';
@@ -385,17 +385,17 @@ export default function ChronilogPage() {
   ];
 
   const [showTutorial, setShowTutorial] = useState(() => {
-    return !localStorage.getItem("lyfeos-chronilog-tutorial-completed");
+    return !localStorage.getItem(tutorialKey("chronilog", user?.id));
   });
 
   const handleTutorialComplete = useCallback(() => {
     setShowTutorial(false);
-    localStorage.setItem("lyfeos-chronilog-tutorial-completed", "true");
-  }, []);
+    localStorage.setItem(tutorialKey("chronilog", user?.id), "true");
+  }, [user?.id]);
 
   return (
       <div className="pb-20">
-        <PageTutorial steps={CHRONILOG_TOUR_STEPS} storageKey="chronilog" isOpen={showTutorial} onComplete={handleTutorialComplete} />
+        <PageTutorial steps={CHRONILOG_TOUR_STEPS} storageKey="chronilog" isOpen={showTutorial} onComplete={handleTutorialComplete} userId={user?.id} />
         <div className="mb-6" data-tour="chronilog-header">
           <h1 className="text-2xl font-orbitron mb-1">Chronilog</h1>
           <p className="text-[#7DAAB2]">Your personal timeline of knowledge, reflections, and growth logs.</p>

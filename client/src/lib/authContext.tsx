@@ -7,6 +7,7 @@ import { signInWithGoogle, signInWithApple, firebaseSignInWithEmail, sendVerific
 import { User as FirebaseUser, onAuthStateChanged, Auth } from "firebase/auth";
 import { applyPrimaryColor } from "./applyPrimaryColor";
 import { getLocalDateString } from "./utils";
+import { clearAllTutorialKeys } from "@/components/ui/PageTutorial";
 
 interface User {
   id: number;
@@ -91,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     setUser(userData.user);
     localStorage.setItem("lyfeos_user", JSON.stringify(userData.user));
+    clearAllTutorialKeys();
     
     if (userData.isNewUser) {
       console.log("New user detected, redirecting to onboarding");
@@ -237,6 +239,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.user);
       localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
       localStorage.removeItem("lyfeos-pending-onboarding");
+      clearAllTutorialKeys();
       
       // Wait for session cookie to be fully established before navigating
       await new Promise(resolve => setTimeout(resolve, 200));
@@ -390,6 +393,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Clear widget states for new users so all widgets start open with their defaults
       localStorage.removeItem("lyfeos-widget-states");
+      clearAllTutorialKeys();
       
       if (trimmedEmail && password) {
         firebaseSignInWithEmail(trimmedEmail, password).then((cred) => {
@@ -449,6 +453,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(result.user);
       localStorage.setItem("lyfeos_user", JSON.stringify(result.user));
       localStorage.removeItem("lyfeos-widget-states");
+      clearAllTutorialKeys();
     } catch (error: any) {
       console.error("Complete registration error:", error);
       toast({

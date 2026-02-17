@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
+import PageTutorial, { TutorialStep, tutorialKey } from '@/components/ui/PageTutorial';
 import { useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
@@ -163,13 +163,13 @@ export default function RolodexPage() {
   ];
 
   const [showTutorial, setShowTutorial] = useState(() => {
-    return !localStorage.getItem("lyfeos-rolodex-tutorial-completed");
+    return !localStorage.getItem(tutorialKey("rolodex", user?.id));
   });
 
   const handleTutorialComplete = useCallback(() => {
     setShowTutorial(false);
-    localStorage.setItem("lyfeos-rolodex-tutorial-completed", "true");
-  }, []);
+    localStorage.setItem(tutorialKey("rolodex", user?.id), "true");
+  }, [user?.id]);
 
   const { isLoading } = useQuery<{ contacts: Contact[] }>({
     queryKey: ['/api/users', user?.id, 'contacts'],
@@ -369,7 +369,7 @@ export default function RolodexPage() {
 
   return (
     <div className="min-h-screen bg-background px-4 py-6 max-w-4xl mx-auto">
-      <PageTutorial steps={ROLODEX_TOUR_STEPS} storageKey="rolodex" isOpen={showTutorial} onComplete={handleTutorialComplete} />
+      <PageTutorial steps={ROLODEX_TOUR_STEPS} storageKey="rolodex" isOpen={showTutorial} onComplete={handleTutorialComplete} userId={user?.id} />
       <div className="mb-4">
         <Button
           className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"

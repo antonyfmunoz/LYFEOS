@@ -9,19 +9,32 @@ export interface TutorialStep {
   position: "top" | "bottom" | "left" | "right";
 }
 
-const ALL_TUTORIAL_KEYS = [
-  "lyfeos-dashboard-tutorial-completed",
-  "lyfeos-missions-tutorial-completed",
-  "lyfeos-profile-tutorial-completed",
-  "lyfeos-chronilog-tutorial-completed",
-  "lyfeos-tracker-tutorial-completed",
-  "lyfeos-rolodex-tutorial-completed",
-  "lyfeos-timeline-tutorial-completed",
-  "lyfeos-ai-tutorial-completed",
+const TUTORIAL_PAGES = [
+  "dashboard",
+  "missions",
+  "profile",
+  "chronilog",
+  "tracker",
+  "rolodex",
+  "timeline",
+  "ai",
 ];
 
-export function skipAllTutorials() {
-  ALL_TUTORIAL_KEYS.forEach(key => localStorage.setItem(key, "true"));
+export function tutorialKey(page: string, userId?: number | null): string {
+  return userId ? `lyfeos-${page}-tutorial-completed-${userId}` : `lyfeos-${page}-tutorial-completed`;
+}
+
+export function skipAllTutorials(userId?: number | null) {
+  TUTORIAL_PAGES.forEach(page => localStorage.setItem(tutorialKey(page, userId), "true"));
+}
+
+export function clearAllTutorialKeys() {
+  const keys = Object.keys(localStorage);
+  keys.forEach(key => {
+    if (key.match(/^lyfeos-.*-tutorial-completed/)) {
+      localStorage.removeItem(key);
+    }
+  });
 }
 
 interface PageTutorialProps {
@@ -29,9 +42,10 @@ interface PageTutorialProps {
   storageKey: string;
   isOpen: boolean;
   onComplete: () => void;
+  userId?: number | null;
 }
 
-export default function PageTutorial({ steps, storageKey, isOpen, onComplete }: PageTutorialProps) {
+export default function PageTutorial({ steps, storageKey, isOpen, onComplete, userId }: PageTutorialProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [visible, setVisible] = useState(false);
@@ -142,7 +156,7 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete }: 
   };
 
   const handleSkip = () => {
-    skipAllTutorials();
+    skipAllTutorials(userId);
     onComplete();
   };
 

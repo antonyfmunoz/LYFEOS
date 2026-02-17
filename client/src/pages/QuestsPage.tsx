@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
+import PageTutorial, { TutorialStep, tutorialKey } from '@/components/ui/PageTutorial';
 import { useWidgetState } from "@/hooks/use-widget-state";
 import { useLYFEOS } from "../lib/context";
 import { useAuth } from "@/lib/authContext";
@@ -347,13 +347,13 @@ export default function QuestsPage() {
   ];
 
   const [showTutorial, setShowTutorial] = useState(() => {
-    return !localStorage.getItem("lyfeos-missions-tutorial-completed");
+    return !localStorage.getItem(tutorialKey("missions", user?.id));
   });
 
   const handleTutorialComplete = useCallback(() => {
     setShowTutorial(false);
-    localStorage.setItem("lyfeos-missions-tutorial-completed", "true");
-  }, []);
+    localStorage.setItem(tutorialKey("missions", user?.id), "true");
+  }, [user?.id]);
   const originalDatesRef = useRef(originalDates);
   originalDatesRef.current = originalDates;
 
@@ -695,7 +695,7 @@ export default function QuestsPage() {
 
   return (
     <div className="pb-20">
-      <PageTutorial steps={MISSIONS_TOUR_STEPS} storageKey="missions" isOpen={showTutorial} onComplete={handleTutorialComplete} />
+      <PageTutorial steps={MISSIONS_TOUR_STEPS} storageKey="missions" isOpen={showTutorial} onComplete={handleTutorialComplete} userId={user?.id} />
       <div className="mb-6 flex items-center justify-between" data-tour="missions-header">
         <div>
           <h1 className="text-2xl font-orbitron mb-1">Missions</h1>
