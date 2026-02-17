@@ -296,10 +296,23 @@ export default function ProfilePage() {
     enabled: !!user?.id,
   });
   
-  // Fetch user profile schema data (onboarding/archetype data)
+  const profileHasAffirmation = useRef(false);
+  
   const { data: userProfileData, isLoading: isProfileSchemaLoading } = useQuery({
     queryKey: ["/api/profile"],
     enabled: !!user?.id,
+    refetchInterval: (query) => {
+      const data = query.state.data as any;
+      if (data?.characterAffirmation) {
+        profileHasAffirmation.current = true;
+        return false;
+      }
+      if (profileHasAffirmation.current) return false;
+      if (data?.onboardingCompleted || (data?.completedOnboardingMissions?.length > 0)) {
+        return 3000;
+      }
+      return false;
+    },
   });
 
   useEffect(() => {

@@ -928,55 +928,52 @@ export default function OnboardingPage() {
         try {
           const questTitle = `Onboarding: ${mission.title}`;
           
-          const existingCompletedQuest = quests.find(q => q.title === questTitle && q.completed);
-          if (existingCompletedQuest) {
-            console.log("Onboarding quest already completed, skipping creation:", questTitle);
-          } else {
-            const startTime = missionStartTimeRef.current;
-            const startDateStr = `${startTime.getFullYear()}-${String(startTime.getMonth() + 1).padStart(2, '0')}-${String(startTime.getDate()).padStart(2, '0')}`;
-            const startTimeStr = startTime.toTimeString().slice(0, 5);
-            const endTimeStr = now.toTimeString().slice(0, 5);
-            const questData = {
-              userId: effectiveUserId,
-              title: questTitle,
-              description: `Completed onboarding mission "${mission.title}"`,
-              category: "onboarding",
-              completed: false,
-              experienceReward: mission.xp,
-              startDate: startDateStr,
-              startTime: startTimeStr,
-              dueDate: localDateStr,
-              endDate: localDateStr,
-              endTime: endTimeStr,
-            };
-            console.log("Creating quest with data:", questData);
-            const result = await apiRequest("/api/quests", {
-              method: "POST",
-              body: JSON.stringify(questData),
-            });
-            console.log("Quest created successfully:", result);
+          const startTime = missionStartTimeRef.current;
+          const startDateStr = `${startTime.getFullYear()}-${String(startTime.getMonth() + 1).padStart(2, '0')}-${String(startTime.getDate()).padStart(2, '0')}`;
+          const startTimeStr = startTime.toTimeString().slice(0, 5);
+          const endTimeStr = now.toTimeString().slice(0, 5);
+          const questData = {
+            userId: effectiveUserId,
+            title: questTitle,
+            description: `Completed onboarding mission "${mission.title}"`,
+            category: "onboarding",
+            completed: false,
+            experienceReward: mission.xp,
+            startDate: startDateStr,
+            startTime: startTimeStr,
+            dueDate: localDateStr,
+            endDate: localDateStr,
+            endTime: endTimeStr,
+          };
+          console.log("Creating quest with data:", questData);
+          const result = await apiRequest("/api/quests", {
+            method: "POST",
+            body: JSON.stringify(questData),
+          });
+          console.log("Quest create/find result:", result);
+          
+          const questId = result?.quest?.id || result?.id;
+          const questAlreadyCompleted = result?.quest?.completed || result?.completed;
+          const isDuplicate = result?.duplicate;
+          
+          if (questId && !questAlreadyCompleted) {
+            const toggleResult = await apiRequest(`/api/quests/${questId}/toggle`, { method: "POST" });
+            console.log("Quest toggled to completed with stats applied:", toggleResult);
             
-            // Toggle completion to apply XP and stat updates
-            const questId = result?.quest?.id || result?.id;
-            if (questId) {
-              const toggleResult = await apiRequest(`/api/quests/${questId}/toggle`, { method: "POST" });
-              console.log("Quest toggled to completed with stats applied:", toggleResult);
-              
-              if (effectiveUserId) {
-                try {
-                  const statsRes = await fetch(`/api/users/${effectiveUserId}/stats`, { credentials: "include" });
-                  if (statsRes.ok) {
-                    const statsData = await statsRes.json();
-                    if (statsData.stats) {
-                      updateUserStats(statsData.stats);
-                      console.log("Stats updated after onboarding mission:", statsData.stats);
-                    }
-                  }
-                } catch (e) {
-                  console.error("Failed to refresh stats after onboarding:", e);
+            try {
+              const statsRes = await fetch(`/api/users/${effectiveUserId}/stats`, { credentials: "include" });
+              if (statsRes.ok) {
+                const statsData = await statsRes.json();
+                if (statsData.stats) {
+                  updateUserStats(statsData.stats);
+                  console.log("Stats updated after onboarding mission:", statsData.stats);
                 }
               }
+            } catch (e) {
+              console.error("Failed to refresh stats after onboarding:", e);
             }
+          } else if (questAlreadyCompleted || isDuplicate) {
+            console.log("Onboarding quest already completed, skipping toggle:", questTitle);
           }
           console.log("Refetching quests after onboarding mission completion...");
           await refetchQuests();

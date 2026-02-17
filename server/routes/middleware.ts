@@ -100,8 +100,8 @@ export function calculateMissionCosts(
     const durationMs = endDateTime.getTime() - startDateTime.getTime();
     const durationMinutes = Math.max(0, Math.floor(durationMs / (1000 * 60)));
     
-    const timeCost = durationMinutes;
-    const attentionCost = durationMinutes;
+    const timeCost = durationMinutes > 0 ? durationMinutes : 1;
+    const attentionCost = durationMinutes > 0 ? durationMinutes : 1;
     const energyCost = durationMinutes > 0 ? durationMinutes : 1;
     
     return { attentionCost, timeCost, energyCost };
