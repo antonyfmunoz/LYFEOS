@@ -1165,16 +1165,21 @@ export default function OnboardingPage() {
     setIsLoading(true);
     setIsGeneratingAffirmation(true);
     
+    const minDisplayTime = new Promise(resolve => setTimeout(resolve, 2500));
+    
     try {
       const allCompleted = completedOnboardingMissions.length >= MISSIONS.length;
-      await apiRequest("/api/profile", {
-        method: "PATCH",
-        body: JSON.stringify({ onboardingCompleted: allCompleted }),
-      });
-      await generateAffirmationRequest();
+      await Promise.all([
+        apiRequest("/api/profile", {
+          method: "PATCH",
+          body: JSON.stringify({ onboardingCompleted: allCompleted }),
+        }).then(() => generateAffirmationRequest()),
+        minDisplayTime,
+      ]);
       navigate("/ceremony");
     } catch (error) {
       console.error("Error completing onboarding:", error);
+      await minDisplayTime;
       navigate("/ceremony");
     } finally {
       setIsLoading(false);
@@ -1707,13 +1712,6 @@ export default function OnboardingPage() {
                     Continue to {MISSIONS[currentMission + 1].title}
                     <ChevronRight className="h-4 w-4 ml-2" />
                   </Button>
-                  <button
-                    onClick={() => setShowMissionComplete(false)}
-                    className="text-muted-foreground text-sm hover:text-primary transition-colors flex items-center justify-center gap-1 mx-auto"
-                  >
-                    <ChevronLeft className="h-3 w-3" />
-                    Go back to mission
-                  </button>
                   <Button
                     onClick={handleSkipToSystem}
                     className="w-full bg-transparent border-2 border-primary text-primary hover:bg-primary/20"
@@ -1721,6 +1719,13 @@ export default function OnboardingPage() {
                     Enter LYFEOS
                     <ChevronRight className="h-4 w-4 ml-2" />
                   </Button>
+                  <button
+                    onClick={() => setShowMissionComplete(false)}
+                    className="text-muted-foreground text-sm hover:text-primary transition-colors flex items-center justify-center gap-1 mx-auto"
+                  >
+                    <ChevronLeft className="h-3 w-3" />
+                    Go back to mission
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1748,16 +1753,16 @@ export default function OnboardingPage() {
   }
 
   if (isGeneratingAffirmation) {
-    const isFirstMission = currentMission === 0;
+    const isFinalMission = currentMission === MISSIONS.length - 1;
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
         <div className="text-center space-y-4">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
           <h2 className="text-xl font-medium">
-            {isFirstMission ? "Generating" : "Updating"} Your Character Affirmation...
+            {isFinalMission ? "Updating" : "Generating"} Your Character Affirmation...
           </h2>
           <p className="text-muted-foreground">
-            {isFirstMission ? "Your AI is crafting your personalized narrative" : "Your AI is refining your personalized narrative"}
+            {isFinalMission ? "Your AI is refining your personalized narrative" : "Your AI is crafting your personalized narrative"}
           </p>
         </div>
       </div>
