@@ -418,6 +418,79 @@ export default function QuestsPage() {
         !completedOnboardingTitles.includes(`Onboarding: ${m.title}`)
       ) || null
     : null;
+
+  const retroFixAttempted = useRef(false);
+  useEffect(() => {
+    if (retroFixAttempted.current || !user?.id || !profileLoaded || completedOnboardingMissions.length === 0) return;
+    retroFixAttempted.current = true;
+    (async () => {
+      try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const questsRes = await fetch(`/api/users/${user.id}/quests?tz=${encodeURIComponent(tz)}`, { credentials: "include" });
+        if (!questsRes.ok) {
+          retroFixAttempted.current = false;
+          return;
+        }
+        const questsData = await questsRes.json();
+        const allOnboardingQuests = (questsData.quests || []).filter((q: any) => q.category === 'onboarding');
+
+        let changed = false;
+        const nowD = new Date();
+        const dateStr = `${nowD.getFullYear()}-${String(nowD.getMonth() + 1).padStart(2, '0')}-${String(nowD.getDate()).padStart(2, '0')}`;
+        const timeStr = nowD.toTimeString().slice(0, 5);
+
+        for (const m of ONBOARDING_MISSIONS) {
+          if (!completedOnboardingMissions.includes(m.id)) continue;
+          const expectedTitle = `Onboarding: ${m.title}`;
+          const existing = allOnboardingQuests.find((q: any) => q.title === expectedTitle);
+
+          if (existing && existing.completed) continue;
+
+          if (existing && !existing.completed) {
+            try {
+              await apiRequest(`/api/quests/${existing.id}/toggle`, { method: "POST" });
+              changed = true;
+            } catch (e) {
+              console.error("Failed to toggle existing onboarding quest:", m.title, e);
+            }
+          } else if (!existing) {
+            try {
+              const result = await apiRequest("/api/quests", {
+                method: "POST",
+                body: JSON.stringify({
+                  userId: user.id,
+                  title: expectedTitle,
+                  description: `Completed onboarding mission "${m.title}"`,
+                  category: "onboarding",
+                  completed: false,
+                  experienceReward: m.xp,
+                  startDate: dateStr,
+                  startTime: timeStr,
+                  dueDate: dateStr,
+                  endDate: dateStr,
+                  endTime: timeStr,
+                }),
+              });
+              if (result?.id) {
+                await apiRequest(`/api/quests/${result.id}/toggle`, { method: "POST" });
+                changed = true;
+              }
+            } catch (e) {
+              console.error("Failed to create onboarding quest:", m.title, e);
+            }
+          }
+        }
+
+        if (changed) {
+          await refetchQuests();
+          queryClient.invalidateQueries({ queryKey: [`/api/users/${user.id}/stats`] });
+        }
+      } catch (e) {
+        console.error("Retro fix failed:", e);
+        retroFixAttempted.current = false;
+      }
+    })();
+  }, [user?.id, profileLoaded, completedOnboardingMissions, refetchQuests]);
   
   const { todayMissions, upcomingMissions, completedMissions, inboxMissions } = useMemo(() => {
     const active = quests.filter(q => !q.completed);
