@@ -1148,7 +1148,6 @@ export default function OnboardingPage() {
   };
 
   const handleSkipToSystem = async () => {
-    setShowMissionComplete(false);
     localStorage.removeItem("lyfeos-pending-onboarding");
     localStorage.setItem("lyfeos-ceremony-mode", currentMission === 0 ? "init" : "update");
     localStorage.removeItem("lyfeos-onboarding-resume");
