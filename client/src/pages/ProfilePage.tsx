@@ -272,12 +272,6 @@ export default function ProfilePage() {
     setShowTutorial(false);
   }, [user?.id]);
 
-  useEffect(() => {
-    if ((userProfileData as any)?.completedTutorials?.includes("profile")) {
-      setShowTutorial(false);
-    }
-  }, [userProfileData]);
-
   const [isEditing, setIsEditing] = useState(false);
   const [editUsername, setEditUsername] = useState(username);
   const [isProfileOpen, setIsProfileOpen] = useWidgetState("profile.details", true);
@@ -307,6 +301,12 @@ export default function ProfilePage() {
     queryKey: ["/api/profile"],
     enabled: !!user?.id,
   });
+
+  useEffect(() => {
+    if ((userProfileData as any)?.completedTutorials?.includes("profile")) {
+      setShowTutorial(false);
+    }
+  }, [userProfileData]);
   
   // State for affirmation regeneration
   const [isGeneratingAffirmation, setIsGeneratingAffirmation] = useState(false);
