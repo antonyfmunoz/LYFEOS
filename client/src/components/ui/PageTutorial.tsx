@@ -79,37 +79,16 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete }: 
       return;
     }
 
-    let cancelled = false;
-    let retryTimer: ReturnType<typeof setTimeout>;
-
-    const checkAndShow = () => {
-      if (cancelled) return false;
+    const timer = setTimeout(() => {
       const firstVisible = findVisibleStep(0);
       if (firstVisible !== -1) {
         setCurrentStep(firstVisible);
-        setVisible(true);
-        return true;
       }
-      return false;
-    };
+      setVisible(true);
+    }, 1500);
 
-    let attempts = 0;
-    const maxAttempts = 40;
-    const poll = () => {
-      if (cancelled) return;
-      attempts++;
-      if (!checkAndShow() && attempts < maxAttempts) {
-        retryTimer = setTimeout(poll, 250);
-      }
-    };
-
-    retryTimer = setTimeout(poll, 500);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(retryTimer);
-    };
-  }, [isOpen, findVisibleStep]);
+    return () => clearTimeout(timer);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!visible) return;
