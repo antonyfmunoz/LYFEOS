@@ -9,9 +9,9 @@
   }
 
   var path = window.location.pathname.replace(/\/+$/, '') || '/';
-  var isAuthPage = path === '/login' || path === '/register' || path === '/forgot-password' || path === '/reset-password' || path === '/onboarding' || path === '/';
-  var color = localStorage.getItem('lyfeos-primary-color');
-  if (color && !isAuthPage) {
+  var isNeutralPage = path === '/login' || path === '/register' || path === '/forgot-password' || path === '/reset-password' || path === '/onboarding' || path === '/';
+  var color = isNeutralPage ? '#ffffff' : localStorage.getItem('lyfeos-primary-color');
+  if (color) {
     var hex = color.replace(/^#/, '');
     var ri = parseInt(hex.substring(0, 2), 16);
     var gi = parseInt(hex.substring(2, 4), 16);

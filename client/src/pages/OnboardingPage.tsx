@@ -681,17 +681,7 @@ export default function OnboardingPage() {
   const [selectedThemeColor, setSelectedThemeColor] = useState("#00e0ff");
 
   useEffect(() => {
-    const el = document.documentElement;
-    el.style.removeProperty('--primary');
-    el.style.removeProperty('--primary-hsl');
-    el.style.removeProperty('--primary-color');
-    el.style.removeProperty('--primary-glow-light');
-    el.style.removeProperty('--primary-glow-medium');
-    el.style.removeProperty('--primary-glow-strong');
-    el.style.removeProperty('--primary-bg-subtle');
-    el.style.removeProperty('--primary-bg-light');
-    el.style.removeProperty('--primary-border-subtle');
-    el.style.removeProperty('--primary-shadow');
+    applyPrimaryColor("#ffffff");
   }, []);
 
   useEffect(() => {
