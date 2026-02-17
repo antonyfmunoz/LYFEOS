@@ -598,7 +598,7 @@ function ScenarioSelect({
 export default function OnboardingPage() {
   usePageTitle("Onboarding");
   const { user, isLoading: authLoading, completeRegistration, getPendingPassword, refreshUser } = useAuth();
-  const { quests, refetchQuests } = useLYFEOS();
+  const { quests, refetchQuests, updateUserStats } = useLYFEOS();
   const [, navigate] = useLocation();
 
   const pendingReg = sessionStorage.getItem("lyfeos-pending-registration");
@@ -958,6 +958,21 @@ export default function OnboardingPage() {
             if (result && result.id) {
               const toggleResult = await apiRequest(`/api/quests/${result.id}/toggle`, { method: "POST" });
               console.log("Quest toggled to completed with stats applied:", toggleResult);
+              
+              if (user?.id) {
+                try {
+                  const statsRes = await fetch(`/api/users/${user.id}/stats`, { credentials: "include" });
+                  if (statsRes.ok) {
+                    const statsData = await statsRes.json();
+                    if (statsData.stats) {
+                      updateUserStats(statsData.stats);
+                      console.log("Stats updated after onboarding mission:", statsData.stats);
+                    }
+                  }
+                } catch (e) {
+                  console.error("Failed to refresh stats after onboarding:", e);
+                }
+              }
             }
           }
           console.log("Refetching quests after onboarding mission completion...");

@@ -392,7 +392,7 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
     return { position: "fixed", zIndex: 10002, maxWidth: tooltipWidth, width: tooltipWidth, top, left, maxHeight: maxH };
   };
 
-  const transitionStyle = scrollingToTarget ? { opacity: 0, pointerEvents: "none" as const, transition: "opacity 0.15s ease" } : { opacity: 1, transition: "opacity 0.2s ease 0.05s" };
+  const transitionStyle = scrollingToTarget ? { opacity: 0, pointerEvents: "none" as const } : { opacity: 1, transition: "opacity 0.2s ease 0.05s" };
 
   return ReactDOM.createPortal(
     <div className="fixed inset-0" style={{ zIndex: 10000 }}>
