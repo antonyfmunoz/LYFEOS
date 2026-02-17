@@ -12,9 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ChevronLeft, ChevronRight, Check, Loader2, Zap, X, ChevronDown } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { applyPrimaryColor } from "@/lib/applyPrimaryColor";
 
 const MISSIONS = [
-  { id: 0, title: "Access & Quickstart", questions: 3, xp: 100 },
+  { id: 0, title: "Access & Quickstart", questions: 6, xp: 100 },
   { id: 1, title: "Archetype Calibration", questions: 54, xp: 150 },
   { id: 2, title: "Identity & Direction", questions: 21, xp: 75 },
   { id: 3, title: "Craft & Mastery", questions: 8, xp: 60 },
@@ -677,6 +678,7 @@ export default function OnboardingPage() {
   const [location, setLocation] = useState(saved.location || "");
   const [detectedLocation, setDetectedLocation] = useState("");
   const [timezone, setTimezone] = useState(saved.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const [selectedThemeColor, setSelectedThemeColor] = useState(localStorage.getItem('lyfeos-primary-color') || "#00e0ff");
 
   useEffect(() => {
     (async () => {
@@ -966,7 +968,7 @@ export default function OnboardingPage() {
   
   function getMaxSteps(missionId: number) {
     switch (missionId) {
-      case 0: return 5;
+      case 0: return 6;
       case 1: return ARCHETYPE_QUESTIONS.length;
       case 2: return 21;
       case 3: return 8;
@@ -985,6 +987,7 @@ export default function OnboardingPage() {
       if (currentStep === 2) return birthMonth > 0 && birthDay > 0 && birthYear > 0;
       if (currentStep === 3) return location.trim() !== "";
       if (currentStep === 4) return timezone !== "";
+      if (currentStep === 5) return true;
     }
     if (currentMission === 1) {
       return archetypeAnswers[ARCHETYPE_QUESTIONS[currentStep]?.id] !== undefined;
@@ -1475,6 +1478,50 @@ export default function OnboardingPage() {
             <TimezoneDropdown value={timezone} onChange={setTimezone} />
           </div>
         );
+      case 5: {
+        const themeColors = [
+          { hex: "#00e0ff", label: "Cyan" },
+          { hex: "#ff2d95", label: "Pink" },
+          { hex: "#ff6b2b", label: "Orange" },
+          { hex: "#ffe03d", label: "Yellow" },
+          { hex: "#39ff14", label: "Green" },
+          { hex: "#b44dff", label: "Purple" },
+        ];
+        return (
+          <div className="space-y-5">
+            <h2 className="text-2xl font-orbitron font-bold text-center">Choose your theme color</h2>
+            <p className="text-sm text-muted-foreground text-center">This sets the accent color across your entire system</p>
+            <div className="flex justify-center gap-3 flex-wrap max-w-xs mx-auto">
+              {themeColors.map((color) => (
+                <button
+                  key={color.hex}
+                  type="button"
+                  className={`w-12 h-12 rounded-lg transition-all ${
+                    selectedThemeColor === color.hex
+                      ? 'ring-2 ring-offset-2 ring-offset-background ring-white scale-110'
+                      : 'ring-1 ring-white/20 hover:scale-105'
+                  }`}
+                  style={{ backgroundColor: color.hex }}
+                  onClick={() => {
+                    setSelectedThemeColor(color.hex);
+                    localStorage.setItem('lyfeos-primary-color', color.hex);
+                    applyPrimaryColor(color.hex);
+                  }}
+                >
+                  {selectedThemeColor === color.hex && (
+                    <span className="flex items-center justify-center text-white text-sm">
+                      <Check className="h-5 w-5 drop-shadow-md" />
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground text-center">
+              Selected: <span className="font-medium" style={{ color: selectedThemeColor }}>{themeColors.find(c => c.hex === selectedThemeColor)?.label || "Custom"}</span>
+            </p>
+          </div>
+        );
+      }
       default:
         return null;
     }
@@ -1768,7 +1815,7 @@ export default function OnboardingPage() {
           >
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
-            ) : currentMission === 0 && currentStep === 2 ? (
+            ) : currentMission === 0 && currentStep === totalSteps - 1 ? (
               <>Enter LYFEOS<ChevronRight className="h-4 w-4 ml-2" /></>
             ) : currentMission === MISSIONS.length - 1 && currentStep === totalSteps - 1 ? (
               <>Initialize System<ChevronRight className="h-4 w-4 ml-2" /></>

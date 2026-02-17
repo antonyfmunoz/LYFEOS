@@ -3,18 +3,8 @@ import { Link, useLocation } from "wouter";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { useAuth } from "@/lib/authContext";
 import { Input } from "@/components/ui/input";
-import { Loader2, Check } from "lucide-react";
-import { useTheme } from "@/lib/themeContext";
+import { Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-
-const avatarColors = [
-  "#00e0ff",
-  "#ff2d95",
-  "#ff6b2b",
-  "#ffe03d",
-  "#39ff14",
-  "#b44dff",
-];
 
 const hexToRgba = (hex: string, alpha: number) => {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -26,7 +16,6 @@ const hexToRgba = (hex: string, alpha: number) => {
 export default function RegisterPage() {
   usePageTitle('Register');
   
-  const { primaryColor, setPrimaryColor: setThemePrimaryColor } = useTheme();
   const { loginWithGoogle, loginWithApple, setPendingPassword } = useAuth();
   const [, navigate] = useLocation();
   
@@ -34,8 +23,6 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
-  const [selectedColor, setSelectedColor] = useState(() => localStorage.getItem('lyfeos-primary-color') || primaryColor || "#00e0ff");
-  const [hasUserSelectedColor, setHasUserSelectedColor] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -53,11 +40,6 @@ export default function RegisterPage() {
     };
   }, [savedColor]);
   
-  useEffect(() => {
-    if (hasUserSelectedColor) {
-      setThemePrimaryColor(selectedColor);
-    }
-  }, [selectedColor, hasUserSelectedColor]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,10 +101,9 @@ export default function RegisterPage() {
       setPendingPassword(trimmedPassword);
       sessionStorage.setItem("lyfeos-pending-registration", JSON.stringify({
         email: trimmedEmail,
-        avatarColor: selectedColor,
+        avatarColor: "#00e0ff",
       }));
 
-      localStorage.setItem("lyfeos-primary-color", selectedColor);
       localStorage.setItem("lyfeos-pending-onboarding", "true");
 
       navigate("/onboarding", { replace: true });
@@ -225,35 +206,6 @@ export default function RegisterPage() {
               required
               style={{ borderColor: accent?.border30 || 'rgba(255,255,255,0.3)', '--tw-ring-color': accent?.border30 || 'rgba(255,255,255,0.3)' } as any}
             />
-          </div>
-          
-          <div className="space-y-2">
-            <label className="block text-sm text-white">CHOOSE YOUR THEME COLOR</label>
-            <div className="flex justify-center gap-2">
-              {avatarColors.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  className={`w-8 h-8 rounded-md transition-all ${
-                    selectedColor === color 
-                      ? 'ring-2 ring-offset-2 ring-offset-background ring-primary scale-110' 
-                      : 'ring-1 ring-primary/20 hover:scale-105'
-                  }`}
-                  style={{ backgroundColor: color }}
-                  onClick={() => {
-                    setSelectedColor(color);
-                    setHasUserSelectedColor(true);
-                    localStorage.setItem('lyfeos-primary-color', color);
-                  }}
-                >
-                  {selectedColor === color && (
-                    <span className="flex items-center justify-center text-white text-xs">
-                      <Check className="h-4 w-4" />
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
           </div>
           
           <div className="flex items-start space-x-2 mt-4">
