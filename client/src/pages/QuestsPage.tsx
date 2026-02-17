@@ -345,6 +345,12 @@ export default function QuestsPage() {
       position: "top",
     },
     {
+      target: "[data-tour='completed-missions']",
+      title: "Completed",
+      description: "Missions you've finished today appear here. Each completed mission earns you XP and contributes to your overall progress and stats.",
+      position: "top",
+    },
+    {
       target: "[data-tour='terminated-missions']",
       title: "Terminated",
       description: "Deleted missions are held here for 24 hours before being permanently removed. You can restore any terminated mission back to your active list within that window.",
@@ -1651,7 +1657,7 @@ export default function QuestsPage() {
       {/* Completed Missions */}
       <DroppableSection section="completed" onDropQuest={handleCrossSectionDrop} className="mb-6">
       <Collapsible open={completedExpanded} onOpenChange={setCompletedExpanded}>
-        <div className="glassmorphic rounded-xl overflow-hidden neon-border">
+        <div className="glassmorphic rounded-xl overflow-hidden neon-border" data-tour="completed-missions">
           <div className="p-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-primary" />

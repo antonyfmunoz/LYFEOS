@@ -228,13 +228,13 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
     const nearTop = targetTop < 80;
     const targetHeight = targetBottom - targetTop;
     const isLargeTarget = targetHeight > vh * 0.35;
+    const conservativeHeight = Math.max(tooltipHeight, 280);
     const canFitAbove = spaceAbove >= tooltipHeight + gap;
     const canFitBelow = spaceBelow >= tooltipHeight + gap;
 
-    if (isLargeTarget && !nearBottom && !nearTop && canFitAbove && canFitBelow) {
-      const centeredTop = Math.max(edge, (vh - tooltipHeight) / 2);
+    if (isLargeTarget && !nearBottom && !nearTop && spaceAbove >= conservativeHeight + gap && spaceBelow >= conservativeHeight + gap) {
       const centeredLeft = Math.max(edge, Math.min((vw - tooltipWidth) / 2, vw - tooltipWidth - edge));
-      return { position: "fixed", zIndex: 10002, maxWidth: tooltipWidth, width: tooltipWidth, top: centeredTop, left: centeredLeft, maxHeight: maxH };
+      return { position: "fixed", zIndex: 10002, maxWidth: tooltipWidth, width: tooltipWidth, top: "50%", left: centeredLeft, transform: "translateY(-50%)", maxHeight: maxH };
     }
 
     let pos: "top" | "bottom" | "left" | "right";
