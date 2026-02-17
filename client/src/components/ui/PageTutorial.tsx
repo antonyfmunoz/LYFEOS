@@ -9,6 +9,21 @@ export interface TutorialStep {
   position: "top" | "bottom" | "left" | "right";
 }
 
+const ALL_TUTORIAL_KEYS = [
+  "lyfeos-dashboard-tutorial-completed",
+  "lyfeos-missions-tutorial-completed",
+  "lyfeos-profile-tutorial-completed",
+  "lyfeos-chronilog-tutorial-completed",
+  "lyfeos-tracker-tutorial-completed",
+  "lyfeos-rolodex-tutorial-completed",
+  "lyfeos-timeline-tutorial-completed",
+  "lyfeos-ai-tutorial-completed",
+];
+
+export function skipAllTutorials() {
+  ALL_TUTORIAL_KEYS.forEach(key => localStorage.setItem(key, "true"));
+}
+
 interface PageTutorialProps {
   steps: TutorialStep[];
   storageKey: string;
@@ -59,14 +74,20 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete }: 
       setVisible(false);
       return;
     }
-    const timer = setTimeout(() => {
+    let attempts = 0;
+    const maxAttempts = 15;
+    const tryFind = () => {
+      attempts++;
       const firstVisible = findVisibleStep(0);
       if (firstVisible !== -1) {
         setCurrentStep(firstVisible);
+        setVisible(true);
+      } else if (attempts < maxAttempts) {
+        retryTimer = setTimeout(tryFind, 500);
       }
-      setVisible(true);
-    }, 600);
-    return () => clearTimeout(timer);
+    };
+    let retryTimer = setTimeout(tryFind, 800);
+    return () => clearTimeout(retryTimer);
   }, [isOpen, findVisibleStep]);
 
   useEffect(() => {
@@ -120,6 +141,7 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete }: 
   };
 
   const handleSkip = () => {
+    skipAllTutorials();
     onComplete();
   };
 
