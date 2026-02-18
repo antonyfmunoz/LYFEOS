@@ -1132,7 +1132,11 @@ export default function OnboardingPage() {
       Promise.all([
         saveCompletedMission(currentMission),
         saveMissionData(currentMission),
-      ]).catch(err => console.error("Error saving mission:", err));
+      ]).then(() => {
+        if (currentMission === 0) {
+          generateAffirmationRequest("basic").catch(err => console.error("Error generating basic affirmation:", err));
+        }
+      }).catch(err => console.error("Error saving mission:", err));
     }
   };
   
@@ -1189,13 +1193,22 @@ export default function OnboardingPage() {
     
     setShowMissionComplete(false);
     setIsLoading(true);
-    setIsGeneratingAffirmation(true);
     
     const allCompleted = completedOnboardingMissions.length >= MISSIONS.length;
+    const isFinalMission = currentMission === MISSIONS.length - 1;
+    
+    if (isFinalMission) {
+      setIsGeneratingAffirmation(true);
+    }
+    
     apiRequest("/api/profile", {
       method: "PATCH",
       body: JSON.stringify({ onboardingCompleted: allCompleted }),
-    }).then(() => generateAffirmationRequest()).catch(err => console.error("Error saving:", err));
+    }).then(() => {
+      if (isFinalMission) {
+        return generateAffirmationRequest("full");
+      }
+    }).catch(err => console.error("Error saving:", err));
     
     await new Promise(resolve => setTimeout(resolve, 2500));
     setIsLoading(false);
@@ -1314,19 +1327,35 @@ export default function OnboardingPage() {
     }
   };
 
-  const generateAffirmationRequest = async () => {
-    const archetypeResults = getArchetypeResults();
-    const affirmationData = await apiRequest<{ affirmation: string }>("/api/profile/generate-affirmation", {
-      method: "POST",
-      body: JSON.stringify({
-        displayName: [(userProfile as any)?.firstName, (userProfile as any)?.lastName].filter(Boolean).join(" ") || user?.username || "Player",
+  const generateAffirmationRequest = async (mode: "basic" | "full" = "full") => {
+    const displayName = [onboardingFirstName.trim(), onboardingLastName.trim()].filter(Boolean).join(" ") || (userProfile as any)?.firstName || user?.username || "Player";
+    
+    let body: Record<string, any>;
+    
+    if (mode === "basic") {
+      body = {
+        mode: "basic",
+        displayName,
+        location,
+        ageRange: birthYear && birthMonth && birthDay ? ageToRange(calculateAge(birthYear, birthMonth, birthDay)) : "",
+      };
+    } else {
+      const archetypeResults = getArchetypeResults();
+      body = {
+        mode: "full",
+        displayName,
         archetypePrimary: archetypeResults.primary,
         archetypeSecondary: archetypeResults.secondary,
         coreValues: coreValues.slice(0, 3),
         vision5Year,
         primaryCraft,
         desiredEmotion,
-      }),
+      };
+    }
+    
+    const affirmationData = await apiRequest<{ affirmation: string }>("/api/profile/generate-affirmation", {
+      method: "POST",
+      body: JSON.stringify(body),
     });
     
     await apiRequest("/api/profile", {

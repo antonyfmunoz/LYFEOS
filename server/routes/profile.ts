@@ -265,18 +265,28 @@ export function registerProfileRoutes(app: Express): void {
   // Generate Character Affirmation using AI
   app.post("/api/profile/generate-affirmation", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const { displayName, archetypePrimary, archetypeSecondary, coreValues, vision5Year, primaryCraft, desiredEmotion } = req.body;
+      const { displayName, archetypePrimary, archetypeSecondary, coreValues, vision5Year, primaryCraft, desiredEmotion, mode, location, ageRange } = req.body;
       
       const anthropic = new Anthropic({
         apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
         baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
       });
       
-      const pronoun = "they";
-      const pronounCap = "They";
-      const pronounPoss = "their";
+      let prompt: string;
       
-      const prompt = `Generate a powerful character affirmation (200-300 words) for a person named "${displayName}". Write in second person, speaking directly to them using "you" and "your".
+      if (mode === "basic") {
+        prompt = `Generate a short, welcoming character affirmation (80-120 words) for a person named "${displayName}".${location ? ` They are based in ${location}.` : ""}${ageRange ? ` Age range: ${ageRange}.` : ""} Write in second person, speaking directly to them using "you" and "your".
+
+This is an introductory affirmation for someone just beginning their personal growth journey. Keep it warm, encouraging, and forward-looking. Do NOT include any title, header, or greeting line — start directly with the affirmation content itself.
+
+Tone: Warm, welcoming, and empowering. Acknowledge their decision to begin this journey and affirm their potential. Do NOT use any emojis.
+
+Example style:
+"You are stepping into a new chapter of intentional living. Your decision to take control of your growth speaks volumes about who you are..."
+
+Generate the complete affirmation now:`;
+      } else {
+        prompt = `Generate a powerful character affirmation (200-300 words) for a person named "${displayName}". Write in second person, speaking directly to them using "you" and "your".
 
 The affirmation should be written as if you are speaking directly to this person about who they are — powerful, certain, and declarative. Do NOT include any title, header, or greeting line like "# Your Affirmation" — start directly with the affirmation content itself.
 
@@ -301,6 +311,7 @@ Example structure:
 "You are a sovereign creator of reality, aligned with vision, integrity, and growth. Each day, you expand in clarity, discipline, and creativity..."
 
 Generate the complete affirmation now:`;
+      }
 
       const message = await anthropic.messages.create({
         model: "claude-sonnet-4-5",
