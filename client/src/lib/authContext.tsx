@@ -182,6 +182,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       console.log("Attempting to login with:", identifier);
       localStorage.removeItem("lyfeos-primary-color");
+      localStorage.removeItem("lyfeos-onboarding-answers");
+      localStorage.removeItem("lyfeos-onboarding-resume");
+      localStorage.removeItem("lyfeos-continued-past-mission0");
       
       const trimmedIdentifier = identifier.trim();
       
@@ -291,6 +294,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       console.log("Attempting to register with email:", email);
       localStorage.removeItem("lyfeos-primary-color");
+      localStorage.removeItem("lyfeos-onboarding-answers");
+      localStorage.removeItem("lyfeos-onboarding-resume");
+      localStorage.removeItem("lyfeos-continued-past-mission0");
       
       const trimmedEmail = email.trim();
       
@@ -492,6 +498,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("lyfeos-pending-onboarding");
       localStorage.removeItem("lyfeos-has-seen-dashboard");
       localStorage.removeItem("lyfeos-primary-color");
+      localStorage.removeItem("lyfeos-onboarding-answers");
+      localStorage.removeItem("lyfeos-onboarding-resume");
+      localStorage.removeItem("lyfeos-continued-past-mission0");
       
       // Sign out from Firebase
       try {
@@ -552,6 +561,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       localStorage.removeItem("lyfeos-primary-color");
+      localStorage.removeItem("lyfeos-onboarding-answers");
+      localStorage.removeItem("lyfeos-onboarding-resume");
+      localStorage.removeItem("lyfeos-continued-past-mission0");
       const result = await signInWithGoogle();
       await processOAuthResult(result);
     } catch (error: any) {
@@ -573,6 +585,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       localStorage.removeItem("lyfeos-primary-color");
+      localStorage.removeItem("lyfeos-onboarding-answers");
+      localStorage.removeItem("lyfeos-onboarding-resume");
+      localStorage.removeItem("lyfeos-continued-past-mission0");
       const result = await signInWithApple();
       await processOAuthResult(result);
     } catch (error: any) {
