@@ -60,12 +60,6 @@ try {
       // connectFirestoreEmulator(db, 'localhost', 8080);
     }
     
-    console.log("Firebase initialized successfully!", {
-      authDomain: firebaseConfig.authDomain,
-      projectId: firebaseConfig.projectId,
-      hasApiKey: !!firebaseConfig.apiKey,
-      hasAppId: !!firebaseConfig.appId,
-    });
   }
 } catch (error) {
   console.error("Error initializing Firebase:", error);
