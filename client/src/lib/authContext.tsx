@@ -290,6 +290,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       console.log("Attempting to register with email:", email);
+      localStorage.removeItem("lyfeos-primary-color");
       
       const trimmedEmail = email.trim();
       
@@ -550,6 +551,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithGoogle = async () => {
     try {
       setIsLoading(true);
+      localStorage.removeItem("lyfeos-primary-color");
       const result = await signInWithGoogle();
       await processOAuthResult(result);
     } catch (error: any) {
@@ -570,6 +572,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithApple = async () => {
     try {
       setIsLoading(true);
+      localStorage.removeItem("lyfeos-primary-color");
       const result = await signInWithApple();
       await processOAuthResult(result);
     } catch (error: any) {

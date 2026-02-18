@@ -301,6 +301,8 @@ export default function ProfilePage() {
   const { data: userProfileData, isLoading: isProfileSchemaLoading } = useQuery({
     queryKey: ["/api/profile"],
     enabled: !!user?.id,
+    refetchOnMount: "always" as const,
+    staleTime: 0,
     refetchInterval: (query) => {
       const data = query.state.data as any;
       if (data?.characterAffirmation) {
