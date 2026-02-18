@@ -268,16 +268,16 @@ export default function ChronilogPage() {
       description: "Long-term goals and vision board. Set objectives, track mission objectives, and align your daily actions with your bigger picture."
     },
     { 
-      id: "analytics", 
-      title: "Tracker", 
-      icon: <BarChart3 className="h-5 w-5 text-primary" />,
-      description: "Visualize your progress with mood trends, XP progression, mission completion rates, and performance insights over time."
-    },
-    { 
       id: "timeline", 
       title: "Timeline", 
       icon: <Clock className="h-5 w-5 text-primary" />,
       description: "Your recent activity timeline showing missions, journal entries, and mission objectives."
+    },
+    { 
+      id: "analytics", 
+      title: "Tracker", 
+      icon: <BarChart3 className="h-5 w-5 text-primary" />,
+      description: "Visualize your progress with mood trends, XP progression, mission completion rates, and performance insights over time."
     },
     { 
       id: "rolodex", 
@@ -414,50 +414,26 @@ export default function ChronilogPage() {
           <p className="text-[#7DAAB2]">Your personal timeline of knowledge, reflections, and growth logs.</p>
         </div>
         
-        <div className="space-y-4" data-tour="chronilog-categories">
-          {(() => {
-            const items: React.ReactNode[] = [];
-            let categoryBuffer: { cat: CategoryItem; idx: number }[] = [];
-            
-            const flushCategoryBuffer = () => {
-              if (categoryBuffer.length > 0) {
-                items.push(
-                  <div key={`cat-group-${categoryBuffer[0].idx}`} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {categoryBuffer.map(({ cat, idx }) => (
-                      <DraggableCategoryCard
-                        key={cat.id}
-                        id={cat.id}
-                        index={idx}
-                        item={cat}
-                        moveCategory={moveCategory}
-                        navigate={navigate}
-                      />
-                    ))}
-                  </div>
-                );
-                categoryBuffer = [];
-              }
-            };
-            
-            categories.forEach((category, index) => {
-              if (category.id === 'timeline') {
-                flushCategoryBuffer();
-                items.push(
-                  <DraggableTimelineWrapper
-                    key="timeline"
-                    id="timeline"
-                    index={index}
-                    moveCategory={moveCategory}
-                  />
-                );
-              } else {
-                categoryBuffer.push({ cat: category, idx: index });
-              }
-            });
-            flushCategoryBuffer();
-            
-            return items;
-          })()}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-tour="chronilog-categories">
+          {categories.map((category, index) => (
+            category.id === 'timeline' ? (
+              <DraggableTimelineWrapper
+                key="timeline"
+                id="timeline"
+                index={index}
+                moveCategory={moveCategory}
+              />
+            ) : (
+              <DraggableCategoryCard
+                key={category.id}
+                id={category.id}
+                index={index}
+                item={category}
+                moveCategory={moveCategory}
+                navigate={navigate}
+              />
+            )
+          ))}
         </div>
       </div>
   );

@@ -45,7 +45,7 @@ export default function AIPage() {
   const [isEditingChatTitle, setIsEditingChatTitle] = useState(false);
   const [chatTitleInput, setChatTitleInput] = useState("");
   const [editingChatId, setEditingChatId] = useState("");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // collapsed by default on both mobile and desktop
   const [attachedImageIds, setAttachedImageIds] = useState<number[]>([]);
   const [attachedImagePreviews, setAttachedImagePreviews] = useState<{id: number; name: string}[]>([]);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -319,12 +319,11 @@ export default function AIPage() {
       <PageTutorial steps={AI_TOUR_STEPS} storageKey="ai" isOpen={showTutorial} onComplete={handleTutorialComplete} userId={user?.id} />
       <div className="flex items-center justify-between mb-4 pb-4 border-b border-primary/20" data-tour="ai-header">
         <div className="flex items-center">
-          {/* Hamburger Menu for mobile - static in header */}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="sm:hidden mr-2 p-0 h-9 w-9 text-primary hover:bg-primary/10"
+            className="mr-2 p-0 h-9 w-9 text-primary hover:bg-primary/10"
           >
             {sidebarOpen ? <X className="h-5 w-5 text-primary" /> : <Menu className="h-5 w-5 text-primary" />}
           </Button>
@@ -387,23 +386,22 @@ export default function AIPage() {
       
       {/* Main Chat Area with Collapsible Sidebar */}
       <div className="flex-grow flex flex-col sm:flex-row relative">
-        {/* Backdrop overlay for mobile - only visible when sidebar is open */}
         {sidebarOpen && (
           <div 
-            className="fixed left-0 right-0 top-[57px] bottom-[70px] bg-black/50 backdrop-blur-sm z-10 sm:hidden"
+            className="fixed left-0 right-0 top-[57px] bottom-[70px] bg-black/50 backdrop-blur-sm z-10"
             onClick={() => setSidebarOpen(false)}
           />
         )}
         
         {/* Left Sidebar - Chat Sessions & Quick Prompts - Collapsible */}
         <div data-tour="ai-sidebar" className={`
-          fixed sm:static left-0 z-20
-          top-[57px] bottom-[70px] sm:top-0 sm:bottom-0
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full sm:translate-x-0'} 
+          fixed left-0 z-20
+          top-[57px] bottom-[70px]
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
           transition-transform duration-200 ease-in-out
-          flex flex-col w-[280px] sm:w-72 sm:h-auto
-          bg-background sm:bg-transparent border-r border-primary/20 
-          pt-4 sm:pt-0 px-4 sm:px-1 sm:mr-4
+          flex flex-col w-[280px] sm:w-72
+          bg-background border-r border-primary/20 
+          pt-4 px-4
         `}>
           {/* Chat Sessions */}
           <div className="flex-1 flex flex-col min-h-0 pb-4">
@@ -528,7 +526,7 @@ export default function AIPage() {
           </div>
         
         {/* Main Chat Window */}
-        <div className="flex-1 flex flex-col glassmorphic rounded-xl p-4 neon-border h-full ml-0 sm:ml-4 md:ml-6 mt-12 sm:mt-0 relative min-w-0">
+        <div className="flex-1 flex flex-col glassmorphic rounded-xl p-4 neon-border h-full relative min-w-0">
           {/* Messages area */}
           <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar" data-tour="ai-chat-area">
             {activeChat && activeChat.messages.length > 0 ? (
@@ -541,14 +539,14 @@ export default function AIPage() {
                       )}
                       
                       <div className={`${message.sender === 'ai' 
-                        ? 'ml-3 bg-card/70 border border-primary/30 rounded-2xl rounded-tl-sm text-foreground' 
+                        ? 'ml-3 bg-card/70 border border-primary/30 rounded-2xl rounded-tl-sm text-white' 
                         : 'mr-0 bg-primary/10 border border-primary/30 rounded-2xl rounded-tr-sm text-foreground'} p-4 shadow-sm`}
                       >
                         {message.sender === 'ai' && (
                           <div className="text-xs text-primary mb-1 font-semibold">{aiCompanionName}</div>
                         )}
                         {message.sender === 'ai' ? (
-                          <div className="text-sm prose prose-sm prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-headings:my-3 prose-headings:text-foreground prose-strong:text-foreground prose-hr:my-3">
+                          <div className="text-sm prose prose-sm prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-headings:my-3 prose-headings:text-white prose-strong:text-white prose-hr:my-3 text-white">
                             <ReactMarkdown>{message.content}</ReactMarkdown>
                           </div>
                         ) : (

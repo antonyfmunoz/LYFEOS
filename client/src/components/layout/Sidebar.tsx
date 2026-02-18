@@ -24,27 +24,14 @@ export default function Sidebar({ currentPage, username }: SidebarProps) {
         collapsed ? "w-[72px]" : "w-64"
       }`}
     >
-      <div className={`flex items-center mb-8 ${collapsed ? "justify-center" : "justify-between"}`}>
-        {collapsed ? (
-          <button
-            onClick={() => setCollapsed(false)}
-            className="p-1.5 rounded-lg hover:bg-card hover:bg-opacity-30 text-muted-foreground transition duration-200"
-            title="Expand sidebar"
-          >
-            <span className="material-icons text-lg">menu</span>
-          </button>
-        ) : (
-          <>
-            <span className="text-3xl text-white font-orbitron font-bold">LYFE<span className="text-primary">OS</span></span>
-            <button
-              onClick={() => setCollapsed(true)}
-              className="p-1.5 rounded-lg hover:bg-card hover:bg-opacity-30 text-muted-foreground transition duration-200"
-              title="Collapse sidebar"
-            >
-              <span className="material-icons text-lg">menu</span>
-            </button>
-          </>
-        )}
+      <div className={`flex items-center mb-8 ${collapsed ? "justify-center" : "justify-start"}`}>
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="p-1.5 rounded-lg hover:bg-card hover:bg-opacity-30 text-muted-foreground transition duration-200"
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          <span className="material-icons text-lg">menu</span>
+        </button>
       </div>
 
       <nav className="flex-grow">

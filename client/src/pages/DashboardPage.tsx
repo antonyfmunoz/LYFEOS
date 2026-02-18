@@ -4,7 +4,7 @@ import {
   Calendar, BarChart, CalendarDays, Clock, Brain, AlarmClock, 
   MoonStar, Smile, HeartPulse, Book, BookOpen, ListChecks, 
   Zap, Target as TargetIcon, ChevronDown, Check, Search, FileText, Play, Link2,
-  Plus, Archive, ChevronUp, Pencil, X
+  Plus, Archive, ChevronUp, Pencil, X, RotateCcw
 } from 'lucide-react';
 import { useLYFEOS, type ResearchEntry } from '@/lib/context';
 import { useAuth } from '@/lib/authContext';
@@ -196,6 +196,11 @@ export default function DashboardPage() {
   const saveReflectionPrompt = useCallback(async (field: string, value: string) => {
     if (!value.trim()) return;
     const updated = { ...reflectionPrompts, [field]: value.trim() };
+    queryClient.setQueryData(["/api/profile"], (old: any) => ({
+      ...old,
+      customReflectionPrompts: updated,
+    }));
+    setEditingPrompt(null);
     try {
       await apiRequest("/api/profile", {
         method: "PATCH",
@@ -205,9 +210,28 @@ export default function DashboardPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
     } catch (e) {
       console.error("Failed to save reflection prompt", e);
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
     }
-    setEditingPrompt(null);
   }, [reflectionPrompts]);
+
+  const resetReflectionPrompts = useCallback(async () => {
+    queryClient.setQueryData(["/api/profile"], (old: any) => ({
+      ...old,
+      customReflectionPrompts: defaultPrompts,
+    }));
+    try {
+      await apiRequest("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customReflectionPrompts: defaultPrompts }),
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      toast({ title: "Prompts reset to defaults" });
+    } catch (e) {
+      console.error("Failed to reset reflection prompts", e);
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+    }
+  }, [toast]);
 
   // Level-up modal state
   const [isLevelUpModalOpen, setIsLevelUpModalOpen] = useState(false);
@@ -723,9 +747,32 @@ export default function DashboardPage() {
     const interval = setInterval(() => {
       setCurrentTime(new Date());
     }, 60000);
-    
     return () => clearInterval(interval);
   }, []);
+
+  // Midnight rollover detection (checks every 30 seconds)
+  useEffect(() => {
+    const midnightCheck = setInterval(() => {
+      const newDateStr = getLocalDateString();
+      if (lastLoadedDateRef.current !== newDateStr) {
+        setCurrentDate(new Date());
+        resetEnergyLog();
+        resetIntentionLog();
+        resetDataLog();
+        resetReflectionLog();
+        loadedRecordFingerprintRef.current = null;
+        isDirtyRef.current = false;
+        lastLoadedDateRef.current = newDateStr;
+        queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'daily-logs'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'stats'] });
+        toast({
+          title: "New day started!",
+          description: stats?.streakDays ? `Current streak: ${stats.streakDays} days. Keep going!` : "Your daily logs have been refreshed.",
+        });
+      }
+    }, 30000);
+    return () => clearInterval(midnightCheck);
+  }, [user?.id, stats?.streakDays, toast, resetEnergyLog, resetIntentionLog, resetDataLog, resetReflectionLog]);
   
   // Watch for level-up changes
   useEffect(() => {
@@ -1059,8 +1106,22 @@ export default function DashboardPage() {
           { key: "couldBeBetter", icon: TargetIcon, placeholder: "Areas for improvement, challenges faced, or things to do differently..." },
           { key: "learned", icon: Brain, placeholder: "Key insights, lessons, or realizations from today..." },
         ];
+        const hasCustomPrompts = reflectionPrompts.wentWell !== defaultPrompts.wentWell ||
+          reflectionPrompts.couldBeBetter !== defaultPrompts.couldBeBetter ||
+          reflectionPrompts.learned !== defaultPrompts.learned;
         return (
           <div className="space-y-4">
+            {hasCustomPrompts && (
+              <div className="flex justify-end">
+                <button
+                  onClick={resetReflectionPrompts}
+                  className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                  title="Reset prompts to defaults"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
             {promptFields.map(({ key, icon: Icon, placeholder }) => (
               <div key={key} className="space-y-2">
                 <label className="text-sm flex items-center text-[#7DAAB2]">
@@ -1124,34 +1185,32 @@ export default function DashboardPage() {
       case 'data-entry-log':
         return (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <Brain className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Today's Thoughts</span>
-                </label>
-                <MarkdownEditor
-                  placeholder="Capture your thoughts, ideas and discoveries here..."
-                  value={reflection.thoughts}
-                  onChange={(value) => updateReflection("thoughts", value)}
-                  onBlur={handleBlurSave}
-                  minHeight="80px"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
-                  <Book className="h-4 w-4 text-primary" />
-                  <span className="ml-2">Information Consumed</span>
-                </label>
-                <MarkdownEditor
-                  placeholder="Articles, books, or videos you consumed today..."
-                  value={reflection.contentConsumed}
-                  onChange={(value) => updateReflection("contentConsumed", value)}
-                  onBlur={handleBlurSave}
-                  minHeight="80px"
-                />
-              </div>
+            <div className="space-y-2">
+              <label className="text-sm flex items-center text-[#7DAAB2]">
+                <Brain className="h-4 w-4 text-primary" />
+                <span className="ml-2">Today's Thoughts</span>
+              </label>
+              <MarkdownEditor
+                placeholder="Capture your thoughts, ideas and discoveries here..."
+                value={reflection.thoughts}
+                onChange={(value) => updateReflection("thoughts", value)}
+                onBlur={handleBlurSave}
+                minHeight="80px"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm flex items-center text-[#7DAAB2]">
+                <Book className="h-4 w-4 text-primary" />
+                <span className="ml-2">Information Consumed</span>
+              </label>
+              <MarkdownEditor
+                placeholder="Articles, books, or videos you consumed today..."
+                value={reflection.contentConsumed}
+                onChange={(value) => updateReflection("contentConsumed", value)}
+                onBlur={handleBlurSave}
+                minHeight="80px"
+              />
             </div>
             
             <div className="space-y-2">
