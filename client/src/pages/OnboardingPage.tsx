@@ -1181,20 +1181,18 @@ export default function OnboardingPage() {
   };
 
   const handleStop = async () => {
+    if (currentMission === 0) return;
+
+    try {
+      await saveMissionData(currentMission);
+    } catch (err) {
+      console.error("Error saving mission progress on stop:", err);
+    }
+
     localStorage.removeItem("lyfeos-pending-onboarding");
     localStorage.removeItem("lyfeos-onboarding-resume");
     localStorage.removeItem("lyfeos-continued-past-mission0");
     localStorage.removeItem(STORAGE_KEY);
-    
-    if (currentMission === 0) {
-      localStorage.removeItem("lyfeos-ceremony-mode");
-      if (sessionStorage.getItem("lyfeos-pending-registration") && !user) {
-        sessionStorage.removeItem("lyfeos-pending-registration");
-        navigate("/register", { replace: true });
-        return;
-      }
-      sessionStorage.removeItem("lyfeos-pending-registration");
-    }
     
     const hasSeenDashboard = localStorage.getItem("lyfeos-has-seen-dashboard") === "true";
     if (!hasSeenDashboard) {
@@ -1259,16 +1257,10 @@ export default function OnboardingPage() {
     }
     
     const hasSeenDashboard = localStorage.getItem("lyfeos-has-seen-dashboard") === "true";
-    const shouldShowCeremony = !hasSeenDashboard || isFinalMission;
     
-    if (shouldShowCeremony) {
-      if (!hasSeenDashboard) {
-        localStorage.setItem("lyfeos-ceremony-mode", "init");
-        localStorage.setItem("lyfeos-ceremony-destination", "/dashboard");
-      } else {
-        localStorage.setItem("lyfeos-ceremony-mode", "update");
-        localStorage.setItem("lyfeos-ceremony-destination", "/missions");
-      }
+    if (!hasSeenDashboard) {
+      localStorage.setItem("lyfeos-ceremony-mode", "init");
+      localStorage.setItem("lyfeos-ceremony-destination", "/dashboard");
 
       setShowMissionComplete(false);
       setIsLoading(true);
@@ -1282,6 +1274,25 @@ export default function OnboardingPage() {
       }).then(() => generateAffirmationRequest()).catch(err => console.error("Error generating affirmation:", err));
       
       await Promise.all([minDelaySkip, Promise.race([affirmationWorkSkip, affirmationTimeoutSkip])]);
+      setIsLoading(false);
+      setIsGeneratingAffirmation(false);
+      navigate("/ceremony");
+    } else if (isFinalMission) {
+      localStorage.setItem("lyfeos-ceremony-mode", "update");
+      localStorage.setItem("lyfeos-ceremony-destination", "/missions");
+
+      setShowMissionComplete(false);
+      setIsLoading(true);
+      setIsGeneratingAffirmation(true);
+      
+      const minDelayFinal = new Promise(resolve => setTimeout(resolve, 2500));
+      const affirmationTimeoutFinal = new Promise(resolve => setTimeout(resolve, 15000));
+      const affirmationWorkFinal = apiRequest("/api/profile", {
+        method: "PATCH",
+        body: JSON.stringify({ onboardingCompleted: true }),
+      }).then(() => generateAffirmationRequest()).catch(err => console.error("Error generating affirmation:", err));
+      
+      await Promise.all([minDelayFinal, Promise.race([affirmationWorkFinal, affirmationTimeoutFinal])]);
       setIsLoading(false);
       setIsGeneratingAffirmation(false);
       navigate("/ceremony");
@@ -1968,7 +1979,18 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <div className="text-center pt-6 pb-4">
+      <div className="relative text-center pt-6 pb-4">
+        {currentMission > 0 && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleStop}
+            className="absolute top-6 right-4 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10"
+            title="Save progress and exit"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        )}
         <h1 className="text-4xl font-orbitron font-bold">
           <span className="text-foreground">LYFE</span>
           <span className="text-primary">OS</span>
@@ -1985,16 +2007,8 @@ export default function OnboardingPage() {
       </div>
       <div className="p-4">
         <div className="max-w-lg mx-auto flex justify-between items-center">
-          {currentMission === 0 && currentStep === 0 ? (
+          {currentStep === 0 ? (
             <div />
-          ) : currentStep === 0 && currentMission > 0 ? (
-            <Button 
-              onClick={handleStop} 
-              className="bg-transparent border-2 border-primary text-primary hover:bg-primary/20 hover:text-primary"
-            >
-              <X className="h-4 w-4 mr-2" />
-              Stop
-            </Button>
           ) : (
             <Button 
               onClick={handlePrevious} 
