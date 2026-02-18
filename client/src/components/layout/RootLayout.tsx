@@ -48,7 +48,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <Sidebar currentPage={currentPage} username={username} />
         
         <div className="flex-grow flex flex-col overflow-hidden">
-          <div className="shrink-0 lg:hidden bg-background z-40">
+          <div className="shrink-0 bg-background z-40">
             <div className="flex items-center justify-center py-4">
               <span className="text-2xl text-white font-orbitron font-bold">LYFE<span className="text-primary">OS</span></span>
             </div>
@@ -106,10 +106,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
             </div>
           </div>
         </div>
-        
-        <AICompanionPanel />
       </div>
       
+      <AICompanionPanel />
       <MobileNav currentPage={currentPage} />
     </div>
   );

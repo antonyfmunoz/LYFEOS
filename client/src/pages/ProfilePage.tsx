@@ -1719,7 +1719,7 @@ export default function ProfilePage() {
           </div>
           
           {/* Loading Skeleton */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             <div className="bg-background border border-primary/20 backdrop-blur-md rounded-lg p-6 shadow-lg"
                 style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
               <div className="animate-pulse">
@@ -1739,23 +1739,6 @@ export default function ProfilePage() {
                 
                 <div className="space-y-6">
                   <div className="h-32 bg-primary/10 rounded w-full"></div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-background border border-primary/20 backdrop-blur-md rounded-lg p-6 shadow-lg"
-                style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
-              <div className="animate-pulse">
-                <div className="h-5 bg-primary/20 rounded w-24 mb-6"></div>
-                
-                <div className="space-y-4">
-                  <div className="h-32 bg-primary/10 rounded w-full"></div>
-                  <div className="h-32 bg-primary/10 rounded w-full"></div>
-                  <div className="h-32 bg-primary/10 rounded w-full"></div>
-                </div>
-                
-                <div className="flex justify-end mt-6">
-                  <div className="h-9 bg-primary/20 rounded w-24"></div>
                 </div>
               </div>
             </div>
@@ -1791,7 +1774,7 @@ export default function ProfilePage() {
           </Alert>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           <div className="glassmorphic rounded-xl neon-border overflow-hidden" data-tour="profile-header">
             <div 
               className="p-3 flex items-center justify-between border-b border-primary/20 cursor-pointer hover:bg-primary/5 transition-colors"
