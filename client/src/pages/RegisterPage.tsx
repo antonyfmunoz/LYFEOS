@@ -85,6 +85,7 @@ export default function RegisterPage() {
         avatarColor: "#00e0ff",
       }));
 
+      localStorage.removeItem("lyfeos-has-seen-dashboard");
       localStorage.setItem("lyfeos-pending-onboarding", "true");
 
       navigate("/onboarding", { replace: true });
