@@ -14,27 +14,32 @@ const TUTORIAL_PAGES = [
   "ai",
 ];
 
-const TUTORIALS_SKIPPED_KEY = "lyfeos-tutorials-all-skipped";
+const TUTORIALS_SKIPPED_PREFIX = "lyfeos-tutorials-all-skipped-";
 
-function isAllSkippedLocally(): boolean {
+function getSkipKey(userId: number | undefined | null): string {
+  return `${TUTORIALS_SKIPPED_PREFIX}${userId || "anon"}`;
+}
+
+function isAllSkippedLocally(userId: number | undefined | null): boolean {
   if (typeof window === "undefined") return false;
   try {
-    return localStorage.getItem(TUTORIALS_SKIPPED_KEY) === "true";
+    return localStorage.getItem(getSkipKey(userId)) === "true";
   } catch {
     return false;
   }
 }
 
-function markAllSkippedLocally() {
+function markAllSkippedLocally(userId: number | undefined | null) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(TUTORIALS_SKIPPED_KEY, "true");
+    localStorage.setItem(getSkipKey(userId), "true");
   } catch {}
 }
 
 export function useTutorialStatus(page: string) {
   const { user, isAuthenticated } = useAuth();
   const dismissedRef = useRef(false);
+  const userId = user?.id;
 
   const { data: profile, isLoading } = useQuery<any>({
     queryKey: ["/api/profile"],
@@ -43,7 +48,7 @@ export function useTutorialStatus(page: string) {
   });
 
   const completedTutorials: string[] = profile?.completedTutorials || [];
-  const isCompleted = completedTutorials.includes(page) || isAllSkippedLocally();
+  const isCompleted = completedTutorials.includes(page) || isAllSkippedLocally(userId);
 
   const isCeremonyReturn = typeof window !== "undefined" && sessionStorage.getItem("lyfeos_ceremony_complete") === "true";
 
@@ -52,7 +57,7 @@ export function useTutorialStatus(page: string) {
   useEffect(() => {
     if (isLoading) return;
     if (dismissedRef.current) return;
-    if (isAllSkippedLocally()) {
+    if (isAllSkippedLocally(userId)) {
       setShowTutorial(false);
       return;
     }
@@ -68,7 +73,7 @@ export function useTutorialStatus(page: string) {
     } else {
       setShowTutorial(false);
     }
-  }, [isLoading, isCompleted, page, isCeremonyReturn]);
+  }, [isLoading, isCompleted, page, isCeremonyReturn, userId]);
 
   const markComplete = useCallback(async () => {
     dismissedRef.current = true;
@@ -97,7 +102,7 @@ export function useTutorialStatus(page: string) {
   const skipAll = useCallback(async () => {
     dismissedRef.current = true;
     setShowTutorial(false);
-    markAllSkippedLocally();
+    markAllSkippedLocally(userId);
     if (user?.id) {
       try {
         const allPages = [...TUTORIAL_PAGES];
@@ -114,7 +119,7 @@ export function useTutorialStatus(page: string) {
         console.error("Failed to save tutorial skip:", e);
       }
     }
-  }, [user?.id]);
+  }, [user?.id, userId]);
 
   return {
     showTutorial,
