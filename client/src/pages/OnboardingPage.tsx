@@ -1139,10 +1139,10 @@ export default function OnboardingPage() {
         setPrimaryColor(selectedThemeColor);
       }
       setShowMissionComplete(true);
-      Promise.all([
-        saveCompletedMission(currentMission),
-        saveMissionData(currentMission),
-      ]).catch(err => console.error("Error saving mission:", err));
+      saveMissionData(currentMission)
+        .catch(err => console.error("Error saving mission data:", err))
+        .then(() => saveCompletedMission(currentMission))
+        .catch(err => console.error("Error saving mission:", err));
     }
   };
   
@@ -1452,13 +1452,13 @@ export default function OnboardingPage() {
     return (
       <div className="space-y-6 py-4">
         <div className="text-center space-y-3">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full border-2 border-primary/50 bg-primary/10 mx-auto">
-            <span className="text-2xl font-orbitron font-bold text-primary">{currentMission}</span>
+          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full border-2 border-primary/50 bg-primary/10 mx-auto">
+            <span className="text-base font-orbitron font-bold text-primary">{currentMission}</span>
           </div>
           <h2 className="text-2xl font-orbitron font-bold">{mission.title}</h2>
           <p className="text-muted-foreground max-w-sm mx-auto">{mission.description}</p>
         </div>
-        <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+        <div className="flex items-center justify-center gap-4 text-xs font-orbitron text-muted-foreground">
           <span>{mission.questions} questions</span>
           <span className="text-primary">+{mission.xp} XP</span>
         </div>
