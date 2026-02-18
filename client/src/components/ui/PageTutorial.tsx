@@ -157,7 +157,12 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, on
       lastRectRef.current = null;
       setCurrentStep(next);
     } else {
-      onComplete();
+      setVisible(false);
+      if (onSkipAll) {
+        onSkipAll();
+      } else {
+        onComplete();
+      }
     }
   };
 
