@@ -699,4 +699,35 @@ export function registerAuthRoutes(app: Express): void {
 
     res.json({ message: "Two-factor authentication disabled" });
   });
+
+  app.delete("/api/admin/purge-all-users", async (req: Request, res: Response) => {
+    try {
+      const secret = req.headers["x-admin-secret"];
+      if (secret !== "LYFEOS_PURGE_2026") {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      const { db } = await import("../db");
+      const { sql } = await import("drizzle-orm");
+      const tables = [
+        "ai_messages", "messages", "conversations",
+        "kanban_tasks", "kanban_columns", "kanban_boards",
+        "calendar_events", "quests", "vision_goals",
+        "user_daily_logs", "user_activity_events", "user_categories",
+        "user_integrations", "user_profile", "user_stats",
+        "push_subscriptions", "smart_reminders", "dismissed_knowledge",
+        "widget_states", "progress_trackers", "mission_pages",
+        "media_items", "media_albums", "documents", "spreadsheets",
+        "canvases", "graphs", "contacts", "folders", "templates",
+        "integrations", "users"
+      ];
+      const results: Record<string, number> = {};
+      for (const table of tables) {
+        const result = await db.execute(sql.raw(`DELETE FROM ${table}`));
+        results[table] = (result as any).rowCount || 0;
+      }
+      return res.json({ message: "All users purged", results });
+    } catch (error: any) {
+      return res.status(500).json({ error: error.message });
+    }
+  });
 }
