@@ -85,7 +85,7 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, us
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [visible, setVisible] = useState(false);
-  const [scrollingToTarget, setScrollingToTarget] = useState(true);
+  const [scrollingToTarget, setScrollingToTarget] = useState(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const stepsRef = useRef(steps);
