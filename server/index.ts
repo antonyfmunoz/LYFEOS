@@ -6,11 +6,13 @@ import crypto from "crypto";
 import helmet from "helmet";
 import compression from "compression";
 import { db } from "./db";
+import { pool } from "./db";
 import { startNotificationScheduler } from "./notificationScheduler";
 import { runMigrations } from 'stripe-replit-sync';
 import { getStripeSync } from './stripeClient';
 import { WebhookHandlers } from './webhookHandlers';
 import { createProxyMiddleware } from "http-proxy-middleware";
+import { execSync } from "child_process";
 
 const app = express();
 
@@ -219,7 +221,32 @@ async function initStripe() {
   }
 }
 
+async function ensureDatabaseSchema() {
+  try {
+    const result = await pool.query(
+      `SELECT COUNT(*) as count FROM pg_tables WHERE schemaname = 'public' AND tablename IN ('users', 'user_stats', 'user_profile', 'quests')`
+    );
+    const tableCount = parseInt(result.rows[0].count, 10);
+    if (tableCount < 4) {
+      log(`Database schema incomplete (${tableCount}/4 core tables found), running schema sync...`);
+      execSync('npx drizzle-kit push', { stdio: 'inherit', timeout: 30000, cwd: process.cwd() });
+      const verify = await pool.query(
+        `SELECT COUNT(*) as count FROM pg_tables WHERE schemaname = 'public' AND tablename = 'users'`
+      );
+      if (parseInt(verify.rows[0].count, 10) === 0) {
+        log('CRITICAL: Database schema sync failed - users table still missing. Aborting startup.');
+        process.exit(1);
+      }
+      log('Database schema synced successfully');
+    }
+  } catch (error) {
+    log(`CRITICAL: Database schema check failed: ${error}. Aborting startup.`);
+    process.exit(1);
+  }
+}
+
 (async () => {
+  await ensureDatabaseSchema();
   await initStripe();
   const server = await registerRoutes(app);
 
