@@ -173,6 +173,7 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, on
   };
 
   const handleSkip = () => {
+    setVisible(false);
     if (onSkipAll) {
       onSkipAll();
     } else {

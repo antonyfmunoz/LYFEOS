@@ -1161,17 +1161,32 @@ export default function OnboardingPage() {
       if (currentMission === 0 && selectedThemeColor) {
         setPrimaryColor(selectedThemeColor);
       }
-      setShowMissionComplete(true);
       const colorToReapply = currentMission === 0 ? selectedThemeColor : null;
-      saveMissionData(currentMission)
-        .catch(err => console.error("Error saving mission data:", err))
-        .then(() => saveCompletedMission(currentMission))
-        .then(() => {
+      if (currentMission === 0) {
+        setIsLoading(true);
+        try {
+          await saveMissionData(currentMission);
+          await saveCompletedMission(currentMission);
           if (colorToReapply && colorToReapply !== "#ffffff") {
             setPrimaryColor(colorToReapply);
           }
-        })
-        .catch(err => console.error("Error saving mission:", err));
+        } catch (err) {
+          console.error("Error saving mission:", err);
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        saveMissionData(currentMission)
+          .catch(err => console.error("Error saving mission data:", err))
+          .then(() => saveCompletedMission(currentMission))
+          .then(() => {
+            if (colorToReapply && colorToReapply !== "#ffffff") {
+              setPrimaryColor(colorToReapply);
+            }
+          })
+          .catch(err => console.error("Error saving mission:", err));
+      }
+      setShowMissionComplete(true);
     }
   };
   
@@ -1249,11 +1264,6 @@ export default function OnboardingPage() {
     const isMission0 = currentMission === 0;
     
     if (isMission0) {
-      if (sessionStorage.getItem("lyfeos-pending-registration") && !user) {
-        sessionStorage.removeItem("lyfeos-pending-registration");
-        navigate("/register", { replace: true });
-        return;
-      }
       sessionStorage.removeItem("lyfeos-pending-registration");
     }
     

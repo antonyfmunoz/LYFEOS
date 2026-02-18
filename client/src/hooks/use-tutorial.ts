@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/authContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -16,6 +16,7 @@ const TUTORIAL_PAGES = [
 
 export function useTutorialStatus(page: string) {
   const { user, isAuthenticated } = useAuth();
+  const dismissedRef = useRef(false);
 
   const { data: profile, isLoading } = useQuery<any>({
     queryKey: ["/api/profile"],
@@ -28,12 +29,11 @@ export function useTutorialStatus(page: string) {
 
   const isCeremonyReturn = typeof window !== "undefined" && sessionStorage.getItem("lyfeos_ceremony_complete") === "true";
 
-  const shouldShow = !isLoading && !isCompleted;
-
   const [showTutorial, setShowTutorial] = useState(false);
 
   useEffect(() => {
     if (isLoading) return;
+    if (dismissedRef.current) return;
 
     if (page === "dashboard" && isCeremonyReturn) {
       sessionStorage.removeItem("lyfeos_ceremony_complete");
@@ -49,6 +49,7 @@ export function useTutorialStatus(page: string) {
   }, [isLoading, isCompleted, page, isCeremonyReturn]);
 
   const markComplete = useCallback(async () => {
+    dismissedRef.current = true;
     setShowTutorial(false);
     if (user?.id) {
       try {
@@ -63,6 +64,7 @@ export function useTutorialStatus(page: string) {
             method: "PATCH",
             body: JSON.stringify({ completedTutorials: updated }),
           });
+          queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
         }
       } catch (e) {
         console.error("Failed to save tutorial completion:", e);
@@ -71,6 +73,7 @@ export function useTutorialStatus(page: string) {
   }, [user?.id, completedTutorials, page]);
 
   const skipAll = useCallback(async () => {
+    dismissedRef.current = true;
     setShowTutorial(false);
     if (user?.id) {
       try {
@@ -82,6 +85,7 @@ export function useTutorialStatus(page: string) {
           method: "PATCH",
           body: JSON.stringify({ completedTutorials: [...TUTORIAL_PAGES] }),
         });
+        queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       } catch (e) {
         console.error("Failed to save tutorial skip:", e);
       }
