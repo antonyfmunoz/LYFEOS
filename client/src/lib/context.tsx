@@ -256,7 +256,7 @@ interface LYFEOSContextType {
   createQuest: (quest: Omit<Quest, "id" | "completed">) => Promise<Quest>;
   updateQuest: (id: string, quest: Partial<Quest>) => Promise<Quest>;
   deleteQuest: (id: string) => Promise<void>;
-  refetchQuests: () => Promise<void>;
+  refetchQuests: (overrideUserId?: number) => Promise<void>;
   sendMessage: (content: string, imageIds?: number[]) => void;
   sendMessageInSession: (sessionId: string, content: string, imageIds?: number[]) => void;
   username: string;
@@ -650,12 +650,13 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated, user]);
   
   // Refetch quests from the server
-  const refetchQuests = async () => {
-    if (!user?.id) return;
+  const refetchQuests = async (overrideUserId?: number) => {
+    const uid = overrideUserId || user?.id;
+    if (!uid) return;
     try {
-      console.log("Refetching quests for user:", user.id);
+      console.log("Refetching quests for user:", uid);
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const response = await fetch(`/api/users/${user.id}/quests?tz=${encodeURIComponent(tz)}`, { credentials: "include" });
+      const response = await fetch(`/api/users/${uid}/quests?tz=${encodeURIComponent(tz)}`, { credentials: "include" });
       if (response.ok) {
         const data = await response.json();
         if (data.quests && Array.isArray(data.quests)) {

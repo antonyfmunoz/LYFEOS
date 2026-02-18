@@ -976,7 +976,7 @@ export default function OnboardingPage() {
             console.log("Onboarding quest already completed, skipping toggle:", questTitle);
           }
           console.log("Refetching quests after onboarding mission completion...");
-          await refetchQuests();
+          await refetchQuests(effectiveUserId);
           console.log("Quests refetched successfully");
         } catch (questError: any) {
           console.error("Failed to create quest:", questError?.message || questError);
