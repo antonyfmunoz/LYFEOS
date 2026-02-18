@@ -94,9 +94,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(userData.user);
     localStorage.setItem("lyfeos_user", JSON.stringify(userData.user));
     
-    if (userData.isNewUser) {
-      console.log("Brand new user created, redirecting to onboarding");
-      navigate("/onboarding");
+    if (userData.isNewUser || userData.onboardingCompleted === false) {
+      console.log("New or incomplete onboarding user, redirecting to onboarding. isNewUser:", userData.isNewUser, "onboardingCompleted:", userData.onboardingCompleted);
+      localStorage.setItem("lyfeos-pending-onboarding", "true");
+      navigate("/onboarding", { replace: true });
     } else {
       console.log("Returning OAuth user, using standard login flow");
       const todayStr = getLocalDateString();
