@@ -38,8 +38,26 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
     return null;
   }
 
+  if (isMobileBrowser()) {
+    console.log(`Mobile browser detected, using redirect sign-in for ${providerName}`);
+    try {
+      localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
+      await signInWithRedirect(auth, provider);
+      return null;
+    } catch (redirectError: any) {
+      console.error(`${providerName} redirect sign-in failed:`, redirectError?.code, redirectError?.message);
+      localStorage.removeItem('lyfeos-oauth-redirect-pending');
+      toast({
+        title: `${providerName} Sign-in Failed`,
+        description: "Could not complete sign-in. Please try again.",
+        variant: "destructive"
+      });
+      return null;
+    }
+  }
+
   try {
-    console.log(`Attempting popup sign-in for ${providerName}${isMobileBrowser() ? ' (mobile)' : ''}`);
+    console.log(`Attempting popup sign-in for ${providerName}`);
     const result = await signInWithPopup(auth, provider, browserPopupRedirectResolver);
     return result;
   } catch (error: any) {
