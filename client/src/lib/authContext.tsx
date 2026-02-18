@@ -181,6 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       console.log("Attempting to login with:", identifier);
+      localStorage.removeItem("lyfeos-primary-color");
       
       const trimmedIdentifier = identifier.trim();
       
@@ -489,6 +490,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("lyfeos_user");
       localStorage.removeItem("lyfeos-pending-onboarding");
       localStorage.removeItem("lyfeos-has-seen-dashboard");
+      localStorage.removeItem("lyfeos-primary-color");
       
       // Sign out from Firebase
       try {
