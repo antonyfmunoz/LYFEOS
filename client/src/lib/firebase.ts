@@ -18,7 +18,7 @@ const firebaseProjectId = resolveProjectId();
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || (typeof window !== 'undefined' ? window.location.host : `${firebaseProjectId}.firebaseapp.com`),
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || `${firebaseProjectId}.firebaseapp.com`,
   projectId: firebaseProjectId,
   storageBucket: `${firebaseProjectId}.firebasestorage.googleapis.com`,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
