@@ -527,8 +527,10 @@ export function registerAuthRoutes(app: Express): void {
       }
       
       let user = await storage.getUserByEmail(email);
+      let justCreated = false;
       
       if (!user) {
+        justCreated = true;
         logger.debug("Creating new user from Firebase auth:", email);
         
         const username = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '') + 
@@ -614,18 +616,19 @@ export function registerAuthRoutes(app: Express): void {
       storage.initDefaultReminders(user.id).catch(() => {});
       
       const userProfile = await storage.getUserProfile(user.id);
-      const isNewUser = !userProfile || !userProfile.onboardingCompleted;
+      const onboardingCompleted = userProfile?.onboardingCompleted ?? false;
       
       const fbUserStats = await storage.getUserStats(user.id);
       
-      logger.debug("Firebase login successful for user:", user.username, "isNewUser:", isNewUser);
+      logger.debug("Firebase login successful for user:", user.username, "justCreated:", justCreated, "onboardingCompleted:", onboardingCompleted);
       return res.status(200).json({ 
         user: { 
           id: user.id, 
           username: user.username,
           displayName: user.displayName 
         },
-        isNewUser: isNewUser,
+        isNewUser: justCreated,
+        onboardingCompleted: onboardingCompleted,
         primaryColor: fbUserStats?.primaryColor || "#00e0ff"
       });
     } catch (error) {

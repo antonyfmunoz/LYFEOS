@@ -95,7 +95,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("lyfeos_user", JSON.stringify(userData.user));
     
     if (userData.isNewUser) {
-      console.log("New user detected, redirecting to onboarding");
+      console.log("Brand new user created, redirecting to onboarding");
+      navigate("/onboarding");
+    } else if (!userData.onboardingCompleted) {
+      console.log("Returning user with incomplete onboarding, resuming onboarding");
       navigate("/onboarding");
     } else {
       localStorage.setItem("lyfeos-ceremony-mode", "login");

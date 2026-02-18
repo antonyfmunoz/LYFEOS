@@ -658,6 +658,20 @@ export default function OnboardingPage() {
     if (userProfile) {
       const existingCompleted = (userProfile as any)?.completedOnboardingMissions || [];
       setCompletedOnboardingMissions(existingCompleted);
+      
+      if (existingCompleted.length > 0 && !localStorage.getItem("lyfeos-onboarding-resume")) {
+        const params = new URLSearchParams(window.location.search);
+        if (!params.get("mission")) {
+          const nextMission = Array.from({ length: MISSIONS.length }, (_, i) => i)
+            .find(i => !existingCompleted.includes(i));
+          if (nextMission !== undefined && nextMission !== currentMission) {
+            console.log("Auto-advancing to next uncompleted mission:", nextMission);
+            setCurrentMission(nextMission);
+            setCurrentStep(0);
+            missionStartTimeRef.current = new Date();
+          }
+        }
+      }
     }
   }, [userProfile]);
   
