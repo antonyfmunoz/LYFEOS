@@ -626,7 +626,6 @@ export default function OnboardingPage() {
   const [isGeneratingAffirmation, setIsGeneratingAffirmation] = useState(false);
   const [showMissionComplete, setShowMissionComplete] = useState(false);
   const [completedOnboardingMissions, setCompletedOnboardingMissions] = useState<number[]>([]);
-  const wentBackToMissionRef = useRef(false);
   
   useEffect(() => {
     const resumeData = localStorage.getItem("lyfeos-onboarding-resume");
@@ -661,7 +660,7 @@ export default function OnboardingPage() {
       setCompletedOnboardingMissions(existingCompleted);
       
       const isPendingRegistration = !!sessionStorage.getItem("lyfeos-pending-registration");
-      if (!isPendingRegistration && !showMissionComplete && !wentBackToMissionRef.current && existingCompleted.length > 0 && !localStorage.getItem("lyfeos-onboarding-resume")) {
+      if (!isPendingRegistration && !showMissionComplete && existingCompleted.length > 0 && !localStorage.getItem("lyfeos-onboarding-resume")) {
         const params = new URLSearchParams(window.location.search);
         if (!params.get("mission")) {
           const nextMission = Array.from({ length: MISSIONS.length }, (_, i) => i)
@@ -675,7 +674,7 @@ export default function OnboardingPage() {
         }
       }
     }
-  }, [userProfile, showMissionComplete]);
+  }, [userProfile]);
   
   const STORAGE_KEY = "lyfeos-onboarding-answers";
   
@@ -1154,7 +1153,6 @@ export default function OnboardingPage() {
   };
   
   const handleNext = async () => {
-    wentBackToMissionRef.current = false;
     const maxSteps = getMaxSteps(currentMission);
     
     if (currentStep < maxSteps - 1) {
@@ -1927,7 +1925,7 @@ export default function OnboardingPage() {
                     <ChevronRight className="h-4 w-4 ml-2" />
                   </Button>
                   <button
-                    onClick={() => { wentBackToMissionRef.current = true; setShowMissionComplete(false); }}
+                    onClick={() => setShowMissionComplete(false)}
                     className="text-muted-foreground text-sm hover:text-primary transition-colors flex items-center justify-center gap-1 mx-auto"
                   >
                     <ChevronLeft className="h-3 w-3" />
@@ -1944,7 +1942,7 @@ export default function OnboardingPage() {
                     <ChevronRight className="h-4 w-4 ml-2" />
                   </Button>
                   <button
-                    onClick={() => { wentBackToMissionRef.current = true; setShowMissionComplete(false); }}
+                    onClick={() => setShowMissionComplete(false)}
                     className="text-muted-foreground text-sm hover:text-primary transition-colors flex items-center justify-center gap-1 mx-auto"
                   >
                     <ChevronLeft className="h-3 w-3" />
