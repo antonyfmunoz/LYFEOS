@@ -527,75 +527,12 @@ export function registerAuthRoutes(app: Express): void {
       }
       
       let user = await storage.getUserByEmail(email);
-      let justCreated = false;
       
       if (!user) {
-        justCreated = true;
-        logger.debug("Creating new user from Firebase auth:", email);
-        
-        const username = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '') + 
-                       Math.floor(Math.random() * 1000).toString();
-        
-        user = await storage.createUser({
-          username: username,
-          password: await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10),
-          displayName: displayName || username,
-          title: 'COMMANDER',
-          email: email,
-          authProvider: 'firebase',
-          firebaseUid: uid,
-          termsAccepted: true
-        });
-        
-        logger.debug("Creating initial stats for new Firebase user:", user.id);
-        await storage.createUserStats({
-          userId: user.id,
-          experienceCurrent: 0,
-          experienceMax: 1000,
-          level: 1,
-          timeTokensCurrent: 100,
-          timeTokensMax: 100,
-          energyPointsCurrent: 100,
-          energyPointsMax: 100,
-          healthPointsCurrent: 100,
-          healthPointsMax: 100,
-          attentionTokensCurrent: 100,
-          attentionTokensMax: 100,
-          streakDays: 0,
-          efficiencyScore: 0,
-          aiAssistantName: "NOVA"
-        });
-        
-        logger.debug("Creating user profile for new Firebase user:", user.id);
-        await storage.upsertUserProfile(user.id, {
-          startStage: "Awakening",
-          targetArchetype: "Creator",
-          flowStyle: {
-            pace: 3, 
-            environment: 3, 
-            risk: 3, 
-            learning: 3, 
-            energy: 3
-          },
-          coreMotivation: "Growth",
-          setupMissionStatus: {
-            archetype: "incomplete", 
-            integrations: "incomplete", 
-            future_self: "incomplete", 
-            rituals: "incomplete", 
-            pillars: "incomplete"
-          },
-          primaryThemeColor: "#00e0ff",
-          onboardingCompleted: false
-        });
-        
-        logger.debug("Creating user integrations for new Firebase user:", user.id);
-        await storage.createUserIntegration({
-          userId: user.id,
-          appleHealthConnected: false,
-          googleCalendarConnected: false,
-          notionConnected: false,
-          otherIntegrations: {}
+        logger.debug("Firebase auth rejected: No registered account for email:", email);
+        return res.status(403).json({ 
+          error: "No account found with this email. Please register first before signing in with Google.",
+          code: "ACCOUNT_NOT_REGISTERED"
         });
       } else {
         if (!user.firebaseUid) {
@@ -620,14 +557,14 @@ export function registerAuthRoutes(app: Express): void {
       
       const fbUserStats = await storage.getUserStats(user.id);
       
-      logger.debug("Firebase login successful for user:", user.username, "justCreated:", justCreated, "onboardingCompleted:", onboardingCompleted);
+      logger.debug("Firebase login successful for user:", user.username, "onboardingCompleted:", onboardingCompleted);
       return res.status(200).json({ 
         user: { 
           id: user.id, 
           username: user.username,
           displayName: user.displayName 
         },
-        isNewUser: justCreated,
+        isNewUser: false,
         onboardingCompleted: onboardingCompleted,
         primaryColor: fbUserStats?.primaryColor || "#00e0ff"
       });

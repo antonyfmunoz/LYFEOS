@@ -79,7 +79,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     
     if (!response.ok) {
-      throw new Error("Failed to authenticate with server");
+      const errorData = await response.json().catch(() => ({ error: "Failed to authenticate" }));
+      if (errorData.code === "ACCOUNT_NOT_REGISTERED") {
+        await auth.signOut();
+        toast({
+          title: "Account Not Found",
+          description: "No account found with this email. Please register first, then you can link your Google account.",
+          variant: "destructive",
+          duration: 6000,
+        });
+        navigate("/register", { replace: true });
+        return;
+      }
+      throw new Error(errorData.error || "Failed to authenticate with server");
     }
     
     const userData = await response.json();
