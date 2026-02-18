@@ -265,57 +265,154 @@ export function registerProfileRoutes(app: Express): void {
   // Generate Character Affirmation using AI
   app.post("/api/profile/generate-affirmation", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const { displayName, archetypePrimary, archetypeSecondary, coreValues, vision5Year, primaryCraft, desiredEmotion, mode } = req.body;
+      const {
+        displayName, missionDepth = 0,
+        archetypePrimary, archetypeSecondary, archetypeShadow,
+        coreValues, desiredEmotion, lifeStage, strengths, coreBelief,
+        vision90Day, vision5Year, vision10YearLegacy,
+        primaryCraft, primaryCraftWhy, careerVocation,
+        greatestContribution, collaborationStyle, roleOrientation,
+        traitsToCultivate, emotionsToCultivate, dominantInstinctType, decisionMakingPrimary,
+        upbringing, culturalContext,
+        idealDay, boundaries, aesthetic, signatureExpression, lockedHabit,
+      } = req.body;
       
       const anthropic = new Anthropic({
         apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
         baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
       });
-      
-      let prompt: string;
-      
-      if (mode === "basic") {
-        prompt = `Generate a short, welcoming character affirmation (80-120 words) for a person named "${displayName}". Write in second person, speaking directly to them using "you" and "your".
 
-IMPORTANT: Use their full name "${displayName}" repeatedly throughout the affirmation (at least 3 times). Address them by name to make it deeply personal.
+      const rawDepth = typeof missionDepth === "number" ? missionDepth : parseInt(missionDepth) || 0;
+      const depth = Math.max(0, Math.min(7, rawDepth));
+      let wordRange: string;
+      let nameCount: string;
+      let tone: string;
+      let detailsBlock = "";
+      let structureBlock = "";
 
-This is an introductory affirmation for someone just beginning their personal growth journey. Keep it warm, encouraging, and forward-looking. Do NOT include any title, header, or greeting line — start directly with the affirmation content itself. Do NOT mention their location or where they live.
-
-Tone: Warm, welcoming, and empowering. Acknowledge their decision to begin this journey and affirm their potential. Do NOT use any emojis.
-
-Example style:
-"${displayName}, you are stepping into a new chapter of intentional living. Your decision to take control of your growth speaks volumes about who you are, ${displayName}..."
-
-Generate the complete affirmation now:`;
-      } else {
-        prompt = `Generate a powerful character affirmation (200-300 words) for a person named "${displayName}". Write in second person, speaking directly to them using "you" and "your".
-
-IMPORTANT: Use their full name "${displayName}" repeatedly throughout the affirmation (at least 5 times). Address them by name to make it deeply personal and powerful.
-
-The affirmation should be written as if you are speaking directly to this person about who they are — powerful, certain, and declarative. Do NOT include any title, header, or greeting line like "# Your Affirmation" — start directly with the affirmation content itself. Do NOT mention their location or where they live.
-
-Key details about this person:
-- Primary Archetype: ${archetypePrimary} (their dominant energy and approach to life)
-- Secondary Archetype: ${archetypeSecondary} (their supporting strength)
+      if (depth <= 0) {
+        wordRange = "80-120";
+        nameCount = "at least 3 times";
+        tone = "Warm, welcoming, and empowering. Acknowledge their decision to begin this journey and affirm their potential.";
+        structureBlock = `This is an introductory affirmation for someone just beginning their personal growth journey. Keep it warm, encouraging, and forward-looking.`;
+      } else if (depth <= 1) {
+        wordRange = "120-160";
+        nameCount = "at least 3 times";
+        tone = "Warm and identity-aware. Speak to who they are at their core based on their archetype, while remaining encouraging and forward-looking.";
+        detailsBlock = `Key details about this person:
+- Primary Archetype: ${archetypePrimary || "Explorer"} (their dominant energy and approach to life)
+- Secondary Archetype: ${archetypeSecondary || "Creator"} (their supporting strength)
+- Shadow Archetype: ${archetypeShadow || "unknown"} (their growth edge)`;
+        structureBlock = `Structure the affirmation as:
+1. Opening identity statement rooted in their archetype
+2. Their natural strengths and how they show up in the world
+3. Encouragement about their growth journey ahead`;
+      } else if (depth <= 3) {
+        wordRange = "160-220";
+        nameCount = "at least 4 times";
+        tone = "Powerful and values-driven. Speak with certainty about who they are, anchored in their values, vision, and chosen path.";
+        detailsBlock = `Key details about this person:
+- Primary Archetype: ${archetypePrimary || "Explorer"} (their dominant energy)
+- Secondary Archetype: ${archetypeSecondary || "Creator"} (their supporting strength)
 - Core Values: ${coreValues?.join(", ") || "growth, integrity, purpose"}
-- 5-Year Vision: ${vision5Year || "becoming the best version of themselves"}
-- Primary Craft: ${primaryCraft || "their chosen field"}
+- Life Stage: ${lifeStage || "Building"}
 - Desired Emotion: ${desiredEmotion || "flow"}
+- Core Belief: ${coreBelief || "I am capable of creating the life I want"}
+- Strengths: ${Array.isArray(strengths) ? strengths.join(", ") : strengths || "determination, creativity"}
+- 90-Day Vision: ${vision90Day || "establishing strong foundations"}
+- 5-Year Vision: ${vision5Year || "becoming the best version of themselves"}
+- 10-Year Legacy: ${vision10YearLegacy || "leaving a meaningful impact"}` +
+(depth >= 3 ? `
+- Primary Craft: ${primaryCraft || "their chosen field"}${primaryCraftWhy ? ` (Why: ${primaryCraftWhy})` : ""}
+- Career/Vocation: ${careerVocation || "their professional calling"}` : "");
+        structureBlock = `Structure the affirmation as:
+1. Opening identity statement using their name and archetype
+2. Their values and how they embody them daily
+3. Their vision — what they are creating and building toward
+4. Their strengths and the unique way they move through the world
+5. Their destiny and the legacy they are forging`;
+      } else if (depth <= 5) {
+        wordRange = "200-260";
+        nameCount = "at least 5 times";
+        tone = "Powerful, certain, and deeply personal. Write as if this is already who they are — declarative, not aspirational. Weave in their psychology, instincts, and inner world.";
+        detailsBlock = `Key details about this person:
+- Primary Archetype: ${archetypePrimary || "Explorer"} (their dominant energy)
+- Secondary Archetype: ${archetypeSecondary || "Creator"} (their supporting strength)
+- Core Values: ${coreValues?.join(", ") || "growth, integrity, purpose"}
+- Life Stage: ${lifeStage || "Building"}
+- Desired Emotion: ${desiredEmotion || "flow"}
+- Core Belief: ${coreBelief || "I am capable of creating the life I want"}
+- Strengths: ${Array.isArray(strengths) ? strengths.join(", ") : strengths || "determination, creativity"}
+- 5-Year Vision: ${vision5Year || "becoming the best version of themselves"}
+- 10-Year Legacy: ${vision10YearLegacy || "leaving a meaningful impact"}
+- Primary Craft: ${primaryCraft || "their chosen field"}${primaryCraftWhy ? ` (Why: ${primaryCraftWhy})` : ""}
+- Career/Vocation: ${careerVocation || "their professional calling"}
+- Greatest Contribution: ${greatestContribution || "empowering others"}
+- Collaboration Style: ${collaborationStyle || "adaptive"}
+- Role Orientation: ${roleOrientation || "leader"}` +
+(depth >= 5 ? `
+- Traits They Are Cultivating: ${Array.isArray(traitsToCultivate) ? traitsToCultivate.join(", ") : traitsToCultivate || "discipline, presence"}
+- Emotions They Are Cultivating: ${Array.isArray(emotionsToCultivate) ? emotionsToCultivate.join(", ") : emotionsToCultivate || "peace, confidence"}
+- Dominant Instinct: ${dominantInstinctType || "intuitive"}
+- Decision-Making Style: ${decisionMakingPrimary || "analytical"}` : "");
+        structureBlock = `Structure the affirmation as:
+1. Opening identity statement — who they are at their core
+2. Their values, beliefs, and how they show up
+3. Their vision, craft, and what they are building
+4. Their psychological depth — instincts, traits, emotional intelligence
+5. Their contribution, role in the world, and legacy`;
+      } else {
+        wordRange = "250-300";
+        nameCount = "at least 5 times";
+        tone = "Powerful, certain, and profoundly intimate. This is the complete picture of who they are — their identity, values, psychology, story, rituals, and aesthetic. Write as absolute truth about who they are.";
+        detailsBlock = `Complete profile of this person:
+- Primary Archetype: ${archetypePrimary || "Explorer"} (their dominant energy)
+- Secondary Archetype: ${archetypeSecondary || "Creator"} (their supporting strength)
+- Core Values: ${coreValues?.join(", ") || "growth, integrity, purpose"}
+- Life Stage: ${lifeStage || "Building"}
+- Desired Emotion: ${desiredEmotion || "flow"}
+- Core Belief: ${coreBelief || "I am capable of creating the life I want"}
+- Strengths: ${Array.isArray(strengths) ? strengths.join(", ") : strengths || "determination, creativity"}
+- 5-Year Vision: ${vision5Year || "becoming the best version of themselves"}
+- 10-Year Legacy: ${vision10YearLegacy || "leaving a meaningful impact"}
+- Primary Craft: ${primaryCraft || "their chosen field"}
+- Career/Vocation: ${careerVocation || "their professional calling"}
+- Greatest Contribution: ${greatestContribution || "empowering others"}
+- Role Orientation: ${roleOrientation || "leader"}
+- Traits They Are Cultivating: ${Array.isArray(traitsToCultivate) ? traitsToCultivate.join(", ") : traitsToCultivate || "discipline, presence"}
+- Emotions They Are Cultivating: ${Array.isArray(emotionsToCultivate) ? emotionsToCultivate.join(", ") : emotionsToCultivate || "peace, confidence"}
+- Dominant Instinct: ${dominantInstinctType || "intuitive"}
+- Decision-Making Style: ${decisionMakingPrimary || "analytical"}` +
+(depth >= 6 ? `
+- Upbringing: ${upbringing || "shaped by meaningful experiences"}
+- Cultural Context: ${culturalContext || "diverse influences"}` : "") +
+(depth >= 7 ? `
+- Ideal Day: ${idealDay || "a day of intentional creation"}
+- Personal Boundaries: ${Array.isArray(boundaries) ? boundaries.join(", ") : boundaries || "protecting their energy and time"}
+- Locked-In Habit: ${lockedHabit || "daily practice"}
+- Aesthetic/Style: ${aesthetic || "distinctive"}
+- Signature Expression: ${signatureExpression || "unique self-expression"}` : "");
+        structureBlock = `Structure the affirmation as:
+1. Opening identity statement — a powerful declaration of who they are
+2. Their values, beliefs, and the standards they live by
+3. Their vision, craft, and the legacy they are building
+4. Their psychological depth — instincts, traits, cultivated emotions
+5. Their story — where they come from and how it forged them
+6. Their rituals, boundaries, and aesthetic — how they live each day
+7. Closing declaration — their destiny and sovereign purpose`;
+      }
 
-Structure the affirmation as:
-1. Opening identity statement using their name (who you are at your core)
-2. Your values and how you embody them
-3. Your vision and what you're creating
-4. Your strengths and traits
-5. Your destiny and impact
+      const prompt = `Generate a powerful character affirmation (${wordRange} words) for a person named "${displayName}". Write in second person, speaking directly to them using "you" and "your".
 
-Tone: Powerful, certain, declarative (NOT aspirational). Write as if this is already who they are. Do NOT use any emojis.
+IMPORTANT: Use their full name "${displayName}" repeatedly throughout the affirmation (${nameCount}). Address them by name to make it deeply personal.
 
-Example structure:
-"${displayName}, you are a sovereign creator of reality, aligned with vision, integrity, and growth. Each day, ${displayName}, you expand in clarity, discipline, and creativity..."
+${structureBlock}
+
+${detailsBlock ? detailsBlock + "\n\n" : ""}Do NOT include any title, header, or greeting line — start directly with the affirmation content itself. Do NOT mention their location or where they live. Do NOT use any emojis.
+
+Tone: ${tone}
 
 Generate the complete affirmation now:`;
-      }
 
       const message = await anthropic.messages.create({
         model: "claude-sonnet-4-5",

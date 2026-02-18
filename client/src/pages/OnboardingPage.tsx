@@ -1204,7 +1204,7 @@ export default function OnboardingPage() {
         const affirmationWork = apiRequest("/api/profile", {
           method: "PATCH",
           body: JSON.stringify({ onboardingCompleted: false }),
-        }).then(() => generateAffirmationRequest("basic")).catch(err => console.error("Error saving:", err));
+        }).then(() => generateAffirmationRequest()).catch(err => console.error("Error saving:", err));
         
         await Promise.all([minDelay, affirmationWork]);
         setIsLoading(false);
@@ -1248,15 +1248,16 @@ export default function OnboardingPage() {
       const affirmationWork0 = apiRequest("/api/profile", {
         method: "PATCH",
         body: JSON.stringify({ onboardingCompleted: allCompleted }),
-      }).then(() => generateAffirmationRequest("basic")).catch(err => console.error("Error saving:", err));
+      }).then(() => generateAffirmationRequest()).catch(err => console.error("Error saving:", err));
       
       await Promise.all([minDelay0, affirmationWork0]);
       setIsLoading(false);
       setIsGeneratingAffirmation(false);
       navigate("/ceremony");
     } else if (isFinalMission) {
-      localStorage.setItem("lyfeos-ceremony-mode", "update");
-      localStorage.setItem("lyfeos-ceremony-destination", "/missions");
+      const hasSeenDashboard = localStorage.getItem("lyfeos-has-seen-dashboard") === "true";
+      localStorage.setItem("lyfeos-ceremony-mode", hasSeenDashboard ? "update" : "init");
+      localStorage.setItem("lyfeos-ceremony-destination", hasSeenDashboard ? "/missions" : "/dashboard");
       setShowMissionComplete(false);
       setIsLoading(true);
       setIsGeneratingAffirmation(true);
@@ -1265,7 +1266,7 @@ export default function OnboardingPage() {
       const affirmationWorkFinal = apiRequest("/api/profile", {
         method: "PATCH",
         body: JSON.stringify({ onboardingCompleted: allCompleted }),
-      }).then(() => generateAffirmationRequest("full")).catch(err => console.error("Error saving:", err));
+      }).then(() => generateAffirmationRequest()).catch(err => console.error("Error saving:", err));
       
       await Promise.all([minDelayFinal, affirmationWorkFinal]);
       setIsLoading(false);
@@ -1284,7 +1285,7 @@ export default function OnboardingPage() {
         const affirmationWorkMid = apiRequest("/api/profile", {
           method: "PATCH",
           body: JSON.stringify({ onboardingCompleted: allCompleted }),
-        }).then(() => generateAffirmationRequest("basic")).catch(err => console.error("Error saving:", err));
+        }).then(() => generateAffirmationRequest()).catch(err => console.error("Error saving:", err));
 
         await Promise.all([minDelayMid, affirmationWorkMid]);
         setIsLoading(false);
@@ -1411,30 +1412,65 @@ export default function OnboardingPage() {
     }
   };
 
-  const generateAffirmationRequest = async (mode: "basic" | "full" = "full") => {
+  const generateAffirmationRequest = async () => {
     const displayName = [onboardingFirstName.trim(), onboardingLastName.trim()].filter(Boolean).join(" ") || (userProfile as any)?.firstName || user?.username || "Player";
+    const missionDepth = currentMission;
     
-    let body: Record<string, any>;
-    
-    if (mode === "basic") {
-      body = {
-        mode: "basic",
-        displayName,
-      };
-    } else {
+    const body: Record<string, any> = {
+      missionDepth,
+      displayName,
+    };
+
+    if (missionDepth >= 1) {
       const archetypeResults = getArchetypeResults();
-      body = {
-        mode: "full",
-        displayName,
-        archetypePrimary: archetypeResults.primary,
-        archetypeSecondary: archetypeResults.secondary,
-        coreValues: coreValues.slice(0, 3),
-        vision5Year,
-        primaryCraft,
-        desiredEmotion,
-      };
+      body.archetypePrimary = archetypeResults.primary;
+      body.archetypeSecondary = archetypeResults.secondary;
+      body.archetypeShadow = archetypeResults.shadow;
     }
-    
+
+    if (missionDepth >= 2) {
+      body.coreValues = coreValues.slice(0, 3);
+      body.desiredEmotion = desiredEmotion;
+      body.lifeStage = lifeStage;
+      body.strengths = strengths;
+      body.coreBelief = coreBelief;
+      body.vision90Day = vision90Day;
+      body.vision5Year = vision5Year;
+      body.vision10YearLegacy = vision10YearLegacy;
+    }
+
+    if (missionDepth >= 3) {
+      body.primaryCraft = primaryCraft;
+      body.primaryCraftWhy = primaryCraftWhy;
+      body.careerVocation = careerVocation;
+    }
+
+    if (missionDepth >= 4) {
+      body.greatestContribution = greatestContribution;
+      body.collaborationStyle = collaborationStyle;
+      body.roleOrientation = roleOrientation;
+    }
+
+    if (missionDepth >= 5) {
+      body.traitsToCultivate = traitsToCultivate;
+      body.emotionsToCultivate = emotionsToCultivate;
+      body.dominantInstinctType = dominantInstinctType;
+      body.decisionMakingPrimary = decisionMakingPrimary;
+    }
+
+    if (missionDepth >= 6) {
+      body.upbringing = upbringing;
+      body.culturalContext = culturalContext;
+    }
+
+    if (missionDepth >= 7) {
+      body.idealDay = idealDay;
+      body.boundaries = boundaries;
+      body.aesthetic = aesthetic;
+      body.signatureExpression = signatureExpression;
+      body.lockedHabit = lockedHabit;
+    }
+
     const affirmationData = await apiRequest<{ affirmation: string }>("/api/profile/generate-affirmation", {
       method: "POST",
       body: JSON.stringify(body),
