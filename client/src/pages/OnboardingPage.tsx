@@ -1272,11 +1272,31 @@ export default function OnboardingPage() {
       setIsGeneratingAffirmation(false);
       navigate("/ceremony");
     } else {
-      apiRequest("/api/profile", {
-        method: "PATCH",
-        body: JSON.stringify({ onboardingCompleted: allCompleted }),
-      }).catch(err => console.error("Error saving:", err));
-      navigate("/missions");
+      const hasSeenDashboard = localStorage.getItem("lyfeos-has-seen-dashboard") === "true";
+      if (!hasSeenDashboard) {
+        localStorage.setItem("lyfeos-ceremony-mode", "init");
+        localStorage.setItem("lyfeos-ceremony-destination", "/dashboard");
+        setShowMissionComplete(false);
+        setIsLoading(true);
+        setIsGeneratingAffirmation(true);
+
+        const minDelayMid = new Promise(resolve => setTimeout(resolve, 2500));
+        const affirmationWorkMid = apiRequest("/api/profile", {
+          method: "PATCH",
+          body: JSON.stringify({ onboardingCompleted: allCompleted }),
+        }).then(() => generateAffirmationRequest("basic")).catch(err => console.error("Error saving:", err));
+
+        await Promise.all([minDelayMid, affirmationWorkMid]);
+        setIsLoading(false);
+        setIsGeneratingAffirmation(false);
+        navigate("/ceremony");
+      } else {
+        apiRequest("/api/profile", {
+          method: "PATCH",
+          body: JSON.stringify({ onboardingCompleted: allCompleted }),
+        }).catch(err => console.error("Error saving:", err));
+        navigate("/missions");
+      }
     }
   };
   
