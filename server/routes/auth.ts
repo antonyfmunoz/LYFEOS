@@ -72,6 +72,8 @@ export function registerAuthRoutes(app: Express): void {
         termsAccepted: termsAccepted || false
       });
 
+      const themeColor = avatarColor && avatarColor !== "#ffffff" ? avatarColor : "#ffffff";
+      
       await storage.createUserStats({
         userId: user.id,
         experienceCurrent: 0,
@@ -88,7 +90,7 @@ export function registerAuthRoutes(app: Express): void {
         streakDays: 0,
         efficiencyScore: 0,
         aiAssistantName: "NOVA",
-        primaryColor: "#ffffff"
+        primaryColor: themeColor
       });
 
       await storage.upsertUserProfile(user.id, {
@@ -97,7 +99,7 @@ export function registerAuthRoutes(app: Express): void {
         flowStyle: "hyperfocus",
         coreMotivation: "growth",
         setupMissionStatus: "not_started",
-        primaryThemeColor: "#ffe03d",
+        primaryThemeColor: themeColor === "#ffffff" ? "#ffe03d" : themeColor,
         onboardingCompleted: false
       });
 
