@@ -1008,6 +1008,32 @@ export default function OnboardingPage() {
           } else if (questAlreadyCompleted || isDuplicate) {
             console.log("Onboarding quest already completed, skipping toggle:", questTitle);
           }
+          const nextMissionId = missionId + 1;
+          if (nextMissionId < MISSIONS.length) {
+            const nextMission = MISSIONS[nextMissionId];
+            const nextQuestTitle = `Onboarding: ${nextMission.title}`;
+            const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            try {
+              await apiRequest("/api/quests", {
+                method: "POST",
+                body: JSON.stringify({
+                  userId: effectiveUserId,
+                  title: nextQuestTitle,
+                  description: nextMission.description,
+                  category: "onboarding",
+                  completed: false,
+                  experienceReward: nextMission.xp,
+                  startDate: todayStr,
+                  dueDate: todayStr,
+                  endDate: todayStr,
+                }),
+              });
+              console.log("Created next onboarding quest:", nextQuestTitle);
+            } catch (e) {
+              console.error("Failed to create next onboarding quest:", e);
+            }
+          }
+
           console.log("Refetching quests after onboarding mission completion...");
           await refetchQuests(effectiveUserId);
           console.log("Quests refetched successfully");
