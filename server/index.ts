@@ -46,8 +46,8 @@ if (firebaseProjectIdForProxy) {
       proxyReq: (proxyReq) => {
         proxyReq.removeHeader('x-forwarded-host');
         proxyReq.removeHeader('x-forwarded-for');
-        proxyReq.removeHeader('x-forwarded-proto');
         proxyReq.removeHeader('x-forwarded-port');
+        proxyReq.setHeader('x-forwarded-proto', 'https');
       },
     },
   }));
