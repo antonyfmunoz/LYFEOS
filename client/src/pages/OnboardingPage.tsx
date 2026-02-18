@@ -1132,11 +1132,7 @@ export default function OnboardingPage() {
       Promise.all([
         saveCompletedMission(currentMission),
         saveMissionData(currentMission),
-      ]).then(() => {
-        if (currentMission === 0) {
-          generateAffirmationRequest("basic").catch(err => console.error("Error generating basic affirmation:", err));
-        }
-      }).catch(err => console.error("Error saving mission:", err));
+      ]).catch(err => console.error("Error saving mission:", err));
     }
   };
   
@@ -1147,9 +1143,7 @@ export default function OnboardingPage() {
   };
 
   const handleStop = async () => {
-    if (currentMission > 0) {
-      handleSkipToSystem();
-    } else {
+    if (currentMission === 0) {
       localStorage.removeItem("lyfeos-pending-onboarding");
       localStorage.removeItem("lyfeos-onboarding-resume");
       localStorage.removeItem("lyfeos-ceremony-mode");
@@ -1170,6 +1164,8 @@ export default function OnboardingPage() {
           variant: "destructive",
         });
       }
+    } else {
+      handleSkipToSystem();
     }
   };
 
@@ -1186,34 +1182,39 @@ export default function OnboardingPage() {
 
   const handleSkipToSystem = async () => {
     localStorage.removeItem("lyfeos-pending-onboarding");
-    localStorage.setItem("lyfeos-ceremony-mode", currentMission === 0 ? "init" : "update");
     localStorage.removeItem("lyfeos-onboarding-resume");
     localStorage.removeItem("lyfeos-continued-past-mission0");
     localStorage.removeItem(STORAGE_KEY);
     
-    setShowMissionComplete(false);
-    setIsLoading(true);
-    
     const allCompleted = completedOnboardingMissions.length >= MISSIONS.length;
     const isFinalMission = currentMission === MISSIONS.length - 1;
+    const isMission0 = currentMission === 0;
+    const showCeremony = isMission0 || isFinalMission;
     
-    if (isFinalMission) {
+    if (showCeremony) {
+      localStorage.setItem("lyfeos-ceremony-mode", isMission0 ? "init" : "update");
+      setShowMissionComplete(false);
+      setIsLoading(true);
       setIsGeneratingAffirmation(true);
+      
+      const affirmationMode = isMission0 ? "basic" : "full";
+      
+      apiRequest("/api/profile", {
+        method: "PATCH",
+        body: JSON.stringify({ onboardingCompleted: allCompleted }),
+      }).then(() => generateAffirmationRequest(affirmationMode)).catch(err => console.error("Error saving:", err));
+      
+      await new Promise(resolve => setTimeout(resolve, 2500));
+      setIsLoading(false);
+      setIsGeneratingAffirmation(false);
+      navigate("/ceremony");
+    } else {
+      apiRequest("/api/profile", {
+        method: "PATCH",
+        body: JSON.stringify({ onboardingCompleted: allCompleted }),
+      }).catch(err => console.error("Error saving:", err));
+      navigate("/missions");
     }
-    
-    apiRequest("/api/profile", {
-      method: "PATCH",
-      body: JSON.stringify({ onboardingCompleted: allCompleted }),
-    }).then(() => {
-      if (isFinalMission) {
-        return generateAffirmationRequest("full");
-      }
-    }).catch(err => console.error("Error saving:", err));
-    
-    await new Promise(resolve => setTimeout(resolve, 2500));
-    setIsLoading(false);
-    setIsGeneratingAffirmation(false);
-    navigate("/ceremony");
   };
   
   const getMissionProfileData = (missionId: number): Record<string, any> => {
