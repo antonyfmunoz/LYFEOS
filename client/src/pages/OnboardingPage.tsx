@@ -925,12 +925,13 @@ export default function OnboardingPage() {
       const now = new Date();
       const localDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       
+      const baseCompleted = missionId === 0 ? [] : (completedOnboardingMissions || []);
       const profileResponse = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          completedOnboardingMissions: [...(completedOnboardingMissions || []), missionId].filter((v, i, a) => a.indexOf(v) === i)
+          completedOnboardingMissions: [...baseCompleted, missionId].filter((v, i, a) => a.indexOf(v) === i)
         })
       });
       

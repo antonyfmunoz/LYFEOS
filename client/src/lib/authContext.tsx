@@ -458,6 +458,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       sessionStorage.removeItem("lyfeos-pending-registration");
       pendingPasswordRef.current = null;
+      queryClient.removeQueries({ queryKey: ["/api/profile"] });
       setUser(result.user);
       localStorage.setItem("lyfeos_user", JSON.stringify(result.user));
       localStorage.removeItem("lyfeos-widget-states");
@@ -496,6 +497,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Now clear local state
       setUser(null);
       setFirebaseUser(null);
+      queryClient.removeQueries({ queryKey: ["/api/profile"] });
       localStorage.removeItem("lyfeos_user");
       localStorage.removeItem("lyfeos-pending-onboarding");
       localStorage.removeItem("lyfeos-has-seen-dashboard");
