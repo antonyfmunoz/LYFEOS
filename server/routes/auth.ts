@@ -88,7 +88,7 @@ export function registerAuthRoutes(app: Express): void {
         streakDays: 0,
         efficiencyScore: 0,
         aiAssistantName: "NOVA",
-        primaryColor: avatarColor || "#00e0ff"
+        primaryColor: "#ffffff"
       });
 
       await storage.upsertUserProfile(user.id, {
@@ -207,7 +207,7 @@ export function registerAuthRoutes(app: Express): void {
         streakDays: 0,
         efficiencyScore: 0,
         aiAssistantName: "NOVA",
-        primaryColor: userData.avatarColor || "#00e0ff"
+        primaryColor: "#ffffff"
       });
       
       logger.debug("Creating user profile for new user:", user.id);

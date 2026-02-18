@@ -678,7 +678,7 @@ export default function OnboardingPage() {
   const [location, setLocation] = useState(saved.location || "");
   const [detectedLocation, setDetectedLocation] = useState("");
   const [timezone, setTimezone] = useState(saved.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
-  const [selectedThemeColor, setSelectedThemeColor] = useState("#00e0ff");
+  const [selectedThemeColor, setSelectedThemeColor] = useState("#ffffff");
 
   useEffect(() => {
     const savedColor = localStorage.getItem('lyfeos-primary-color');

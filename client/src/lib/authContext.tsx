@@ -185,6 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("lyfeos-onboarding-answers");
       localStorage.removeItem("lyfeos-onboarding-resume");
       localStorage.removeItem("lyfeos-continued-past-mission0");
+      sessionStorage.removeItem("lyfeos-pending-registration");
       
       const trimmedIdentifier = identifier.trim();
       
@@ -297,6 +298,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("lyfeos-onboarding-answers");
       localStorage.removeItem("lyfeos-onboarding-resume");
       localStorage.removeItem("lyfeos-continued-past-mission0");
+      sessionStorage.removeItem("lyfeos-pending-registration");
       
       const trimmedEmail = email.trim();
       
@@ -564,6 +566,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("lyfeos-onboarding-answers");
       localStorage.removeItem("lyfeos-onboarding-resume");
       localStorage.removeItem("lyfeos-continued-past-mission0");
+      sessionStorage.removeItem("lyfeos-pending-registration");
       const result = await signInWithGoogle();
       await processOAuthResult(result);
     } catch (error: any) {
@@ -588,6 +591,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("lyfeos-onboarding-answers");
       localStorage.removeItem("lyfeos-onboarding-resume");
       localStorage.removeItem("lyfeos-continued-past-mission0");
+      sessionStorage.removeItem("lyfeos-pending-registration");
       const result = await signInWithApple();
       await processOAuthResult(result);
     } catch (error: any) {

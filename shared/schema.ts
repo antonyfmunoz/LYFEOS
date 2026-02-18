@@ -65,7 +65,7 @@ export const userStats = pgTable("user_stats", {
   darkThemeEnabled: boolean("dark_theme_enabled").default(true).notNull(),
   autoSyncEnabled: boolean("auto_sync_enabled").default(true).notNull(),
   aiAssistantEnabled: boolean("ai_assistant_enabled").default(true).notNull(),
-  primaryColor: text("primary_color").default("#00e0ff").notNull(),
+  primaryColor: text("primary_color").default("#ffffff").notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
