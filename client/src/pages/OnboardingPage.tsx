@@ -1181,60 +1181,53 @@ export default function OnboardingPage() {
   };
 
   const handleStop = async () => {
+    localStorage.removeItem("lyfeos-pending-onboarding");
+    localStorage.removeItem("lyfeos-onboarding-resume");
+    localStorage.removeItem("lyfeos-continued-past-mission0");
+    localStorage.removeItem(STORAGE_KEY);
+    
     if (currentMission === 0) {
-      localStorage.removeItem("lyfeos-pending-onboarding");
-      localStorage.removeItem("lyfeos-onboarding-resume");
       localStorage.removeItem("lyfeos-ceremony-mode");
-      localStorage.removeItem("lyfeos-continued-past-mission0");
-      localStorage.removeItem(STORAGE_KEY);
       if (sessionStorage.getItem("lyfeos-pending-registration") && !user) {
         sessionStorage.removeItem("lyfeos-pending-registration");
         navigate("/register", { replace: true });
         return;
       }
       sessionStorage.removeItem("lyfeos-pending-registration");
+    }
+    
+    const hasSeenDashboard = localStorage.getItem("lyfeos-has-seen-dashboard") === "true";
+    if (!hasSeenDashboard) {
+      localStorage.setItem("lyfeos-ceremony-mode", "init");
+      localStorage.setItem("lyfeos-ceremony-destination", "/dashboard");
+      
+      setShowMissionComplete(false);
+      setIsLoading(true);
+      setIsGeneratingAffirmation(true);
+      
+      const allCompleted = completedOnboardingMissions.length >= MISSIONS.length;
+      const minDelay = new Promise(resolve => setTimeout(resolve, 2500));
+      const affirmationTimeout = new Promise(resolve => setTimeout(resolve, 15000));
+      const affirmationWork = apiRequest("/api/profile", {
+        method: "PATCH",
+        body: JSON.stringify({ onboardingCompleted: allCompleted }),
+      }).then(() => generateAffirmationRequest()).catch(err => console.error("Error generating affirmation:", err));
+      
+      await Promise.all([minDelay, Promise.race([affirmationWork, affirmationTimeout])]);
+      setIsLoading(false);
+      setIsGeneratingAffirmation(false);
+      navigate("/ceremony");
+    } else {
       try {
         const allCompleted = completedOnboardingMissions.length >= MISSIONS.length;
         await apiRequest("/api/profile", {
           method: "PATCH",
           body: JSON.stringify({ onboardingCompleted: allCompleted }),
         });
-        navigate("/missions");
-      } catch (error) {
-        console.error("Error completing onboarding:", error);
-        toast({
-          title: "Error",
-          description: "Failed to save your profile. Please try again.",
-          variant: "destructive",
-        });
+      } catch (err) {
+        console.error("Error saving profile:", err);
       }
-    } else {
-      const hasSeenDashboard = localStorage.getItem("lyfeos-has-seen-dashboard") === "true";
-      if (!hasSeenDashboard) {
-        localStorage.removeItem("lyfeos-pending-onboarding");
-        localStorage.setItem("lyfeos-ceremony-mode", "init");
-        localStorage.setItem("lyfeos-ceremony-destination", "/dashboard");
-        localStorage.removeItem("lyfeos-onboarding-resume");
-        localStorage.removeItem("lyfeos-continued-past-mission0");
-        
-        setShowMissionComplete(false);
-        setIsLoading(true);
-        setIsGeneratingAffirmation(true);
-        
-        const minDelay = new Promise(resolve => setTimeout(resolve, 2500));
-        const affirmationTimeout = new Promise(resolve => setTimeout(resolve, 15000));
-        const affirmationWork = apiRequest("/api/profile", {
-          method: "PATCH",
-          body: JSON.stringify({ onboardingCompleted: false }),
-        }).then(() => generateAffirmationRequest()).catch(err => console.error("Error generating affirmation:", err));
-        
-        await Promise.all([minDelay, Promise.race([affirmationWork, affirmationTimeout])]);
-        setIsLoading(false);
-        setIsGeneratingAffirmation(false);
-        navigate("/ceremony");
-      } else {
-        navigate("/missions");
-      }
+      navigate("/missions");
     }
   };
 
@@ -1266,24 +1259,9 @@ export default function OnboardingPage() {
         return;
       }
       sessionStorage.removeItem("lyfeos-pending-registration");
-      localStorage.setItem("lyfeos-ceremony-mode", "init");
-      localStorage.setItem("lyfeos-ceremony-destination", "/dashboard");
-      setShowMissionComplete(false);
-      setIsLoading(true);
-      setIsGeneratingAffirmation(true);
-      
-      const minDelay0 = new Promise(resolve => setTimeout(resolve, 2500));
-      const affirmationTimeout = new Promise(resolve => setTimeout(resolve, 15000));
-      const affirmationWork0 = apiRequest("/api/profile", {
-        method: "PATCH",
-        body: JSON.stringify({ onboardingCompleted: allCompleted }),
-      }).then(() => generateAffirmationRequest()).catch(err => console.error("Error generating affirmation:", err));
-      
-      await Promise.all([minDelay0, Promise.race([affirmationWork0, affirmationTimeout])]);
-      setIsLoading(false);
-      setIsGeneratingAffirmation(false);
-      navigate("/ceremony");
-    } else if (isFinalMission) {
+    }
+    
+    if (isMission0 || isFinalMission) {
       const hasSeenDashboard = localStorage.getItem("lyfeos-has-seen-dashboard") === "true";
       localStorage.setItem("lyfeos-ceremony-mode", hasSeenDashboard ? "update" : "init");
       localStorage.setItem("lyfeos-ceremony-destination", hasSeenDashboard ? "/missions" : "/dashboard");
