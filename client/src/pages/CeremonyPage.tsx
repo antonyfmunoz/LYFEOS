@@ -25,9 +25,11 @@ export default function CeremonyPage() {
 
   useEffect(() => {
     const resumeData = localStorage.getItem("lyfeos-onboarding-resume");
-    const destination = resumeData ? "/onboarding" : "/dashboard";
+    const customDestination = localStorage.getItem("lyfeos-ceremony-destination");
+    const destination = resumeData ? "/onboarding" : (customDestination || "/dashboard");
     
     localStorage.removeItem("lyfeos-ceremony-mode");
+    localStorage.removeItem("lyfeos-ceremony-destination");
 
     const phases = [
       { delay: 500, action: () => setPhase(1) },

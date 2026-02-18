@@ -461,10 +461,18 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
           const response = await fetch(`/api/users/${user.id}/stats`, { credentials: "include" });
           if (response.ok) {
             const data = await response.json();
-            const dbStats = data.stats;
+            let dbStats = data.stats;
             
             if (dbStats) {
               console.log("Stats loaded successfully:", dbStats);
+              
+              if (!dbStats.primaryColor) {
+                const savedColor = localStorage.getItem('lyfeos-primary-color');
+                if (savedColor && savedColor !== '#ffffff') {
+                  dbStats = { ...dbStats, primaryColor: savedColor };
+                }
+              }
+              
               setStats(dbStats);
               
               if (dbStats.streakDays > 1 && !streakToastFired.current) {
@@ -488,12 +496,13 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
                 }
               }
               
-              if (dbStats.primaryColor) {
+              const effectiveColor = dbStats.primaryColor || localStorage.getItem('lyfeos-primary-color');
+              if (effectiveColor && effectiveColor !== '#ffffff') {
                 const isOnboarding = window.location.pathname.replace(/\/+$/, '') === '/onboarding';
                 if (!isOnboarding) {
-                  applyPrimaryColor(dbStats.primaryColor);
+                  applyPrimaryColor(effectiveColor);
                 }
-                localStorage.setItem('lyfeos-primary-color', dbStats.primaryColor);
+                localStorage.setItem('lyfeos-primary-color', effectiveColor);
               }
               
               if (dbStats.aiAssistantName) {

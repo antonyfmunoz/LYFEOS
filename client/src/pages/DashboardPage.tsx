@@ -164,6 +164,10 @@ export default function DashboardPage() {
   // Set the page title
   usePageTitle('Dashboard');
   
+  useEffect(() => {
+    localStorage.setItem("lyfeos-has-seen-dashboard", "true");
+  }, []);
+  
   const { 
     stats, username, events, updateUserStats, 
     energyLog, updateEnergyLog, resetEnergyLog,
