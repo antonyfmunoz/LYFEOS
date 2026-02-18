@@ -1132,11 +1132,7 @@ export default function OnboardingPage() {
       Promise.all([
         saveCompletedMission(currentMission),
         saveMissionData(currentMission),
-      ]).then(() => {
-        if (currentMission === 0) {
-          generateAffirmationRequest().catch(err => console.error("Background affirmation generation error:", err));
-        }
-      }).catch(err => console.error("Error saving mission:", err));
+      ]).catch(err => console.error("Error saving mission:", err));
     }
   };
   
@@ -1193,15 +1189,17 @@ export default function OnboardingPage() {
     
     setShowMissionComplete(false);
     setIsLoading(true);
+    setIsGeneratingAffirmation(true);
     
     const allCompleted = completedOnboardingMissions.length >= MISSIONS.length;
     apiRequest("/api/profile", {
       method: "PATCH",
       body: JSON.stringify({ onboardingCompleted: allCompleted }),
-    }).catch(err => console.error("Error saving:", err));
+    }).then(() => generateAffirmationRequest()).catch(err => console.error("Error saving:", err));
     
     await new Promise(resolve => setTimeout(resolve, 2500));
     setIsLoading(false);
+    setIsGeneratingAffirmation(false);
     navigate("/ceremony");
   };
   
