@@ -97,12 +97,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (userData.isNewUser) {
       console.log("Brand new user created, redirecting to onboarding");
       navigate("/onboarding");
-    } else if (!userData.onboardingCompleted) {
-      console.log("Returning user with incomplete onboarding, resuming onboarding");
-      navigate("/onboarding");
     } else {
-      localStorage.setItem("lyfeos-ceremony-mode", "login");
-      navigate("/ceremony");
+      console.log("Returning OAuth user, using standard login flow");
+      const todayStr = getLocalDateString();
+      queryClient.prefetchQuery({ queryKey: ["/api/profile"] });
+      queryClient.prefetchQuery({
+        queryKey: ['/api/users', userData.user.id, 'daily-logs', todayStr],
+        queryFn: async () => {
+          const response = await fetch(`/api/users/${userData.user.id}/daily-logs?date=${todayStr}`, {
+            credentials: 'include'
+          });
+          if (!response.ok) return { _noData: true, _confirmed: true };
+          const result = await response.json();
+          return result.logs?.[0] || { _noData: true, _confirmed: true };
+        },
+      });
+      queryClient.prefetchQuery({ queryKey: ["/api/users", userData.user.id, "profile"] });
+      queryClient.prefetchQuery({ queryKey: ["/api/account"] });
+      
+      sessionStorage.setItem("login_success_username", userData.user.username || "");
+      sessionStorage.setItem("login_success_new_user", "false");
+      navigate("/login-success", { replace: true });
     }
   };
 
