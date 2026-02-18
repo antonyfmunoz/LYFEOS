@@ -18,6 +18,7 @@ export interface DraggableWidgetProps {
   moveWidget: (dragIndex: number, hoverIndex: number) => void;
   infoTitle?: string;
   infoDescription?: string;
+  headerActions?: React.ReactNode;
 }
 
 interface DragItem {
@@ -38,7 +39,8 @@ export function DraggableWidget({
   className,
   moveWidget,
   infoTitle,
-  infoDescription
+  infoDescription,
+  headerActions
 }: DraggableWidgetProps) {
   const [localOpen, setLocalOpen] = useState(defaultOpen);
   const isControlled = isOpenProp !== undefined;
@@ -133,12 +135,19 @@ export function DraggableWidget({
             </div>
           )}
         </div>
-        <div className="text-primary">
-          {isOpen ? (
-            <ChevronUp size={20} />
-          ) : (
-            <ChevronDown size={20} />
+        <div className="flex items-center gap-1">
+          {headerActions && (
+            <div onClick={(e) => e.stopPropagation()}>
+              {headerActions}
+            </div>
           )}
+          <div className="text-primary">
+            {isOpen ? (
+              <ChevronUp size={20} />
+            ) : (
+              <ChevronDown size={20} />
+            )}
+          </div>
         </div>
       </div>
       

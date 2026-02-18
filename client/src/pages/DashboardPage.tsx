@@ -157,7 +157,7 @@ function TimezoneSelector({ timezone, setTimezone }: { timezone: string; setTime
 
 function PersistentDraggableWidget({ widgetId, ...props }: Omit<DraggableWidgetProps, 'isOpenProp' | 'onOpenChange'> & { widgetId: string }) {
   const [isOpen, setIsOpen] = useWidgetState(widgetId, props.defaultOpen ?? true);
-  return <DraggableWidget {...props} isOpenProp={isOpen} onOpenChange={setIsOpen} />;
+  return <DraggableWidget {...props} isOpenProp={isOpen} onOpenChange={setIsOpen} headerActions={props.headerActions} />;
 }
 
 export default function DashboardPage() {
@@ -202,12 +202,11 @@ export default function DashboardPage() {
     }));
     setEditingPrompt(null);
     try {
-      await apiRequest("/api/profile", {
+      const result = await apiRequest("/api/profile", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ customReflectionPrompts: updated }),
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      queryClient.setQueryData(["/api/profile"], result);
     } catch (e) {
       console.error("Failed to save reflection prompt", e);
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
@@ -220,18 +219,16 @@ export default function DashboardPage() {
       customReflectionPrompts: defaultPrompts,
     }));
     try {
-      await apiRequest("/api/profile", {
+      const result = await apiRequest("/api/profile", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ customReflectionPrompts: defaultPrompts }),
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
-      toast({ title: "Prompts reset to defaults" });
+      queryClient.setQueryData(["/api/profile"], result);
     } catch (e) {
       console.error("Failed to reset reflection prompts", e);
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
     }
-  }, [toast]);
+  }, []);
 
   // Level-up modal state
   const [isLevelUpModalOpen, setIsLevelUpModalOpen] = useState(false);
@@ -1106,22 +1103,8 @@ export default function DashboardPage() {
           { key: "couldBeBetter", icon: TargetIcon, placeholder: "Areas for improvement, challenges faced, or things to do differently..." },
           { key: "learned", icon: Brain, placeholder: "Key insights, lessons, or realizations from today..." },
         ];
-        const hasCustomPrompts = reflectionPrompts.wentWell !== defaultPrompts.wentWell ||
-          reflectionPrompts.couldBeBetter !== defaultPrompts.couldBeBetter ||
-          reflectionPrompts.learned !== defaultPrompts.learned;
         return (
           <div className="space-y-4">
-            {hasCustomPrompts && (
-              <div className="flex justify-end">
-                <button
-                  onClick={resetReflectionPrompts}
-                  className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
-                  title="Reset prompts to defaults"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            )}
             {promptFields.map(({ key, icon: Icon, placeholder }) => (
               <div key={key} className="space-y-2">
                 <label className="text-sm flex items-center text-[#7DAAB2]">
@@ -1621,6 +1604,19 @@ export default function DashboardPage() {
               moveWidget={moveWidget}
               defaultOpen={widget.defaultOpen}
               infoDescription={widget.infoDescription}
+              headerActions={widget.id === 'reflection-log' && (
+                reflectionPrompts.wentWell !== defaultPrompts.wentWell ||
+                reflectionPrompts.couldBeBetter !== defaultPrompts.couldBeBetter ||
+                reflectionPrompts.learned !== defaultPrompts.learned
+              ) ? (
+                <button
+                  onClick={resetReflectionPrompts}
+                  className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                  title="Reset prompts to defaults"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                </button>
+              ) : undefined}
             >
               {renderWidgetContent(widget.id)}
             </PersistentDraggableWidget>

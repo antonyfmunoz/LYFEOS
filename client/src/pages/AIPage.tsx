@@ -330,17 +330,16 @@ export default function AIPage() {
 
           <span className="material-icons text-primary text-2xl mr-3">smart_toy</span>
           
-          <div>
-            <h1 className="text-xl font-orbitron text-foreground mb-1">AI Assistant</h1>
-            
-            {/* AI Name Editor */}
+          <h1 className="text-xl font-orbitron text-foreground">AI Assistant</h1>
+          
+          <div className="ml-3 flex items-center">
             {isEditingName ? (
-              <div className="flex items-center">
+              <>
                 <Input
                   ref={nameInputRef}
                   value={nameInput}
                   onChange={(e) => setNameInput(e.target.value)}
-                  className="h-8 text-sm bg-card/30 border-primary/30 focus-visible:ring-primary/30 mr-2 w-48"
+                  className="h-7 text-sm bg-card/30 border-primary/30 focus-visible:ring-primary/30 mr-1 w-32"
                   placeholder="Enter AI name"
                   maxLength={20}
                 />
@@ -349,9 +348,9 @@ export default function AIPage() {
                   size="sm"
                   variant="ghost"
                   onClick={handleSaveName}
-                  className="h-7 w-7 p-0 text-primary hover:bg-primary/20"
+                  className="h-6 w-6 p-0 text-primary hover:bg-primary/20"
                 >
-                  <Check className="h-4 w-4 text-primary" />
+                  <Check className="h-3.5 w-3.5 text-primary" />
                 </Button>
                 <Button
                   type="button"
@@ -361,14 +360,14 @@ export default function AIPage() {
                     setNameInput(aiCompanionName);
                     setIsEditingName(false);
                   }}
-                  className="h-7 w-7 p-0 text-muted-foreground hover:bg-red-500/20 ml-1"
+                  className="h-6 w-6 p-0 text-muted-foreground hover:bg-red-500/20 ml-0.5"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5" />
                 </Button>
-              </div>
+              </>
             ) : (
-              <div className="flex items-center">
-                <p className="text-sm text-primary mr-2">{aiCompanionName}</p>
+              <>
+                <span className="text-sm text-primary mr-1">{aiCompanionName}</span>
                 <Button
                   type="button"
                   size="sm"
@@ -378,7 +377,7 @@ export default function AIPage() {
                 >
                   <Edit2 className="h-3 w-3 text-primary" />
                 </Button>
-              </div>
+              </>
             )}
           </div>
         </div>
@@ -388,15 +387,15 @@ export default function AIPage() {
       <div className="flex-grow flex flex-col sm:flex-row relative">
         {sidebarOpen && (
           <div 
-            className="fixed left-0 right-0 top-[57px] bottom-[70px] bg-black/50 backdrop-blur-sm z-10"
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm z-10"
             onClick={() => setSidebarOpen(false)}
           />
         )}
         
         {/* Left Sidebar - Chat Sessions & Quick Prompts - Collapsible */}
         <div data-tour="ai-sidebar" className={`
-          fixed left-0 z-20
-          top-[57px] bottom-[70px]
+          absolute left-0 z-20
+          top-0 bottom-0
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
           transition-transform duration-200 ease-in-out
           flex flex-col w-[280px] sm:w-72

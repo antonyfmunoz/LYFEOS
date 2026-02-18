@@ -1186,6 +1186,11 @@ export default function OnboardingPage() {
       localStorage.removeItem("lyfeos-ceremony-mode");
       localStorage.removeItem("lyfeos-continued-past-mission0");
       localStorage.removeItem(STORAGE_KEY);
+      if (sessionStorage.getItem("lyfeos-pending-registration")) {
+        sessionStorage.removeItem("lyfeos-pending-registration");
+        navigate("/register", { replace: true });
+        return;
+      }
       try {
         const allCompleted = completedOnboardingMissions.length >= MISSIONS.length;
         await apiRequest("/api/profile", {
@@ -1252,6 +1257,11 @@ export default function OnboardingPage() {
     const isMission0 = currentMission === 0;
     
     if (isMission0) {
+      if (sessionStorage.getItem("lyfeos-pending-registration")) {
+        sessionStorage.removeItem("lyfeos-pending-registration");
+        navigate("/register", { replace: true });
+        return;
+      }
       localStorage.setItem("lyfeos-ceremony-mode", "init");
       localStorage.setItem("lyfeos-ceremony-destination", "/dashboard");
       setShowMissionComplete(false);
@@ -1502,6 +1512,9 @@ export default function OnboardingPage() {
 
   const saveMissionData = async (missionId: number) => {
     try {
+      if (missionId === 0 && sessionStorage.getItem("lyfeos-pending-registration")) {
+        return;
+      }
       const data = getMissionProfileData(missionId);
       if (Object.keys(data).length > 0) {
         await apiRequest("/api/profile", {

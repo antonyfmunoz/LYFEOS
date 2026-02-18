@@ -23,7 +23,9 @@ export default function AICompanionPanel() {
     setActiveChatSession,
     updateChatSessionTitle,
     aiCompanionName,
-    setAICompanionName
+    setAICompanionName,
+    aiPanelOpen: isOpen,
+    setAIPanelOpen: setIsOpen
   } = useLYFEOS();
 
   const [inputText, setInputText] = useState("");
@@ -37,7 +39,6 @@ export default function AICompanionPanel() {
   const nameInputRef = useRef<HTMLInputElement>(null);
   const editChatInputRef = useRef<HTMLInputElement>(null);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const prevMessagesLengthRef = useRef<number>(0);
