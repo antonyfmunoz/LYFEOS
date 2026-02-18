@@ -700,7 +700,7 @@ export function registerAuthRoutes(app: Express): void {
     res.json({ message: "Two-factor authentication disabled" });
   });
 
-  app.delete("/api/admin/purge-all-users", async (req: Request, res: Response) => {
+  app.post("/api/admin/purge-all-users", async (req: Request, res: Response) => {
     try {
       const secret = req.headers["x-admin-secret"];
       if (secret !== "LYFEOS_PURGE_2026") {
