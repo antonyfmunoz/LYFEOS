@@ -1162,28 +1162,15 @@ export default function OnboardingPage() {
         setPrimaryColor(selectedThemeColor);
       }
       const colorToReapply = currentMission === 0 ? selectedThemeColor : null;
-      if (currentMission === 0) {
-        try {
-          await saveMissionData(currentMission);
-          await saveCompletedMission(currentMission);
+      setShowMissionComplete(true);
+      saveMissionData(currentMission)
+        .then(() => saveCompletedMission(currentMission))
+        .then(() => {
           if (colorToReapply && colorToReapply !== "#ffffff") {
             setPrimaryColor(colorToReapply);
           }
-        } catch (err) {
-          console.error("Error saving mission:", err);
-        }
-      } else {
-        saveMissionData(currentMission)
-          .catch(err => console.error("Error saving mission data:", err))
-          .then(() => saveCompletedMission(currentMission))
-          .then(() => {
-            if (colorToReapply && colorToReapply !== "#ffffff") {
-              setPrimaryColor(colorToReapply);
-            }
-          })
-          .catch(err => console.error("Error saving mission:", err));
-      }
-      setShowMissionComplete(true);
+        })
+        .catch(err => console.error("Error saving mission:", err));
     }
   };
   
