@@ -384,7 +384,7 @@ export default function AIPage() {
       </div>
       
       {/* Main Chat Area with Collapsible Sidebar */}
-      <div className="flex-grow flex flex-col sm:flex-row relative">
+      <div className="flex-grow flex flex-col sm:flex-row relative overflow-hidden">
         {sidebarOpen && (
           <div 
             className="absolute inset-0 bg-black/50 backdrop-blur-sm z-10"

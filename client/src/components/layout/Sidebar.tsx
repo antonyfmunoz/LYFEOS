@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { useState } from "react";
+import { ChevronRight, ChevronLeft } from "lucide-react";
 
 interface SidebarProps {
   currentPage: string;
@@ -7,7 +8,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ currentPage, username }: SidebarProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
 
   const navItems = [
     { id: "dashboard", icon: "dashboard", label: "Dashboard" },
@@ -24,13 +25,13 @@ export default function Sidebar({ currentPage, username }: SidebarProps) {
         collapsed ? "w-[72px]" : "w-64"
       }`}
     >
-      <div className={`flex items-center mb-8 ${collapsed ? "justify-center" : "justify-start"}`}>
+      <div className={`flex items-center mb-8 ${collapsed ? "justify-center" : "justify-end"}`}>
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="p-1.5 rounded-lg hover:bg-card hover:bg-opacity-30 text-muted-foreground transition duration-200"
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          <span className="material-icons text-lg">menu</span>
+          {collapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
         </button>
       </div>
 
