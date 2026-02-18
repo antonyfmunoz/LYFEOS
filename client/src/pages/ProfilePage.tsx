@@ -297,6 +297,7 @@ export default function ProfilePage() {
   });
   
   const profileHasAffirmation = useRef(false);
+  const profilePollCount = useRef(0);
   
   const { data: userProfileData, isLoading: isProfileSchemaLoading } = useQuery({
     queryKey: ["/api/profile"],
@@ -307,10 +308,13 @@ export default function ProfilePage() {
       const data = query.state.data as any;
       if (data?.characterAffirmation) {
         profileHasAffirmation.current = true;
+        profilePollCount.current = 0;
         return false;
       }
       if (profileHasAffirmation.current) return false;
+      if (profilePollCount.current >= 10) return false;
       if (data?.onboardingCompleted || (data?.completedOnboardingMissions?.length > 0)) {
+        profilePollCount.current += 1;
         return 3000;
       }
       return false;

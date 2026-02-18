@@ -1222,12 +1222,13 @@ export default function OnboardingPage() {
         setIsGeneratingAffirmation(true);
         
         const minDelay = new Promise(resolve => setTimeout(resolve, 2500));
+        const affirmationTimeout = new Promise(resolve => setTimeout(resolve, 15000));
         const affirmationWork = apiRequest("/api/profile", {
           method: "PATCH",
           body: JSON.stringify({ onboardingCompleted: false }),
-        }).then(() => generateAffirmationRequest()).catch(err => console.error("Error saving:", err));
+        }).then(() => generateAffirmationRequest()).catch(err => console.error("Error generating affirmation:", err));
         
-        await Promise.all([minDelay, affirmationWork]);
+        await Promise.all([minDelay, Promise.race([affirmationWork, affirmationTimeout])]);
         setIsLoading(false);
         setIsGeneratingAffirmation(false);
         navigate("/ceremony");
@@ -1272,12 +1273,13 @@ export default function OnboardingPage() {
       setIsGeneratingAffirmation(true);
       
       const minDelay0 = new Promise(resolve => setTimeout(resolve, 2500));
+      const affirmationTimeout = new Promise(resolve => setTimeout(resolve, 15000));
       const affirmationWork0 = apiRequest("/api/profile", {
         method: "PATCH",
         body: JSON.stringify({ onboardingCompleted: allCompleted }),
-      }).then(() => generateAffirmationRequest()).catch(err => console.error("Error saving:", err));
+      }).then(() => generateAffirmationRequest()).catch(err => console.error("Error generating affirmation:", err));
       
-      await Promise.all([minDelay0, affirmationWork0]);
+      await Promise.all([minDelay0, Promise.race([affirmationWork0, affirmationTimeout])]);
       setIsLoading(false);
       setIsGeneratingAffirmation(false);
       navigate("/ceremony");
@@ -1290,12 +1292,13 @@ export default function OnboardingPage() {
       setIsGeneratingAffirmation(true);
       
       const minDelayFinal = new Promise(resolve => setTimeout(resolve, 2500));
+      const affirmationTimeoutFinal = new Promise(resolve => setTimeout(resolve, 15000));
       const affirmationWorkFinal = apiRequest("/api/profile", {
         method: "PATCH",
         body: JSON.stringify({ onboardingCompleted: allCompleted }),
-      }).then(() => generateAffirmationRequest()).catch(err => console.error("Error saving:", err));
+      }).then(() => generateAffirmationRequest()).catch(err => console.error("Error generating affirmation:", err));
       
-      await Promise.all([minDelayFinal, affirmationWorkFinal]);
+      await Promise.all([minDelayFinal, Promise.race([affirmationWorkFinal, affirmationTimeoutFinal])]);
       setIsLoading(false);
       setIsGeneratingAffirmation(false);
       navigate("/ceremony");
@@ -1309,12 +1312,13 @@ export default function OnboardingPage() {
         setIsGeneratingAffirmation(true);
 
         const minDelayMid = new Promise(resolve => setTimeout(resolve, 2500));
+        const affirmationTimeoutMid = new Promise(resolve => setTimeout(resolve, 15000));
         const affirmationWorkMid = apiRequest("/api/profile", {
           method: "PATCH",
           body: JSON.stringify({ onboardingCompleted: allCompleted }),
-        }).then(() => generateAffirmationRequest()).catch(err => console.error("Error saving:", err));
+        }).then(() => generateAffirmationRequest()).catch(err => console.error("Error generating affirmation:", err));
 
-        await Promise.all([minDelayMid, affirmationWorkMid]);
+        await Promise.all([minDelayMid, Promise.race([affirmationWorkMid, affirmationTimeoutMid])]);
         setIsLoading(false);
         setIsGeneratingAffirmation(false);
         navigate("/ceremony");
