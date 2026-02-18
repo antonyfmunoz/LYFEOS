@@ -20,7 +20,21 @@ document.head.appendChild(fontsLink);
 document.title = "LYFEOS - Dashboard";
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
+  window.addEventListener('load', async () => {
+    try {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const reg of registrations) {
+        await reg.update();
+      }
+      const cacheNames = await caches.keys();
+      for (const name of cacheNames) {
+        if (name !== 'lyfeos-v3') {
+          await caches.delete(name);
+        }
+      }
+    } catch (e) {
+      console.warn('SW cleanup error:', e);
+    }
     navigator.serviceWorker.register('/sw.js').catch((err) => {
       console.warn('Service worker registration failed:', err);
     });

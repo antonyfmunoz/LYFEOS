@@ -28,6 +28,25 @@ function isMobileBrowser(): boolean {
   return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 }
 
+function isMobileSafari(): boolean {
+  const ua = navigator.userAgent;
+  return /iPhone|iPad|iPod/i.test(ua) && /Safari/i.test(ua) && !/CriOS|FxiOS|OPiOS|EdgiOS/i.test(ua);
+}
+
+function isPopupRecoverableError(error: any): boolean {
+  const recoverableCodes = [
+    'auth/popup-blocked',
+    'auth/cancelled-popup-request',
+    'auth/operation-not-supported-in-this-environment',
+    'auth/unauthorized-domain',
+  ];
+  if (recoverableCodes.includes(error?.code)) return true;
+  if (isMobileBrowser() && !error?.code) return true;
+  const msg = (error?.message || '').toLowerCase();
+  if (msg.includes('load failed') || msg.includes('network request failed') || msg.includes('popup_closed')) return true;
+  return false;
+}
+
 async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, providerName: string): Promise<UserCredential | null> {
   if (!import.meta.env.VITE_FIREBASE_API_KEY) {
     toast({
@@ -36,6 +55,24 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
       variant: "destructive"
     });
     return null;
+  }
+
+  if (isMobileSafari()) {
+    console.log(`Mobile Safari detected, using redirect flow directly for ${providerName}`);
+    try {
+      localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
+      await signInWithRedirect(auth, provider);
+      return null;
+    } catch (redirectError: any) {
+      console.error(`${providerName} redirect failed:`, redirectError?.code, redirectError?.message);
+      localStorage.removeItem('lyfeos-oauth-redirect-pending');
+      toast({
+        title: "Login Error",
+        description: `${providerName} sign-in failed: ${redirectError?.message || redirectError?.code || 'Please try again.'}`,
+        variant: "destructive"
+      });
+      return null;
+    }
   }
 
   try {
@@ -49,14 +86,8 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
       return null;
     }
 
-    if (
-      error.code === 'auth/popup-blocked' ||
-      error.code === 'auth/cancelled-popup-request' ||
-      error.code === 'auth/operation-not-supported-in-this-environment' ||
-      error.code === 'auth/unauthorized-domain' ||
-      (isMobileBrowser() && !error.code)
-    ) {
-      console.log(`Popup failed (${error.code || 'unknown'}), falling back to redirect for ${providerName}`);
+    if (isPopupRecoverableError(error)) {
+      console.log(`Popup failed (${error.code || error?.message || 'unknown'}), falling back to redirect for ${providerName}`);
       try {
         localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
         await signInWithRedirect(auth, provider);
