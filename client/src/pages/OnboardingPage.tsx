@@ -624,7 +624,12 @@ export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingAffirmation, setIsGeneratingAffirmation] = useState(false);
-  const [showMissionComplete, setShowMissionComplete] = useState(false);
+  const [showMissionComplete, _setShowMissionComplete] = useState(false);
+  const showMissionCompleteRef = useRef(false);
+  const setShowMissionComplete = (val: boolean) => {
+    showMissionCompleteRef.current = val;
+    _setShowMissionComplete(val);
+  };
   const [completedOnboardingMissions, setCompletedOnboardingMissions] = useState<number[]>([]);
   
   useEffect(() => {
@@ -660,7 +665,7 @@ export default function OnboardingPage() {
       setCompletedOnboardingMissions(existingCompleted);
       
       const isPendingRegistration = !!sessionStorage.getItem("lyfeos-pending-registration");
-      if (!isPendingRegistration && !showMissionComplete && existingCompleted.length > 0 && !localStorage.getItem("lyfeos-onboarding-resume")) {
+      if (!isPendingRegistration && !showMissionCompleteRef.current && existingCompleted.length > 0 && !localStorage.getItem("lyfeos-onboarding-resume")) {
         const params = new URLSearchParams(window.location.search);
         if (!params.get("mission")) {
           const nextMission = Array.from({ length: MISSIONS.length }, (_, i) => i)
