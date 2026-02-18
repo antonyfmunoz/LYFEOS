@@ -596,6 +596,12 @@ Generate the complete affirmation now:`;
       if (frontendStats.primaryColor !== undefined) {
         dbStatsUpdate.primaryColor = frontendStats.primaryColor;
         logger.debug("Updating primary color to:", frontendStats.primaryColor);
+        
+        try {
+          await storage.upsertUserProfile(userId, { primaryThemeColor: frontendStats.primaryColor });
+        } catch (err) {
+          logger.error("Error syncing primaryColor to userProfile:", err);
+        }
       }
       
       
