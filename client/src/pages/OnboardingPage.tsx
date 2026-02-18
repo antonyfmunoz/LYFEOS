@@ -914,6 +914,7 @@ export default function OnboardingPage() {
             timezone,
             termsAccepted: true,
           });
+          sessionStorage.removeItem("lyfeos-pending-registration");
         } else if (onboardingUsername.trim()) {
           try {
             const usernameRes = await fetch("/api/auth/set-username", {
