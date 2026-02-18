@@ -57,6 +57,17 @@ if (firebaseProjectIdForProxy) {
 
 app.use(compression());
 
+(async () => {
+  try {
+    await db.execute(sql`ALTER TABLE users ALTER COLUMN password DROP NOT NULL`);
+  } catch (e: any) {
+    if (!e.message?.includes('already')) {
+      console.log("Migration note:", e.message);
+    }
+  }
+})();
+
+
 app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,

@@ -366,6 +366,10 @@ export function registerAuthRoutes(app: Express): void {
         return res.status(401).json({ error: "This account uses social sign-in. Please log in with Google or Apple instead." });
       }
       
+      if (!user.password) {
+        logger.debug("Login failed: Account has no password set");
+        return res.status(401).json({ error: "This account uses social sign-in. Please log in with Google or Apple instead." });
+      }
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
         logger.debug("Login failed: Invalid password");
