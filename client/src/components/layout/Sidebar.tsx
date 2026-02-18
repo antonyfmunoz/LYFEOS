@@ -1,6 +1,6 @@
 import { Link } from "wouter";
-import { useState } from "react";
 import { ChevronRight, ChevronLeft } from "lucide-react";
+import { useLYFEOS } from "@/lib/context";
 
 interface SidebarProps {
   currentPage: string;
@@ -8,7 +8,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ currentPage, username }: SidebarProps) {
-  const [collapsed, setCollapsed] = useState(true);
+  const { sidebarCollapsed: collapsed, setSidebarCollapsed: setCollapsed } = useLYFEOS();
 
   const navItems = [
     { id: "dashboard", icon: "dashboard", label: "Dashboard" },

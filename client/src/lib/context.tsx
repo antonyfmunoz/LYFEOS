@@ -265,6 +265,8 @@ interface LYFEOSContextType {
   setAICompanionName: (name: string) => void;
   aiPanelOpen: boolean;
   setAIPanelOpen: (open: boolean) => void;
+  sidebarCollapsed: boolean;
+  setSidebarCollapsed: (collapsed: boolean) => void;
   addEvent: (event: Omit<CalendarEvent, "id">) => void;
   updateEvent: (id: string, eventData: Partial<CalendarEvent>) => void;
   deleteEvent: (id: string) => void;
@@ -350,6 +352,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const levelUpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [aiCompanionName, setAICompanionNameState] = useState<string>("Lyfe");
   const [aiPanelOpen, setAIPanelOpen] = useState<boolean>(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(true);
   const [chatSessions, setChatSessions] = useState<ChatSession[]>(initialChatSessions);
   // Mapping from local chat session IDs to database conversation IDs
   const [sessionToDbIdMap, setSessionToDbIdMap] = useState<Record<string, number>>({});
@@ -2259,6 +2262,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         setAICompanionName,
         aiPanelOpen,
         setAIPanelOpen,
+        sidebarCollapsed,
+        setSidebarCollapsed,
         addEvent,
         updateEvent,
         deleteEvent,
