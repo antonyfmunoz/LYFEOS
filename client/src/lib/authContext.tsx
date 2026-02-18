@@ -97,11 +97,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     const userData = await response.json();
     
-    if (userData.primaryColor) {
-      if (!userData.isNewUser) {
-        applyPrimaryColor(userData.primaryColor);
-      }
-      localStorage.setItem('lyfeos-primary-color', userData.primaryColor);
+    if (userData.primaryColor && !userData.isNewUser) {
+      applyPrimaryColor(userData.primaryColor);
     }
     
     setUser(userData.user);
@@ -240,6 +237,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log("Server auth check successful, user data:", data.user);
           setUser(data.user);
           localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
+          if (data.primaryColor) {
+            applyPrimaryColor(data.primaryColor);
+          }
         } else {
           console.log("Not authenticated with server, clearing local user data");
           setUser(null);
@@ -315,10 +315,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Success path
       console.log("Login successful, user data:", data.user);
       
-      // Apply the user's theme color BEFORE showing toast or navigating
       if (data.primaryColor) {
         applyPrimaryColor(data.primaryColor);
-        localStorage.setItem('lyfeos-primary-color', data.primaryColor);
       }
       
       // Update application state

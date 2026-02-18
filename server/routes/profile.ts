@@ -149,10 +149,20 @@ export function registerProfileRoutes(app: Express): void {
   app.patch("/api/profile", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
-      const updateData = req.body;
+      const updateData = { ...req.body };
       updateData.updatedAt = new Date();
       
-      // Use upsert to prevent race condition duplicates
+      if (updateData.primaryColor && !updateData.primaryThemeColor) {
+        updateData.primaryThemeColor = updateData.primaryColor;
+        delete updateData.primaryColor;
+        
+        try {
+          await storage.updateUserStats(userId, { primaryColor: updateData.primaryThemeColor });
+        } catch (err) {
+          logger.error("Error syncing primaryColor to userStats:", err);
+        }
+      }
+      
       const updatedProfile = await storage.upsertUserProfile(userId, updateData);
       
       res.json(updatedProfile);
@@ -443,7 +453,10 @@ Generate the complete affirmation now:`;
       // This ensures streak, HP, EP, time tokens, and attention tokens are always current
       await storage.processLoginStreak(userId);
       
-      const dbStats = await storage.getUserStats(userId);
+      const [dbStats, userProfile] = await Promise.all([
+        storage.getUserStats(userId),
+        storage.getUserProfile(userId),
+      ]);
       if (!dbStats) {
         return res.status(404).json({ error: "User stats not found" });
       }
@@ -484,8 +497,9 @@ Generate the complete affirmation now:`;
         darkThemeEnabled: dbStats.darkThemeEnabled, 
         autoSyncEnabled: dbStats.autoSyncEnabled,
         aiAssistantEnabled: dbStats.aiAssistantEnabled,
-        // Include primary color
-        primaryColor: dbStats.primaryColor,
+        primaryColor: (userProfile?.primaryThemeColor && userProfile.primaryThemeColor !== "#ffe03d" ? userProfile.primaryThemeColor : null)
+          || (dbStats.primaryColor && dbStats.primaryColor !== "#ffffff" ? dbStats.primaryColor : null)
+          || "#00e0ff",
       };
       
       return res.status(200).json({ stats: transformedStats });
@@ -624,9 +638,9 @@ Generate the complete affirmation now:`;
         darkThemeEnabled: dbUpdatedStats.darkThemeEnabled, 
         autoSyncEnabled: dbUpdatedStats.autoSyncEnabled,
         aiAssistantEnabled: dbUpdatedStats.aiAssistantEnabled,
-        // Include primary color
-        primaryColor: dbUpdatedStats.primaryColor,
-        // Note: Onboarding fields moved to userProfile table
+        primaryColor: (userProfile?.primaryThemeColor && userProfile.primaryThemeColor !== "#ffe03d" ? userProfile.primaryThemeColor : null)
+          || (dbUpdatedStats.primaryColor && dbUpdatedStats.primaryColor !== "#ffffff" ? dbUpdatedStats.primaryColor : null)
+          || "#00e0ff",
       };
       
       return res.status(200).json({ stats: transformedStats });

@@ -44,7 +44,7 @@ const initialStats: UserStats = {
   darkThemeEnabled: true,
   autoSyncEnabled: true,
   aiAssistantEnabled: true,
-  primaryColor: "#ffffff",
+  primaryColor: "#00e0ff",
 };
 
 // Initial quests data
@@ -435,7 +435,6 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     }));
     
     applyPrimaryColor(color);
-    localStorage.setItem('lyfeos-primary-color', color);
     
     if (isAuthenticated && user) {
       try {
@@ -472,21 +471,6 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             if (dbStats) {
               console.log("Stats loaded successfully:", dbStats);
               
-              if (!dbStats.primaryColor) {
-                const savedColor = localStorage.getItem('lyfeos-primary-color');
-                if (savedColor && savedColor !== '#ffffff') {
-                  dbStats = { ...dbStats, primaryColor: savedColor };
-                }
-              }
-              
-              const isOnboardingPage = window.location.pathname.replace(/\/+$/, '') === '/onboarding';
-              if (isOnboardingPage) {
-                const currentColor = localStorage.getItem('lyfeos-primary-color');
-                if (currentColor && currentColor !== '#ffffff') {
-                  dbStats = { ...dbStats, primaryColor: currentColor };
-                }
-              }
-              
               setStats(dbStats);
               
               if (dbStats.streakDays > 1 && !streakToastFired.current) {
@@ -511,12 +495,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
               }
               
               const isOnboarding = window.location.pathname.replace(/\/+$/, '') === '/onboarding';
-              if (!isOnboarding) {
-                const effectiveColor = dbStats.primaryColor || localStorage.getItem('lyfeos-primary-color');
-                if (effectiveColor && effectiveColor !== '#ffffff') {
-                  applyPrimaryColor(effectiveColor);
-                  localStorage.setItem('lyfeos-primary-color', effectiveColor);
-                }
+              if (!isOnboarding && dbStats.primaryColor) {
+                applyPrimaryColor(dbStats.primaryColor);
               }
               
               if (dbStats.aiAssistantName) {

@@ -395,10 +395,14 @@ export function registerAuthRoutes(app: Express): void {
       
       const userStats = await storage.getUserStats(user.id);
       
+      const effectiveColor = (userProfile?.primaryThemeColor && userProfile.primaryThemeColor !== "#ffe03d" ? userProfile.primaryThemeColor : null)
+        || (userStats?.primaryColor && userStats.primaryColor !== "#ffffff" ? userStats.primaryColor : null)
+        || "#00e0ff";
+      
       return res.status(200).json({ 
         user: { id: user.id, username: user.username },
         isNewUser: isNewUser,
-        primaryColor: userStats?.primaryColor || "#00e0ff"
+        primaryColor: effectiveColor
       });
     } catch (error) {
       logger.error("Login error:", error);
@@ -628,6 +632,10 @@ export function registerAuthRoutes(app: Express): void {
       
       const fbUserStats = await storage.getUserStats(user.id);
       
+      const effectiveColor = (userProfile?.primaryThemeColor && userProfile.primaryThemeColor !== "#ffe03d" ? userProfile.primaryThemeColor : null)
+        || (fbUserStats?.primaryColor && fbUserStats.primaryColor !== "#ffffff" ? fbUserStats.primaryColor : null)
+        || "#00e0ff";
+      
       logger.debug("Firebase auth successful for user:", user.username, "isNewUser:", isNewUser, "onboardingCompleted:", onboardingCompleted);
       return res.status(200).json({ 
         user: { 
@@ -637,7 +645,7 @@ export function registerAuthRoutes(app: Express): void {
         },
         isNewUser: isNewUser,
         onboardingCompleted: onboardingCompleted,
-        primaryColor: fbUserStats?.primaryColor || "#00e0ff"
+        primaryColor: effectiveColor
       });
     } catch (error) {
       logger.error("Firebase auth error:", error);
@@ -673,13 +681,21 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
   
-  app.get("/api/auth/me", (req: Request, res: Response) => {
+  app.get("/api/auth/me", async (req: Request, res: Response) => {
     if (req.session.userId) {
+      const userProfile = await storage.getUserProfile(req.session.userId);
+      const userStats = await storage.getUserStats(req.session.userId);
+      
+      const effectiveColor = (userProfile?.primaryThemeColor && userProfile.primaryThemeColor !== "#ffe03d" ? userProfile.primaryThemeColor : null)
+        || (userStats?.primaryColor && userStats.primaryColor !== "#ffffff" ? userStats.primaryColor : null)
+        || "#00e0ff";
+      
       return res.status(200).json({ 
         user: { 
           id: req.session.userId, 
           username: req.session.username 
-        }
+        },
+        primaryColor: effectiveColor
       });
     }
     
