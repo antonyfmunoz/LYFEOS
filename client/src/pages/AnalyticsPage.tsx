@@ -3,7 +3,8 @@ import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/authContext";
 import { usePageTitle } from "@/hooks/use-page-title";
-import PageTutorial, { TutorialStep, tutorialKey, markTutorialComplete } from '@/components/ui/PageTutorial';
+import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
+import { useTutorialStatus } from '@/hooks/use-tutorial';
 import update from 'immutability-helper';
 import { CollapsibleWidget } from '@/components/ui/collapsible-widget';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -144,27 +145,7 @@ export default function AnalyticsPage() {
     },
   ];
 
-  const [showTutorial, setShowTutorial] = useState(() => {
-    return !localStorage.getItem(tutorialKey("tracker", user?.id));
-  });
-
-  const handleTutorialComplete = useCallback(() => {
-    markTutorialComplete("tracker", user?.id);
-    setShowTutorial(false);
-  }, [user?.id]);
-
-  useEffect(() => {
-    if (user?.id) {
-      fetch("/api/profile", { credentials: "include" })
-        .then(res => res.ok ? res.json() : null)
-        .then(profile => {
-          if (profile?.completedTutorials?.includes("tracker")) {
-            setShowTutorial(false);
-          }
-        })
-        .catch(() => {});
-    }
-  }, [user?.id]);
+  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials } = useTutorialStatus("tracker");
 
   const moveAnalyticsWidget = useCallback((dragIndex: number, hoverIndex: number) => {
     const prev = analyticsWidgetsRef.current;
@@ -560,7 +541,7 @@ export default function AnalyticsPage() {
 
   return (
     <div className="mx-auto max-w-5xl py-8 px-4">
-      <PageTutorial steps={TRACKER_TOUR_STEPS} storageKey="tracker" isOpen={showTutorial} onComplete={handleTutorialComplete} userId={user?.id} />
+      <PageTutorial steps={TRACKER_TOUR_STEPS} storageKey="tracker" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} />
       <div className="mb-6">
         <Link href="/chronilog" className="inline-flex items-center gap-2 bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs rounded-md px-3 py-2 transition-colors">
           <ArrowLeft className="h-4 w-4" />

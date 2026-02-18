@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import PageTutorial, { TutorialStep, tutorialKey, markTutorialComplete } from '@/components/ui/PageTutorial';
+import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
+import { useTutorialStatus } from '@/hooks/use-tutorial';
 import { useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
@@ -162,27 +163,7 @@ export default function RolodexPage() {
     },
   ];
 
-  const [showTutorial, setShowTutorial] = useState(() => {
-    return !localStorage.getItem(tutorialKey("rolodex", user?.id));
-  });
-
-  const handleTutorialComplete = useCallback(() => {
-    markTutorialComplete("rolodex", user?.id);
-    setShowTutorial(false);
-  }, [user?.id]);
-
-  useEffect(() => {
-    if (user?.id) {
-      fetch("/api/profile", { credentials: "include" })
-        .then(res => res.ok ? res.json() : null)
-        .then(profile => {
-          if (profile?.completedTutorials?.includes("rolodex")) {
-            setShowTutorial(false);
-          }
-        })
-        .catch(() => {});
-    }
-  }, [user?.id]);
+  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials } = useTutorialStatus("rolodex");
 
   const { isLoading } = useQuery<{ contacts: Contact[] }>({
     queryKey: ['/api/users', user?.id, 'contacts'],
@@ -382,7 +363,7 @@ export default function RolodexPage() {
 
   return (
     <div className="min-h-screen bg-background px-4 py-6 max-w-4xl mx-auto">
-      <PageTutorial steps={ROLODEX_TOUR_STEPS} storageKey="rolodex" isOpen={showTutorial} onComplete={handleTutorialComplete} userId={user?.id} />
+      <PageTutorial steps={ROLODEX_TOUR_STEPS} storageKey="rolodex" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} />
       <div className="mb-4">
         <Button
           className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"

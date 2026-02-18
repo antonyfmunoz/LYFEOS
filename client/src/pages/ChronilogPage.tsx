@@ -6,7 +6,8 @@ import { FileText, Clock, Tag, Calendar, Award, GripVertical, CheckSquare, BookO
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { useDrag, useDrop } from 'react-dnd';
 import { useState, useCallback, useRef, useEffect } from 'react';
-import PageTutorial, { TutorialStep, tutorialKey, markTutorialComplete } from '@/components/ui/PageTutorial';
+import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
+import { useTutorialStatus } from '@/hooks/use-tutorial';
 import update from 'immutability-helper';
 import { cn } from '@/lib/utils';
 import { DropTargetMonitor } from 'react-dnd';
@@ -384,31 +385,11 @@ export default function ChronilogPage() {
     },
   ];
 
-  const [showTutorial, setShowTutorial] = useState(() => {
-    return !localStorage.getItem(tutorialKey("chronilog", user?.id));
-  });
-
-  const handleTutorialComplete = useCallback(() => {
-    markTutorialComplete("chronilog", user?.id);
-    setShowTutorial(false);
-  }, [user?.id]);
-
-  useEffect(() => {
-    if (user?.id) {
-      fetch("/api/profile", { credentials: "include" })
-        .then(res => res.ok ? res.json() : null)
-        .then(profile => {
-          if (profile?.completedTutorials?.includes("chronilog")) {
-            setShowTutorial(false);
-          }
-        })
-        .catch(() => {});
-    }
-  }, [user?.id]);
+  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials } = useTutorialStatus("chronilog");
 
   return (
       <div className="pb-20">
-        <PageTutorial steps={CHRONILOG_TOUR_STEPS} storageKey="chronilog" isOpen={showTutorial} onComplete={handleTutorialComplete} userId={user?.id} />
+        <PageTutorial steps={CHRONILOG_TOUR_STEPS} storageKey="chronilog" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} />
         <div className="mb-6" data-tour="chronilog-header">
           <h1 className="text-2xl font-orbitron mb-1">Chronilog</h1>
           <p className="text-[#7DAAB2]">Your personal timeline of knowledge, reflections, and growth logs.</p>

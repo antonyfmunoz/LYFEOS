@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import PageTutorial, { TutorialStep, tutorialKey, markTutorialComplete } from '@/components/ui/PageTutorial';
+import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
+import { useTutorialStatus } from '@/hooks/use-tutorial';
 import { useWidgetState } from "@/hooks/use-widget-state";
 import RootLayout from "../components/layout/RootLayout";
 import { useLYFEOS } from "../lib/context";
@@ -263,14 +264,7 @@ export default function ProfilePage() {
     },
   ];
 
-  const [showTutorial, setShowTutorial] = useState(() => {
-    return !localStorage.getItem(tutorialKey("profile", user?.id));
-  });
-
-  const handleTutorialComplete = useCallback(() => {
-    markTutorialComplete("profile", user?.id);
-    setShowTutorial(false);
-  }, [user?.id]);
+  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials } = useTutorialStatus("profile");
 
   const [isEditing, setIsEditing] = useState(false);
   const [editUsername, setEditUsername] = useState(username);
@@ -321,12 +315,6 @@ export default function ProfilePage() {
     },
   });
 
-  useEffect(() => {
-    if ((userProfileData as any)?.completedTutorials?.includes("profile")) {
-      setShowTutorial(false);
-    }
-  }, [userProfileData]);
-  
   // State for affirmation regeneration
   const [isGeneratingAffirmation, setIsGeneratingAffirmation] = useState(false);
   const [isPlayingAffirmation, setIsPlayingAffirmation] = useState(false);
@@ -1755,7 +1743,7 @@ export default function ProfilePage() {
   return (
     <RootLayout>
       <div className="max-w-4xl mx-auto pb-20">
-        <PageTutorial steps={PROFILE_TOUR_STEPS} storageKey="profile" isOpen={showTutorial} onComplete={handleTutorialComplete} userId={user?.id} />
+        <PageTutorial steps={PROFILE_TOUR_STEPS} storageKey="profile" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} />
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-orbitron text-foreground">My Account</h1>

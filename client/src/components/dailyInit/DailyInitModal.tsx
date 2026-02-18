@@ -12,7 +12,7 @@ import { useAuth } from "@/lib/authContext";
 import { useTheme } from "@/lib/themeContext";
 import { apiRequest } from "@/lib/queryClient";
 import { getLocalDateString } from "@/lib/utils";
-import { tutorialKey } from "@/components/ui/PageTutorial";
+import { isTutorialCompleted } from "@/hooks/use-tutorial";
 
 // Define interfaces for better type checking
 interface Mission {
@@ -146,8 +146,7 @@ export function DailyInitModal() {
           
           console.log("Onboarding completed, proceeding with daily init check");
           
-          const dashboardTutorialDone = localStorage.getItem(tutorialKey("dashboard", user.id));
-          if (!dashboardTutorialDone) {
+          if (!isTutorialCompleted(profileData, "dashboard")) {
             console.log("Dashboard tutorial not yet completed, skipping daily init to let tutorial play first");
             return;
           }

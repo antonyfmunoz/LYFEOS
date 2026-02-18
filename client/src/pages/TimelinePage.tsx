@@ -9,7 +9,8 @@ import { usePageTitle } from '@/hooks/use-page-title';
 import { useAuth } from '@/lib/authContext';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import PageTutorial, { TutorialStep, tutorialKey, markTutorialComplete } from '@/components/ui/PageTutorial';
+import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
+import { useTutorialStatus } from '@/hooks/use-tutorial';
 
 const ONBOARDING_MISSIONS = [
   { id: 0, title: "Access & Quickstart", description: "Log in, explore the dashboard, and complete your first quick mission to get familiar with LYFEOS." },
@@ -202,27 +203,7 @@ export default function TimelinePage() {
     },
   ];
 
-  const [showTutorial, setShowTutorial] = useState(() => {
-    return !localStorage.getItem(tutorialKey("timeline", user?.id));
-  });
-
-  const handleTutorialComplete = useCallback(() => {
-    markTutorialComplete("timeline", user?.id);
-    setShowTutorial(false);
-  }, [user?.id]);
-
-  useEffect(() => {
-    if (user?.id) {
-      fetch("/api/profile", { credentials: "include" })
-        .then(res => res.ok ? res.json() : null)
-        .then(profile => {
-          if (profile?.completedTutorials?.includes("timeline")) {
-            setShowTutorial(false);
-          }
-        })
-        .catch(() => {});
-    }
-  }, [user?.id]);
+  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials } = useTutorialStatus("timeline");
 
   const [activeView, setActiveView] = useState<'history' | 'roadmap'>('history');
   const [zoomLevel, setZoomLevel] = useState<ZoomLevel>('life');
@@ -735,7 +716,7 @@ export default function TimelinePage() {
 
   return (
     <div className="pb-20">
-      <PageTutorial steps={TIMELINE_TOUR_STEPS} storageKey="timeline" isOpen={showTutorial} onComplete={handleTutorialComplete} userId={user?.id} />
+      <PageTutorial steps={TIMELINE_TOUR_STEPS} storageKey="timeline" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} />
       <div className="mb-4">
         <Button
           className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"

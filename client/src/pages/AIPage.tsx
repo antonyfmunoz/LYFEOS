@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import PageTutorial, { TutorialStep, tutorialKey, markTutorialComplete } from '@/components/ui/PageTutorial';
+import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
+import { useTutorialStatus } from '@/hooks/use-tutorial';
 import { useAuth } from "@/lib/authContext";
 import { useLYFEOS } from "../lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
@@ -92,27 +93,7 @@ export default function AIPage() {
   ];
 
   const { user } = useAuth();
-  const [showTutorial, setShowTutorial] = useState(() => {
-    return !localStorage.getItem(tutorialKey("ai", user?.id));
-  });
-
-  const handleTutorialComplete = useCallback(() => {
-    markTutorialComplete("ai", user?.id);
-    setShowTutorial(false);
-  }, [user?.id]);
-
-  useEffect(() => {
-    if (user?.id) {
-      fetch("/api/profile", { credentials: "include" })
-        .then(res => res.ok ? res.json() : null)
-        .then(profile => {
-          if (profile?.completedTutorials?.includes("ai")) {
-            setShowTutorial(false);
-          }
-        })
-        .catch(() => {});
-    }
-  }, [user?.id]);
+  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials } = useTutorialStatus("ai");
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -316,7 +297,7 @@ export default function AIPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] pb-10">
-      <PageTutorial steps={AI_TOUR_STEPS} storageKey="ai" isOpen={showTutorial} onComplete={handleTutorialComplete} userId={user?.id} />
+      <PageTutorial steps={AI_TOUR_STEPS} storageKey="ai" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} />
       <div className="flex items-center justify-between mb-4 pb-4 border-b border-primary/20" data-tour="ai-header">
         <div className="flex items-center">
           <Button

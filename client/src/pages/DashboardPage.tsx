@@ -21,7 +21,8 @@ import { DraggableWidget, DraggableWidgetProps } from '@/components/ui/draggable
 import update from 'immutability-helper';
 import { useWidgetState } from '@/hooks/use-widget-state';
 import { LevelUpModal } from '@/components/dashboard/LevelUpModal';
-import PageTutorial, { TutorialStep, tutorialKey, markTutorialComplete } from '@/components/ui/PageTutorial';
+import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
+import { useTutorialStatus } from '@/hooks/use-tutorial';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { getLocalDateString } from '@/lib/utils';
@@ -284,27 +285,7 @@ export default function DashboardPage() {
     },
   ];
 
-  const [showTutorial, setShowTutorial] = useState(() => {
-    return !localStorage.getItem(tutorialKey("dashboard", user?.id));
-  });
-  
-  const handleTutorialComplete = useCallback(() => {
-    markTutorialComplete("dashboard", user?.id);
-    setShowTutorial(false);
-  }, [user?.id]);
-
-  useEffect(() => {
-    if (user?.id) {
-      fetch("/api/profile", { credentials: "include" })
-        .then(res => res.ok ? res.json() : null)
-        .then(profile => {
-          if (profile?.completedTutorials?.includes("dashboard")) {
-            setShowTutorial(false);
-          }
-        })
-        .catch(() => {});
-    }
-  }, [user?.id]);
+  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials, isTutorialActive } = useTutorialStatus("dashboard");
   
   // Dashboard state
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -1540,8 +1521,8 @@ export default function DashboardPage() {
 
   return (
       <div className="dashboard-container pb-20">
-        <PageTutorial steps={DASHBOARD_TOUR_STEPS} storageKey="dashboard" isOpen={showTutorial} onComplete={handleTutorialComplete} userId={user?.id} />
-        <DailyInitModal />
+        <PageTutorial steps={DASHBOARD_TOUR_STEPS} storageKey="dashboard" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} />
+        {!isTutorialActive && <DailyInitModal />}
         
         {/* Level-up modal - shows when user levels up */}
         <LevelUpModal 
