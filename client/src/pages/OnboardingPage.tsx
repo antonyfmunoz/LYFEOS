@@ -1460,6 +1460,7 @@ export default function OnboardingPage() {
         </div>
         <div className="flex items-center justify-center gap-4 text-xs font-orbitron text-muted-foreground">
           <span>{mission.questions} questions</span>
+          <span>~{Math.max(1, Math.round(mission.questions * 0.5))} min</span>
           <span className="text-primary">+{mission.xp} XP</span>
         </div>
       </div>
