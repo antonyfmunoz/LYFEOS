@@ -1169,7 +1169,7 @@ export default function OnboardingPage() {
       if (!hasSeenDashboard) {
         localStorage.removeItem("lyfeos-pending-onboarding");
         localStorage.setItem("lyfeos-ceremony-mode", "init");
-        localStorage.setItem("lyfeos-ceremony-destination", "/missions");
+        localStorage.setItem("lyfeos-ceremony-destination", "/dashboard");
         localStorage.removeItem("lyfeos-onboarding-resume");
         localStorage.removeItem("lyfeos-continued-past-mission0");
         localStorage.removeItem(STORAGE_KEY);
