@@ -1139,9 +1139,15 @@ export default function OnboardingPage() {
         setPrimaryColor(selectedThemeColor);
       }
       setShowMissionComplete(true);
+      const colorToReapply = currentMission === 0 ? selectedThemeColor : null;
       saveMissionData(currentMission)
         .catch(err => console.error("Error saving mission data:", err))
         .then(() => saveCompletedMission(currentMission))
+        .then(() => {
+          if (colorToReapply && colorToReapply !== "#ffffff") {
+            setPrimaryColor(colorToReapply);
+          }
+        })
         .catch(err => console.error("Error saving mission:", err));
     }
   };
@@ -1226,6 +1232,7 @@ export default function OnboardingPage() {
     
     if (isMission0) {
       localStorage.setItem("lyfeos-ceremony-mode", "init");
+      localStorage.setItem("lyfeos-ceremony-destination", "/dashboard");
       setShowMissionComplete(false);
       setIsLoading(true);
       setIsGeneratingAffirmation(true);
@@ -1458,7 +1465,7 @@ export default function OnboardingPage() {
           <h2 className="text-2xl font-orbitron font-bold">{mission.title}</h2>
           <p className="text-muted-foreground max-w-sm mx-auto">{mission.description}</p>
         </div>
-        <div className="flex items-center justify-center gap-4 text-xs font-orbitron text-muted-foreground">
+        <div className="flex items-center justify-center gap-4 text-xs font-orbitron font-semibold text-muted-foreground">
           <span>{mission.questions} questions</span>
           <span>~{Math.max(1, Math.round(mission.questions * 0.5))} min</span>
           <span className="text-primary">+{mission.xp} XP</span>

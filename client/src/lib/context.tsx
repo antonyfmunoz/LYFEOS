@@ -496,13 +496,18 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
                 }
               }
               
+              const isOnboarding = window.location.pathname.replace(/\/+$/, '') === '/onboarding';
               const effectiveColor = dbStats.primaryColor || localStorage.getItem('lyfeos-primary-color');
               if (effectiveColor && effectiveColor !== '#ffffff') {
-                const isOnboarding = window.location.pathname.replace(/\/+$/, '') === '/onboarding';
                 if (!isOnboarding) {
                   applyPrimaryColor(effectiveColor);
                 }
                 localStorage.setItem('lyfeos-primary-color', effectiveColor);
+              } else if (isOnboarding) {
+                const savedColor = localStorage.getItem('lyfeos-primary-color');
+                if (savedColor && savedColor !== '#ffffff') {
+                  applyPrimaryColor(savedColor);
+                }
               }
               
               if (dbStats.aiAssistantName) {
