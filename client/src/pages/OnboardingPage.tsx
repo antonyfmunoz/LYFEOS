@@ -598,7 +598,7 @@ function ScenarioSelect({
 export default function OnboardingPage() {
   usePageTitle("Onboarding");
   const { user, isLoading: authLoading, completeRegistration, getPendingPassword, refreshUser } = useAuth();
-  const { quests, refetchQuests, updateUserStats } = useLYFEOS();
+  const { quests, refetchQuests, updateUserStats, setPrimaryColor } = useLYFEOS();
   const [, navigate] = useLocation();
 
   const pendingReg = sessionStorage.getItem("lyfeos-pending-registration");
@@ -1130,8 +1130,7 @@ export default function OnboardingPage() {
       setCurrentStep(currentStep + 1);
     } else {
       if (currentMission === 0 && selectedThemeColor) {
-        localStorage.setItem('lyfeos-primary-color', selectedThemeColor);
-        applyPrimaryColor(selectedThemeColor);
+        setPrimaryColor(selectedThemeColor);
       }
       setShowMissionComplete(true);
       Promise.all([
@@ -1604,7 +1603,6 @@ export default function OnboardingPage() {
                   style={{ backgroundColor: color.hex }}
                   onClick={() => {
                     setSelectedThemeColor(color.hex);
-                    localStorage.setItem('lyfeos-primary-color', color.hex);
                     applyPrimaryColor(color.hex);
                   }}
                 >
