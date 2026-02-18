@@ -43,11 +43,26 @@ if (firebaseProjectIdForProxy) {
     secure: true,
     pathRewrite: (path) => `/__/auth${path}`,
     on: {
-      proxyReq: (proxyReq) => {
+      proxyReq: (proxyReq, req) => {
+        log(`Firebase proxy: ${req.method} ${req.url}`);
         proxyReq.removeHeader('x-forwarded-host');
         proxyReq.removeHeader('x-forwarded-for');
         proxyReq.removeHeader('x-forwarded-port');
         proxyReq.setHeader('x-forwarded-proto', 'https');
+      },
+      proxyRes: (proxyRes, req) => {
+        log(`Firebase proxy response: ${proxyRes.statusCode} for ${req.url}`);
+        delete proxyRes.headers['cross-origin-opener-policy'];
+        delete proxyRes.headers['cross-origin-embedder-policy'];
+        delete proxyRes.headers['cross-origin-resource-policy'];
+        delete proxyRes.headers['x-frame-options'];
+        delete proxyRes.headers['content-security-policy'];
+        proxyRes.headers['access-control-allow-origin'] = '*';
+        proxyRes.headers['access-control-allow-methods'] = 'GET, POST, OPTIONS';
+        proxyRes.headers['access-control-allow-headers'] = 'Content-Type, Authorization';
+      },
+      error: (err, req, res) => {
+        log(`Firebase proxy error: ${err.message} for ${req.url}`);
       },
     },
   }));
