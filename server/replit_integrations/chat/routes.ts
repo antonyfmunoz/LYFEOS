@@ -697,6 +697,19 @@ const tools: Anthropic.Messages.Tool[] = [
       },
       required: ["query"]
     }
+  },
+  {
+    name: "suggest_reflection_prompts",
+    description: "Generate personalized reflection prompts for the user based on their profile, goals, values, and current life situation. Use when user says 'suggest reflection prompts', 'change my reflection questions', 'give me new reflection prompts', 'update my reflection prompts'. This will update the 3 reflection prompts shown in the Reflection widget on the dashboard.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        prompt1: { type: "string", description: "First reflection prompt question" },
+        prompt2: { type: "string", description: "Second reflection prompt question" },
+        prompt3: { type: "string", description: "Third reflection prompt question" }
+      },
+      required: ["prompt1", "prompt2", "prompt3"]
+    }
   }
 ];
 
@@ -806,6 +819,20 @@ async function executeTool(toolName: string, input: any, userId: number): Promis
         await storage.updateUserProfile(userId, profileUpdates);
         const fields = Object.keys(profileUpdates).join(", ");
         return JSON.stringify({ success: true, action: "update_profile", message: `Profile updated: ${fields}` });
+      }
+
+      case "suggest_reflection_prompts": {
+        const customReflectionPrompts = {
+          wentWell: input.prompt1,
+          couldBeBetter: input.prompt2,
+          learned: input.prompt3
+        };
+        await storage.updateUserProfile(userId, { customReflectionPrompts } as any);
+        return JSON.stringify({ 
+          success: true, 
+          action: "suggest_reflection_prompts", 
+          message: `Reflection prompts updated! Your new prompts are:\n1. ${input.prompt1}\n2. ${input.prompt2}\n3. ${input.prompt3}\n\nRefresh the dashboard to see them in your Reflection widget.`
+        });
       }
 
       case "create_calendar_event": {

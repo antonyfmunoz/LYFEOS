@@ -4,7 +4,7 @@ import {
   Calendar, BarChart, CalendarDays, Clock, Brain, AlarmClock, 
   MoonStar, Smile, HeartPulse, Book, BookOpen, ListChecks, 
   Zap, Target as TargetIcon, ChevronDown, Check, Search, FileText, Play, Link2,
-  Plus, Archive, ChevronUp
+  Plus, Archive, ChevronUp, Pencil, X
 } from 'lucide-react';
 import { useLYFEOS, type ResearchEntry } from '@/lib/context';
 import { useAuth } from '@/lib/authContext';
@@ -178,6 +178,37 @@ export default function DashboardPage() {
   const { user, isAuthenticated, registerPreLogoutCallback, unregisterPreLogoutCallback } = useAuth();
   const { toast } = useToast();
   
+  // Custom reflection prompts
+  const defaultPrompts = {
+    wentWell: "What went well today?",
+    couldBeBetter: "What could have been better?",
+    learned: "What did I learn?"
+  };
+  const { data: profileForPrompts } = useQuery<any>({
+    queryKey: ["/api/profile"],
+    enabled: isAuthenticated && !!user,
+    staleTime: 60000,
+  });
+  const reflectionPrompts = profileForPrompts?.customReflectionPrompts || defaultPrompts;
+  const [editingPrompt, setEditingPrompt] = useState<string | null>(null);
+  const [editingPromptValue, setEditingPromptValue] = useState("");
+
+  const saveReflectionPrompt = useCallback(async (field: string, value: string) => {
+    if (!value.trim()) return;
+    const updated = { ...reflectionPrompts, [field]: value.trim() };
+    try {
+      await apiRequest("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customReflectionPrompts: updated }),
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+    } catch (e) {
+      console.error("Failed to save reflection prompt", e);
+    }
+    setEditingPrompt(null);
+  }, [reflectionPrompts]);
+
   // Level-up modal state
   const [isLevelUpModalOpen, setIsLevelUpModalOpen] = useState(false);
   
@@ -1022,52 +1053,74 @@ export default function DashboardPage() {
   // Render widget content dynamically based on id
   const renderWidgetContent = (widgetId: string) => {
     switch (widgetId) {
-      case 'reflection-log':
+      case 'reflection-log': {
+        const promptFields = [
+          { key: "wentWell", icon: Smile, placeholder: "Capture your wins, positive moments, and things you're proud of..." },
+          { key: "couldBeBetter", icon: TargetIcon, placeholder: "Areas for improvement, challenges faced, or things to do differently..." },
+          { key: "learned", icon: Brain, placeholder: "Key insights, lessons, or realizations from today..." },
+        ];
         return (
           <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm flex items-center text-[#7DAAB2]">
-                <Smile className="h-4 w-4 text-primary" />
-                <span className="ml-2">What went well today?</span>
-              </label>
-              <MarkdownEditor
-                placeholder="Capture your wins, positive moments, and things you're proud of..."
-                value={reflection.wentWell}
-                onChange={(value) => updateReflection("wentWell", value)}
-                onBlur={handleBlurSave}
-                minHeight="80px"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm flex items-center text-[#7DAAB2]">
-                <TargetIcon className="h-4 w-4 text-primary" />
-                <span className="ml-2">What could have been better?</span>
-              </label>
-              <MarkdownEditor
-                placeholder="Areas for improvement, challenges faced, or things to do differently..."
-                value={reflection.couldBeBetter}
-                onChange={(value) => updateReflection("couldBeBetter", value)}
-                onBlur={handleBlurSave}
-                minHeight="80px"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm flex items-center text-[#7DAAB2]">
-                <Brain className="h-4 w-4 text-primary" />
-                <span className="ml-2">What did I learn?</span>
-              </label>
-              <MarkdownEditor
-                placeholder="Key insights, lessons, or realizations from today..."
-                value={reflection.learned}
-                onChange={(value) => updateReflection("learned", value)}
-                onBlur={handleBlurSave}
-                minHeight="80px"
-              />
-            </div>
+            {promptFields.map(({ key, icon: Icon, placeholder }) => (
+              <div key={key} className="space-y-2">
+                <label className="text-sm flex items-center text-[#7DAAB2]">
+                  <Icon className="h-4 w-4 text-primary" />
+                  {editingPrompt === key ? (
+                    <div className="ml-2 flex items-center gap-1 flex-1">
+                      <input
+                        type="text"
+                        value={editingPromptValue}
+                        onChange={(e) => setEditingPromptValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveReflectionPrompt(key, editingPromptValue);
+                          if (e.key === 'Escape') setEditingPrompt(null);
+                        }}
+                        autoFocus
+                        className="bg-transparent border border-primary/30 rounded px-2 py-0.5 text-sm text-foreground outline-none focus:border-primary/60 flex-1 min-w-0"
+                      />
+                      <button
+                        onClick={() => saveReflectionPrompt(key, editingPromptValue)}
+                        className="p-1 text-[#36F1CD] hover:bg-[#36F1CD]/10 rounded transition-colors"
+                        title="Save"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setEditingPrompt(null)}
+                        className="p-1 text-red-400 hover:bg-red-400/10 rounded transition-colors"
+                        title="Cancel"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="ml-2">{reflectionPrompts[key as keyof typeof reflectionPrompts] || defaultPrompts[key as keyof typeof defaultPrompts]}</span>
+                      <button
+                        onClick={() => {
+                          setEditingPrompt(key);
+                          setEditingPromptValue(reflectionPrompts[key as keyof typeof reflectionPrompts] || defaultPrompts[key as keyof typeof defaultPrompts]);
+                        }}
+                        className="ml-1.5 p-1 text-muted-foreground/50 hover:text-primary rounded transition-colors"
+                        title="Edit prompt"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                    </>
+                  )}
+                </label>
+                <MarkdownEditor
+                  placeholder={placeholder}
+                  value={(reflection as any)[key]}
+                  onChange={(value) => updateReflection(key as keyof DailyReflection, value)}
+                  onBlur={handleBlurSave}
+                  minHeight="80px"
+                />
+              </div>
+            ))}
           </div>
         );
+      }
       case 'data-entry-log':
         return (
           <div className="space-y-4">

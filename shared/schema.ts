@@ -213,6 +213,13 @@ export const userProfile = pgTable("user_profile", {
   // === CHARACTER AFFIRMATION ===
   characterAffirmation: text("character_affirmation"), // AI-generated third-person narrative
   
+  // === CUSTOM REFLECTION PROMPTS ===
+  customReflectionPrompts: jsonb("custom_reflection_prompts").default({
+    wentWell: "What went well today?",
+    couldBeBetter: "What could have been better?",
+    learned: "What did I learn?"
+  }),
+
   // === DISPLAY SETTINGS ===
   blueLightFilter: boolean("blue_light_filter").default(false),
 
