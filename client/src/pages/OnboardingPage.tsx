@@ -681,6 +681,12 @@ export default function OnboardingPage() {
   const [selectedThemeColor, setSelectedThemeColor] = useState("#ffffff");
 
   useEffect(() => {
+    const isPendingRegistration = !!sessionStorage.getItem("lyfeos-pending-registration");
+    if (isPendingRegistration) {
+      localStorage.removeItem('lyfeos-primary-color');
+      applyPrimaryColor("#ffffff");
+      return;
+    }
     const savedColor = localStorage.getItem('lyfeos-primary-color');
     if (savedColor && savedColor !== '#ffffff') {
       applyPrimaryColor(savedColor);

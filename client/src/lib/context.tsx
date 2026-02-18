@@ -473,6 +473,14 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
                 }
               }
               
+              const isOnboardingPage = window.location.pathname.replace(/\/+$/, '') === '/onboarding';
+              if (isOnboardingPage) {
+                const currentColor = localStorage.getItem('lyfeos-primary-color');
+                if (currentColor && currentColor !== '#ffffff') {
+                  dbStats = { ...dbStats, primaryColor: currentColor };
+                }
+              }
+              
               setStats(dbStats);
               
               if (dbStats.streakDays > 1 && !streakToastFired.current) {
@@ -497,16 +505,11 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
               }
               
               const isOnboarding = window.location.pathname.replace(/\/+$/, '') === '/onboarding';
-              const effectiveColor = dbStats.primaryColor || localStorage.getItem('lyfeos-primary-color');
-              if (effectiveColor && effectiveColor !== '#ffffff') {
-                if (!isOnboarding) {
+              if (!isOnboarding) {
+                const effectiveColor = dbStats.primaryColor || localStorage.getItem('lyfeos-primary-color');
+                if (effectiveColor && effectiveColor !== '#ffffff') {
                   applyPrimaryColor(effectiveColor);
-                }
-                localStorage.setItem('lyfeos-primary-color', effectiveColor);
-              } else if (isOnboarding) {
-                const savedColor = localStorage.getItem('lyfeos-primary-color');
-                if (savedColor && savedColor !== '#ffffff') {
-                  applyPrimaryColor(savedColor);
+                  localStorage.setItem('lyfeos-primary-color', effectiveColor);
                 }
               }
               
