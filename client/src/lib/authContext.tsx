@@ -135,17 +135,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Firebase auth state listener
+  const firebaseUserRef = React.useRef<FirebaseUser | null>(null);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUserData) => {
       console.log("Firebase auth state changed:", firebaseUserData);
       setFirebaseUser(firebaseUserData);
-      
-      // If Firebase user exists but we don't have a server-side user yet,
-      // we'll handle that later with loginWithGoogle
+      firebaseUserRef.current = firebaseUserData;
     });
     
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, []);
 
@@ -166,22 +164,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
         
+        const staleTs = localStorage.getItem('lyfeos-oauth-mode-ts');
+        if (staleTs && Date.now() - Number(staleTs) > 10 * 60 * 1000) {
+          console.log("Cleaning up stale OAuth state");
+          localStorage.removeItem('lyfeos-oauth-mode');
+          localStorage.removeItem('lyfeos-oauth-mode-ts');
+          localStorage.removeItem('lyfeos-oauth-redirect-pending');
+        }
+        
         const redirectPending = localStorage.getItem('lyfeos-oauth-redirect-pending');
         if (redirectPending) {
-          console.log("Checking OAuth redirect result for:", redirectPending);
-          try {
-            const redirectResult = await checkRedirectResult();
-            if (redirectResult && redirectResult.user) {
-              console.log("OAuth redirect successful, processing result");
-              const savedMode = localStorage.getItem('lyfeos-oauth-mode') as 'login' | 'register' | null;
-              localStorage.removeItem('lyfeos-oauth-mode');
-              await processOAuthResult(redirectResult, savedMode || 'login');
-              return;
-            }
-          } catch (err) {
-            console.error("OAuth redirect processing failed:", err);
+          const modeTs = localStorage.getItem('lyfeos-oauth-mode-ts');
+          if (modeTs && Date.now() - Number(modeTs) > 10 * 60 * 1000) {
+            console.log("Stale OAuth mode detected, clearing");
             localStorage.removeItem('lyfeos-oauth-redirect-pending');
             localStorage.removeItem('lyfeos-oauth-mode');
+            localStorage.removeItem('lyfeos-oauth-mode-ts');
+          } else {
+            console.log("Checking OAuth redirect result for:", redirectPending);
+            try {
+              const redirectResult = await checkRedirectResult();
+              if (redirectResult && redirectResult.user) {
+                console.log("OAuth redirect successful, processing result");
+                const savedMode = localStorage.getItem('lyfeos-oauth-mode') as 'login' | 'register' | null;
+                localStorage.removeItem('lyfeos-oauth-mode');
+                localStorage.removeItem('lyfeos-oauth-mode-ts');
+                await processOAuthResult(redirectResult, savedMode || 'login');
+                return;
+              }
+              
+              console.log("getRedirectResult returned null, checking Firebase auth state fallback...");
+              let firebaseUserFromState = auth.currentUser || firebaseUserRef.current;
+              if (!firebaseUserFromState) {
+                firebaseUserFromState = await new Promise<FirebaseUser | null>((resolve) => {
+                  const timeout = setTimeout(() => resolve(null), 3000);
+                  const unsub = onAuthStateChanged(auth, (fbUser) => {
+                    clearTimeout(timeout);
+                    unsub();
+                    resolve(fbUser);
+                  });
+                });
+              }
+              
+              if (firebaseUserFromState) {
+                console.log("Firebase auth state has user after redirect, using fallback:", firebaseUserFromState.email);
+                const savedMode = localStorage.getItem('lyfeos-oauth-mode') as 'login' | 'register' | null;
+                localStorage.removeItem('lyfeos-oauth-mode');
+                localStorage.removeItem('lyfeos-oauth-mode-ts');
+                localStorage.removeItem('lyfeos-oauth-redirect-pending');
+                const syntheticResult = { user: firebaseUserFromState } as any;
+                await processOAuthResult(syntheticResult, savedMode || 'login');
+                return;
+              }
+              
+              console.log("No Firebase user found after redirect, clearing redirect state");
+              localStorage.removeItem('lyfeos-oauth-redirect-pending');
+              localStorage.removeItem('lyfeos-oauth-mode');
+              localStorage.removeItem('lyfeos-oauth-mode-ts');
+            } catch (err) {
+              console.error("OAuth redirect processing failed:", err);
+              localStorage.removeItem('lyfeos-oauth-redirect-pending');
+              localStorage.removeItem('lyfeos-oauth-mode');
+              localStorage.removeItem('lyfeos-oauth-mode-ts');
+            }
           }
         }
 
@@ -604,13 +649,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("lyfeos-onboarding-resume");
       localStorage.removeItem("lyfeos-continued-past-mission0");
       sessionStorage.removeItem("lyfeos-pending-registration");
-      if (mode === 'register') {
-        localStorage.setItem('lyfeos-oauth-mode', 'register');
-      }
+      localStorage.setItem('lyfeos-oauth-mode', mode);
+      localStorage.setItem('lyfeos-oauth-mode-ts', String(Date.now()));
       const result = await signInWithGoogle();
-      await processOAuthResult(result, mode);
+      if (result) {
+        await processOAuthResult(result, mode);
+        localStorage.removeItem('lyfeos-oauth-mode');
+        localStorage.removeItem('lyfeos-oauth-mode-ts');
+      }
     } catch (error: any) {
       console.error("Google login error:", error?.code, error?.message, error);
+      localStorage.removeItem('lyfeos-oauth-mode');
+      localStorage.removeItem('lyfeos-oauth-mode-ts');
       const errorDetail = error?.code
         ? `${error.code}: ${error.message || 'Unknown'}`
         : error?.message || String(error);
@@ -621,7 +671,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     } finally {
       setIsLoading(false);
-      localStorage.removeItem('lyfeos-oauth-mode');
     }
   };
   
@@ -633,13 +682,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("lyfeos-onboarding-resume");
       localStorage.removeItem("lyfeos-continued-past-mission0");
       sessionStorage.removeItem("lyfeos-pending-registration");
-      if (mode === 'register') {
-        localStorage.setItem('lyfeos-oauth-mode', 'register');
-      }
+      localStorage.setItem('lyfeos-oauth-mode', mode);
+      localStorage.setItem('lyfeos-oauth-mode-ts', String(Date.now()));
       const result = await signInWithApple();
-      await processOAuthResult(result, mode);
+      if (result) {
+        await processOAuthResult(result, mode);
+        localStorage.removeItem('lyfeos-oauth-mode');
+        localStorage.removeItem('lyfeos-oauth-mode-ts');
+      }
     } catch (error: any) {
       console.error("Apple login error:", error?.code, error?.message, error);
+      localStorage.removeItem('lyfeos-oauth-mode');
+      localStorage.removeItem('lyfeos-oauth-mode-ts');
       const errorDetail = error?.code
         ? `${error.code}: ${error.message || 'Unknown'}`
         : error?.message || String(error);
@@ -650,7 +704,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     } finally {
       setIsLoading(false);
-      localStorage.removeItem('lyfeos-oauth-mode');
     }
   };
 
