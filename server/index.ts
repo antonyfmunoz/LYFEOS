@@ -41,12 +41,13 @@ if (firebaseProjectIdForProxy) {
     target: `https://${firebaseProjectIdForProxy}.firebaseapp.com`,
     changeOrigin: true,
     secure: true,
-    headers: {
-      'X-Forwarded-Host': '',
-    },
+    pathRewrite: (path) => `/__/auth${path}`,
     on: {
-      proxyReq: (proxyReq, req) => {
-        proxyReq.setHeader('X-Forwarded-Host', req.headers.host || '');
+      proxyReq: (proxyReq) => {
+        proxyReq.removeHeader('x-forwarded-host');
+        proxyReq.removeHeader('x-forwarded-for');
+        proxyReq.removeHeader('x-forwarded-proto');
+        proxyReq.removeHeader('x-forwarded-port');
       },
     },
   }));
