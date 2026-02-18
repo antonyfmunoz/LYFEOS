@@ -1236,10 +1236,11 @@ export default function OnboardingPage() {
       
       const minDelay = new Promise(resolve => setTimeout(resolve, 2500));
       const affirmationTimeout = new Promise(resolve => setTimeout(resolve, 15000));
-      const affirmationWork = apiRequest("/api/profile", {
+      apiRequest("/api/profile", {
         method: "PATCH",
         body: JSON.stringify({ onboardingCompleted: true }),
-      }).then(() => generateAffirmationRequest()).catch(err => console.error("Error generating affirmation:", err));
+      }).catch(err => console.error("Error saving onboarding completed:", err));
+      const affirmationWork = generateAffirmationRequest().catch(err => console.error("Error generating affirmation:", err));
       
       await Promise.all([minDelay, Promise.race([affirmationWork, affirmationTimeout])]);
       setIsLoading(false);
@@ -1294,10 +1295,11 @@ export default function OnboardingPage() {
       
       const minDelaySkip = new Promise(resolve => setTimeout(resolve, 2500));
       const affirmationTimeoutSkip = new Promise(resolve => setTimeout(resolve, 15000));
-      const affirmationWorkSkip = apiRequest("/api/profile", {
+      apiRequest("/api/profile", {
         method: "PATCH",
         body: JSON.stringify({ onboardingCompleted: true }),
-      }).then(() => generateAffirmationRequest()).catch(err => console.error("Error generating affirmation:", err));
+      }).catch(err => console.error("Error saving onboarding completed:", err));
+      const affirmationWorkSkip = generateAffirmationRequest().catch(err => console.error("Error generating affirmation:", err));
       
       await Promise.all([minDelaySkip, Promise.race([affirmationWorkSkip, affirmationTimeoutSkip])]);
       setIsLoading(false);
@@ -1313,10 +1315,11 @@ export default function OnboardingPage() {
       
       const minDelayFinal = new Promise(resolve => setTimeout(resolve, 2500));
       const affirmationTimeoutFinal = new Promise(resolve => setTimeout(resolve, 15000));
-      const affirmationWorkFinal = apiRequest("/api/profile", {
+      apiRequest("/api/profile", {
         method: "PATCH",
         body: JSON.stringify({ onboardingCompleted: true }),
-      }).then(() => generateAffirmationRequest()).catch(err => console.error("Error generating affirmation:", err));
+      }).catch(err => console.error("Error saving onboarding completed:", err));
+      const affirmationWorkFinal = generateAffirmationRequest().catch(err => console.error("Error generating affirmation:", err));
       
       await Promise.all([minDelayFinal, Promise.race([affirmationWorkFinal, affirmationTimeoutFinal])]);
       setIsLoading(false);
@@ -1501,18 +1504,31 @@ export default function OnboardingPage() {
       body.lockedHabit = lockedHabit;
     }
 
-    const affirmationData = await apiRequest<{ affirmation: string }>("/api/profile/generate-affirmation", {
-      method: "POST",
-      body: JSON.stringify(body),
-    });
-    
-    await apiRequest("/api/profile", {
-      method: "PATCH",
-      body: JSON.stringify({
-        characterAffirmation: affirmationData.affirmation,
-      }),
-    });
-    queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+    let lastError: any;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        if (attempt > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        }
+        const affirmationData = await apiRequest<{ affirmation: string }>("/api/profile/generate-affirmation", {
+          method: "POST",
+          body: JSON.stringify(body),
+        });
+        
+        await apiRequest("/api/profile", {
+          method: "PATCH",
+          body: JSON.stringify({
+            characterAffirmation: affirmationData.affirmation,
+          }),
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+        return;
+      } catch (err) {
+        lastError = err;
+        console.warn(`Affirmation generation attempt ${attempt + 1} failed:`, err);
+      }
+    }
+    throw lastError;
   };
 
 

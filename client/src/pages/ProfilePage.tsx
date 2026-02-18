@@ -661,40 +661,35 @@ export default function ProfilePage() {
     return String(val) || "—";
   };
 
-  // Generate Character Affirmation
+  const generateAffirmationCore = async () => {
+    const profile = userProfileData as any;
+    const { affirmation } = await apiRequest<{ affirmation: string }>("/api/profile/generate-affirmation", {
+      method: "POST",
+      body: JSON.stringify({
+        displayName: profileData.displayName || username,
+        archetypePrimary: profile?.archetypePrimary,
+        archetypeSecondary: profile?.archetypeSecondary,
+        coreValues: profile?.primaryValues,
+        vision5Year: profile?.vision5Year,
+        primaryCraft: profile?.primaryCraft,
+        desiredEmotion: profile?.desiredEmotion,
+      }),
+    });
+    
+    await apiRequest("/api/profile", {
+      method: "PATCH",
+      body: JSON.stringify({ characterAffirmation: affirmation }),
+    });
+    
+    queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+  };
+
   const handleGenerateAffirmation = async () => {
     if (!userProfileData || isGeneratingAffirmation) return;
     
     setIsGeneratingAffirmation(true);
     try {
-      const response = await fetch("/api/profile/generate-affirmation", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          displayName: profileData.displayName || username,
-          archetypePrimary: (userProfileData as any).archetypePrimary,
-          archetypeSecondary: (userProfileData as any).archetypeSecondary,
-          coreValues: (userProfileData as any).primaryValues,
-          vision5Year: (userProfileData as any).vision5Year,
-          primaryCraft: (userProfileData as any).primaryCraft,
-          desiredEmotion: (userProfileData as any).desiredEmotion,
-        }),
-      });
-      
-      if (!response.ok) throw new Error("Failed to generate affirmation");
-      
-      const { affirmation } = await response.json();
-      
-      // Save the affirmation to the profile
-      await fetch("/api/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ characterAffirmation: affirmation }),
-      });
-      
-      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      await generateAffirmationCore();
     } catch (error) {
       console.error("Error generating affirmation:", error);
       toast({
@@ -706,6 +701,20 @@ export default function ProfilePage() {
       setIsGeneratingAffirmation(false);
     }
   };
+
+  const autoGenerateTriggered = useRef(false);
+  useEffect(() => {
+    if (autoGenerateTriggered.current) return;
+    if (isProfileSchemaLoading || !userProfileData) return;
+    const profile = userProfileData as any;
+    if (profile.characterAffirmation) return;
+    if (!profile.onboardingCompleted && !(profile.completedOnboardingMissions?.length > 0)) return;
+    autoGenerateTriggered.current = true;
+    setIsGeneratingAffirmation(true);
+    generateAffirmationCore()
+      .catch(err => console.warn("Auto-generate affirmation failed:", err))
+      .finally(() => setIsGeneratingAffirmation(false));
+  }, [isProfileSchemaLoading, userProfileData]);
 
   // Render Player Record with 9 sections
   const renderPlayerRecord = () => {
