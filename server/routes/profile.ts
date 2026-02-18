@@ -265,7 +265,7 @@ export function registerProfileRoutes(app: Express): void {
   // Generate Character Affirmation using AI
   app.post("/api/profile/generate-affirmation", isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const { displayName, archetypePrimary, archetypeSecondary, coreValues, vision5Year, primaryCraft, desiredEmotion, mode, location, ageRange } = req.body;
+      const { displayName, archetypePrimary, archetypeSecondary, coreValues, vision5Year, primaryCraft, desiredEmotion, mode } = req.body;
       
       const anthropic = new Anthropic({
         apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
@@ -275,20 +275,24 @@ export function registerProfileRoutes(app: Express): void {
       let prompt: string;
       
       if (mode === "basic") {
-        prompt = `Generate a short, welcoming character affirmation (80-120 words) for a person named "${displayName}".${location ? ` They are based in ${location}.` : ""}${ageRange ? ` Age range: ${ageRange}.` : ""} Write in second person, speaking directly to them using "you" and "your".
+        prompt = `Generate a short, welcoming character affirmation (80-120 words) for a person named "${displayName}". Write in second person, speaking directly to them using "you" and "your".
 
-This is an introductory affirmation for someone just beginning their personal growth journey. Keep it warm, encouraging, and forward-looking. Do NOT include any title, header, or greeting line — start directly with the affirmation content itself.
+IMPORTANT: Use their full name "${displayName}" repeatedly throughout the affirmation (at least 3 times). Address them by name to make it deeply personal.
+
+This is an introductory affirmation for someone just beginning their personal growth journey. Keep it warm, encouraging, and forward-looking. Do NOT include any title, header, or greeting line — start directly with the affirmation content itself. Do NOT mention their location or where they live.
 
 Tone: Warm, welcoming, and empowering. Acknowledge their decision to begin this journey and affirm their potential. Do NOT use any emojis.
 
 Example style:
-"You are stepping into a new chapter of intentional living. Your decision to take control of your growth speaks volumes about who you are..."
+"${displayName}, you are stepping into a new chapter of intentional living. Your decision to take control of your growth speaks volumes about who you are, ${displayName}..."
 
 Generate the complete affirmation now:`;
       } else {
         prompt = `Generate a powerful character affirmation (200-300 words) for a person named "${displayName}". Write in second person, speaking directly to them using "you" and "your".
 
-The affirmation should be written as if you are speaking directly to this person about who they are — powerful, certain, and declarative. Do NOT include any title, header, or greeting line like "# Your Affirmation" — start directly with the affirmation content itself.
+IMPORTANT: Use their full name "${displayName}" repeatedly throughout the affirmation (at least 5 times). Address them by name to make it deeply personal and powerful.
+
+The affirmation should be written as if you are speaking directly to this person about who they are — powerful, certain, and declarative. Do NOT include any title, header, or greeting line like "# Your Affirmation" — start directly with the affirmation content itself. Do NOT mention their location or where they live.
 
 Key details about this person:
 - Primary Archetype: ${archetypePrimary} (their dominant energy and approach to life)
@@ -299,7 +303,7 @@ Key details about this person:
 - Desired Emotion: ${desiredEmotion || "flow"}
 
 Structure the affirmation as:
-1. Opening identity statement (who you are at your core)
+1. Opening identity statement using their name (who you are at your core)
 2. Your values and how you embody them
 3. Your vision and what you're creating
 4. Your strengths and traits
@@ -308,7 +312,7 @@ Structure the affirmation as:
 Tone: Powerful, certain, declarative (NOT aspirational). Write as if this is already who they are. Do NOT use any emojis.
 
 Example structure:
-"You are a sovereign creator of reality, aligned with vision, integrity, and growth. Each day, you expand in clarity, discipline, and creativity..."
+"${displayName}, you are a sovereign creator of reality, aligned with vision, integrity, and growth. Each day, ${displayName}, you expand in clarity, discipline, and creativity..."
 
 Generate the complete affirmation now:`;
       }

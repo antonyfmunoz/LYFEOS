@@ -681,7 +681,12 @@ export default function OnboardingPage() {
   const [selectedThemeColor, setSelectedThemeColor] = useState("#00e0ff");
 
   useEffect(() => {
-    applyPrimaryColor("#ffffff");
+    const savedColor = localStorage.getItem('lyfeos-primary-color');
+    if (savedColor && savedColor !== '#ffffff') {
+      applyPrimaryColor(savedColor);
+    } else {
+      applyPrimaryColor("#ffffff");
+    }
   }, []);
 
   useEffect(() => {
@@ -1178,12 +1183,13 @@ export default function OnboardingPage() {
         setIsLoading(true);
         setIsGeneratingAffirmation(true);
         
-        apiRequest("/api/profile", {
+        const minDelay = new Promise(resolve => setTimeout(resolve, 2500));
+        const affirmationWork = apiRequest("/api/profile", {
           method: "PATCH",
           body: JSON.stringify({ onboardingCompleted: false }),
         }).then(() => generateAffirmationRequest("basic")).catch(err => console.error("Error saving:", err));
         
-        await new Promise(resolve => setTimeout(resolve, 2500));
+        await Promise.all([minDelay, affirmationWork]);
         setIsLoading(false);
         setIsGeneratingAffirmation(false);
         navigate("/ceremony");
@@ -1220,12 +1226,13 @@ export default function OnboardingPage() {
       setIsLoading(true);
       setIsGeneratingAffirmation(true);
       
-      apiRequest("/api/profile", {
+      const minDelay0 = new Promise(resolve => setTimeout(resolve, 2500));
+      const affirmationWork0 = apiRequest("/api/profile", {
         method: "PATCH",
         body: JSON.stringify({ onboardingCompleted: allCompleted }),
       }).then(() => generateAffirmationRequest("basic")).catch(err => console.error("Error saving:", err));
       
-      await new Promise(resolve => setTimeout(resolve, 2500));
+      await Promise.all([minDelay0, affirmationWork0]);
       setIsLoading(false);
       setIsGeneratingAffirmation(false);
       navigate("/ceremony");
@@ -1236,12 +1243,13 @@ export default function OnboardingPage() {
       setIsLoading(true);
       setIsGeneratingAffirmation(true);
       
-      apiRequest("/api/profile", {
+      const minDelayFinal = new Promise(resolve => setTimeout(resolve, 2500));
+      const affirmationWorkFinal = apiRequest("/api/profile", {
         method: "PATCH",
         body: JSON.stringify({ onboardingCompleted: allCompleted }),
       }).then(() => generateAffirmationRequest("full")).catch(err => console.error("Error saving:", err));
       
-      await new Promise(resolve => setTimeout(resolve, 2500));
+      await Promise.all([minDelayFinal, affirmationWorkFinal]);
       setIsLoading(false);
       setIsGeneratingAffirmation(false);
       navigate("/ceremony");
@@ -1374,8 +1382,6 @@ export default function OnboardingPage() {
       body = {
         mode: "basic",
         displayName,
-        location,
-        ageRange: birthYear && birthMonth && birthDay ? ageToRange(calculateAge(birthYear, birthMonth, birthDay)) : "",
       };
     } else {
       const archetypeResults = getArchetypeResults();
