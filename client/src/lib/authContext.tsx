@@ -33,8 +33,8 @@ interface AuthContextType {
   register: (email: string, password: string, extraData?: { avatarColor?: string }) => Promise<void>;
   completeRegistration: (data: Record<string, any>) => Promise<{ id: number; username: string } | null>;
   logout: () => void;
-  loginWithGoogle: () => Promise<void>;
-  loginWithApple: () => Promise<void>;
+  loginWithGoogle: (mode?: 'login' | 'register') => Promise<void>;
+  loginWithApple: (mode?: 'login' | 'register') => Promise<void>;
   registerPreLogoutCallback: (callback: () => Promise<void> | void) => void;
   unregisterPreLogoutCallback: (callback: () => Promise<void> | void) => void;
   setPendingPassword: (password: string) => void;
@@ -65,16 +65,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     preLogoutCallbacksRef.current.delete(callback);
   }, []);
 
-  const processOAuthResult = async (result: any) => {
+  const processOAuthResult = async (result: any, mode: 'login' | 'register' = 'login') => {
     if (!result || !result.user) return;
     
-    const { displayName, email, uid, photoURL } = result.user;
-    console.log("Successfully signed in via OAuth:", { displayName, email, uid });
+    const { displayName, email, uid, photoURL, providerData } = result.user;
+    const provider = providerData?.[0]?.providerId === 'apple.com' ? 'apple' : 'google';
+    console.log("Successfully signed in via OAuth:", { displayName, email, uid, mode, provider });
     
     const response = await fetch("/api/auth/firebase", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uid, email, displayName, photoURL }),
+      body: JSON.stringify({ uid, email, displayName, photoURL, mode, provider }),
       credentials: "include"
     });
     
@@ -172,12 +173,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const redirectResult = await checkRedirectResult();
             if (redirectResult && redirectResult.user) {
               console.log("OAuth redirect successful, processing result");
-              await processOAuthResult(redirectResult);
+              const savedMode = localStorage.getItem('lyfeos-oauth-mode') as 'login' | 'register' | null;
+              localStorage.removeItem('lyfeos-oauth-mode');
+              await processOAuthResult(redirectResult, savedMode || 'login');
               return;
             }
           } catch (err) {
             console.error("OAuth redirect processing failed:", err);
             localStorage.removeItem('lyfeos-oauth-redirect-pending');
+            localStorage.removeItem('lyfeos-oauth-mode');
           }
         }
 
@@ -592,7 +596,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const loginWithGoogle = async () => {
+  const loginWithGoogle = async (mode: 'login' | 'register' = 'login') => {
     try {
       setIsLoading(true);
       localStorage.removeItem("lyfeos-primary-color");
@@ -600,8 +604,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("lyfeos-onboarding-resume");
       localStorage.removeItem("lyfeos-continued-past-mission0");
       sessionStorage.removeItem("lyfeos-pending-registration");
+      if (mode === 'register') {
+        localStorage.setItem('lyfeos-oauth-mode', 'register');
+      }
       const result = await signInWithGoogle();
-      await processOAuthResult(result);
+      await processOAuthResult(result, mode);
     } catch (error: any) {
       console.error("Google login error:", error?.code, error?.message, error);
       const errorDetail = error?.code
@@ -614,10 +621,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     } finally {
       setIsLoading(false);
+      localStorage.removeItem('lyfeos-oauth-mode');
     }
   };
   
-  const loginWithApple = async () => {
+  const loginWithApple = async (mode: 'login' | 'register' = 'login') => {
     try {
       setIsLoading(true);
       localStorage.removeItem("lyfeos-primary-color");
@@ -625,8 +633,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("lyfeos-onboarding-resume");
       localStorage.removeItem("lyfeos-continued-past-mission0");
       sessionStorage.removeItem("lyfeos-pending-registration");
+      if (mode === 'register') {
+        localStorage.setItem('lyfeos-oauth-mode', 'register');
+      }
       const result = await signInWithApple();
-      await processOAuthResult(result);
+      await processOAuthResult(result, mode);
     } catch (error: any) {
       console.error("Apple login error:", error?.code, error?.message, error);
       const errorDetail = error?.code
@@ -639,6 +650,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     } finally {
       setIsLoading(false);
+      localStorage.removeItem('lyfeos-oauth-mode');
     }
   };
 

@@ -518,8 +518,10 @@ export function registerAuthRoutes(app: Express): void {
 
   app.post("/api/auth/firebase", async (req: Request, res: Response) => {
     try {
-      const { uid, email, displayName, photoURL } = req.body;
-      logger.debug("Firebase auth attempt:", { uid, email, displayName });
+      const { uid, email, displayName, photoURL, mode, provider } = req.body;
+      const authMode = mode || 'login';
+      const authProvider = provider || 'google';
+      logger.debug("Firebase auth attempt:", { uid, email, displayName, mode: authMode, provider: authProvider });
       
       if (!uid || !email) {
         logger.debug("Firebase auth failed: Missing uid or email");
@@ -527,13 +529,78 @@ export function registerAuthRoutes(app: Express): void {
       }
       
       let user = await storage.getUserByEmail(email);
+      let isNewUser = false;
       
       if (!user) {
-        logger.debug("Firebase auth rejected: No registered account for email:", email);
-        return res.status(403).json({ 
-          error: "No account found with this email. Please register first before signing in with Google.",
-          code: "ACCOUNT_NOT_REGISTERED"
-        });
+        if (authMode === 'register') {
+          logger.debug("Firebase register mode: Creating new account for email:", email);
+          user = await storage.createUser({
+            username: null,
+            password: null,
+            displayName: displayName || null,
+            firstName: displayName?.split(' ')[0] || null,
+            lastName: displayName?.split(' ').slice(1).join(' ') || null,
+            title: "COMMANDER",
+            email: email,
+            authProvider: authProvider,
+            firebaseUid: uid,
+            termsAccepted: true
+          });
+
+          await storage.createUserStats({
+            userId: user.id,
+            experienceCurrent: 0,
+            experienceMax: 1000,
+            level: 1,
+            timeTokensCurrent: 100,
+            timeTokensMax: 100,
+            energyPointsCurrent: 100,
+            energyPointsMax: 100,
+            healthPointsCurrent: 100,
+            healthPointsMax: 100,
+            attentionTokensCurrent: 100,
+            attentionTokensMax: 100,
+            streakDays: 0,
+            efficiencyScore: 0,
+            aiAssistantName: "NOVA",
+            primaryColor: "#ffffff"
+          });
+
+          await storage.upsertUserProfile(user.id, {
+            startStage: "beginner",
+            targetArchetype: "architect",
+            flowStyle: "hyperfocus",
+            coreMotivation: "growth",
+            setupMissionStatus: "not_started",
+            primaryThemeColor: "#ffe03d",
+            onboardingCompleted: false
+          });
+
+          await storage.createUserIntegration({
+            userId: user.id,
+            appleHealthConnected: false,
+            googleCalendarConnected: false,
+            notionConnected: false
+          });
+
+          const today = formatLocalDate();
+          await storage.createUserDailyLog({
+            userId: user.id,
+            date: today,
+            yesterdayXp: 0,
+            todayPrimaryMission: "Get started with LYFEOS",
+            optionalBoostsShown: false
+          });
+
+          isNewUser = true;
+          logger.debug("New user created via Google OAuth with ID:", user.id);
+        } else {
+          logger.debug("Firebase login rejected: No registered account for email:", email);
+          return res.status(403).json({ 
+            error: "No account found with this email. Please register first before signing in with Google.",
+            code: "ACCOUNT_NOT_REGISTERED"
+          });
+        }
       } else {
         if (!user.firebaseUid) {
           await storage.updateUserFirebaseUid(user.id, uid);
@@ -557,14 +624,14 @@ export function registerAuthRoutes(app: Express): void {
       
       const fbUserStats = await storage.getUserStats(user.id);
       
-      logger.debug("Firebase login successful for user:", user.username, "onboardingCompleted:", onboardingCompleted);
+      logger.debug("Firebase auth successful for user:", user.username, "isNewUser:", isNewUser, "onboardingCompleted:", onboardingCompleted);
       return res.status(200).json({ 
         user: { 
           id: user.id, 
           username: user.username,
           displayName: user.displayName 
         },
-        isNewUser: false,
+        isNewUser: isNewUser,
         onboardingCompleted: onboardingCompleted,
         primaryColor: fbUserStats?.primaryColor || "#00e0ff"
       });

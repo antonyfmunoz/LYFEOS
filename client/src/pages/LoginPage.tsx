@@ -55,7 +55,7 @@ export default function LoginPage() {
         <div className="space-y-2.5 mb-5">
           <button
             type="button"
-            onClick={() => loginWithGoogle()}
+            onClick={() => loginWithGoogle('login')}
             className="w-full flex items-center justify-center gap-3 py-2.5 rounded border text-sm font-medium transition-colors hover:opacity-80"
             style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderColor: accent?.border30 || 'rgba(255,255,255,0.2)' }}
           >
