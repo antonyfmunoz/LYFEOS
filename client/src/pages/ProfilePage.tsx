@@ -309,7 +309,7 @@ export default function ProfilePage() {
       }
       if (profileHasAffirmation.current) return false;
       if (data?.onboardingCompleted || (data?.completedOnboardingMissions?.length > 0)) {
-        return 3000;
+        return 1500;
       }
       return false;
     },
@@ -325,8 +325,17 @@ export default function ProfilePage() {
   const [isGeneratingAffirmation, setIsGeneratingAffirmation] = useState(false);
   const [isPlayingAffirmation, setIsPlayingAffirmation] = useState(false);
   const [isLoopingAffirmation, setIsLoopingAffirmation] = useState(false);
+  const [affirmationTimedOut, setAffirmationTimedOut] = useState(false);
   const loopingRef = React.useRef(false);
   const affirmationTextRef = React.useRef("");
+
+  useEffect(() => {
+    const profile = userProfileData as any;
+    if (profile?.completedOnboardingMissions?.length > 0 && !profile?.characterAffirmation && !profileHasAffirmation.current) {
+      const timer = setTimeout(() => setAffirmationTimedOut(true), 30000);
+      return () => clearTimeout(timer);
+    }
+  }, [userProfileData]);
 
   useEffect(() => {
     loopingRef.current = isLoopingAffirmation;
@@ -943,6 +952,21 @@ export default function ProfilePage() {
               </button>
             </div>
           </>
+        ) : profile?.completedOnboardingMissions?.length > 0 && !profileHasAffirmation.current && !affirmationTimedOut ? (
+          <div className="p-4 bg-card/50 rounded-lg border border-primary/20 mb-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+              <span className="text-xs font-mono text-primary/80">Generating your affirmation...</span>
+            </div>
+            <div className="space-y-2">
+              <div className="h-3 bg-primary/10 rounded animate-pulse" style={{ width: '95%' }} />
+              <div className="h-3 bg-primary/10 rounded animate-pulse" style={{ width: '88%', animationDelay: '0.1s' }} />
+              <div className="h-3 bg-primary/10 rounded animate-pulse" style={{ width: '92%', animationDelay: '0.2s' }} />
+              <div className="h-3 bg-primary/10 rounded animate-pulse" style={{ width: '70%', animationDelay: '0.3s' }} />
+              <div className="h-3 bg-primary/10 rounded animate-pulse" style={{ width: '85%', animationDelay: '0.4s' }} />
+              <div className="h-3 bg-primary/10 rounded animate-pulse" style={{ width: '78%', animationDelay: '0.5s' }} />
+            </div>
+          </div>
         ) : (
           <div className="text-center">
             <Sparkles className="h-8 w-8 text-primary/50 mx-auto mb-3" />
