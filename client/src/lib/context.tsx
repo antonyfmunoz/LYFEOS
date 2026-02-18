@@ -371,8 +371,17 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const [computedStats, setComputedStats] = useState<any>(null);
   
   // Function to update user stats
+  const DEFAULT_COLORS = ["#00e0ff", "#ffffff", "#ffe03d"];
+  
   const updateUserStats = (newStats: UserStats) => {
-    setStats(newStats);
+    setStats(prevStats => {
+      const prevIsCustom = prevStats.primaryColor && !DEFAULT_COLORS.includes(prevStats.primaryColor.toLowerCase());
+      const newIsDefault = !newStats.primaryColor || DEFAULT_COLORS.includes(newStats.primaryColor.toLowerCase());
+      if (prevIsCustom && newIsDefault) {
+        return { ...newStats, primaryColor: prevStats.primaryColor };
+      }
+      return newStats;
+    });
     console.log("User stats updated:", newStats);
   };
   
@@ -471,7 +480,14 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             if (dbStats) {
               console.log("Stats loaded successfully:", dbStats);
               
-              setStats(dbStats);
+              setStats((prevStats: UserStats) => {
+                const prevIsCustom = prevStats.primaryColor && !DEFAULT_COLORS.includes(prevStats.primaryColor.toLowerCase());
+                const newIsDefault = !dbStats.primaryColor || DEFAULT_COLORS.includes(dbStats.primaryColor.toLowerCase());
+                if (prevIsCustom && newIsDefault) {
+                  return { ...dbStats, primaryColor: prevStats.primaryColor };
+                }
+                return dbStats;
+              });
               
               if (dbStats.streakDays > 1 && !streakToastFired.current) {
                 streakToastFired.current = true;
@@ -1753,7 +1769,14 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
           if (res.ok) {
             const data = await res.json();
             if (data.stats) {
-              setStats(data.stats);
+              setStats((prevStats: UserStats) => {
+                const prevIsCustom = prevStats.primaryColor && !DEFAULT_COLORS.includes(prevStats.primaryColor.toLowerCase());
+                const newIsDefault = !data.stats.primaryColor || DEFAULT_COLORS.includes(data.stats.primaryColor.toLowerCase());
+                if (prevIsCustom && newIsDefault) {
+                  return { ...data.stats, primaryColor: prevStats.primaryColor };
+                }
+                return data.stats;
+              });
             }
           }
         } catch (e) {
