@@ -623,7 +623,8 @@ export default function OnboardingPage() {
   });
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [isGeneratingAffirmation, setIsGeneratingAffirmation] = useState(false);
+  const affirmationTriggeredRef = useRef(false);
+  const affirmationQueuedRef = useRef(false);
   const [showMissionComplete, setShowMissionComplete] = useState(false);
   const [completedOnboardingMissions, setCompletedOnboardingMissions] = useState<number[]>([]);
   
@@ -909,6 +910,11 @@ export default function OnboardingPage() {
             console.error("Failed to set username:", err);
           }
         }
+        if (affirmationQueuedRef.current && !affirmationTriggeredRef.current) {
+          affirmationTriggeredRef.current = true;
+          const name = [onboardingFirstName.trim(), onboardingLastName.trim()].filter(Boolean).join(" ") || onboardingUsername.trim() || "Player";
+          generateAffirmationInBackground(name);
+        }
       }
       
       const now = new Date();
@@ -1122,6 +1128,14 @@ export default function OnboardingPage() {
     const maxSteps = getMaxSteps(currentMission);
     
     if (currentStep < maxSteps - 1) {
+      if (currentMission === 0 && currentStep === 2 && !affirmationQueuedRef.current) {
+        affirmationQueuedRef.current = true;
+        if (user?.id && !affirmationTriggeredRef.current) {
+          affirmationTriggeredRef.current = true;
+          const name = [onboardingFirstName.trim(), onboardingLastName.trim()].filter(Boolean).join(" ") || onboardingUsername.trim() || "Player";
+          generateAffirmationInBackground(name);
+        }
+      }
       setCurrentStep(currentStep + 1);
     } else {
       if (currentMission === 0 && selectedThemeColor) {
@@ -1129,10 +1143,14 @@ export default function OnboardingPage() {
         applyPrimaryColor(selectedThemeColor);
       }
       setShowMissionComplete(true);
-      Promise.all([
+      const savePromises: Promise<any>[] = [
         saveCompletedMission(currentMission),
         saveMissionData(currentMission),
-      ]).catch(err => console.error("Error saving mission:", err));
+      ];
+      if (currentMission === 7) {
+        savePromises.push(generateAffirmationRequest());
+      }
+      Promise.all(savePromises).catch(err => console.error("Error saving mission:", err));
     }
   };
   
@@ -1189,17 +1207,15 @@ export default function OnboardingPage() {
     
     setShowMissionComplete(false);
     setIsLoading(true);
-    setIsGeneratingAffirmation(true);
     
     const allCompleted = completedOnboardingMissions.length >= MISSIONS.length;
     apiRequest("/api/profile", {
       method: "PATCH",
       body: JSON.stringify({ onboardingCompleted: allCompleted }),
-    }).then(() => generateAffirmationRequest()).catch(err => console.error("Error saving:", err));
+    }).catch(err => console.error("Error saving:", err));
     
     await new Promise(resolve => setTimeout(resolve, 2500));
     setIsLoading(false);
-    setIsGeneratingAffirmation(false);
     navigate("/ceremony");
   };
   
@@ -1312,6 +1328,33 @@ export default function OnboardingPage() {
       default:
         return {};
     }
+  };
+
+  const generateAffirmationInBackground = (displayName: string) => {
+    console.log("Starting background affirmation generation for:", displayName);
+    fetch("/api/profile/generate-affirmation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ displayName }),
+    })
+      .then(res => {
+        if (!res.ok) throw new Error(`Affirmation API returned ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        if (data.affirmation) {
+          console.log("Background affirmation generated, saving to profile...");
+          return fetch("/api/profile", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ characterAffirmation: data.affirmation }),
+          });
+        }
+      })
+      .then(() => queryClient.invalidateQueries({ queryKey: ["/api/profile"] }))
+      .catch(err => console.error("Background affirmation generation failed:", err));
   };
 
   const generateAffirmationRequest = async () => {
@@ -1764,23 +1807,6 @@ export default function OnboardingPage() {
               )}
             </CardContent>
           </Card>
-        </div>
-      </div>
-    );
-  }
-
-  if (isGeneratingAffirmation) {
-    const isFinalMission = currentMission === MISSIONS.length - 1;
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-          <h2 className="text-xl font-medium">
-            {isFinalMission ? "Updating" : "Generating"} Your Character Affirmation...
-          </h2>
-          <p className="text-muted-foreground">
-            {isFinalMission ? "Your AI is refining your personalized narrative" : "Your AI is crafting your personalized narrative"}
-          </p>
         </div>
       </div>
     );

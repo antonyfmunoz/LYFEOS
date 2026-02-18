@@ -272,11 +272,12 @@ export function registerProfileRoutes(app: Express): void {
         baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
       });
       
-      const pronoun = "they";
-      const pronounCap = "They";
-      const pronounPoss = "their";
+      const hasDetailedData = archetypePrimary || (coreValues && coreValues.length > 0) || vision5Year || primaryCraft;
       
-      const prompt = `Generate a powerful character affirmation (200-300 words) for a person named "${displayName}". Write in second person, speaking directly to them using "you" and "your".
+      let prompt: string;
+      
+      if (hasDetailedData) {
+        prompt = `Generate a powerful character affirmation (200-300 words) for a person named "${displayName}". Write in second person, speaking directly to them using "you" and "your".
 
 The affirmation should be written as if you are speaking directly to this person about who they are — powerful, certain, and declarative. Do NOT include any title, header, or greeting line like "# Your Affirmation" — start directly with the affirmation content itself.
 
@@ -301,6 +302,24 @@ Example structure:
 "You are a sovereign creator of reality, aligned with vision, integrity, and growth. Each day, you expand in clarity, discipline, and creativity..."
 
 Generate the complete affirmation now:`;
+      } else {
+        prompt = `Generate a powerful but universal character affirmation (150-200 words) for a person named "${displayName || "Player"}". Write in second person, speaking directly to them using "you" and "your".
+
+The affirmation should be written as if you are speaking directly to this person about who they are — powerful, certain, and declarative. Do NOT include any title, header, or greeting line like "# Your Affirmation" — start directly with the affirmation content itself.
+
+This is a general affirmation about their potential, inner strength, and the journey they are beginning. Focus on:
+1. Their inherent power and potential
+2. The courage to begin a journey of self-discovery
+3. Their capacity for growth and transformation
+4. The strength that already exists within them
+
+Tone: Powerful, certain, declarative (NOT aspirational). Write as if this is already who they are. Do NOT use any emojis.
+
+Example structure:
+"You are a force of nature, standing at the threshold of something extraordinary. Within you lives a power that has always been there, waiting to be unleashed..."
+
+Generate the complete affirmation now:`;
+      }
 
       const message = await anthropic.messages.create({
         model: "claude-sonnet-4-5",
