@@ -659,7 +659,8 @@ export default function OnboardingPage() {
       const existingCompleted = (userProfile as any)?.completedOnboardingMissions || [];
       setCompletedOnboardingMissions(existingCompleted);
       
-      if (existingCompleted.length > 0 && !localStorage.getItem("lyfeos-onboarding-resume")) {
+      const isPendingRegistration = !!sessionStorage.getItem("lyfeos-pending-registration");
+      if (!isPendingRegistration && existingCompleted.length > 0 && !localStorage.getItem("lyfeos-onboarding-resume")) {
         const params = new URLSearchParams(window.location.search);
         if (!params.get("mission")) {
           const nextMission = Array.from({ length: MISSIONS.length }, (_, i) => i)
