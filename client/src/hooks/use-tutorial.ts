@@ -14,6 +14,24 @@ const TUTORIAL_PAGES = [
   "ai",
 ];
 
+const TUTORIALS_SKIPPED_KEY = "lyfeos-tutorials-all-skipped";
+
+function isAllSkippedLocally(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return localStorage.getItem(TUTORIALS_SKIPPED_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function markAllSkippedLocally() {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(TUTORIALS_SKIPPED_KEY, "true");
+  } catch {}
+}
+
 export function useTutorialStatus(page: string) {
   const { user, isAuthenticated } = useAuth();
   const dismissedRef = useRef(false);
@@ -25,7 +43,7 @@ export function useTutorialStatus(page: string) {
   });
 
   const completedTutorials: string[] = profile?.completedTutorials || [];
-  const isCompleted = completedTutorials.includes(page);
+  const isCompleted = completedTutorials.includes(page) || isAllSkippedLocally();
 
   const isCeremonyReturn = typeof window !== "undefined" && sessionStorage.getItem("lyfeos_ceremony_complete") === "true";
 
@@ -34,6 +52,10 @@ export function useTutorialStatus(page: string) {
   useEffect(() => {
     if (isLoading) return;
     if (dismissedRef.current) return;
+    if (isAllSkippedLocally()) {
+      setShowTutorial(false);
+      return;
+    }
 
     if (page === "dashboard" && isCeremonyReturn) {
       sessionStorage.removeItem("lyfeos_ceremony_complete");
@@ -75,15 +97,17 @@ export function useTutorialStatus(page: string) {
   const skipAll = useCallback(async () => {
     dismissedRef.current = true;
     setShowTutorial(false);
+    markAllSkippedLocally();
     if (user?.id) {
       try {
+        const allPages = [...TUTORIAL_PAGES];
         queryClient.setQueryData(["/api/profile"], (old: any) => ({
           ...old,
-          completedTutorials: [...TUTORIAL_PAGES],
+          completedTutorials: allPages,
         }));
         await apiRequest("/api/profile", {
           method: "PATCH",
-          body: JSON.stringify({ completedTutorials: [...TUTORIAL_PAGES] }),
+          body: JSON.stringify({ completedTutorials: allPages }),
         });
         queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       } catch (e) {

@@ -158,11 +158,7 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, on
       setCurrentStep(next);
     } else {
       setVisible(false);
-      if (onSkipAll) {
-        onSkipAll();
-      } else {
-        onComplete();
-      }
+      onComplete();
     }
   };
 
