@@ -1187,11 +1187,12 @@ export default function OnboardingPage() {
       localStorage.removeItem("lyfeos-ceremony-mode");
       localStorage.removeItem("lyfeos-continued-past-mission0");
       localStorage.removeItem(STORAGE_KEY);
-      if (sessionStorage.getItem("lyfeos-pending-registration")) {
+      if (sessionStorage.getItem("lyfeos-pending-registration") && !user) {
         sessionStorage.removeItem("lyfeos-pending-registration");
         navigate("/register", { replace: true });
         return;
       }
+      sessionStorage.removeItem("lyfeos-pending-registration");
       try {
         const allCompleted = completedOnboardingMissions.length >= MISSIONS.length;
         await apiRequest("/api/profile", {
@@ -1258,11 +1259,12 @@ export default function OnboardingPage() {
     const isMission0 = currentMission === 0;
     
     if (isMission0) {
-      if (sessionStorage.getItem("lyfeos-pending-registration")) {
+      if (sessionStorage.getItem("lyfeos-pending-registration") && !user) {
         sessionStorage.removeItem("lyfeos-pending-registration");
         navigate("/register", { replace: true });
         return;
       }
+      sessionStorage.removeItem("lyfeos-pending-registration");
       localStorage.setItem("lyfeos-ceremony-mode", "init");
       localStorage.setItem("lyfeos-ceremony-destination", "/dashboard");
       setShowMissionComplete(false);
