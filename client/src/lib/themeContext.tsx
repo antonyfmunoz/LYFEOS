@@ -115,7 +115,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (stats) {
       if (stats.primaryColor) {
-        setPrimaryColorState(stats.primaryColor);
+        const isOnboarding = window.location.pathname.replace(/\/+$/, '') === '/onboarding';
+        if (!isOnboarding) {
+          setPrimaryColorState(stats.primaryColor);
+        }
       }
     }
   }, [stats]);
