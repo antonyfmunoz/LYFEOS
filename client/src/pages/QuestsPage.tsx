@@ -492,25 +492,9 @@ export default function QuestsPage() {
     
     const inboxItems = active.filter(q => q.category === 'todo');
 
-    const ONBOARDING_MISSION_ORDER = [
-      "Archetype Calibration", "Identity & Direction", "Craft & Mastery",
-      "Capacity & Constraints", "Baselines & States", "History & Roots",
-      "Reflection & Synthesis", "System Activation"
-    ];
-    const nextOnboardingId = (() => {
-      const onboardingActive = active.filter(q => q.category === 'onboarding');
-      if (onboardingActive.length === 0) return null;
-      const sorted = onboardingActive.sort((a, b) => {
-        const aIdx = ONBOARDING_MISSION_ORDER.findIndex(t => a.title.includes(t));
-        const bIdx = ONBOARDING_MISSION_ORDER.findIndex(t => b.title.includes(t));
-        return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
-      });
-      return sorted[0]?.id ?? null;
-    })();
-
     const todayItems = active.filter(q => {
       if (q.category === 'todo') return false;
-      if (q.category === 'onboarding') return q.id === nextOnboardingId;
+      if (q.category === 'onboarding') return false;
       if (!q.startDate) return true;
       return q.startDate <= today;
     });
