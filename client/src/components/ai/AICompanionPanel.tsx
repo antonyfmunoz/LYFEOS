@@ -197,6 +197,7 @@ export default function AICompanionPanel() {
     <>
       {!isOpen && (
         <button
+          data-tour="ai-floating-chat"
           onClick={() => setIsOpen(true)}
           className="hidden lg:flex fixed bottom-6 right-6 z-50 w-14 h-14 items-center justify-center rounded-full bg-primary text-background shadow-lg hover:scale-105 transition-transform"
           style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}

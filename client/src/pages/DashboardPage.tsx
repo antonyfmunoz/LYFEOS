@@ -190,18 +190,29 @@ export default function DashboardPage() {
     enabled: isAuthenticated && !!user,
     staleTime: 60000,
   });
-  const reflectionPrompts = profileForPrompts?.customReflectionPrompts || defaultPrompts;
+  const serverPrompts = profileForPrompts?.customReflectionPrompts || defaultPrompts;
+  const [localPromptOverrides, setLocalPromptOverrides] = useState<Record<string, string>>({});
+  const reflectionPrompts = { ...serverPrompts, ...localPromptOverrides };
   const [editingPrompt, setEditingPrompt] = useState<string | null>(null);
   const [editingPromptValue, setEditingPromptValue] = useState("");
 
+  useEffect(() => {
+    if (profileForPrompts?.customReflectionPrompts) {
+      setLocalPromptOverrides({});
+    }
+  }, [profileForPrompts?.customReflectionPrompts]);
+
   const saveReflectionPrompt = useCallback(async (field: string, value: string) => {
     if (!value.trim()) return;
-    const updated = { ...reflectionPrompts, [field]: value.trim() };
+    const currentProfile = queryClient.getQueryData<any>(["/api/profile"]);
+    const currentPrompts = currentProfile?.customReflectionPrompts || defaultPrompts;
+    const updated = { ...currentPrompts, [field]: value.trim() };
+    setLocalPromptOverrides(prev => ({ ...prev, [field]: value.trim() }));
+    setEditingPrompt(null);
     queryClient.setQueryData(["/api/profile"], (old: any) => ({
       ...old,
       customReflectionPrompts: updated,
     }));
-    setEditingPrompt(null);
     try {
       await apiRequest("/api/profile", {
         method: "PATCH",
@@ -210,11 +221,17 @@ export default function DashboardPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
     } catch (e) {
       console.error("Failed to save reflection prompt", e);
+      setLocalPromptOverrides(prev => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
     }
-  }, [reflectionPrompts]);
+  }, []);
 
   const resetReflectionPrompts = useCallback(async () => {
+    setLocalPromptOverrides({});
     queryClient.setQueryData(["/api/profile"], (old: any) => ({
       ...old,
       customReflectionPrompts: defaultPrompts,
