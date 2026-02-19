@@ -64,9 +64,10 @@ export function useTutorialStatus(page: string) {
 
   const alreadyDoneLocally = isAllSkippedLocally(userId) || isPageCompletedLocally(page, userId);
 
+  const queryEnabled = isAuthenticated && !!user;
   const { data: profile, isLoading } = useQuery<any>({
     queryKey: ["/api/profile"],
-    enabled: isAuthenticated && !!user,
+    enabled: queryEnabled,
     staleTime: 60000,
   });
 
@@ -84,10 +85,11 @@ export function useTutorialStatus(page: string) {
 
   const [showTutorial, setShowTutorial] = useState(false);
 
-  const tutorialLoading = isLoading && !alreadyDoneLocally;
+  const profileNotReady = !profile && queryEnabled;
+  const tutorialLoading = (isLoading || profileNotReady) && !alreadyDoneLocally;
 
   useEffect(() => {
-    if (isLoading && !alreadyDoneLocally) return;
+    if ((isLoading || profileNotReady) && !alreadyDoneLocally) return;
     if (dismissedRef.current) return;
     if (isCompleted) {
       setShowTutorial(false);
@@ -101,7 +103,7 @@ export function useTutorialStatus(page: string) {
     }
 
     setShowTutorial(true);
-  }, [isLoading, isCompleted, page, isCeremonyReturn, alreadyDoneLocally]);
+  }, [isLoading, isCompleted, page, isCeremonyReturn, alreadyDoneLocally, profileNotReady]);
 
   const markComplete = useCallback(async () => {
     dismissedRef.current = true;

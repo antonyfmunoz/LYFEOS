@@ -27,6 +27,12 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { getLocalDateString } from '@/lib/utils';
 
+const DEFAULT_REFLECTION_PROMPTS = {
+  wentWell: "What went well today?",
+  couldBeBetter: "What could have been better?",
+  learned: "What did I learn?"
+} as const;
+
 interface TimeBlock {
   id: string;
   startTime: string;
@@ -180,11 +186,7 @@ export default function DashboardPage() {
   const { toast } = useToast();
   
   // Custom reflection prompts
-  const defaultPrompts = {
-    wentWell: "What went well today?",
-    couldBeBetter: "What could have been better?",
-    learned: "What did I learn?"
-  };
+  const defaultPrompts = DEFAULT_REFLECTION_PROMPTS;
   const { data: profileForPrompts } = useQuery<any>({
     queryKey: ["/api/profile"],
     enabled: isAuthenticated && !!user,
@@ -234,12 +236,12 @@ export default function DashboardPage() {
     setLocalPromptOverrides({});
     queryClient.setQueryData(["/api/profile"], (old: any) => ({
       ...old,
-      customReflectionPrompts: defaultPrompts,
+      customReflectionPrompts: null,
     }));
     try {
       await apiRequest("/api/profile", {
         method: "PATCH",
-        body: JSON.stringify({ customReflectionPrompts: defaultPrompts }),
+        body: JSON.stringify({ customReflectionPrompts: null }),
       });
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
     } catch (e) {
