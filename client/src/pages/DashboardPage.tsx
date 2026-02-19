@@ -203,11 +203,11 @@ export default function DashboardPage() {
     }));
     setEditingPrompt(null);
     try {
-      const result = await apiRequest("/api/profile", {
+      await apiRequest("/api/profile", {
         method: "PATCH",
         body: JSON.stringify({ customReflectionPrompts: updated }),
       });
-      queryClient.setQueryData(["/api/profile"], result);
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
     } catch (e) {
       console.error("Failed to save reflection prompt", e);
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
@@ -220,11 +220,11 @@ export default function DashboardPage() {
       customReflectionPrompts: defaultPrompts,
     }));
     try {
-      const result = await apiRequest("/api/profile", {
+      await apiRequest("/api/profile", {
         method: "PATCH",
         body: JSON.stringify({ customReflectionPrompts: defaultPrompts }),
       });
-      queryClient.setQueryData(["/api/profile"], result);
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
     } catch (e) {
       console.error("Failed to reset reflection prompts", e);
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
