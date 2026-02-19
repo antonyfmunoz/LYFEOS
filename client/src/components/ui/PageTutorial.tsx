@@ -17,9 +17,10 @@ interface PageTutorialProps {
   onComplete: () => void;
   onSkipAll?: () => void;
   userId?: number | null;
+  isLoading?: boolean;
 }
 
-export default function PageTutorial({ steps, storageKey, isOpen, onComplete, onSkipAll, userId }: PageTutorialProps) {
+export default function PageTutorial({ steps, storageKey, isOpen, onComplete, onSkipAll, userId, isLoading }: PageTutorialProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [visible, setVisible] = useState(false);
@@ -181,6 +182,15 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, on
       onComplete();
     }
   };
+
+  if (isLoading) {
+    return ReactDOM.createPortal(
+      <div className="fixed inset-0" style={{ zIndex: 10000 }}>
+        <div className="absolute inset-0 bg-black/75" />
+      </div>,
+      document.body
+    );
+  }
 
   if (!isOpen || !visible) return null;
 

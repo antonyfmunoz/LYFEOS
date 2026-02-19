@@ -203,7 +203,7 @@ export default function TimelinePage() {
     },
   ];
 
-  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials } = useTutorialStatus("timeline");
+  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials, isLoading: isTutorialLoading } = useTutorialStatus("timeline");
 
   const [activeView, setActiveView] = useState<'history' | 'roadmap'>('history');
   const [zoomLevel, setZoomLevel] = useState<ZoomLevel>('life');
@@ -716,7 +716,7 @@ export default function TimelinePage() {
 
   return (
     <div className="pb-20">
-      <PageTutorial steps={TIMELINE_TOUR_STEPS} storageKey="timeline" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} />
+      <PageTutorial steps={TIMELINE_TOUR_STEPS} storageKey="timeline" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} isLoading={isTutorialLoading} />
       <div className="mb-4">
         <Button
           className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"

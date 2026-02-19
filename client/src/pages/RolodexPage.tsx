@@ -163,7 +163,7 @@ export default function RolodexPage() {
     },
   ];
 
-  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials } = useTutorialStatus("rolodex");
+  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials, isLoading: isTutorialLoading } = useTutorialStatus("rolodex");
 
   const { isLoading } = useQuery<{ contacts: Contact[] }>({
     queryKey: ['/api/users', user?.id, 'contacts'],
@@ -363,7 +363,7 @@ export default function RolodexPage() {
 
   return (
     <div className="min-h-screen bg-background px-4 py-6 max-w-4xl mx-auto">
-      <PageTutorial steps={ROLODEX_TOUR_STEPS} storageKey="rolodex" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} />
+      <PageTutorial steps={ROLODEX_TOUR_STEPS} storageKey="rolodex" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} isLoading={isTutorialLoading} />
       <div className="mb-4">
         <Button
           className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"

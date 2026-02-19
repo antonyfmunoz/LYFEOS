@@ -264,7 +264,7 @@ export default function ProfilePage() {
     },
   ];
 
-  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials } = useTutorialStatus("profile");
+  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials, isLoading: isTutorialLoading } = useTutorialStatus("profile");
 
   const [isEditing, setIsEditing] = useState(false);
   const [editUsername, setEditUsername] = useState(username);
@@ -1752,7 +1752,7 @@ export default function ProfilePage() {
   return (
     <RootLayout>
       <div className="max-w-4xl mx-auto pb-20">
-        <PageTutorial steps={PROFILE_TOUR_STEPS} storageKey="profile" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} />
+        <PageTutorial steps={PROFILE_TOUR_STEPS} storageKey="profile" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} isLoading={isTutorialLoading} />
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-orbitron text-foreground">My Account</h1>

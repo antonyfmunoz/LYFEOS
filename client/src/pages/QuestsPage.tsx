@@ -359,7 +359,7 @@ export default function QuestsPage() {
     },
   ];
 
-  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials } = useTutorialStatus("missions");
+  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials, isLoading: isTutorialLoading } = useTutorialStatus("missions");
 
   const originalDatesRef = useRef(originalDates);
   originalDatesRef.current = originalDates;
@@ -777,7 +777,7 @@ export default function QuestsPage() {
 
   return (
     <div className="pb-20">
-      <PageTutorial steps={MISSIONS_TOUR_STEPS} storageKey="missions" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} />
+      <PageTutorial steps={MISSIONS_TOUR_STEPS} storageKey="missions" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} isLoading={isTutorialLoading} />
       <div className="mb-6 flex items-center justify-between" data-tour="missions-header">
         <div>
           <h1 className="text-2xl font-orbitron mb-1">Missions</h1>

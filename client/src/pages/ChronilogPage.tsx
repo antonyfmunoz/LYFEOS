@@ -385,11 +385,11 @@ export default function ChronilogPage() {
     },
   ];
 
-  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials } = useTutorialStatus("chronilog");
+  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials, isLoading: isTutorialLoading } = useTutorialStatus("chronilog");
 
   return (
       <div className="pb-20">
-        <PageTutorial steps={CHRONILOG_TOUR_STEPS} storageKey="chronilog" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} />
+        <PageTutorial steps={CHRONILOG_TOUR_STEPS} storageKey="chronilog" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} isLoading={isTutorialLoading} />
         <div className="mb-6" data-tour="chronilog-header">
           <h1 className="text-2xl font-orbitron mb-1">Chronilog</h1>
           <p className="text-[#7DAAB2]">Your personal timeline of knowledge, reflections, and growth logs.</p>

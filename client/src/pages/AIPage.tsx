@@ -101,7 +101,7 @@ export default function AIPage() {
   ];
 
   const { user } = useAuth();
-  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials } = useTutorialStatus("ai");
+  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials, isLoading: isTutorialLoading } = useTutorialStatus("ai");
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -305,7 +305,7 @@ export default function AIPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] pb-10">
-      <PageTutorial steps={AI_TOUR_STEPS} storageKey="ai" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} />
+      <PageTutorial steps={AI_TOUR_STEPS} storageKey="ai" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} isLoading={isTutorialLoading} />
       <div className="flex items-center justify-between mb-4 pb-4 border-b border-primary/20" data-tour="ai-header">
         <div className="flex items-center">
           <Button

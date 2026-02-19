@@ -145,7 +145,7 @@ export default function AnalyticsPage() {
     },
   ];
 
-  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials } = useTutorialStatus("tracker");
+  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials, isLoading: isTutorialLoading } = useTutorialStatus("tracker");
 
   const moveAnalyticsWidget = useCallback((dragIndex: number, hoverIndex: number) => {
     const prev = analyticsWidgetsRef.current;
@@ -541,7 +541,7 @@ export default function AnalyticsPage() {
 
   return (
     <div className="mx-auto max-w-5xl py-8 px-4">
-      <PageTutorial steps={TRACKER_TOUR_STEPS} storageKey="tracker" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} />
+      <PageTutorial steps={TRACKER_TOUR_STEPS} storageKey="tracker" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} isLoading={isTutorialLoading} />
       <div className="mb-6">
         <Link href="/chronilog" className="inline-flex items-center gap-2 bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs rounded-md px-3 py-2 transition-colors">
           <ArrowLeft className="h-4 w-4" />

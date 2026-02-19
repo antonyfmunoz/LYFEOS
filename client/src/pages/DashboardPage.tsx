@@ -302,7 +302,7 @@ export default function DashboardPage() {
     },
   ];
 
-  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials, isTutorialActive } = useTutorialStatus("dashboard");
+  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials, isTutorialActive, isLoading: isTutorialLoading } = useTutorialStatus("dashboard");
   
   // Dashboard state
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -1538,7 +1538,7 @@ export default function DashboardPage() {
 
   return (
       <div className="dashboard-container pb-20">
-        <PageTutorial steps={DASHBOARD_TOUR_STEPS} storageKey="dashboard" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} />
+        <PageTutorial steps={DASHBOARD_TOUR_STEPS} storageKey="dashboard" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} isLoading={isTutorialLoading} />
         {!isTutorialActive && <DailyInitModal />}
         
         {/* Level-up modal - shows when user levels up */}
