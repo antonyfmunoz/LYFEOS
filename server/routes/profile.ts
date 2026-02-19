@@ -241,6 +241,9 @@ export function registerProfileRoutes(app: Express): void {
       }
       
       // Verify current password
+      if (!user.password) {
+        return res.status(400).json({ error: "No password set for this account" });
+      }
       const isValid = await bcrypt.compare(currentPassword, user.password);
       if (!isValid) {
         return res.status(401).json({ error: "Current password is incorrect" });

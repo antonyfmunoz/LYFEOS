@@ -193,60 +193,65 @@ export default function DashboardPage() {
     staleTime: 60000,
   });
   const serverPrompts = profileForPrompts?.customReflectionPrompts || defaultPrompts;
-  const [localPromptOverrides, setLocalPromptOverrides] = useState<Record<string, string>>({});
-  const reflectionPrompts = { ...serverPrompts, ...localPromptOverrides };
+  const [localPromptOverrides, setLocalPromptOverrides] = useState<Record<string, string> | null>(null);
+  const reflectionPrompts = localPromptOverrides !== null
+    ? { ...defaultPrompts, ...localPromptOverrides }
+    : serverPrompts;
   const reflectionPromptsRef = useRef(reflectionPrompts);
   reflectionPromptsRef.current = reflectionPrompts;
   const [editingPrompt, setEditingPrompt] = useState<string | null>(null);
   const [editingPromptValue, setEditingPromptValue] = useState("");
 
+  useEffect(() => {
+    if (localPromptOverrides === null) return;
+    const server = profileForPrompts?.customReflectionPrompts;
+    if (server) {
+      const allMatch = Object.entries(localPromptOverrides).every(
+        ([k, v]) => server[k] === v
+      );
+      if (allMatch) {
+        setLocalPromptOverrides(null);
+      }
+    } else if (server === null || server === undefined) {
+      const isDefaults = Object.entries(localPromptOverrides).every(
+        ([k, v]) => (defaultPrompts as any)[k] === v
+      );
+      if (isDefaults) {
+        setLocalPromptOverrides(null);
+      }
+    }
+  }, [profileForPrompts?.customReflectionPrompts, localPromptOverrides]);
+
   const saveReflectionPrompt = useCallback(async (field: string, value: string) => {
     if (!value.trim()) return;
-    const updated = { ...reflectionPromptsRef.current, [field]: value.trim() };
-    setLocalPromptOverrides(prev => ({ ...prev, [field]: value.trim() }));
+    const currentPrompts = reflectionPromptsRef.current;
+    const updated = { ...currentPrompts, [field]: value.trim() };
+    setLocalPromptOverrides(updated);
     setEditingPrompt(null);
-    queryClient.setQueryData(["/api/profile"], (old: any) => ({
-      ...old,
-      customReflectionPrompts: updated,
-    }));
     try {
       await apiRequest("/api/profile", {
         method: "PATCH",
         body: JSON.stringify({ customReflectionPrompts: updated }),
       });
-      setLocalPromptOverrides(prev => {
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
-      queryClient.setQueryData(["/api/profile"], (old: any) => ({
-        ...old,
-        customReflectionPrompts: { ...(old?.customReflectionPrompts || defaultPrompts), ...updated },
-      }));
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
     } catch (e) {
       console.error("Failed to save reflection prompt", e);
-      setLocalPromptOverrides(prev => {
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
+      setLocalPromptOverrides(null);
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
     }
   }, []);
 
   const resetReflectionPrompts = useCallback(async () => {
-    setLocalPromptOverrides({});
-    queryClient.setQueryData(["/api/profile"], (old: any) => ({
-      ...old,
-      customReflectionPrompts: null,
-    }));
+    setLocalPromptOverrides({ ...defaultPrompts });
     try {
       await apiRequest("/api/profile", {
         method: "PATCH",
         body: JSON.stringify({ customReflectionPrompts: null }),
       });
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
     } catch (e) {
       console.error("Failed to reset reflection prompts", e);
+      setLocalPromptOverrides(null);
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
     }
   }, []);
