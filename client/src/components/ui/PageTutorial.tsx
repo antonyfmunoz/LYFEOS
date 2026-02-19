@@ -214,6 +214,13 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, on
     if (!targetRect) return { position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 10002, maxHeight: "calc(100vh - 32px)" };
     const vw = window.innerWidth;
     const vh = window.innerHeight;
+
+    const isDesktop = vw >= 768;
+    if (isDesktop) {
+      const desktopWidth = 400;
+      return { position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 10002, maxWidth: desktopWidth, width: desktopWidth, maxHeight: "calc(100vh - 64px)" };
+    }
+
     const tooltipWidth = Math.max(240, Math.min(340, vw - 32));
     const measuredHeight = tooltipRef.current?.getBoundingClientRect().height;
     const tooltipHeight = measuredHeight && measuredHeight > 50 ? measuredHeight : 280;
