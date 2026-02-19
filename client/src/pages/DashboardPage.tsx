@@ -214,6 +214,15 @@ export default function DashboardPage() {
         method: "PATCH",
         body: JSON.stringify({ customReflectionPrompts: updated }),
       });
+      setLocalPromptOverrides(prev => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+      queryClient.setQueryData(["/api/profile"], (old: any) => ({
+        ...old,
+        customReflectionPrompts: { ...(old?.customReflectionPrompts || defaultPrompts), ...updated },
+      }));
     } catch (e) {
       console.error("Failed to save reflection prompt", e);
       setLocalPromptOverrides(prev => {
