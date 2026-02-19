@@ -1105,7 +1105,7 @@ export default function DashboardPage() {
           <div className="space-y-4">
             {promptFields.map(({ key, icon: Icon, placeholder }) => (
               <div key={key} className="space-y-2">
-                <label className="text-sm flex items-center text-[#7DAAB2]">
+                <div className="text-sm flex items-center text-[#7DAAB2]">
                   <Icon className="h-4 w-4 text-primary" />
                   {editingPrompt === key ? (
                     <div className="ml-2 flex items-center gap-1 flex-1">
@@ -1150,7 +1150,7 @@ export default function DashboardPage() {
                       </button>
                     </>
                   )}
-                </label>
+                </div>
                 <MarkdownEditor
                   placeholder={placeholder}
                   value={(reflection as any)[key]}
