@@ -237,7 +237,6 @@ export default function DashboardPage() {
         ...old,
         customReflectionPrompts: updated,
       }));
-      setLocalPromptOverrides(null);
     } catch (e) {
       console.error("Failed to save reflection prompt", e);
       setLocalPromptOverrides(null);
@@ -256,7 +255,6 @@ export default function DashboardPage() {
         ...old,
         customReflectionPrompts: null,
       }));
-      setLocalPromptOverrides(null);
     } catch (e) {
       console.error("Failed to reset reflection prompts", e);
       setLocalPromptOverrides(null);
