@@ -229,6 +229,11 @@ export default function DashboardPage() {
     const updated = { ...currentPrompts, [field]: value.trim() };
     setLocalPromptOverrides(updated);
     setEditingPrompt(null);
+    queryClient.cancelQueries({ queryKey: ["/api/profile"] });
+    queryClient.setQueryData(["/api/profile"], (old: any) => ({
+      ...old,
+      customReflectionPrompts: updated,
+    }));
     const op = pendingPromptOp.current.catch(() => {}).then(async () => {
       try {
         await apiRequest("/api/profile", {
@@ -239,7 +244,6 @@ export default function DashboardPage() {
           ...old,
           customReflectionPrompts: updated,
         }));
-        queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       } catch (e) {
         console.error("Failed to save reflection prompt", e);
         setLocalPromptOverrides(null);
@@ -251,6 +255,11 @@ export default function DashboardPage() {
 
   const resetReflectionPrompts = useCallback(async () => {
     setLocalPromptOverrides({ ...defaultPrompts });
+    queryClient.cancelQueries({ queryKey: ["/api/profile"] });
+    queryClient.setQueryData(["/api/profile"], (old: any) => ({
+      ...old,
+      customReflectionPrompts: null,
+    }));
     const op = pendingPromptOp.current.catch(() => {}).then(async () => {
       try {
         await apiRequest("/api/profile", {
@@ -261,7 +270,6 @@ export default function DashboardPage() {
           ...old,
           customReflectionPrompts: null,
         }));
-        queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       } catch (e) {
         console.error("Failed to reset reflection prompts", e);
         setLocalPromptOverrides(null);
