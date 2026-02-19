@@ -201,6 +201,7 @@ export default function DashboardPage() {
   reflectionPromptsRef.current = reflectionPrompts;
   const [editingPrompt, setEditingPrompt] = useState<string | null>(null);
   const [editingPromptValue, setEditingPromptValue] = useState("");
+  const pendingPromptOp = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
     if (localPromptOverrides === null) return;
@@ -228,38 +229,46 @@ export default function DashboardPage() {
     const updated = { ...currentPrompts, [field]: value.trim() };
     setLocalPromptOverrides(updated);
     setEditingPrompt(null);
-    try {
-      await apiRequest("/api/profile", {
-        method: "PATCH",
-        body: JSON.stringify({ customReflectionPrompts: updated }),
-      });
-      queryClient.setQueryData(["/api/profile"], (old: any) => ({
-        ...old,
-        customReflectionPrompts: updated,
-      }));
-    } catch (e) {
-      console.error("Failed to save reflection prompt", e);
-      setLocalPromptOverrides(null);
-      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
-    }
+    const op = pendingPromptOp.current.catch(() => {}).then(async () => {
+      try {
+        await apiRequest("/api/profile", {
+          method: "PATCH",
+          body: JSON.stringify({ customReflectionPrompts: updated }),
+        });
+        queryClient.setQueryData(["/api/profile"], (old: any) => ({
+          ...old,
+          customReflectionPrompts: updated,
+        }));
+        queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      } catch (e) {
+        console.error("Failed to save reflection prompt", e);
+        setLocalPromptOverrides(null);
+        queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      }
+    });
+    pendingPromptOp.current = op;
   }, []);
 
   const resetReflectionPrompts = useCallback(async () => {
     setLocalPromptOverrides({ ...defaultPrompts });
-    try {
-      await apiRequest("/api/profile", {
-        method: "PATCH",
-        body: JSON.stringify({ customReflectionPrompts: null }),
-      });
-      queryClient.setQueryData(["/api/profile"], (old: any) => ({
-        ...old,
-        customReflectionPrompts: null,
-      }));
-    } catch (e) {
-      console.error("Failed to reset reflection prompts", e);
-      setLocalPromptOverrides(null);
-      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
-    }
+    const op = pendingPromptOp.current.catch(() => {}).then(async () => {
+      try {
+        await apiRequest("/api/profile", {
+          method: "PATCH",
+          body: JSON.stringify({ customReflectionPrompts: null }),
+        });
+        queryClient.setQueryData(["/api/profile"], (old: any) => ({
+          ...old,
+          customReflectionPrompts: null,
+        }));
+        queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      } catch (e) {
+        console.error("Failed to reset reflection prompts", e);
+        setLocalPromptOverrides(null);
+        queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      }
+    });
+    pendingPromptOp.current = op;
   }, []);
 
   // Level-up modal state
