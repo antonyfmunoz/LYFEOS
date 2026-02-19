@@ -52,6 +52,8 @@ export default function AIPage() {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const chatImageInputRef = useRef<HTMLInputElement>(null);
 
+  const isDesktop = typeof window !== "undefined" && window.innerWidth >= 768;
+
   const AI_TOUR_STEPS: TutorialStep[] = [
     {
       target: "[data-tour='ai-header']",
@@ -90,6 +92,12 @@ export default function AIPage() {
       description: "Tap the microphone to use voice input. Speak naturally to navigate the app, manage missions, control timers, or ask questions hands-free.",
       position: "top",
     },
+    ...(isDesktop ? [{
+      target: "[data-tour='ai-floating-chat']",
+      title: "Quick AI Chat",
+      description: "Use this floating button to quickly chat with your AI assistant from any page without leaving what you're doing.",
+      position: "left" as const,
+    }] : []),
   ];
 
   const { user } = useAuth();

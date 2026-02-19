@@ -218,6 +218,7 @@ export function AIAgentFAB() {
         </AnimatePresence>
 
         <DynamicColorButton
+          data-tour="ai-floating-chat"
           onClick={toggleChat}
           size="lg"
           className="rounded-full w-14 h-14 shadow-lg transition-all duration-300"
