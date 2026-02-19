@@ -400,7 +400,9 @@ export default function QuestsPage() {
   const completedOnboardingTitles = quests
     .filter(q => q.category === 'onboarding' && q.completed)
     .map(q => q.title);
-  const nextOnboardingMission = profileLoaded && !onboardingComplete
+  const allOnboardingDone = completedOnboardingMissions.length >= ONBOARDING_MISSIONS.length &&
+    ONBOARDING_MISSIONS.every(m => completedOnboardingMissions.includes(m.id) || completedOnboardingTitles.includes(`Onboarding: ${m.title}`));
+  const nextOnboardingMission = profileLoaded && !allOnboardingDone
     ? ONBOARDING_MISSIONS.find(m => 
         !completedOnboardingMissions.includes(m.id) && 
         !completedOnboardingTitles.includes(`Onboarding: ${m.title}`)
