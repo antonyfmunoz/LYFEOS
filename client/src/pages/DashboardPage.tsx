@@ -233,7 +233,11 @@ export default function DashboardPage() {
         method: "PATCH",
         body: JSON.stringify({ customReflectionPrompts: updated }),
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      queryClient.setQueryData(["/api/profile"], (old: any) => ({
+        ...old,
+        customReflectionPrompts: updated,
+      }));
+      setLocalPromptOverrides(null);
     } catch (e) {
       console.error("Failed to save reflection prompt", e);
       setLocalPromptOverrides(null);
@@ -248,7 +252,11 @@ export default function DashboardPage() {
         method: "PATCH",
         body: JSON.stringify({ customReflectionPrompts: null }),
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      queryClient.setQueryData(["/api/profile"], (old: any) => ({
+        ...old,
+        customReflectionPrompts: null,
+      }));
+      setLocalPromptOverrides(null);
     } catch (e) {
       console.error("Failed to reset reflection prompts", e);
       setLocalPromptOverrides(null);
