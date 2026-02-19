@@ -195,20 +195,14 @@ export default function DashboardPage() {
   const serverPrompts = profileForPrompts?.customReflectionPrompts || defaultPrompts;
   const [localPromptOverrides, setLocalPromptOverrides] = useState<Record<string, string>>({});
   const reflectionPrompts = { ...serverPrompts, ...localPromptOverrides };
+  const reflectionPromptsRef = useRef(reflectionPrompts);
+  reflectionPromptsRef.current = reflectionPrompts;
   const [editingPrompt, setEditingPrompt] = useState<string | null>(null);
   const [editingPromptValue, setEditingPromptValue] = useState("");
 
-  useEffect(() => {
-    if (profileForPrompts?.customReflectionPrompts) {
-      setLocalPromptOverrides({});
-    }
-  }, [profileForPrompts?.customReflectionPrompts]);
-
   const saveReflectionPrompt = useCallback(async (field: string, value: string) => {
     if (!value.trim()) return;
-    const currentProfile = queryClient.getQueryData<any>(["/api/profile"]);
-    const currentPrompts = currentProfile?.customReflectionPrompts || defaultPrompts;
-    const updated = { ...currentPrompts, [field]: value.trim() };
+    const updated = { ...reflectionPromptsRef.current, [field]: value.trim() };
     setLocalPromptOverrides(prev => ({ ...prev, [field]: value.trim() }));
     setEditingPrompt(null);
     queryClient.setQueryData(["/api/profile"], (old: any) => ({
@@ -216,11 +210,10 @@ export default function DashboardPage() {
       customReflectionPrompts: updated,
     }));
     try {
-      const saved = await apiRequest("/api/profile", {
+      await apiRequest("/api/profile", {
         method: "PATCH",
         body: JSON.stringify({ customReflectionPrompts: updated }),
       });
-      queryClient.setQueryData(["/api/profile"], saved);
     } catch (e) {
       console.error("Failed to save reflection prompt", e);
       setLocalPromptOverrides(prev => {
@@ -239,13 +232,9 @@ export default function DashboardPage() {
       customReflectionPrompts: null,
     }));
     try {
-      const saved = await apiRequest("/api/profile", {
+      await apiRequest("/api/profile", {
         method: "PATCH",
         body: JSON.stringify({ customReflectionPrompts: null }),
-      });
-      queryClient.setQueryData(["/api/profile"], {
-        ...saved,
-        customReflectionPrompts: null,
       });
     } catch (e) {
       console.error("Failed to reset reflection prompts", e);
