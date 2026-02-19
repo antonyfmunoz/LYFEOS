@@ -52,10 +52,7 @@ export function useTutorialStatus(page: string) {
 
   const isCeremonyReturn = typeof window !== "undefined" && sessionStorage.getItem("lyfeos_ceremony_complete") === "true";
 
-  const [showTutorial, setShowTutorial] = useState(() => {
-    if (isAllSkippedLocally(userId)) return false;
-    return !isCompleted;
-  });
+  const [showTutorial, setShowTutorial] = useState(false);
 
   useEffect(() => {
     if (isLoading) return;
