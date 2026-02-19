@@ -186,6 +186,7 @@ export default function DashboardPage() {
   const { toast } = useToast();
   
   // Custom reflection prompts
+  const PROMPT_STORAGE_KEY = "lyfeos_pending_prompts";
   const defaultPrompts = DEFAULT_REFLECTION_PROMPTS;
   const { data: profileForPrompts } = useQuery<any>({
     queryKey: ["/api/profile"],
@@ -193,7 +194,17 @@ export default function DashboardPage() {
     staleTime: 60000,
   });
   const serverPrompts = profileForPrompts?.customReflectionPrompts || defaultPrompts;
-  const [localPromptOverrides, setLocalPromptOverrides] = useState<Record<string, string> | null>(null);
+  const [localPromptOverrides, setLocalPromptOverrides] = useState<Record<string, string> | null>(() => {
+    try {
+      const stored = sessionStorage.getItem(PROMPT_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.type === "custom") return parsed.prompts;
+        if (parsed.type === "reset") return { ...DEFAULT_REFLECTION_PROMPTS };
+      }
+    } catch {}
+    return null;
+  });
   const reflectionPrompts = localPromptOverrides !== null
     ? { ...defaultPrompts, ...localPromptOverrides }
     : serverPrompts;
@@ -206,20 +217,30 @@ export default function DashboardPage() {
   useEffect(() => {
     if (localPromptOverrides === null) return;
     const server = profileForPrompts?.customReflectionPrompts;
-    if (server) {
-      const allMatch = Object.entries(localPromptOverrides).every(
-        ([k, v]) => server[k] === v
-      );
-      if (allMatch) {
+    try {
+      const stored = sessionStorage.getItem(PROMPT_STORAGE_KEY);
+      if (!stored) {
         setLocalPromptOverrides(null);
+        return;
       }
-    } else if (server === null || server === undefined) {
-      const isDefaults = Object.entries(localPromptOverrides).every(
-        ([k, v]) => (defaultPrompts as any)[k] === v
-      );
-      if (isDefaults) {
-        setLocalPromptOverrides(null);
+      const pending = JSON.parse(stored);
+      if (pending.type === "reset") {
+        if (server === null || server === undefined) {
+          sessionStorage.removeItem(PROMPT_STORAGE_KEY);
+          setLocalPromptOverrides(null);
+        }
+      } else if (pending.type === "custom" && server) {
+        const allMatch = Object.entries(pending.prompts).every(
+          ([k, v]) => server[k] === v
+        );
+        if (allMatch) {
+          sessionStorage.removeItem(PROMPT_STORAGE_KEY);
+          setLocalPromptOverrides(null);
+        }
       }
+    } catch {
+      sessionStorage.removeItem(PROMPT_STORAGE_KEY);
+      setLocalPromptOverrides(null);
     }
   }, [profileForPrompts?.customReflectionPrompts, localPromptOverrides]);
 
@@ -229,6 +250,7 @@ export default function DashboardPage() {
     const updated = { ...currentPrompts, [field]: value.trim() };
     setLocalPromptOverrides(updated);
     setEditingPrompt(null);
+    sessionStorage.setItem(PROMPT_STORAGE_KEY, JSON.stringify({ type: "custom", prompts: updated }));
     queryClient.cancelQueries({ queryKey: ["/api/profile"] });
     queryClient.setQueryData(["/api/profile"], (old: any) => ({
       ...old,
@@ -246,6 +268,7 @@ export default function DashboardPage() {
         }));
       } catch (e) {
         console.error("Failed to save reflection prompt", e);
+        sessionStorage.removeItem(PROMPT_STORAGE_KEY);
         setLocalPromptOverrides(null);
         queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       }
@@ -255,6 +278,7 @@ export default function DashboardPage() {
 
   const resetReflectionPrompts = useCallback(async () => {
     setLocalPromptOverrides({ ...defaultPrompts });
+    sessionStorage.setItem(PROMPT_STORAGE_KEY, JSON.stringify({ type: "reset" }));
     queryClient.cancelQueries({ queryKey: ["/api/profile"] });
     queryClient.setQueryData(["/api/profile"], (old: any) => ({
       ...old,
@@ -272,6 +296,7 @@ export default function DashboardPage() {
         }));
       } catch (e) {
         console.error("Failed to reset reflection prompts", e);
+        sessionStorage.removeItem(PROMPT_STORAGE_KEY);
         setLocalPromptOverrides(null);
         queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       }
