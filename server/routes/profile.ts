@@ -163,7 +163,13 @@ export function registerProfileRoutes(app: Express): void {
         }
       }
       
-      const updatedProfile = await storage.upsertUserProfile(userId, updateData);
+      const existingProfile = await storage.getUserProfile(userId);
+      let updatedProfile;
+      if (existingProfile) {
+        updatedProfile = await storage.updateUserProfile(userId, updateData);
+      } else {
+        updatedProfile = await storage.upsertUserProfile(userId, updateData);
+      }
       
       res.json(updatedProfile);
     } catch (error) {
