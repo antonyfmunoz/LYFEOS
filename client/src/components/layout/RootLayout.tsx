@@ -48,8 +48,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <Sidebar currentPage={currentPage} username={username} />
         
         <div className="flex-grow flex flex-col overflow-hidden">
-          <div ref={scrollContainerRef} className="flex-grow overflow-y-auto relative">
-            <div className="bg-background lg:hidden" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
+          <div ref={scrollContainerRef} className="flex-grow overflow-y-auto relative" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
+            <div className="bg-background lg:hidden">
               <div className="flex items-center justify-center py-3">
                 <span className="text-2xl text-white font-orbitron font-bold">LYFE<span className="text-primary">OS</span></span>
               </div>
