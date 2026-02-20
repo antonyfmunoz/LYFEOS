@@ -55,7 +55,15 @@ import BlueLightFilter from "./components/BlueLightFilter";
 const isTouchDevice = () =>
   typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 
+function hideOAuthPreloader() {
+  const el = document.getElementById('oauth-preloader');
+  if (el) el.style.display = 'none';
+}
+
 function OAuthLoadingScreen() {
+  useEffect(() => {
+    hideOAuthPreloader();
+  }, []);
   return (
     <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background">
       <span className="text-3xl text-white font-orbitron font-bold mb-4">
@@ -125,16 +133,18 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
   const [, navigate] = useLocation();
-  // Track if we've already attempted a redirect for the current route
   const routeRedirectRef = React.useRef<string | null>(null);
   
-  // Track the authentication state to detect changes
   const wasAuthenticated = React.useRef<boolean | null>(null);
   
-  // Track if we are in the process of logging in (use state so effects re-trigger)
   const [isLoginTransition, setIsLoginTransition] = React.useState(false);
   
-  // Check if we're in a login transition (the period right after login before session is fully established)
+  useEffect(() => {
+    if (!isLoading) {
+      hideOAuthPreloader();
+    }
+  }, [isLoading]);
+  
   useEffect(() => {
     if (wasAuthenticated.current === false && isAuthenticated === true) {
       console.log("Login detected - entering transition state");
