@@ -511,8 +511,11 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
               }
               
               const isOnboarding = window.location.pathname.replace(/\/+$/, '') === '/onboarding';
-              if (!isOnboarding && dbStats.primaryColor) {
-                applyPrimaryColor(dbStats.primaryColor);
+              if (!isOnboarding) {
+                const colorToApply = dbStats.primaryColor || localStorage.getItem('lyfeos-primary-color');
+                if (colorToApply && colorToApply !== "#ffffff") {
+                  applyPrimaryColor(colorToApply);
+                }
               }
               
               if (dbStats.aiAssistantName) {

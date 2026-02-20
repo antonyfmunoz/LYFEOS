@@ -715,11 +715,15 @@ export default function OnboardingPage() {
   }, []);
 
   useEffect(() => {
+    if (currentMission === 0) return;
     const colorToApply = selectedThemeColor !== "#ffffff" 
       ? selectedThemeColor 
       : localStorage.getItem('lyfeos-primary-color');
     if (colorToApply && colorToApply !== "#ffffff") {
       applyPrimaryColor(colorToApply);
+      if (selectedThemeColor === "#ffffff") {
+        setSelectedThemeColor(colorToApply);
+      }
     }
   }, [currentMission, currentStep, selectedThemeColor]);
 
@@ -1226,6 +1230,14 @@ export default function OnboardingPage() {
 
   const handleStop = async () => {
     if (currentMission === 0) return;
+
+    const colorToRestore = selectedThemeColor !== "#ffffff" 
+      ? selectedThemeColor 
+      : localStorage.getItem('lyfeos-primary-color');
+    if (colorToRestore && colorToRestore !== "#ffffff") {
+      applyPrimaryColor(colorToRestore);
+      localStorage.setItem('lyfeos-primary-color', colorToRestore);
+    }
 
     try {
       await saveMissionData(currentMission);
