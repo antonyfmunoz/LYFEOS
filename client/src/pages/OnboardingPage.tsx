@@ -2045,25 +2045,26 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <div className="relative text-center pt-[env(safe-area-inset-top)] pb-4">
-        {currentMission > 0 && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleStop}
-            className="absolute right-4 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10"
-            style={{ top: "calc(0.5rem + env(safe-area-inset-top, 1.5rem))" }}
-            title="Save progress and exit"
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        )}
+      <div className="text-center pt-[env(safe-area-inset-top)] pb-2">
         <h1 className="text-4xl font-orbitron font-bold">
           <span className="text-foreground">LYFE</span>
           <span className="text-primary">OS</span>
         </h1>
         <p className="text-muted-foreground text-sm">Your life operating system</p>
       </div>
+      {currentMission > 0 && (
+        <div className="flex justify-end px-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleStop}
+            className="rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10"
+            title="Save progress and exit"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+      )}
       <div className="flex-1 flex flex-col items-center justify-center px-4 pb-4">
         <Card className="w-full max-w-lg border-primary/30 bg-card/50 backdrop-blur shadow-[0_0_30px_var(--primary-bg-subtle)]">
           <CardContent className="p-6">
