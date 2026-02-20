@@ -1,6 +1,4 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
-import { useTutorialStatus } from '@/hooks/use-tutorial';
 import { useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAuth } from '@/lib/authContext';
@@ -135,35 +133,6 @@ export default function RolodexPage() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
-
-  const ROLODEX_TOUR_STEPS: TutorialStep[] = [
-    {
-      target: "[data-tour='rolodex-header']",
-      title: "Your Rolodex",
-      description: "Manage all your personal and professional contacts in one place. Add details like relationship type, trust level, and communication frequency.",
-      position: "bottom",
-    },
-    {
-      target: "[data-tour='rolodex-create']",
-      title: "Add Contact",
-      description: "Create a new contact with their info, relationship type, notes, and social links. You can also attach images to contact notes.",
-      position: "bottom",
-    },
-    {
-      target: "[data-tour='rolodex-search']",
-      title: "Search & Filter",
-      description: "Quickly find contacts by name, company, or role. Use the filter button to narrow by category — personal, work, family, friend, mentor, or client.",
-      position: "bottom",
-    },
-    {
-      target: "[data-tour='rolodex-contacts']",
-      title: "Contact Cards",
-      description: "Browse your contacts here. Tap any card to view full details, edit their info, or mark them as a favorite for quick access.",
-      position: "top",
-    },
-  ];
-
-  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials, isLoading: isTutorialLoading } = useTutorialStatus("rolodex");
 
   const { isLoading } = useQuery<{ contacts: Contact[] }>({
     queryKey: ['/api/users', user?.id, 'contacts'],
@@ -363,7 +332,6 @@ export default function RolodexPage() {
 
   return (
     <div className="min-h-screen bg-background px-4 py-6 max-w-4xl mx-auto">
-      <PageTutorial steps={ROLODEX_TOUR_STEPS} storageKey="rolodex" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} isLoading={isTutorialLoading} />
       <div className="mb-4">
         <Button
           className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"

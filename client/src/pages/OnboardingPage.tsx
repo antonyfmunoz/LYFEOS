@@ -698,24 +698,27 @@ export default function OnboardingPage() {
   const [location, setLocation] = useState(saved.location || "");
   const [detectedLocation, setDetectedLocation] = useState("");
   const [timezone, setTimezone] = useState(saved.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
-  const [selectedThemeColor, setSelectedThemeColor] = useState("#ffffff");
+  const [selectedThemeColor, setSelectedThemeColor] = useState(() => {
+    const saved = localStorage.getItem('lyfeos-primary-color');
+    return (saved && saved !== '#ffffff') ? saved : "#ffffff";
+  });
 
   useEffect(() => {
     const savedColor = localStorage.getItem('lyfeos-primary-color');
     if (savedColor && savedColor !== '#ffffff') {
       applyPrimaryColor(savedColor);
       setSelectedThemeColor(savedColor);
-    } else {
-      localStorage.removeItem('lyfeos-primary-color');
-      applyPrimaryColor("#ffffff");
     }
   }, []);
 
   useEffect(() => {
-    if (currentMission > 0 && selectedThemeColor && selectedThemeColor !== "#ffffff") {
-      applyPrimaryColor(selectedThemeColor);
+    const colorToApply = selectedThemeColor !== "#ffffff" 
+      ? selectedThemeColor 
+      : localStorage.getItem('lyfeos-primary-color');
+    if (colorToApply && colorToApply !== "#ffffff") {
+      applyPrimaryColor(colorToApply);
     }
-  }, [currentMission, selectedThemeColor]);
+  }, [currentMission, currentStep, selectedThemeColor]);
 
   useEffect(() => {
     (async () => {

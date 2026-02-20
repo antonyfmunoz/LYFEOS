@@ -8,9 +8,6 @@ const TUTORIAL_PAGES = [
   "missions",
   "profile",
   "chronilog",
-  "tracker",
-  "rolodex",
-  "timeline",
   "ai",
 ];
 

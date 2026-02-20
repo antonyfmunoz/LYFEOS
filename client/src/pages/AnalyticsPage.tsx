@@ -3,8 +3,6 @@ import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/authContext";
 import { usePageTitle } from "@/hooks/use-page-title";
-import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
-import { useTutorialStatus } from '@/hooks/use-tutorial';
 import update from 'immutability-helper';
 import { CollapsibleWidget } from '@/components/ui/collapsible-widget';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -117,35 +115,6 @@ export default function AnalyticsPage() {
 
   const analyticsWidgetsRef = useRef(analyticsWidgets);
   analyticsWidgetsRef.current = analyticsWidgets;
-
-  const TRACKER_TOUR_STEPS: TutorialStep[] = [
-    {
-      target: "[data-tour='tracker-header']",
-      title: "Your Tracker",
-      description: "Visualize your progress with charts and stats. Track XP, missions, streaks, and performance over different time periods.",
-      position: "bottom",
-    },
-    {
-      target: "[data-tour='tracker-period']",
-      title: "Time Period",
-      description: "Switch between 7-day, 14-day, 30-day, or 90-day views to analyze your performance across different time ranges.",
-      position: "bottom",
-    },
-    {
-      target: "[data-tour='tracker-summary']",
-      title: "Quick Stats",
-      description: "Your key numbers at a glance — missions completed, XP earned, current streak, and efficiency score.",
-      position: "bottom",
-    },
-    {
-      target: "[data-tour='tracker-widgets']",
-      title: "Analytics Widgets",
-      description: "Deep-dive charts showing XP progression, category breakdowns, activity heatmaps, weekly patterns, and personal records. Drag to reorder.",
-      position: "top",
-    },
-  ];
-
-  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials, isLoading: isTutorialLoading } = useTutorialStatus("tracker");
 
   const moveAnalyticsWidget = useCallback((dragIndex: number, hoverIndex: number) => {
     const prev = analyticsWidgetsRef.current;
@@ -541,7 +510,6 @@ export default function AnalyticsPage() {
 
   return (
     <div className="mx-auto max-w-5xl py-8 px-4">
-      <PageTutorial steps={TRACKER_TOUR_STEPS} storageKey="tracker" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} isLoading={isTutorialLoading} />
       <div className="mb-6">
         <Link href="/chronilog" className="inline-flex items-center gap-2 bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs rounded-md px-3 py-2 transition-colors">
           <ArrowLeft className="h-4 w-4" />

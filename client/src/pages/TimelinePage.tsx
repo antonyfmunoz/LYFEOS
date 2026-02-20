@@ -9,8 +9,6 @@ import { usePageTitle } from '@/hooks/use-page-title';
 import { useAuth } from '@/lib/authContext';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
-import { useTutorialStatus } from '@/hooks/use-tutorial';
 
 const ONBOARDING_MISSIONS = [
   { id: 0, title: "Access & Quickstart", description: "Log in, explore the dashboard, and complete your first quick mission to get familiar with LYFEOS." },
@@ -175,35 +173,6 @@ export default function TimelinePage() {
     queryKey: ['/api/user-categories'],
     enabled: !!user,
   });
-
-  const TIMELINE_TOUR_STEPS: TutorialStep[] = [
-    {
-      target: "[data-tour='timeline-header']",
-      title: "Your Timeline",
-      description: "View your complete journey through time. Switch between History to see past accomplishments and Roadmap to see what's ahead.",
-      position: "bottom",
-    },
-    {
-      target: "[data-tour='timeline-view-toggle']",
-      title: "History & Roadmap",
-      description: "Toggle between History mode to review past events and Roadmap mode to see upcoming missions, goals, and milestones.",
-      position: "bottom",
-    },
-    {
-      target: "[data-tour='timeline-zoom']",
-      title: "Zoom Controls",
-      description: "Zoom in and out to view your timeline at different scales — from a single day all the way out to your entire life journey.",
-      position: "bottom",
-    },
-    {
-      target: "[data-tour='timeline-events']",
-      title: "Timeline Events",
-      description: "Each entry shows a completed mission or event with its date, category, and details. Tap any item to expand and see more.",
-      position: "top",
-    },
-  ];
-
-  const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials, isLoading: isTutorialLoading } = useTutorialStatus("timeline");
 
   const [activeView, setActiveView] = useState<'history' | 'roadmap'>('history');
   const [zoomLevel, setZoomLevel] = useState<ZoomLevel>('life');
@@ -716,7 +685,6 @@ export default function TimelinePage() {
 
   return (
     <div className="pb-20">
-      <PageTutorial steps={TIMELINE_TOUR_STEPS} storageKey="timeline" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} isLoading={isTutorialLoading} />
       <div className="mb-4">
         <Button
           className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"

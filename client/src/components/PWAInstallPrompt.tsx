@@ -42,8 +42,7 @@ function wasPermanentlyDismissed(userId: number | undefined | null): boolean {
 }
 
 const ALL_TUTORIAL_PAGES = [
-  "dashboard", "missions", "profile", "chronilog",
-  "tracker", "rolodex", "timeline", "ai",
+  "dashboard", "missions", "profile", "chronilog", "ai",
 ];
 
 function areAllTutorialsComplete(profile: any, userId: number | undefined | null): boolean {
