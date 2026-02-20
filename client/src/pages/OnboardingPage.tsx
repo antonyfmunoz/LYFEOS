@@ -2040,7 +2040,7 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <div className="relative text-center pt-6 pb-4">
+      <div className="relative text-center pt-[env(safe-area-inset-top)] pb-4">
         {currentMission > 0 && (
           <Button
             variant="ghost"
