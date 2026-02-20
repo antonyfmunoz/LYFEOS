@@ -3,6 +3,7 @@ import { Route, Switch, useLocation } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
 import { LYFEOSProvider } from "./lib/context";
 import { AuthProvider, useAuth } from "./lib/authContext";
+import { applyPrimaryColor } from "./lib/applyPrimaryColor";
 import { ThemeProvider } from "./lib/themeContext";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
@@ -56,16 +57,26 @@ const isTouchDevice = () =>
   typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 
 function OAuthLoadingScreen() {
-  const savedColor = localStorage.getItem('lyfeos-last-primary-color') || 'hsl(var(--primary))';
-  const color = savedColor.startsWith('#') ? savedColor : 'hsl(var(--primary))';
+  const savedColor = localStorage.getItem('lyfeos-last-primary-color');
+  const color = savedColor && savedColor.startsWith('#') ? savedColor : null;
+
+  React.useEffect(() => {
+    if (color) {
+      applyPrimaryColor(color);
+    }
+  }, [color]);
+
   return (
     <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background">
       <span className="text-3xl text-white font-orbitron font-bold mb-4">
-        LYFE<span style={{ color }}>OS</span>
+        LYFE<span className={color ? undefined : "text-primary"} style={color ? { color } : undefined}>OS</span>
       </span>
       <div
         className="w-8 h-8 rounded-full animate-spin"
-        style={{ border: `2px solid ${color}`, borderTopColor: 'transparent' }}
+        style={color
+          ? { border: `2px solid ${color}`, borderTopColor: 'transparent' }
+          : { border: '2px solid hsl(var(--primary))', borderTopColor: 'transparent' }
+        }
       />
       <p className="text-muted-foreground text-sm mt-4">Signing you in...</p>
     </div>
