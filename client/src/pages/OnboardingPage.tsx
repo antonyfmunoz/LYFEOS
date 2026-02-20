@@ -720,6 +720,12 @@ export default function OnboardingPage() {
   }, [stats.primaryColor]);
 
   useEffect(() => {
+    if (currentMission > 0 && selectedThemeColor && selectedThemeColor !== "#ffffff") {
+      applyPrimaryColor(selectedThemeColor);
+    }
+  }, [currentMission, selectedThemeColor]);
+
+  useEffect(() => {
     (async () => {
       try {
         const res = await fetch("/api/geo/location");
