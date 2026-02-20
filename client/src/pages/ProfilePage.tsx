@@ -335,7 +335,7 @@ export default function ProfilePage() {
     utterance.volume = 1.0;
     
     const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(v => v.name.includes('Google') && v.lang.startsWith('en')) 
+    const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Female')) 
       || voices.find(v => v.lang.startsWith('en'));
     if (preferredVoice) utterance.voice = preferredVoice;
     

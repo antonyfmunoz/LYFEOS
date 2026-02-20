@@ -48,7 +48,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <Sidebar currentPage={currentPage} username={username} />
         
         <div className="flex-grow flex flex-col overflow-hidden">
-          <div className="shrink-0 bg-background z-40">
+          <div className="shrink-0 bg-background z-40 lg:hidden">
             <div className="flex items-center justify-center py-4">
               <span className="text-2xl text-white font-orbitron font-bold">LYFE<span className="text-primary">OS</span></span>
             </div>
@@ -102,6 +102,10 @@ export default function RootLayout({ children }: RootLayoutProps) {
             )}
             
             <div className="p-4 lg:p-6">
+              <div className="hidden lg:flex flex-col items-center mb-4">
+                <span className="text-2xl text-white font-orbitron font-bold">LYFE<span className="text-primary">OS</span></span>
+                <p className="text-muted-foreground text-sm mt-1">Your personal life operating system</p>
+              </div>
               {children}
             </div>
           </div>
