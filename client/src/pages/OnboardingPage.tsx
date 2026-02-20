@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, Check, Loader2, Zap, X, ChevronDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, Loader2, Zap, X, ChevronDown, AlertTriangle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { applyPrimaryColor } from "@/lib/applyPrimaryColor";
@@ -1566,8 +1566,15 @@ export default function OnboardingPage() {
     }
   };
 
+  const SENSITIVE_MISSIONS: Record<number, string> = {
+    2: "This mission includes questions about personal beliefs, limitations, and life reflections. Feel free to skip any question you're not comfortable with.",
+    5: "This mission covers personal habits, coping mechanisms, and emotional patterns. Share only what feels right for you.",
+    6: "This mission explores your upbringing, personal history, and relationships. These can be deeply personal — skip anything you'd rather not answer.",
+  };
+
   const renderMissionStartPage = () => {
     const mission = MISSIONS[currentMission];
+    const sensitiveWarning = SENSITIVE_MISSIONS[currentMission];
     return (
       <div className="space-y-6 py-4">
         <div className="text-center space-y-3">
@@ -1582,6 +1589,12 @@ export default function OnboardingPage() {
           <span>~{Math.max(1, Math.round(mission.questions * 0.5))} min</span>
           <span className="text-primary">+{mission.xp} XP</span>
         </div>
+        {sensitiveWarning && (
+          <div className="max-w-sm mx-auto flex items-start gap-3 rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-4 py-3">
+            <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-yellow-200/80 leading-relaxed">{sensitiveWarning}</p>
+          </div>
+        )}
       </div>
     );
   };
