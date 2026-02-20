@@ -18,8 +18,20 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isOAuthRedirecting, setIsOAuthRedirecting] = useState(() => {
+    return !!localStorage.getItem('lyfeos-oauth-redirect-pending');
+  });
 
   const accent = null;
+
+  useEffect(() => {
+    if (isOAuthRedirecting) {
+      const timeout = setTimeout(() => {
+        setIsOAuthRedirecting(false);
+      }, 15000);
+      return () => clearTimeout(timeout);
+    }
+  }, [isOAuthRedirecting]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -109,6 +121,16 @@ export default function RegisterPage() {
       setIsLoading(false);
     }
   };
+
+  if (isOAuthRedirecting) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 text-white" style={{ backgroundColor: 'hsl(0 0% 7%)' }}>
+        <h1 className="text-4xl font-orbitron font-bold mb-6"><span className="text-white">LYFE</span><span className="text-white">OS</span></h1>
+        <Loader2 className="h-8 w-8 animate-spin text-white/60 mb-4" />
+        <p className="text-white/60 text-sm">Completing sign-in...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center p-4 text-white" style={{ backgroundColor: 'hsl(0 0% 7%)' }}>
