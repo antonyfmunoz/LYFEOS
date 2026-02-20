@@ -598,7 +598,7 @@ function ScenarioSelect({
 export default function OnboardingPage() {
   usePageTitle("Onboarding");
   const { user, isLoading: authLoading, completeRegistration, getPendingPassword, refreshUser } = useAuth();
-  const { quests, refetchQuests, updateUserStats, setPrimaryColor } = useLYFEOS();
+  const { quests, refetchQuests, updateUserStats, setPrimaryColor, stats } = useLYFEOS();
   const [, navigate] = useLocation();
 
   const pendingReg = sessionStorage.getItem("lyfeos-pending-registration");
@@ -710,10 +710,14 @@ export default function OnboardingPage() {
     const savedColor = localStorage.getItem('lyfeos-primary-color');
     if (savedColor && savedColor !== '#ffffff') {
       applyPrimaryColor(savedColor);
+      setSelectedThemeColor(savedColor);
+    } else if (stats.primaryColor && stats.primaryColor !== '#ffffff') {
+      applyPrimaryColor(stats.primaryColor);
+      setSelectedThemeColor(stats.primaryColor);
     } else {
       applyPrimaryColor("#ffffff");
     }
-  }, []);
+  }, [stats.primaryColor]);
 
   useEffect(() => {
     (async () => {
@@ -1264,6 +1268,10 @@ export default function OnboardingPage() {
     if (currentMission === 0) {
       setContinuedPastMission0(true);
       localStorage.setItem("lyfeos-continued-past-mission0", "true");
+    }
+    if (selectedThemeColor && selectedThemeColor !== "#ffffff") {
+      applyPrimaryColor(selectedThemeColor);
+      localStorage.setItem('lyfeos-primary-color', selectedThemeColor);
     }
     setCurrentMission(currentMission + 1);
     setCurrentStep(0);
