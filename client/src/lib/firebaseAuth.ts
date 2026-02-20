@@ -57,8 +57,8 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
     return null;
   }
 
-  if (isMobileSafari()) {
-    console.log(`Mobile Safari detected, using redirect flow directly for ${providerName}`);
+  if (isMobileBrowser()) {
+    console.log(`Mobile browser detected, using redirect flow directly for ${providerName}`);
     try {
       localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
       await signInWithRedirect(auth, provider);
@@ -76,7 +76,7 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
   }
 
   try {
-    console.log(`Attempting popup sign-in for ${providerName}` + (isMobileBrowser() ? ' (mobile)' : ''));
+    console.log(`Attempting popup sign-in for ${providerName}`);
     const result = await signInWithPopup(auth, provider, browserPopupRedirectResolver);
     return result;
   } catch (error: any) {
