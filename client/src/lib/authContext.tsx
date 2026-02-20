@@ -109,7 +109,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("lyfeos-has-seen-dashboard");
       localStorage.removeItem("lyfeos-primary-color");
       localStorage.setItem("lyfeos-pending-onboarding", "true");
-      sessionStorage.setItem("lyfeos-pending-registration", "true");
       navigate("/onboarding", { replace: true });
     } else {
       console.log("Returning OAuth user, using standard login flow");
