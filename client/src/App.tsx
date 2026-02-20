@@ -441,11 +441,11 @@ function Router() {
         </ProtectedRoute>
       </Route>
 
-      <Route path="/subscription">
+      <Route path="/subscription" component={LandingPage} />
+
+      <Route path="/subscription/manage">
         <ProtectedRoute>
-          <RootLayout>
-            <SubscriptionPage />
-          </RootLayout>
+          <SubscriptionPage />
         </ProtectedRoute>
       </Route>
 

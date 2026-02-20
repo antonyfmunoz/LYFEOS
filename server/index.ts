@@ -8,6 +8,9 @@ import compression from "compression";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { startNotificationScheduler } from "./notificationScheduler";
+import { runMigrations } from 'stripe-replit-sync';
+import { getStripeSync } from './stripeClient';
+import { WebhookHandlers } from './webhookHandlers';
 import { createProxyMiddleware } from "http-proxy-middleware";
 import { execSync } from "child_process";
 
@@ -90,6 +93,27 @@ app.use(helmet({
 }));
 
 app.set("trust proxy", 1);
+
+// Stripe webhook route MUST be registered BEFORE express.json() middleware
+// Webhooks need the raw Buffer body for signature verification
+app.post(
+  '/api/stripe/webhook',
+  express.raw({ type: 'application/json' }),
+  async (req, res) => {
+    const signature = req.headers['stripe-signature'];
+    if (!signature) {
+      return res.status(400).json({ error: 'Missing stripe-signature' });
+    }
+    try {
+      const sig = Array.isArray(signature) ? signature[0] : signature;
+      await WebhookHandlers.processWebhook(req.body as Buffer, sig);
+      res.status(200).json({ received: true });
+    } catch (error: any) {
+      console.error('Webhook error:', error.message);
+      res.status(400).json({ error: 'Webhook processing error' });
+    }
+  }
+);
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false, limit: '1mb' }));
@@ -189,6 +213,41 @@ app.use((req, res, next) => {
   next();
 });
 
+async function initStripe() {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    log('DATABASE_URL not set, skipping Stripe initialization');
+    return;
+  }
+
+  try {
+    log('Initializing Stripe schema...');
+    await runMigrations({ databaseUrl } as any);
+    log('Stripe schema ready');
+
+    const stripeSync = await getStripeSync();
+
+    const domains = process.env.REPLIT_DOMAINS?.split(',')[0];
+    if (domains) {
+      const webhookBaseUrl = `https://${domains}`;
+      try {
+        const result = await stripeSync.findOrCreateManagedWebhook(
+          `${webhookBaseUrl}/api/stripe/webhook`
+        );
+        log(`Stripe webhook configured: ${result?.webhook?.url || 'webhook ready'}`);
+      } catch (webhookErr) {
+        console.error('Webhook setup error (non-fatal):', webhookErr);
+      }
+    }
+
+    stripeSync.syncBackfill()
+      .then(() => log('Stripe data synced'))
+      .catch((err: any) => console.error('Error syncing Stripe data:', err));
+  } catch (error) {
+    console.error('Failed to initialize Stripe:', error);
+  }
+}
+
 async function ensureDatabaseSchema() {
   try {
     const result = await db.execute(
@@ -215,6 +274,7 @@ async function ensureDatabaseSchema() {
 
 (async () => {
   await ensureDatabaseSchema();
+  await initStripe();
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
