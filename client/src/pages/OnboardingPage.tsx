@@ -2065,36 +2065,36 @@ export default function OnboardingPage() {
             <DotNavigation current={currentStep} total={totalSteps} />
           </CardContent>
         </Card>
-      </div>
-      <div className="p-4">
-        <div className="max-w-lg mx-auto flex justify-between items-center">
-          {currentStep === 0 ? (
-            <div />
-          ) : (
-            <Button 
-              onClick={handlePrevious} 
-              className="bg-transparent border-2 border-primary text-primary hover:bg-primary/20 hover:text-primary"
-            >
-              <ChevronLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-          )}
-          
-          <Button 
-            onClick={handleNext} 
-            disabled={!canProceed() || isLoading}
-            className="bg-transparent border-2 border-primary text-primary hover:bg-primary/20"
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : currentStep === 0 && currentMission > 0 ? (
-              <>Start<ChevronRight className="h-4 w-4 ml-2" /></>
-            ) : currentMission === MISSIONS.length - 1 && currentStep === totalSteps - 1 ? (
-              <>Initialize System<ChevronRight className="h-4 w-4 ml-2" /></>
+        <div className="w-full max-w-lg mt-4">
+          <div className="flex justify-between items-center">
+            {currentStep === 0 ? (
+              <div />
             ) : (
-              <>Next<ChevronRight className="h-4 w-4 ml-2" /></>
+              <Button 
+                onClick={handlePrevious} 
+                className="bg-transparent border-2 border-primary text-primary hover:bg-primary/20 hover:text-primary"
+              >
+                <ChevronLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
             )}
-          </Button>
+            
+            <Button 
+              onClick={handleNext} 
+              disabled={!canProceed() || isLoading}
+              className="bg-transparent border-2 border-primary text-primary hover:bg-primary/20"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : currentStep === 0 && currentMission > 0 ? (
+                <>Start<ChevronRight className="h-4 w-4 ml-2" /></>
+              ) : currentMission === MISSIONS.length - 1 && currentStep === totalSteps - 1 ? (
+                <>Initialize System<ChevronRight className="h-4 w-4 ml-2" /></>
+              ) : (
+                <>Next<ChevronRight className="h-4 w-4 ml-2" /></>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
