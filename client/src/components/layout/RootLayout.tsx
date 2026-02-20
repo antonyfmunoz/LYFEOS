@@ -115,5 +115,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <AICompanionPanel />
       <MobileNav currentPage={currentPage} />
     </div>
+    
   );
 }

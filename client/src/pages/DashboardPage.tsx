@@ -322,9 +322,9 @@ export default function DashboardPage() {
     },
     {
       target: "[data-tour='mobile-nav']",
-      title: "Navigation Bar",
-      description: "Tap these icons to switch between Dashboard, Missions, AI Assistant, Chronilog (journal), and your Profile.",
-      position: "top",
+      title: "Navigation Menu",
+      description: "Tap the floating button in the bottom-right corner to expand your navigation menu. From there you can switch between Dashboard, Missions, AI Assistant, Chronilog (journal), and your Profile.",
+      position: "left",
     },
     {
       target: "[data-tour='widget-data-entry-log']",
