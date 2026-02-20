@@ -390,12 +390,12 @@ export default function ChronilogPage() {
   return (
       <div className="pb-20">
         <PageTutorial steps={CHRONILOG_TOUR_STEPS} storageKey="chronilog" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} isLoading={isTutorialLoading} />
-        <div className="mb-6" data-tour="chronilog-header">
+        <div className={cn("mb-6", isTutorialLoading && "invisible")} data-tour="chronilog-header">
           <h1 className="text-2xl font-orbitron mb-1">Chronilog</h1>
           <p className="text-[#7DAAB2]">Your personal timeline of knowledge, reflections, and growth logs.</p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-tour="chronilog-categories">
+        <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-6", isTutorialLoading && "invisible")} data-tour="chronilog-categories">
           {categories.map((category, index) => (
             category.id === 'timeline' ? (
               <DraggableTimelineWrapper

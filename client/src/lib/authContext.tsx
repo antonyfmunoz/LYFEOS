@@ -584,6 +584,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("lyfeos-onboarding-answers");
       localStorage.removeItem("lyfeos-onboarding-resume");
       localStorage.removeItem("lyfeos-continued-past-mission0");
+      localStorage.removeItem("lyfeos-widget-states");
       
       // Sign out from Firebase
       try {
