@@ -225,7 +225,15 @@ function Router() {
   return (
     <Switch>
       {/* Public routes */}
-      <Route path="/login" component={LoginPage} />
+      <Route path="/login">
+        {isLoading && localStorage.getItem('lyfeos-oauth-mode') ? (
+          <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background">
+            <span className="text-3xl text-white font-orbitron font-bold mb-4">LYFE<span className="text-primary">OS</span></span>
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="text-muted-foreground text-sm mt-4">Signing you in...</p>
+          </div>
+        ) : <LoginPage />}
+      </Route>
       <Route path="/register" component={RegisterPage} />
       <Route path="/verify-email" component={VerifyEmailPage} />
       <Route path="/forgot-password" component={ForgotPasswordPage} />
@@ -463,6 +471,12 @@ function Router() {
           <RootLayout>
             <DashboardPage />
           </RootLayout>
+        ) : isLoading && localStorage.getItem('lyfeos-oauth-mode') ? (
+          <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background">
+            <span className="text-3xl text-white font-orbitron font-bold mb-4">LYFE<span className="text-primary">OS</span></span>
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="text-muted-foreground text-sm mt-4">Signing you in...</p>
+          </div>
         ) : <LoginPage />}
       </Route>
       
