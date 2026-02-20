@@ -1567,9 +1567,9 @@ export default function OnboardingPage() {
   };
 
   const SENSITIVE_MISSIONS: Record<number, string> = {
-    2: "This mission includes questions about personal beliefs, limitations, and life reflections. Feel free to skip any question you're not comfortable with.",
-    5: "This mission covers personal habits, coping mechanisms, and emotional patterns. Share only what feels right for you.",
-    6: "This mission explores your upbringing, personal history, and relationships. These can be deeply personal — skip anything you'd rather not answer.",
+    2: "This mission includes questions about personal beliefs, limitations, and life reflections.",
+    5: "This mission covers personal habits, coping mechanisms, and emotional patterns.",
+    6: "This mission explores your upbringing, personal history, and relationships. These can be deeply personal.",
   };
 
   const renderMissionStartPage = () => {
@@ -1590,9 +1590,9 @@ export default function OnboardingPage() {
           <span className="text-primary">+{mission.xp} XP</span>
         </div>
         {sensitiveWarning && (
-          <div className="max-w-sm mx-auto flex items-start gap-3 rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-4 py-3">
-            <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
-            <p className="text-xs text-yellow-200/80 leading-relaxed">{sensitiveWarning}</p>
+          <div className="max-w-sm mx-auto flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+            <AlertTriangle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <p className="text-xs text-primary/80 leading-relaxed">{sensitiveWarning}</p>
           </div>
         )}
       </div>
