@@ -101,7 +101,7 @@ export default function LoginPage() {
               className="w-full bg-transparent rounded-lg p-3 outline-none text-white"
               placeholder="Enter username or email"
               required
-              autoFocus={window.innerWidth >= 1024}
+
               style={{ borderColor: accent?.border30 || 'rgba(255,255,255,0.3)', '--tw-ring-color': accent?.border30 || 'rgba(255,255,255,0.3)' } as any}
             />
           </div>
