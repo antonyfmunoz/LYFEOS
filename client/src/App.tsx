@@ -55,6 +55,23 @@ import BlueLightFilter from "./components/BlueLightFilter";
 const isTouchDevice = () =>
   typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 
+function OAuthLoadingScreen() {
+  const savedColor = localStorage.getItem('lyfeos-last-primary-color') || 'hsl(var(--primary))';
+  const color = savedColor.startsWith('#') ? savedColor : 'hsl(var(--primary))';
+  return (
+    <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background">
+      <span className="text-3xl text-white font-orbitron font-bold mb-4">
+        LYFE<span style={{ color }}>OS</span>
+      </span>
+      <div
+        className="w-8 h-8 rounded-full animate-spin"
+        style={{ border: `2px solid ${color}`, borderTopColor: 'transparent' }}
+      />
+      <p className="text-muted-foreground text-sm mt-4">Signing you in...</p>
+    </div>
+  );
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const [, navigate] = useLocation();
@@ -227,11 +244,7 @@ function Router() {
       {/* Public routes */}
       <Route path="/login">
         {isLoading && localStorage.getItem('lyfeos-oauth-mode') ? (
-          <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background">
-            <span className="text-3xl text-white font-orbitron font-bold mb-4">LYFE<span className="text-primary">OS</span></span>
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            <p className="text-muted-foreground text-sm mt-4">Signing you in...</p>
-          </div>
+          <OAuthLoadingScreen />
         ) : <LoginPage />}
       </Route>
       <Route path="/register" component={RegisterPage} />
@@ -472,11 +485,7 @@ function Router() {
             <DashboardPage />
           </RootLayout>
         ) : isLoading && localStorage.getItem('lyfeos-oauth-mode') ? (
-          <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background">
-            <span className="text-3xl text-white font-orbitron font-bold mb-4">LYFE<span className="text-primary">OS</span></span>
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            <p className="text-muted-foreground text-sm mt-4">Signing you in...</p>
-          </div>
+          <OAuthLoadingScreen />
         ) : <LoginPage />}
       </Route>
       
