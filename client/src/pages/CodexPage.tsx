@@ -13,7 +13,7 @@ export default function ChronilogPage() {
   const chronilogCategories = [
     { 
       id: "missions", 
-      title: "Missions", 
+      title: "Missions Log", 
       icon: "task_alt",
       description: "Documentation of your completed and active missions",
       color: "cyan-400"
@@ -97,7 +97,7 @@ export default function ChronilogPage() {
       {/* Mission Pages Section */}
       <div className="mb-8">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-orbitron">Missions</h2>
+          <h2 className="text-xl font-orbitron">Missions Log</h2>
           <button 
             className="text-xs font-medium px-3 py-1 rounded-md bg-[#36F1CD]/10 text-[#36F1CD] hover:bg-opacity-20 transition"
             onClick={() => {

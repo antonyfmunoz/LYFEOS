@@ -246,7 +246,7 @@ export default function ChronilogPage() {
   const [categories, setCategories] = useState<CategoryItem[]>([
     { 
       id: "missions", 
-      title: "Missions", 
+      title: "Missions Log", 
       icon: <CheckSquare className="h-5 w-5 text-primary" />,
       description: "A detailed history of all your completed and active missions. Track your progress and revisit past achievements."
     },
@@ -258,7 +258,7 @@ export default function ChronilogPage() {
     },
     { 
       id: "knowledge", 
-      title: "Knowledge", 
+      title: "Knowledge Base", 
       icon: <GraduationCap className="h-5 w-5 text-primary" />,
       description: "Your personal library of notes, documents, and saved knowledge. Store and organize information for easy retrieval."
     },
@@ -343,7 +343,7 @@ export default function ChronilogPage() {
     },
     {
       target: "[data-tour='chronilog-missions']",
-      title: "Missions Archive",
+      title: "Missions Log",
       description: "A detailed history of all your completed and active missions. Track your progress and revisit past achievements.",
       position: "bottom",
     },
@@ -355,7 +355,7 @@ export default function ChronilogPage() {
     },
     {
       target: "[data-tour='chronilog-knowledge']",
-      title: "Knowledge",
+      title: "Knowledge Base",
       description: "Your personal library of notes, documents, and saved knowledge. Store and organize information for easy retrieval.",
       position: "bottom",
     },

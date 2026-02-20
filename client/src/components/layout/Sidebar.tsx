@@ -12,7 +12,7 @@ export default function Sidebar({ currentPage, username }: SidebarProps) {
 
   const navItems = [
     { id: "dashboard", icon: "dashboard", label: "Dashboard" },
-    { id: "missions", icon: "track_changes", label: "Missions" },
+    { id: "missions", icon: "track_changes", label: "Missions Log" },
     { id: "ai", icon: "smart_toy", label: "AI" },
     { id: "chronilog", icon: "book", label: "Chronilog" },
     { id: "profile", icon: "person", label: "Profile" },

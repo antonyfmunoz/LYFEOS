@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { cn } from "@/lib/utils";
 import PageTutorial, { TutorialStep } from '@/components/ui/PageTutorial';
 import { useTutorialStatus } from '@/hooks/use-tutorial';
 import { useAuth } from "@/lib/authContext";
@@ -306,7 +307,7 @@ export default function AIPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] pb-10">
       <PageTutorial steps={AI_TOUR_STEPS} storageKey="ai" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} isLoading={isTutorialLoading} />
-      <div className="flex items-center justify-between mb-4 pb-4 border-b border-primary/20" data-tour="ai-header">
+      <div className={cn("flex items-center justify-between mb-4 pb-4 border-b border-primary/20", isTutorialLoading && "invisible")} data-tour="ai-header">
         <div className="flex items-center">
           <Button
             variant="ghost"
@@ -373,7 +374,7 @@ export default function AIPage() {
       </div>
       
       {/* Main Chat Area with Collapsible Sidebar */}
-      <div className="flex-grow flex flex-col sm:flex-row relative overflow-hidden">
+      <div className={cn("flex-grow flex flex-col sm:flex-row relative overflow-hidden", isTutorialLoading && "invisible")}>
         {sidebarOpen && (
           <div 
             className="absolute inset-0 bg-black/50 backdrop-blur-sm z-10"
