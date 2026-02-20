@@ -48,13 +48,12 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <Sidebar currentPage={currentPage} username={username} />
         
         <div className="flex-grow flex flex-col overflow-hidden">
-          <div className="shrink-0 bg-background z-40 lg:hidden" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
-            <div className="flex items-center justify-center py-3">
-              <span className="text-2xl text-white font-orbitron font-bold">LYFE<span className="text-primary">OS</span></span>
-            </div>
-          </div>
-          
           <div ref={scrollContainerRef} className="flex-grow overflow-y-auto relative">
+            <div className="bg-background lg:hidden" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
+              <div className="flex items-center justify-center py-3">
+                <span className="text-2xl text-white font-orbitron font-bold">LYFE<span className="text-primary">OS</span></span>
+              </div>
+            </div>
             {activeTimerQuest && (
               <div className="z-30 lg:hidden flex justify-center px-4 pt-2 pb-2">
                 <MissionTimer
