@@ -698,16 +698,19 @@ export default function OnboardingPage() {
   const [location, setLocation] = useState(saved.location || "");
   const [detectedLocation, setDetectedLocation] = useState("");
   const [timezone, setTimezone] = useState(saved.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
-  const [selectedThemeColor, setSelectedThemeColor] = useState(() => {
-    const saved = localStorage.getItem('lyfeos-primary-color');
-    return (saved && saved !== '#ffffff') ? saved : "#ffffff";
-  });
+  const [selectedThemeColor, setSelectedThemeColor] = useState("#ffffff");
 
   useEffect(() => {
-    const savedColor = localStorage.getItem('lyfeos-primary-color');
-    if (savedColor && savedColor !== '#ffffff') {
-      applyPrimaryColor(savedColor);
-      setSelectedThemeColor(savedColor);
+    if (currentMission === 0) {
+      localStorage.removeItem('lyfeos-primary-color');
+      applyPrimaryColor("#ffffff");
+      setSelectedThemeColor("#ffffff");
+    } else {
+      const savedColor = localStorage.getItem('lyfeos-primary-color');
+      if (savedColor && savedColor !== '#ffffff') {
+        applyPrimaryColor(savedColor);
+        setSelectedThemeColor(savedColor);
+      }
     }
   }, []);
 
