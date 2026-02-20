@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { X, Download, Share } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/lib/authContext";
 
-const DISMISS_KEY = "lyfeos_pwa_dismiss";
-const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+const DISMISS_KEY_PREFIX = "lyfeos_pwa_dismissed_";
+const NEW_USER_WINDOW = 3 * 24 * 60 * 60 * 1000;
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -27,27 +29,50 @@ function isMobileDevice(): boolean {
   );
 }
 
-function wasDismissedRecently(): boolean {
-  const dismissed = localStorage.getItem(DISMISS_KEY);
-  if (!dismissed) return false;
-  const dismissedAt = parseInt(dismissed, 10);
-  return Date.now() - dismissedAt < SEVEN_DAYS;
+function getDismissKey(userId: number | undefined | null): string {
+  return `${DISMISS_KEY_PREFIX}${userId || "anon"}`;
 }
 
-export default function PWAInstallPrompt() {
+function wasPermanentlyDismissed(userId: number | undefined | null): boolean {
+  try {
+    return localStorage.getItem(getDismissKey(userId)) === "true";
+  } catch {
+    return false;
+  }
+}
+
+interface PWAInstallPromptProps {
+  tutorialFinished?: boolean;
+}
+
+export default function PWAInstallPrompt({ tutorialFinished = false }: PWAInstallPromptProps) {
+  const { user } = useAuth();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showBanner, setShowBanner] = useState(false);
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
-  const [ready, setReady] = useState(false);
+
+  const { data: profile } = useQuery<any>({
+    queryKey: ["/api/profile"],
+    enabled: !!user,
+    staleTime: 60000,
+  });
+
+  const isNewUser = (() => {
+    if (!profile?.createdAt) return false;
+    const created = new Date(profile.createdAt).getTime();
+    return Date.now() - created < NEW_USER_WINDOW;
+  })();
+
+  const shouldShow = (() => {
+    if (isStandalone() || !isMobileDevice()) return false;
+    if (wasPermanentlyDismissed(user?.id)) return false;
+    if (!isNewUser) return false;
+    if (!tutorialFinished) return false;
+    return true;
+  })();
 
   useEffect(() => {
-    const timer = setTimeout(() => setReady(true), 5000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    if (!ready) return;
-    if (isStandalone() || !isMobileDevice() || wasDismissedRecently()) return;
+    if (!shouldShow) return;
 
     if (isIOS()) {
       setShowIOSInstructions(true);
@@ -73,79 +98,70 @@ export default function PWAInstallPrompt() {
       window.removeEventListener("beforeinstallprompt", handler);
       window.removeEventListener("appinstalled", installedHandler);
     };
-  }, [ready]);
+  }, [shouldShow]);
 
   const handleInstall = useCallback(async () => {
     if (!deferredPrompt) return;
     await deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
     if (outcome === "accepted") {
+      localStorage.setItem(getDismissKey(user?.id), "true");
       setShowBanner(false);
     }
     setDeferredPrompt(null);
-  }, [deferredPrompt]);
+  }, [deferredPrompt, user?.id]);
 
   const handleDismiss = useCallback(() => {
-    localStorage.setItem(DISMISS_KEY, Date.now().toString());
+    localStorage.setItem(getDismissKey(user?.id), "true");
     setShowBanner(false);
-  }, []);
+  }, [user?.id]);
 
   if (!showBanner) return null;
 
   return (
-    <div className="fixed bottom-16 left-0 right-0 z-50 px-3 pb-2 animate-in slide-in-from-bottom-4 duration-300 md:bottom-4">
-      <div
-        className="mx-auto max-w-md rounded-xl border border-[hsl(var(--primary)/0.3)] bg-[#0d0d14]/95 backdrop-blur-lg shadow-[0_0_20px_rgba(0,229,255,0.15)] p-3"
-      >
-        <div className="flex items-center gap-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleDismiss} />
+      <div className="relative glassmorphic rounded-xl p-5 neon-border max-w-sm w-full animate-in zoom-in-95 fade-in duration-300">
+        <button
+          onClick={handleDismiss}
+          className="absolute top-3 right-3 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground"
+          aria-label="Dismiss"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        <div className="flex flex-col items-center text-center gap-3">
           <img
             src="/icon-192.png"
             alt="LYFEOS"
-            className="h-10 w-10 rounded-lg shrink-0"
+            className="h-14 w-14 rounded-xl"
           />
 
-          <div className="flex-1 min-w-0">
+          <div>
+            <p className="text-lg font-semibold text-foreground leading-tight">
+              Install LYFEOS
+            </p>
             {showIOSInstructions ? (
-              <>
-                <p className="text-sm font-semibold text-white leading-tight">
-                  Install LYFEOS
-                </p>
-                <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1 flex-wrap">
-                  Tap <Share className="inline h-3.5 w-3.5 text-[hsl(var(--primary))]" /> Share then
-                  <span className="font-medium text-white">"Add to Home Screen"</span>
-                </p>
-              </>
+              <p className="text-sm text-muted-foreground mt-1.5 flex items-center justify-center gap-1 flex-wrap">
+                Tap <Share className="inline h-4 w-4 text-primary" /> Share then
+                <span className="font-medium text-foreground">"Add to Home Screen"</span>
+              </p>
             ) : (
-              <>
-                <p className="text-sm font-semibold text-white leading-tight">
-                  Install LYFEOS
-                </p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Get the best experience on your device
-                </p>
-              </>
+              <p className="text-sm text-muted-foreground mt-1.5">
+                Get the best experience on your device
+              </p>
             )}
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            {!showIOSInstructions && (
-              <button
-                onClick={handleInstall}
-                className="flex items-center gap-1.5 rounded-lg bg-[hsl(var(--primary))] px-3 py-1.5 text-xs font-bold text-black transition-all hover:brightness-110 active:scale-95 shadow-[0_0_10px_rgba(0,229,255,0.3)]"
-              >
-                <Download className="h-3.5 w-3.5" />
-                Install
-              </button>
-            )}
-
+          {!showIOSInstructions && (
             <button
-              onClick={handleDismiss}
-              className="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-white/10 hover:text-white"
-              aria-label="Dismiss"
+              onClick={handleInstall}
+              className="flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-all hover:brightness-110 active:scale-95 shadow-[0_0_15px_var(--primary-shadow,rgba(0,224,255,0.3))]"
             >
-              <X className="h-4 w-4" />
+              <Download className="h-4 w-4" />
+              Install App
             </button>
-          </div>
+          )}
         </div>
       </div>
     </div>
