@@ -41,6 +41,21 @@ function wasPermanentlyDismissed(userId: number | undefined | null): boolean {
   }
 }
 
+const ALL_TUTORIAL_PAGES = [
+  "dashboard", "missions", "profile", "chronilog",
+  "tracker", "rolodex", "timeline", "ai",
+];
+
+function areAllTutorialsComplete(profile: any, userId: number | undefined | null): boolean {
+  try {
+    const skipKey = `lyfeos-tutorials-all-skipped-${userId || "anon"}`;
+    if (localStorage.getItem(skipKey) === "true") return true;
+  } catch {}
+
+  const completed: string[] = profile?.completedTutorials || [];
+  return ALL_TUTORIAL_PAGES.every(page => completed.includes(page));
+}
+
 interface PWAInstallPromptProps {
   tutorialActive?: boolean;
   tutorialLoading?: boolean;
@@ -65,7 +80,9 @@ export default function PWAInstallPrompt({ tutorialActive = false, tutorialLoadi
     return Date.now() - created < NEW_USER_WINDOW;
   })();
 
-  const canShow = !isStandalone() && isMobileDevice() && !wasPermanentlyDismissed(user?.id) && isNewUser && !tutorialActive && !tutorialLoading && !dismissed;
+  const allTutorialsDone = areAllTutorialsComplete(profile, user?.id);
+
+  const canShow = !isStandalone() && isMobileDevice() && !wasPermanentlyDismissed(user?.id) && isNewUser && !tutorialActive && !tutorialLoading && allTutorialsDone && !dismissed;
 
   useEffect(() => {
     if (!canShow) {
