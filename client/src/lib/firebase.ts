@@ -1,5 +1,5 @@
 import { initializeApp, FirebaseApp } from "firebase/app";
-import { getAuth, Auth, Unsubscribe, NextOrObserver, User, connectAuthEmulator } from "firebase/auth";
+import { getAuth, Auth, Unsubscribe, NextOrObserver, User, connectAuthEmulator, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 
 function resolveProjectId(): string {
@@ -49,8 +49,10 @@ try {
     // Initialize Firebase with persistence options
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
+    setPersistence(auth, browserLocalPersistence).catch((err) => {
+      console.warn("Failed to set Firebase auth persistence:", err);
+    });
     
-    // Initialize Firestore
     db = getFirestore(app);
     
     // Use emulator settings if in development

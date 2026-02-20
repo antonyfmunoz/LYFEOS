@@ -181,6 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } else {
             console.log("Checking OAuth redirect result for:", redirectPending);
             try {
+              await new Promise(r => setTimeout(r, 500));
               const redirectResult = await checkRedirectResult();
               if (redirectResult && redirectResult.user) {
                 console.log("OAuth redirect successful, processing result");
