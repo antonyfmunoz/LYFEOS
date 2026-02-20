@@ -269,15 +269,11 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editUsername, setEditUsername] = useState(username);
   const [isProfileOpen, setIsProfileOpen] = useWidgetState("profile.details", true);
-  const [profileData, setProfileData] = useState<UserProfile>({
-    id: user?.id || 0,
-    username: username,
-    displayName: "",
-    firstName: "",
-    lastName: "",
-    bio: "",
-    title: "",
-    profilePicture: "",
+
+  const cachedProfile = queryClient.getQueryData<UserProfile>(["/api/users", user?.id, "profile"]);
+  const [profileData, setProfileData] = useState<UserProfile>(() => {
+    const defaults: UserProfile = { id: user?.id || 0, username, displayName: "", firstName: "", lastName: "", bio: "", title: "", profilePicture: "" };
+    return cachedProfile ? { ...defaults, ...cachedProfile } : defaults;
   });
   
   // Fetch user profile data
