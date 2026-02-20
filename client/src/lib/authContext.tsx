@@ -195,11 +195,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               let firebaseUserFromState = auth.currentUser || firebaseUserRef.current;
               if (!firebaseUserFromState) {
                 firebaseUserFromState = await new Promise<FirebaseUser | null>((resolve) => {
-                  const timeout = setTimeout(() => resolve(null), 3000);
+                  const timeout = setTimeout(() => resolve(null), 5000);
                   const unsub = onAuthStateChanged(auth, (fbUser) => {
-                    clearTimeout(timeout);
-                    unsub();
-                    resolve(fbUser);
+                    if (fbUser) {
+                      clearTimeout(timeout);
+                      unsub();
+                      resolve(fbUser);
+                    }
+                  });
+                });
+              }
+
+              if (!firebaseUserFromState) {
+                console.log("First auth state check returned null, retrying with longer wait...");
+                firebaseUserFromState = await new Promise<FirebaseUser | null>((resolve) => {
+                  const timeout = setTimeout(() => resolve(null), 5000);
+                  const unsub = onAuthStateChanged(auth, (fbUser) => {
+                    if (fbUser) {
+                      clearTimeout(timeout);
+                      unsub();
+                      resolve(fbUser);
+                    }
                   });
                 });
               }
