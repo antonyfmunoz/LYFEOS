@@ -781,8 +781,7 @@ export default function QuestsPage() {
       <div className="mb-6 flex items-center justify-between" data-tour="missions-header">
         <div>
           <h1 className="text-2xl font-orbitron mb-1">Missions</h1>
-          <p className="text-muted-foreground">Complete missions, earn XP, 
-          and reach your goals.</p>
+          <p className="text-muted-foreground">Complete missions, earn XP, & reach your goals.</p>
         </div>
         
         <div className="flex items-center gap-2">
