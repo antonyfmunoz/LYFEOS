@@ -52,18 +52,18 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
       <div className="flex items-center gap-2">
         <div
           className={`flex items-center gap-1 overflow-hidden transition-all duration-300 ease-out ${
-            isOpen ? "max-w-[320px] opacity-100" : "max-w-0 opacity-0"
+            isOpen ? "max-w-[400px] opacity-100" : "max-w-0 opacity-0"
           }`}
         >
-          <div className="flex items-center gap-1 rounded-full border border-primary/30 bg-background/95 backdrop-blur-md shadow-[0_0_20px_var(--primary-bg-subtle)] px-2 py-1.5">
+          <div className="flex items-center gap-1.5 rounded-full border border-primary/30 bg-background/95 backdrop-blur-md shadow-[0_0_20px_var(--primary-bg-subtle)] px-3 py-2">
             {navItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
-                className="flex flex-col items-center justify-center w-12 h-12 rounded-full transition-all duration-200 text-muted-foreground active:opacity-70"
+                className="flex flex-col items-center justify-center w-14 h-14 rounded-full transition-all duration-200 text-muted-foreground active:opacity-70"
               >
-                <span className="material-icons text-lg">{item.icon}</span>
-                <span className="text-[9px] mt-0.5 font-medium leading-none">{item.label}</span>
+                <span className="material-icons text-xl">{item.icon}</span>
+                <span className="text-[10px] mt-0.5 font-medium leading-none">{item.label}</span>
               </button>
             ))}
           </div>
@@ -71,7 +71,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
 
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className={`w-14 h-14 rounded-full flex items-center justify-center border-2 transition-all duration-300 shadow-lg border-primary/40 bg-background/95 backdrop-blur-md text-muted-foreground shadow-[0_0_15px_var(--primary-bg-subtle)] ${
+          className={`w-16 h-16 rounded-full flex items-center justify-center border-2 transition-all duration-300 shadow-lg border-primary/40 bg-background/95 backdrop-blur-md text-muted-foreground shadow-[0_0_15px_var(--primary-bg-subtle)] ${
             isOpen ? "rotate-45" : ""
           }`}
         >
