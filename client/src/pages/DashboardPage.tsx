@@ -1677,7 +1677,7 @@ export default function DashboardPage() {
           </div>
         ))}
 
-        <PWAInstallPrompt tutorialFinished={!isTutorialLoading && !showTutorial} />
+        <PWAInstallPrompt tutorialActive={isTutorialActive} tutorialLoading={isTutorialLoading} />
       </div>
   );
 }

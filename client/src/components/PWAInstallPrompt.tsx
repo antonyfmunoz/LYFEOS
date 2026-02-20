@@ -42,14 +42,16 @@ function wasPermanentlyDismissed(userId: number | undefined | null): boolean {
 }
 
 interface PWAInstallPromptProps {
-  tutorialFinished?: boolean;
+  tutorialActive?: boolean;
+  tutorialLoading?: boolean;
 }
 
-export default function PWAInstallPrompt({ tutorialFinished = false }: PWAInstallPromptProps) {
+export default function PWAInstallPrompt({ tutorialActive = false, tutorialLoading = true }: PWAInstallPromptProps) {
   const { user } = useAuth();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showBanner, setShowBanner] = useState(false);
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
 
   const { data: profile } = useQuery<any>({
     queryKey: ["/api/profile"],
@@ -63,16 +65,15 @@ export default function PWAInstallPrompt({ tutorialFinished = false }: PWAInstal
     return Date.now() - created < NEW_USER_WINDOW;
   })();
 
-  const shouldShow = (() => {
-    if (isStandalone() || !isMobileDevice()) return false;
-    if (wasPermanentlyDismissed(user?.id)) return false;
-    if (!isNewUser) return false;
-    if (!tutorialFinished) return false;
-    return true;
-  })();
+  const canShow = !isStandalone() && isMobileDevice() && !wasPermanentlyDismissed(user?.id) && isNewUser && !tutorialActive && !tutorialLoading && !dismissed;
 
   useEffect(() => {
-    if (!shouldShow) return;
+    if (!canShow) {
+      if (tutorialActive) {
+        setShowBanner(false);
+      }
+      return;
+    }
 
     if (isIOS()) {
       setShowIOSInstructions(true);
@@ -98,7 +99,7 @@ export default function PWAInstallPrompt({ tutorialFinished = false }: PWAInstal
       window.removeEventListener("beforeinstallprompt", handler);
       window.removeEventListener("appinstalled", installedHandler);
     };
-  }, [shouldShow]);
+  }, [canShow, tutorialActive]);
 
   const handleInstall = useCallback(async () => {
     if (!deferredPrompt) return;
@@ -106,6 +107,7 @@ export default function PWAInstallPrompt({ tutorialFinished = false }: PWAInstal
     const { outcome } = await deferredPrompt.userChoice;
     if (outcome === "accepted") {
       localStorage.setItem(getDismissKey(user?.id), "true");
+      setDismissed(true);
       setShowBanner(false);
     }
     setDeferredPrompt(null);
@@ -113,6 +115,7 @@ export default function PWAInstallPrompt({ tutorialFinished = false }: PWAInstal
 
   const handleDismiss = useCallback(() => {
     localStorage.setItem(getDismissKey(user?.id), "true");
+    setDismissed(true);
     setShowBanner(false);
   }, [user?.id]);
 

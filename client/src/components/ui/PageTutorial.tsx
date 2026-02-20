@@ -377,7 +377,7 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, on
           y="0"
           width="100%"
           height="100%"
-          fill="rgba(0,0,0,0.75)"
+          fill="rgba(0,0,0,0.55)"
           mask={`url(#${maskId})`}
         />
       </svg>
