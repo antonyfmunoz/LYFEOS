@@ -1860,15 +1860,13 @@ export default function ProfilePage() {
             </div>
             
             {/* User Info - Centered below profile picture */}
-            <div className="flex flex-col items-center text-center mb-4">
+            <div className="flex flex-col items-center text-center mb-4 min-h-[52px]">
               <h2 className="text-xl font-orbitron text-foreground mb-1">
                 {profileData.displayName || username}
               </h2>
-              {stats && (
-                <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded border bg-primary/20 border-primary/50 text-primary text-[10px] font-orbitron font-bold uppercase tracking-wider">
-                  {getRank(stats.experience.level).name}
-                </span>
-              )}
+              <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded border text-[10px] font-orbitron font-bold uppercase tracking-wider ${stats ? "bg-primary/20 border-primary/50 text-primary" : "border-transparent text-transparent"}`}>
+                {stats ? getRank(stats.experience.level).name : "\u00A0"}
+              </span>
             </div>
             
             {isEditing ? (
