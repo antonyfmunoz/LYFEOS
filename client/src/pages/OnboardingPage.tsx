@@ -701,23 +701,15 @@ export default function OnboardingPage() {
   const [selectedThemeColor, setSelectedThemeColor] = useState("#ffffff");
 
   useEffect(() => {
-    const isPendingRegistration = !!sessionStorage.getItem("lyfeos-pending-registration");
-    if (isPendingRegistration) {
-      localStorage.removeItem('lyfeos-primary-color');
-      applyPrimaryColor("#ffffff");
-      return;
-    }
     const savedColor = localStorage.getItem('lyfeos-primary-color');
     if (savedColor && savedColor !== '#ffffff') {
       applyPrimaryColor(savedColor);
       setSelectedThemeColor(savedColor);
-    } else if (stats.primaryColor && stats.primaryColor !== '#ffffff') {
-      applyPrimaryColor(stats.primaryColor);
-      setSelectedThemeColor(stats.primaryColor);
     } else {
+      localStorage.removeItem('lyfeos-primary-color');
       applyPrimaryColor("#ffffff");
     }
-  }, [stats.primaryColor]);
+  }, []);
 
   useEffect(() => {
     if (currentMission > 0 && selectedThemeColor && selectedThemeColor !== "#ffffff") {

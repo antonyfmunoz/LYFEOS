@@ -107,7 +107,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (userData.isNewUser || userData.onboardingCompleted === false) {
       console.log("New or incomplete onboarding user, redirecting to onboarding. isNewUser:", userData.isNewUser, "onboardingCompleted:", userData.onboardingCompleted);
       localStorage.removeItem("lyfeos-has-seen-dashboard");
+      localStorage.removeItem("lyfeos-primary-color");
       localStorage.setItem("lyfeos-pending-onboarding", "true");
+      sessionStorage.setItem("lyfeos-pending-registration", "true");
       navigate("/onboarding", { replace: true });
     } else {
       console.log("Returning OAuth user, using standard login flow");
