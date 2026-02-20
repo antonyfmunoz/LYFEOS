@@ -60,11 +60,7 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
               <button
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
-                className={`flex flex-col items-center justify-center w-12 h-12 rounded-full transition-all duration-200 ${
-                  currentPage === item.id
-                    ? "bg-primary/20 text-primary shadow-[0_0_10px_var(--primary-shadow)]"
-                    : "text-muted-foreground hover:text-primary hover:bg-primary/10"
-                }`}
+                className="flex flex-col items-center justify-center w-12 h-12 rounded-full transition-all duration-200 text-muted-foreground active:opacity-70"
               >
                 <span className="material-icons text-lg">{item.icon}</span>
                 <span className="text-[9px] mt-0.5 font-medium leading-none">{item.label}</span>
@@ -75,10 +71,8 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
 
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className={`w-14 h-14 rounded-full flex items-center justify-center border-2 transition-all duration-300 shadow-lg ${
-            isOpen
-              ? "border-primary bg-primary/20 text-primary shadow-[0_0_20px_var(--primary-shadow)] rotate-45"
-              : "border-primary/40 bg-background/95 backdrop-blur-md text-primary shadow-[0_0_15px_var(--primary-bg-subtle)]"
+          className={`w-14 h-14 rounded-full flex items-center justify-center border-2 transition-all duration-300 shadow-lg border-primary/40 bg-background/95 backdrop-blur-md text-muted-foreground shadow-[0_0_15px_var(--primary-bg-subtle)] ${
+            isOpen ? "rotate-45" : ""
           }`}
         >
           <span className="material-icons text-2xl">
