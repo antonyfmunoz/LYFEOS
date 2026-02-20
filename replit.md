@@ -25,7 +25,6 @@ The application uses a dark theme with neon accents and a futuristic HUD-style i
     - **Stat Detail Pages**: Dedicated pages for Experience, Health, Efficiency, Energy, Time, and Attention, featuring real-time data fetching, recharts visualizations, time range selectors, and AI-powered insights.
 - **Tracker Page**: Renamed from "Analytics," it includes a Milestone Analytics widget for vision goal progress and recent completions.
 - **Progressive Web App (PWA)**: Includes a manifest, service worker for offline caching, an install prompt, and Firebase Cloud Messaging (FCM) for push notifications with token-based subscription management.
-- **Payment Processing**: Stripe integration for subscription-based payments, managing checkout sessions, customer creation, and webhook processing.
 
 ## External Dependencies
 
@@ -34,4 +33,3 @@ The application uses a dark theme with neon accents and a futuristic HUD-style i
 - **Authentication (Optional)**: Firebase (for Google/Apple/Facebook OAuth, requires `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`, `VITE_FIREBASE_ACTUAL_PROJECT_ID`). OAuth uses a reverse proxy (`/__/auth/*` → Firebase) to avoid third-party cookie blocking in Safari/Chrome. The `authDomain` is set to the app's own domain (not `firebaseapp.com`) for same-origin OAuth flows. `VITE_FIREBASE_ACTUAL_PROJECT_ID` holds the real Firebase project ID (e.g., `lyfeos-a55f4`) since `VITE_FIREBASE_PROJECT_ID` may contain the App ID.
 - **Email Service**: Firebase Authentication (handles email verification and password reset emails natively — Resend has been removed).
 - **SMS Service**: Firebase Phone Authentication (for 2FA via SMS). Phone verification is handled entirely on the frontend using Firebase's `RecaptchaVerifier` and `signInWithPhoneNumber` — no separate SMS provider needed. Twilio was previously used but has been removed. Server-side token verification uses Firebase Admin SDK (`server/firebaseAdmin.ts`); for full functionality, set `FIREBASE_SERVICE_ACCOUNT_KEY` secret with the service account JSON.
-- **Payment Gateway**: Stripe.

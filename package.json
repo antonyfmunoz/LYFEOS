@@ -96,8 +96,6 @@
     "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
-    "stripe": "^20.0.0",
-    "stripe-replit-sync": "^1.0.0",
     "supertest": "^7.2.2",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",

@@ -47,7 +47,6 @@ import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import LoginSuccessPage from "./pages/LoginSuccessPage";
-import SubscriptionPage from "./pages/SubscriptionPage";
 import LandingPage from "./pages/LandingPage";
 import RolodexPage from "./pages/RolodexPage";
 import BlueLightFilter from "./components/BlueLightFilter";
@@ -438,14 +437,6 @@ function Router() {
           <RootLayout>
             <AnalyticsPage />
           </RootLayout>
-        </ProtectedRoute>
-      </Route>
-
-      <Route path="/subscription" component={LandingPage} />
-
-      <Route path="/subscription/manage">
-        <ProtectedRoute>
-          <SubscriptionPage />
         </ProtectedRoute>
       </Route>
 
