@@ -1193,13 +1193,18 @@ export default function OnboardingPage() {
     } else {
       if (currentMission === 0 && selectedThemeColor) {
         setPrimaryColor(selectedThemeColor);
+        if (selectedThemeColor !== "#ffffff") {
+          applyPrimaryColor(selectedThemeColor);
+          localStorage.setItem('lyfeos-primary-color', selectedThemeColor);
+        }
       }
-      const colorToReapply = currentMission === 0 ? selectedThemeColor : null;
+      const colorToReapply = selectedThemeColor || localStorage.getItem('lyfeos-primary-color');
       setShowMissionComplete(true);
       saveMissionData(currentMission)
         .then(() => saveCompletedMission(currentMission))
         .then(() => {
           if (colorToReapply && colorToReapply !== "#ffffff") {
+            applyPrimaryColor(colorToReapply);
             setPrimaryColor(colorToReapply);
           }
         })
@@ -2046,7 +2051,8 @@ export default function OnboardingPage() {
             variant="ghost"
             size="icon"
             onClick={handleStop}
-            className="absolute top-6 right-4 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10"
+            className="absolute right-4 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10"
+            style={{ top: "calc(0.5rem + env(safe-area-inset-top, 1.5rem))" }}
             title="Save progress and exit"
           >
             <X className="h-5 w-5" />
