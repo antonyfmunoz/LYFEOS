@@ -12,14 +12,17 @@ const firebaseConfig = {
 
 async function ensureFCMServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   try {
+    console.log('[Push] Registering firebase-messaging-sw.js...');
     const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
     await navigator.serviceWorker.ready;
     const worker = registration.active || registration.installing || registration.waiting;
     if (worker) {
       worker.postMessage({ type: 'FIREBASE_CONFIG', config: firebaseConfig });
     }
+    console.log('[Push] Service worker registered successfully');
     return registration;
-  } catch {
+  } catch (err) {
+    console.error('[Push] Service worker registration failed:', err);
     return null;
   }
 }
@@ -30,6 +33,7 @@ export function usePushNotifications() {
   const [loading, setLoading] = useState(false);
   const [currentToken, setCurrentToken] = useState<string | null>(null);
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
+  const [tokenRegistered, setTokenRegistered] = useState(false);
 
   const isSubscribed = permission === 'granted' && localStorage.getItem('lyfeos-push-subscribed') !== 'false';
 
@@ -40,6 +44,7 @@ export function usePushNotifications() {
   useEffect(() => {
     const supported = 'serviceWorker' in navigator && 'Notification' in window && !!firebaseApp;
     setIsSupported(supported);
+    console.log('[Push] Support check:', { serviceWorker: 'serviceWorker' in navigator, Notification: 'Notification' in window, firebaseApp: !!firebaseApp });
 
     if (supported) {
       const perm = Notification.permission;
@@ -53,34 +58,57 @@ export function usePushNotifications() {
 
   const tryGetToken = async () => {
     try {
-      if (!firebaseApp) return;
+      if (!firebaseApp) {
+        console.error('[Push] Firebase app not initialized');
+        return;
+      }
       const supported = await isSupported();
-      if (!supported) return;
+      if (!supported) {
+        console.error('[Push] Firebase messaging not supported in this browser');
+        return;
+      }
+
+      const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+      console.log('[Push] VAPID key available:', !!vapidKey, vapidKey ? `(${vapidKey.substring(0, 10)}...)` : '(missing)');
+      console.log('[Push] Messaging sender ID:', firebaseConfig.messagingSenderId || '(missing)');
 
       const swRegistration = await ensureFCMServiceWorker();
-      if (!swRegistration) return;
+      if (!swRegistration) {
+        console.error('[Push] Service worker not available, cannot get token');
+        return;
+      }
 
+      console.log('[Push] Getting FCM token...');
       const messaging = getMessaging(firebaseApp);
       const token = await getToken(messaging, {
-        vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+        vapidKey,
         serviceWorkerRegistration: swRegistration,
       });
+
       if (token) {
+        console.log('[Push] FCM token obtained:', token.substring(0, 20) + '...');
         setCurrentToken(token);
+        setTokenRegistered(true);
         try {
           await apiRequest('/api/push/subscribe', {
             method: 'POST',
             body: JSON.stringify({ fcmToken: token }),
           });
-        } catch {}
+          console.log('[Push] Token registered with server');
+        } catch (err) {
+          console.error('[Push] Failed to register token with server:', err);
+        }
+      } else {
+        console.error('[Push] getToken returned null — check VAPID key and Firebase Cloud Messaging setup');
       }
-    } catch (err) {
-      console.error('FCM token retrieval failed:', err);
+    } catch (err: any) {
+      console.error('[Push] FCM token retrieval failed:', err?.code || err?.message || err);
+      setSubscribeError(err?.message || 'Failed to get push notification token');
     }
   };
 
-  const subscribe = useCallback(async () => {
-    if (!firebaseApp) return false;
+  const subscribe = useCallback(async (): Promise<boolean | string> => {
+    if (!firebaseApp) return 'Firebase not initialized';
     setLoading(true);
     setSubscribeError(null);
     try {
@@ -98,33 +126,45 @@ export function usePushNotifications() {
 
       const swRegistration = await ensureFCMServiceWorker();
       if (!swRegistration) {
-        console.error('FCM: Service worker registration failed');
         setLoading(false);
-        return true;
+        return 'Service worker registration failed. Try refreshing the page.';
       }
 
+      const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+      if (!vapidKey) {
+        console.error('[Push] VITE_FIREBASE_VAPID_KEY is not set');
+        setLoading(false);
+        return 'Push notification configuration missing (VAPID key). Contact the developer.';
+      }
+
+      console.log('[Push] Subscribing — getting FCM token...');
       const messaging = getMessaging(firebaseApp);
       const token = await getToken(messaging, {
-        vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+        vapidKey,
         serviceWorkerRegistration: swRegistration,
       });
 
       if (token) {
+        console.log('[Push] Subscribe: token obtained:', token.substring(0, 20) + '...');
         await apiRequest('/api/push/subscribe', {
           method: 'POST',
           body: JSON.stringify({ fcmToken: token }),
         });
         setCurrentToken(token);
+        setTokenRegistered(true);
+        console.log('[Push] Subscribe: token registered with server');
       } else {
-        console.error('FCM: Could not get token');
+        console.error('[Push] Subscribe: getToken returned null');
+        setLoading(false);
+        return 'Could not generate push token. Make sure Firebase Cloud Messaging API is enabled.';
       }
 
       setLoading(false);
       return true;
-    } catch (err) {
-      console.error('FCM subscription failed:', err);
+    } catch (err: any) {
+      console.error('[Push] Subscribe failed:', err?.code || err?.message || err);
       setLoading(false);
-      return true;
+      return err?.message || 'Failed to enable push notifications';
     }
   }, [setSubscribedStorage]);
 
@@ -146,23 +186,28 @@ export function usePushNotifications() {
       }
 
       setCurrentToken(null);
+      setTokenRegistered(false);
       setSubscribedStorage(false);
       setLoading(false);
       return true;
     } catch (err) {
-      console.error('FCM unsubscribe failed:', err);
+      console.error('[Push] Unsubscribe failed:', err);
       setSubscribedStorage(false);
       setLoading(false);
       return true;
     }
   }, [currentToken, setSubscribedStorage]);
 
-  const sendTestNotification = useCallback(async () => {
+  const sendTestNotification = useCallback(async (): Promise<true | string> => {
     try {
-      await apiRequest('/api/push/test', { method: 'POST' });
+      const res = await fetch('/api/push/test', { method: 'POST', credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) {
+        return data.error || 'Failed to send test notification';
+      }
       return true;
-    } catch {
-      return false;
+    } catch (err: any) {
+      return err?.message || 'Failed to send test notification';
     }
   }, []);
 
@@ -172,6 +217,7 @@ export function usePushNotifications() {
     permission,
     loading,
     subscribeError,
+    tokenRegistered,
     subscribe,
     unsubscribe,
     sendTestNotification,
