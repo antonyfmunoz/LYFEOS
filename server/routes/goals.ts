@@ -47,6 +47,10 @@ export function registerGoalRoutes(app: Express): void {
 
   app.post("/api/push/test", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      const subs = await storage.getPushSubscriptions(req.session.userId!);
+      if (subs.length === 0) {
+        return res.status(400).json({ error: "No devices registered for push notifications. Try toggling notifications off and on again." });
+      }
       await sendPushToUser(req.session.userId!, {
         title: "LYFEOS",
         body: "Push notifications are working! You'll receive mission reminders here.",

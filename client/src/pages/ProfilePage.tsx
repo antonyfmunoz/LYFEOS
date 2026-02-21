@@ -1502,8 +1502,8 @@ export default function ProfilePage() {
                         }
                       }
                     } else {
-                      const ok = await pushNotifs.subscribe();
-                      if (ok) {
+                      const result = await pushNotifs.subscribe();
+                      if (result === true) {
                         toast({ title: "Notifications enabled!", description: "You'll receive mission reminders, streak alerts, and more." });
                         if (user?.id) {
                           try {
@@ -1516,8 +1516,10 @@ export default function ProfilePage() {
                             updateUserStats({ ...stats, notificationsEnabled: true });
                           } catch {}
                         }
-                      } else {
+                      } else if (result === false) {
                         toast({ title: "Notifications blocked", description: "Please enable notifications in your browser/phone settings.", variant: "destructive" });
+                      } else {
+                        toast({ title: "Push notification setup issue", description: String(result), variant: "destructive" });
                       }
                     }
                   }}
@@ -1537,9 +1539,9 @@ export default function ProfilePage() {
               {pushNotifs.isSubscribed && (
                 <button
                   onClick={async () => {
-                    const ok = await pushNotifs.sendTestNotification();
-                    if (ok) toast({ title: "Test sent!", description: "You should receive a test notification shortly." });
-                    else toast({ title: "Test failed", description: "Could not send test notification.", variant: "destructive" });
+                    const result = await pushNotifs.sendTestNotification();
+                    if (result === true) toast({ title: "Test sent!", description: "You should receive a test notification shortly." });
+                    else toast({ title: "Test failed", description: String(result), variant: "destructive" });
                   }}
                   className="mt-2 w-full text-xs py-1.5 px-3 rounded border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
                 >
