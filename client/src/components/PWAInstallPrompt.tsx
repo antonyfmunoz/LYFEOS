@@ -65,7 +65,7 @@ export default function PWAInstallPrompt({ tutorialActive = false, tutorialLoadi
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showBanner, setShowBanner] = useState(false);
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(() => wasPermanentlyDismissed(user?.id));
 
   const { data: profile } = useQuery<any>({
     queryKey: ["/api/profile"],
@@ -73,7 +73,10 @@ export default function PWAInstallPrompt({ tutorialActive = false, tutorialLoadi
     staleTime: 60000,
   });
 
+  const isReturningUser = profile?.onboardingCompleted === true;
+
   const isNewUser = (() => {
+    if (isReturningUser) return false;
     if (!profile?.createdAt) return false;
     const created = new Date(profile.createdAt).getTime();
     return Date.now() - created < NEW_USER_WINDOW;
@@ -81,7 +84,7 @@ export default function PWAInstallPrompt({ tutorialActive = false, tutorialLoadi
 
   const allTutorialsDone = areAllTutorialsComplete(profile, user?.id);
 
-  const canShow = !isStandalone() && isMobileDevice() && !wasPermanentlyDismissed(user?.id) && isNewUser && !tutorialActive && !tutorialLoading && allTutorialsDone && !dismissed;
+  const canShow = !isStandalone() && isMobileDevice() && !wasPermanentlyDismissed(user?.id) && isNewUser && !isReturningUser && !tutorialActive && !tutorialLoading && allTutorialsDone && !dismissed;
 
   useEffect(() => {
     if (!canShow) {
