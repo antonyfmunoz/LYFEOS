@@ -796,8 +796,7 @@ export default function QuestsPage() {
             </Button>
           </DialogTrigger>
           <DialogContent 
-            className="glassmorphic border-primary/30 w-full max-w-full max-h-full left-0 top-12 h-[calc(100%-3rem)] translate-x-0 translate-y-0 rounded-t-xl rounded-b-none sm:top-[50%] sm:left-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:max-w-lg sm:max-h-[90vh] sm:h-auto sm:rounded-lg overflow-y-auto"
-            style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
+            className="glassmorphic border-primary/30 w-full max-w-full max-h-full left-0 top-12 h-[calc(100%-3rem)] translate-x-0 translate-y-0 rounded-t-xl rounded-b-none sm:top-[50%] sm:left-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:max-w-lg sm:max-h-[90vh] sm:h-auto sm:rounded-lg overflow-y-auto pb-20 sm:pb-6"
             onOpenAutoFocus={(e) => e.preventDefault()}
           >
             <DialogHeader>
@@ -1183,8 +1182,7 @@ export default function QuestsPage() {
         }
       }}>
         <DialogContent 
-          className="glassmorphic border-primary/30 w-full max-w-full max-h-full left-0 top-12 h-[calc(100%-3rem)] translate-x-0 translate-y-0 rounded-t-xl rounded-b-none sm:top-[50%] sm:left-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:max-w-lg sm:max-h-[90vh] sm:h-auto sm:rounded-lg overflow-y-auto"
-          style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
+          className="glassmorphic border-primary/30 w-full max-w-full max-h-full left-0 top-12 h-[calc(100%-3rem)] translate-x-0 translate-y-0 rounded-t-xl rounded-b-none sm:top-[50%] sm:left-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:max-w-lg sm:max-h-[90vh] sm:h-auto sm:rounded-lg overflow-y-auto pb-20 sm:pb-6"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <DialogHeader>
