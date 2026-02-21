@@ -3,22 +3,11 @@ import { apiRequest } from "@/lib/queryClient";
 import { getMessaging, getToken, deleteToken, isSupported, onMessage } from "firebase/messaging";
 import { app as firebaseApp } from "@/lib/firebase";
 
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-};
-
 async function ensureFCMServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   try {
     console.log('[Push] Registering firebase-messaging-sw.js...');
     const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
     await navigator.serviceWorker.ready;
-    const worker = registration.active || registration.installing || registration.waiting;
-    if (worker) {
-      worker.postMessage({ type: 'FIREBASE_CONFIG', config: firebaseConfig });
-    }
     console.log('[Push] Service worker registered successfully');
     return registration;
   } catch (err) {
@@ -110,7 +99,7 @@ export function usePushNotifications() {
 
       const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
       console.log('[Push] VAPID key available:', !!vapidKey, vapidKey ? `(${vapidKey.substring(0, 10)}...)` : '(missing)');
-      console.log('[Push] Messaging sender ID:', firebaseConfig.messagingSenderId || '(missing)');
+      console.log('[Push] Messaging sender ID:', import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '(missing)');
 
       const swRegistration = await ensureFCMServiceWorker();
       if (!swRegistration) {
