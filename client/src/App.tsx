@@ -124,11 +124,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }, [isAuthenticated, isLoading, isRecoveringSession, navigate]);
 
   if (isLoading || isRecoveringSession) {
+    const savedColor = localStorage.getItem('lyfeos-primary-color');
+    const spinnerColor = (savedColor && savedColor !== '#ffffff') ? savedColor : '#fff';
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background z-50">
         <div className="flex flex-col items-center gap-4">
           <span className="text-3xl text-white font-orbitron font-bold">LYFE<span className="text-white">OS</span></span>
-          <div className="w-8 h-8 rounded-full animate-spin border-2 border-t-transparent" style={{ borderColor: 'var(--primary-color, #fff)', borderTopColor: 'transparent' }} />
+          <div className="w-8 h-8 rounded-full animate-spin border-2" style={{ borderColor: spinnerColor, borderTopColor: 'transparent' }} />
         </div>
       </div>
     );
