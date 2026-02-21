@@ -38,6 +38,7 @@ function clampPosition(x: number, y: number) {
 export default function MobileNav({ currentPage }: MobileNavProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [, navigate] = useLocation();
   const [position, setPosition] = useState(getDefaultPosition);
 
@@ -70,7 +71,10 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
   const currentIcon = navItems.find(item => item.id === currentPage)?.icon || "menu";
 
   const handleClickOutside = useCallback((e: MouseEvent | TouchEvent) => {
-    if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+    const target = e.target as Node;
+    const inFab = containerRef.current?.contains(target);
+    const inMenu = menuRef.current?.contains(target);
+    if (!inFab && !inMenu) {
       setIsOpen(false);
     }
   }, []);
@@ -150,24 +154,44 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
     startPos.current = { ...position };
   }, [position]);
 
-  const fabOnRight = position.x > window.innerWidth / 2;
+  const fabCenterX = position.x + FAB_SIZE / 2;
+  const fabCenterY = position.y + FAB_SIZE / 2;
+  const MENU_WIDTH = 320;
+  const MENU_HEIGHT = 72;
+  const MENU_GAP = 8;
+  const EDGE_MARGIN = 8;
+
+  const getMenuPosition = () => {
+    let menuX: number;
+    let menuY: number;
+
+    const fabOnRight = fabCenterX > window.innerWidth / 2;
+    if (fabOnRight) {
+      menuX = position.x - MENU_WIDTH - MENU_GAP;
+    } else {
+      menuX = position.x + FAB_SIZE + MENU_GAP;
+    }
+
+    menuY = position.y + (FAB_SIZE - MENU_HEIGHT) / 2;
+
+    menuX = Math.max(EDGE_MARGIN, Math.min(menuX, window.innerWidth - MENU_WIDTH - EDGE_MARGIN));
+    menuY = Math.max(EDGE_MARGIN, Math.min(menuY, window.innerHeight - MENU_HEIGHT - EDGE_MARGIN));
+
+    return { menuX, menuY };
+  };
+
+  const menuPos = getMenuPosition();
 
   return (
-    <div
-      ref={containerRef}
-      data-tour="mobile-nav"
-      className="lg:hidden fixed z-50"
-      style={{
-        left: position.x,
-        top: position.y,
-        touchAction: "none",
-      }}
-    >
-      <div className={`flex items-center gap-2 ${fabOnRight ? "flex-row" : "flex-row-reverse"}`}>
+    <>
+      {isOpen && (
         <div
-          className={`flex items-center gap-1 overflow-hidden transition-all duration-300 ease-out ${
-            isOpen ? "max-w-[400px] opacity-100" : "max-w-0 opacity-0"
-          }`}
+          ref={menuRef}
+          className="lg:hidden fixed z-50 transition-all duration-300 ease-out"
+          style={{
+            left: menuPos.menuX,
+            top: menuPos.menuY,
+          }}
         >
           <div className="flex items-center gap-1.5 rounded-full border border-primary/30 bg-background/95 backdrop-blur-md shadow-[0_0_20px_var(--primary-bg-subtle)] px-3 py-2">
             {navItems.map((item) => (
@@ -182,7 +206,18 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
             ))}
           </div>
         </div>
+      )}
 
+      <div
+        ref={containerRef}
+        data-tour="mobile-nav"
+        className="lg:hidden fixed z-50"
+        style={{
+          left: position.x,
+          top: position.y,
+          touchAction: "none",
+        }}
+      >
         <div
           onTouchStart={(e) => {
             handlePointerDown(e.touches[0].clientX, e.touches[0].clientY, true);
@@ -214,6 +249,6 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
           </span>
         </div>
       </div>
-    </div>
+    </>
   );
 }
