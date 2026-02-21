@@ -55,4 +55,5 @@ export function applyPrimaryColor(color: string) {
   document.documentElement.style.setProperty('--primary-border-subtle', `rgba(${r}, ${g}, ${b}, 0.2)`);
   document.documentElement.style.setProperty('--primary-shadow', `rgba(${r}, ${g}, ${b}, 0.3)`);
   localStorage.setItem('lyfeos-last-primary-color', color);
+  localStorage.setItem('lyfeos-primary-color', color);
 }
