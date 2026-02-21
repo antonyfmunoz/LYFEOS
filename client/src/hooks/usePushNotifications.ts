@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { apiRequest } from "@/lib/queryClient";
-import { getMessaging, getToken, deleteToken, isSupported } from "firebase/messaging";
+import { getMessaging, getToken, deleteToken, isSupported, onMessage } from "firebase/messaging";
 import { app as firebaseApp } from "@/lib/firebase";
 
 const firebaseConfig = {
@@ -55,6 +55,47 @@ export function usePushNotifications() {
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (!firebaseApp || !tokenRegistered) return;
+    let unsubscribe: (() => void) | undefined;
+
+    (async () => {
+      try {
+        const supported = await isSupported();
+        if (!supported) return;
+        const messaging = getMessaging(firebaseApp);
+        unsubscribe = onMessage(messaging, (payload) => {
+          console.log('[Push] Foreground message received:', payload);
+          const data = payload.data || {};
+          const notification = payload.notification || {};
+          const title = notification.title || data.title || 'LYFEOS';
+          const body = notification.body || data.body || 'You have a notification!';
+
+          if (Notification.permission === 'granted') {
+            navigator.serviceWorker?.ready.then((reg) => {
+              reg.showNotification(title, {
+                body,
+                icon: '/icon-192.png',
+                badge: '/icon-192.png',
+                vibrate: [200, 100, 200],
+                tag: data.tag || 'lyfeos-foreground',
+                renotify: true,
+                data: { url: data.url || '/', questId: data.questId },
+              });
+            }).catch(() => {
+              new Notification(title, { body, icon: '/icon-192.png' });
+            });
+          }
+        });
+        console.log('[Push] Foreground message listener registered');
+      } catch (err) {
+        console.error('[Push] Failed to set up foreground listener:', err);
+      }
+    })();
+
+    return () => { unsubscribe?.(); };
+  }, [tokenRegistered]);
 
   const tryGetToken = async () => {
     try {

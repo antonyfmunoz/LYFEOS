@@ -707,9 +707,24 @@ export function registerAuthRoutes(app: Express): void {
   app.get("/api/auth/2fa/status", isAuthenticated, async (req, res) => {
     const user = await storage.getUser(req.session.userId!);
     if (!user) return res.status(404).json({ error: "User not found" });
+
+    let emailVerified = user.emailVerified || false;
+    if (!emailVerified && user.firebaseUid) {
+      try {
+        const fbVerified = await checkFirebaseEmailVerified(user.firebaseUid);
+        if (fbVerified) {
+          await storage.updateUser(user.id, { emailVerified: true } as any);
+          emailVerified = true;
+          logger.info(`2FA status: Auto-synced emailVerified=true from Firebase for user ${user.id}`);
+        }
+      } catch (err) {
+        logger.warn("2FA status: Failed to check Firebase email verified:", err);
+      }
+    }
+
     res.json({
       twoFactorEnabled: user.twoFactorEnabled || false,
-      emailVerified: user.emailVerified || false,
+      emailVerified,
       phoneVerified: user.phoneVerified || false,
       phoneNumber: user.phoneNumber ? user.phoneNumber.replace(/(\+\d{1,3})\d{6}(\d{4})/, '$1******$2') : null,
       email: user.email || null,
