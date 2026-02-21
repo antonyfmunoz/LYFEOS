@@ -100,7 +100,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
               </div>
             )}
             
-            <div className="p-4 lg:p-6" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom, 0px))" }}>
+            <div className="p-4 lg:p-6 main-content-padding">
               <div className="hidden lg:flex flex-col items-center mb-4">
                 <span className="text-2xl text-white font-orbitron font-bold">LYFE<span className="text-primary">OS</span></span>
                 <p className="text-muted-foreground text-sm mt-1">Your personal life operating system</p>

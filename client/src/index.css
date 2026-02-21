@@ -153,6 +153,10 @@ input[type="range"].theme-slider::-moz-range-thumb {
     @apply font-sans antialiased bg-background text-foreground;
   }
 
+  .main-content-padding {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  }
+
   .auth-link a:link,
   .auth-link a:visited,
   a.auth-link:link,

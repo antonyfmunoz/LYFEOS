@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useState, ReactNode } from 'react';
 import { useLYFEOS } from './context';
 
 // Function to convert hex to HSL (Hue, Saturation, Lightness)
@@ -122,28 +122,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [stats]);
 
-  // Apply theme class and primary color to document whenever they change
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.documentElement.classList.add('dark-theme');
     document.documentElement.classList.remove('light-theme');
     
-    // Apply primary color
     if (primaryColor) {
-      // Set the primary hsl value
       const hsl = hexToHSL(primaryColor);
       document.documentElement.style.setProperty('--primary', hsl);
       document.documentElement.style.setProperty('--primary-hsl', hsl);
       document.documentElement.style.setProperty('--primary-foreground', '210 40% 98%');
-      
-      // Store hex value
       document.documentElement.style.setProperty('--primary-hex', primaryColor);
       
-      // Create rgba values with different opacities for various UI elements
       const rgbValues = hexToRGB(primaryColor);
       if (rgbValues) {
         const { r, g, b } = rgbValues;
-        
-        // Set CSS variables for different opacity levels
         document.documentElement.style.setProperty('--primary-color', primaryColor);
         document.documentElement.style.setProperty('--primary-rgb', `${r}, ${g}, ${b}`);
         document.documentElement.style.setProperty('--primary-glow-light', `rgba(${r}, ${g}, ${b}, 0.3)`);
@@ -154,15 +146,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         document.documentElement.style.setProperty('--primary-border', `rgba(${r}, ${g}, ${b}, 0.4)`);
         document.documentElement.style.setProperty('--primary-border-subtle', `rgba(${r}, ${g}, ${b}, 0.2)`);
         document.documentElement.style.setProperty('--primary-shadow', `rgba(${r}, ${g}, ${b}, 0.7)`);
-        
-        // Update shadcn components variables
         document.documentElement.style.setProperty('--ring', hsl);
         document.documentElement.style.setProperty('--accent', `${hsl.split('%')[0]}% 5%`);
         document.documentElement.style.setProperty('--accent-foreground', hsl);
       }
     }
     
-    // Save preferences to localStorage
     localStorage.setItem('lyfeos-theme', 'dark');
   }, [isDarkMode, primaryColor]);
 
