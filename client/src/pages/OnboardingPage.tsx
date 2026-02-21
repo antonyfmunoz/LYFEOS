@@ -919,19 +919,38 @@ export default function OnboardingPage() {
           const birthdayStr = birthYear && birthMonth && birthDay
             ? `${birthYear}-${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`
             : "";
+          const colorForRegistration = selectedThemeColor !== "#ffffff" ? selectedThemeColor : avatarColor;
           registeredUser = await completeRegistration({
             email,
             password,
             username: onboardingUsername.trim(),
             firstName: onboardingFirstName.trim(),
             lastName: onboardingLastName.trim(),
-            avatarColor: selectedThemeColor || avatarColor,
+            avatarColor: colorForRegistration,
             birthday: birthdayStr,
             location,
             timezone,
             termsAccepted: true,
           });
           sessionStorage.removeItem("lyfeos-pending-registration");
+          if (colorForRegistration && colorForRegistration !== "#ffffff") {
+            try {
+              await apiRequest("/api/profile", {
+                method: "PATCH",
+                body: JSON.stringify({ primaryColor: colorForRegistration }),
+              });
+              await fetch(`/api/users/${registeredUser?.id}/stats`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ primaryColor: colorForRegistration }),
+              });
+            } catch (e) {
+              console.error("Failed to save primary color after registration:", e);
+            }
+            applyPrimaryColor(colorForRegistration);
+            localStorage.setItem('lyfeos-primary-color', colorForRegistration);
+          }
         } else if (onboardingUsername.trim()) {
           try {
             const usernameRes = await fetch("/api/auth/set-username", {
@@ -1290,9 +1309,15 @@ export default function OnboardingPage() {
       setContinuedPastMission0(true);
       localStorage.setItem("lyfeos-continued-past-mission0", "true");
     }
-    if (selectedThemeColor && selectedThemeColor !== "#ffffff") {
-      applyPrimaryColor(selectedThemeColor);
-      localStorage.setItem('lyfeos-primary-color', selectedThemeColor);
+    const colorToApply = selectedThemeColor !== "#ffffff" 
+      ? selectedThemeColor 
+      : localStorage.getItem('lyfeos-primary-color');
+    if (colorToApply && colorToApply !== "#ffffff") {
+      applyPrimaryColor(colorToApply);
+      localStorage.setItem('lyfeos-primary-color', colorToApply);
+      if (selectedThemeColor === "#ffffff") {
+        setSelectedThemeColor(colorToApply);
+      }
     }
     setCurrentMission(currentMission + 1);
     setCurrentStep(0);
@@ -1568,10 +1593,28 @@ export default function OnboardingPage() {
       }
       const data = getMissionProfileData(missionId);
       if (Object.keys(data).length > 0) {
-        await apiRequest("/api/profile", {
-          method: "PATCH",
-          body: JSON.stringify(data),
-        });
+        if (data.primaryColor) {
+          const colorToSave = data.primaryColor;
+          delete data.primaryColor;
+          if (colorToSave !== "#ffffff") {
+            try {
+              await fetch(`/api/users/${user?.id}/stats`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ primaryColor: colorToSave }),
+              });
+            } catch (e) {
+              console.error("Failed to sync primaryColor to stats:", e);
+            }
+          }
+        }
+        if (Object.keys(data).length > 0) {
+          await apiRequest("/api/profile", {
+            method: "PATCH",
+            body: JSON.stringify(data),
+          });
+        }
       }
     } catch (error) {
       console.error(`Error saving mission ${missionId} data:`, error);
