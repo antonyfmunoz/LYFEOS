@@ -78,11 +78,10 @@ export function usePushNotifications() {
                 body,
                 icon: '/icon-192.png',
                 badge: '/icon-192.png',
-                vibrate: [200, 100, 200],
                 tag: data.tag || 'lyfeos-foreground',
                 renotify: true,
                 data: { url: data.url || '/', questId: data.questId },
-              });
+              } as NotificationOptions);
             }).catch(() => {
               new Notification(title, { body, icon: '/icon-192.png' });
             });
