@@ -150,13 +150,17 @@ export const sendVerificationEmail = async (): Promise<boolean> => {
     let user = auth.currentUser;
     if (!user) {
       const res = await fetch('/api/auth/firebase-custom-token', { method: 'POST', credentials: 'include' });
-      if (res.ok) {
-        const { token } = await res.json();
-        const cred = await firebaseSignInWithCustomToken(auth, token);
-        user = cred.user;
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Server error ${res.status} getting Firebase token`);
       }
+      const { token } = await res.json();
+      const cred = await firebaseSignInWithCustomToken(auth, token);
+      user = cred.user;
     }
-    if (!user) return false;
+    if (!user) {
+      throw new Error('Could not sign into Firebase. Please try again.');
+    }
     const actionCodeSettings = {
       url: `${window.location.origin}/verify-email`,
       handleCodeInApp: true,
@@ -165,7 +169,7 @@ export const sendVerificationEmail = async (): Promise<boolean> => {
     return true;
   } catch (error: any) {
     console.error("Send verification email error:", error);
-    return false;
+    throw error;
   }
 };
 

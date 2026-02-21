@@ -2,23 +2,33 @@ import admin from "firebase-admin";
 
 let firebaseAdminApp: admin.app.App | null = null;
 
-function getFirebaseAdmin(): admin.app.App | null {
+export function getFirebaseAdmin(): admin.app.App | null {
   if (firebaseAdminApp) return firebaseAdminApp;
 
   let projectId: string | undefined;
   const saKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
   if (saKey) {
-    try { projectId = JSON.parse(saKey).project_id; } catch {}
+    try { projectId = JSON.parse(saKey).project_id; } catch (e) {
+      console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY JSON:", e);
+    }
+  } else {
+    console.warn("FIREBASE_SERVICE_ACCOUNT_KEY not set");
   }
   if (!projectId) {
     projectId = process.env.VITE_FIREBASE_ACTUAL_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
   }
   if (!projectId) {
-    console.warn("Firebase project ID not configured. Phone verification will not work.");
+    console.warn("Firebase project ID not configured — no service account key, no VITE_FIREBASE_ACTUAL_PROJECT_ID, no VITE_FIREBASE_PROJECT_ID");
     return null;
   }
 
   try {
+    try {
+      firebaseAdminApp = admin.app();
+      console.log("Firebase Admin already initialized, reusing existing app");
+      return firebaseAdminApp;
+    } catch {}
+
     const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
     if (serviceAccountJson) {
@@ -27,11 +37,12 @@ function getFirebaseAdmin(): admin.app.App | null {
         credential: admin.credential.cert(serviceAccount),
         projectId,
       });
+      console.log("Firebase Admin initialized with service account for project:", projectId);
     } else {
       firebaseAdminApp = admin.initializeApp({
         projectId,
       });
-      console.warn("Firebase Admin initialized without service account. Token verification may have limited functionality.");
+      console.warn("Firebase Admin initialized without service account. Custom tokens and messaging will NOT work.");
     }
 
     return firebaseAdminApp;

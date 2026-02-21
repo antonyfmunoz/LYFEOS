@@ -457,12 +457,12 @@ export function registerAuthRoutes(app: Express): void {
       }
 
       const token = await createCustomToken(firebaseUid);
-      if (!token) return res.status(500).json({ error: "Failed to generate token" });
+      if (!token) return res.status(500).json({ error: "Failed to generate Firebase custom token. Check FIREBASE_SERVICE_ACCOUNT_KEY." });
 
       return res.json({ token });
-    } catch (error) {
-      logger.error("Firebase custom token error:", error);
-      return res.status(500).json({ error: "Internal server error" });
+    } catch (error: any) {
+      logger.error("Firebase custom token error:", error?.message || error);
+      return res.status(500).json({ error: error?.message || "Internal server error" });
     }
   });
 

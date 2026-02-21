@@ -1278,11 +1278,11 @@ export default function ProfilePage() {
                         const sent = await sendVerifEmail();
                         if (sent) {
                           toast({ title: "Verification Email Sent", description: "Check your inbox and click the verification link." });
-                        } else {
-                          setTwoFactorError('Could not send verification email. Make sure you are signed into Firebase.');
                         }
                       } catch (err: any) {
-                        setTwoFactorError(err.message || 'Failed to send verification email');
+                        const msg = err.message || 'Failed to send verification email';
+                        setTwoFactorError(msg);
+                        toast({ title: "Email Verification Failed", description: msg, variant: "destructive" });
                       } finally {
                         setTwoFactorLoading(false);
                       }

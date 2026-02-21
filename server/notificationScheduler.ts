@@ -1,13 +1,19 @@
 import admin from "firebase-admin";
 import { storage } from "./storage";
+import { getFirebaseAdmin } from "./firebaseAdmin";
 import type { SmartReminder } from "@shared/schema";
 import { formatLocalDate, logger } from "./utils";
 
 function getFirebaseMessaging(): admin.messaging.Messaging | null {
   try {
-    const app = admin.app();
+    const app = getFirebaseAdmin();
+    if (!app) {
+      logger.warn("Firebase Admin not available for messaging");
+      return null;
+    }
     return admin.messaging(app);
-  } catch {
+  } catch (err) {
+    logger.error("Failed to get Firebase Messaging:", err);
     return null;
   }
 }
@@ -23,10 +29,19 @@ interface NotificationPayload {
 
 export async function sendPushToUser(userId: number, payload: NotificationPayload) {
   const messaging = getFirebaseMessaging();
-  if (!messaging) return;
+  if (!messaging) {
+    logger.warn("sendPushToUser: Firebase messaging not available, cannot send push");
+    throw new Error("Firebase messaging not available. Check FIREBASE_SERVICE_ACCOUNT_KEY and Firebase Cloud Messaging API.");
+  }
 
   try {
     const subs = await storage.getPushSubscriptions(userId);
+    if (subs.length === 0) {
+      logger.info(`sendPushToUser: No FCM tokens found for user ${userId}`);
+      return;
+    }
+
+    logger.info(`sendPushToUser: Sending to ${subs.length} device(s) for user ${userId}`);
 
     for (const sub of subs) {
       try {
@@ -48,15 +63,19 @@ export async function sendPushToUser(userId: number, payload: NotificationPayloa
             },
           },
         });
+        logger.info(`sendPushToUser: Sent notification to device successfully`);
       } catch (err: any) {
+        logger.error(`sendPushToUser: Failed to send to device: ${err?.code || err?.message}`);
         if (err?.code === "messaging/registration-token-not-registered" ||
             err?.code === "messaging/invalid-registration-token") {
           await storage.deletePushSubscription(sub.fcmToken);
+          logger.info(`sendPushToUser: Removed invalid FCM token`);
         }
       }
     }
   } catch (err) {
     logger.error("sendPushToUser error:", err);
+    throw err;
   }
 }
 

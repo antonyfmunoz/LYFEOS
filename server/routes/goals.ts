@@ -54,9 +54,9 @@ export function registerGoalRoutes(app: Express): void {
         url: "/quests",
       });
       return res.status(200).json({ success: true });
-    } catch (error) {
-      logger.error("Error sending test push:", error);
-      return res.status(500).json({ error: "Internal server error" });
+    } catch (error: any) {
+      logger.error("Error sending test push:", error?.message || error);
+      return res.status(500).json({ error: error?.message || "Failed to send test notification" });
     }
   });
 
