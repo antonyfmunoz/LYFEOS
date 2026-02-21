@@ -600,6 +600,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("lyfeos-pending-onboarding");
       localStorage.removeItem("lyfeos-has-seen-dashboard");
       localStorage.removeItem("lyfeos-primary-color");
+      localStorage.removeItem("lyfeos-push-subscribed");
       localStorage.removeItem("lyfeos-onboarding-answers");
       localStorage.removeItem("lyfeos-onboarding-resume");
       localStorage.removeItem("lyfeos-continued-past-mission0");

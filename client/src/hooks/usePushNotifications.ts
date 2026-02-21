@@ -26,10 +26,15 @@ async function ensureFCMServiceWorker(): Promise<ServiceWorkerRegistration | nul
 
 export function usePushNotifications() {
   const [isSupported_, setIsSupported] = useState(false);
-  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(() => localStorage.getItem('lyfeos-push-subscribed') === 'true');
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [loading, setLoading] = useState(false);
   const [currentToken, setCurrentToken] = useState<string | null>(null);
+
+  const setSubscribed = useCallback((val: boolean) => {
+    setIsSubscribed(val);
+    localStorage.setItem('lyfeos-push-subscribed', val ? 'true' : 'false');
+  }, []);
 
   useEffect(() => {
     const supported = 'serviceWorker' in navigator && 'Notification' in window && !!firebaseApp;
@@ -58,11 +63,11 @@ export function usePushNotifications() {
         });
         if (token) {
           setCurrentToken(token);
-          setIsSubscribed(true);
+          setSubscribed(true);
         }
       }
     } catch {
-      setIsSubscribed(false);
+      setSubscribed(false);
     }
   };
 
@@ -100,7 +105,7 @@ export function usePushNotifications() {
       });
 
       setCurrentToken(token);
-      setIsSubscribed(true);
+      setSubscribed(true);
       setLoading(false);
       return true;
     } catch (err) {
@@ -108,7 +113,7 @@ export function usePushNotifications() {
       setLoading(false);
       return false;
     }
-  }, []);
+  }, [setSubscribed]);
 
   const unsubscribe = useCallback(async () => {
     setLoading(true);
@@ -128,7 +133,7 @@ export function usePushNotifications() {
       }
 
       setCurrentToken(null);
-      setIsSubscribed(false);
+      setSubscribed(false);
       setLoading(false);
       return true;
     } catch (err) {
@@ -136,7 +141,7 @@ export function usePushNotifications() {
       setLoading(false);
       return false;
     }
-  }, [currentToken]);
+  }, [currentToken, setSubscribed]);
 
   const sendTestNotification = useCallback(async () => {
     try {
