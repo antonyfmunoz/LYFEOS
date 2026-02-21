@@ -7,6 +7,7 @@ interface MobileNavProps {
 
 const FAB_SIZE = 64;
 const STORAGE_KEY = "fab-nav-position";
+const DRAG_THRESHOLD = 8;
 
 function getDefaultPosition() {
   return {
@@ -40,10 +41,11 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
   const [, navigate] = useLocation();
   const [position, setPosition] = useState(getDefaultPosition);
 
-  const isDragging = useRef(false);
-  const hasMoved = useRef(false);
-  const dragStart = useRef({ x: 0, y: 0 });
-  const posStart = useRef({ x: 0, y: 0 });
+  const dragging = useRef(false);
+  const moved = useRef(false);
+  const startPoint = useRef({ x: 0, y: 0 });
+  const startPos = useRef({ x: 0, y: 0 });
+  const usedTouch = useRef(false);
 
   useEffect(() => {
     setPosition(loadPosition());
@@ -89,73 +91,64 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
     navigate(`/${id}`);
   };
 
-  const onDragStart = useCallback((clientX: number, clientY: number) => {
-    isDragging.current = true;
-    hasMoved.current = false;
-    dragStart.current = { x: clientX, y: clientY };
-    posStart.current = { ...position };
-  }, [position]);
-
-  const onDragMove = useCallback((clientX: number, clientY: number) => {
-    if (!isDragging.current) return;
-    const dx = clientX - dragStart.current.x;
-    const dy = clientY - dragStart.current.y;
-    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
-      hasMoved.current = true;
-    }
-    const newPos = clampPosition(posStart.current.x + dx, posStart.current.y + dy);
-    setPosition(newPos);
+  const savePosition = useCallback((pos: { x: number; y: number }) => {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(pos)); } catch {}
   }, []);
-
-  const onDragEnd = useCallback(() => {
-    if (!isDragging.current) return;
-    isDragging.current = false;
-    if (hasMoved.current) {
-      setPosition(prev => {
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(prev)); } catch {}
-        return prev;
-      });
-    }
-  }, []);
-
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    onDragStart(touch.clientX, touch.clientY);
-  }, [onDragStart]);
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    onDragMove(touch.clientX, touch.clientY);
-  }, [onDragMove]);
-
-  const handleTouchEnd = useCallback(() => {
-    const moved = hasMoved.current;
-    onDragEnd();
-    if (!moved) {
-      setIsOpen(prev => !prev);
-    }
-  }, [onDragEnd]);
-
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    onDragStart(e.clientX, e.clientY);
-  }, [onDragStart]);
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => onDragMove(e.clientX, e.clientY);
-    const handleMouseUp = () => {
-      const moved = hasMoved.current;
-      onDragEnd();
-      if (!moved && isDragging.current === false) {
+    const onMove = (clientX: number, clientY: number) => {
+      if (!dragging.current) return;
+      const dx = clientX - startPoint.current.x;
+      const dy = clientY - startPoint.current.y;
+      if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+        moved.current = true;
+      }
+      if (moved.current) {
+        const newPos = clampPosition(startPos.current.x + dx, startPos.current.y + dy);
+        setPosition(newPos);
       }
     };
+
+    const onEnd = () => {
+      if (!dragging.current) return;
+      dragging.current = false;
+      if (moved.current) {
+        setPosition(prev => {
+          savePosition(prev);
+          return prev;
+        });
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (dragging.current) {
+        e.preventDefault();
+        onMove(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+    const handleTouchEnd = () => onEnd();
+    const handleMouseMove = (e: MouseEvent) => onMove(e.clientX, e.clientY);
+    const handleMouseUp = () => onEnd();
+
+    window.addEventListener("touchmove", handleTouchMove, { passive: false });
+    window.addEventListener("touchend", handleTouchEnd);
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
     return () => {
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [onDragMove, onDragEnd]);
+  }, [savePosition]);
+
+  const handlePointerDown = useCallback((clientX: number, clientY: number, isTouch: boolean) => {
+    dragging.current = true;
+    moved.current = false;
+    usedTouch.current = isTouch;
+    startPoint.current = { x: clientX, y: clientY };
+    startPos.current = { ...position };
+  }, [position]);
 
   const fabOnRight = position.x > window.innerWidth / 2;
 
@@ -190,28 +183,36 @@ export default function MobileNav({ currentPage }: MobileNavProps) {
           </div>
         </div>
 
-        <button
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          onMouseDown={handleMouseDown}
-          onClick={(e) => {
-            if (hasMoved.current) {
-              e.preventDefault();
-              e.stopPropagation();
-              return;
-            }
-            setIsOpen(!isOpen);
+        <div
+          onTouchStart={(e) => {
+            handlePointerDown(e.touches[0].clientX, e.touches[0].clientY, true);
           }}
-          className={`w-16 h-16 rounded-full flex items-center justify-center border-2 transition-all duration-300 shadow-lg border-primary/40 bg-background/95 backdrop-blur-md text-muted-foreground shadow-[0_0_15px_var(--primary-bg-subtle)] ${
+          onTouchEnd={(e) => {
+            if (!moved.current) {
+              e.preventDefault();
+              setIsOpen(prev => !prev);
+            }
+          }}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            handlePointerDown(e.clientX, e.clientY, false);
+          }}
+          onMouseUp={() => {
+            if (!moved.current && !usedTouch.current) {
+              setIsOpen(prev => !prev);
+            }
+          }}
+          className={`w-16 h-16 rounded-full flex items-center justify-center border-2 transition-colors duration-300 shadow-lg border-primary/40 bg-background/95 backdrop-blur-md text-muted-foreground shadow-[0_0_15px_var(--primary-bg-subtle)] select-none ${
             isOpen ? "rotate-45" : ""
           }`}
-          style={{ cursor: "grab" }}
+          role="button"
+          tabIndex={0}
+          style={{ cursor: "grab", WebkitUserSelect: "none", userSelect: "none" }}
         >
-          <span className="material-icons text-2xl">
+          <span className="material-icons text-2xl pointer-events-none">
             {isOpen ? "close" : currentIcon}
           </span>
-        </button>
+        </div>
       </div>
     </div>
   );
