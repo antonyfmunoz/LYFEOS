@@ -722,7 +722,7 @@ export default function RolodexPage() {
             <form onSubmit={handleSubmit} className="p-4 space-y-5 relative z-10">
               <div>
                 <SectionHeader icon={UserCircle} label="BASICS" />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className={labelClass}>Name *</label>
                     <input
@@ -745,7 +745,7 @@ export default function RolodexPage() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-3 mt-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
                   <div>
                     <label className={labelClass}>Birthday</label>
                     <input
@@ -791,7 +791,7 @@ export default function RolodexPage() {
 
               <div>
                 <SectionHeader icon={Radar} label="CONTACT INFO" />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className={labelClass}>Email</label>
                     <input
@@ -813,7 +813,7 @@ export default function RolodexPage() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3 mt-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                   <div>
                     <label className={labelClass}>Secondary Phone</label>
                     <input
@@ -835,7 +835,7 @@ export default function RolodexPage() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-3 mt-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
                   <div>
                     <label className={labelClass}>LinkedIn</label>
                     <input
@@ -871,7 +871,7 @@ export default function RolodexPage() {
 
               <div>
                 <SectionHeader icon={Building2} label="WORK" />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className={labelClass}>Company</label>
                     <input
@@ -893,7 +893,7 @@ export default function RolodexPage() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3 mt-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                   <div>
                     <label className={labelClass}>Department</label>
                     <input
@@ -929,7 +929,7 @@ export default function RolodexPage() {
                     placeholder="Street address"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3 mt-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                   <div>
                     <label className={labelClass}>City</label>
                     <input

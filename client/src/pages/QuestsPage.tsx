@@ -796,7 +796,7 @@ export default function QuestsPage() {
             </Button>
           </DialogTrigger>
           <DialogContent 
-            className="glassmorphic border-primary/30 w-full h-full max-w-full max-h-full left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:max-w-lg sm:max-h-[90vh] sm:h-auto sm:rounded-lg overflow-y-auto"
+            className="glassmorphic border-primary/30 w-full h-full max-w-full max-h-full left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:max-w-lg sm:max-h-[90vh] sm:h-auto sm:rounded-lg overflow-y-auto pt-12 sm:pt-6"
             onOpenAutoFocus={(e) => e.preventDefault()}
           >
             <DialogHeader>
@@ -827,7 +827,7 @@ export default function QuestsPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Difficulty Rank</Label>
                   <Select value={createFormData.difficulty} onValueChange={(val) => setCreateFormData(prev => ({ ...prev, difficulty: val }))}>
@@ -963,7 +963,7 @@ export default function QuestsPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Start Date <span className="text-primary">*</span></Label>
                   <DatePicker
@@ -983,7 +983,7 @@ export default function QuestsPage() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Date Due <span className="text-primary">*</span></Label>
                   <DatePicker
@@ -1082,7 +1082,7 @@ export default function QuestsPage() {
                 
                 {createFormData.isRitualized && (
                   <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <Label className="text-xs text-muted-foreground">Frequency</Label>
                         <Select value={createFormData.repeatFrequency} onValueChange={(val) => setCreateFormData(prev => ({ ...prev, repeatFrequency: val }))}>
@@ -1182,7 +1182,7 @@ export default function QuestsPage() {
         }
       }}>
         <DialogContent 
-          className="glassmorphic border-primary/30 w-full h-full max-w-full max-h-full left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:max-w-lg sm:max-h-[90vh] sm:h-auto sm:rounded-lg overflow-y-auto"
+          className="glassmorphic border-primary/30 w-full h-full max-w-full max-h-full left-0 top-0 translate-x-0 translate-y-0 rounded-none sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:max-w-lg sm:max-h-[90vh] sm:h-auto sm:rounded-lg overflow-y-auto pt-12 sm:pt-6"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <DialogHeader>
@@ -1216,7 +1216,7 @@ export default function QuestsPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Difficulty Rank</Label>
                 <Select value={editFormData.difficulty} onValueChange={(val) => setEditFormData(prev => ({ ...prev, difficulty: val }))}>
@@ -1352,7 +1352,7 @@ export default function QuestsPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Start Date <span className="text-primary">*</span></Label>
                 <DatePicker
@@ -1372,7 +1372,7 @@ export default function QuestsPage() {
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Date Due <span className="text-primary">*</span></Label>
                 <DatePicker
@@ -1471,7 +1471,7 @@ export default function QuestsPage() {
               
               {editFormData.isRitualized && (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className="text-xs text-muted-foreground">Frequency</Label>
                       <Select value={editFormData.repeatFrequency} onValueChange={(val) => setEditFormData(prev => ({ ...prev, repeatFrequency: val }))}>

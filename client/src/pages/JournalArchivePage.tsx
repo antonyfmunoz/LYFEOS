@@ -516,12 +516,6 @@ export default function JournalArchivePage() {
             Start documenting your journey by filling out your daily logs on the dashboard.
             They will be automatically archived here.
           </p>
-          <Button 
-            onClick={() => navigate('/dashboard')}
-            className="bg-primary/10 hover:bg-primary hover:text-background border border-primary/50"
-          >
-            Go to Dashboard
-          </Button>
         </div>
       )}
     </div>
