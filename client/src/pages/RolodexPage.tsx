@@ -696,9 +696,9 @@ export default function RolodexPage() {
       )}
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4" onClick={closeForm}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={closeForm}>
           <div
-            className="glassmorphic rounded-t-xl sm:rounded-xl neon-border w-full sm:max-w-2xl h-[calc(100%-3rem)] sm:h-auto max-h-full sm:max-h-[90vh] overflow-y-auto relative"
+            className="glassmorphic rounded-xl neon-border w-full sm:max-w-2xl h-[calc(100%-6rem)] sm:h-auto max-h-full sm:max-h-[90vh] overflow-y-auto relative"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
