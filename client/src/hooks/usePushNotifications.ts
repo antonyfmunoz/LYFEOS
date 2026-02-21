@@ -26,13 +26,14 @@ async function ensureFCMServiceWorker(): Promise<ServiceWorkerRegistration | nul
 
 export function usePushNotifications() {
   const [isSupported_, setIsSupported] = useState(false);
-  const [isSubscribed, setIsSubscribed] = useState(() => localStorage.getItem('lyfeos-push-subscribed') === 'true');
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [loading, setLoading] = useState(false);
   const [currentToken, setCurrentToken] = useState<string | null>(null);
+  const [subscribeError, setSubscribeError] = useState<string | null>(null);
 
-  const setSubscribed = useCallback((val: boolean) => {
-    setIsSubscribed(val);
+  const isSubscribed = permission === 'granted' && localStorage.getItem('lyfeos-push-subscribed') !== 'false';
+
+  const setSubscribedStorage = useCallback((val: boolean) => {
     localStorage.setItem('lyfeos-push-subscribed', val ? 'true' : 'false');
   }, []);
 
@@ -41,51 +42,65 @@ export function usePushNotifications() {
     setIsSupported(supported);
 
     if (supported) {
-      setPermission(Notification.permission);
-      checkExistingToken();
+      const perm = Notification.permission;
+      setPermission(perm);
+      if (perm === 'granted') {
+        setSubscribedStorage(true);
+        tryGetToken();
+      }
     }
   }, []);
 
-  const checkExistingToken = async () => {
+  const tryGetToken = async () => {
     try {
       if (!firebaseApp) return;
       const supported = await isSupported();
       if (!supported) return;
 
-      if (Notification.permission === 'granted') {
-        const swRegistration = await ensureFCMServiceWorker();
-        if (!swRegistration) return;
+      const swRegistration = await ensureFCMServiceWorker();
+      if (!swRegistration) return;
 
-        const messaging = getMessaging(firebaseApp);
-        const token = await getToken(messaging, {
-          vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
-          serviceWorkerRegistration: swRegistration,
-        });
-        if (token) {
-          setCurrentToken(token);
-          setSubscribed(true);
-        }
+      const messaging = getMessaging(firebaseApp);
+      const token = await getToken(messaging, {
+        vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+        serviceWorkerRegistration: swRegistration,
+      });
+      if (token) {
+        setCurrentToken(token);
+        try {
+          await apiRequest('/api/push/subscribe', {
+            method: 'POST',
+            body: JSON.stringify({ fcmToken: token }),
+          });
+        } catch {}
       }
-    } catch {
-      setSubscribed(false);
+    } catch (err) {
+      console.error('FCM token retrieval failed:', err);
     }
   };
 
   const subscribe = useCallback(async () => {
     if (!firebaseApp) return false;
     setLoading(true);
+    setSubscribeError(null);
     try {
       const perm = await Notification.requestPermission();
       setPermission(perm);
       if (perm !== 'granted') {
         setLoading(false);
+        if (perm === 'denied') {
+          setSubscribeError('blocked');
+        }
         return false;
       }
 
+      setSubscribedStorage(true);
+
       const swRegistration = await ensureFCMServiceWorker();
       if (!swRegistration) {
+        console.error('FCM: Service worker registration failed');
         setLoading(false);
-        return false;
+        return true;
       }
 
       const messaging = getMessaging(firebaseApp);
@@ -94,26 +109,24 @@ export function usePushNotifications() {
         serviceWorkerRegistration: swRegistration,
       });
 
-      if (!token) {
-        setLoading(false);
-        return false;
+      if (token) {
+        await apiRequest('/api/push/subscribe', {
+          method: 'POST',
+          body: JSON.stringify({ fcmToken: token }),
+        });
+        setCurrentToken(token);
+      } else {
+        console.error('FCM: Could not get token');
       }
 
-      await apiRequest('/api/push/subscribe', {
-        method: 'POST',
-        body: JSON.stringify({ fcmToken: token }),
-      });
-
-      setCurrentToken(token);
-      setSubscribed(true);
       setLoading(false);
       return true;
     } catch (err) {
       console.error('FCM subscription failed:', err);
       setLoading(false);
-      return false;
+      return true;
     }
-  }, [setSubscribed]);
+  }, [setSubscribedStorage]);
 
   const unsubscribe = useCallback(async () => {
     setLoading(true);
@@ -133,15 +146,16 @@ export function usePushNotifications() {
       }
 
       setCurrentToken(null);
-      setSubscribed(false);
+      setSubscribedStorage(false);
       setLoading(false);
       return true;
     } catch (err) {
       console.error('FCM unsubscribe failed:', err);
+      setSubscribedStorage(false);
       setLoading(false);
-      return false;
+      return true;
     }
-  }, [currentToken, setSubscribed]);
+  }, [currentToken, setSubscribedStorage]);
 
   const sendTestNotification = useCallback(async () => {
     try {
@@ -157,6 +171,7 @@ export function usePushNotifications() {
     isSubscribed,
     permission,
     loading,
+    subscribeError,
     subscribe,
     unsubscribe,
     sendTestNotification,

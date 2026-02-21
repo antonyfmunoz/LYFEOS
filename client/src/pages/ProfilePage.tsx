@@ -1516,8 +1516,8 @@ export default function ProfilePage() {
                             updateUserStats({ ...stats, notificationsEnabled: true });
                           } catch {}
                         }
-                      } else if (pushNotifs.permission === 'denied') {
-                        toast({ title: "Notifications blocked", description: "Please enable notifications in your browser settings.", variant: "destructive" });
+                      } else {
+                        toast({ title: "Notifications blocked", description: "Please enable notifications in your browser/phone settings.", variant: "destructive" });
                       }
                     }
                   }}
