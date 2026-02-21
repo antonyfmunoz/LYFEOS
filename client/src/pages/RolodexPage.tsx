@@ -719,7 +719,7 @@ export default function RolodexPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-4 space-y-3 sm:space-y-5 relative z-10">
+            <form onSubmit={handleSubmit} className="p-4 space-y-3 sm:space-y-5 relative z-10" style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}>
               <div>
                 <SectionHeader icon={UserCircle} label="BASICS" />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
