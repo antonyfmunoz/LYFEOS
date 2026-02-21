@@ -1349,10 +1349,14 @@ export default function ProfilePage() {
                           setTwoFactorLoading(true);
                           setTwoFactorError('');
                           try {
+                            let formattedPhone = phoneInput.trim();
+                            if (!formattedPhone.startsWith('+')) {
+                              formattedPhone = '+1' + formattedPhone.replace(/[\s\-\(\)]/g, '');
+                            }
                             const recaptchaVerifier = new RecaptchaVerifier(firebaseAuth, 'recaptcha-container', {
                               size: 'invisible',
                             });
-                            const result = await signInWithPhoneNumber(firebaseAuth, phoneInput.trim(), recaptchaVerifier);
+                            const result = await signInWithPhoneNumber(firebaseAuth, formattedPhone, recaptchaVerifier);
                             setConfirmationResult(result);
                             toast({ title: "Code Sent", description: "Check your phone for the verification text." });
                           } catch (err: any) {

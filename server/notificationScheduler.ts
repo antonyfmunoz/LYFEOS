@@ -47,20 +47,14 @@ export async function sendPushToUser(userId: number, payload: NotificationPayloa
       try {
         await messaging.send({
           token: sub.fcmToken,
-          notification: {
+          data: {
             title: payload.title,
             body: payload.body,
-          },
-          data: {
             tag: payload.tag || "lyfeos-notification",
             url: payload.url || "/",
             questId: payload.questId ? String(payload.questId) : "",
-          },
-          webpush: {
-            notification: {
-              icon: "/icon-192.png",
-              badge: "/icon-192.png",
-            },
+            icon: "/icon-192.png",
+            badge: "/icon-192.png",
           },
         });
         logger.info(`sendPushToUser: Sent notification to device successfully`);
