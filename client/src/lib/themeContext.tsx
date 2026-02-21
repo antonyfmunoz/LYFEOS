@@ -104,6 +104,10 @@ function getInitialTheme(): boolean {
 }
 
 function getInitialColor(): string {
+  try {
+    const saved = localStorage.getItem('lyfeos-primary-color') || localStorage.getItem('lyfeos-last-primary-color');
+    if (saved && saved !== "#ffffff") return saved;
+  } catch {}
   return "#00e0ff";
 }
 
