@@ -43,7 +43,7 @@ input[type="range"].theme-slider::-moz-range-thumb {
     --popover: 0 0% 11% !important;
     --popover-foreground: 0 0% 93% !important;
     
-    --primary: var(--primary-hsl, 188 100% 50%) !important;
+    --primary: var(--primary-hsl, 0 0% 60%) !important;
     --primary-foreground: 0 0% 7% !important;
     
     --secondary: 188 80% 35% !important;
@@ -58,16 +58,16 @@ input[type="range"].theme-slider::-moz-range-thumb {
     --destructive: 350 100% 60% !important;
     --destructive-foreground: 0 0% 93% !important;
     
-    --border: var(--primary-hsl, 188 100% 50%) / 0.2 !important;
-    --input: var(--primary-hsl, 188 100% 50%) / 0.2 !important;
-    --ring: var(--primary-hsl, 188 100% 50%) / 0.5 !important;
+    --border: var(--primary-hsl, 0 0% 60%) / 0.2 !important;
+    --input: var(--primary-hsl, 0 0% 60%) / 0.2 !important;
+    --ring: var(--primary-hsl, 0 0% 60%) / 0.5 !important;
     
     /* Glow variables that derive from primary color */
-    --primary-glow-light: hsla(var(--primary-hsl, 188 100% 50%), 0.3) !important;
-    --primary-glow-medium: hsla(var(--primary-hsl, 188 100% 50%), 0.5) !important;
-    --primary-glow-strong: hsla(var(--primary-hsl, 188 100% 50%), 0.7) !important;
-    --primary-shadow: hsla(var(--primary-hsl, 188 100% 50%), 0.3) !important;
-    --primary-border-subtle: hsla(var(--primary-hsl, 188 100% 50%), 0.1) !important;
+    --primary-glow-light: hsla(var(--primary-hsl, 0 0% 60%), 0.3) !important;
+    --primary-glow-medium: hsla(var(--primary-hsl, 0 0% 60%), 0.5) !important;
+    --primary-glow-strong: hsla(var(--primary-hsl, 0 0% 60%), 0.7) !important;
+    --primary-shadow: hsla(var(--primary-hsl, 0 0% 60%), 0.3) !important;
+    --primary-border-subtle: hsla(var(--primary-hsl, 0 0% 60%), 0.1) !important;
   }
   
   /* Light Theme */
@@ -123,13 +123,13 @@ input[type="range"].theme-slider::-moz-range-thumb {
     --popover: 0 0% 11%;
     --popover-foreground: 0 0% 93%;
     
-    --primary: 188 100% 50%;
+    --primary: 0 0% 60%;
     --primary-foreground: 0 0% 7%;
     
-    --secondary: 188 80% 35%;
+    --secondary: 0 0% 40%;
     --secondary-foreground: 0 0% 93%;
     
-    --accent: 188 100% 45%;
+    --accent: 0 0% 50%;
     --accent-foreground: 0 0% 11%;
     
     --muted: 0 0% 20%;
@@ -138,9 +138,9 @@ input[type="range"].theme-slider::-moz-range-thumb {
     --destructive: 350 100% 60%;
     --destructive-foreground: 0 0% 93%;
     
-    --border: 188 100% 50% / 0.2;
-    --input: 188 100% 50% / 0.2;
-    --ring: 188 100% 50% / 0.5;
+    --border: 0 0% 60% / 0.2;
+    --input: 0 0% 60% / 0.2;
+    --ring: 0 0% 60% / 0.5;
 
     --radius: 0.5rem;
   }

@@ -14,8 +14,8 @@
     <!-- Theme initialization script -->
     <script src="/theme-init.js"></script>
     <style>
-      body, html { background-color: hsl(0 0% 7%); margin: 0; }
-      #root { background-color: hsl(0 0% 7%); min-height: 100dvh; }
+      html, body { background-color: hsl(0 0% 7%); margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; }
+      #root { background-color: hsl(0 0% 7%); position: fixed; inset: 0; overflow: hidden; }
       #oauth-preloader {
         display: none;
         position: fixed;
