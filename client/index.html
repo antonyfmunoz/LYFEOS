@@ -13,8 +13,20 @@
     <link rel="manifest" href="/manifest.json" />
     <!-- Theme initialization script -->
     <script src="/theme-init.js"></script>
+    <script>
+      (function() {
+        function setAppHeight() {
+          document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
+        }
+        setAppHeight();
+        window.addEventListener('resize', setAppHeight);
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener('resize', setAppHeight);
+        }
+      })();
+    </script>
     <style>
-      html, body { background-color: hsl(0 0% 7%); margin: 0; overflow: hidden; }
+      html, body { background-color: hsl(0 0% 7%); margin: 0; }
       #root { background-color: hsl(0 0% 7%); }
       #oauth-preloader, #app-preloader {
         display: none;
