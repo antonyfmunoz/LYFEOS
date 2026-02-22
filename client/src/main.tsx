@@ -24,18 +24,16 @@ if ('serviceWorker' in navigator) {
     try {
       const registrations = await navigator.serviceWorker.getRegistrations();
       for (const reg of registrations) {
-        await reg.update();
+        await reg.unregister();
       }
       const cacheNames = await caches.keys();
       for (const name of cacheNames) {
-        if (name !== 'lyfeos-v3') {
-          await caches.delete(name);
-        }
+        await caches.delete(name);
       }
     } catch (e) {
       console.warn('SW cleanup error:', e);
     }
-    navigator.serviceWorker.register('/sw.js').catch((err) => {
+    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch((err) => {
       console.warn('Service worker registration failed:', err);
     });
   });
