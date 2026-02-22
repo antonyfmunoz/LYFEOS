@@ -2,7 +2,7 @@
 <html lang="en" class="dark-theme">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="theme-color" content="#121212" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -86,9 +86,10 @@
       })();
     </script>
     <style>
+      :root { --app-height: 100dvh; }
       html { height: 100%; background-color: hsl(0 0% 7%); margin: 0; overscroll-behavior: none; }
       body { min-height: 100%; background-color: hsl(0 0% 7%); margin: 0; overscroll-behavior: none; }
-      #root { background-color: hsl(0 0% 7%); min-height: 100vh; min-height: 100dvh; }
+      #root { background-color: hsl(0 0% 7%); min-height: var(--app-height, 100dvh); }
       #oauth-preloader {
         display: none;
         position: fixed;

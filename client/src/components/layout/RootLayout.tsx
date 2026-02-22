@@ -1,4 +1,4 @@
-import { ReactNode, useRef, useEffect } from "react";
+import { ReactNode, useRef, useEffect, useCallback } from "react";
 import Sidebar from "./Sidebar";
 import MobileNav from "./MobileNav";
 import AICompanionPanel from "../ai/AICompanionPanel";
@@ -20,6 +20,28 @@ export default function RootLayout({ children }: RootLayoutProps) {
       scrollContainerRef.current.scrollTop = 0;
     }
   }, [location]);
+
+  const updateAppHeight = useCallback(() => {
+    const vh = window.visualViewport?.height || window.innerHeight;
+    document.documentElement.style.setProperty('--app-height', `${vh}px`);
+  }, []);
+
+  useEffect(() => {
+    updateAppHeight();
+    const vv = window.visualViewport;
+    if (vv) {
+      vv.addEventListener('resize', updateAppHeight);
+      vv.addEventListener('scroll', updateAppHeight);
+    }
+    window.addEventListener('resize', updateAppHeight);
+    return () => {
+      if (vv) {
+        vv.removeEventListener('resize', updateAppHeight);
+        vv.removeEventListener('scroll', updateAppHeight);
+      }
+      window.removeEventListener('resize', updateAppHeight);
+    };
+  }, [updateAppHeight]);
   
   const rawPage = location.split('/')[1] || 'dashboard';
   const pageAliases: Record<string, string> = {
@@ -43,7 +65,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
   const currentPage = pageAliases[rawPage] || rawPage;
   
   return (
-    <div className="flex flex-col h-[100dvh]">
+    <div className="flex flex-col" style={{ height: 'var(--app-height, 100dvh)' }}>
       <div className="flex flex-grow overflow-hidden">
         <Sidebar currentPage={currentPage} username={username} />
         
