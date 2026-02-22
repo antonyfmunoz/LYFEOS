@@ -60,6 +60,15 @@ function hideOAuthPreloader() {
   if (el) el.style.display = 'none';
 }
 
+function hideAppPreloader() {
+  const el = document.getElementById('app-preloader');
+  if (el) {
+    el.style.transition = 'opacity 0.3s ease';
+    el.style.opacity = '0';
+    setTimeout(() => { el.style.display = 'none'; }, 300);
+  }
+}
+
 function OAuthLoadingScreen() {
   useEffect(() => {
     hideOAuthPreloader();
@@ -119,6 +128,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
     if (!isAuthenticated) {
       hasAttemptedRedirect.current = true;
+      hideAppPreloader();
       navigate("/login", { replace: true });
     }
   }, [isAuthenticated, isLoading, isRecoveringSession, navigate]);
@@ -135,6 +145,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
+
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      hideAppPreloader();
+    }
+  }, [isAuthenticated, isLoading]);
 
   return isAuthenticated ? <>{children}</> : null;
 }

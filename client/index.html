@@ -16,7 +16,7 @@
     <style>
       body, html { background-color: hsl(0 0% 7%); margin: 0; }
       #root { background-color: hsl(0 0% 7%); min-height: 100dvh; }
-      #oauth-preloader {
+      #oauth-preloader, #app-preloader {
         display: none;
         position: fixed;
         inset: 0;
@@ -26,14 +26,14 @@
         align-items: center;
         justify-content: center;
       }
-      #oauth-preloader .brand {
+      #oauth-preloader .brand, #app-preloader .brand {
         font-family: 'Orbitron', sans-serif;
         font-size: 1.875rem;
         font-weight: 700;
         color: #fff;
         margin-bottom: 1rem;
       }
-      #oauth-preloader .spinner {
+      #oauth-preloader .spinner, #app-preloader .spinner {
         width: 2rem;
         height: 2rem;
         border-radius: 50%;
@@ -41,7 +41,7 @@
         border-top-color: transparent;
         animation: oauth-spin 0.8s linear infinite;
       }
-      #oauth-preloader .subtext {
+      #oauth-preloader .subtext, #app-preloader .subtext {
         color: #888;
         font-size: 0.875rem;
         margin-top: 1rem;
@@ -59,6 +59,11 @@
             var el = document.getElementById('oauth-preloader');
             if (el) el.style.display = 'flex';
           });
+        } else if (localStorage.getItem('lyfeos_user')) {
+          document.addEventListener('DOMContentLoaded', function() {
+            var el = document.getElementById('app-preloader');
+            if (el) el.style.display = 'flex';
+          });
         }
       })();
     </script>
@@ -68,6 +73,11 @@
       <div class="brand">LYFEOS</div>
       <div class="spinner"></div>
       <div class="subtext">Signing you in...</div>
+    </div>
+    <div id="app-preloader">
+      <div class="brand">LYFE<span style="color:#fff">OS</span></div>
+      <div class="spinner"></div>
+      <div class="subtext">Loading...</div>
     </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
