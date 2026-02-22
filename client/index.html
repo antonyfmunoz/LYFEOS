@@ -58,6 +58,8 @@
           el.style.setProperty('--primary-bg-light', 'rgba(' + ri + ',' + gi + ',' + bi + ',0.2)');
           el.style.setProperty('--primary-border-subtle', 'rgba(' + ri + ',' + gi + ',' + bi + ',0.2)');
           el.style.setProperty('--primary-shadow', 'rgba(' + ri + ',' + gi + ',' + bi + ',0.3)');
+          el.style.setProperty('--secondary', hsl);
+          el.style.setProperty('--accent', hsl);
         }
 
         function getColor() {
@@ -84,7 +86,8 @@
       })();
     </script>
     <style>
-      html, body { background-color: hsl(0 0% 7%); margin: 0; }
+      html { height: 100%; background-color: hsl(0 0% 7%); margin: 0; overscroll-behavior: none; }
+      body { min-height: 100%; background-color: hsl(0 0% 7%); margin: 0; overscroll-behavior: none; }
       #root { background-color: hsl(0 0% 7%); min-height: 100vh; min-height: 100dvh; }
       #oauth-preloader {
         display: none;

@@ -46,10 +46,10 @@ input[type="range"].theme-slider::-moz-range-thumb {
     --primary: var(--primary-hsl, 0 0% 60%) !important;
     --primary-foreground: 0 0% 7% !important;
     
-    --secondary: 188 80% 35% !important;
+    --secondary: var(--primary-hsl, 0 0% 40%) !important;
     --secondary-foreground: 0 0% 93% !important;
     
-    --accent: 188 100% 45% !important;
+    --accent: var(--primary-hsl, 0 0% 50%) !important;
     --accent-foreground: 0 0% 11% !important;
     
     --muted: 0 0% 20% !important;
@@ -81,13 +81,13 @@ input[type="range"].theme-slider::-moz-range-thumb {
     --popover: 220 13% 88% !important;
     --popover-foreground: 220 10% 20% !important;
     
-    --primary: var(--primary-hsl, 188 95% 40%) !important;
+    --primary: var(--primary-hsl, 0 0% 60%) !important;
     --primary-foreground: 0 0% 98% !important;
     
-    --secondary: 188 75% 30% !important;
+    --secondary: var(--primary-hsl, 0 0% 40%) !important;
     --secondary-foreground: 0 0% 98% !important;
     
-    --accent: 188 95% 40% !important;
+    --accent: var(--primary-hsl, 0 0% 50%) !important;
     --accent-foreground: 0 0% 98% !important;
     
     --muted: 220 12% 85% !important;
@@ -98,18 +98,18 @@ input[type="range"].theme-slider::-moz-range-thumb {
     
     --border: 220 12% 82% !important;
     --input: 220 12% 85% !important;
-    --ring: var(--primary-hsl, 188 95% 40%) !important;
+    --ring: var(--primary-hsl, 0 0% 60%) !important;
     
     /* Custom color variables for light theme */
     --text-subtle: 0 0% 35% !important;
-    --cyan-glow: var(--primary-hsl, 188 100% 35%) !important;
+    --cyan-glow: var(--primary-hsl, 0 0% 50%) !important;
     
     /* Glow variables that derive from primary color */
-    --primary-glow-light: hsla(var(--primary-hsl, 188 95% 40%), 0.3) !important;
-    --primary-glow-medium: hsla(var(--primary-hsl, 188 95% 40%), 0.5) !important;
-    --primary-glow-strong: hsla(var(--primary-hsl, 188 95% 40%), 0.7) !important;
-    --primary-shadow: hsla(var(--primary-hsl, 188 95% 40%), 0.3) !important;
-    --primary-border-subtle: hsla(var(--primary-hsl, 188 95% 40%), 0.1) !important;
+    --primary-glow-light: hsla(var(--primary-hsl, 0 0% 60%), 0.3) !important;
+    --primary-glow-medium: hsla(var(--primary-hsl, 0 0% 60%), 0.5) !important;
+    --primary-glow-strong: hsla(var(--primary-hsl, 0 0% 60%), 0.7) !important;
+    --primary-shadow: hsla(var(--primary-hsl, 0 0% 60%), 0.3) !important;
+    --primary-border-subtle: hsla(var(--primary-hsl, 0 0% 60%), 0.1) !important;
   }
   
   /* Default to dark theme */
