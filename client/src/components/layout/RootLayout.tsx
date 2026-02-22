@@ -20,6 +20,49 @@ export default function RootLayout({ children }: RootLayoutProps) {
       scrollContainerRef.current.scrollTop = 0;
     }
   }, [location]);
+
+  useEffect(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+      || (navigator as any).standalone === true;
+    if (!isStandalone) return;
+
+    let prevHeight = window.visualViewport?.height ?? window.innerHeight;
+
+    const handleResize = () => {
+      const vv = window.visualViewport;
+      if (!vv) return;
+      const currentHeight = vv.height;
+      if (currentHeight > prevHeight + 50) {
+        window.scrollTo(0, 0);
+        document.documentElement.style.height = '100%';
+        requestAnimationFrame(() => {
+          document.documentElement.style.height = '';
+        });
+      }
+      prevHeight = currentHeight;
+    };
+
+    const handleBlur = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) {
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          document.documentElement.style.height = '100%';
+          requestAnimationFrame(() => {
+            document.documentElement.style.height = '';
+          });
+        }, 100);
+      }
+    };
+
+    window.visualViewport?.addEventListener('resize', handleResize);
+    document.addEventListener('focusout', handleBlur);
+
+    return () => {
+      window.visualViewport?.removeEventListener('resize', handleResize);
+      document.removeEventListener('focusout', handleBlur);
+    };
+  }, []);
   
   const rawPage = location.split('/')[1] || 'dashboard';
   const pageAliases: Record<string, string> = {
