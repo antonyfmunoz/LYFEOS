@@ -11,11 +11,87 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=4" />
     <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png?v=4" />
     <link rel="manifest" href="/manifest.json" />
-    <!-- Theme initialization script -->
-    <script src="/theme-init.js"></script>
+    <!-- Inline theme initialization - runs before any CSS loads -->
+    <script>
+      (function() {
+        var savedTheme = localStorage.getItem('lyfeos-theme');
+        if (savedTheme === 'light') {
+          document.documentElement.classList.add('light-theme');
+          document.documentElement.classList.remove('dark-theme');
+        } else {
+          document.documentElement.classList.add('dark-theme');
+          document.documentElement.classList.remove('light-theme');
+        }
+
+        function applyColor(color) {
+          if (!color) return;
+          var hex = color.replace(/^#/, '');
+          var ri = parseInt(hex.substring(0, 2), 16);
+          var gi = parseInt(hex.substring(2, 4), 16);
+          var bi = parseInt(hex.substring(4, 6), 16);
+          var r = ri / 255, g = gi / 255, b = bi / 255;
+          var max = Math.max(r, g, b), min = Math.min(r, g, b);
+          var l = (max + min) / 2, h, s;
+          if (max === min) { h = 0; s = 0; }
+          else {
+            s = l > 0.5 ? (max - min) / (2 - max - min) : (max - min) / (max + min);
+            switch (max) {
+              case r: h = (g - b) / (max - min) + (g < b ? 6 : 0); break;
+              case g: h = (b - r) / (max - min) + 2; break;
+              case b: h = (r - g) / (max - min) + 4; break;
+              default: h = 0;
+            }
+            h /= 6;
+          }
+          h = Math.round(h * 360);
+          s = Math.round(s * 100);
+          l = Math.round(l * 100);
+          var hsl = h + ' ' + s + '% ' + l + '%';
+          var el = document.documentElement;
+          el.style.setProperty('--primary', hsl);
+          el.style.setProperty('--primary-hsl', hsl);
+          el.style.setProperty('--primary-color', color);
+          el.style.setProperty('--primary-glow-light', 'rgba(' + ri + ',' + gi + ',' + bi + ',0.3)');
+          el.style.setProperty('--primary-glow-medium', 'rgba(' + ri + ',' + gi + ',' + bi + ',0.5)');
+          el.style.setProperty('--primary-glow-strong', 'rgba(' + ri + ',' + gi + ',' + bi + ',0.7)');
+          el.style.setProperty('--primary-bg-subtle', 'rgba(' + ri + ',' + gi + ',' + bi + ',0.1)');
+          el.style.setProperty('--primary-bg-light', 'rgba(' + ri + ',' + gi + ',' + bi + ',0.2)');
+          el.style.setProperty('--primary-border-subtle', 'rgba(' + ri + ',' + gi + ',' + bi + ',0.2)');
+          el.style.setProperty('--primary-shadow', 'rgba(' + ri + ',' + gi + ',' + bi + ',0.3)');
+        }
+
+        function getColor() {
+          var path = window.location.pathname.replace(/\/+$/, '') || '/';
+          var savedColor = localStorage.getItem('lyfeos-primary-color') || localStorage.getItem('lyfeos-last-primary-color');
+          var isNeutralPage = path === '/login' || path === '/register' || path === '/forgot-password' || path === '/reset-password' || path === '/';
+          var isOnboarding = path === '/onboarding';
+          return isNeutralPage ? '#ffffff' : isOnboarding ? (savedColor || '#ffffff') : savedColor;
+        }
+
+        applyColor(getColor());
+
+        document.addEventListener('visibilitychange', function() {
+          if (document.visibilityState === 'visible') {
+            applyColor(getColor());
+            document.body.style.display = 'none';
+            document.body.offsetHeight;
+            document.body.style.display = '';
+          }
+        });
+
+        window.addEventListener('pageshow', function(e) {
+          if (e.persisted) {
+            applyColor(getColor());
+            document.body.style.display = 'none';
+            document.body.offsetHeight;
+            document.body.style.display = '';
+          }
+        });
+      })();
+    </script>
     <style>
-      html, body { background-color: hsl(0 0% 7%); margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; }
-      #root { background-color: hsl(0 0% 7%); position: fixed; inset: 0; overflow: hidden; }
+      html, body { background-color: hsl(0 0% 7%); margin: 0; }
+      #root { background-color: hsl(0 0% 7%); min-height: 100vh; min-height: 100dvh; }
       #oauth-preloader {
         display: none;
         position: fixed;
