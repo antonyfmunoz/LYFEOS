@@ -70,21 +70,29 @@
 
         applyColor(getColor());
 
+        function setAppHeight() {
+          var vh = window.innerHeight;
+          document.documentElement.style.setProperty('--app-height', vh + 'px');
+        }
+        setAppHeight();
+        window.addEventListener('resize', setAppHeight);
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener('resize', function() {
+            document.documentElement.style.setProperty('--app-height', window.visualViewport.height + 'px');
+          });
+        }
+
         document.addEventListener('visibilitychange', function() {
           if (document.visibilityState === 'visible') {
             applyColor(getColor());
-            document.body.style.display = 'none';
-            document.body.offsetHeight;
-            document.body.style.display = '';
+            setAppHeight();
           }
         });
 
         window.addEventListener('pageshow', function(e) {
           if (e.persisted) {
             applyColor(getColor());
-            document.body.style.display = 'none';
-            document.body.offsetHeight;
-            document.body.style.display = '';
+            setAppHeight();
           }
         });
       })();

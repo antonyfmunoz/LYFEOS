@@ -43,7 +43,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
   const currentPage = pageAliases[rawPage] || rawPage;
   
   return (
-    <div className="flex flex-col h-[100dvh]">
+    <div className="flex flex-col" style={{ height: 'var(--app-height, 100dvh)' }}>
       <div className="flex flex-grow overflow-hidden">
         <Sidebar currentPage={currentPage} username={username} />
         
