@@ -58,30 +58,6 @@
           el.style.setProperty('--primary-bg-light', 'rgba(' + ri + ',' + gi + ',' + bi + ',0.2)');
           el.style.setProperty('--primary-border-subtle', 'rgba(' + ri + ',' + gi + ',' + bi + ',0.2)');
           el.style.setProperty('--primary-shadow', 'rgba(' + ri + ',' + gi + ',' + bi + ',0.3)');
-
-          var styleEl = document.getElementById('theme-override');
-          if (!styleEl) {
-            styleEl = document.createElement('style');
-            styleEl.id = 'theme-override';
-            document.head.appendChild(styleEl);
-          }
-          styleEl.textContent = ':root,.dark-theme,.light-theme{' +
-            '--primary:' + hsl + '!important;' +
-            '--primary-hsl:' + hsl + '!important;' +
-            '--primary-color:' + color + '!important;' +
-            '--primary-glow-light:rgba(' + ri + ',' + gi + ',' + bi + ',0.3)!important;' +
-            '--primary-glow-medium:rgba(' + ri + ',' + gi + ',' + bi + ',0.5)!important;' +
-            '--primary-glow-strong:rgba(' + ri + ',' + gi + ',' + bi + ',0.7)!important;' +
-            '--primary-bg-subtle:rgba(' + ri + ',' + gi + ',' + bi + ',0.1)!important;' +
-            '--primary-bg-light:rgba(' + ri + ',' + gi + ',' + bi + ',0.2)!important;' +
-            '--primary-border-subtle:rgba(' + ri + ',' + gi + ',' + bi + ',0.2)!important;' +
-            '--primary-shadow:rgba(' + ri + ',' + gi + ',' + bi + ',0.3)!important;' +
-            '--border:' + hsl + '/0.2!important;' +
-            '--input:' + hsl + '/0.2!important;' +
-            '--ring:' + hsl + '/0.5!important;' +
-            '--secondary:' + hsl + '!important;' +
-            '--accent-foreground:' + hsl + '!important;' +
-            '}';
         }
 
         function getColor() {
@@ -94,29 +70,15 @@
 
         applyColor(getColor());
 
-        function setAppHeight() {
-          var vh = window.innerHeight;
-          document.documentElement.style.setProperty('--app-height', vh + 'px');
-        }
-        setAppHeight();
-        window.addEventListener('resize', setAppHeight);
-        if (window.visualViewport) {
-          window.visualViewport.addEventListener('resize', function() {
-            document.documentElement.style.setProperty('--app-height', window.visualViewport.height + 'px');
-          });
-        }
-
         document.addEventListener('visibilitychange', function() {
           if (document.visibilityState === 'visible') {
             applyColor(getColor());
-            setAppHeight();
           }
         });
 
         window.addEventListener('pageshow', function(e) {
           if (e.persisted) {
             applyColor(getColor());
-            setAppHeight();
           }
         });
       })();
