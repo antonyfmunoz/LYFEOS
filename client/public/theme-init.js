@@ -9,7 +9,7 @@
   }
 
   var path = window.location.pathname.replace(/\/+$/, '') || '/';
-  var savedColor = localStorage.getItem('lyfeos-primary-color') || localStorage.getItem('lyfeos-last-primary-color');
+  var savedColor = localStorage.getItem('lyfeos-primary-color');
   var isNeutralPage = path === '/login' || path === '/register' || path === '/forgot-password' || path === '/reset-password' || path === '/';
   var isOnboarding = path === '/onboarding';
   var color = isNeutralPage ? '#ffffff' : isOnboarding ? (savedColor || '#ffffff') : savedColor;

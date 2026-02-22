@@ -1,10 +1,11 @@
-const CACHE_NAME = 'lyfeos-v12';
+const CACHE_NAME = 'lyfeos-v5';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
-  '/fonts.css'
+  '/fonts.css',
+  '/theme-init.js'
 ];
 
 self.addEventListener('install', (event) => {
