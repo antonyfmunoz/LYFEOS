@@ -97,7 +97,8 @@ export default function DocumentVaultPage() {
   const updateFolder = useMutation({
     mutationFn: ({ id, ...data }: { id: number; name?: string; parentId?: number | null }) =>
       apiRequest<FolderType>(`/api/folders/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-    onSuccess: () => {
+    onMutate: ({ id, ...data }) => {
+      setLocalFolders(prev => prev.map(f => f.id === id ? { ...f, ...data } : f));
       setShowRenameFolderDialog(false);
       setShowMoveDialog(false);
     },
@@ -131,13 +132,12 @@ export default function DocumentVaultPage() {
   const updateDocument = useMutation({
     mutationFn: ({ id, ...data }: { id: number; title?: string; content?: string; folderId?: number | null }) =>
       apiRequest<Document>(`/api/documents/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-    onSuccess: (result) => {
-      const updatedDoc = (result as any).document || result;
-      setHasUnsavedChanges(false);
-      setLocalDocs(prev => prev.map(d => d.id === (updatedDoc as Document).id ? (updatedDoc as Document) : d));
-      if (selectedDoc) {
-        setSelectedDoc(updatedDoc as Document);
+    onMutate: ({ id, ...data }) => {
+      setLocalDocs(prev => prev.map(d => d.id === id ? { ...d, ...data } : d));
+      if (selectedDoc?.id === id) {
+        setSelectedDoc(prev => prev ? { ...prev, ...data } : null);
       }
+      setHasUnsavedChanges(false);
       setShowMoveDialog(false);
     },
     onSettled: refetchAll,
