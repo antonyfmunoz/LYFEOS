@@ -19,11 +19,7 @@
       #oauth-preloader, #app-preloader {
         display: none;
         position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        height: calc(100dvh + env(safe-area-inset-bottom, 0px));
+        inset: 0;
         z-index: 99999;
         background-color: hsl(0 0% 7%);
         flex-direction: column;
@@ -67,6 +63,8 @@
           document.addEventListener('DOMContentLoaded', function() {
             var el = document.getElementById('app-preloader');
             if (el) el.style.display = 'flex';
+            var root = document.getElementById('root');
+            if (root) root.style.visibility = 'hidden';
           });
         }
       })();

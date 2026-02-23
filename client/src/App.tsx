@@ -67,6 +67,8 @@ function hideAppPreloader() {
     el.style.opacity = '0';
     setTimeout(() => { el.style.display = 'none'; }, 300);
   }
+  const root = document.getElementById('root');
+  if (root) root.style.visibility = 'visible';
 }
 
 function OAuthLoadingScreen() {
