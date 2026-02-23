@@ -292,7 +292,7 @@ export default function ChronilogPage() {
       id: "document-vault", 
       title: "Document Vault", 
       icon: <FolderOpen className="h-5 w-5 text-primary" />,
-      description: "Create, edit, and organize documents in folders. Your personal Google Docs meets Google Drive."
+      description: "Create, edit, and organize documents in folders. Your personal doc editor and file organizer."
     }
   ]);
 

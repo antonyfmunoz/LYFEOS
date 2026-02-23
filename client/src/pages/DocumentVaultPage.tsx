@@ -4,11 +4,9 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/lib/authContext';
 import { usePageTitle } from '@/hooks/use-page-title';
-import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose,
 } from '@/components/ui/dialog';
@@ -34,7 +32,6 @@ export default function DocumentVaultPage() {
   usePageTitle('Document Vault');
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  const { toast } = useToast();
   const editorRef = useRef<HTMLTextAreaElement>(null);
 
   const [currentFolderId, setCurrentFolderId] = useState<number | null>(null);
@@ -54,6 +51,7 @@ export default function DocumentVaultPage() {
   const [renameFolderName, setRenameFolderName] = useState('');
   const [moveTarget, setMoveTarget] = useState<{ type: 'folder' | 'document'; id: number } | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
 
   const { data: folders = [], isLoading: foldersLoading } = useQuery<FolderType[]>({
     queryKey: ['/api/folders'],
@@ -72,7 +70,6 @@ export default function DocumentVaultPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
       setShowNewFolderDialog(false);
       setNewFolderName('');
-      toast({ title: 'Folder created' });
     },
   });
 
@@ -82,7 +79,6 @@ export default function DocumentVaultPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
       setShowRenameFolderDialog(false);
-      toast({ title: 'Folder updated' });
     },
   });
 
@@ -91,7 +87,6 @@ export default function DocumentVaultPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
       queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
-      toast({ title: 'Folder deleted' });
     },
   });
 
@@ -115,7 +110,6 @@ export default function DocumentVaultPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
       setHasUnsavedChanges(false);
-      toast({ title: 'Document saved' });
     },
   });
 
@@ -127,7 +121,6 @@ export default function DocumentVaultPage() {
         setSelectedDoc(null);
         setViewMode('browse');
       }
-      toast({ title: 'Document deleted' });
     },
   });
 
@@ -205,65 +198,69 @@ export default function DocumentVaultPage() {
 
   const isLoading = foldersLoading || docsLoading;
 
+  const handleBackFromEditor = () => {
+    if (hasUnsavedChanges) {
+      setShowDiscardDialog(true);
+    } else {
+      setViewMode('browse');
+      setSelectedDoc(null);
+    }
+  };
+
   if (viewMode !== 'browse' && selectedDoc) {
     return (
-      <div className="flex flex-col h-full bg-background">
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-border/40 bg-card/50">
+      <div className="pb-20">
+        <div className="flex items-center gap-2 mb-4">
           <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => {
-              if (hasUnsavedChanges) {
-                if (confirm('You have unsaved changes. Discard them?')) {
-                  setViewMode('browse');
-                  setSelectedDoc(null);
-                  setHasUnsavedChanges(false);
-                }
-              } else {
-                setViewMode('browse');
-                setSelectedDoc(null);
-              }
-            }}
+            className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs h-8 w-8 p-0"
+            size="sm"
+            onClick={handleBackFromEditor}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           {viewMode === 'edit' ? (
-            <Input
+            <input
               value={editTitle}
               onChange={e => { setEditTitle(e.target.value); setHasUnsavedChanges(true); }}
-              className="text-lg font-semibold border-none bg-transparent focus-visible:ring-0 px-0 h-auto"
+              className="text-lg font-orbitron bg-transparent border-none outline-none flex-1 min-w-0"
               placeholder="Document title"
             />
           ) : (
-            <h2 className="text-lg font-semibold truncate flex-1">{selectedDoc.title}</h2>
+            <h2 className="text-lg font-orbitron truncate flex-1">{selectedDoc.title}</h2>
           )}
           <div className="flex items-center gap-1 ml-auto">
             {viewMode === 'edit' ? (
               <>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewMode('preview')}>
+                <button
+                  className="h-8 w-8 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                  onClick={() => setViewMode('preview')}
+                  title="Preview"
+                >
                   <Eye className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
+                </button>
+                <button
+                  className="h-8 px-3 inline-flex items-center justify-center gap-1.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors font-mono text-xs"
                   onClick={handleSaveDoc}
                   disabled={updateDocument.isPending}
-                  className="h-8 gap-1"
                 >
                   <Save className="h-3.5 w-3.5" />
                   Save
-                </Button>
+                </button>
               </>
             ) : (
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewMode('edit')}>
+              <button
+                className="h-8 w-8 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                onClick={() => setViewMode('edit')}
+                title="Edit"
+              >
                 <Pencil className="h-4 w-4" />
-              </Button>
+              </button>
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <button className="h-8 w-8 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">
                   <MoreHorizontal className="h-4 w-4" />
-                </Button>
+                </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => toggleFavoriteDoc.mutate(selectedDoc.id)}>
@@ -286,13 +283,13 @@ export default function DocumentVaultPage() {
             </DropdownMenu>
           </div>
         </div>
-        <div className="flex-1 overflow-auto">
+        <div className="glassmorphic rounded-xl border border-primary/20 overflow-hidden">
           {viewMode === 'edit' ? (
             <Textarea
               ref={editorRef}
               value={editContent}
               onChange={e => { setEditContent(e.target.value); setHasUnsavedChanges(true); }}
-              className="w-full h-full min-h-[calc(100vh-8rem)] resize-none border-none rounded-none bg-transparent font-mono text-sm focus-visible:ring-0 p-4"
+              className="w-full min-h-[calc(100vh-12rem)] resize-none border-none rounded-none bg-transparent font-mono text-sm focus-visible:ring-0 p-4"
               placeholder="Start writing... (Markdown supported)"
             />
           ) : (
@@ -301,6 +298,32 @@ export default function DocumentVaultPage() {
             </div>
           )}
         </div>
+
+        <AlertDialog open={showDiscardDialog} onOpenChange={setShowDiscardDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+              <AlertDialogDescription>
+                You have unsaved changes. Discard them?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="bg-transparent border-primary/30 text-foreground hover:bg-primary/10">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30"
+                onClick={() => {
+                  setViewMode('browse');
+                  setSelectedDoc(null);
+                  setHasUnsavedChanges(false);
+                  setShowDiscardDialog(false);
+                }}
+              >
+                Discard
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         {renderDeleteDialog()}
         {renderMoveDialog()}
       </div>
@@ -319,7 +342,7 @@ export default function DocumentVaultPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="bg-transparent border-primary/30 text-foreground hover:bg-primary/10">Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
@@ -351,24 +374,22 @@ export default function DocumentVaultPage() {
             <DialogTitle>Move to Folder</DialogTitle>
           </DialogHeader>
           <div className="space-y-1 max-h-60 overflow-auto">
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-2"
+            <button
+              className="w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-primary/10 transition-colors text-sm"
               onClick={() => handleMove(null)}
             >
-              <Home className="h-4 w-4" />
+              <Home className="h-4 w-4 text-primary" />
               Root (No Folder)
-            </Button>
+            </button>
             {availableFolders.map(f => (
-              <Button
+              <button
                 key={f.id}
-                variant="ghost"
-                className="w-full justify-start gap-2"
+                className="w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-primary/10 transition-colors text-sm"
                 onClick={() => handleMove(f.id)}
               >
-                <Folder className="h-4 w-4" />
+                <Folder className="h-4 w-4 text-primary" />
                 {f.name}
-              </Button>
+              </button>
             ))}
           </div>
         </DialogContent>
@@ -381,85 +402,100 @@ export default function DocumentVaultPage() {
   const hasFavorites = favoriteDocuments.length > 0 || favoriteFolders.length > 0;
 
   return (
-    <div className="flex flex-col h-full bg-background">
-      <div className="px-4 pt-4 pb-3 space-y-3">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigate('/chronilog')}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-xl font-bold font-orbitron">Document Vault</h1>
-          <div className="flex gap-1 ml-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1"
-              onClick={() => setShowNewFolderDialog(true)}
-            >
-              <FolderPlus className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Folder</span>
-            </Button>
-            <Button
-              size="sm"
-              className="h-8 gap-1"
-              onClick={() => setShowNewDocDialog(true)}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Document</span>
-            </Button>
-          </div>
-        </div>
+    <div className="pb-20">
+      <div className="mb-4">
+        <Button 
+          className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs" 
+          size="sm"
+          onClick={() => navigate('/chronilog')}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back</span>
+        </Button>
+      </div>
 
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search documents & folders..."
-            className="pl-9 h-9"
-          />
-          {searchQuery && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-              onClick={() => setSearchQuery('')}
-            >
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          )}
+      <div className="mb-4 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-orbitron mb-1">Document Vault</h1>
+          <p className="text-[#7DAAB2]">Create, edit, and organize your documents and folders</p>
         </div>
+        <div className="flex gap-1.5">
+          <button
+            className="h-8 px-3 inline-flex items-center gap-1.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors font-mono text-xs"
+            onClick={() => setShowNewFolderDialog(true)}
+          >
+            <FolderPlus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Folder</span>
+          </button>
+          <button
+            className="h-8 px-3 inline-flex items-center gap-1.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors font-mono text-xs"
+            onClick={() => setShowNewDocDialog(true)}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Document</span>
+          </button>
+        </div>
+      </div>
 
-        {!searchQuery && (
-          <div className="flex items-center gap-1 text-sm overflow-x-auto no-scrollbar">
-            {getBreadcrumbs().map((crumb, i, arr) => (
-              <span key={crumb.id ?? 'root'} className="flex items-center gap-1 shrink-0">
-                <button
-                  onClick={() => setCurrentFolderId(crumb.id)}
-                  className={cn(
-                    "hover:text-primary transition-colors",
-                    i === arr.length - 1 ? "text-foreground font-medium" : "text-muted-foreground"
-                  )}
-                >
-                  {i === 0 ? <Home className="h-3.5 w-3.5 inline" /> : crumb.name}
-                </button>
-                {i < arr.length - 1 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}
-              </span>
-            ))}
-          </div>
+      <div className="mb-4 relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          placeholder="Search documents & folders..."
+          className="w-full bg-background/50 border border-primary/20 rounded-lg pl-9 pr-9 py-2 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50"
+        />
+        {searchQuery && (
+          <button
+            className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => setSearchQuery('')}
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
         )}
       </div>
 
-      <div className="flex-1 overflow-auto px-4 pb-24 space-y-4">
+      {!searchQuery && (
+        <div className="flex items-center gap-1 text-sm mb-4 overflow-x-auto no-scrollbar">
+          {getBreadcrumbs().map((crumb, i, arr) => (
+            <span key={crumb.id ?? 'root'} className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={() => setCurrentFolderId(crumb.id)}
+                className={cn(
+                  "hover:text-primary transition-colors font-mono text-xs",
+                  i === arr.length - 1 ? "text-primary font-medium" : "text-muted-foreground"
+                )}
+              >
+                {i === 0 ? <Home className="h-3.5 w-3.5 inline" /> : crumb.name}
+              </button>
+              {i < arr.length - 1 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="space-y-4">
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="glassmorphic rounded-xl border border-primary/20 p-4 animate-pulse">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-primary/20"></div>
+                  <div className="flex-1">
+                    <div className="h-4 bg-primary/20 rounded w-40 mb-2"></div>
+                    <div className="h-3 bg-primary/10 rounded w-24"></div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <>
             {!searchQuery && hasFavorites && currentFolderId === null && (
               <div>
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Favorites</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <h3 className="text-xs font-mono text-primary/70 uppercase tracking-wider mb-2">Favorites</h3>
+                <div className="space-y-2">
                   {favoriteFolders.map(f => (
                     <FolderCard
                       key={f.id}
@@ -489,8 +525,8 @@ export default function DocumentVaultPage() {
 
             {filteredFolders.length > 0 && (
               <div>
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Folders</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <h3 className="text-xs font-mono text-primary/70 uppercase tracking-wider mb-2">Folders</h3>
+                <div className="space-y-2">
                   {filteredFolders.map(f => (
                     <FolderCard
                       key={f.id}
@@ -509,8 +545,8 @@ export default function DocumentVaultPage() {
 
             {filteredDocs.length > 0 && (
               <div>
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Documents</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <h3 className="text-xs font-mono text-primary/70 uppercase tracking-wider mb-2">Documents</h3>
+                <div className="space-y-2">
                   {filteredDocs.map(d => (
                     <DocumentCard
                       key={d.id}
@@ -527,11 +563,11 @@ export default function DocumentVaultPage() {
             )}
 
             {filteredFolders.length === 0 && filteredDocs.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="glassmorphic rounded-xl border border-primary/20 flex flex-col items-center justify-center py-16 text-center">
                 <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
                   <FileText className="h-8 w-8 text-primary/50" />
                 </div>
-                <h3 className="text-lg font-semibold mb-1">
+                <h3 className="text-lg font-orbitron mb-1">
                   {searchQuery ? 'No results found' : 'Empty folder'}
                 </h3>
                 <p className="text-sm text-muted-foreground mb-4">
@@ -539,14 +575,20 @@ export default function DocumentVaultPage() {
                 </p>
                 {!searchQuery && (
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setShowNewFolderDialog(true)}>
-                      <FolderPlus className="h-4 w-4 mr-2" />
+                    <button
+                      className="h-8 px-3 inline-flex items-center gap-1.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors font-mono text-xs"
+                      onClick={() => setShowNewFolderDialog(true)}
+                    >
+                      <FolderPlus className="h-4 w-4" />
                       New Folder
-                    </Button>
-                    <Button size="sm" onClick={() => setShowNewDocDialog(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
+                    </button>
+                    <button
+                      className="h-8 px-3 inline-flex items-center gap-1.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors font-mono text-xs"
+                      onClick={() => setShowNewDocDialog(true)}
+                    >
+                      <Plus className="h-4 w-4" />
                       New Document
-                    </Button>
+                    </button>
                   </div>
                 )}
               </div>
@@ -573,9 +615,10 @@ export default function DocumentVaultPage() {
           />
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="ghost" className="border border-primary/30 text-foreground hover:bg-primary/10">Cancel</Button>
             </DialogClose>
             <Button
+              className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30"
               onClick={() => createFolder.mutate({ name: newFolderName.trim(), parentId: currentFolderId })}
               disabled={!newFolderName.trim() || createFolder.isPending}
             >
@@ -603,9 +646,10 @@ export default function DocumentVaultPage() {
           />
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="ghost" className="border border-primary/30 text-foreground hover:bg-primary/10">Cancel</Button>
             </DialogClose>
             <Button
+              className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30"
               onClick={() => createDocument.mutate({ title: newDocTitle.trim(), content: '', folderId: currentFolderId })}
               disabled={!newDocTitle.trim() || createDocument.isPending}
             >
@@ -633,9 +677,10 @@ export default function DocumentVaultPage() {
           />
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="ghost" className="border border-primary/30 text-foreground hover:bg-primary/10">Cancel</Button>
             </DialogClose>
             <Button
+              className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30"
               onClick={() => {
                 if (renameFolderId) updateFolder.mutate({ id: renameFolderId, name: renameFolderName.trim() });
               }}
@@ -663,12 +708,12 @@ function FolderCard({ folder, onOpen, onRename, onDelete, onToggleFavorite, onMo
   docCount: number;
 }) {
   return (
-    <Card
-      className="group cursor-pointer hover:border-primary/50 transition-all duration-200"
+    <div
+      className="glassmorphic rounded-xl border border-primary/20 cursor-pointer hover:bg-card/40 transition-colors group"
       onClick={onOpen}
     >
-      <CardContent className="p-3 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+      <div className="p-4 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
           <FolderOpen className="h-5 w-5 text-primary" />
         </div>
         <div className="flex-1 min-w-0">
@@ -680,9 +725,9 @@ function FolderCard({ folder, onOpen, onRename, onDelete, onToggleFavorite, onMo
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-            <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button className="h-8 w-8 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors opacity-0 group-hover:opacity-100">
               <MoreHorizontal className="h-4 w-4" />
-            </Button>
+            </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
             <DropdownMenuItem onClick={onRename}>
@@ -704,8 +749,8 @@ function FolderCard({ folder, onOpen, onRename, onDelete, onToggleFavorite, onMo
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -719,13 +764,13 @@ function DocumentCard({ doc, onOpen, onDelete, onToggleFavorite, onMove, formatD
 }) {
   const preview = doc.content?.slice(0, 100) || '';
   return (
-    <Card
-      className="group cursor-pointer hover:border-primary/50 transition-all duration-200"
+    <div
+      className="glassmorphic rounded-xl border border-primary/20 cursor-pointer hover:bg-card/40 transition-colors group"
       onClick={onOpen}
     >
-      <CardContent className="p-3 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-accent/50 flex items-center justify-center shrink-0">
-          <FileText className="h-5 w-5 text-muted-foreground" />
+      <div className="p-4 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+          <FileText className="h-5 w-5 text-primary/70" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
@@ -742,9 +787,9 @@ function DocumentCard({ doc, onOpen, onDelete, onToggleFavorite, onMove, formatD
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-            <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button className="h-8 w-8 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors opacity-0 group-hover:opacity-100">
               <MoreHorizontal className="h-4 w-4" />
-            </Button>
+            </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
             <DropdownMenuItem onClick={onToggleFavorite}>
@@ -762,7 +807,7 @@ function DocumentCard({ doc, onOpen, onDelete, onToggleFavorite, onMove, formatD
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
