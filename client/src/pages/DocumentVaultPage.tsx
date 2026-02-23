@@ -213,8 +213,10 @@ export default function DocumentVaultPage() {
   const handleMove = (targetFolderId: number | null) => {
     if (!moveTarget) return;
     if (moveTarget.type === 'document') {
+      setLocalDocs(prev => prev.map(d => d.id === moveTarget.id ? { ...d, folderId: targetFolderId } : d));
       updateDocument.mutate({ id: moveTarget.id, folderId: targetFolderId });
     } else {
+      setLocalFolders(prev => prev.map(f => f.id === moveTarget.id ? { ...f, parentId: targetFolderId } : f));
       updateFolder.mutate({ id: moveTarget.id, parentId: targetFolderId });
     }
     setShowMoveDialog(false);
