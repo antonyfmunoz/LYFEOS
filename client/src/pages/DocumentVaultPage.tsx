@@ -60,28 +60,30 @@ export default function DocumentVaultPage() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
 
-  const { data: serverFolders, isLoading: foldersLoading } = useQuery<FolderType[]>({
+  const { data: serverFolders, isLoading: foldersLoading, dataUpdatedAt: foldersUpdatedAt } = useQuery<FolderType[]>({
     queryKey: ['/api/folders'],
     enabled: !!user,
     staleTime: 0,
+    gcTime: 0,
   });
 
-  const { data: serverDocs, isLoading: docsLoading } = useQuery<Document[]>({
+  const { data: serverDocs, isLoading: docsLoading, dataUpdatedAt: docsUpdatedAt } = useQuery<Document[]>({
     queryKey: ['/api/documents'],
     enabled: !!user,
     staleTime: 0,
+    gcTime: 0,
   });
 
   const [localFolders, setLocalFolders] = useState<FolderType[]>([]);
   const [localDocs, setLocalDocs] = useState<Document[]>([]);
 
   useEffect(() => {
-    if (serverFolders) setLocalFolders(serverFolders);
-  }, [serverFolders]);
+    if (serverFolders && foldersUpdatedAt) setLocalFolders(serverFolders);
+  }, [foldersUpdatedAt]);
 
   useEffect(() => {
-    if (serverDocs) setLocalDocs(serverDocs);
-  }, [serverDocs]);
+    if (serverDocs && docsUpdatedAt) setLocalDocs(serverDocs);
+  }, [docsUpdatedAt]);
 
   const folders = localFolders;
   const documents = localDocs;
