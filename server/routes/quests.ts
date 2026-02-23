@@ -389,11 +389,13 @@ export function registerQuestRoutes(app: Express): void {
     notificationTime: true,
     notifications: true,
     isRitualized: true,
+    ritualGroup: true,
     repeatFrequency: true,
     repeatInterval: true,
     repeatDays: true,
     repeatEndDate: true,
     visionGoalId: true,
+    linkedItems: true,
   }).partial();
 
   app.patch("/api/quests/reorder", isAuthenticated, async (req: Request, res: Response) => {

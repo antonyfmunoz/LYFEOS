@@ -599,6 +599,7 @@ export const insertQuestSchema = createInsertSchema(quests).pick({
   repeatEndDate: true,
   parentRitualId: true,
   visionGoalId: true,
+  linkedItems: true,
   createdAt: true,
   sortOrder: true,
   deletedAt: true,
