@@ -723,6 +723,43 @@ export default function QuestsPage() {
     return value.replace(/_/g, ' ');
   }, [customRitualGroups, DEFAULT_RITUAL_GROUPS]);
 
+  const getRitualGroupDateRange = useCallback((missions: Quest[]) => {
+    const formatDate = (dateStr: string) => {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    };
+    const formatTime = (timeStr: string) => {
+      const [hours, minutes] = timeStr.split(':');
+      const hour = parseInt(hours);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const hour12 = hour % 12 || 12;
+      return `${hour12}:${minutes} ${ampm}`;
+    };
+    let earliestStart: string | null = null;
+    let earliestStartTime: string | null = null;
+    let latestEnd: string | null = null;
+    let latestEndTime: string | null = null;
+    missions.forEach((q: any) => {
+      if (q.startDate && (!earliestStart || q.startDate < earliestStart)) {
+        earliestStart = q.startDate;
+        earliestStartTime = q.startTime || null;
+      } else if (q.startDate && q.startDate === earliestStart && q.startTime) {
+        if (!earliestStartTime || q.startTime < earliestStartTime) earliestStartTime = q.startTime;
+      }
+      const ed = q.endDate || q.dueDate;
+      const et = q.endTime;
+      if (ed && (!latestEnd || ed > latestEnd)) {
+        latestEnd = ed;
+        latestEndTime = et || null;
+      } else if (ed && ed === latestEnd && et) {
+        if (!latestEndTime || et > latestEndTime) latestEndTime = et;
+      }
+    });
+    if (!earliestStart && !latestEnd) return null;
+    return { startDate: earliestStart, startTime: earliestStartTime, endDate: latestEnd, endTime: latestEndTime, formatDate, formatTime };
+  }, []);
+
   const moveMission = useCallback((section: string, dragIndex: number, hoverIndex: number) => {
     const sectionMap: Record<string, Quest[]> = {
       today: todayMissions,
@@ -2195,14 +2232,29 @@ export default function QuestsPage() {
                         <button
                           type="button"
                           onClick={() => toggleRitualGroupCollapsed(groupKey)}
-                          className="w-full flex items-center gap-2 px-3 py-2"
+                          className="w-full px-3 py-2"
                         >
-                          <Repeat className="h-4 w-4 text-primary" />
-                          <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
-                          <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
-                          <div className="ml-auto">
-                            {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
+                          <div className="flex items-center gap-2">
+                            <Repeat className="h-4 w-4 text-primary" />
+                            <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
+                            <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
+                            <div className="ml-auto">
+                              {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
+                            </div>
                           </div>
+                          {(() => {
+                            const dr = getRitualGroupDateRange(group.missions);
+                            if (!dr) return null;
+                            return (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 ml-6 flex-wrap">
+                                {dr.startDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.startDate)}</span>}
+                                {dr.startTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.startTime)}</span>}
+                                {(dr.endDate || dr.endTime) && <span className="text-primary">→</span>}
+                                {dr.endDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.endDate)}</span>}
+                                {dr.endTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.endTime)}</span>}
+                              </div>
+                            );
+                          })()}
                         </button>
                         {!isCollapsed && (
                           <div className="px-2 pb-2 space-y-2">
@@ -2308,14 +2360,29 @@ export default function QuestsPage() {
                           <button
                             type="button"
                             onClick={() => toggleRitualGroupCollapsed(groupKey)}
-                            className="w-full flex items-center gap-2 px-3 py-2"
+                            className="w-full px-3 py-2"
                           >
-                            <Repeat className="h-4 w-4 text-primary" />
-                            <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
-                            <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
-                            <div className="ml-auto">
-                              {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
+                            <div className="flex items-center gap-2">
+                              <Repeat className="h-4 w-4 text-primary" />
+                              <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
+                              <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
+                              <div className="ml-auto">
+                                {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
+                              </div>
                             </div>
+                            {(() => {
+                              const dr = getRitualGroupDateRange(group.missions);
+                              if (!dr) return null;
+                              return (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 ml-6 flex-wrap">
+                                  {dr.startDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.startDate)}</span>}
+                                  {dr.startTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.startTime)}</span>}
+                                  {(dr.endDate || dr.endTime) && <span className="text-primary">→</span>}
+                                  {dr.endDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.endDate)}</span>}
+                                  {dr.endTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.endTime)}</span>}
+                                </div>
+                              );
+                            })()}
                           </button>
                           {!isCollapsed && (
                             <div className="px-2 pb-2 space-y-2">
@@ -2420,14 +2487,29 @@ export default function QuestsPage() {
                         <button
                           type="button"
                           onClick={() => toggleRitualGroupCollapsed(groupKey)}
-                          className="w-full flex items-center gap-2 px-3 py-2"
+                          className="w-full px-3 py-2"
                         >
-                          <Repeat className="h-4 w-4 text-primary" />
-                          <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
-                          <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
-                          <div className="ml-auto">
-                            {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
+                          <div className="flex items-center gap-2">
+                            <Repeat className="h-4 w-4 text-primary" />
+                            <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
+                            <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
+                            <div className="ml-auto">
+                              {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
+                            </div>
                           </div>
+                          {(() => {
+                            const dr = getRitualGroupDateRange(group.missions);
+                            if (!dr) return null;
+                            return (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 ml-6 flex-wrap">
+                                {dr.startDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.startDate)}</span>}
+                                {dr.startTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.startTime)}</span>}
+                                {(dr.endDate || dr.endTime) && <span className="text-primary">→</span>}
+                                {dr.endDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.endDate)}</span>}
+                                {dr.endTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.endTime)}</span>}
+                              </div>
+                            );
+                          })()}
                         </button>
                         {!isCollapsed && (
                           <div className="px-2 pb-2 space-y-2">
@@ -2520,14 +2602,29 @@ export default function QuestsPage() {
                         <button
                           type="button"
                           onClick={() => toggleRitualGroupCollapsed(groupKey)}
-                          className="w-full flex items-center gap-2 px-3 py-2"
+                          className="w-full px-3 py-2"
                         >
-                          <Repeat className="h-4 w-4 text-primary" />
-                          <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
-                          <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
-                          <div className="ml-auto">
-                            {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
+                          <div className="flex items-center gap-2">
+                            <Repeat className="h-4 w-4 text-primary" />
+                            <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
+                            <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
+                            <div className="ml-auto">
+                              {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
+                            </div>
                           </div>
+                          {(() => {
+                            const dr = getRitualGroupDateRange(group.missions);
+                            if (!dr) return null;
+                            return (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 ml-6 flex-wrap">
+                                {dr.startDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.startDate)}</span>}
+                                {dr.startTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.startTime)}</span>}
+                                {(dr.endDate || dr.endTime) && <span className="text-primary">→</span>}
+                                {dr.endDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.endDate)}</span>}
+                                {dr.endTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.endTime)}</span>}
+                              </div>
+                            );
+                          })()}
                         </button>
                         {!isCollapsed && (
                           <div className="px-2 pb-2 space-y-2">
