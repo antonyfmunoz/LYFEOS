@@ -7,10 +7,20 @@ import { useAuth } from "@/lib/authContext";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { DndProvider, useDrop } from 'react-dnd';
+import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import update from 'immutability-helper';
 import QuestItem, { QUEST_DND_TYPE, DragItem } from "../components/dashboard/QuestItem";
+
+const VISUAL_ITEM_DND_TYPE = 'VISUAL_ITEM';
+
+interface VisualDragItem {
+  index: number;
+  section: string;
+  type: string;
+  ritualGroup: string | null;
+  missionIds: string[];
+}
 import { usePageTitle } from "@/hooks/use-page-title";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +39,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Zap, Star, Bell, BellOff, BellRing, Edit3, Trash2, X, ChevronDown, ChevronRight, Target, Calendar, Clock, CheckCircle2, GraduationCap, Inbox, Info, Archive, Undo2, Repeat, Loader2, FileText, FolderOpen, Link2 } from "lucide-react";
+import { Plus, Zap, Star, Bell, BellOff, BellRing, Edit3, Trash2, X, ChevronDown, ChevronRight, Target, Calendar, Clock, CheckCircle2, GraduationCap, Inbox, Info, Archive, Undo2, Repeat, Loader2, FileText, FolderOpen, Link2, GripVertical } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ObsidianMarkdown } from "@/components/ui/obsidian-markdown";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
@@ -175,6 +185,66 @@ function DroppableSection({ section, onDropQuest, children, className }: { secti
   return (
     <div ref={dropRef} className={`${className || ''} ${isActive ? 'ring-2 ring-primary/60 bg-primary/5 rounded-xl transition-all' : canDrop ? 'ring-1 ring-primary/20 rounded-xl transition-all' : ''}`}>
       {children}
+    </div>
+  );
+}
+
+function DraggableVisualItem({ index, section, ritualGroup, missionIds, onMoveVisualItem, children }: {
+  index: number;
+  section: string;
+  ritualGroup: string | null;
+  missionIds: string[];
+  onMoveVisualItem: (dragIndex: number, hoverIndex: number, section: string) => void;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const dragHandleRef = useRef<HTMLDivElement>(null);
+
+  const [{ handlerId }, drop] = useDrop({
+    accept: VISUAL_ITEM_DND_TYPE,
+    collect(monitor: any) {
+      return { handlerId: monitor.getHandlerId() };
+    },
+    hover(item: VisualDragItem, monitor: any) {
+      if (!ref.current) return;
+      if (item.section !== section) return;
+      const dragIndex = item.index;
+      const hoverIndex = index;
+      if (dragIndex === hoverIndex) return;
+      const hoverBoundingRect = ref.current.getBoundingClientRect();
+      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+      const clientOffset = monitor.getClientOffset();
+      const hoverClientY = clientOffset.y - hoverBoundingRect.top;
+      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) return;
+      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) return;
+      onMoveVisualItem(dragIndex, hoverIndex, section);
+      item.index = hoverIndex;
+    },
+  });
+
+  const [{ isDragging }, drag, preview] = useDrag({
+    type: VISUAL_ITEM_DND_TYPE,
+    item: () => ({ index, section, type: VISUAL_ITEM_DND_TYPE, ritualGroup, missionIds }),
+    collect: (monitor: any) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  });
+
+  preview(drop(ref));
+  drag(dragHandleRef);
+
+  return (
+    <div ref={ref} data-handler-id={handlerId} style={{ opacity: isDragging ? 0.4 : 1 }}>
+      {ritualGroup ? (
+        <div className="relative">
+          <div ref={dragHandleRef} className="absolute left-1 top-2.5 cursor-move z-10">
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </div>
+          {children}
+        </div>
+      ) : (
+        children
+      )}
     </div>
   );
 }
@@ -782,6 +852,29 @@ export default function QuestsPage() {
     });
     queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'quests'] });
   }, [todayMissions, upcomingMissions, completedMissions, inboxMissions, user?.id]);
+
+  const moveVisualItem = useCallback((dragIndex: number, hoverIndex: number, section: string) => {
+    const sectionMap: Record<string, Quest[]> = {
+      today: todayMissions,
+      upcoming: upcomingMissions,
+      completed: completedMissions,
+      inbox: inboxMissions,
+    };
+    const missions = sectionMap[section];
+    if (!missions) return;
+    const groups = groupMissionsByRitual(missions);
+    if (dragIndex < 0 || dragIndex >= groups.length || hoverIndex < 0 || hoverIndex >= groups.length) return;
+    const reorderedGroups = [...groups];
+    const [moved] = reorderedGroups.splice(dragIndex, 1);
+    reorderedGroups.splice(hoverIndex, 0, moved);
+    const newOrder = reorderedGroups.flatMap(g => g.missions);
+    const orderedIds = newOrder.map(q => q.id);
+    apiRequest("/api/quests/reorder", {
+      method: "PATCH",
+      body: JSON.stringify({ orderedIds }),
+    });
+    queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'quests'] });
+  }, [todayMissions, upcomingMissions, completedMissions, inboxMissions, user?.id, groupMissionsByRitual]);
 
   const handleDeleteMission = useCallback(async (quest: Quest) => {
     const questCopy = { ...quest };
@@ -2223,85 +2316,89 @@ export default function QuestsPage() {
                 />
               )}
               {todayMissions.length > 0 ? (
-                groupMissionsByRitual(todayMissions).map((group) => {
+                groupMissionsByRitual(todayMissions).map((group, visualIdx) => {
+                  const missionIds = group.missions.map(q => String(q.id));
                   if (group.ritualGroup) {
                     const groupKey = `today-${group.ritualGroup}`;
                     const isCollapsed = ritualGroupCollapsed[groupKey] !== false;
                     return (
-                      <div key={groupKey} className="rounded-lg border border-primary/20 bg-primary/5 overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() => toggleRitualGroupCollapsed(groupKey)}
-                          className="w-full px-3 py-2"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Repeat className="h-4 w-4 text-primary" />
-                            <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
-                            <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
-                            <div className="ml-auto">
-                              {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
-                            </div>
-                          </div>
-                          {(() => {
-                            const dr = getRitualGroupDateRange(group.missions);
-                            if (!dr) return null;
-                            return (
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 ml-6 flex-wrap">
-                                {dr.startDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.startDate)}</span>}
-                                {dr.startTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.startTime)}</span>}
-                                {(dr.endDate || dr.endTime) && <span className="text-primary">→</span>}
-                                {dr.endDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.endDate)}</span>}
-                                {dr.endTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.endTime)}</span>}
+                      <DraggableVisualItem key={groupKey} index={visualIdx} section="today" ritualGroup={group.ritualGroup} missionIds={missionIds} onMoveVisualItem={moveVisualItem}>
+                        <div className="rounded-lg border border-primary/20 bg-primary/5 overflow-hidden pl-5">
+                          <button
+                            type="button"
+                            onClick={() => toggleRitualGroupCollapsed(groupKey)}
+                            className="w-full px-3 py-2"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Repeat className="h-4 w-4 text-primary" />
+                              <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
+                              <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
+                              <div className="ml-auto">
+                                {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
                               </div>
-                            );
-                          })()}
-                        </button>
-                        {!isCollapsed && (
-                          <div className="px-2 pb-2 space-y-2">
-                            {group.missions.map((quest, idx) => (
-                              <QuestItem
-                                key={quest.id}
-                                quest={quest}
-                                index={idx}
-                                section="today"
-                                onToggle={() => toggleQuestCompletion(quest.id)}
-                                onDelete={() => handleDeleteMission(quest)}
-                                onEdit={() => openEditDialog(quest)}
-                                onStart={() => handleStartMission(quest)}
-                                onResume={() => handleResumeMission(quest)}
-                                onDone={() => handleDoneMission(quest)}
-                                onRestart={restartMissionTimer}
-                                onMoveQuest={(dragIdx, hoverIdx) => moveMission("today", dragIdx, hoverIdx)}
-                                elapsedSeconds={missionElapsedTimes[quest.id]}
-                                breakSeconds={missionBreakTimes[quest.id]}
-                                isTimerActive={activeTimerQuest?.id === quest.id}
-                                timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                            </div>
+                            {(() => {
+                              const dr = getRitualGroupDateRange(group.missions);
+                              if (!dr) return null;
+                              return (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 ml-6 flex-wrap">
+                                  {dr.startDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.startDate)}</span>}
+                                  {dr.startTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.startTime)}</span>}
+                                  {(dr.endDate || dr.endTime) && <span className="text-primary">→</span>}
+                                  {dr.endDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.endDate)}</span>}
+                                  {dr.endTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.endTime)}</span>}
+                                </div>
+                              );
+                            })()}
+                          </button>
+                          {!isCollapsed && (
+                            <div className="px-2 pb-2 space-y-2">
+                              {group.missions.map((quest, idx) => (
+                                <QuestItem
+                                  key={quest.id}
+                                  quest={quest}
+                                  index={idx}
+                                  section="today"
+                                  onToggle={() => toggleQuestCompletion(quest.id)}
+                                  onDelete={() => handleDeleteMission(quest)}
+                                  onEdit={() => openEditDialog(quest)}
+                                  onStart={() => handleStartMission(quest)}
+                                  onResume={() => handleResumeMission(quest)}
+                                  onDone={() => handleDoneMission(quest)}
+                                  onRestart={restartMissionTimer}
+                                  onMoveQuest={(dragIdx, hoverIdx) => moveMission("today", dragIdx, hoverIdx)}
+                                  elapsedSeconds={missionElapsedTimes[quest.id]}
+                                  breakSeconds={missionBreakTimes[quest.id]}
+                                  isTimerActive={activeTimerQuest?.id === quest.id}
+                                  timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </DraggableVisualItem>
                     );
                   }
-                  return group.missions.map((quest, idx) => (
-                    <QuestItem
-                      key={quest.id}
-                      quest={quest}
-                      index={idx}
-                      section="today"
-                      onToggle={() => toggleQuestCompletion(quest.id)}
-                      onDelete={() => handleDeleteMission(quest)}
-                      onEdit={() => openEditDialog(quest)}
-                      onStart={() => handleStartMission(quest)}
-                      onResume={() => handleResumeMission(quest)}
-                      onDone={() => handleDoneMission(quest)}
-                      onRestart={restartMissionTimer}
-                      onMoveQuest={(dragIdx, hoverIdx) => moveMission("today", dragIdx, hoverIdx)}
-                      elapsedSeconds={missionElapsedTimes[quest.id]}
-                      breakSeconds={missionBreakTimes[quest.id]}
-                      isTimerActive={activeTimerQuest?.id === quest.id}
-                      timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
-                    />
+                  return group.missions.map((quest) => (
+                    <DraggableVisualItem key={quest.id} index={visualIdx} section="today" ritualGroup={null} missionIds={missionIds} onMoveVisualItem={moveVisualItem}>
+                      <QuestItem
+                        quest={quest}
+                        index={visualIdx}
+                        section="today"
+                        onToggle={() => toggleQuestCompletion(quest.id)}
+                        onDelete={() => handleDeleteMission(quest)}
+                        onEdit={() => openEditDialog(quest)}
+                        onStart={() => handleStartMission(quest)}
+                        onResume={() => handleResumeMission(quest)}
+                        onDone={() => handleDoneMission(quest)}
+                        onRestart={restartMissionTimer}
+                        onMoveQuest={(dragIdx, hoverIdx) => moveVisualItem(dragIdx, hoverIdx, "today")}
+                        elapsedSeconds={missionElapsedTimes[quest.id]}
+                        breakSeconds={missionBreakTimes[quest.id]}
+                        isTimerActive={activeTimerQuest?.id === quest.id}
+                        timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
+                      />
+                    </DraggableVisualItem>
                   ));
                 })
               ) : !nextOnboardingMission ? (
@@ -2351,85 +2448,89 @@ export default function QuestsPage() {
             <CollapsibleContent>
               <div className="px-4 pb-4 space-y-3">
                 {upcomingMissions.length > 0 ? (
-                  groupMissionsByRitual(upcomingMissions).map((group) => {
+                  groupMissionsByRitual(upcomingMissions).map((group, visualIdx) => {
+                    const missionIds = group.missions.map(q => String(q.id));
                     if (group.ritualGroup) {
                       const groupKey = `upcoming-${group.ritualGroup}`;
                       const isCollapsed = ritualGroupCollapsed[groupKey] !== false;
                       return (
-                        <div key={groupKey} className="rounded-lg border border-primary/20 bg-primary/5 overflow-hidden">
-                          <button
-                            type="button"
-                            onClick={() => toggleRitualGroupCollapsed(groupKey)}
-                            className="w-full px-3 py-2"
-                          >
-                            <div className="flex items-center gap-2">
-                              <Repeat className="h-4 w-4 text-primary" />
-                              <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
-                              <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
-                              <div className="ml-auto">
-                                {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
-                              </div>
-                            </div>
-                            {(() => {
-                              const dr = getRitualGroupDateRange(group.missions);
-                              if (!dr) return null;
-                              return (
-                                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 ml-6 flex-wrap">
-                                  {dr.startDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.startDate)}</span>}
-                                  {dr.startTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.startTime)}</span>}
-                                  {(dr.endDate || dr.endTime) && <span className="text-primary">→</span>}
-                                  {dr.endDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.endDate)}</span>}
-                                  {dr.endTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.endTime)}</span>}
+                        <DraggableVisualItem key={groupKey} index={visualIdx} section="upcoming" ritualGroup={group.ritualGroup} missionIds={missionIds} onMoveVisualItem={moveVisualItem}>
+                          <div className="rounded-lg border border-primary/20 bg-primary/5 overflow-hidden pl-5">
+                            <button
+                              type="button"
+                              onClick={() => toggleRitualGroupCollapsed(groupKey)}
+                              className="w-full px-3 py-2"
+                            >
+                              <div className="flex items-center gap-2">
+                                <Repeat className="h-4 w-4 text-primary" />
+                                <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
+                                <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
+                                <div className="ml-auto">
+                                  {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
                                 </div>
-                              );
-                            })()}
-                          </button>
-                          {!isCollapsed && (
-                            <div className="px-2 pb-2 space-y-2">
-                              {group.missions.map((quest, idx) => (
-                                <QuestItem
-                                  key={quest.id}
-                                  quest={quest}
-                                  index={idx}
-                                  section="upcoming"
-                                  onToggle={() => toggleQuestCompletion(quest.id)}
-                                  onDelete={() => handleDeleteMission(quest)}
-                                  onEdit={() => openEditDialog(quest)}
-                                  onStart={() => handleStartMission(quest)}
-                                  onResume={() => handleResumeMission(quest)}
-                                  onDone={() => handleDoneMission(quest)}
-                                  onRestart={restartMissionTimer}
-                                  onMoveQuest={(dragIdx, hoverIdx) => moveMission("upcoming", dragIdx, hoverIdx)}
-                                  elapsedSeconds={missionElapsedTimes[quest.id]}
-                                  breakSeconds={missionBreakTimes[quest.id]}
-                                  isTimerActive={activeTimerQuest?.id === quest.id}
-                                  timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
-                                />
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                              </div>
+                              {(() => {
+                                const dr = getRitualGroupDateRange(group.missions);
+                                if (!dr) return null;
+                                return (
+                                  <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 ml-6 flex-wrap">
+                                    {dr.startDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.startDate)}</span>}
+                                    {dr.startTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.startTime)}</span>}
+                                    {(dr.endDate || dr.endTime) && <span className="text-primary">→</span>}
+                                    {dr.endDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.endDate)}</span>}
+                                    {dr.endTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.endTime)}</span>}
+                                  </div>
+                                );
+                              })()}
+                            </button>
+                            {!isCollapsed && (
+                              <div className="px-2 pb-2 space-y-2">
+                                {group.missions.map((quest, idx) => (
+                                  <QuestItem
+                                    key={quest.id}
+                                    quest={quest}
+                                    index={idx}
+                                    section="upcoming"
+                                    onToggle={() => toggleQuestCompletion(quest.id)}
+                                    onDelete={() => handleDeleteMission(quest)}
+                                    onEdit={() => openEditDialog(quest)}
+                                    onStart={() => handleStartMission(quest)}
+                                    onResume={() => handleResumeMission(quest)}
+                                    onDone={() => handleDoneMission(quest)}
+                                    onRestart={restartMissionTimer}
+                                    onMoveQuest={(dragIdx, hoverIdx) => moveMission("upcoming", dragIdx, hoverIdx)}
+                                    elapsedSeconds={missionElapsedTimes[quest.id]}
+                                    breakSeconds={missionBreakTimes[quest.id]}
+                                    isTimerActive={activeTimerQuest?.id === quest.id}
+                                    timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </DraggableVisualItem>
                       );
                     }
-                    return group.missions.map((quest, idx) => (
-                      <QuestItem
-                        key={quest.id}
-                        quest={quest}
-                        index={idx}
-                        section="upcoming"
-                        onToggle={() => toggleQuestCompletion(quest.id)}
-                        onDelete={() => handleDeleteMission(quest)}
-                        onEdit={() => openEditDialog(quest)}
-                        onStart={() => handleStartMission(quest)}
-                        onResume={() => handleResumeMission(quest)}
-                        onDone={() => handleDoneMission(quest)}
-                        onRestart={restartMissionTimer}
-                        onMoveQuest={(dragIdx, hoverIdx) => moveMission("upcoming", dragIdx, hoverIdx)}
-                        elapsedSeconds={missionElapsedTimes[quest.id]}
-                        breakSeconds={missionBreakTimes[quest.id]}
-                        isTimerActive={activeTimerQuest?.id === quest.id}
-                        timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
-                      />
+                    return group.missions.map((quest) => (
+                      <DraggableVisualItem key={quest.id} index={visualIdx} section="upcoming" ritualGroup={null} missionIds={missionIds} onMoveVisualItem={moveVisualItem}>
+                        <QuestItem
+                          quest={quest}
+                          index={visualIdx}
+                          section="upcoming"
+                          onToggle={() => toggleQuestCompletion(quest.id)}
+                          onDelete={() => handleDeleteMission(quest)}
+                          onEdit={() => openEditDialog(quest)}
+                          onStart={() => handleStartMission(quest)}
+                          onResume={() => handleResumeMission(quest)}
+                          onDone={() => handleDoneMission(quest)}
+                          onRestart={restartMissionTimer}
+                          onMoveQuest={(dragIdx, hoverIdx) => moveVisualItem(dragIdx, hoverIdx, "upcoming")}
+                          elapsedSeconds={missionElapsedTimes[quest.id]}
+                          breakSeconds={missionBreakTimes[quest.id]}
+                          isTimerActive={activeTimerQuest?.id === quest.id}
+                          timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
+                        />
+                      </DraggableVisualItem>
                     ));
                   })
                 ) : (
@@ -2478,75 +2579,79 @@ export default function QuestsPage() {
           <CollapsibleContent>
             <div className="px-4 pb-4 space-y-3">
               {completedMissions.length > 0 ? (
-                groupMissionsByRitual(completedMissions).map((group) => {
+                groupMissionsByRitual(completedMissions).map((group, visualIdx) => {
+                  const missionIds = group.missions.map(q => String(q.id));
                   if (group.ritualGroup) {
                     const groupKey = `completed-${group.ritualGroup}`;
                     const isCollapsed = ritualGroupCollapsed[groupKey] !== false;
                     return (
-                      <div key={groupKey} className="rounded-lg border border-primary/20 bg-primary/5 overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() => toggleRitualGroupCollapsed(groupKey)}
-                          className="w-full px-3 py-2"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Repeat className="h-4 w-4 text-primary" />
-                            <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
-                            <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
-                            <div className="ml-auto">
-                              {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
-                            </div>
-                          </div>
-                          {(() => {
-                            const dr = getRitualGroupDateRange(group.missions);
-                            if (!dr) return null;
-                            return (
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 ml-6 flex-wrap">
-                                {dr.startDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.startDate)}</span>}
-                                {dr.startTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.startTime)}</span>}
-                                {(dr.endDate || dr.endTime) && <span className="text-primary">→</span>}
-                                {dr.endDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.endDate)}</span>}
-                                {dr.endTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.endTime)}</span>}
+                      <DraggableVisualItem key={groupKey} index={visualIdx} section="completed" ritualGroup={group.ritualGroup} missionIds={missionIds} onMoveVisualItem={moveVisualItem}>
+                        <div className="rounded-lg border border-primary/20 bg-primary/5 overflow-hidden pl-5">
+                          <button
+                            type="button"
+                            onClick={() => toggleRitualGroupCollapsed(groupKey)}
+                            className="w-full px-3 py-2"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Repeat className="h-4 w-4 text-primary" />
+                              <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
+                              <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
+                              <div className="ml-auto">
+                                {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
                               </div>
-                            );
-                          })()}
-                        </button>
-                        {!isCollapsed && (
-                          <div className="px-2 pb-2 space-y-2">
-                            {group.missions.map((quest, idx) => (
-                              <QuestItem
-                                key={quest.id}
-                                quest={quest}
-                                index={idx}
-                                section="completed"
-                                onToggle={() => toggleQuestCompletion(quest.id)}
-                                onDelete={() => handleDeleteMission(quest)}
-                                onEdit={() => openEditDialog(quest)}
-                                onUndo={() => handleUndoMission(quest)}
-                                onMoveQuest={(dragIdx, hoverIdx) => moveMission("completed", dragIdx, hoverIdx)}
-                                elapsedSeconds={missionElapsedTimes[quest.id]}
-                                breakSeconds={missionBreakTimes[quest.id]}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                            </div>
+                            {(() => {
+                              const dr = getRitualGroupDateRange(group.missions);
+                              if (!dr) return null;
+                              return (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 ml-6 flex-wrap">
+                                  {dr.startDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.startDate)}</span>}
+                                  {dr.startTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.startTime)}</span>}
+                                  {(dr.endDate || dr.endTime) && <span className="text-primary">→</span>}
+                                  {dr.endDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.endDate)}</span>}
+                                  {dr.endTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.endTime)}</span>}
+                                </div>
+                              );
+                            })()}
+                          </button>
+                          {!isCollapsed && (
+                            <div className="px-2 pb-2 space-y-2">
+                              {group.missions.map((quest, idx) => (
+                                <QuestItem
+                                  key={quest.id}
+                                  quest={quest}
+                                  index={idx}
+                                  section="completed"
+                                  onToggle={() => toggleQuestCompletion(quest.id)}
+                                  onDelete={() => handleDeleteMission(quest)}
+                                  onEdit={() => openEditDialog(quest)}
+                                  onUndo={() => handleUndoMission(quest)}
+                                  onMoveQuest={(dragIdx, hoverIdx) => moveMission("completed", dragIdx, hoverIdx)}
+                                  elapsedSeconds={missionElapsedTimes[quest.id]}
+                                  breakSeconds={missionBreakTimes[quest.id]}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </DraggableVisualItem>
                     );
                   }
-                  return group.missions.map((quest, idx) => (
-                    <QuestItem
-                      key={quest.id}
-                      quest={quest}
-                      index={idx}
-                      section="completed"
-                      onToggle={() => toggleQuestCompletion(quest.id)}
-                      onDelete={() => handleDeleteMission(quest)}
-                      onEdit={() => openEditDialog(quest)}
-                      onUndo={() => handleUndoMission(quest)}
-                      onMoveQuest={(dragIdx, hoverIdx) => moveMission("completed", dragIdx, hoverIdx)}
-                      elapsedSeconds={missionElapsedTimes[quest.id]}
-                      breakSeconds={missionBreakTimes[quest.id]}
-                    />
+                  return group.missions.map((quest) => (
+                    <DraggableVisualItem key={quest.id} index={visualIdx} section="completed" ritualGroup={null} missionIds={missionIds} onMoveVisualItem={moveVisualItem}>
+                      <QuestItem
+                        quest={quest}
+                        index={visualIdx}
+                        section="completed"
+                        onToggle={() => toggleQuestCompletion(quest.id)}
+                        onDelete={() => handleDeleteMission(quest)}
+                        onEdit={() => openEditDialog(quest)}
+                        onUndo={() => handleUndoMission(quest)}
+                        onMoveQuest={(dragIdx, hoverIdx) => moveVisualItem(dragIdx, hoverIdx, "completed")}
+                        elapsedSeconds={missionElapsedTimes[quest.id]}
+                        breakSeconds={missionBreakTimes[quest.id]}
+                      />
+                    </DraggableVisualItem>
                   ));
                 })
               ) : (
@@ -2593,85 +2698,89 @@ export default function QuestsPage() {
             
             <CollapsibleContent>
               <div className="px-4 pb-4 space-y-3">
-                {groupMissionsByRitual(inboxMissions).map((group) => {
+                {groupMissionsByRitual(inboxMissions).map((group, visualIdx) => {
+                  const missionIds = group.missions.map(q => String(q.id));
                   if (group.ritualGroup) {
                     const groupKey = `inbox-${group.ritualGroup}`;
                     const isCollapsed = ritualGroupCollapsed[groupKey] !== false;
                     return (
-                      <div key={groupKey} className="rounded-lg border border-primary/20 bg-primary/5 overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() => toggleRitualGroupCollapsed(groupKey)}
-                          className="w-full px-3 py-2"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Repeat className="h-4 w-4 text-primary" />
-                            <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
-                            <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
-                            <div className="ml-auto">
-                              {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
-                            </div>
-                          </div>
-                          {(() => {
-                            const dr = getRitualGroupDateRange(group.missions);
-                            if (!dr) return null;
-                            return (
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 ml-6 flex-wrap">
-                                {dr.startDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.startDate)}</span>}
-                                {dr.startTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.startTime)}</span>}
-                                {(dr.endDate || dr.endTime) && <span className="text-primary">→</span>}
-                                {dr.endDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.endDate)}</span>}
-                                {dr.endTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.endTime)}</span>}
+                      <DraggableVisualItem key={groupKey} index={visualIdx} section="inbox" ritualGroup={group.ritualGroup} missionIds={missionIds} onMoveVisualItem={moveVisualItem}>
+                        <div className="rounded-lg border border-primary/20 bg-primary/5 overflow-hidden pl-5">
+                          <button
+                            type="button"
+                            onClick={() => toggleRitualGroupCollapsed(groupKey)}
+                            className="w-full px-3 py-2"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Repeat className="h-4 w-4 text-primary" />
+                              <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
+                              <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
+                              <div className="ml-auto">
+                                {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
                               </div>
-                            );
-                          })()}
-                        </button>
-                        {!isCollapsed && (
-                          <div className="px-2 pb-2 space-y-2">
-                            {group.missions.map((quest, idx) => (
-                              <QuestItem
-                                key={quest.id}
-                                quest={quest}
-                                index={idx}
-                                section="inbox"
-                                onToggle={() => toggleQuestCompletion(quest.id)}
-                                onDelete={() => handleDeleteMission(quest)}
-                                onEdit={() => openEditDialog(quest)}
-                                onStart={() => handleStartMission(quest)}
-                                onResume={() => handleResumeMission(quest)}
-                                onDone={() => handleDoneMission(quest)}
-                                onRestart={restartMissionTimer}
-                                onMoveQuest={(dragIdx, hoverIdx) => moveMission("inbox", dragIdx, hoverIdx)}
-                                elapsedSeconds={missionElapsedTimes[quest.id]}
-                                breakSeconds={missionBreakTimes[quest.id]}
-                                isTimerActive={activeTimerQuest?.id === quest.id}
-                                timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                            </div>
+                            {(() => {
+                              const dr = getRitualGroupDateRange(group.missions);
+                              if (!dr) return null;
+                              return (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 ml-6 flex-wrap">
+                                  {dr.startDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.startDate)}</span>}
+                                  {dr.startTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.startTime)}</span>}
+                                  {(dr.endDate || dr.endTime) && <span className="text-primary">→</span>}
+                                  {dr.endDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.endDate)}</span>}
+                                  {dr.endTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.endTime)}</span>}
+                                </div>
+                              );
+                            })()}
+                          </button>
+                          {!isCollapsed && (
+                            <div className="px-2 pb-2 space-y-2">
+                              {group.missions.map((quest, idx) => (
+                                <QuestItem
+                                  key={quest.id}
+                                  quest={quest}
+                                  index={idx}
+                                  section="inbox"
+                                  onToggle={() => toggleQuestCompletion(quest.id)}
+                                  onDelete={() => handleDeleteMission(quest)}
+                                  onEdit={() => openEditDialog(quest)}
+                                  onStart={() => handleStartMission(quest)}
+                                  onResume={() => handleResumeMission(quest)}
+                                  onDone={() => handleDoneMission(quest)}
+                                  onRestart={restartMissionTimer}
+                                  onMoveQuest={(dragIdx, hoverIdx) => moveMission("inbox", dragIdx, hoverIdx)}
+                                  elapsedSeconds={missionElapsedTimes[quest.id]}
+                                  breakSeconds={missionBreakTimes[quest.id]}
+                                  isTimerActive={activeTimerQuest?.id === quest.id}
+                                  timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </DraggableVisualItem>
                     );
                   }
-                  return group.missions.map((quest, idx) => (
-                    <QuestItem
-                      key={quest.id}
-                      quest={quest}
-                      index={idx}
-                      section="inbox"
-                      onToggle={() => toggleQuestCompletion(quest.id)}
-                      onDelete={() => handleDeleteMission(quest)}
-                      onEdit={() => openEditDialog(quest)}
-                      onStart={() => handleStartMission(quest)}
-                      onResume={() => handleResumeMission(quest)}
-                      onDone={() => handleDoneMission(quest)}
-                      onRestart={restartMissionTimer}
-                      onMoveQuest={(dragIdx, hoverIdx) => moveMission("inbox", dragIdx, hoverIdx)}
-                      elapsedSeconds={missionElapsedTimes[quest.id]}
-                      breakSeconds={missionBreakTimes[quest.id]}
-                      isTimerActive={activeTimerQuest?.id === quest.id}
-                      timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
-                    />
+                  return group.missions.map((quest) => (
+                    <DraggableVisualItem key={quest.id} index={visualIdx} section="inbox" ritualGroup={null} missionIds={missionIds} onMoveVisualItem={moveVisualItem}>
+                      <QuestItem
+                        quest={quest}
+                        index={visualIdx}
+                        section="inbox"
+                        onToggle={() => toggleQuestCompletion(quest.id)}
+                        onDelete={() => handleDeleteMission(quest)}
+                        onEdit={() => openEditDialog(quest)}
+                        onStart={() => handleStartMission(quest)}
+                        onResume={() => handleResumeMission(quest)}
+                        onDone={() => handleDoneMission(quest)}
+                        onRestart={restartMissionTimer}
+                        onMoveQuest={(dragIdx, hoverIdx) => moveVisualItem(dragIdx, hoverIdx, "inbox")}
+                        elapsedSeconds={missionElapsedTimes[quest.id]}
+                        breakSeconds={missionBreakTimes[quest.id]}
+                        isTimerActive={activeTimerQuest?.id === quest.id}
+                        timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
+                      />
+                    </DraggableVisualItem>
                   ));
                 })}
                 {inboxMissions.length === 0 && (
