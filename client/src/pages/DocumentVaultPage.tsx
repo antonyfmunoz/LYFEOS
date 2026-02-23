@@ -41,12 +41,10 @@ export default function DocumentVaultPage() {
   const [editContent, setEditContent] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
-  const [showNewDocDialog, setShowNewDocDialog] = useState(false);
   const [showRenameFolderDialog, setShowRenameFolderDialog] = useState(false);
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'folder' | 'document'; id: number; name: string } | null>(null);
   const [newFolderName, setNewFolderName] = useState('');
-  const [newDocTitle, setNewDocTitle] = useState('');
   const [renameFolderId, setRenameFolderId] = useState<number | null>(null);
   const [renameFolderName, setRenameFolderName] = useState('');
   const [moveTarget, setMoveTarget] = useState<{ type: 'folder' | 'document'; id: number } | null>(null);
@@ -56,11 +54,13 @@ export default function DocumentVaultPage() {
   const { data: folders = [], isLoading: foldersLoading } = useQuery<FolderType[]>({
     queryKey: ['/api/folders'],
     enabled: !!user,
+    staleTime: 0,
   });
 
   const { data: documents = [], isLoading: docsLoading } = useQuery<Document[]>({
     queryKey: ['/api/documents'],
     enabled: !!user,
+    staleTime: 0,
   });
 
   const refetchFolders = useCallback(() => {
@@ -106,8 +106,6 @@ export default function DocumentVaultPage() {
     mutationFn: (data: { title: string; content: string; folderId?: number | null }) =>
       apiRequest<Document>('/api/documents', { method: 'POST', body: JSON.stringify({ ...data, userId: user!.id }) }),
     onSuccess: (doc: Document) => {
-      setShowNewDocDialog(false);
-      setNewDocTitle('');
       setSelectedDoc(doc);
       setEditTitle(doc.title);
       setEditContent(doc.content || '');
@@ -463,7 +461,8 @@ export default function DocumentVaultPage() {
           </button>
           <button
             className="h-8 px-3 inline-flex items-center gap-1.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors font-mono text-xs"
-            onClick={() => setShowNewDocDialog(true)}
+            onClick={() => createDocument.mutate({ title: 'Untitled', content: '', folderId: currentFolderId })}
+            disabled={createDocument.isPending}
           >
             <Plus className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Document</span>
@@ -618,7 +617,8 @@ export default function DocumentVaultPage() {
                     </button>
                     <button
                       className="h-8 px-3 inline-flex items-center gap-1.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors font-mono text-xs"
-                      onClick={() => setShowNewDocDialog(true)}
+                      onClick={() => createDocument.mutate({ title: 'Untitled', content: '', folderId: currentFolderId })}
+                      disabled={createDocument.isPending}
                     >
                       <Plus className="h-4 w-4" />
                       New Document
@@ -662,36 +662,6 @@ export default function DocumentVaultPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showNewDocDialog} onOpenChange={setShowNewDocDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>New Document</DialogTitle>
-          </DialogHeader>
-          <Input
-            value={newDocTitle}
-            onChange={e => setNewDocTitle(e.target.value)}
-            placeholder="Document title"
-            autoFocus
-            onKeyDown={e => {
-              if (e.key === 'Enter' && newDocTitle.trim()) {
-                createDocument.mutate({ title: newDocTitle.trim(), content: '', folderId: currentFolderId });
-              }
-            }}
-          />
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="ghost" className="border border-primary/30 text-foreground hover:bg-primary/10">Cancel</Button>
-            </DialogClose>
-            <Button
-              className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30"
-              onClick={() => createDocument.mutate({ title: newDocTitle.trim(), content: '', folderId: currentFolderId })}
-              disabled={!newDocTitle.trim() || createDocument.isPending}
-            >
-              Create
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={showRenameFolderDialog} onOpenChange={setShowRenameFolderDialog}>
         <DialogContent>
