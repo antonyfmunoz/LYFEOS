@@ -308,40 +308,6 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
                   <span className="text-primary font-mono">Mission Objective — {categoryLabels[linkedObjective.category] || linkedObjective.category} Vision:</span> {linkedObjective.title}
                 </p>
               )}
-              {questLinkedItems.length > 0 && (
-                <div className="text-muted-foreground text-xs">
-                  <span className="text-primary font-mono">Linked Items:</span>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {questLinkedItems.map((item) => (
-                      <button
-                        key={`${item.type}-${item.id}`}
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setLocation(item.type === "document" ? `/document-vault?doc=${item.id}` : `/document-vault?folder=${item.id}`);
-                        }}
-                        className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-md bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 transition-colors cursor-pointer"
-                      >
-                        {item.type === "document" ? <FileText className="h-3 w-3 text-primary" /> : <FolderOpen className="h-3 w-3 text-primary" />}
-                        {item.title}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {(() => {
-                const rg = quest.ritualGroup as string | null | undefined;
-                if (!rg) return null;
-                const customGroup = customRitualGroups.find(g => g.value === rg);
-                const defaultGroup = DEFAULT_RITUAL_GROUPS.find(g => g.value === rg);
-                const groupLabel = customGroup?.label || defaultGroup?.label || rg;
-                const groupDesc = customGroup?.description || DEFAULT_RITUAL_DESCRIPTIONS[rg] || "Custom ritual group for recurring tasks.";
-                return (
-                  <p className="text-muted-foreground text-xs">
-                    <span className="text-primary font-mono">Ritual Group — <span className="capitalize">{groupLabel}</span>:</span> {groupDesc}
-                  </p>
-                );
-              })()}
               {category && category !== "general" && category !== "onboarding" && (
                 <p className="text-muted-foreground text-xs">
                   <span className="text-primary font-mono">Mission Type — <span className="capitalize">{userCategories.find(uc => uc.value === category)?.label || category.replace(/_/g, ' ')}</span>:</span> {
@@ -375,6 +341,40 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
                   'Minimal effort. Quick and easy.'
                 }
               </p>
+              {(() => {
+                const rg = quest.ritualGroup as string | null | undefined;
+                if (!rg) return null;
+                const customGroup = customRitualGroups.find(g => g.value === rg);
+                const defaultGroup = DEFAULT_RITUAL_GROUPS.find(g => g.value === rg);
+                const groupLabel = customGroup?.label || defaultGroup?.label || rg;
+                const groupDesc = customGroup?.description || DEFAULT_RITUAL_DESCRIPTIONS[rg] || "Custom ritual group for recurring tasks.";
+                return (
+                  <p className="text-muted-foreground text-xs">
+                    <span className="text-primary font-mono">Ritual Group — <span className="capitalize">{groupLabel}</span>:</span> {groupDesc}
+                  </p>
+                );
+              })()}
+              {questLinkedItems.length > 0 && (
+                <div className="text-muted-foreground text-xs">
+                  <span className="text-primary font-mono">Linked Items:</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {questLinkedItems.map((item) => (
+                      <button
+                        key={`${item.type}-${item.id}`}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLocation(item.type === "document" ? `/document-vault?openDoc=${item.id}` : `/document-vault?openFolder=${item.id}`);
+                        }}
+                        className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-md bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 transition-colors cursor-pointer"
+                      >
+                        {item.type === "document" ? <FileText className="h-3 w-3 text-primary" /> : <FolderOpen className="h-3 w-3 text-primary" />}
+                        {item.title}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
           {!completed && (
