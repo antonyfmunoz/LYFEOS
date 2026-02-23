@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Plus, 
   X, 
@@ -27,6 +27,18 @@ export function QuickActionMenu() {
   const [category, setCategory] = useState<"work" | "health" | "personal" | null>(null);
   const { addEvent } = useLYFEOS();
   const { toast } = useToast();
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      const keyboardOpen = vv.height < window.innerHeight * 0.75;
+      setKeyboardVisible(keyboardOpen);
+    };
+    vv.addEventListener('resize', onResize);
+    return () => vv.removeEventListener('resize', onResize);
+  }, []);
   
   // Get current time
   const getCurrentTime = () => {
@@ -230,7 +242,7 @@ export function QuickActionMenu() {
   return (
     <>
       {/* Floating action button */}
-      <div className="fixed right-6 bottom-6 z-50">
+      <div className={cn("fixed right-6 bottom-6 z-50 transition-all duration-200", keyboardVisible && "pointer-events-none opacity-0")}>
         <AnimatePresence>
           {isOpen && (
             <motion.div

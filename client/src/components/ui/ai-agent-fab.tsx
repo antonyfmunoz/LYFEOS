@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Bot, X, Send, Sparkles, Edit2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,10 +66,23 @@ export function AIAgentFAB() {
     .slice(0, 5)
     .reverse();
   
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      const keyboardOpen = vv.height < window.innerHeight * 0.75;
+      setKeyboardVisible(keyboardOpen);
+    };
+    vv.addEventListener('resize', onResize);
+    return () => vv.removeEventListener('resize', onResize);
+  }, []);
+
   return (
     <>
       {/* Floating action button */}
-      <div className="fixed right-6 bottom-20 z-50">
+      <div className={`fixed right-6 bottom-20 z-50 transition-all duration-200 ${keyboardVisible ? 'pointer-events-none opacity-0' : ''}`}>
         <AnimatePresence>
           {isOpen && (
             <motion.div
