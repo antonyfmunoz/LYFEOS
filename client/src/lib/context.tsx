@@ -710,6 +710,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             repeatEndDate: quest.repeatEndDate || null,
             parentRitualId: quest.parentRitualId || null,
             visionGoalId: quest.visionGoalId ?? null,
+            ritualGroup: quest.ritualGroup || null,
+            linkedItems: quest.linkedItems || [],
           }));
           setQuests(transformedQuests);
         }
@@ -1004,6 +1006,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       repeatEndDate: quest.repeatEndDate || null,
       parentRitualId: quest.parentRitualId || null,
       visionGoalId: quest.visionGoalId ?? null,
+      ritualGroup: quest.ritualGroup || null,
+      linkedItems: quest.linkedItems || [],
     };
     
     setQuests((prev) => [...prev, newQuest]);
@@ -1055,6 +1059,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       repeatEndDate: quest.repeatEndDate || null,
       parentRitualId: quest.parentRitualId || null,
       visionGoalId: quest.visionGoalId ?? null,
+      ritualGroup: quest.ritualGroup || null,
+      linkedItems: quest.linkedItems || [],
     };
     
     setQuests((prev) => prev.map((q) => (q.id === id ? updatedQuest : q)));
