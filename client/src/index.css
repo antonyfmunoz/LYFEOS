@@ -123,13 +123,13 @@ input[type="range"].theme-slider::-moz-range-thumb {
     --popover: 0 0% 11%;
     --popover-foreground: 0 0% 93%;
     
-    --primary: 188 100% 50%;
+    --primary: var(--primary-hsl, 188 100% 50%);
     --primary-foreground: 0 0% 7%;
     
-    --secondary: 188 80% 35%;
+    --secondary: var(--primary-hsl, 188 80% 35%);
     --secondary-foreground: 0 0% 93%;
     
-    --accent: 188 100% 45%;
+    --accent: var(--primary-hsl, 188 100% 45%);
     --accent-foreground: 0 0% 11%;
     
     --muted: 0 0% 20%;
@@ -138,9 +138,9 @@ input[type="range"].theme-slider::-moz-range-thumb {
     --destructive: 350 100% 60%;
     --destructive-foreground: 0 0% 93%;
     
-    --border: 188 100% 50% / 0.2;
-    --input: 188 100% 50% / 0.2;
-    --ring: 188 100% 50% / 0.5;
+    --border: var(--primary-hsl, 188 100% 50%) / 0.2;
+    --input: var(--primary-hsl, 188 100% 50%) / 0.2;
+    --ring: var(--primary-hsl, 188 100% 50%) / 0.5;
 
     --radius: 0.5rem;
   }
