@@ -334,6 +334,7 @@ export const quests = pgTable("quests", {
   repeatEndDate: text("repeat_end_date"), // format: "YYYY-MM-DD", null means forever
   parentRitualId: integer("parent_ritual_id"), // links generated instances back to the original ritual
   visionGoalId: integer("vision_goal_id").references(() => visionGoals.id),
+  linkedItems: jsonb("linked_items").default([]),
   sortOrder: integer("sort_order").default(0),
   deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

@@ -67,6 +67,7 @@ export interface Quest {
   repeatEndDate?: string | null;
   parentRitualId?: number | null;
   visionGoalId?: number | null;
+  linkedItems?: { type: "document" | "folder"; id: number; title: string }[];
   deletedAt?: string | null;
 }
 
