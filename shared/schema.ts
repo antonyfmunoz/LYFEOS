@@ -327,6 +327,7 @@ export const quests = pgTable("quests", {
   notifications: jsonb("notifications").default([]), // Array of { date: "YYYY-MM-DD", time: "HH:MM" }
   difficulty: text("difficulty").default("D"), // S, A, B, C, D ranks
   isRitualized: boolean("is_ritualized").default(false),
+  ritualGroup: text("ritual_group"),
   repeatFrequency: text("repeat_frequency"), // "hourly", "daily", "weekly", "monthly", "yearly"
   repeatInterval: integer("repeat_interval").default(1), // every X hours/days/weeks/months/years
   repeatDays: text("repeat_days").array(), // for weekly: ["mon","tue","wed","thu","fri","sat","sun"]
@@ -590,6 +591,7 @@ export const insertQuestSchema = createInsertSchema(quests).pick({
   notifications: true,
   difficulty: true,
   isRitualized: true,
+  ritualGroup: true,
   repeatFrequency: true,
   repeatInterval: true,
   repeatDays: true,

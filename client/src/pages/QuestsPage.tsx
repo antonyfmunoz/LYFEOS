@@ -72,6 +72,7 @@ interface MissionFormData {
   endTime: string;
   notifications: QuestNotification[];
   isRitualized: boolean;
+  ritualGroup: string;
   repeatFrequency: string;
   repeatInterval: number;
   repeatDays: string[];
@@ -91,6 +92,7 @@ const defaultFormData: MissionFormData = {
   endTime: "",
   notifications: [],
   isRitualized: false,
+  ritualGroup: "",
   repeatFrequency: "daily",
   repeatInterval: 1,
   repeatDays: [],
@@ -671,6 +673,7 @@ export default function QuestsPage() {
       endTime: quest.endTime || "",
       notifications: quest.notifications || [],
       isRitualized: quest.isRitualized || false,
+      ritualGroup: quest.ritualGroup || "",
       repeatFrequency: quest.repeatFrequency || "daily",
       repeatInterval: quest.repeatInterval || 1,
       repeatDays: quest.repeatDays || [],
@@ -699,6 +702,7 @@ export default function QuestsPage() {
         notificationTime: null,
         notifications: createFormData.notifications,
         isRitualized: createFormData.isRitualized,
+        ritualGroup: createFormData.isRitualized && createFormData.ritualGroup.trim() ? createFormData.ritualGroup.trim() : null,
         repeatFrequency: createFormData.isRitualized ? createFormData.repeatFrequency : null,
         repeatInterval: createFormData.isRitualized ? createFormData.repeatInterval : null,
         repeatDays: createFormData.isRitualized && createFormData.repeatFrequency === "weekly" ? createFormData.repeatDays : null,
@@ -734,6 +738,7 @@ export default function QuestsPage() {
         notificationTime: null,
         notifications: editFormData.notifications,
         isRitualized: editFormData.isRitualized,
+        ritualGroup: editFormData.isRitualized && editFormData.ritualGroup.trim() ? editFormData.ritualGroup.trim() : null,
         repeatFrequency: editFormData.isRitualized ? editFormData.repeatFrequency : null,
         repeatInterval: editFormData.isRitualized ? editFormData.repeatInterval : null,
         repeatDays: editFormData.isRitualized && editFormData.repeatFrequency === "weekly" ? editFormData.repeatDays : null,
@@ -1082,6 +1087,15 @@ export default function QuestsPage() {
                 
                 {createFormData.isRitualized && (
                   <div className="space-y-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Ritual Group (optional)</Label>
+                      <Input
+                        value={createFormData.ritualGroup}
+                        onChange={(e) => setCreateFormData(prev => ({ ...prev, ritualGroup: e.target.value }))}
+                        placeholder="e.g. Morning Routine, Evening Wind-down"
+                        className="bg-background/50 border-primary/30 h-9"
+                      />
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <Label className="text-xs text-muted-foreground">Frequency</Label>
@@ -1471,6 +1485,15 @@ export default function QuestsPage() {
               
               {editFormData.isRitualized && (
                 <div className="space-y-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Ritual Group (optional)</Label>
+                    <Input
+                      value={editFormData.ritualGroup}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, ritualGroup: e.target.value }))}
+                      placeholder="e.g. Morning Routine, Evening Wind-down"
+                      className="bg-background/50 border-primary/30 h-9"
+                    />
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className="text-xs text-muted-foreground">Frequency</Label>

@@ -60,6 +60,7 @@ export interface Quest {
   notifications?: QuestNotification[];
   difficulty?: string;
   isRitualized?: boolean;
+  ritualGroup?: string | null;
   repeatFrequency?: string | null;
   repeatInterval?: number | null;
   repeatDays?: string[] | null;
