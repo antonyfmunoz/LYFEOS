@@ -77,25 +77,31 @@ export default function DocumentVaultPage() {
   const folders = localFolders;
   const documents = localDocs;
 
+  const refetchAll = () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
+  };
+
   const createFolder = useMutation({
     mutationFn: (data: { name: string; parentId?: number | null }) =>
-      apiRequest<any>('/api/folders', { method: 'POST', body: JSON.stringify({ ...data, userId: user!.id }) }),
+      apiRequest<FolderType>('/api/folders', { method: 'POST', body: JSON.stringify({ ...data, userId: user!.id }) }),
     onSuccess: (result) => {
-      const newFolder = (result.folder || result) as FolderType;
-      setLocalFolders(prev => [...prev, newFolder]);
+      const newFolder = (result as any).folder || result;
+      setLocalFolders(prev => [...prev, newFolder as FolderType]);
       setShowNewFolderDialog(false);
       setNewFolderName('');
     },
+    onSettled: refetchAll,
   });
 
   const updateFolder = useMutation({
     mutationFn: ({ id, ...data }: { id: number; name?: string; parentId?: number | null }) =>
       apiRequest<FolderType>(`/api/folders/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-    onSuccess: (updatedFolder) => {
-      setLocalFolders(prev => prev.map(f => f.id === updatedFolder.id ? updatedFolder : f));
+    onSuccess: () => {
       setShowRenameFolderDialog(false);
       setShowMoveDialog(false);
     },
+    onSettled: refetchAll,
   });
 
   const deleteFolder = useMutation({
@@ -105,31 +111,36 @@ export default function DocumentVaultPage() {
       setLocalFolders(prev => prev.filter(f => f.id !== id));
       setLocalDocs(prev => prev.filter(d => d.folderId !== id));
     },
+    onSettled: refetchAll,
   });
 
   const createDocument = useMutation({
     mutationFn: (data: { title: string; content: string; folderId?: number | null }) =>
       apiRequest<Document>('/api/documents', { method: 'POST', body: JSON.stringify({ ...data, userId: user!.id }) }),
-    onSuccess: (doc: Document) => {
-      setLocalDocs(prev => [...prev, doc]);
-      setSelectedDoc(doc);
-      setEditTitle(doc.title);
-      setEditContent(doc.content || '');
+    onSuccess: (result) => {
+      const doc = (result as any).document || result;
+      setLocalDocs(prev => [...prev, doc as Document]);
+      setSelectedDoc(doc as Document);
+      setEditTitle((doc as Document).title);
+      setEditContent((doc as Document).content || '');
       setViewMode('edit');
     },
+    onSettled: refetchAll,
   });
 
   const updateDocument = useMutation({
     mutationFn: ({ id, ...data }: { id: number; title?: string; content?: string; folderId?: number | null }) =>
       apiRequest<Document>(`/api/documents/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-    onSuccess: (updatedDoc: Document) => {
+    onSuccess: (result) => {
+      const updatedDoc = (result as any).document || result;
       setHasUnsavedChanges(false);
-      setLocalDocs(prev => prev.map(d => d.id === updatedDoc.id ? updatedDoc : d));
-      if (selectedDoc && updatedDoc) {
-        setSelectedDoc(updatedDoc);
+      setLocalDocs(prev => prev.map(d => d.id === (updatedDoc as Document).id ? (updatedDoc as Document) : d));
+      if (selectedDoc) {
+        setSelectedDoc(updatedDoc as Document);
       }
       setShowMoveDialog(false);
     },
+    onSettled: refetchAll,
   });
 
   const deleteDocument = useMutation({
@@ -142,25 +153,28 @@ export default function DocumentVaultPage() {
         setViewMode('browse');
       }
     },
+    onSettled: refetchAll,
   });
 
   const toggleFavoriteDoc = useMutation({
     mutationFn: (id: number) =>
       apiRequest<Document>(`/api/documents/${id}/favorite`, { method: 'POST' }),
-    onSuccess: (updatedDoc: Document) => {
-      setLocalDocs(prev => prev.map(d => d.id === updatedDoc.id ? updatedDoc : d));
-      if (selectedDoc && updatedDoc && selectedDoc.id === updatedDoc.id) {
-        setSelectedDoc(updatedDoc);
+    onMutate: (id) => {
+      setLocalDocs(prev => prev.map(d => d.id === id ? { ...d, favorite: !d.favorite } : d));
+      if (selectedDoc?.id === id) {
+        setSelectedDoc(prev => prev ? { ...prev, favorite: !prev.favorite } : null);
       }
     },
+    onSettled: refetchAll,
   });
 
   const toggleFavoriteFolder = useMutation({
     mutationFn: (id: number) =>
       apiRequest<FolderType>(`/api/folders/${id}/favorite`, { method: 'POST' }),
-    onSuccess: (updatedFolder) => {
-      setLocalFolders(prev => prev.map(f => f.id === (updatedFolder as FolderType).id ? (updatedFolder as FolderType) : f));
+    onMutate: (id) => {
+      setLocalFolders(prev => prev.map(f => f.id === id ? { ...f, favorite: !f.favorite } : f));
     },
+    onSettled: refetchAll,
   });
 
   const currentFolders = folders.filter(f =>
