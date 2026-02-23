@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lyfeos-v17';
+const CACHE_NAME = 'lyfeos-v18';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
