@@ -519,8 +519,8 @@ export default function AnalyticsPage() {
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4" data-tour="tracker-header">
         <div className="flex items-center">
-          <BarChart3 className="h-8 w-8 mr-3 text-primary" />
-          <h1 className="text-3xl font-orbitron text-primary">Tracker</h1>
+          <BarChart3 className="h-8 w-8 mr-3 text-white" />
+          <h1 className="text-3xl font-orbitron text-white">Tracker</h1>
         </div>
         <div className="flex items-center gap-2" data-tour="tracker-period">
           <span className="text-sm text-muted-foreground font-mono">Period:</span>
