@@ -63,15 +63,29 @@ export default function DocumentVaultPage() {
     staleTime: 0,
   });
 
+  const forceRefreshFolders = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
+    queryClient.refetchQueries({ queryKey: ['/api/folders'], type: 'active' });
+  }, []);
+  const forceRefreshDocs = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
+    queryClient.refetchQueries({ queryKey: ['/api/documents'], type: 'active' });
+  }, []);
+  const forceRefreshAll = useCallback(() => {
+    forceRefreshFolders();
+    forceRefreshDocs();
+  }, []);
+
   const createFolder = useMutation({
     mutationFn: (data: { name: string; parentId?: number | null }) =>
-      apiRequest<{ folder: FolderType }>('/api/folders', { method: 'POST', body: JSON.stringify({ ...data, userId: user!.id }) }),
+      apiRequest<any>('/api/folders', { method: 'POST', body: JSON.stringify({ ...data, userId: user!.id }) }),
     onSuccess: (result) => {
       const newFolder = result.folder || result;
       queryClient.setQueryData<FolderType[]>(['/api/folders'], (old = []) => [...old, newFolder as FolderType]);
       setShowNewFolderDialog(false);
       setNewFolderName('');
     },
+    onSettled: () => forceRefreshFolders(),
   });
 
   const updateFolder = useMutation({
@@ -84,12 +98,13 @@ export default function DocumentVaultPage() {
       setShowRenameFolderDialog(false);
       setShowMoveDialog(false);
     },
+    onSettled: () => forceRefreshFolders(),
   });
 
   const deleteFolder = useMutation({
     mutationFn: (id: number) =>
       apiRequest(`/api/folders/${id}`, { method: 'DELETE' }),
-    onMutate: (id) => {
+    onSuccess: (_data, id) => {
       queryClient.setQueryData<FolderType[]>(['/api/folders'], (old = []) =>
         old.filter(f => f.id !== id)
       );
@@ -97,6 +112,7 @@ export default function DocumentVaultPage() {
         old.filter(d => d.folderId !== id)
       );
     },
+    onSettled: () => forceRefreshAll(),
   });
 
   const createDocument = useMutation({
@@ -109,6 +125,7 @@ export default function DocumentVaultPage() {
       setEditContent(doc.content || '');
       setViewMode('edit');
     },
+    onSettled: () => forceRefreshDocs(),
   });
 
   const updateDocument = useMutation({
@@ -124,12 +141,13 @@ export default function DocumentVaultPage() {
       }
       setShowMoveDialog(false);
     },
+    onSettled: () => forceRefreshDocs(),
   });
 
   const deleteDocument = useMutation({
     mutationFn: (id: number) =>
       apiRequest(`/api/documents/${id}`, { method: 'DELETE' }),
-    onMutate: (id) => {
+    onSuccess: (_data, id) => {
       queryClient.setQueryData<Document[]>(['/api/documents'], (old = []) =>
         old.filter(d => d.id !== id)
       );
@@ -138,6 +156,7 @@ export default function DocumentVaultPage() {
         setViewMode('browse');
       }
     },
+    onSettled: () => forceRefreshDocs(),
   });
 
   const toggleFavoriteDoc = useMutation({
@@ -151,6 +170,7 @@ export default function DocumentVaultPage() {
         setSelectedDoc(updatedDoc);
       }
     },
+    onSettled: () => forceRefreshDocs(),
   });
 
   const toggleFavoriteFolder = useMutation({
@@ -161,6 +181,7 @@ export default function DocumentVaultPage() {
         old.map(f => f.id === (updatedFolder as FolderType).id ? (updatedFolder as FolderType) : f)
       );
     },
+    onSettled: () => forceRefreshFolders(),
   });
 
   const currentFolders = folders.filter(f =>
