@@ -536,32 +536,7 @@ function Router() {
   );
 }
 
-function useIOSKeyboardFix() {
-  useEffect(() => {
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    if (!isIOS) return;
-
-    const handleFocusOut = (e: FocusEvent) => {
-      const target = e.target as HTMLElement;
-      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) {
-        setTimeout(() => {
-          window.scrollTo({ top: window.scrollY, behavior: 'instant' as ScrollBehavior });
-          document.body.style.minHeight = '100vh';
-          requestAnimationFrame(() => {
-            document.body.style.minHeight = '';
-          });
-        }, 100);
-      }
-    };
-
-    document.addEventListener('focusout', handleFocusOut);
-    return () => document.removeEventListener('focusout', handleFocusOut);
-  }, []);
-}
-
 function App() {
-  useIOSKeyboardFix();
   return (
     <AuthProvider>
       <CelebrationProvider>
