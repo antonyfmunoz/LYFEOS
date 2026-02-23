@@ -14,8 +14,8 @@
     <!-- Theme initialization script -->
     <script src="/theme-init.js"></script>
     <style>
-      html, body { background-color: hsl(0 0% 7%); margin: 0; height: 100%; overflow: hidden; }
-      #root { background-color: hsl(0 0% 7%); height: 100%; overflow: hidden; }
+      html, body { background-color: hsl(0 0% 7%); margin: 0; }
+      #root { background-color: hsl(0 0% 7%); }
       #oauth-preloader, #app-preloader {
         display: none;
         position: fixed;
@@ -65,6 +65,37 @@
             if (el) el.style.display = 'flex';
           });
         }
+      })();
+    </script>
+    <script>
+      (function() {
+        var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        var isStandalone = window.navigator.standalone === true ||
+          window.matchMedia('(display-mode: standalone)').matches;
+        if (!isIOS || !isStandalone) return;
+
+        function forceViewportRecalc() {
+          var root = document.getElementById('root');
+          if (root) {
+            root.style.display = 'none';
+            root.offsetHeight;
+            root.style.display = '';
+          }
+          window.scrollTo(0, 0);
+        }
+
+        document.addEventListener('visibilitychange', function() {
+          if (document.visibilityState === 'visible') {
+            setTimeout(forceViewportRecalc, 100);
+          }
+        });
+
+        document.addEventListener('focusout', function(e) {
+          if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) {
+            setTimeout(forceViewportRecalc, 300);
+          }
+        });
       })();
     </script>
   </head>

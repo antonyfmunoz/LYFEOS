@@ -44,7 +44,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
   const currentPage = pageAliases[rawPage] || rawPage;
   
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-[100dvh] bg-background">
       <div className="flex flex-grow overflow-hidden">
         <Sidebar currentPage={currentPage} username={username} />
         
