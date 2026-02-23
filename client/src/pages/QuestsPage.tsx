@@ -29,7 +29,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Zap, Star, Bell, BellOff, BellRing, Edit3, Trash2, X, ChevronDown, ChevronRight, Target, Calendar, Clock, CheckCircle2, GraduationCap, Inbox, Info, Archive, Undo2, Repeat, Loader2 } from "lucide-react";
+import { Plus, Zap, Star, Bell, BellOff, BellRing, Edit3, Trash2, X, ChevronDown, ChevronRight, Target, Calendar, Clock, CheckCircle2, GraduationCap, Inbox, Info, Archive, Undo2, Repeat, Loader2, FileText, FolderOpen, Link2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { ObsidianMarkdown } from "@/components/ui/obsidian-markdown";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -78,6 +79,7 @@ interface MissionFormData {
   repeatDays: string[];
   repeatEndDate: string;
   visionGoalId: number | null;
+  linkedItems: { type: "document" | "folder"; id: number; title: string }[];
 }
 
 const defaultFormData: MissionFormData = {
@@ -98,6 +100,7 @@ const defaultFormData: MissionFormData = {
   repeatDays: [],
   repeatEndDate: "",
   visionGoalId: null,
+  linkedItems: [],
 };
 
 interface VisionGoalOption {
@@ -194,6 +197,16 @@ export default function QuestsPage() {
 
   const { data: userCategoriesFromQuery = [] } = useQuery<UserCategoryOption[]>({
     queryKey: ['/api/user-categories'],
+    enabled: !!user,
+  });
+
+  const { data: allDocuments = [] } = useQuery<{ id: number; title: string }[]>({
+    queryKey: ['/api/documents'],
+    enabled: !!user,
+  });
+
+  const { data: allFolders = [] } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ['/api/folders'],
     enabled: !!user,
   });
 
@@ -679,6 +692,7 @@ export default function QuestsPage() {
       repeatDays: quest.repeatDays || [],
       repeatEndDate: quest.repeatEndDate || "",
       visionGoalId: quest.visionGoalId || null,
+      linkedItems: (quest.linkedItems as { type: "document" | "folder"; id: number; title: string }[]) || [],
     });
     setIsEditOpen(true);
   };
@@ -708,6 +722,7 @@ export default function QuestsPage() {
         repeatDays: createFormData.isRitualized && createFormData.repeatFrequency === "weekly" ? createFormData.repeatDays : null,
         repeatEndDate: createFormData.isRitualized && createFormData.repeatEndDate ? createFormData.repeatEndDate : null,
         visionGoalId: createFormData.visionGoalId,
+        linkedItems: createFormData.linkedItems.length > 0 ? createFormData.linkedItems : [],
       });
       
       setCreateFormData(defaultFormData);
@@ -744,6 +759,7 @@ export default function QuestsPage() {
         repeatDays: editFormData.isRitualized && editFormData.repeatFrequency === "weekly" ? editFormData.repeatDays : null,
         repeatEndDate: editFormData.isRitualized && editFormData.repeatEndDate ? editFormData.repeatEndDate : null,
         visionGoalId: editFormData.visionGoalId,
+        linkedItems: editFormData.linkedItems.length > 0 ? editFormData.linkedItems : [],
       });
       
       setEditFormData(defaultFormData);
@@ -965,6 +981,88 @@ export default function QuestsPage() {
                       })}
                     </SelectContent>
                   </Select>
+                </div>
+              )}
+
+              {(allDocuments.length > 0 || allFolders.length > 0) && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Link2 className="h-4 w-4" />
+                    Link Documents / Folders
+                  </Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value=""
+                      onValueChange={(val) => {
+                        const [type, idStr] = val.split(":");
+                        const id = parseInt(idStr);
+                        if (createFormData.linkedItems.some(li => li.type === type && li.id === id)) return;
+                        const title = type === "document"
+                          ? allDocuments.find(d => d.id === id)?.title || "Untitled"
+                          : allFolders.find(f => f.id === id)?.name || "Untitled";
+                        setCreateFormData(prev => ({
+                          ...prev,
+                          linkedItems: [...prev.linkedItems, { type: type as "document" | "folder", id, title }],
+                        }));
+                      }}
+                    >
+                      <SelectTrigger className="bg-background/50 border-primary/30">
+                        <SelectValue placeholder="Select a document or folder..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allDocuments.length > 0 && (
+                          <>
+                            <SelectItem value="__docs_header" disabled>
+                              <span className="font-semibold text-primary">Documents</span>
+                            </SelectItem>
+                            {allDocuments.map(doc => (
+                              <SelectItem key={`document:${doc.id}`} value={`document:${doc.id}`}>
+                                <span className="flex items-center gap-1.5">
+                                  <FileText className="h-3 w-3 text-blue-400" />
+                                  {doc.title}
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </>
+                        )}
+                        {allFolders.length > 0 && (
+                          <>
+                            <SelectItem value="__folders_header" disabled>
+                              <span className="font-semibold text-primary">Folders</span>
+                            </SelectItem>
+                            {allFolders.map(folder => (
+                              <SelectItem key={`folder:${folder.id}`} value={`folder:${folder.id}`}>
+                                <span className="flex items-center gap-1.5">
+                                  <FolderOpen className="h-3 w-3 text-yellow-400" />
+                                  {folder.name}
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {createFormData.linkedItems.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {createFormData.linkedItems.map((item, idx) => (
+                        <Badge key={`${item.type}-${item.id}`} variant="secondary" className="flex items-center gap-1 px-2 py-1 text-xs">
+                          {item.type === "document" ? <FileText className="h-3 w-3 text-blue-400" /> : <FolderOpen className="h-3 w-3 text-yellow-400" />}
+                          {item.title}
+                          <button
+                            type="button"
+                            onClick={() => setCreateFormData(prev => ({
+                              ...prev,
+                              linkedItems: prev.linkedItems.filter((_, i) => i !== idx),
+                            }))}
+                            className="ml-0.5 hover:text-destructive"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1363,6 +1461,88 @@ export default function QuestsPage() {
                     })}
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+
+            {(allDocuments.length > 0 || allFolders.length > 0) && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Link2 className="h-4 w-4" />
+                  Link Documents / Folders
+                </Label>
+                <div className="flex gap-2">
+                  <Select
+                    value=""
+                    onValueChange={(val) => {
+                      const [type, idStr] = val.split(":");
+                      const id = parseInt(idStr);
+                      if (editFormData.linkedItems.some(li => li.type === type && li.id === id)) return;
+                      const title = type === "document"
+                        ? allDocuments.find(d => d.id === id)?.title || "Untitled"
+                        : allFolders.find(f => f.id === id)?.name || "Untitled";
+                      setEditFormData(prev => ({
+                        ...prev,
+                        linkedItems: [...prev.linkedItems, { type: type as "document" | "folder", id, title }],
+                      }));
+                    }}
+                  >
+                    <SelectTrigger className="bg-background/50 border-primary/30">
+                      <SelectValue placeholder="Select a document or folder..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allDocuments.length > 0 && (
+                        <>
+                          <SelectItem value="__docs_header" disabled>
+                            <span className="font-semibold text-primary">Documents</span>
+                          </SelectItem>
+                          {allDocuments.map(doc => (
+                            <SelectItem key={`document:${doc.id}`} value={`document:${doc.id}`}>
+                              <span className="flex items-center gap-1.5">
+                                <FileText className="h-3 w-3 text-blue-400" />
+                                {doc.title}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
+                      {allFolders.length > 0 && (
+                        <>
+                          <SelectItem value="__folders_header" disabled>
+                            <span className="font-semibold text-primary">Folders</span>
+                          </SelectItem>
+                          {allFolders.map(folder => (
+                            <SelectItem key={`folder:${folder.id}`} value={`folder:${folder.id}`}>
+                              <span className="flex items-center gap-1.5">
+                                <FolderOpen className="h-3 w-3 text-yellow-400" />
+                                {folder.name}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {editFormData.linkedItems.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {editFormData.linkedItems.map((item, idx) => (
+                      <Badge key={`${item.type}-${item.id}`} variant="secondary" className="flex items-center gap-1 px-2 py-1 text-xs">
+                        {item.type === "document" ? <FileText className="h-3 w-3 text-blue-400" /> : <FolderOpen className="h-3 w-3 text-yellow-400" />}
+                        {item.title}
+                        <button
+                          type="button"
+                          onClick={() => setEditFormData(prev => ({
+                            ...prev,
+                            linkedItems: prev.linkedItems.filter((_, i) => i !== idx),
+                          }))}
+                          className="ml-0.5 hover:text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -1975,6 +2155,23 @@ export default function QuestsPage() {
                                     <span className="text-primary font-mono">Mission Objective — {catLabels[linkedObj.category] || linkedObj.category} Vision:</span> {linkedObj.title}
                                   </p>
                                 ) : null;
+                              })()}
+                              {(() => {
+                                const items = (quest.linkedItems as { type: "document" | "folder"; id: number; title: string }[]) || [];
+                                if (items.length === 0) return null;
+                                return (
+                                  <div className="text-muted-foreground text-xs">
+                                    <span className="text-primary font-mono">Linked Items:</span>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {items.map((item) => (
+                                        <Badge key={`${item.type}-${item.id}`} variant="secondary" className="text-xs px-1.5 py-0.5 gap-1">
+                                          {item.type === "document" ? <FileText className="h-3 w-3 text-blue-400" /> : <FolderOpen className="h-3 w-3 text-yellow-400" />}
+                                          {item.title}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
                               })()}
                               {quest.category && quest.category !== "general" && quest.category !== "onboarding" && (
                                 <p className="text-muted-foreground text-xs">

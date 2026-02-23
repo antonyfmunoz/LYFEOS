@@ -1,9 +1,11 @@
 import { useState, useRef } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import { Quest } from "../../lib/types";
-import { Trash2, Calendar, Clock, Bell, Edit3, Info, Timer, Undo2, GripVertical, Repeat, Coffee, Target } from "lucide-react";
+import { Trash2, Calendar, Clock, Bell, Edit3, Info, Timer, Undo2, GripVertical, Repeat, Coffee, Target, FileText, FolderOpen } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/authContext";
+import { useLocation } from "wouter";
 
 
 export const QUEST_DND_TYPE = 'QUEST_ITEM';
@@ -73,7 +75,9 @@ const ONBOARDING_DESCRIPTIONS: Record<string, string> = {
 export default function QuestItem({ quest, index, section, onToggle, onDelete, onEdit, onStart, onResume, onDone, onUndo, onRestart, onMoveQuest, elapsedSeconds, breakSeconds, isTimerActive, timerBlocked }: QuestItemProps) {
   const [showDescription, setShowDescription] = useState(false);
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const { title, description, completed, energyCost, attentionCost, timeCost, experienceReward, startDate, startTime, endDate, endTime, notificationEnabled, difficulty, category, visionGoalId } = quest;
+  const questLinkedItems = (quest.linkedItems as { type: "document" | "folder"; id: number; title: string }[]) || [];
 
   const { data: allVisionGoals = [] } = useQuery<{ id: number; category: string; title: string }[]>({
     queryKey: ['/api/vision-goals/all'],
@@ -275,6 +279,31 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
                 <p className="text-muted-foreground text-xs">
                   <span className="text-primary font-mono">Mission Objective — {categoryLabels[linkedObjective.category] || linkedObjective.category} Vision:</span> {linkedObjective.title}
                 </p>
+              )}
+              {questLinkedItems.length > 0 && (
+                <div className="text-muted-foreground text-xs">
+                  <span className="text-primary font-mono">Linked Items:</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {questLinkedItems.map((item) => (
+                      <Badge
+                        key={`${item.type}-${item.id}`}
+                        variant="secondary"
+                        className="text-xs px-1.5 py-0.5 gap-1 cursor-pointer hover:bg-primary/20 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (item.type === "document") {
+                            setLocation(`/document-vault?doc=${item.id}`);
+                          } else {
+                            setLocation(`/document-vault?folder=${item.id}`);
+                          }
+                        }}
+                      >
+                        {item.type === "document" ? <FileText className="h-3 w-3 text-blue-400" /> : <FolderOpen className="h-3 w-3 text-yellow-400" />}
+                        {item.title}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
               )}
               {category && category !== "general" && category !== "onboarding" && (
                 <p className="text-muted-foreground text-xs">
