@@ -84,7 +84,7 @@ export function RichTextToolbar({ onInsert, className, compact = false }: RichTe
         variant="ghost"
         size={compact ? 'icon' : 'sm'}
         className={cn(
-          'text-primary/70 hover:text-primary',
+          'text-primary/70 hover:text-primary hover:bg-primary/10 active:bg-primary/20',
           compact ? 'h-7 w-7' : 'h-7 gap-1 px-2 text-xs'
         )}
         onClick={() => fileInputRef.current?.click()}
@@ -115,7 +115,7 @@ export function RichTextToolbar({ onInsert, className, compact = false }: RichTe
             type="button"
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-primary hover:text-primary"
+            className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10 active:bg-primary/20"
             onClick={handleInsertLink}
             disabled={!linkUrl.trim()}
             title="Insert link"
@@ -126,7 +126,7 @@ export function RichTextToolbar({ onInsert, className, compact = false }: RichTe
             type="button"
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-muted-foreground"
+            className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-primary/10 active:bg-primary/20"
             onClick={() => { setShowLinkInput(false); setLinkUrl(''); setLinkText(''); }}
             title="Cancel"
           >
@@ -139,7 +139,7 @@ export function RichTextToolbar({ onInsert, className, compact = false }: RichTe
           variant="ghost"
           size={compact ? 'icon' : 'sm'}
           className={cn(
-            'text-primary/70 hover:text-primary',
+            'text-primary/70 hover:text-primary hover:bg-primary/10 active:bg-primary/20',
             compact ? 'h-7 w-7' : 'h-7 gap-1 px-2 text-xs'
           )}
           onClick={() => setShowLinkInput(true)}
