@@ -391,6 +391,12 @@ export default function ChronilogPage() {
       description: "Flip through your contacts like a classic rolodex. Favorites are pinned to the front for quick access.",
       position: "bottom",
     },
+    {
+      target: "[data-tour='chronilog-document-vault']",
+      title: "Document Vault",
+      description: "Create, edit, and organize documents in folders. Your personal doc editor and file organizer — link documents to missions for quick access.",
+      position: "bottom",
+    },
   ];
 
   const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials, isLoading: isTutorialLoading } = useTutorialStatus("chronilog");
