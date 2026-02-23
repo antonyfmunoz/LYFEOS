@@ -24,6 +24,7 @@ The application uses a dark theme with neon accents and a futuristic HUD-style i
     - **XP and Leveling**: Exponential growth curve across three tiers of levels (1-10, 11-50, 51-100) with increasing XP multipliers.
     - **Stat Detail Pages**: Dedicated pages for Experience, Health, Efficiency, Energy, Time, and Attention, featuring real-time data fetching, recharts visualizations, time range selectors, and AI-powered insights.
 - **Tracker Page**: Renamed from "Analytics," it includes a Milestone Analytics widget for vision goal progress and recent completions.
+- **Document Vault**: A Google Docs + Google Drive hybrid feature. Users can create, edit (markdown), and organize documents in a nested folder system. Accessible from the Chronilog page widget and via `/document-vault` route. Features include folder navigation with breadcrumbs, search, favorites, move-to-folder, and inline markdown editing with preview. API routes in `server/routes/documents.ts`, page in `client/src/pages/DocumentVaultPage.tsx`.
 - **Progressive Web App (PWA)**: Includes a manifest, service worker for offline caching, an install prompt, and Firebase Cloud Messaging (FCM) for push notifications with token-based subscription management.
 - **Payment Processing**: Stripe integration removed (stubbed endpoints preserved for future reconnection). Subscription page UI is kept intact.
 
