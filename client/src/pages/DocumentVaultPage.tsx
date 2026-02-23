@@ -838,12 +838,17 @@ function DocumentCard({ doc, onOpen, onDelete, onToggleFavorite, onMove, onRenam
             <span className="font-medium truncate">{doc.title}</span>
             {doc.favorite && <Star className="h-3 w-3 text-yellow-500 fill-yellow-500 shrink-0" />}
           </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
             <span className="flex items-center gap-1">
               <Clock className="h-3 w-3" />
-              {formatDate(doc.updatedAt)}
+              Created {formatDate(doc.createdAt)}
             </span>
-            {preview && <span className="truncate">- {preview}</span>}
+            {doc.updatedAt !== doc.createdAt && (
+              <span className="flex items-center gap-1">
+                <Pencil className="h-3 w-3" />
+                Edited {formatDate(doc.updatedAt)}
+              </span>
+            )}
           </div>
         </div>
         <DropdownMenu>
