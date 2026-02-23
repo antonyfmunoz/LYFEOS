@@ -19,6 +19,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ObsidianMarkdown } from '@/components/ui/obsidian-markdown';
+import { RichTextToolbar } from '@/components/ui/rich-text-toolbar';
 import {
   ArrowLeft, Plus, FolderPlus, FileText, Folder, FolderOpen, MoreHorizontal,
   Trash, Edit, Star, StarOff, ChevronRight, Home, Search, Save, X, Eye, Pencil,
@@ -352,13 +353,38 @@ export default function DocumentVaultPage() {
         </div>
         <div className="glassmorphic rounded-xl border border-primary/20 overflow-hidden">
           {viewMode === 'edit' ? (
-            <Textarea
-              ref={editorRef}
-              value={editContent}
-              onChange={e => { setEditContent(e.target.value); setHasUnsavedChanges(true); }}
-              className="w-full min-h-[calc(100vh-12rem)] resize-none border-none rounded-none bg-transparent font-mono text-sm focus-visible:ring-0 p-4"
-              placeholder="Start writing... (Markdown supported)"
-            />
+            <div>
+              <div className="border-b border-primary/20 px-2 py-1">
+                <RichTextToolbar
+                  onInsert={(text) => {
+                    const textarea = editorRef.current;
+                    if (textarea) {
+                      const start = textarea.selectionStart;
+                      const end = textarea.selectionEnd;
+                      const newContent = editContent.substring(0, start) + text + editContent.substring(end);
+                      setEditContent(newContent);
+                      setHasUnsavedChanges(true);
+                      setTimeout(() => {
+                        textarea.focus();
+                        const newPos = start + text.length;
+                        textarea.setSelectionRange(newPos, newPos);
+                      }, 0);
+                    } else {
+                      setEditContent(prev => prev + text);
+                      setHasUnsavedChanges(true);
+                    }
+                  }}
+                  compact
+                />
+              </div>
+              <Textarea
+                ref={editorRef}
+                value={editContent}
+                onChange={e => { setEditContent(e.target.value); setHasUnsavedChanges(true); }}
+                className="w-full min-h-[calc(100vh-12rem)] resize-none border-none rounded-none bg-transparent font-mono text-sm focus-visible:ring-0 p-4"
+                placeholder="Start writing... (Markdown supported)"
+              />
+            </div>
           ) : (
             <div className="p-4 prose prose-invert max-w-none">
               <ObsidianMarkdown>{editContent || selectedDoc.content}</ObsidianMarkdown>
