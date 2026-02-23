@@ -678,6 +678,51 @@ export default function QuestsPage() {
     };
   }, [quests, today]);
 
+  const [ritualGroupCollapsed, setRitualGroupCollapsed] = useState<Record<string, boolean>>({});
+  const toggleRitualGroupCollapsed = useCallback((key: string) => {
+    setRitualGroupCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
+  }, []);
+
+  const groupMissionsByRitual = useCallback((missions: Quest[]) => {
+    const grouped: { ritualGroup: string | null; missions: Quest[] }[] = [];
+    const groupMap = new Map<string, Quest[]>();
+    const ungrouped: Quest[] = [];
+    missions.forEach(q => {
+      const rg = (q as any).ritualGroup as string | null | undefined;
+      if (rg) {
+        if (!groupMap.has(rg)) groupMap.set(rg, []);
+        groupMap.get(rg)!.push(q);
+      } else {
+        ungrouped.push(q);
+      }
+    });
+    const insertionOrder: { type: 'group' | 'single'; key: string; idx: number }[] = [];
+    const seenGroups = new Set<string>();
+    missions.forEach((q, idx) => {
+      const rg = (q as any).ritualGroup as string | null | undefined;
+      if (rg && !seenGroups.has(rg)) {
+        seenGroups.add(rg);
+        insertionOrder.push({ type: 'group', key: rg, idx });
+      } else if (!rg) {
+        insertionOrder.push({ type: 'single', key: q.id, idx });
+      }
+    });
+    return insertionOrder.map(item => {
+      if (item.type === 'group') {
+        return { ritualGroup: item.key, missions: groupMap.get(item.key)! };
+      }
+      return { ritualGroup: null, missions: [missions[item.idx]] };
+    });
+  }, []);
+
+  const getRitualGroupLabel = useCallback((value: string) => {
+    const custom = customRitualGroups.find(g => g.value === value);
+    if (custom) return custom.label;
+    const def = DEFAULT_RITUAL_GROUPS.find(g => g.value === value);
+    if (def) return def.label;
+    return value.replace(/_/g, ' ');
+  }, [customRitualGroups, DEFAULT_RITUAL_GROUPS]);
+
   const moveMission = useCallback((section: string, dragIndex: number, hoverIndex: number) => {
     const sectionMap: Record<string, Quest[]> = {
       today: todayMissions,
@@ -2141,26 +2186,72 @@ export default function QuestsPage() {
                 />
               )}
               {todayMissions.length > 0 ? (
-                todayMissions.map((quest, idx) => (
-                  <QuestItem 
-                    key={quest.id}
-                    quest={quest}
-                    index={idx}
-                    section="today"
-                    onToggle={() => toggleQuestCompletion(quest.id)}
-                    onDelete={() => handleDeleteMission(quest)}
-                    onEdit={() => openEditDialog(quest)}
-                    onStart={() => handleStartMission(quest)}
-                    onResume={() => handleResumeMission(quest)}
-                    onDone={() => handleDoneMission(quest)}
-                    onRestart={restartMissionTimer}
-                    onMoveQuest={(dragIdx, hoverIdx) => moveMission("today", dragIdx, hoverIdx)}
-                    elapsedSeconds={missionElapsedTimes[quest.id]}
-                    breakSeconds={missionBreakTimes[quest.id]}
-                    isTimerActive={activeTimerQuest?.id === quest.id}
-                    timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
-                  />
-                ))
+                groupMissionsByRitual(todayMissions).map((group) => {
+                  if (group.ritualGroup) {
+                    const groupKey = `today-${group.ritualGroup}`;
+                    const isCollapsed = ritualGroupCollapsed[groupKey] !== false;
+                    return (
+                      <div key={groupKey} className="rounded-lg border border-primary/20 bg-primary/5 overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => toggleRitualGroupCollapsed(groupKey)}
+                          className="w-full flex items-center gap-2 px-3 py-2 hover:bg-primary/10 transition-colors"
+                        >
+                          <Repeat className="h-4 w-4 text-primary" />
+                          <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
+                          <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
+                          <div className="ml-auto">
+                            {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
+                          </div>
+                        </button>
+                        {!isCollapsed && (
+                          <div className="px-2 pb-2 space-y-2">
+                            {group.missions.map((quest, idx) => (
+                              <QuestItem
+                                key={quest.id}
+                                quest={quest}
+                                index={idx}
+                                section="today"
+                                onToggle={() => toggleQuestCompletion(quest.id)}
+                                onDelete={() => handleDeleteMission(quest)}
+                                onEdit={() => openEditDialog(quest)}
+                                onStart={() => handleStartMission(quest)}
+                                onResume={() => handleResumeMission(quest)}
+                                onDone={() => handleDoneMission(quest)}
+                                onRestart={restartMissionTimer}
+                                onMoveQuest={(dragIdx, hoverIdx) => moveMission("today", dragIdx, hoverIdx)}
+                                elapsedSeconds={missionElapsedTimes[quest.id]}
+                                breakSeconds={missionBreakTimes[quest.id]}
+                                isTimerActive={activeTimerQuest?.id === quest.id}
+                                timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                  return group.missions.map((quest, idx) => (
+                    <QuestItem
+                      key={quest.id}
+                      quest={quest}
+                      index={idx}
+                      section="today"
+                      onToggle={() => toggleQuestCompletion(quest.id)}
+                      onDelete={() => handleDeleteMission(quest)}
+                      onEdit={() => openEditDialog(quest)}
+                      onStart={() => handleStartMission(quest)}
+                      onResume={() => handleResumeMission(quest)}
+                      onDone={() => handleDoneMission(quest)}
+                      onRestart={restartMissionTimer}
+                      onMoveQuest={(dragIdx, hoverIdx) => moveMission("today", dragIdx, hoverIdx)}
+                      elapsedSeconds={missionElapsedTimes[quest.id]}
+                      breakSeconds={missionBreakTimes[quest.id]}
+                      isTimerActive={activeTimerQuest?.id === quest.id}
+                      timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
+                    />
+                  ));
+                })
               ) : !nextOnboardingMission ? (
                 <div className="glassmorphic rounded-xl p-6 text-center neon-border">
                   <span className="material-icons text-3xl text-muted-foreground mb-2">task_alt</span>
@@ -2208,26 +2299,72 @@ export default function QuestsPage() {
             <CollapsibleContent>
               <div className="px-4 pb-4 space-y-3">
                 {upcomingMissions.length > 0 ? (
-                  upcomingMissions.map((quest, idx) => (
-                    <QuestItem 
-                      key={quest.id}
-                      quest={quest}
-                      index={idx}
-                      section="upcoming"
-                      onToggle={() => toggleQuestCompletion(quest.id)}
-                      onDelete={() => handleDeleteMission(quest)}
-                      onEdit={() => openEditDialog(quest)}
-                      onStart={() => handleStartMission(quest)}
-                      onResume={() => handleResumeMission(quest)}
-                      onDone={() => handleDoneMission(quest)}
-                      onRestart={restartMissionTimer}
-                      onMoveQuest={(dragIdx, hoverIdx) => moveMission("upcoming", dragIdx, hoverIdx)}
-                      elapsedSeconds={missionElapsedTimes[quest.id]}
-                      breakSeconds={missionBreakTimes[quest.id]}
-                      isTimerActive={activeTimerQuest?.id === quest.id}
-                      timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
-                    />
-                  ))
+                  groupMissionsByRitual(upcomingMissions).map((group) => {
+                    if (group.ritualGroup) {
+                      const groupKey = `upcoming-${group.ritualGroup}`;
+                      const isCollapsed = ritualGroupCollapsed[groupKey] !== false;
+                      return (
+                        <div key={groupKey} className="rounded-lg border border-primary/20 bg-primary/5 overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => toggleRitualGroupCollapsed(groupKey)}
+                            className="w-full flex items-center gap-2 px-3 py-2 hover:bg-primary/10 transition-colors"
+                          >
+                            <Repeat className="h-4 w-4 text-primary" />
+                            <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
+                            <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
+                            <div className="ml-auto">
+                              {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
+                            </div>
+                          </button>
+                          {!isCollapsed && (
+                            <div className="px-2 pb-2 space-y-2">
+                              {group.missions.map((quest, idx) => (
+                                <QuestItem
+                                  key={quest.id}
+                                  quest={quest}
+                                  index={idx}
+                                  section="upcoming"
+                                  onToggle={() => toggleQuestCompletion(quest.id)}
+                                  onDelete={() => handleDeleteMission(quest)}
+                                  onEdit={() => openEditDialog(quest)}
+                                  onStart={() => handleStartMission(quest)}
+                                  onResume={() => handleResumeMission(quest)}
+                                  onDone={() => handleDoneMission(quest)}
+                                  onRestart={restartMissionTimer}
+                                  onMoveQuest={(dragIdx, hoverIdx) => moveMission("upcoming", dragIdx, hoverIdx)}
+                                  elapsedSeconds={missionElapsedTimes[quest.id]}
+                                  breakSeconds={missionBreakTimes[quest.id]}
+                                  isTimerActive={activeTimerQuest?.id === quest.id}
+                                  timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+                    return group.missions.map((quest, idx) => (
+                      <QuestItem
+                        key={quest.id}
+                        quest={quest}
+                        index={idx}
+                        section="upcoming"
+                        onToggle={() => toggleQuestCompletion(quest.id)}
+                        onDelete={() => handleDeleteMission(quest)}
+                        onEdit={() => openEditDialog(quest)}
+                        onStart={() => handleStartMission(quest)}
+                        onResume={() => handleResumeMission(quest)}
+                        onDone={() => handleDoneMission(quest)}
+                        onRestart={restartMissionTimer}
+                        onMoveQuest={(dragIdx, hoverIdx) => moveMission("upcoming", dragIdx, hoverIdx)}
+                        elapsedSeconds={missionElapsedTimes[quest.id]}
+                        breakSeconds={missionBreakTimes[quest.id]}
+                        isTimerActive={activeTimerQuest?.id === quest.id}
+                        timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
+                      />
+                    ));
+                  })
                 ) : (
                   <div className="glassmorphic rounded-xl p-6 text-center neon-border">
                     <p className="text-muted-foreground">No future missions scheduled. Drag a mission here or create one with a future date!</p>
@@ -2274,21 +2411,62 @@ export default function QuestsPage() {
           <CollapsibleContent>
             <div className="px-4 pb-4 space-y-3">
               {completedMissions.length > 0 ? (
-                completedMissions.map((quest, idx) => (
-                  <QuestItem 
-                    key={quest.id}
-                    quest={quest}
-                    index={idx}
-                    section="completed"
-                    onToggle={() => toggleQuestCompletion(quest.id)}
-                    onDelete={() => handleDeleteMission(quest)}
-                    onEdit={() => openEditDialog(quest)}
-                    onUndo={() => handleUndoMission(quest)}
-                    onMoveQuest={(dragIdx, hoverIdx) => moveMission("completed", dragIdx, hoverIdx)}
-                    elapsedSeconds={missionElapsedTimes[quest.id]}
-                    breakSeconds={missionBreakTimes[quest.id]}
-                  />
-                ))
+                groupMissionsByRitual(completedMissions).map((group) => {
+                  if (group.ritualGroup) {
+                    const groupKey = `completed-${group.ritualGroup}`;
+                    const isCollapsed = ritualGroupCollapsed[groupKey] !== false;
+                    return (
+                      <div key={groupKey} className="rounded-lg border border-primary/20 bg-primary/5 overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => toggleRitualGroupCollapsed(groupKey)}
+                          className="w-full flex items-center gap-2 px-3 py-2 hover:bg-primary/10 transition-colors"
+                        >
+                          <Repeat className="h-4 w-4 text-primary" />
+                          <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
+                          <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
+                          <div className="ml-auto">
+                            {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
+                          </div>
+                        </button>
+                        {!isCollapsed && (
+                          <div className="px-2 pb-2 space-y-2">
+                            {group.missions.map((quest, idx) => (
+                              <QuestItem
+                                key={quest.id}
+                                quest={quest}
+                                index={idx}
+                                section="completed"
+                                onToggle={() => toggleQuestCompletion(quest.id)}
+                                onDelete={() => handleDeleteMission(quest)}
+                                onEdit={() => openEditDialog(quest)}
+                                onUndo={() => handleUndoMission(quest)}
+                                onMoveQuest={(dragIdx, hoverIdx) => moveMission("completed", dragIdx, hoverIdx)}
+                                elapsedSeconds={missionElapsedTimes[quest.id]}
+                                breakSeconds={missionBreakTimes[quest.id]}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                  return group.missions.map((quest, idx) => (
+                    <QuestItem
+                      key={quest.id}
+                      quest={quest}
+                      index={idx}
+                      section="completed"
+                      onToggle={() => toggleQuestCompletion(quest.id)}
+                      onDelete={() => handleDeleteMission(quest)}
+                      onEdit={() => openEditDialog(quest)}
+                      onUndo={() => handleUndoMission(quest)}
+                      onMoveQuest={(dragIdx, hoverIdx) => moveMission("completed", dragIdx, hoverIdx)}
+                      elapsedSeconds={missionElapsedTimes[quest.id]}
+                      breakSeconds={missionBreakTimes[quest.id]}
+                    />
+                  ));
+                })
               ) : (
                 <div className="glassmorphic rounded-xl p-6 text-center neon-border">
                   <p className="text-muted-foreground">No completed missions today yet. Finish a mission to see it here!</p>
@@ -2333,26 +2511,72 @@ export default function QuestsPage() {
             
             <CollapsibleContent>
               <div className="px-4 pb-4 space-y-3">
-                {inboxMissions.map((quest, idx) => (
-                  <QuestItem 
-                    key={quest.id}
-                    quest={quest}
-                    index={idx}
-                    section="inbox"
-                    onToggle={() => toggleQuestCompletion(quest.id)}
-                    onDelete={() => handleDeleteMission(quest)}
-                    onEdit={() => openEditDialog(quest)}
-                    onStart={() => handleStartMission(quest)}
-                    onResume={() => handleResumeMission(quest)}
-                    onDone={() => handleDoneMission(quest)}
-                    onRestart={restartMissionTimer}
-                    onMoveQuest={(dragIdx, hoverIdx) => moveMission("inbox", dragIdx, hoverIdx)}
-                    elapsedSeconds={missionElapsedTimes[quest.id]}
-                    breakSeconds={missionBreakTimes[quest.id]}
-                    isTimerActive={activeTimerQuest?.id === quest.id}
-                    timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
-                  />
-                ))}
+                {groupMissionsByRitual(inboxMissions).map((group) => {
+                  if (group.ritualGroup) {
+                    const groupKey = `inbox-${group.ritualGroup}`;
+                    const isCollapsed = ritualGroupCollapsed[groupKey] !== false;
+                    return (
+                      <div key={groupKey} className="rounded-lg border border-primary/20 bg-primary/5 overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => toggleRitualGroupCollapsed(groupKey)}
+                          className="w-full flex items-center gap-2 px-3 py-2 hover:bg-primary/10 transition-colors"
+                        >
+                          <Repeat className="h-4 w-4 text-primary" />
+                          <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
+                          <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
+                          <div className="ml-auto">
+                            {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
+                          </div>
+                        </button>
+                        {!isCollapsed && (
+                          <div className="px-2 pb-2 space-y-2">
+                            {group.missions.map((quest, idx) => (
+                              <QuestItem
+                                key={quest.id}
+                                quest={quest}
+                                index={idx}
+                                section="inbox"
+                                onToggle={() => toggleQuestCompletion(quest.id)}
+                                onDelete={() => handleDeleteMission(quest)}
+                                onEdit={() => openEditDialog(quest)}
+                                onStart={() => handleStartMission(quest)}
+                                onResume={() => handleResumeMission(quest)}
+                                onDone={() => handleDoneMission(quest)}
+                                onRestart={restartMissionTimer}
+                                onMoveQuest={(dragIdx, hoverIdx) => moveMission("inbox", dragIdx, hoverIdx)}
+                                elapsedSeconds={missionElapsedTimes[quest.id]}
+                                breakSeconds={missionBreakTimes[quest.id]}
+                                isTimerActive={activeTimerQuest?.id === quest.id}
+                                timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                  return group.missions.map((quest, idx) => (
+                    <QuestItem
+                      key={quest.id}
+                      quest={quest}
+                      index={idx}
+                      section="inbox"
+                      onToggle={() => toggleQuestCompletion(quest.id)}
+                      onDelete={() => handleDeleteMission(quest)}
+                      onEdit={() => openEditDialog(quest)}
+                      onStart={() => handleStartMission(quest)}
+                      onResume={() => handleResumeMission(quest)}
+                      onDone={() => handleDoneMission(quest)}
+                      onRestart={restartMissionTimer}
+                      onMoveQuest={(dragIdx, hoverIdx) => moveMission("inbox", dragIdx, hoverIdx)}
+                      elapsedSeconds={missionElapsedTimes[quest.id]}
+                      breakSeconds={missionBreakTimes[quest.id]}
+                      isTimerActive={activeTimerQuest?.id === quest.id}
+                      timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
+                    />
+                  ));
+                })}
                 {inboxMissions.length === 0 && (
                   <div className="glassmorphic rounded-xl p-6 text-center neon-border">
                     <p className="text-muted-foreground">No archived missions. Drag a mission here to archive it.</p>
