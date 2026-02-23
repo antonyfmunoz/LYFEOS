@@ -64,59 +64,70 @@ export default function DocumentVaultPage() {
   });
 
   const createFolder = useMutation({
-    mutationFn: (data: { name: string; parentId?: number | null }) =>
-      apiRequest('/api/folders', { method: 'POST', body: JSON.stringify({ ...data, userId: user!.id }), headers: { 'Content-Type': 'application/json' } }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
+    mutationFn: async (data: { name: string; parentId?: number | null }) => {
+      return await apiRequest('/api/folders', { method: 'POST', body: JSON.stringify({ ...data, userId: user!.id }) });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
       setShowNewFolderDialog(false);
       setNewFolderName('');
     },
   });
 
   const updateFolder = useMutation({
-    mutationFn: ({ id, ...data }: { id: number; name?: string; parentId?: number | null }) =>
-      apiRequest(`/api/folders/${id}`, { method: 'PATCH', body: JSON.stringify(data), headers: { 'Content-Type': 'application/json' } }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
+    mutationFn: async ({ id, ...data }: { id: number; name?: string; parentId?: number | null }) => {
+      return await apiRequest(`/api/folders/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
       setShowRenameFolderDialog(false);
     },
   });
 
   const deleteFolder = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/folders/${id}`, { method: 'DELETE' }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
+    mutationFn: async (id: number) => {
+      return await apiRequest(`/api/folders/${id}`, { method: 'DELETE' });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
     },
   });
 
   const createDocument = useMutation({
-    mutationFn: (data: { title: string; content: string; folderId?: number | null }) =>
-      apiRequest<Document>('/api/documents', { method: 'POST', body: JSON.stringify({ ...data, userId: user!.id }), headers: { 'Content-Type': 'application/json' } }),
-    onSuccess: (doc) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
+    mutationFn: async (data: { title: string; content: string; folderId?: number | null }) => {
+      return await apiRequest<Document>('/api/documents', { method: 'POST', body: JSON.stringify({ ...data, userId: user!.id }) });
+    },
+    onSuccess: async (doc: Document) => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
       setShowNewDocDialog(false);
       setNewDocTitle('');
       setSelectedDoc(doc);
       setEditTitle(doc.title);
-      setEditContent(doc.content);
+      setEditContent(doc.content || '');
       setViewMode('edit');
     },
   });
 
   const updateDocument = useMutation({
-    mutationFn: ({ id, ...data }: { id: number; title?: string; content?: string; folderId?: number | null }) =>
-      apiRequest(`/api/documents/${id}`, { method: 'PATCH', body: JSON.stringify(data), headers: { 'Content-Type': 'application/json' } }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
+    mutationFn: async ({ id, ...data }: { id: number; title?: string; content?: string; folderId?: number | null }) => {
+      return await apiRequest<Document>(`/api/documents/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+    },
+    onSuccess: async (updatedDoc: Document) => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
       setHasUnsavedChanges(false);
+      if (selectedDoc && updatedDoc) {
+        setSelectedDoc(updatedDoc);
+      }
     },
   });
 
   const deleteDocument = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/documents/${id}`, { method: 'DELETE' }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
+    mutationFn: async (id: number) => {
+      return await apiRequest(`/api/documents/${id}`, { method: 'DELETE' });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
       if (selectedDoc) {
         setSelectedDoc(null);
         setViewMode('browse');
@@ -125,13 +136,24 @@ export default function DocumentVaultPage() {
   });
 
   const toggleFavoriteDoc = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/documents/${id}/favorite`, { method: 'POST' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/documents'] }),
+    mutationFn: async (id: number) => {
+      return await apiRequest<Document>(`/api/documents/${id}/favorite`, { method: 'POST' });
+    },
+    onSuccess: async (updatedDoc: Document) => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
+      if (selectedDoc && updatedDoc && selectedDoc.id === updatedDoc.id) {
+        setSelectedDoc(updatedDoc);
+      }
+    },
   });
 
   const toggleFavoriteFolder = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/folders/${id}/favorite`, { method: 'POST' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/folders'] }),
+    mutationFn: async (id: number) => {
+      return await apiRequest(`/api/folders/${id}/favorite`, { method: 'POST' });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
+    },
   });
 
   const currentFolders = folders.filter(f =>
@@ -725,7 +747,7 @@ function FolderCard({ folder, onOpen, onRename, onDelete, onToggleFavorite, onMo
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-            <button className="h-8 w-8 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors opacity-0 group-hover:opacity-100">
+            <button className="h-8 w-8 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">
               <MoreHorizontal className="h-4 w-4" />
             </button>
           </DropdownMenuTrigger>
@@ -787,7 +809,7 @@ function DocumentCard({ doc, onOpen, onDelete, onToggleFavorite, onMove, formatD
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-            <button className="h-8 w-8 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors opacity-0 group-hover:opacity-100">
+            <button className="h-8 w-8 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">
               <MoreHorizontal className="h-4 w-4" />
             </button>
           </DropdownMenuTrigger>
