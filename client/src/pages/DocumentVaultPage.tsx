@@ -67,7 +67,7 @@ export default function DocumentVaultPage() {
 
   const createFolder = useMutation({
     mutationFn: (data: { name: string; parentId?: number | null }) =>
-      apiRequest('POST', '/api/folders', { ...data, userId: user!.id }),
+      apiRequest('/api/folders', { method: 'POST', body: JSON.stringify({ ...data, userId: user!.id }), headers: { 'Content-Type': 'application/json' } }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
       setShowNewFolderDialog(false);
@@ -78,7 +78,7 @@ export default function DocumentVaultPage() {
 
   const updateFolder = useMutation({
     mutationFn: ({ id, ...data }: { id: number; name?: string; parentId?: number | null }) =>
-      apiRequest('PATCH', `/api/folders/${id}`, data),
+      apiRequest(`/api/folders/${id}`, { method: 'PATCH', body: JSON.stringify(data), headers: { 'Content-Type': 'application/json' } }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
       setShowRenameFolderDialog(false);
@@ -87,7 +87,7 @@ export default function DocumentVaultPage() {
   });
 
   const deleteFolder = useMutation({
-    mutationFn: (id: number) => apiRequest('DELETE', `/api/folders/${id}`),
+    mutationFn: (id: number) => apiRequest(`/api/folders/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
       queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
@@ -97,12 +97,11 @@ export default function DocumentVaultPage() {
 
   const createDocument = useMutation({
     mutationFn: (data: { title: string; content: string; folderId?: number | null }) =>
-      apiRequest('POST', '/api/documents', { ...data, userId: user!.id }),
-    onSuccess: async (resp) => {
+      apiRequest<Document>('/api/documents', { method: 'POST', body: JSON.stringify({ ...data, userId: user!.id }), headers: { 'Content-Type': 'application/json' } }),
+    onSuccess: (doc) => {
       queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
       setShowNewDocDialog(false);
       setNewDocTitle('');
-      const doc = await resp.json();
       setSelectedDoc(doc);
       setEditTitle(doc.title);
       setEditContent(doc.content);
@@ -112,7 +111,7 @@ export default function DocumentVaultPage() {
 
   const updateDocument = useMutation({
     mutationFn: ({ id, ...data }: { id: number; title?: string; content?: string; folderId?: number | null }) =>
-      apiRequest('PATCH', `/api/documents/${id}`, data),
+      apiRequest(`/api/documents/${id}`, { method: 'PATCH', body: JSON.stringify(data), headers: { 'Content-Type': 'application/json' } }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
       setHasUnsavedChanges(false);
@@ -121,7 +120,7 @@ export default function DocumentVaultPage() {
   });
 
   const deleteDocument = useMutation({
-    mutationFn: (id: number) => apiRequest('DELETE', `/api/documents/${id}`),
+    mutationFn: (id: number) => apiRequest(`/api/documents/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
       if (selectedDoc) {
@@ -133,12 +132,12 @@ export default function DocumentVaultPage() {
   });
 
   const toggleFavoriteDoc = useMutation({
-    mutationFn: (id: number) => apiRequest('POST', `/api/documents/${id}/favorite`),
+    mutationFn: (id: number) => apiRequest(`/api/documents/${id}/favorite`, { method: 'POST' }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/documents'] }),
   });
 
   const toggleFavoriteFolder = useMutation({
-    mutationFn: (id: number) => apiRequest('POST', `/api/folders/${id}/favorite`),
+    mutationFn: (id: number) => apiRequest(`/api/folders/${id}/favorite`, { method: 'POST' }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/folders'] }),
   });
 
@@ -298,7 +297,7 @@ export default function DocumentVaultPage() {
             />
           ) : (
             <div className="p-4 prose prose-invert max-w-none">
-              <ObsidianMarkdown content={editContent || selectedDoc.content} />
+              <ObsidianMarkdown>{editContent || selectedDoc.content}</ObsidianMarkdown>
             </div>
           )}
         </div>

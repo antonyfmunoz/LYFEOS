@@ -50,6 +50,7 @@ import LoginSuccessPage from "./pages/LoginSuccessPage";
 import SubscriptionPage from "./pages/SubscriptionPage";
 import LandingPage from "./pages/LandingPage";
 import RolodexPage from "./pages/RolodexPage";
+import DocumentVaultPage from "./pages/DocumentVaultPage";
 import BlueLightFilter from "./components/BlueLightFilter";
 
 const isTouchDevice = () =>
@@ -506,6 +507,14 @@ function Router() {
         <ProtectedRoute>
           <RootLayout>
             <RolodexPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/document-vault">
+        <ProtectedRoute>
+          <RootLayout>
+            <DocumentVaultPage />
           </RootLayout>
         </ProtectedRoute>
       </Route>

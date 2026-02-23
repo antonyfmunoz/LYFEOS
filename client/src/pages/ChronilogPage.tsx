@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useLYFEOS } from "@/lib/context";
 import { useAuth } from "@/lib/authContext";
 import { usePageTitle } from "@/hooks/use-page-title";
-import { FileText, Clock, Tag, Calendar, Award, GripVertical, CheckSquare, BookOpen, GraduationCap, Target, Info, BarChart3, Users } from "lucide-react";
+import { FileText, Clock, Tag, Calendar, Award, GripVertical, CheckSquare, BookOpen, GraduationCap, Target, Info, BarChart3, Users, FolderOpen } from "lucide-react";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { useDrag, useDrop } from 'react-dnd';
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -130,6 +130,8 @@ const DraggableCategoryCard = ({ id, index, item, moveCategory, navigate }: Drag
       navigate('/tracker');
     } else if (item.id === "rolodex") {
       navigate('/rolodex');
+    } else if (item.id === "document-vault") {
+      navigate('/document-vault');
     }
   };
   
@@ -285,6 +287,12 @@ export default function ChronilogPage() {
       title: "Rolodex", 
       icon: <Users className="h-5 w-5 text-primary" />,
       description: "Flip through your contacts like a classic rolodex. Favorites are pinned to the front with search and filter."
+    },
+    { 
+      id: "document-vault", 
+      title: "Document Vault", 
+      icon: <FolderOpen className="h-5 w-5 text-primary" />,
+      description: "Create, edit, and organize documents in folders. Your personal Google Docs meets Google Drive."
     }
   ]);
 
