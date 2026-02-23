@@ -225,6 +225,73 @@ export default function QuestsPage() {
     return [...MISSION_CATEGORIES, ...custom];
   }, [userCategories]);
 
+  interface RitualGroupOption { id: number; value: string; label: string; }
+  const DEFAULT_RITUAL_GROUPS = [
+    { value: "morning_routine", label: "Morning Routine" },
+    { value: "evening_winddown", label: "Evening Wind-down" },
+    { value: "workout", label: "Workout" },
+    { value: "weekly_review", label: "Weekly Review" },
+    { value: "self_care", label: "Self-Care" },
+  ];
+
+  const { data: customRitualGroupsFromQuery = [] } = useQuery<RitualGroupOption[]>({
+    queryKey: ['/api/ritual-groups'],
+    enabled: !!user,
+  });
+  const [localRitualGroupOverrides, setLocalRitualGroupOverrides] = useState<RitualGroupOption[] | null>(null);
+  const customRitualGroups = localRitualGroupOverrides ?? customRitualGroupsFromQuery;
+  useEffect(() => {
+    if (localRitualGroupOverrides !== null) setLocalRitualGroupOverrides(null);
+  }, [customRitualGroupsFromQuery]);
+
+  const allRitualGroups = useMemo(() => {
+    return [...DEFAULT_RITUAL_GROUPS, ...customRitualGroups.map(g => ({ value: g.value, label: g.label }))];
+  }, [customRitualGroups]);
+
+  const [customRitualGroupMode, setCustomRitualGroupMode] = useState<'create' | null>(null);
+  const [customRitualGroupInput, setCustomRitualGroupInput] = useState("");
+  const [isSavingRitualGroup, setIsSavingRitualGroup] = useState(false);
+
+  const handleSaveCustomRitualGroup = async (formType: 'create' | 'edit') => {
+    const inputValue = customRitualGroupInput.trim();
+    if (!inputValue) return;
+    setIsSavingRitualGroup(true);
+    try {
+      const newValue = inputValue.toLowerCase().replace(/\s+/g, '_');
+      const created = await apiRequest<RitualGroupOption>("/api/ritual-groups", {
+        method: "POST",
+        body: JSON.stringify({ value: newValue, label: inputValue }),
+      });
+      const newEntry: RitualGroupOption = created && typeof created === 'object' && 'id' in created
+        ? created
+        : { id: Date.now(), value: newValue, label: inputValue };
+      setLocalRitualGroupOverrides([...customRitualGroups, newEntry]);
+      if (formType === 'create') {
+        setCreateFormData(prev => ({ ...prev, ritualGroup: newValue }));
+      } else {
+        setEditFormData(prev => ({ ...prev, ritualGroup: newValue }));
+      }
+      setCustomRitualGroupMode(null);
+      setCustomRitualGroupInput("");
+      queryClient.invalidateQueries({ queryKey: ['/api/ritual-groups'] });
+    } catch (error) {
+      console.error("Failed to save ritual group:", error);
+      toast({ title: "Failed to create ritual group", variant: "destructive" });
+    } finally {
+      setIsSavingRitualGroup(false);
+    }
+  };
+
+  const handleDeleteRitualGroup = async (groupId: number) => {
+    try {
+      await apiRequest(`/api/ritual-groups/${groupId}`, { method: "DELETE" });
+      setLocalRitualGroupOverrides(customRitualGroups.filter(g => g.id !== groupId));
+      queryClient.invalidateQueries({ queryKey: ['/api/ritual-groups'] });
+    } catch (error) {
+      toast({ title: "Failed to delete ritual group", variant: "destructive" });
+    }
+  };
+
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingQuest, setEditingQuest] = useState<Quest | null>(null);
@@ -1187,12 +1254,64 @@ export default function QuestsPage() {
                   <div className="space-y-3">
                     <div className="space-y-1">
                       <Label className="text-xs text-muted-foreground">Ritual Group (optional)</Label>
-                      <Input
-                        value={createFormData.ritualGroup}
-                        onChange={(e) => setCreateFormData(prev => ({ ...prev, ritualGroup: e.target.value }))}
-                        placeholder="e.g. Morning Routine, Evening Wind-down"
-                        className="bg-background/50 border-primary/30 h-9"
-                      />
+                      <Select
+                        value={createFormData.ritualGroup || "__none__"}
+                        onValueChange={(val) => {
+                          if (val === "__custom__") {
+                            setCustomRitualGroupMode('create');
+                          } else if (val === "__none__") {
+                            setCreateFormData(prev => ({ ...prev, ritualGroup: "" }));
+                            setCustomRitualGroupMode(null);
+                          } else {
+                            setCreateFormData(prev => ({ ...prev, ritualGroup: val }));
+                            setCustomRitualGroupMode(null);
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="bg-background/50 border-primary/30 h-9">
+                          <SelectValue placeholder="Select ritual group..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">None</SelectItem>
+                          {allRitualGroups.map(g => (
+                            <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                          ))}
+                          <SelectItem value="__custom__">+ Add Custom...</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {customRitualGroupMode === 'create' && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <Input
+                            placeholder="Group name..."
+                            value={customRitualGroupInput}
+                            onChange={(e) => setCustomRitualGroupInput(e.target.value)}
+                            className="bg-background/50 border-primary/30 flex-1"
+                            disabled={isSavingRitualGroup}
+                          />
+                          <Button
+                            size="sm"
+                            onClick={() => handleSaveCustomRitualGroup('create')}
+                            disabled={!customRitualGroupInput.trim() || isSavingRitualGroup}
+                          >
+                            {isSavingRitualGroup ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                          </Button>
+                        </div>
+                      )}
+                      {!customRitualGroupMode && createFormData.ritualGroup && (() => {
+                        const customGroup = customRitualGroups.find(g => g.value === createFormData.ritualGroup);
+                        if (!customGroup) return null;
+                        return (
+                          <div className="mt-1 flex items-center gap-3">
+                            <button
+                              type="button"
+                              className="text-xs text-destructive/70 hover:text-destructive flex items-center gap-1 transition-colors"
+                              onClick={() => handleDeleteRitualGroup(customGroup.id)}
+                            >
+                              <Trash2 className="h-3 w-3" /> Delete
+                            </button>
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
@@ -1667,12 +1786,64 @@ export default function QuestsPage() {
                 <div className="space-y-3">
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Ritual Group (optional)</Label>
-                    <Input
-                      value={editFormData.ritualGroup}
-                      onChange={(e) => setEditFormData(prev => ({ ...prev, ritualGroup: e.target.value }))}
-                      placeholder="e.g. Morning Routine, Evening Wind-down"
-                      className="bg-background/50 border-primary/30 h-9"
-                    />
+                    <Select
+                      value={editFormData.ritualGroup || "__none__"}
+                      onValueChange={(val) => {
+                        if (val === "__custom__") {
+                          setCustomRitualGroupMode('create');
+                        } else if (val === "__none__") {
+                          setEditFormData(prev => ({ ...prev, ritualGroup: "" }));
+                          setCustomRitualGroupMode(null);
+                        } else {
+                          setEditFormData(prev => ({ ...prev, ritualGroup: val }));
+                          setCustomRitualGroupMode(null);
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="bg-background/50 border-primary/30 h-9">
+                        <SelectValue placeholder="Select ritual group..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">None</SelectItem>
+                        {allRitualGroups.map(g => (
+                          <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                        ))}
+                        <SelectItem value="__custom__">+ Add Custom...</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {customRitualGroupMode === 'create' && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <Input
+                          placeholder="Group name..."
+                          value={customRitualGroupInput}
+                          onChange={(e) => setCustomRitualGroupInput(e.target.value)}
+                          className="bg-background/50 border-primary/30 flex-1"
+                          disabled={isSavingRitualGroup}
+                        />
+                        <Button
+                          size="sm"
+                          onClick={() => handleSaveCustomRitualGroup('edit')}
+                          disabled={!customRitualGroupInput.trim() || isSavingRitualGroup}
+                        >
+                          {isSavingRitualGroup ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                        </Button>
+                      </div>
+                    )}
+                    {!customRitualGroupMode && editFormData.ritualGroup && (() => {
+                      const customGroup = customRitualGroups.find(g => g.value === editFormData.ritualGroup);
+                      if (!customGroup) return null;
+                      return (
+                        <div className="mt-1 flex items-center gap-3">
+                          <button
+                            type="button"
+                            className="text-xs text-destructive/70 hover:text-destructive flex items-center gap-1 transition-colors"
+                            onClick={() => handleDeleteRitualGroup(customGroup.id)}
+                          >
+                            <Trash2 className="h-3 w-3" /> Delete
+                          </button>
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">

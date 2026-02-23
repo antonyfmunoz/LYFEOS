@@ -2643,4 +2643,43 @@ export function registerContentRoutes(app: Express): void {
       res.status(500).json({ error: "Internal server error" });
     }
   });
+
+  // Ritual Groups CRUD
+  app.get("/api/ritual-groups", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const groups = await storage.getRitualGroups(userId);
+      res.json(groups);
+    } catch (error) {
+      logger.error("Error fetching ritual groups:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/ritual-groups", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const { value, label } = req.body;
+      if (!value || !label) {
+        return res.status(400).json({ error: "Value and label are required" });
+      }
+      const group = await storage.createRitualGroup({ userId, value, label });
+      res.json(group);
+    } catch (error) {
+      logger.error("Error creating ritual group:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/ritual-groups/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const id = parseInt(req.params.id);
+      await storage.deleteRitualGroup(id, userId);
+      res.json({ success: true });
+    } catch (error) {
+      logger.error("Error deleting ritual group:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
 }

@@ -1283,6 +1283,22 @@ export const insertUserCategorySchema = createInsertSchema(userCategories).omit(
 export type UserCategory = typeof userCategories.$inferSelect;
 export type InsertUserCategory = z.infer<typeof insertUserCategorySchema>;
 
+export const ritualGroups = pgTable("ritual_groups", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  value: text("value").notNull(),
+  label: text("label").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertRitualGroupSchema = createInsertSchema(ritualGroups).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type RitualGroup = typeof ritualGroups.$inferSelect;
+export type InsertRitualGroup = z.infer<typeof insertRitualGroupSchema>;
+
 export const widgetStates = pgTable("widget_states", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id).unique(),

@@ -27,6 +27,7 @@ import {
   dismissedKnowledge, type DismissedKnowledge, type InsertDismissedKnowledge,
   visionGoals, type VisionGoal, type InsertVisionGoal,
   userCategories, type UserCategory, type InsertUserCategory,
+  ritualGroups, type RitualGroup, type InsertRitualGroup,
   userActivityEvents, type UserActivityEvent, type InsertUserActivityEvent,
   smartReminders, type SmartReminder, type InsertSmartReminder
 } from "@shared/schema";
@@ -251,6 +252,11 @@ export interface IStorage {
   updateUserCategory(id: number, userId: number, data: { value: string; label: string }): Promise<UserCategory | null>;
   updateQuestCategoryForUser(userId: number, oldCategory: string, newCategory: string): Promise<void>;
   deleteUserCategory(id: number, userId: number): Promise<void>;
+
+  // Ritual Group methods
+  getRitualGroups(userId: number): Promise<RitualGroup[]>;
+  createRitualGroup(group: InsertRitualGroup): Promise<RitualGroup>;
+  deleteRitualGroup(id: number, userId: number): Promise<void>;
 
   // Smart Reminder methods
   logActivityEvent(userId: number, eventType: string, metadata?: any): Promise<UserActivityEvent>;
@@ -2127,6 +2133,21 @@ export class DatabaseStorage implements IStorage {
   async deleteUserCategory(id: number, userId: number): Promise<void> {
     await db.delete(userCategories).where(
       and(eq(userCategories.id, id), eq(userCategories.userId, userId))
+    );
+  }
+
+  async getRitualGroups(userId: number): Promise<RitualGroup[]> {
+    return db.select().from(ritualGroups).where(eq(ritualGroups.userId, userId)).orderBy(asc(ritualGroups.label));
+  }
+
+  async createRitualGroup(group: InsertRitualGroup): Promise<RitualGroup> {
+    const [result] = await db.insert(ritualGroups).values(group).returning();
+    return result;
+  }
+
+  async deleteRitualGroup(id: number, userId: number): Promise<void> {
+    await db.delete(ritualGroups).where(
+      and(eq(ritualGroups.id, id), eq(ritualGroups.userId, userId))
     );
   }
 
