@@ -202,6 +202,7 @@ export default function DocumentVaultPage() {
     if (!selectedDoc) return;
     updateDocument.mutate({ id: selectedDoc.id, title: editTitle, content: editContent });
     setSelectedDoc(prev => prev ? { ...prev, title: editTitle, content: editContent } : null);
+    setHasUnsavedChanges(false);
   }, [selectedDoc, editTitle, editContent]);
 
   const openDoc = (doc: Document) => {
