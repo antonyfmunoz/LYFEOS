@@ -51,81 +51,72 @@ export default function DocumentVaultPage() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
 
-  const { data: folders = [], isLoading: foldersLoading } = useQuery<FolderType[]>({
+  const { data: serverFolders, isLoading: foldersLoading } = useQuery<FolderType[]>({
     queryKey: ['/api/folders'],
     enabled: !!user,
     staleTime: 0,
   });
 
-  const { data: documents = [], isLoading: docsLoading } = useQuery<Document[]>({
+  const { data: serverDocs, isLoading: docsLoading } = useQuery<Document[]>({
     queryKey: ['/api/documents'],
     enabled: !!user,
     staleTime: 0,
   });
 
-  const forceRefreshFolders = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
-    queryClient.refetchQueries({ queryKey: ['/api/folders'], type: 'active' });
-  }, []);
-  const forceRefreshDocs = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
-    queryClient.refetchQueries({ queryKey: ['/api/documents'], type: 'active' });
-  }, []);
-  const forceRefreshAll = useCallback(() => {
-    forceRefreshFolders();
-    forceRefreshDocs();
-  }, []);
+  const [localFolders, setLocalFolders] = useState<FolderType[]>([]);
+  const [localDocs, setLocalDocs] = useState<Document[]>([]);
+
+  useEffect(() => {
+    if (serverFolders) setLocalFolders(serverFolders);
+  }, [serverFolders]);
+
+  useEffect(() => {
+    if (serverDocs) setLocalDocs(serverDocs);
+  }, [serverDocs]);
+
+  const folders = localFolders;
+  const documents = localDocs;
 
   const createFolder = useMutation({
     mutationFn: (data: { name: string; parentId?: number | null }) =>
       apiRequest<any>('/api/folders', { method: 'POST', body: JSON.stringify({ ...data, userId: user!.id }) }),
     onSuccess: (result) => {
-      const newFolder = result.folder || result;
-      queryClient.setQueryData<FolderType[]>(['/api/folders'], (old = []) => [...old, newFolder as FolderType]);
+      const newFolder = (result.folder || result) as FolderType;
+      setLocalFolders(prev => [...prev, newFolder]);
       setShowNewFolderDialog(false);
       setNewFolderName('');
     },
-    onSettled: () => forceRefreshFolders(),
   });
 
   const updateFolder = useMutation({
     mutationFn: ({ id, ...data }: { id: number; name?: string; parentId?: number | null }) =>
       apiRequest<FolderType>(`/api/folders/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     onSuccess: (updatedFolder) => {
-      queryClient.setQueryData<FolderType[]>(['/api/folders'], (old = []) =>
-        old.map(f => f.id === updatedFolder.id ? updatedFolder : f)
-      );
+      setLocalFolders(prev => prev.map(f => f.id === updatedFolder.id ? updatedFolder : f));
       setShowRenameFolderDialog(false);
       setShowMoveDialog(false);
     },
-    onSettled: () => forceRefreshFolders(),
   });
 
   const deleteFolder = useMutation({
     mutationFn: (id: number) =>
       apiRequest(`/api/folders/${id}`, { method: 'DELETE' }),
-    onSuccess: (_data, id) => {
-      queryClient.setQueryData<FolderType[]>(['/api/folders'], (old = []) =>
-        old.filter(f => f.id !== id)
-      );
-      queryClient.setQueryData<Document[]>(['/api/documents'], (old = []) =>
-        old.filter(d => d.folderId !== id)
-      );
+    onMutate: (id) => {
+      setLocalFolders(prev => prev.filter(f => f.id !== id));
+      setLocalDocs(prev => prev.filter(d => d.folderId !== id));
     },
-    onSettled: () => forceRefreshAll(),
   });
 
   const createDocument = useMutation({
     mutationFn: (data: { title: string; content: string; folderId?: number | null }) =>
       apiRequest<Document>('/api/documents', { method: 'POST', body: JSON.stringify({ ...data, userId: user!.id }) }),
     onSuccess: (doc: Document) => {
-      queryClient.setQueryData<Document[]>(['/api/documents'], (old = []) => [...old, doc]);
+      setLocalDocs(prev => [...prev, doc]);
       setSelectedDoc(doc);
       setEditTitle(doc.title);
       setEditContent(doc.content || '');
       setViewMode('edit');
     },
-    onSettled: () => forceRefreshDocs(),
   });
 
   const updateDocument = useMutation({
@@ -133,55 +124,43 @@ export default function DocumentVaultPage() {
       apiRequest<Document>(`/api/documents/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     onSuccess: (updatedDoc: Document) => {
       setHasUnsavedChanges(false);
-      queryClient.setQueryData<Document[]>(['/api/documents'], (old = []) =>
-        old.map(d => d.id === updatedDoc.id ? updatedDoc : d)
-      );
+      setLocalDocs(prev => prev.map(d => d.id === updatedDoc.id ? updatedDoc : d));
       if (selectedDoc && updatedDoc) {
         setSelectedDoc(updatedDoc);
       }
       setShowMoveDialog(false);
     },
-    onSettled: () => forceRefreshDocs(),
   });
 
   const deleteDocument = useMutation({
     mutationFn: (id: number) =>
       apiRequest(`/api/documents/${id}`, { method: 'DELETE' }),
-    onSuccess: (_data, id) => {
-      queryClient.setQueryData<Document[]>(['/api/documents'], (old = []) =>
-        old.filter(d => d.id !== id)
-      );
+    onMutate: (id) => {
+      setLocalDocs(prev => prev.filter(d => d.id !== id));
       if (selectedDoc?.id === id) {
         setSelectedDoc(null);
         setViewMode('browse');
       }
     },
-    onSettled: () => forceRefreshDocs(),
   });
 
   const toggleFavoriteDoc = useMutation({
     mutationFn: (id: number) =>
       apiRequest<Document>(`/api/documents/${id}/favorite`, { method: 'POST' }),
     onSuccess: (updatedDoc: Document) => {
-      queryClient.setQueryData<Document[]>(['/api/documents'], (old = []) =>
-        old.map(d => d.id === updatedDoc.id ? updatedDoc : d)
-      );
+      setLocalDocs(prev => prev.map(d => d.id === updatedDoc.id ? updatedDoc : d));
       if (selectedDoc && updatedDoc && selectedDoc.id === updatedDoc.id) {
         setSelectedDoc(updatedDoc);
       }
     },
-    onSettled: () => forceRefreshDocs(),
   });
 
   const toggleFavoriteFolder = useMutation({
     mutationFn: (id: number) =>
       apiRequest<FolderType>(`/api/folders/${id}/favorite`, { method: 'POST' }),
     onSuccess: (updatedFolder) => {
-      queryClient.setQueryData<FolderType[]>(['/api/folders'], (old = []) =>
-        old.map(f => f.id === (updatedFolder as FolderType).id ? (updatedFolder as FolderType) : f)
-      );
+      setLocalFolders(prev => prev.map(f => f.id === (updatedFolder as FolderType).id ? (updatedFolder as FolderType) : f));
     },
-    onSettled: () => forceRefreshFolders(),
   });
 
   const currentFolders = folders.filter(f =>
