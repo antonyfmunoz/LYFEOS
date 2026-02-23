@@ -84,7 +84,7 @@ export function RichTextToolbar({ onInsert, className, compact = false }: RichTe
         variant="ghost"
         size={compact ? 'icon' : 'sm'}
         className={cn(
-          'text-muted-foreground hover:text-foreground',
+          'text-primary/70 hover:text-primary',
           compact ? 'h-7 w-7' : 'h-7 gap-1 px-2 text-xs'
         )}
         onClick={() => fileInputRef.current?.click()}
@@ -139,7 +139,7 @@ export function RichTextToolbar({ onInsert, className, compact = false }: RichTe
           variant="ghost"
           size={compact ? 'icon' : 'sm'}
           className={cn(
-            'text-muted-foreground hover:text-foreground',
+            'text-primary/70 hover:text-primary',
             compact ? 'h-7 w-7' : 'h-7 gap-1 px-2 text-xs'
           )}
           onClick={() => setShowLinkInput(true)}
