@@ -1113,8 +1113,8 @@ export default function QuestsPage() {
                   {createFormData.linkedItems.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-1">
                       {createFormData.linkedItems.map((item, idx) => (
-                        <Badge key={`${item.type}-${item.id}`} variant="secondary" className="flex items-center gap-1 px-2 py-1 text-xs">
-                          {item.type === "document" ? <FileText className="h-3 w-3 text-blue-400" /> : <FolderOpen className="h-3 w-3 text-yellow-400" />}
+                        <Badge key={`${item.type}-${item.id}`} className="flex items-center gap-1 px-2 py-1 text-xs bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30">
+                          {item.type === "document" ? <FileText className="h-3 w-3 text-primary" /> : <FolderOpen className="h-3 w-3 text-primary" />}
                           {item.title}
                           <button
                             type="button"
@@ -1645,8 +1645,8 @@ export default function QuestsPage() {
                 {editFormData.linkedItems.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-1">
                     {editFormData.linkedItems.map((item, idx) => (
-                      <Badge key={`${item.type}-${item.id}`} variant="secondary" className="flex items-center gap-1 px-2 py-1 text-xs">
-                        {item.type === "document" ? <FileText className="h-3 w-3 text-blue-400" /> : <FolderOpen className="h-3 w-3 text-yellow-400" />}
+                      <Badge key={`${item.type}-${item.id}`} className="flex items-center gap-1 px-2 py-1 text-xs bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30">
+                        {item.type === "document" ? <FileText className="h-3 w-3 text-primary" /> : <FolderOpen className="h-3 w-3 text-primary" />}
                         {item.title}
                         <button
                           type="button"
