@@ -47,6 +47,9 @@ export default function DocumentVaultPage() {
   const [newFolderName, setNewFolderName] = useState('');
   const [renameFolderId, setRenameFolderId] = useState<number | null>(null);
   const [renameFolderName, setRenameFolderName] = useState('');
+  const [showRenameDocDialog, setShowRenameDocDialog] = useState(false);
+  const [renameDocId, setRenameDocId] = useState<number | null>(null);
+  const [renameDocTitle, setRenameDocTitle] = useState('');
   const [moveTarget, setMoveTarget] = useState<{ type: 'folder' | 'document'; id: number } | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
@@ -388,9 +391,9 @@ export default function DocumentVaultPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-transparent border-primary/30 text-foreground hover:bg-primary/10">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs">Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-primary/20 border border-red-500/50 text-red-400 hover:bg-red-500/20 font-mono text-xs"
               onClick={() => {
                 if (!deleteTarget) return;
                 if (deleteTarget.type === 'folder') deleteFolder.mutate(deleteTarget.id);
@@ -563,6 +566,7 @@ export default function DocumentVaultPage() {
                       onDelete={() => setDeleteTarget({ type: 'document', id: d.id, name: d.title })}
                       onToggleFavorite={() => toggleFavoriteDoc.mutate(d.id)}
                       onMove={() => { setMoveTarget({ type: 'document', id: d.id }); setShowMoveDialog(true); }}
+                      onRename={() => { setRenameDocId(d.id); setRenameDocTitle(d.title); setShowRenameDocDialog(true); }}
                       formatDate={formatDate}
                     />
                   ))}
@@ -602,6 +606,7 @@ export default function DocumentVaultPage() {
                       onDelete={() => setDeleteTarget({ type: 'document', id: d.id, name: d.title })}
                       onToggleFavorite={() => toggleFavoriteDoc.mutate(d.id)}
                       onMove={() => { setMoveTarget({ type: 'document', id: d.id }); setShowMoveDialog(true); }}
+                      onRename={() => { setRenameDocId(d.id); setRenameDocTitle(d.title); setShowRenameDocDialog(true); }}
                       formatDate={formatDate}
                     />
                   ))}
@@ -710,6 +715,43 @@ export default function DocumentVaultPage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={showRenameDocDialog} onOpenChange={setShowRenameDocDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Document</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={renameDocTitle}
+            onChange={e => setRenameDocTitle(e.target.value)}
+            placeholder="Document title"
+            autoFocus
+            onKeyDown={e => {
+              if (e.key === 'Enter' && renameDocTitle.trim() && renameDocId) {
+                updateDocument.mutate({ id: renameDocId, title: renameDocTitle.trim() });
+                setShowRenameDocDialog(false);
+              }
+            }}
+          />
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="ghost" className="border border-primary/30 text-foreground hover:bg-primary/10">Cancel</Button>
+            </DialogClose>
+            <Button
+              className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30"
+              onClick={() => {
+                if (renameDocId) {
+                  updateDocument.mutate({ id: renameDocId, title: renameDocTitle.trim() });
+                  setShowRenameDocDialog(false);
+                }
+              }}
+              disabled={!renameDocTitle.trim() || updateDocument.isPending}
+            >
+              Rename
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {renderDeleteDialog()}
       {renderMoveDialog()}
     </div>
@@ -772,12 +814,13 @@ function FolderCard({ folder, onOpen, onRename, onDelete, onToggleFavorite, onMo
   );
 }
 
-function DocumentCard({ doc, onOpen, onDelete, onToggleFavorite, onMove, formatDate }: {
+function DocumentCard({ doc, onOpen, onDelete, onToggleFavorite, onMove, onRename, formatDate }: {
   doc: Document;
   onOpen: () => void;
   onDelete: () => void;
   onToggleFavorite: () => void;
   onMove: () => void;
+  onRename: () => void;
   formatDate: (d: string | Date) => string;
 }) {
   const preview = doc.content?.slice(0, 100) || '';
@@ -810,6 +853,10 @@ function DocumentCard({ doc, onOpen, onDelete, onToggleFavorite, onMove, formatD
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+            <DropdownMenuItem onClick={onRename}>
+              <Edit className="h-4 w-4 mr-2" />
+              Rename
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={onToggleFavorite}>
               {doc.favorite ? <StarOff className="h-4 w-4 mr-2" /> : <Star className="h-4 w-4 mr-2" />}
               {doc.favorite ? 'Remove Favorite' : 'Add Favorite'}
