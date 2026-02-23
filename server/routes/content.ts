@@ -2608,7 +2608,7 @@ export function registerContentRoutes(app: Express): void {
     try {
       const userId = req.session.userId!;
       const id = parseInt(req.params.id);
-      const { value, label } = req.body;
+      const { value, label, description } = req.body;
       if (!value || !label) {
         return res.status(400).json({ error: "Value and label are required" });
       }
@@ -2618,7 +2618,9 @@ export function registerContentRoutes(app: Express): void {
       if (duplicate) {
         return res.status(409).json({ error: "A category with this name already exists" });
       }
-      const result = await storage.updateUserCategory(id, userId, { value, label });
+      const updateData: { value: string; label: string; description?: string } = { value, label };
+      if (description) updateData.description = description;
+      const result = await storage.updateUserCategory(id, userId, updateData);
       if (!result) {
         return res.status(404).json({ error: "Category not found" });
       }
@@ -2703,11 +2705,13 @@ export function registerContentRoutes(app: Express): void {
     try {
       const userId = req.session.userId!;
       const id = parseInt(req.params.id);
-      const { value, label } = req.body;
+      const { value, label, description } = req.body;
       if (!value || !label) {
         return res.status(400).json({ error: "Value and label are required" });
       }
-      const updated = await storage.updateRitualGroup(id, userId, { value, label });
+      const updateData: { value?: string; label?: string; description?: string } = { value, label };
+      if (description) updateData.description = description;
+      const updated = await storage.updateRitualGroup(id, userId, updateData);
       if (!updated) {
         return res.status(404).json({ error: "Ritual group not found" });
       }

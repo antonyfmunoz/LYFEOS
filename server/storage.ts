@@ -249,7 +249,7 @@ export interface IStorage {
   // User Category methods
   getUserCategories(userId: number): Promise<UserCategory[]>;
   createUserCategory(category: InsertUserCategory): Promise<UserCategory>;
-  updateUserCategory(id: number, userId: number, data: { value: string; label: string }): Promise<UserCategory | null>;
+  updateUserCategory(id: number, userId: number, data: { value: string; label: string; description?: string }): Promise<UserCategory | null>;
   updateQuestCategoryForUser(userId: number, oldCategory: string, newCategory: string): Promise<void>;
   deleteUserCategory(id: number, userId: number): Promise<void>;
 
@@ -2117,9 +2117,11 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async updateUserCategory(id: number, userId: number, data: { value: string; label: string }): Promise<UserCategory | null> {
+  async updateUserCategory(id: number, userId: number, data: { value: string; label: string; description?: string }): Promise<UserCategory | null> {
+    const setData: Record<string, string> = { value: data.value, label: data.label };
+    if (data.description !== undefined) setData.description = data.description;
     const [result] = await db.update(userCategories)
-      .set({ value: data.value, label: data.label })
+      .set(setData)
       .where(and(eq(userCategories.id, id), eq(userCategories.userId, userId)))
       .returning();
     return result || null;

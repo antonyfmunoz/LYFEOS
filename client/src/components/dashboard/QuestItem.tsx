@@ -344,7 +344,7 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
               })()}
               {category && category !== "general" && category !== "onboarding" && (
                 <p className="text-muted-foreground text-xs">
-                  <span className="text-primary font-mono">Mission Type — <span className="capitalize">{category.replace(/_/g, ' ')}</span>:</span> {
+                  <span className="text-primary font-mono">Mission Type — <span className="capitalize">{userCategories.find(uc => uc.value === category)?.label || category.replace(/_/g, ' ')}</span>:</span> {
                     ({
                       work: 'Professional tasks, projects, and job-related responsibilities.',
                       health: 'Medical care, wellness checkups, and overall well-being.',

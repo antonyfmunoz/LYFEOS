@@ -305,12 +305,24 @@ export default function QuestsPage() {
       const newLabel = editRitualGroupInput.trim();
       const newValue = newLabel.toLowerCase().replace(/\s+/g, '_');
       const oldGroup = customRitualGroups.find(g => g.id === editingRitualGroupId);
+      let newDescription: string | undefined;
+      try {
+        const descResult = await apiRequest<{ description: string }>("/api/ritual-groups/generate-description", {
+          method: "POST",
+          body: JSON.stringify({ groupName: newLabel }),
+        });
+        newDescription = descResult.description;
+      } catch {
+        newDescription = undefined;
+      }
+      const patchBody: Record<string, string> = { value: newValue, label: newLabel };
+      if (newDescription) patchBody.description = newDescription;
       await apiRequest(`/api/ritual-groups/${editingRitualGroupId}`, {
         method: "PATCH",
-        body: JSON.stringify({ value: newValue, label: newLabel }),
+        body: JSON.stringify(patchBody),
       });
       setLocalRitualGroupOverrides(
-        customRitualGroups.map(g => g.id === editingRitualGroupId ? { ...g, value: newValue, label: newLabel } : g)
+        customRitualGroups.map(g => g.id === editingRitualGroupId ? { ...g, value: newValue, label: newLabel, ...(newDescription ? { description: newDescription } : {}) } : g)
       );
       if (formType === 'create' && oldGroup && createFormData.ritualGroup === oldGroup.value) {
         setCreateFormData(prev => ({ ...prev, ritualGroup: newValue }));
@@ -388,12 +400,24 @@ export default function QuestsPage() {
     setIsSavingCategory(true);
     try {
       const newValue = inputValue.toLowerCase().replace(/\s+/g, '_');
+      let newDescription: string | undefined;
+      try {
+        const descResult = await apiRequest<{ description: string }>("/api/user-categories/generate-description", {
+          method: "POST",
+          body: JSON.stringify({ categoryName: inputValue }),
+        });
+        newDescription = descResult.description;
+      } catch {
+        newDescription = undefined;
+      }
+      const patchBody: Record<string, string> = { value: newValue, label: inputValue };
+      if (newDescription) patchBody.description = newDescription;
       await apiRequest(`/api/user-categories/${editingCategoryId}`, {
         method: "PATCH",
-        body: JSON.stringify({ value: newValue, label: inputValue }),
+        body: JSON.stringify(patchBody),
       });
       setLocalCategoryOverrides(
-        userCategories.map(c => c.id === editingCategoryId ? { ...c, value: newValue, label: inputValue } : c)
+        userCategories.map(c => c.id === editingCategoryId ? { ...c, value: newValue, label: inputValue, ...(newDescription ? { description: newDescription } : {}) } : c)
       );
       if (formType === 'create') {
         setCreateFormData(prev => ({ ...prev, category: newValue }));
