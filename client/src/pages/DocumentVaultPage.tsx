@@ -89,6 +89,31 @@ export default function DocumentVaultPage() {
   const folders = localFolders;
   const documents = localDocs;
 
+  const urlParamsProcessed = useRef(false);
+  useEffect(() => {
+    if (urlParamsProcessed.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const openDocId = params.get('openDoc');
+    const openFolderId = params.get('openFolder');
+    if (openDocId && documents.length > 0) {
+      const doc = documents.find(d => d.id === Number(openDocId));
+      if (doc) {
+        if (doc.folderId) setCurrentFolderId(doc.folderId);
+        setSelectedDoc(doc);
+        setEditTitle(doc.title);
+        setEditContent(doc.content || '');
+        setViewMode('preview');
+        setHasUnsavedChanges(false);
+        urlParamsProcessed.current = true;
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    } else if (openFolderId && folders.length > 0) {
+      setCurrentFolderId(Number(openFolderId));
+      urlParamsProcessed.current = true;
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [documents, folders]);
+
   const refetchAll = () => {
     queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
     queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
