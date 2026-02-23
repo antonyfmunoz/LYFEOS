@@ -27,14 +27,20 @@ export function QuickActionMenu() {
   const [category, setCategory] = useState<"work" | "health" | "personal" | null>(null);
   const { addEvent } = useLYFEOS();
   const { toast } = useToast();
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
-
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
+    let wasKeyboardOpen = false;
     const onResize = () => {
       const keyboardOpen = vv.height < window.innerHeight * 0.75;
-      setKeyboardVisible(keyboardOpen);
+      if (wasKeyboardOpen && !keyboardOpen) {
+        window.scrollTo(0, window.scrollY);
+        document.documentElement.style.height = '100%';
+        requestAnimationFrame(() => {
+          document.documentElement.style.height = '';
+        });
+      }
+      wasKeyboardOpen = keyboardOpen;
     };
     vv.addEventListener('resize', onResize);
     return () => vv.removeEventListener('resize', onResize);
@@ -242,7 +248,7 @@ export function QuickActionMenu() {
   return (
     <>
       {/* Floating action button */}
-      <div className={cn("fixed right-6 bottom-6 z-50 transition-all duration-200", keyboardVisible && "pointer-events-none opacity-0")}>
+      <div className="fixed right-6 bottom-6 z-50">
         <AnimatePresence>
           {isOpen && (
             <motion.div
