@@ -2195,7 +2195,7 @@ export default function QuestsPage() {
                         <button
                           type="button"
                           onClick={() => toggleRitualGroupCollapsed(groupKey)}
-                          className="w-full flex items-center gap-2 px-3 py-2 hover:bg-primary/10 transition-colors"
+                          className="w-full flex items-center gap-2 px-3 py-2"
                         >
                           <Repeat className="h-4 w-4 text-primary" />
                           <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
@@ -2308,7 +2308,7 @@ export default function QuestsPage() {
                           <button
                             type="button"
                             onClick={() => toggleRitualGroupCollapsed(groupKey)}
-                            className="w-full flex items-center gap-2 px-3 py-2 hover:bg-primary/10 transition-colors"
+                            className="w-full flex items-center gap-2 px-3 py-2"
                           >
                             <Repeat className="h-4 w-4 text-primary" />
                             <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
@@ -2420,7 +2420,7 @@ export default function QuestsPage() {
                         <button
                           type="button"
                           onClick={() => toggleRitualGroupCollapsed(groupKey)}
-                          className="w-full flex items-center gap-2 px-3 py-2 hover:bg-primary/10 transition-colors"
+                          className="w-full flex items-center gap-2 px-3 py-2"
                         >
                           <Repeat className="h-4 w-4 text-primary" />
                           <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
@@ -2520,7 +2520,7 @@ export default function QuestsPage() {
                         <button
                           type="button"
                           onClick={() => toggleRitualGroupCollapsed(groupKey)}
-                          className="w-full flex items-center gap-2 px-3 py-2 hover:bg-primary/10 transition-colors"
+                          className="w-full flex items-center gap-2 px-3 py-2"
                         >
                           <Repeat className="h-4 w-4 text-primary" />
                           <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
