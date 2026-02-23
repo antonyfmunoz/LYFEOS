@@ -19,7 +19,11 @@
       #oauth-preloader, #app-preloader {
         display: none;
         position: fixed;
-        inset: 0;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: calc(100dvh + env(safe-area-inset-bottom, 0px));
         z-index: 99999;
         background-color: hsl(0 0% 7%);
         flex-direction: column;

@@ -88,8 +88,16 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const [, navigate] = useLocation();
   const hasAttemptedRedirect = React.useRef(false);
-  const [isRecoveringSession, setIsRecoveringSession] = React.useState(false);
+  const [isRecoveringSession, setIsRecoveringSession] = React.useState(
+    () => !!localStorage.getItem("lyfeos_user")
+  );
   const recoveryAttempted = React.useRef(false);
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && isRecoveringSession) {
+      setIsRecoveringSession(false);
+    }
+  }, [isAuthenticated, isLoading, isRecoveringSession]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated && !recoveryAttempted.current) {
