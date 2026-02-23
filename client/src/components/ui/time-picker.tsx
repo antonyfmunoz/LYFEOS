@@ -9,10 +9,17 @@ interface TimePickerProps {
   onChange: (time: string) => void;
   placeholder?: string;
   className?: string;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function TimePicker({ value, onChange, placeholder = "Select time", className }: TimePickerProps) {
-  const [open, setOpen] = useState(false);
+export function TimePicker({ value, onChange, placeholder = "Select time", className, isOpen, onOpenChange }: TimePickerProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isOpen !== undefined ? isOpen : internalOpen;
+  const setOpen = (val: boolean) => {
+    setInternalOpen(val);
+    onOpenChange?.(val);
+  };
   
   const parseTime = (timeStr: string): { hour: number; minute: number; period: "AM" | "PM" } => {
     if (!timeStr) return { hour: 8, minute: 0, period: "AM" };

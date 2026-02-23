@@ -2671,6 +2671,34 @@ export function registerContentRoutes(app: Express): void {
     }
   });
 
+  app.post("/api/ritual-groups/generate-description", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { groupName } = req.body;
+      if (!groupName) {
+        return res.status(400).json({ error: "Group name is required" });
+      }
+      const anthropic = new Anthropic({
+        apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+      });
+      const message = await anthropic.messages.create({
+        model: "claude-haiku-4-5",
+        max_tokens: 100,
+        messages: [
+          {
+            role: "user",
+            content: `Generate a short, one-sentence description (under 15 words) for a personal ritual group called "${groupName}". A ritual group is a recurring routine or habit category in a gamified life management app. The description should explain what types of recurring tasks belong in this group. Be concise and direct. Return ONLY the description, no quotes or punctuation at the start/end.`
+          }
+        ],
+      });
+      const description = message.content[0].type === "text" ? message.content[0].text.trim() : "";
+      res.json({ description });
+    } catch (error) {
+      logger.error("Error generating ritual group description:", error);
+      res.status(500).json({ error: "Failed to generate description" });
+    }
+  });
+
   app.patch("/api/ritual-groups/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;

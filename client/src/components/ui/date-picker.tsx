@@ -9,10 +9,18 @@ interface DatePickerProps {
   onChange: (date: string) => void;
   placeholder?: string;
   className?: string;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function DatePicker({ value, onChange, placeholder = "Select date", className }: DatePickerProps) {
-  const [open, setOpen] = useState(false);
+export function DatePicker({ value, onChange, placeholder = "Select date", className, isOpen, onOpenChange }: DatePickerProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isOpen !== undefined ? isOpen : internalOpen;
+  const setOpen = (val: boolean) => {
+    setInternalOpen(val);
+    onOpenChange?.(val);
+  };
+
   const [viewDate, setViewDate] = useState(() => {
     if (value) {
       return new Date(value + "T00:00:00");
@@ -122,7 +130,7 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
         </Button>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-auto p-4 glassmorphic border-primary/30" 
+        className="w-auto p-4 bg-background border border-primary/30 rounded-md shadow-md glassmorphic" 
         align="start"
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
@@ -168,7 +176,6 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
               type="button"
               variant="ghost"
               size="sm"
-              className="text-primary"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -183,7 +190,6 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
               type="button"
               variant="ghost"
               size="sm"
-              className="text-primary"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();

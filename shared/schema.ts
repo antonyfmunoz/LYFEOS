@@ -1288,6 +1288,7 @@ export const ritualGroups = pgTable("ritual_groups", {
   userId: integer("user_id").notNull().references(() => users.id),
   value: text("value").notNull(),
   label: text("label").notNull(),
+  description: text("description"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

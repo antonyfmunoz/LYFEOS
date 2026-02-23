@@ -54,6 +54,29 @@ interface UserCategoryOption {
   description: string | null;
 }
 
+interface RitualGroupOption {
+  id: number;
+  value: string;
+  label: string;
+  description?: string | null;
+}
+
+const DEFAULT_RITUAL_GROUPS = [
+  { value: "morning_routine", label: "Morning Routine" },
+  { value: "evening_winddown", label: "Evening Wind-down" },
+  { value: "workout", label: "Workout" },
+  { value: "weekly_review", label: "Weekly Review" },
+  { value: "self_care", label: "Self-Care" },
+];
+
+const DEFAULT_RITUAL_DESCRIPTIONS: Record<string, string> = {
+  morning_routine: "Wake-up rituals, journaling, and energizing habits to start the day.",
+  evening_winddown: "Relaxation routines, reflection, and preparation for restful sleep.",
+  workout: "Physical training sessions, exercises, and movement-based rituals.",
+  weekly_review: "Planning, reviewing progress, and setting goals for the week ahead.",
+  self_care: "Personal wellness, grooming, mental health, and nurturing routines.",
+};
+
 function formatStatCost(cost: number | null | undefined): string {
   const val = ((cost ?? 0) / 1440) * 100;
   if (!cost || val === 0) return "0%";
@@ -86,6 +109,11 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
 
   const { data: userCategories = [] } = useQuery<UserCategoryOption[]>({
     queryKey: ['/api/user-categories'],
+    enabled: !!user,
+  });
+
+  const { data: customRitualGroups = [] } = useQuery<RitualGroupOption[]>({
+    queryKey: ['/api/ritual-groups'],
     enabled: !!user,
   });
 
@@ -285,26 +313,35 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
                   <span className="text-primary font-mono">Linked Items:</span>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {questLinkedItems.map((item) => (
-                      <Badge
+                      <button
                         key={`${item.type}-${item.id}`}
-                        variant="secondary"
-                        className="text-xs px-1.5 py-0.5 gap-1 cursor-pointer hover:bg-primary/20 transition-colors"
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (item.type === "document") {
-                            setLocation(`/document-vault?doc=${item.id}`);
-                          } else {
-                            setLocation(`/document-vault?folder=${item.id}`);
-                          }
+                          setLocation(item.type === "document" ? `/document-vault?doc=${item.id}` : `/document-vault?folder=${item.id}`);
                         }}
+                        className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-md bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 transition-colors cursor-pointer"
                       >
-                        {item.type === "document" ? <FileText className="h-3 w-3 text-blue-400" /> : <FolderOpen className="h-3 w-3 text-yellow-400" />}
+                        {item.type === "document" ? <FileText className="h-3 w-3 text-primary" /> : <FolderOpen className="h-3 w-3 text-primary" />}
                         {item.title}
-                      </Badge>
+                      </button>
                     ))}
                   </div>
                 </div>
               )}
+              {(() => {
+                const rg = quest.ritualGroup as string | null | undefined;
+                if (!rg) return null;
+                const customGroup = customRitualGroups.find(g => g.value === rg);
+                const defaultGroup = DEFAULT_RITUAL_GROUPS.find(g => g.value === rg);
+                const groupLabel = customGroup?.label || defaultGroup?.label || rg;
+                const groupDesc = customGroup?.description || DEFAULT_RITUAL_DESCRIPTIONS[rg] || "Custom ritual group for recurring tasks.";
+                return (
+                  <p className="text-muted-foreground text-xs">
+                    <span className="text-primary font-mono">Ritual Group — <span className="capitalize">{groupLabel}</span>:</span> {groupDesc}
+                  </p>
+                );
+              })()}
               {category && category !== "general" && category !== "onboarding" && (
                 <p className="text-muted-foreground text-xs">
                   <span className="text-primary font-mono">Mission Type — <span className="capitalize">{category}</span>:</span> {

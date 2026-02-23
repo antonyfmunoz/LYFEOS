@@ -225,7 +225,7 @@ export default function QuestsPage() {
     return [...MISSION_CATEGORIES, ...custom];
   }, [userCategories]);
 
-  interface RitualGroupOption { id: number; value: string; label: string; }
+  interface RitualGroupOption { id: number; value: string; label: string; description?: string | null; }
   const DEFAULT_RITUAL_GROUPS = [
     { value: "morning_routine", label: "Morning Routine" },
     { value: "evening_winddown", label: "Evening Wind-down" },
@@ -259,14 +259,18 @@ export default function QuestsPage() {
     if (!inputValue) return;
     setIsSavingRitualGroup(true);
     try {
+      const descResult = await apiRequest<{ description: string }>("/api/ritual-groups/generate-description", {
+        method: "POST",
+        body: JSON.stringify({ groupName: inputValue }),
+      });
       const newValue = inputValue.toLowerCase().replace(/\s+/g, '_');
       const created = await apiRequest<RitualGroupOption>("/api/ritual-groups", {
         method: "POST",
-        body: JSON.stringify({ value: newValue, label: inputValue }),
+        body: JSON.stringify({ value: newValue, label: inputValue, description: descResult.description }),
       });
       const newEntry: RitualGroupOption = created && typeof created === 'object' && 'id' in created
         ? created
-        : { id: Date.now(), value: newValue, label: inputValue };
+        : { id: Date.now(), value: newValue, label: inputValue, description: descResult.description };
       setLocalRitualGroupOverrides([...customRitualGroups, newEntry]);
       if (formType === 'create') {
         setCreateFormData(prev => ({ ...prev, ritualGroup: newValue }));
@@ -328,6 +332,12 @@ export default function QuestsPage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingQuest, setEditingQuest] = useState<Quest | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [activePickerId, setActivePickerId] = useState<string | null>(null);
+  const makePickerProps = (id: string) => ({
+    isOpen: activePickerId === id,
+    onOpenChange: (open: boolean) => setActivePickerId(open ? id : null),
+  });
   
   const [createFormData, setCreateFormData] = useState<MissionFormData>(defaultFormData);
   const [editFormData, setEditFormData] = useState<MissionFormData>(defaultFormData);
@@ -1172,6 +1182,7 @@ export default function QuestsPage() {
                     value={createFormData.startDate}
                     onChange={(date) => setCreateFormData(prev => ({ ...prev, startDate: date }))}
                     placeholder="Select date"
+                    {...makePickerProps('create-start-date')}
                   />
                 </div>
                 
@@ -1181,6 +1192,7 @@ export default function QuestsPage() {
                     value={createFormData.startTime}
                     onChange={(time) => setCreateFormData(prev => ({ ...prev, startTime: time }))}
                     placeholder="Select time"
+                    {...makePickerProps('create-start-time')}
                   />
                 </div>
               </div>
@@ -1192,6 +1204,7 @@ export default function QuestsPage() {
                     value={createFormData.endDate}
                     onChange={(date) => setCreateFormData(prev => ({ ...prev, endDate: date }))}
                     placeholder="Select date"
+                    {...makePickerProps('create-end-date')}
                   />
                 </div>
                 
@@ -1201,6 +1214,7 @@ export default function QuestsPage() {
                     value={createFormData.endTime}
                     onChange={(time) => setCreateFormData(prev => ({ ...prev, endTime: time }))}
                     placeholder="Select time"
+                    {...makePickerProps('create-end-time')}
                   />
                 </div>
               </div>
@@ -1241,6 +1255,7 @@ export default function QuestsPage() {
                               setCreateFormData(prev => ({ ...prev, notifications: updated }));
                             }}
                             placeholder="Date"
+                            {...makePickerProps(`create-notif-date-${index}`)}
                           />
                           <TimePicker
                             value={notification.time}
@@ -1250,6 +1265,7 @@ export default function QuestsPage() {
                               setCreateFormData(prev => ({ ...prev, notifications: updated }));
                             }}
                             placeholder="Time"
+                            {...makePickerProps(`create-notif-time-${index}`)}
                           />
                         </div>
                         <Button
@@ -1447,6 +1463,7 @@ export default function QuestsPage() {
                         value={createFormData.repeatEndDate}
                         onChange={(date) => setCreateFormData(prev => ({ ...prev, repeatEndDate: date }))}
                         placeholder="Repeats forever"
+                        {...makePickerProps('create-repeat-end')}
                       />
                     </div>
                   </div>
@@ -1736,6 +1753,7 @@ export default function QuestsPage() {
                   value={editFormData.startDate}
                   onChange={(date) => setEditFormData(prev => ({ ...prev, startDate: date }))}
                   placeholder="Select date"
+                  {...makePickerProps('edit-start-date')}
                 />
               </div>
               
@@ -1745,6 +1763,7 @@ export default function QuestsPage() {
                   value={editFormData.startTime}
                   onChange={(time) => setEditFormData(prev => ({ ...prev, startTime: time }))}
                   placeholder="Select time"
+                  {...makePickerProps('edit-start-time')}
                 />
               </div>
             </div>
@@ -1756,6 +1775,7 @@ export default function QuestsPage() {
                   value={editFormData.endDate}
                   onChange={(date) => setEditFormData(prev => ({ ...prev, endDate: date }))}
                   placeholder="Select date"
+                  {...makePickerProps('edit-end-date')}
                 />
               </div>
               
@@ -1765,6 +1785,7 @@ export default function QuestsPage() {
                   value={editFormData.endTime}
                   onChange={(time) => setEditFormData(prev => ({ ...prev, endTime: time }))}
                   placeholder="Select time"
+                  {...makePickerProps('edit-end-time')}
                 />
               </div>
             </div>
@@ -1805,6 +1826,7 @@ export default function QuestsPage() {
                             setEditFormData(prev => ({ ...prev, notifications: updated }));
                           }}
                           placeholder="Date"
+                          {...makePickerProps(`edit-notif-date-${index}`)}
                         />
                         <TimePicker
                           value={notification.time}
@@ -1814,6 +1836,7 @@ export default function QuestsPage() {
                             setEditFormData(prev => ({ ...prev, notifications: updated }));
                           }}
                           placeholder="Time"
+                          {...makePickerProps(`edit-notif-time-${index}`)}
                         />
                       </div>
                       <Button
@@ -2011,6 +2034,7 @@ export default function QuestsPage() {
                       value={editFormData.repeatEndDate}
                       onChange={(date) => setEditFormData(prev => ({ ...prev, repeatEndDate: date }))}
                       placeholder="Repeats forever"
+                      {...makePickerProps('edit-repeat-end')}
                     />
                   </div>
                 </div>
@@ -2431,13 +2455,37 @@ export default function QuestsPage() {
                                     <span className="text-primary font-mono">Linked Items:</span>
                                     <div className="flex flex-wrap gap-1 mt-1">
                                       {items.map((item) => (
-                                        <Badge key={`${item.type}-${item.id}`} variant="secondary" className="text-xs px-1.5 py-0.5 gap-1">
-                                          {item.type === "document" ? <FileText className="h-3 w-3 text-blue-400" /> : <FolderOpen className="h-3 w-3 text-yellow-400" />}
+                                        <button
+                                          key={`${item.type}-${item.id}`}
+                                          type="button"
+                                          onClick={() => navigate(item.type === "document" ? `/document-vault?doc=${item.id}` : `/document-vault?folder=${item.id}`)}
+                                          className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-md bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 transition-colors cursor-pointer"
+                                        >
+                                          {item.type === "document" ? <FileText className="h-3 w-3 text-primary" /> : <FolderOpen className="h-3 w-3 text-primary" />}
                                           {item.title}
-                                        </Badge>
+                                        </button>
                                       ))}
                                     </div>
                                   </div>
+                                );
+                              })()}
+                              {(() => {
+                                if (!quest.ritualGroup) return null;
+                                const defaultDescriptions: Record<string, string> = {
+                                  morning_routine: "Wake-up rituals, journaling, and energizing habits to start the day.",
+                                  evening_winddown: "Relaxation routines, reflection, and preparation for restful sleep.",
+                                  workout: "Physical training sessions, exercises, and movement-based rituals.",
+                                  weekly_review: "Planning, reviewing progress, and setting goals for the week ahead.",
+                                  self_care: "Personal wellness, grooming, mental health, and nurturing routines.",
+                                };
+                                const customGroup = customRitualGroups.find(g => g.value === quest.ritualGroup);
+                                const defaultGroup = DEFAULT_RITUAL_GROUPS.find(g => g.value === quest.ritualGroup);
+                                const groupLabel = customGroup?.label || defaultGroup?.label || quest.ritualGroup;
+                                const groupDesc = customGroup?.description || defaultDescriptions[quest.ritualGroup] || "Custom ritual group for recurring tasks.";
+                                return (
+                                  <p className="text-muted-foreground text-xs">
+                                    <span className="text-primary font-mono">Ritual Group — <span className="capitalize">{groupLabel}</span>:</span> {groupDesc}
+                                  </p>
                                 );
                               })()}
                               {quest.category && quest.category !== "general" && quest.category !== "onboarding" && (
