@@ -63,43 +63,49 @@ export default function DocumentVaultPage() {
     enabled: !!user,
   });
 
+  const refetchFolders = useCallback(() => {
+    queryClient.refetchQueries({ queryKey: ['/api/folders'] });
+  }, []);
+  const refetchDocs = useCallback(() => {
+    queryClient.refetchQueries({ queryKey: ['/api/documents'] });
+  }, []);
+  const refetchAll = useCallback(() => {
+    queryClient.refetchQueries({ queryKey: ['/api/folders'] });
+    queryClient.refetchQueries({ queryKey: ['/api/documents'] });
+  }, []);
+
   const createFolder = useMutation({
-    mutationFn: async (data: { name: string; parentId?: number | null }) => {
-      return await apiRequest('/api/folders', { method: 'POST', body: JSON.stringify({ ...data, userId: user!.id }) });
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
+    mutationFn: (data: { name: string; parentId?: number | null }) =>
+      apiRequest('/api/folders', { method: 'POST', body: JSON.stringify({ ...data, userId: user!.id }) }),
+    onSettled: () => {
+      refetchFolders();
       setShowNewFolderDialog(false);
       setNewFolderName('');
     },
   });
 
   const updateFolder = useMutation({
-    mutationFn: async ({ id, ...data }: { id: number; name?: string; parentId?: number | null }) => {
-      return await apiRequest(`/api/folders/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
+    mutationFn: ({ id, ...data }: { id: number; name?: string; parentId?: number | null }) =>
+      apiRequest(`/api/folders/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    onSettled: () => {
+      refetchFolders();
       setShowRenameFolderDialog(false);
+      setShowMoveDialog(false);
     },
   });
 
   const deleteFolder = useMutation({
-    mutationFn: async (id: number) => {
-      return await apiRequest(`/api/folders/${id}`, { method: 'DELETE' });
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
-      await queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
+    mutationFn: (id: number) =>
+      apiRequest(`/api/folders/${id}`, { method: 'DELETE' }),
+    onSettled: () => {
+      refetchAll();
     },
   });
 
   const createDocument = useMutation({
-    mutationFn: async (data: { title: string; content: string; folderId?: number | null }) => {
-      return await apiRequest<Document>('/api/documents', { method: 'POST', body: JSON.stringify({ ...data, userId: user!.id }) });
-    },
-    onSuccess: async (doc: Document) => {
-      await queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
+    mutationFn: (data: { title: string; content: string; folderId?: number | null }) =>
+      apiRequest<Document>('/api/documents', { method: 'POST', body: JSON.stringify({ ...data, userId: user!.id }) }),
+    onSuccess: (doc: Document) => {
       setShowNewDocDialog(false);
       setNewDocTitle('');
       setSelectedDoc(doc);
@@ -107,52 +113,58 @@ export default function DocumentVaultPage() {
       setEditContent(doc.content || '');
       setViewMode('edit');
     },
+    onSettled: () => {
+      refetchDocs();
+    },
   });
 
   const updateDocument = useMutation({
-    mutationFn: async ({ id, ...data }: { id: number; title?: string; content?: string; folderId?: number | null }) => {
-      return await apiRequest<Document>(`/api/documents/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
-    },
-    onSuccess: async (updatedDoc: Document) => {
-      await queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
+    mutationFn: ({ id, ...data }: { id: number; title?: string; content?: string; folderId?: number | null }) =>
+      apiRequest<Document>(`/api/documents/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    onSuccess: (updatedDoc: Document) => {
       setHasUnsavedChanges(false);
       if (selectedDoc && updatedDoc) {
         setSelectedDoc(updatedDoc);
       }
     },
+    onSettled: () => {
+      refetchDocs();
+      setShowMoveDialog(false);
+    },
   });
 
   const deleteDocument = useMutation({
-    mutationFn: async (id: number) => {
-      return await apiRequest(`/api/documents/${id}`, { method: 'DELETE' });
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
+    mutationFn: (id: number) =>
+      apiRequest(`/api/documents/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
       if (selectedDoc) {
         setSelectedDoc(null);
         setViewMode('browse');
       }
     },
+    onSettled: () => {
+      refetchDocs();
+    },
   });
 
   const toggleFavoriteDoc = useMutation({
-    mutationFn: async (id: number) => {
-      return await apiRequest<Document>(`/api/documents/${id}/favorite`, { method: 'POST' });
-    },
-    onSuccess: async (updatedDoc: Document) => {
-      await queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
+    mutationFn: (id: number) =>
+      apiRequest<Document>(`/api/documents/${id}/favorite`, { method: 'POST' }),
+    onSuccess: (updatedDoc: Document) => {
       if (selectedDoc && updatedDoc && selectedDoc.id === updatedDoc.id) {
         setSelectedDoc(updatedDoc);
       }
     },
+    onSettled: () => {
+      refetchDocs();
+    },
   });
 
   const toggleFavoriteFolder = useMutation({
-    mutationFn: async (id: number) => {
-      return await apiRequest(`/api/folders/${id}/favorite`, { method: 'POST' });
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
+    mutationFn: (id: number) =>
+      apiRequest(`/api/folders/${id}/favorite`, { method: 'POST' }),
+    onSettled: () => {
+      refetchFolders();
     },
   });
 
@@ -197,7 +209,7 @@ export default function DocumentVaultPage() {
   const openDoc = (doc: Document) => {
     setSelectedDoc(doc);
     setEditTitle(doc.title);
-    setEditContent(doc.content);
+    setEditContent(doc.content || '');
     setViewMode('preview');
     setHasUnsavedChanges(false);
   };
