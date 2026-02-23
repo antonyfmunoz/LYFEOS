@@ -136,6 +136,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, isLoading, isRecoveringSession, navigate]);
 
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      hideAppPreloader();
+    }
+  }, [isAuthenticated, isLoading]);
+
   if (isLoading || isRecoveringSession) {
     const savedColor = localStorage.getItem('lyfeos-primary-color');
     const spinnerColor = (savedColor && savedColor !== '#ffffff') ? savedColor : '#fff';
@@ -148,12 +154,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-
-  useEffect(() => {
-    if (isAuthenticated && !isLoading) {
-      hideAppPreloader();
-    }
-  }, [isAuthenticated, isLoading]);
 
   return isAuthenticated ? <>{children}</> : null;
 }
