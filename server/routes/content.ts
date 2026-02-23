@@ -2671,6 +2671,25 @@ export function registerContentRoutes(app: Express): void {
     }
   });
 
+  app.patch("/api/ritual-groups/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const id = parseInt(req.params.id);
+      const { value, label } = req.body;
+      if (!value || !label) {
+        return res.status(400).json({ error: "Value and label are required" });
+      }
+      const updated = await storage.updateRitualGroup(id, userId, { value, label });
+      if (!updated) {
+        return res.status(404).json({ error: "Ritual group not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      logger.error("Error updating ritual group:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.delete("/api/ritual-groups/:id", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;

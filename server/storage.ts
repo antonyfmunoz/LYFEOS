@@ -256,6 +256,7 @@ export interface IStorage {
   // Ritual Group methods
   getRitualGroups(userId: number): Promise<RitualGroup[]>;
   createRitualGroup(group: InsertRitualGroup): Promise<RitualGroup>;
+  updateRitualGroup(id: number, userId: number, data: { value: string; label: string }): Promise<RitualGroup | null>;
   deleteRitualGroup(id: number, userId: number): Promise<void>;
 
   // Smart Reminder methods
@@ -2143,6 +2144,14 @@ export class DatabaseStorage implements IStorage {
   async createRitualGroup(group: InsertRitualGroup): Promise<RitualGroup> {
     const [result] = await db.insert(ritualGroups).values(group).returning();
     return result;
+  }
+
+  async updateRitualGroup(id: number, userId: number, data: { value: string; label: string }): Promise<RitualGroup | null> {
+    const [result] = await db.update(ritualGroups)
+      .set({ value: data.value, label: data.label })
+      .where(and(eq(ritualGroups.id, id), eq(ritualGroups.userId, userId)))
+      .returning();
+    return result || null;
   }
 
   async deleteRitualGroup(id: number, userId: number): Promise<void> {

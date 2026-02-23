@@ -49,8 +49,8 @@ input[type="range"].theme-slider::-moz-range-thumb {
     --secondary: 188 80% 35% !important;
     --secondary-foreground: 0 0% 93% !important;
     
-    --accent: 188 100% 45% !important;
-    --accent-foreground: 0 0% 11% !important;
+    --accent: var(--primary-hsl, 188 100% 50%) / 0.15 !important;
+    --accent-foreground: 0 0% 93% !important;
     
     --muted: 0 0% 20% !important;
     --muted-foreground: 0 0% 100% !important;
@@ -129,8 +129,8 @@ input[type="range"].theme-slider::-moz-range-thumb {
     --secondary: var(--primary-hsl, 188 80% 35%);
     --secondary-foreground: 0 0% 93%;
     
-    --accent: var(--primary-hsl, 188 100% 45%);
-    --accent-foreground: 0 0% 11%;
+    --accent: var(--primary-hsl, 188 100% 50%) / 0.15;
+    --accent-foreground: 0 0% 93%;
     
     --muted: 0 0% 20%;
     --muted-foreground: 0 0% 100%;

@@ -251,6 +251,8 @@ export default function QuestsPage() {
   const [customRitualGroupMode, setCustomRitualGroupMode] = useState<'create' | null>(null);
   const [customRitualGroupInput, setCustomRitualGroupInput] = useState("");
   const [isSavingRitualGroup, setIsSavingRitualGroup] = useState(false);
+  const [editingRitualGroupId, setEditingRitualGroupId] = useState<number | null>(null);
+  const [editRitualGroupInput, setEditRitualGroupInput] = useState("");
 
   const handleSaveCustomRitualGroup = async (formType: 'create' | 'edit') => {
     const inputValue = customRitualGroupInput.trim();
@@ -289,6 +291,36 @@ export default function QuestsPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/ritual-groups'] });
     } catch (error) {
       toast({ title: "Failed to delete ritual group", variant: "destructive" });
+    }
+  };
+
+  const handleRenameRitualGroup = async (formType: 'create' | 'edit') => {
+    if (!editingRitualGroupId || !editRitualGroupInput.trim()) return;
+    setIsSavingRitualGroup(true);
+    try {
+      const newLabel = editRitualGroupInput.trim();
+      const newValue = newLabel.toLowerCase().replace(/\s+/g, '_');
+      const oldGroup = customRitualGroups.find(g => g.id === editingRitualGroupId);
+      await apiRequest(`/api/ritual-groups/${editingRitualGroupId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ value: newValue, label: newLabel }),
+      });
+      setLocalRitualGroupOverrides(
+        customRitualGroups.map(g => g.id === editingRitualGroupId ? { ...g, value: newValue, label: newLabel } : g)
+      );
+      if (formType === 'create' && oldGroup && createFormData.ritualGroup === oldGroup.value) {
+        setCreateFormData(prev => ({ ...prev, ritualGroup: newValue }));
+      }
+      if (formType === 'edit' && oldGroup && editFormData.ritualGroup === oldGroup.value) {
+        setEditFormData(prev => ({ ...prev, ritualGroup: newValue }));
+      }
+      setEditingRitualGroupId(null);
+      setEditRitualGroupInput("");
+      queryClient.invalidateQueries({ queryKey: ['/api/ritual-groups'] });
+    } catch (error) {
+      toast({ title: "Failed to rename ritual group", variant: "destructive" });
+    } finally {
+      setIsSavingRitualGroup(false);
     }
   };
 
@@ -1085,7 +1117,7 @@ export default function QuestsPage() {
                             {allDocuments.map(doc => (
                               <SelectItem key={`document:${doc.id}`} value={`document:${doc.id}`}>
                                 <span className="flex items-center gap-1.5">
-                                  <FileText className="h-3 w-3 text-blue-400" />
+                                  <FileText className="h-3 w-3 text-primary" />
                                   {doc.title}
                                 </span>
                               </SelectItem>
@@ -1100,7 +1132,7 @@ export default function QuestsPage() {
                             {allFolders.map(folder => (
                               <SelectItem key={`folder:${folder.id}`} value={`folder:${folder.id}`}>
                                 <span className="flex items-center gap-1.5">
-                                  <FolderOpen className="h-3 w-3 text-yellow-400" />
+                                  <FolderOpen className="h-3 w-3 text-primary" />
                                   {folder.name}
                                 </span>
                               </SelectItem>
@@ -1297,11 +1329,43 @@ export default function QuestsPage() {
                           </Button>
                         </div>
                       )}
-                      {!customRitualGroupMode && createFormData.ritualGroup && (() => {
+                      {editingRitualGroupId && customRitualGroupMode !== 'create' && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <Input
+                            placeholder="New group name..."
+                            value={editRitualGroupInput}
+                            onChange={(e) => setEditRitualGroupInput(e.target.value)}
+                            className="bg-background/50 border-primary/30 flex-1"
+                            disabled={isSavingRitualGroup}
+                          />
+                          <Button
+                            size="sm"
+                            onClick={() => handleRenameRitualGroup('create')}
+                            disabled={!editRitualGroupInput.trim() || isSavingRitualGroup}
+                          >
+                            {isSavingRitualGroup ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => { setEditingRitualGroupId(null); setEditRitualGroupInput(""); }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                      {!customRitualGroupMode && !editingRitualGroupId && createFormData.ritualGroup && (() => {
                         const customGroup = customRitualGroups.find(g => g.value === createFormData.ritualGroup);
                         if (!customGroup) return null;
                         return (
                           <div className="mt-1 flex items-center gap-3">
+                            <button
+                              type="button"
+                              className="text-xs text-primary/70 hover:text-primary flex items-center gap-1 transition-colors"
+                              onClick={() => { setEditingRitualGroupId(customGroup.id); setEditRitualGroupInput(customGroup.label); }}
+                            >
+                              <Edit3 className="h-3 w-3" /> Rename
+                            </button>
                             <button
                               type="button"
                               className="text-xs text-destructive/70 hover:text-destructive flex items-center gap-1 transition-colors"
@@ -1617,7 +1681,7 @@ export default function QuestsPage() {
                           {allDocuments.map(doc => (
                             <SelectItem key={`document:${doc.id}`} value={`document:${doc.id}`}>
                               <span className="flex items-center gap-1.5">
-                                <FileText className="h-3 w-3 text-blue-400" />
+                                <FileText className="h-3 w-3 text-primary" />
                                 {doc.title}
                               </span>
                             </SelectItem>
@@ -1632,7 +1696,7 @@ export default function QuestsPage() {
                           {allFolders.map(folder => (
                             <SelectItem key={`folder:${folder.id}`} value={`folder:${folder.id}`}>
                               <span className="flex items-center gap-1.5">
-                                <FolderOpen className="h-3 w-3 text-yellow-400" />
+                                <FolderOpen className="h-3 w-3 text-primary" />
                                 {folder.name}
                               </span>
                             </SelectItem>
@@ -1829,11 +1893,43 @@ export default function QuestsPage() {
                         </Button>
                       </div>
                     )}
-                    {!customRitualGroupMode && editFormData.ritualGroup && (() => {
+                    {editingRitualGroupId && customRitualGroupMode !== 'create' && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <Input
+                          placeholder="New group name..."
+                          value={editRitualGroupInput}
+                          onChange={(e) => setEditRitualGroupInput(e.target.value)}
+                          className="bg-background/50 border-primary/30 flex-1"
+                          disabled={isSavingRitualGroup}
+                        />
+                        <Button
+                          size="sm"
+                          onClick={() => handleRenameRitualGroup('edit')}
+                          disabled={!editRitualGroupInput.trim() || isSavingRitualGroup}
+                        >
+                          {isSavingRitualGroup ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => { setEditingRitualGroupId(null); setEditRitualGroupInput(""); }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                    {!customRitualGroupMode && !editingRitualGroupId && editFormData.ritualGroup && (() => {
                       const customGroup = customRitualGroups.find(g => g.value === editFormData.ritualGroup);
                       if (!customGroup) return null;
                       return (
                         <div className="mt-1 flex items-center gap-3">
+                          <button
+                            type="button"
+                            className="text-xs text-primary/70 hover:text-primary flex items-center gap-1 transition-colors"
+                            onClick={() => { setEditingRitualGroupId(customGroup.id); setEditRitualGroupInput(customGroup.label); }}
+                          >
+                            <Edit3 className="h-3 w-3" /> Rename
+                          </button>
                           <button
                             type="button"
                             className="text-xs text-destructive/70 hover:text-destructive flex items-center gap-1 transition-colors"
