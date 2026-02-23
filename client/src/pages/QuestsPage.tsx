@@ -7,8 +7,7 @@ import { useAuth } from "@/lib/authContext";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { DndProvider, useDrag, useDrop } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
+import { useDrag, useDrop } from 'react-dnd';
 import update from 'immutability-helper';
 import QuestItem, { QUEST_DND_TYPE, DragItem } from "../components/dashboard/QuestItem";
 
@@ -2254,7 +2253,6 @@ export default function QuestsPage() {
           </div>
         </DialogContent>
       </Dialog>
-      <DndProvider backend={HTML5Backend}>
       <div data-tour="today-missions">
       <DroppableSection section="today" onDropQuest={handleCrossSectionDrop} className="mb-6">
       <Collapsible open={todayExpanded} onOpenChange={setTodayExpanded}>
@@ -3030,7 +3028,6 @@ export default function QuestsPage() {
         </div>
       </Collapsible>
       </DroppableSection>
-      </DndProvider>
     </div>
   );
 }
