@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useDrag, useDrop } from 'react-dnd';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/lib/authContext';
 import { usePageTitle } from '@/hooks/use-page-title';
@@ -27,6 +28,11 @@ import { cn } from '@/lib/utils';
 import type { Document, Folder as FolderType } from '@shared/schema';
 
 type ViewMode = 'browse' | 'edit' | 'preview';
+
+const DND_TYPES = {
+  FOLDER: 'vault-folder',
+  DOCUMENT: 'vault-document',
+};
 
 export default function DocumentVaultPage() {
   usePageTitle('Document Vault');
@@ -225,6 +231,16 @@ export default function DocumentVaultPage() {
     setEditContent(doc.content || '');
     setViewMode('preview');
     setHasUnsavedChanges(false);
+  };
+
+  const handleDrop = (targetFolderId: number, item: { type: string; id: number }) => {
+    if (item.type === DND_TYPES.DOCUMENT) {
+      setLocalDocs(prev => prev.map(d => d.id === item.id ? { ...d, folderId: targetFolderId } : d));
+      updateDocument.mutate({ id: item.id, folderId: targetFolderId });
+    } else if (item.type === DND_TYPES.FOLDER) {
+      setLocalFolders(prev => prev.map(f => f.id === item.id ? { ...f, parentId: targetFolderId } : f));
+      updateFolder.mutate({ id: item.id, parentId: targetFolderId });
+    }
   };
 
   const handleMove = (targetFolderId: number | null) => {
@@ -555,6 +571,7 @@ export default function DocumentVaultPage() {
                       onDelete={() => setDeleteTarget({ type: 'folder', id: f.id, name: f.name })}
                       onToggleFavorite={() => toggleFavoriteFolder.mutate(f.id)}
                       onMove={() => { setMoveTarget({ type: 'folder', id: f.id }); setShowMoveDialog(true); }}
+                      onDropItem={(item) => handleDrop(f.id, item)}
                       docCount={documents.filter(d => d.folderId === f.id).length}
                     />
                   ))}
@@ -587,6 +604,7 @@ export default function DocumentVaultPage() {
                       onDelete={() => setDeleteTarget({ type: 'folder', id: f.id, name: f.name })}
                       onToggleFavorite={() => toggleFavoriteFolder.mutate(f.id)}
                       onMove={() => { setMoveTarget({ type: 'folder', id: f.id }); setShowMoveDialog(true); }}
+                      onDropItem={(item) => handleDrop(f.id, item)}
                       docCount={documents.filter(d => d.folderId === f.id).length}
                     />
                   ))}
@@ -758,18 +776,50 @@ export default function DocumentVaultPage() {
   );
 }
 
-function FolderCard({ folder, onOpen, onRename, onDelete, onToggleFavorite, onMove, docCount }: {
+function FolderCard({ folder, onOpen, onRename, onDelete, onToggleFavorite, onMove, onDropItem, docCount }: {
   folder: FolderType;
   onOpen: () => void;
   onRename: () => void;
   onDelete: () => void;
   onToggleFavorite: () => void;
   onMove: () => void;
+  onDropItem: (item: { type: string; id: number }) => void;
   docCount: number;
 }) {
+  const [{ isDragging }, dragRef] = useDrag({
+    type: DND_TYPES.FOLDER,
+    item: { type: DND_TYPES.FOLDER, id: folder.id },
+    collect: (monitor) => ({ isDragging: monitor.isDragging() }),
+  });
+
+  const [{ isOver, canDrop }, dropRef] = useDrop({
+    accept: [DND_TYPES.FOLDER, DND_TYPES.DOCUMENT],
+    canDrop: (item: { type: string; id: number }) => {
+      if (item.type === DND_TYPES.FOLDER && item.id === folder.id) return false;
+      return true;
+    },
+    drop: (item: { type: string; id: number }) => {
+      onDropItem(item);
+    },
+    collect: (monitor) => ({
+      isOver: monitor.isOver(),
+      canDrop: monitor.canDrop(),
+    }),
+  });
+
+  const ref = useCallback((node: HTMLDivElement | null) => {
+    dragRef(node);
+    dropRef(node);
+  }, [dragRef, dropRef]);
+
   return (
     <div
-      className="glassmorphic rounded-xl border border-primary/20 cursor-pointer hover:bg-card/40 transition-colors group"
+      ref={ref}
+      className={cn(
+        "glassmorphic rounded-xl border cursor-pointer hover:bg-card/40 transition-colors group",
+        isOver && canDrop ? "border-primary bg-primary/10" : "border-primary/20",
+        isDragging ? "opacity-40" : "opacity-100"
+      )}
       onClick={onOpen}
     >
       <div className="p-4 flex items-center gap-3">
@@ -823,10 +873,20 @@ function DocumentCard({ doc, onOpen, onDelete, onToggleFavorite, onMove, onRenam
   onRename: () => void;
   formatDate: (d: string | Date) => string;
 }) {
+  const [{ isDragging }, dragRef] = useDrag({
+    type: DND_TYPES.DOCUMENT,
+    item: { type: DND_TYPES.DOCUMENT, id: doc.id },
+    collect: (monitor) => ({ isDragging: monitor.isDragging() }),
+  });
+
   const preview = doc.content?.slice(0, 100) || '';
   return (
     <div
-      className="glassmorphic rounded-xl border border-primary/20 cursor-pointer hover:bg-card/40 transition-colors group"
+      ref={dragRef as unknown as React.Ref<HTMLDivElement>}
+      className={cn(
+        "glassmorphic rounded-xl border border-primary/20 cursor-pointer hover:bg-card/40 transition-colors group",
+        isDragging ? "opacity-40" : "opacity-100"
+      )}
       onClick={onOpen}
     >
       <div className="p-4 flex items-center gap-3">
