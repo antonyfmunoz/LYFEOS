@@ -905,7 +905,7 @@ export default function TimelinePage() {
                                 )}
                                 {hQuest?.category && hQuest.category !== "general" && hQuest.category !== "onboarding" && (
                                   <p className="text-muted-foreground text-xs">
-                                    <span className="text-primary font-mono">Mission Type — <span className="capitalize">{hQuest.category}</span>:</span> {
+                                    <span className="text-primary font-mono">Mission Type — <span className="capitalize">{hQuest.category.replace(/_/g, ' ')}</span>:</span> {
                                       categoryDescriptions[hQuest.category] || userCategories.find(uc => uc.value === hQuest?.category)?.description || 'Auto-classified mission category.'
                                     }
                                   </p>
@@ -1286,7 +1286,7 @@ export default function TimelinePage() {
                                   )}
                                   {rmQuest?.category && rmQuest.category !== "general" && rmQuest.category !== "onboarding" && (
                                     <p className="text-muted-foreground text-xs">
-                                      <span className="text-primary font-mono">Mission Type — <span className="capitalize">{rmQuest.category}</span>:</span> {
+                                      <span className="text-primary font-mono">Mission Type — <span className="capitalize">{rmQuest.category.replace(/_/g, ' ')}</span>:</span> {
                                         categoryDescriptions[rmQuest.category] || userCategories.find(uc => uc.value === rmQuest?.category)?.description || 'Auto-classified mission category.'
                                       }
                                     </p>
