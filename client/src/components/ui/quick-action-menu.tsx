@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { 
   Plus, 
   X, 
@@ -27,25 +27,6 @@ export function QuickActionMenu() {
   const [category, setCategory] = useState<"work" | "health" | "personal" | null>(null);
   const { addEvent } = useLYFEOS();
   const { toast } = useToast();
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    let wasKeyboardOpen = false;
-    const onResize = () => {
-      const keyboardOpen = vv.height < window.innerHeight * 0.75;
-      if (wasKeyboardOpen && !keyboardOpen) {
-        window.scrollTo(0, window.scrollY);
-        document.documentElement.style.height = '100%';
-        requestAnimationFrame(() => {
-          document.documentElement.style.height = '';
-        });
-      }
-      wasKeyboardOpen = keyboardOpen;
-    };
-    vv.addEventListener('resize', onResize);
-    return () => vv.removeEventListener('resize', onResize);
-  }, []);
-  
   // Get current time
   const getCurrentTime = () => {
     const now = new Date();

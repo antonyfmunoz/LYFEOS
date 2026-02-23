@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Bot, X, Send, Sparkles, Edit2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,25 +66,6 @@ export function AIAgentFAB() {
     .slice(0, 5)
     .reverse();
   
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    let wasKeyboardOpen = false;
-    const onResize = () => {
-      const keyboardOpen = vv.height < window.innerHeight * 0.75;
-      if (wasKeyboardOpen && !keyboardOpen) {
-        window.scrollTo(0, window.scrollY);
-        document.documentElement.style.height = '100%';
-        requestAnimationFrame(() => {
-          document.documentElement.style.height = '';
-        });
-      }
-      wasKeyboardOpen = keyboardOpen;
-    };
-    vv.addEventListener('resize', onResize);
-    return () => vv.removeEventListener('resize', onResize);
-  }, []);
-
   return (
     <>
       {/* Floating action button */}
