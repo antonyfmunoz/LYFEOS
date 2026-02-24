@@ -238,11 +238,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               localStorage.removeItem('lyfeos-oauth-redirect-pending');
               localStorage.removeItem('lyfeos-oauth-mode');
               localStorage.removeItem('lyfeos-oauth-mode-ts');
-            } catch (err) {
+              toast({
+                title: "Sign-in incomplete",
+                description: "The sign-in process didn't complete. Please try again.",
+                variant: "destructive",
+                duration: 5000,
+              });
+            } catch (err: any) {
               console.error("OAuth redirect processing failed:", err);
               localStorage.removeItem('lyfeos-oauth-redirect-pending');
               localStorage.removeItem('lyfeos-oauth-mode');
               localStorage.removeItem('lyfeos-oauth-mode-ts');
+              toast({
+                title: "Sign-in error",
+                description: err?.message || "Something went wrong during sign-in. Please try again.",
+                variant: "destructive",
+                duration: 5000,
+              });
             }
           }
         }
