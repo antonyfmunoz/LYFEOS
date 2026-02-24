@@ -62,6 +62,7 @@ export default function DocumentVaultPage() {
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   const [showDeletedSection, setShowDeletedSection] = useState(false);
   const [permanentDeleteTarget, setPermanentDeleteTarget] = useState<{ type: 'folder' | 'document'; id: number; name: string } | null>(null);
+  const [deletedItems, setDeletedItems] = useState<{ documents: Document[]; folders: FolderType[] }>({ documents: [], folders: [] });
 
   const { data: serverFolders, isLoading: foldersLoading, dataUpdatedAt: foldersUpdatedAt } = useQuery<FolderType[]>({
     queryKey: ['/api/folders'],
@@ -116,16 +117,21 @@ export default function DocumentVaultPage() {
     }
   }, [documents, folders]);
 
-  const refetchAll = async () => {
+  const fetchDeletedItems = useCallback(async () => {
+    if (!user) return;
+    try {
+      const data = await apiRequest<{ documents: Document[]; folders: FolderType[] }>('/api/deleted-items');
+      setDeletedItems(data);
+    } catch {}
+  }, [user]);
+
+  useEffect(() => {
+    fetchDeletedItems();
+  }, [fetchDeletedItems]);
+
+  const refetchAll = () => {
     queryClient.refetchQueries({ queryKey: ['/api/folders'] });
     queryClient.refetchQueries({ queryKey: ['/api/documents'] });
-    try {
-      const res = await fetch('/api/deleted-items?t=' + Date.now(), { credentials: 'include', cache: 'no-store' });
-      if (res.ok) {
-        const data = await res.json();
-        queryClient.setQueryData(['/api/deleted-items'], data);
-      }
-    } catch {}
   };
 
   const createFolder = useMutation({
@@ -155,35 +161,25 @@ export default function DocumentVaultPage() {
     mutationFn: (id: number) =>
       apiRequest(`/api/folders/${id}`, { method: 'DELETE' }),
     onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: ['/api/folders'] });
-      await queryClient.cancelQueries({ queryKey: ['/api/documents'] });
-      await queryClient.cancelQueries({ queryKey: ['/api/deleted-items'] });
-      const prevFolders = queryClient.getQueryData<FolderType[]>(['/api/folders']);
-      const prevDocs = queryClient.getQueryData<Document[]>(['/api/documents']);
-      const prevDeleted = queryClient.getQueryData<{ documents: Document[]; folders: FolderType[] }>(['/api/deleted-items']);
-      const deletedFolder = prevFolders?.find(f => f.id === id);
-      queryClient.setQueryData<FolderType[]>(['/api/folders'], old => old?.filter(f => f.id !== id) ?? []);
-      queryClient.setQueryData<Document[]>(['/api/documents'], old => old?.map(d => d.folderId === id ? { ...d, folderId: null } : d) ?? []);
-      if (deletedFolder) {
-        const existingDeleted = prevDeleted ?? { documents: [], folders: [] };
-        queryClient.setQueryData<{ documents: Document[]; folders: FolderType[] }>(['/api/deleted-items'], {
-          documents: existingDeleted.documents,
-          folders: [...existingDeleted.folders, { ...deletedFolder, deletedAt: new Date() }],
-        });
-      }
+      const folderCopy = folders.find(f => f.id === id);
       setLocalFolders(prev => prev.filter(f => f.id !== id));
       setLocalDocs(prev => prev.map(d => d.folderId === id ? { ...d, folderId: null } : d));
+      if (folderCopy) {
+        setDeletedItems(prev => ({
+          documents: prev.documents,
+          folders: [...prev.folders, { ...folderCopy, deletedAt: new Date() } as any],
+        }));
+      }
       setShowDeletedSection(true);
-      return { prevFolders, prevDocs, prevDeleted };
     },
-    onError: (_err, _id, context) => {
-      if (context?.prevFolders) queryClient.setQueryData(['/api/folders'], context.prevFolders);
-      if (context?.prevDocs) queryClient.setQueryData(['/api/documents'], context.prevDocs);
-      if (context?.prevDeleted !== undefined) queryClient.setQueryData(['/api/deleted-items'], context.prevDeleted);
-      if (context?.prevFolders) setLocalFolders(context.prevFolders);
-      if (context?.prevDocs) setLocalDocs(context.prevDocs);
+    onSuccess: () => {
+      refetchAll();
+      fetchDeletedItems();
     },
-    onSettled: refetchAll,
+    onError: () => {
+      refetchAll();
+      fetchDeletedItems();
+    },
   });
 
   const createDocument = useMutation({
@@ -218,41 +214,28 @@ export default function DocumentVaultPage() {
     mutationFn: (id: number) =>
       apiRequest(`/api/documents/${id}`, { method: 'DELETE' }),
     onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: ['/api/documents'] });
-      await queryClient.cancelQueries({ queryKey: ['/api/deleted-items'] });
-      const prevDocs = queryClient.getQueryData<Document[]>(['/api/documents']);
-      const prevDeleted = queryClient.getQueryData<{ documents: Document[]; folders: FolderType[] }>(['/api/deleted-items']);
-      const prevSelectedDoc = selectedDoc;
-      const prevViewMode = viewMode;
-      const deletedDoc = prevDocs?.find(d => d.id === id);
-      queryClient.setQueryData<Document[]>(['/api/documents'], old => old?.filter(d => d.id !== id) ?? []);
-      if (deletedDoc) {
-        const existingDeleted = prevDeleted ?? { documents: [], folders: [] };
-        queryClient.setQueryData<{ documents: Document[]; folders: FolderType[] }>(['/api/deleted-items'], {
-          documents: [...existingDeleted.documents, { ...deletedDoc, deletedAt: new Date() }],
-          folders: existingDeleted.folders,
-        });
-      }
+      const docCopy = documents.find(d => d.id === id);
       setLocalDocs(prev => prev.filter(d => d.id !== id));
+      if (docCopy) {
+        setDeletedItems(prev => ({
+          documents: [...prev.documents, { ...docCopy, deletedAt: new Date() } as any],
+          folders: prev.folders,
+        }));
+      }
       setShowDeletedSection(true);
       if (selectedDoc?.id === id) {
         setSelectedDoc(null);
         setViewMode('browse');
       }
-      return { prevDocs, prevDeleted, prevSelectedDoc, prevViewMode };
     },
-    onError: (_err, _id, context) => {
-      if (context?.prevDocs) {
-        queryClient.setQueryData(['/api/documents'], context.prevDocs);
-        setLocalDocs(context.prevDocs);
-      }
-      if (context?.prevDeleted !== undefined) queryClient.setQueryData(['/api/deleted-items'], context.prevDeleted);
-      if (context) {
-        setSelectedDoc(context.prevSelectedDoc);
-        setViewMode(context.prevViewMode);
-      }
+    onSuccess: () => {
+      refetchAll();
+      fetchDeletedItems();
     },
-    onSettled: refetchAll,
+    onError: () => {
+      refetchAll();
+      fetchDeletedItems();
+    },
   });
 
   const toggleFavoriteDoc = useMutation({
@@ -276,39 +259,40 @@ export default function DocumentVaultPage() {
     onSettled: refetchAll,
   });
 
-  const { data: deletedItems, refetch: refetchDeleted } = useQuery<{ documents: Document[]; folders: FolderType[] }>({
-    queryKey: ['/api/deleted-items'],
-    enabled: !!user,
-    staleTime: 0,
-  });
-
-  const refetchAllWithDeleted = () => {
-    refetchAll();
-    refetchDeleted();
-  };
-
   const restoreDocument = useMutation({
     mutationFn: (id: number) =>
       apiRequest(`/api/documents/${id}/restore`, { method: 'POST' }),
-    onSettled: refetchAllWithDeleted,
+    onMutate: (id) => {
+      setDeletedItems(prev => ({ ...prev, documents: prev.documents.filter(d => d.id !== id) }));
+    },
+    onSettled: () => { refetchAll(); fetchDeletedItems(); },
   });
 
   const restoreFolder = useMutation({
     mutationFn: (id: number) =>
       apiRequest(`/api/folders/${id}/restore`, { method: 'POST' }),
-    onSettled: refetchAllWithDeleted,
+    onMutate: (id) => {
+      setDeletedItems(prev => ({ ...prev, folders: prev.folders.filter(f => f.id !== id) }));
+    },
+    onSettled: () => { refetchAll(); fetchDeletedItems(); },
   });
 
   const permanentDeleteDocument = useMutation({
     mutationFn: (id: number) =>
       apiRequest(`/api/documents/${id}/permanent`, { method: 'DELETE' }),
-    onSettled: refetchAllWithDeleted,
+    onMutate: (id) => {
+      setDeletedItems(prev => ({ ...prev, documents: prev.documents.filter(d => d.id !== id) }));
+    },
+    onSettled: () => { fetchDeletedItems(); },
   });
 
   const permanentDeleteFolder = useMutation({
     mutationFn: (id: number) =>
       apiRequest(`/api/folders/${id}/permanent`, { method: 'DELETE' }),
-    onSettled: refetchAllWithDeleted,
+    onMutate: (id) => {
+      setDeletedItems(prev => ({ ...prev, folders: prev.folders.filter(f => f.id !== id) }));
+    },
+    onSettled: () => { fetchDeletedItems(); },
   });
 
   const currentFolders = folders.filter(f =>
