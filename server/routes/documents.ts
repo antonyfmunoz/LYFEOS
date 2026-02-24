@@ -12,6 +12,18 @@ declare module "express-session" {
   }
 }
 
+function cleanLinkedItems(type: string, id: number) {
+  return db.execute(sql`
+    UPDATE quests SET linked_items = (
+      SELECT COALESCE(jsonb_agg(item), '[]'::jsonb)
+      FROM jsonb_array_elements(linked_items) AS item
+      WHERE NOT (item->>'type' = ${type} AND (item->>'id')::int = ${id})
+    )
+    WHERE linked_items::text LIKE ${'%"type": "' + type + '"%'}
+      AND linked_items::text LIKE ${'%"id": ' + id + '%'}
+  `);
+}
+
 export function registerDocumentRoutes(app: Express): void {
   app.get("/api/folders", isAuthenticated, async (req: Request, res: Response) => {
     try {
@@ -59,20 +71,7 @@ export function registerDocumentRoutes(app: Express): void {
       for (const child of children) {
         await storage.updateFolder(child.id, { parentId: existing.parentId });
       }
-      await storage.deleteFolder(id);
-      try {
-        await db.execute(sql`
-          UPDATE quests SET linked_items = (
-            SELECT COALESCE(jsonb_agg(item), '[]'::jsonb)
-            FROM jsonb_array_elements(linked_items) AS item
-            WHERE NOT (item->>'type' = 'folder' AND (item->>'id')::int = ${id})
-          )
-          WHERE linked_items::text LIKE ${'%"type": "folder"%'}
-            AND linked_items::text LIKE ${'%"id": ' + id + '%'}
-        `);
-      } catch (e) {
-        console.error("Failed to clean up linked items for folder", id, e);
-      }
+      await storage.softDeleteFolder(id);
       return res.json({ success: true });
     } catch (error) {
       return res.status(500).json({ error: "Failed to delete folder" });
@@ -142,20 +141,7 @@ export function registerDocumentRoutes(app: Express): void {
       if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
       const existing = await storage.getDocument(id);
       if (!existing || existing.userId !== req.session.userId!) return res.status(404).json({ error: "Document not found" });
-      await storage.deleteDocument(id);
-      try {
-        await db.execute(sql`
-          UPDATE quests SET linked_items = (
-            SELECT COALESCE(jsonb_agg(item), '[]'::jsonb)
-            FROM jsonb_array_elements(linked_items) AS item
-            WHERE NOT (item->>'type' = 'document' AND (item->>'id')::int = ${id})
-          )
-          WHERE linked_items::text LIKE ${'%"type": "document"%'}
-            AND linked_items::text LIKE ${'%"id": ' + id + '%'}
-        `);
-      } catch (e) {
-        console.error("Failed to clean up linked items for document", id, e);
-      }
+      await storage.softDeleteDocument(id);
       return res.json({ success: true });
     } catch (error) {
       return res.status(500).json({ error: "Failed to delete document" });
@@ -172,6 +158,73 @@ export function registerDocumentRoutes(app: Express): void {
       return res.json(doc);
     } catch (error) {
       return res.status(500).json({ error: "Failed to toggle favorite" });
+    }
+  });
+
+  app.get("/api/deleted-items", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const [deletedDocs, deletedFolders] = await Promise.all([
+        storage.getDeletedDocuments(userId),
+        storage.getDeletedFolders(userId),
+      ]);
+      return res.json({ documents: deletedDocs, folders: deletedFolders });
+    } catch (error) {
+      return res.status(500).json({ error: "Failed to fetch deleted items" });
+    }
+  });
+
+  app.post("/api/documents/:id/restore", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      const existing = await storage.getDocument(id);
+      if (!existing || existing.userId !== req.session.userId!) return res.status(404).json({ error: "Document not found" });
+      const doc = await storage.restoreDocument(id);
+      return res.json(doc);
+    } catch (error) {
+      return res.status(500).json({ error: "Failed to restore document" });
+    }
+  });
+
+  app.post("/api/folders/:id/restore", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      const existing = await storage.getFolder(id);
+      if (!existing || existing.userId !== req.session.userId!) return res.status(404).json({ error: "Folder not found" });
+      const folder = await storage.restoreFolder(id);
+      return res.json(folder);
+    } catch (error) {
+      return res.status(500).json({ error: "Failed to restore folder" });
+    }
+  });
+
+  app.delete("/api/documents/:id/permanent", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      const existing = await storage.getDocument(id);
+      if (!existing || existing.userId !== req.session.userId!) return res.status(404).json({ error: "Document not found" });
+      await storage.permanentDeleteDocument(id);
+      try { await cleanLinkedItems("document", id); } catch (e) { console.error("Failed to clean linked items", e); }
+      return res.json({ success: true });
+    } catch (error) {
+      return res.status(500).json({ error: "Failed to permanently delete document" });
+    }
+  });
+
+  app.delete("/api/folders/:id/permanent", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      const existing = await storage.getFolder(id);
+      if (!existing || existing.userId !== req.session.userId!) return res.status(404).json({ error: "Folder not found" });
+      await storage.permanentDeleteFolder(id);
+      try { await cleanLinkedItems("folder", id); } catch (e) { console.error("Failed to clean linked items", e); }
+      return res.json({ success: true });
+    } catch (error) {
+      return res.status(500).json({ error: "Failed to permanently delete folder" });
     }
   });
 }
