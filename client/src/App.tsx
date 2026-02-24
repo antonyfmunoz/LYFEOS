@@ -66,7 +66,16 @@ function getAccessCookie(): boolean {
   return document.cookie.split(';').some(c => c.trim().startsWith('lyfeos_access=true'));
 }
 
+function isStandaloneMode(): boolean {
+  return (window.navigator as any).standalone === true ||
+    window.matchMedia('(display-mode: standalone)').matches;
+}
+
 function hasAccess(): boolean {
+  if (isStandaloneMode()) {
+    grantAccess();
+    return true;
+  }
   return localStorage.getItem('lyfeos_access') === 'true' || getAccessCookie();
 }
 
