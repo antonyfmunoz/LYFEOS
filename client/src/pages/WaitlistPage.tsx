@@ -108,21 +108,24 @@ const FAQ_ITEMS = [
   },
 ];
 
-const PREVIEW_IMAGES: Record<string, string> = {
-  "Dashboard Preview": "/images/preview-dashboard.png",
-  "Dashboard Stats HUD": "/images/preview-dashboard.png",
-  "Dashboard": "/images/preview-dashboard.png",
-  "Character Affirmation": "/images/preview-affirmation.png",
-  "NOVA Chat": "/images/preview-nova-chat.png",
-  "Mission Flow": "/images/preview-mission-flow.png",
+const PREVIEW_IMAGES: Record<string, { desktop: string; mobile: string }> = {
+  "Dashboard Preview": { desktop: "/images/preview-dashboard.png", mobile: "/images/preview-dashboard-mobile.png" },
+  "Dashboard Stats HUD": { desktop: "/images/preview-dashboard.png", mobile: "/images/preview-dashboard-mobile.png" },
+  "Dashboard": { desktop: "/images/preview-dashboard.png", mobile: "/images/preview-dashboard-mobile.png" },
+  "Character Affirmation": { desktop: "/images/preview-affirmation.png", mobile: "/images/preview-affirmation-mobile.png" },
+  "NOVA Chat": { desktop: "/images/preview-nova-chat.png", mobile: "/images/preview-nova-chat-mobile.png" },
+  "Mission Flow": { desktop: "/images/preview-mission-flow.png", mobile: "/images/preview-mission-flow-mobile.png" },
 };
 
 function Placeholder({ label }: { label: string }) {
-  const src = PREVIEW_IMAGES[label];
+  const srcs = PREVIEW_IMAGES[label];
   return (
     <div className="w-full rounded-lg border border-border/40 bg-card/30 overflow-hidden">
-      {src ? (
-        <img src={src} alt={label} className="w-full h-auto block" />
+      {srcs ? (
+        <>
+          <img src={srcs.mobile} alt={label} className="w-full h-auto block md:hidden" />
+          <img src={srcs.desktop} alt={label} className="w-full h-auto hidden md:block" />
+        </>
       ) : (
         <div className="w-full aspect-video flex items-center justify-center">
           <span className="text-xs text-muted-foreground/60 uppercase tracking-wider">{label}</span>
