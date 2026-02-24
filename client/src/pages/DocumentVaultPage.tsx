@@ -147,7 +147,9 @@ export default function DocumentVaultPage() {
   const deleteFolder = useMutation({
     mutationFn: (id: number) =>
       apiRequest(`/api/folders/${id}`, { method: 'DELETE' }),
-    onMutate: (id) => {
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['/api/folders'] });
+      await queryClient.cancelQueries({ queryKey: ['/api/documents'] });
       const prevFolders = localFolders;
       const prevDocs = localDocs;
       setLocalFolders(prev => prev.filter(f => f.id !== id));
@@ -194,7 +196,8 @@ export default function DocumentVaultPage() {
   const deleteDocument = useMutation({
     mutationFn: (id: number) =>
       apiRequest(`/api/documents/${id}`, { method: 'DELETE' }),
-    onMutate: (id) => {
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['/api/documents'] });
       const prevDocs = localDocs;
       const prevSelectedDoc = selectedDoc;
       const prevViewMode = viewMode;
