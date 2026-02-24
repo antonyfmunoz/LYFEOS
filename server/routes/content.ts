@@ -1314,12 +1314,19 @@ export function registerContentRoutes(app: Express): void {
         return res.status(404).json({ error: "Folder not found" });
       }
       
-      // Check ownership
       if (folder.userId !== req.session.userId) {
         return res.status(403).json({ error: "Not authorized" });
       }
       
-      await storage.deleteFolder(folderId);
+      const docs = await storage.getDocumentsByFolder(folderId);
+      for (const doc of docs) {
+        await storage.updateDocument(doc.id, { folderId: null as any });
+      }
+      const children = await storage.getFolderChildren(folderId);
+      for (const child of children) {
+        await storage.updateFolder(child.id, { parentId: folder.parentId });
+      }
+      await storage.softDeleteFolder(folderId);
       
       return res.status(200).json({ success: true });
     } catch (error) {
