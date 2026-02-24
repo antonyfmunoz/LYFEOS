@@ -158,10 +158,11 @@ export default function DocumentVaultPage() {
       queryClient.setQueryData<FolderType[]>(['/api/folders'], old => old?.filter(f => f.id !== id) ?? []);
       queryClient.setQueryData<Document[]>(['/api/documents'], old => old?.map(d => d.folderId === id ? { ...d, folderId: null } : d) ?? []);
       if (deletedFolder) {
-        queryClient.setQueryData<{ documents: Document[]; folders: FolderType[] }>(['/api/deleted-items'], old => ({
-          documents: old?.documents ?? [],
-          folders: [...(old?.folders ?? []), { ...deletedFolder, deletedAt: new Date() }],
-        }));
+        const existingDeleted = prevDeleted ?? { documents: [], folders: [] };
+        queryClient.setQueryData<{ documents: Document[]; folders: FolderType[] }>(['/api/deleted-items'], {
+          documents: existingDeleted.documents,
+          folders: [...existingDeleted.folders, { ...deletedFolder, deletedAt: new Date() }],
+        });
       }
       setLocalFolders(prev => prev.filter(f => f.id !== id));
       setLocalDocs(prev => prev.map(d => d.folderId === id ? { ...d, folderId: null } : d));
@@ -222,10 +223,11 @@ export default function DocumentVaultPage() {
       const deletedDoc = prevDocs?.find(d => d.id === id);
       queryClient.setQueryData<Document[]>(['/api/documents'], old => old?.filter(d => d.id !== id) ?? []);
       if (deletedDoc) {
-        queryClient.setQueryData<{ documents: Document[]; folders: FolderType[] }>(['/api/deleted-items'], old => ({
-          documents: [...(old?.documents ?? []), { ...deletedDoc, deletedAt: new Date() }],
-          folders: old?.folders ?? [],
-        }));
+        const existingDeleted = prevDeleted ?? { documents: [], folders: [] };
+        queryClient.setQueryData<{ documents: Document[]; folders: FolderType[] }>(['/api/deleted-items'], {
+          documents: [...existingDeleted.documents, { ...deletedDoc, deletedAt: new Date() }],
+          folders: existingDeleted.folders,
+        });
       }
       setLocalDocs(prev => prev.filter(d => d.id !== id));
       setShowDeletedSection(true);
