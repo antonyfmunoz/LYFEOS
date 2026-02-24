@@ -120,20 +120,26 @@ const PREVIEW_IMAGES: Record<string, { desktop: string; mobile: string }> = {
 function Placeholder({ label }: { label: string }) {
   const srcs = PREVIEW_IMAGES[label];
   return (
-    <div className="w-full rounded-lg border border-border/40 bg-card/30 overflow-hidden">
+    <>
       {srcs ? (
         <>
           <div className="flex justify-center py-4 md:hidden">
-            <img src={srcs.mobile} alt={label} className="h-auto max-w-[220px] rounded-lg shadow-lg shadow-primary/10" />
+            <div className="max-w-[220px] rounded-lg border border-border/40 bg-card/30 overflow-hidden shadow-lg shadow-primary/10">
+              <img src={srcs.mobile} alt={label} className="w-full h-auto block" />
+            </div>
           </div>
-          <img src={srcs.desktop} alt={label} className="w-full h-auto hidden md:block" />
+          <div className="w-full rounded-lg border border-border/40 bg-card/30 overflow-hidden hidden md:block">
+            <img src={srcs.desktop} alt={label} className="w-full h-auto" />
+          </div>
         </>
       ) : (
-        <div className="w-full aspect-video flex items-center justify-center">
-          <span className="text-xs text-muted-foreground/60 uppercase tracking-wider">{label}</span>
+        <div className="w-full rounded-lg border border-border/40 bg-card/30 overflow-hidden">
+          <div className="w-full aspect-video flex items-center justify-center">
+            <span className="text-xs text-muted-foreground/60 uppercase tracking-wider">{label}</span>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -277,7 +283,7 @@ export default function WaitlistPage() {
           </div>
 
           <div className="lg:col-span-2">
-            <div className="rounded-xl border border-border/40 bg-card/30 p-1">
+            <div className="md:rounded-xl md:border md:border-border/40 md:bg-card/30 md:p-1">
               <Placeholder label="Dashboard Preview" />
             </div>
           </div>
@@ -337,7 +343,7 @@ export default function WaitlistPage() {
                 <p className="text-muted-foreground leading-relaxed">{b.text}</p>
               </div>
               <div className={i % 2 === 1 ? "lg:order-1" : ""}>
-                <div className="rounded-xl border border-border/30 bg-card/20 p-1">
+                <div className="md:rounded-xl md:border md:border-border/30 md:bg-card/20 md:p-1">
                   <Placeholder label={b.placeholder} />
                 </div>
               </div>
@@ -363,7 +369,7 @@ export default function WaitlistPage() {
                   <h3 className="font-semibold text-foreground text-lg">{s.title}</h3>
                 </div>
                 <p className="text-sm text-muted-foreground leading-relaxed">{s.text}</p>
-                <div className="rounded-lg border border-border/30 bg-card/20 p-1">
+                <div className="md:rounded-lg md:border md:border-border/30 md:bg-card/20 md:p-1">
                   <Placeholder label={s.placeholder} />
                 </div>
               </div>
