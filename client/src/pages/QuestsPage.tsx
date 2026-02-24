@@ -1365,12 +1365,12 @@ export default function QuestsPage() {
                 </div>
               )}
 
-              {(allDocuments.length > 0 || allFolders.length > 0) && (
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    <Link2 className="h-4 w-4" />
-                    Link Documents / Folders
-                  </Label>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Link2 className="h-4 w-4" />
+                  Link Documents / Folders
+                </Label>
+                {(allDocuments.length > 0 || allFolders.length > 0) ? (
                   <div className="flex gap-2">
                     <Select
                       value=""
@@ -1424,28 +1424,30 @@ export default function QuestsPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  {createFormData.linkedItems.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-1">
-                      {createFormData.linkedItems.map((item, idx) => (
-                        <Badge key={`${item.type}-${item.id}`} className="flex items-center gap-1 px-2 py-1 text-xs bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30">
-                          {item.type === "document" ? <FileText className="h-3 w-3 text-primary" /> : <FolderOpen className="h-3 w-3 text-primary" />}
-                          {item.title}
-                          <button
-                            type="button"
-                            onClick={() => setCreateFormData(prev => ({
-                              ...prev,
-                              linkedItems: prev.linkedItems.filter((_, i) => i !== idx),
-                            }))}
-                            className="ml-0.5 hover:text-destructive"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+                ) : (
+                  <p className="text-xs text-muted-foreground">No documents or folders yet. Create them in the Document Vault to link here.</p>
+                )}
+                {createFormData.linkedItems.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {createFormData.linkedItems.map((item, idx) => (
+                      <Badge key={`${item.type}-${item.id}`} className="flex items-center gap-1 px-2 py-1 text-xs bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30">
+                        {item.type === "document" ? <FileText className="h-3 w-3 text-primary" /> : <FolderOpen className="h-3 w-3 text-primary" />}
+                        {item.title}
+                        <button
+                          type="button"
+                          onClick={() => setCreateFormData(prev => ({
+                            ...prev,
+                            linkedItems: prev.linkedItems.filter((_, i) => i !== idx),
+                          }))}
+                          className="ml-0.5 hover:text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -1936,12 +1938,12 @@ export default function QuestsPage() {
               </div>
             )}
 
-            {(allDocuments.length > 0 || allFolders.length > 0) && (
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Link2 className="h-4 w-4" />
-                  Link Documents / Folders
-                </Label>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Link2 className="h-4 w-4" />
+                Link Documents / Folders
+              </Label>
+              {(allDocuments.length > 0 || allFolders.length > 0) ? (
                 <div className="flex gap-2">
                   <Select
                     value=""
@@ -1995,28 +1997,30 @@ export default function QuestsPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                {editFormData.linkedItems.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-1">
-                    {editFormData.linkedItems.map((item, idx) => (
-                      <Badge key={`${item.type}-${item.id}`} className="flex items-center gap-1 px-2 py-1 text-xs bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30">
-                        {item.type === "document" ? <FileText className="h-3 w-3 text-primary" /> : <FolderOpen className="h-3 w-3 text-primary" />}
-                        {item.title}
-                        <button
-                          type="button"
-                          onClick={() => setEditFormData(prev => ({
-                            ...prev,
-                            linkedItems: prev.linkedItems.filter((_, i) => i !== idx),
-                          }))}
-                          className="ml-0.5 hover:text-destructive"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+              ) : (
+                <p className="text-xs text-muted-foreground">No documents or folders yet. Create them in the Document Vault to link here.</p>
+              )}
+              {editFormData.linkedItems.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {editFormData.linkedItems.map((item, idx) => (
+                    <Badge key={`${item.type}-${item.id}`} className="flex items-center gap-1 px-2 py-1 text-xs bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30">
+                      {item.type === "document" ? <FileText className="h-3 w-3 text-primary" /> : <FolderOpen className="h-3 w-3 text-primary" />}
+                      {item.title}
+                      <button
+                        type="button"
+                        onClick={() => setEditFormData(prev => ({
+                          ...prev,
+                          linkedItems: prev.linkedItems.filter((_, i) => i !== idx),
+                        }))}
+                        className="ml-0.5 hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">

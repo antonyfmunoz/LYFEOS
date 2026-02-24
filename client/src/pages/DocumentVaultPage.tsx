@@ -696,25 +696,6 @@ export default function DocumentVaultPage() {
                 <p className="text-sm text-muted-foreground mb-4">
                   {searchQuery ? 'Try a different search term' : 'Create a folder or document to get started'}
                 </p>
-                {!searchQuery && (
-                  <div className="flex gap-2">
-                    <button
-                      className="h-8 px-3 inline-flex items-center gap-1.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors font-mono text-xs"
-                      onClick={() => setShowNewFolderDialog(true)}
-                    >
-                      <FolderPlus className="h-4 w-4" />
-                      New Folder
-                    </button>
-                    <button
-                      className="h-8 px-3 inline-flex items-center gap-1.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors font-mono text-xs"
-                      onClick={() => createDocument.mutate({ title: 'Untitled', content: '', folderId: currentFolderId })}
-                      disabled={createDocument.isPending}
-                    >
-                      <Plus className="h-4 w-4" />
-                      New Document
-                    </button>
-                  </div>
-                )}
               </div>
             )}
           </>
