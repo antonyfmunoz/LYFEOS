@@ -154,6 +154,10 @@ export interface IStorage {
   createFolder(folder: InsertFolder): Promise<Folder>;
   updateFolder(id: number, folder: Partial<InsertFolder>): Promise<Folder>;
   deleteFolder(id: number): Promise<void>;
+  softDeleteFolder(id: number): Promise<void>;
+  restoreFolder(id: number): Promise<Folder>;
+  permanentDeleteFolder(id: number): Promise<void>;
+  getDeletedFolders(userId: number): Promise<Folder[]>;
   toggleFavoriteFolder(id: number): Promise<Folder>;
   
   // Document methods
@@ -163,6 +167,10 @@ export interface IStorage {
   createDocument(document: InsertDocument): Promise<Document>;
   updateDocument(id: number, document: Partial<InsertDocument>): Promise<Document>;
   deleteDocument(id: number): Promise<void>;
+  softDeleteDocument(id: number): Promise<void>;
+  restoreDocument(id: number): Promise<Document>;
+  permanentDeleteDocument(id: number): Promise<void>;
+  getDeletedDocuments(userId: number): Promise<Document[]>;
   toggleFavoriteDocument(id: number): Promise<Document>;
   
   // Template methods
@@ -1480,7 +1488,7 @@ export class DatabaseStorage implements IStorage {
 
   // Folder methods
   async getFolders(userId: number): Promise<Folder[]> {
-    return db.select().from(folders).where(eq(folders.userId, userId));
+    return db.select().from(folders).where(and(eq(folders.userId, userId), isNull(folders.deletedAt)));
   }
   
   async getFolder(id: number): Promise<Folder | undefined> {
@@ -1489,7 +1497,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getFolderChildren(folderId: number): Promise<Folder[]> {
-    return db.select().from(folders).where(eq(folders.parentId, folderId));
+    return db.select().from(folders).where(and(eq(folders.parentId, folderId), isNull(folders.deletedAt)));
   }
   
   async createFolder(folder: InsertFolder): Promise<Folder> {
@@ -1512,6 +1520,23 @@ export class DatabaseStorage implements IStorage {
   async deleteFolder(id: number): Promise<void> {
     await db.delete(folders).where(eq(folders.id, id));
   }
+
+  async softDeleteFolder(id: number): Promise<void> {
+    await db.update(folders).set({ deletedAt: new Date() }).where(eq(folders.id, id));
+  }
+
+  async restoreFolder(id: number): Promise<Folder> {
+    const [restored] = await db.update(folders).set({ deletedAt: null }).where(eq(folders.id, id)).returning();
+    return restored;
+  }
+
+  async permanentDeleteFolder(id: number): Promise<void> {
+    await db.delete(folders).where(eq(folders.id, id));
+  }
+
+  async getDeletedFolders(userId: number): Promise<Folder[]> {
+    return db.select().from(folders).where(and(eq(folders.userId, userId), isNotNull(folders.deletedAt)));
+  }
   
   async toggleFavoriteFolder(id: number): Promise<Folder> {
     const folder = await this.getFolder(id);
@@ -1531,11 +1556,11 @@ export class DatabaseStorage implements IStorage {
 
   // Document methods
   async getDocuments(userId: number): Promise<Document[]> {
-    return db.select().from(documents).where(eq(documents.userId, userId));
+    return db.select().from(documents).where(and(eq(documents.userId, userId), isNull(documents.deletedAt)));
   }
   
   async getDocumentsByFolder(folderId: number): Promise<Document[]> {
-    return db.select().from(documents).where(eq(documents.folderId, folderId));
+    return db.select().from(documents).where(and(eq(documents.folderId, folderId), isNull(documents.deletedAt)));
   }
   
   async getDocument(id: number): Promise<Document | undefined> {
@@ -1562,6 +1587,23 @@ export class DatabaseStorage implements IStorage {
   
   async deleteDocument(id: number): Promise<void> {
     await db.delete(documents).where(eq(documents.id, id));
+  }
+
+  async softDeleteDocument(id: number): Promise<void> {
+    await db.update(documents).set({ deletedAt: new Date() }).where(eq(documents.id, id));
+  }
+
+  async restoreDocument(id: number): Promise<Document> {
+    const [restored] = await db.update(documents).set({ deletedAt: null }).where(eq(documents.id, id)).returning();
+    return restored;
+  }
+
+  async permanentDeleteDocument(id: number): Promise<void> {
+    await db.delete(documents).where(eq(documents.id, id));
+  }
+
+  async getDeletedDocuments(userId: number): Promise<Document[]> {
+    return db.select().from(documents).where(and(eq(documents.userId, userId), isNotNull(documents.deletedAt)));
   }
   
   async toggleFavoriteDocument(id: number): Promise<Document> {
