@@ -47,6 +47,10 @@ function isPopupRecoverableError(error: any): boolean {
   return false;
 }
 
+function isAppleProvider(provider: GoogleAuthProvider | OAuthProvider): boolean {
+  return provider instanceof OAuthProvider && (provider as any).providerId === 'apple.com';
+}
+
 async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, providerName: string): Promise<UserCredential | null> {
   if (!import.meta.env.VITE_FIREBASE_API_KEY) {
     toast({
@@ -57,7 +61,9 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
     return null;
   }
 
-  if (isMobileBrowser()) {
+  const isApple = isAppleProvider(provider);
+
+  if (isMobileBrowser() && !isApple) {
     console.log(`Mobile browser detected, using redirect flow directly for ${providerName}`);
     try {
       localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
@@ -76,17 +82,17 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
   }
 
   try {
-    console.log(`Attempting popup sign-in for ${providerName}`);
+    console.log(`Attempting popup sign-in for ${providerName}${isApple && isMobileBrowser() ? ' (Apple always uses popup on mobile)' : ''}`);
     const result = await signInWithPopup(auth, provider, browserPopupRedirectResolver);
     return result;
   } catch (error: any) {
     console.error(`${providerName} popup sign-in error:`, error?.code, error?.message);
 
-    if (error.code === 'auth/popup-closed-by-user') {
+    if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
       return null;
     }
 
-    if (isPopupRecoverableError(error)) {
+    if (!isApple && isPopupRecoverableError(error)) {
       console.log(`Popup failed (${error.code || error?.message || 'unknown'}), falling back to redirect for ${providerName}`);
       try {
         localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
@@ -101,6 +107,18 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
           variant: "destructive"
         });
         return null;
+      }
+    }
+
+    if (isApple && isPopupRecoverableError(error)) {
+      console.log(`Apple popup failed (${error.code || error?.message || 'unknown'}), trying redirect as last resort`);
+      try {
+        localStorage.setItem('lyfeos-oauth-redirect-pending', 'apple');
+        await signInWithRedirect(auth, provider, browserPopupRedirectResolver);
+        return null;
+      } catch (redirectError: any) {
+        console.error('Apple redirect also failed:', redirectError?.code, redirectError?.message);
+        localStorage.removeItem('lyfeos-oauth-redirect-pending');
       }
     }
 
