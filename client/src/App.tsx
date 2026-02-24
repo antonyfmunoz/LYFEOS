@@ -206,7 +206,23 @@ function Router() {
     }
     
     const currentPath = window.location.pathname;
-    
+    const searchParams = new URLSearchParams(window.location.search);
+
+    if (searchParams.get('access') === 'beta') {
+      localStorage.setItem('lyfeos_access', 'true');
+      searchParams.delete('access');
+      const cleanUrl = currentPath + (searchParams.toString() ? '?' + searchParams.toString() : '');
+      window.history.replaceState({}, '', cleanUrl);
+    }
+
+    const hasAccess = localStorage.getItem('lyfeos_access') === 'true';
+    const isWaitlistPath = currentPath.startsWith('/waitlist');
+
+    if (!hasAccess && !isAuthenticated && !isWaitlistPath) {
+      navigate('/waitlist', { replace: true });
+      return;
+    }
+
     const hasPendingOnboarding = localStorage.getItem("lyfeos-pending-onboarding") === "true";
     const hasPendingRegistration = !!sessionStorage.getItem("lyfeos-pending-registration");
 
@@ -236,9 +252,12 @@ function Router() {
       if (isAuthenticated) {
         console.log('Authenticated at root, redirecting to dashboard');
         navigate('/dashboard', { replace: true });
-      } else {
+      } else if (hasAccess) {
         console.log('Not authenticated at root, redirecting to login');
         navigate('/login', { replace: true });
+      } else {
+        console.log('No access at root, redirecting to waitlist');
+        navigate('/waitlist', { replace: true });
       }
       return;
     }
