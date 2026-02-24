@@ -147,20 +147,22 @@ export default function DocumentVaultPage() {
   const deleteFolder = useMutation({
     mutationFn: (id: number) =>
       apiRequest(`/api/folders/${id}`, { method: 'DELETE' }),
-    onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: ['/api/folders'] });
-      await queryClient.cancelQueries({ queryKey: ['/api/documents'] });
-      const prevFolders = localFolders;
-      const prevDocs = localDocs;
+    onMutate: (id) => {
+      queryClient.cancelQueries({ queryKey: ['/api/folders'] });
+      queryClient.cancelQueries({ queryKey: ['/api/documents'] });
+      const prevFolders = queryClient.getQueryData<FolderType[]>(['/api/folders']);
+      const prevDocs = queryClient.getQueryData<Document[]>(['/api/documents']);
+      queryClient.setQueryData<FolderType[]>(['/api/folders'], old => old?.filter(f => f.id !== id) ?? []);
+      queryClient.setQueryData<Document[]>(['/api/documents'], old => old?.map(d => d.folderId === id ? { ...d, folderId: null } : d) ?? []);
       setLocalFolders(prev => prev.filter(f => f.id !== id));
       setLocalDocs(prev => prev.map(d => d.folderId === id ? { ...d, folderId: null } : d));
       return { prevFolders, prevDocs };
     },
     onError: (_err, _id, context) => {
-      if (context) {
-        setLocalFolders(context.prevFolders);
-        setLocalDocs(context.prevDocs);
-      }
+      if (context?.prevFolders) queryClient.setQueryData(['/api/folders'], context.prevFolders);
+      if (context?.prevDocs) queryClient.setQueryData(['/api/documents'], context.prevDocs);
+      if (context?.prevFolders) setLocalFolders(context.prevFolders);
+      if (context?.prevDocs) setLocalDocs(context.prevDocs);
     },
     onSettled: refetchAll,
   });
@@ -196,11 +198,12 @@ export default function DocumentVaultPage() {
   const deleteDocument = useMutation({
     mutationFn: (id: number) =>
       apiRequest(`/api/documents/${id}`, { method: 'DELETE' }),
-    onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: ['/api/documents'] });
-      const prevDocs = localDocs;
+    onMutate: (id) => {
+      queryClient.cancelQueries({ queryKey: ['/api/documents'] });
+      const prevDocs = queryClient.getQueryData<Document[]>(['/api/documents']);
       const prevSelectedDoc = selectedDoc;
       const prevViewMode = viewMode;
+      queryClient.setQueryData<Document[]>(['/api/documents'], old => old?.filter(d => d.id !== id) ?? []);
       setLocalDocs(prev => prev.filter(d => d.id !== id));
       if (selectedDoc?.id === id) {
         setSelectedDoc(null);
@@ -209,8 +212,11 @@ export default function DocumentVaultPage() {
       return { prevDocs, prevSelectedDoc, prevViewMode };
     },
     onError: (_err, _id, context) => {
-      if (context) {
+      if (context?.prevDocs) {
+        queryClient.setQueryData(['/api/documents'], context.prevDocs);
         setLocalDocs(context.prevDocs);
+      }
+      if (context) {
         setSelectedDoc(context.prevSelectedDoc);
         setViewMode(context.prevViewMode);
       }
