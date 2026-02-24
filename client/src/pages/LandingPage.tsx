@@ -320,7 +320,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── PROBLEM ─── */}
-      <section className="bg-card/20">
+      <section>
         <div className="max-w-6xl mx-auto px-4 py-16 sm:py-20">
           <h2 className="font-orbitron text-2xl sm:text-3xl font-bold text-center mb-4">
             You're Not Lazy. <span className="text-primary">You're Scattered.</span>
@@ -382,7 +382,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── HOW IT WORKS ─── */}
-      <section id="how-it-works" className="bg-card/20">
+      <section id="how-it-works">
         <div className="max-w-6xl mx-auto px-4 py-16 sm:py-20">
           <h2 className="font-orbitron text-2xl sm:text-3xl font-bold text-center mb-14">
             How It <span className="text-primary">Works</span>
@@ -430,7 +430,7 @@ export default function LandingPage() {
       </section>
 
       {/* ─── PRICING ─── */}
-      <section id="pricing" className="bg-card/20">
+      <section id="pricing">
         <div className="max-w-4xl mx-auto px-4 py-16 sm:py-20">
           <h2 className="font-orbitron text-2xl sm:text-3xl font-bold text-center mb-2">
             Simple, Transparent <span className="text-primary">Pricing</span>
