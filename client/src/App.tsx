@@ -72,7 +72,7 @@ function isStandaloneMode(): boolean {
 }
 
 function hasAccess(): boolean {
-  if (isStandaloneMode()) {
+  if (isStandaloneMode() && !window.location.pathname.startsWith('/waitlist')) {
     grantAccess();
     return true;
   }
