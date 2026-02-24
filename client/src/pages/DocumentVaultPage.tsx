@@ -22,8 +22,8 @@ import { ObsidianMarkdown } from '@/components/ui/obsidian-markdown';
 import { RichTextToolbar } from '@/components/ui/rich-text-toolbar';
 import {
   ArrowLeft, Plus, FolderPlus, FileText, Folder, FolderOpen, MoreHorizontal,
-  Trash, Edit, Star, StarOff, ChevronRight, Home, Search, Save, X, Eye, Pencil,
-  ArrowUpLeft, File, Clock,
+  Trash, Trash2, Edit, Star, StarOff, ChevronRight, Home, Search, Save, X, Eye, Pencil,
+  ArrowUpLeft, File, Clock, Undo2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Document, Folder as FolderType } from '@shared/schema';
@@ -60,6 +60,8 @@ export default function DocumentVaultPage() {
   const [moveTarget, setMoveTarget] = useState<{ type: 'folder' | 'document'; id: number } | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
+  const [showDeletedSection, setShowDeletedSection] = useState(false);
+  const [permanentDeleteTarget, setPermanentDeleteTarget] = useState<{ type: 'folder' | 'document'; id: number; name: string } | null>(null);
 
   const { data: serverFolders, isLoading: foldersLoading, dataUpdatedAt: foldersUpdatedAt } = useQuery<FolderType[]>({
     queryKey: ['/api/folders'],
@@ -149,7 +151,7 @@ export default function DocumentVaultPage() {
       const prevFolders = localFolders;
       const prevDocs = localDocs;
       setLocalFolders(prev => prev.filter(f => f.id !== id));
-      setLocalDocs(prev => prev.filter(d => d.folderId !== id));
+      setLocalDocs(prev => prev.map(d => d.folderId === id ? { ...d, folderId: null } : d));
       return { prevFolders, prevDocs };
     },
     onError: (_err, _id, context) => {
@@ -232,6 +234,41 @@ export default function DocumentVaultPage() {
       setLocalFolders(prev => prev.map(f => f.id === id ? { ...f, favorite: !f.favorite } : f));
     },
     onSettled: refetchAll,
+  });
+
+  const { data: deletedItems, refetch: refetchDeleted } = useQuery<{ documents: Document[]; folders: FolderType[] }>({
+    queryKey: ['/api/deleted-items'],
+    enabled: !!user && showDeletedSection,
+    staleTime: 0,
+  });
+
+  const refetchAllWithDeleted = () => {
+    refetchAll();
+    refetchDeleted();
+  };
+
+  const restoreDocument = useMutation({
+    mutationFn: (id: number) =>
+      apiRequest(`/api/documents/${id}/restore`, { method: 'POST' }),
+    onSettled: refetchAllWithDeleted,
+  });
+
+  const restoreFolder = useMutation({
+    mutationFn: (id: number) =>
+      apiRequest(`/api/folders/${id}/restore`, { method: 'POST' }),
+    onSettled: refetchAllWithDeleted,
+  });
+
+  const permanentDeleteDocument = useMutation({
+    mutationFn: (id: number) =>
+      apiRequest(`/api/documents/${id}/permanent`, { method: 'DELETE' }),
+    onSettled: refetchAllWithDeleted,
+  });
+
+  const permanentDeleteFolder = useMutation({
+    mutationFn: (id: number) =>
+      apiRequest(`/api/folders/${id}/permanent`, { method: 'DELETE' }),
+    onSettled: refetchAllWithDeleted,
   });
 
   const currentFolders = folders.filter(f =>
@@ -475,8 +512,8 @@ export default function DocumentVaultPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {deleteTarget?.type === 'folder' ? 'Folder' : 'Document'}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{deleteTarget?.name}"? This action cannot be undone.
-              {deleteTarget?.type === 'folder' && ' Documents inside will be moved to the parent folder.'}
+              "{deleteTarget?.name}" will be moved to Recently Deleted. You can restore it later or permanently delete it from there.
+              {deleteTarget?.type === 'folder' && ' Documents inside will be moved to the root folder.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -718,6 +755,98 @@ export default function DocumentVaultPage() {
                 </p>
               </div>
             )}
+
+            {!searchQuery && currentFolderId === null && (
+              <div className="mt-6">
+                <button
+                  className="flex items-center gap-2 text-xs font-mono text-muted-foreground hover:text-primary transition-colors uppercase tracking-wider"
+                  onClick={() => setShowDeletedSection(!showDeletedSection)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Recently Deleted
+                  <ChevronRight className={cn("h-3 w-3 transition-transform", showDeletedSection && "rotate-90")} />
+                </button>
+
+                {showDeletedSection && (
+                  <div className="mt-2 space-y-2">
+                    {(!deletedItems || (deletedItems.documents.length === 0 && deletedItems.folders.length === 0)) ? (
+                      <div className="glassmorphic rounded-xl border border-primary/10 p-6 text-center">
+                        <p className="text-sm text-muted-foreground">No recently deleted items</p>
+                      </div>
+                    ) : (
+                      <>
+                        {deletedItems.folders.map(f => (
+                          <div key={`del-f-${f.id}`} className="glassmorphic rounded-xl border border-primary/10 opacity-70">
+                            <div className="p-4 flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                <FolderOpen className="h-5 w-5 text-primary/50" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <span className="font-medium truncate block">{f.name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  Deleted {f.deletedAt ? formatDate(f.deletedAt) : ''}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  className="h-8 px-2 inline-flex items-center gap-1 rounded border bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 transition-colors font-mono text-xs"
+                                  onClick={() => restoreFolder.mutate(f.id)}
+                                  disabled={restoreFolder.isPending}
+                                  title="Restore"
+                                >
+                                  <Undo2 className="h-3.5 w-3.5" />
+                                  <span className="hidden sm:inline">Restore</span>
+                                </button>
+                                <button
+                                  className="h-8 px-2 inline-flex items-center gap-1 rounded border bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20 transition-colors font-mono text-xs"
+                                  onClick={() => setPermanentDeleteTarget({ type: 'folder', id: f.id, name: f.name })}
+                                  title="Delete permanently"
+                                >
+                                  <Trash className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        {deletedItems.documents.map(d => (
+                          <div key={`del-d-${d.id}`} className="glassmorphic rounded-xl border border-primary/10 opacity-70">
+                            <div className="p-4 flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                <FileText className="h-5 w-5 text-primary/50" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <span className="font-medium truncate block">{d.title}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  Deleted {d.deletedAt ? formatDate(d.deletedAt) : ''}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  className="h-8 px-2 inline-flex items-center gap-1 rounded border bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 transition-colors font-mono text-xs"
+                                  onClick={() => restoreDocument.mutate(d.id)}
+                                  disabled={restoreDocument.isPending}
+                                  title="Restore"
+                                >
+                                  <Undo2 className="h-3.5 w-3.5" />
+                                  <span className="hidden sm:inline">Restore</span>
+                                </button>
+                                <button
+                                  className="h-8 px-2 inline-flex items-center gap-1 rounded border bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20 transition-colors font-mono text-xs"
+                                  onClick={() => setPermanentDeleteTarget({ type: 'document', id: d.id, name: d.title })}
+                                  title="Delete permanently"
+                                >
+                                  <Trash className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>
@@ -826,6 +955,31 @@ export default function DocumentVaultPage() {
 
       {renderDeleteDialog()}
       {renderMoveDialog()}
+
+      <AlertDialog open={!!permanentDeleteTarget} onOpenChange={() => setPermanentDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Permanently Delete</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete "{permanentDeleteTarget?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-500/20 border border-red-500/50 text-red-400 hover:bg-red-500/30 font-mono text-xs"
+              onClick={() => {
+                if (!permanentDeleteTarget) return;
+                if (permanentDeleteTarget.type === 'folder') permanentDeleteFolder.mutate(permanentDeleteTarget.id);
+                else permanentDeleteDocument.mutate(permanentDeleteTarget.id);
+                setPermanentDeleteTarget(null);
+              }}
+            >
+              Delete Forever
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
