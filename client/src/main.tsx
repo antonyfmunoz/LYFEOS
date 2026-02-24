@@ -4,18 +4,6 @@ import "./index.css";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 
-// Import Material Icons
-const materialIconsLink = document.createElement("link");
-materialIconsLink.href = "https://fonts.googleapis.com/icon?family=Material+Icons";
-materialIconsLink.rel = "stylesheet";
-document.head.appendChild(materialIconsLink);
-
-// Import custom fonts
-const fontsLink = document.createElement("link");
-fontsLink.href = "/fonts.css";
-fontsLink.rel = "stylesheet";
-document.head.appendChild(fontsLink);
-
 // Add title
 document.title = "LYFEOS - Dashboard";
 
