@@ -163,6 +163,8 @@ export function registerDocumentRoutes(app: Express): void {
 
   app.get("/api/deleted-items", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+      res.set('Pragma', 'no-cache');
       const userId = req.session.userId!;
       const [deletedDocs, deletedFolders] = await Promise.all([
         storage.getDeletedDocuments(userId),

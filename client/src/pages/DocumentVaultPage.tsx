@@ -120,7 +120,7 @@ export default function DocumentVaultPage() {
     queryClient.refetchQueries({ queryKey: ['/api/folders'] });
     queryClient.refetchQueries({ queryKey: ['/api/documents'] });
     try {
-      const res = await fetch('/api/deleted-items', { credentials: 'include' });
+      const res = await fetch('/api/deleted-items?t=' + Date.now(), { credentials: 'include', cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         queryClient.setQueryData(['/api/deleted-items'], data);
