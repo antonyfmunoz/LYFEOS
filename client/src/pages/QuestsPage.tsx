@@ -2449,7 +2449,7 @@ export default function QuestsPage() {
                               ))}
                             </div>
                           )}
-                          <div className="px-3 pb-2">
+                          <div className="px-3 pt-2 pb-3">
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); handleDoneGroup(group.missions); }}
@@ -2593,7 +2593,7 @@ export default function QuestsPage() {
                                 ))}
                               </div>
                             )}
-                            <div className="px-3 pb-2">
+                            <div className="px-3 pt-2 pb-3">
                               <button
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); handleDoneGroup(group.missions); }}
@@ -2731,7 +2731,7 @@ export default function QuestsPage() {
                               ))}
                             </div>
                           )}
-                          <div className="px-3 pb-2">
+                          <div className="px-3 pt-2 pb-3">
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); handleUndoGroup(group.missions); }}
@@ -2868,7 +2868,7 @@ export default function QuestsPage() {
                               ))}
                             </div>
                           )}
-                          <div className="px-3 pb-2">
+                          <div className="px-3 pt-2 pb-3">
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); handleDoneGroup(group.missions); }}
