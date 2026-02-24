@@ -255,7 +255,7 @@ export default function WaitlistPage() {
               <span className="text-primary">Build Your Life OS.</span>
             </h1>
             <p className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto lg:mx-0 leading-relaxed">
-              Define your ideal self and your life in under 90 minutes. Unlock the one system you need to run your entire personal life.
+              Define your ideal self and life in under 90 minutes. Unlock the one system you need to run your entire personal life.
             </p>
             <div className="flex flex-col items-center lg:items-start gap-4">
               <WaitlistForm
