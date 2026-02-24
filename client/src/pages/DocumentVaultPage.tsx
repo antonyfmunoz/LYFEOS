@@ -117,8 +117,8 @@ export default function DocumentVaultPage() {
   }, [documents, folders]);
 
   const refetchAll = () => {
-    queryClient.invalidateQueries({ queryKey: ['/api/folders'] });
-    queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
+    queryClient.refetchQueries({ queryKey: ['/api/folders'] });
+    queryClient.refetchQueries({ queryKey: ['/api/documents'] });
   };
 
   const createFolder = useMutation({
