@@ -178,7 +178,7 @@ export default function DocumentVaultPage() {
     },
     onSettled: () => {
       refetchAll();
-      queryClient.invalidateQueries({ queryKey: ['/api/deleted-items'] });
+      queryClient.refetchQueries({ queryKey: ['/api/deleted-items'] });
     },
   });
 
@@ -250,7 +250,7 @@ export default function DocumentVaultPage() {
     },
     onSettled: () => {
       refetchAll();
-      queryClient.invalidateQueries({ queryKey: ['/api/deleted-items'] });
+      queryClient.refetchQueries({ queryKey: ['/api/deleted-items'] });
     },
   });
 
