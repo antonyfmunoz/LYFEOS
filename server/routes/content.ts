@@ -1494,7 +1494,7 @@ export function registerContentRoutes(app: Express): void {
         return res.status(403).json({ error: "Not authorized" });
       }
       
-      await storage.deleteDocument(documentId);
+      await storage.softDeleteDocument(documentId);
       
       return res.status(200).json({ success: true });
     } catch (error) {
