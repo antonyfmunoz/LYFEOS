@@ -1155,7 +1155,7 @@ export default function ProfilePage() {
                   <Label className="text-sm text-foreground">Two-Factor Authentication</Label>
                 </div>
                 {twoFactorStatus?.twoFactorEnabled && (
-                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-green-500/20 text-green-400 border border-green-500/30">Active</span>
+                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-primary/20 text-primary border border-primary/30">Active</span>
                 )}
               </div>
 
@@ -1168,20 +1168,20 @@ export default function ProfilePage() {
               {twoFactorStatus?.twoFactorEnabled ? (
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 p-3 bg-card/50 rounded-lg border border-primary/10">
-                    <Mail className="h-4 w-4 text-green-400" />
+                    <Mail className="h-4 w-4 text-primary" />
                     <div className="flex-1">
                       <div className="text-xs text-muted-foreground">Email</div>
-                      <div className="text-sm text-green-400">Verified</div>
+                      <div className="text-sm text-primary">Verified</div>
                     </div>
-                    <CheckCircle className="h-4 w-4 text-green-400" />
+                    <CheckCircle className="h-4 w-4 text-primary" />
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-card/50 rounded-lg border border-primary/10">
-                    <Phone className="h-4 w-4 text-green-400" />
+                    <Phone className="h-4 w-4 text-primary" />
                     <div className="flex-1">
                       <div className="text-xs text-muted-foreground">Phone</div>
-                      <div className="text-sm text-green-400">{twoFactorStatus.phoneNumber || 'Verified'}</div>
+                      <div className="text-sm text-primary">{twoFactorStatus.phoneNumber || 'Verified'}</div>
                     </div>
-                    <CheckCircle className="h-4 w-4 text-green-400" />
+                    <CheckCircle className="h-4 w-4 text-primary" />
                   </div>
                   <button
                     onClick={async () => {
@@ -1214,17 +1214,17 @@ export default function ProfilePage() {
                       <Mail className="h-4 w-4 text-primary" />
                       <div className="flex-1">
                         <div className="text-xs text-muted-foreground">Email Verification</div>
-                        <div className="text-sm">{twoFactorStatus?.emailVerified ? <span className="text-green-400">Verified</span> : 'Not verified'}</div>
+                        <div className="text-sm">{twoFactorStatus?.emailVerified ? <span className="text-primary">Verified</span> : 'Not verified'}</div>
                       </div>
-                      {twoFactorStatus?.emailVerified && <CheckCircle className="h-4 w-4 text-green-400" />}
+                      {twoFactorStatus?.emailVerified && <CheckCircle className="h-4 w-4 text-primary" />}
                     </div>
                     <div className="flex items-center gap-3 p-3 bg-card/50 rounded-lg border border-primary/10">
                       <Phone className="h-4 w-4 text-primary" />
                       <div className="flex-1">
                         <div className="text-xs text-muted-foreground">Phone Verification</div>
-                        <div className="text-sm">{twoFactorStatus?.phoneVerified ? <span className="text-green-400">Verified</span> : 'Not verified'}</div>
+                        <div className="text-sm">{twoFactorStatus?.phoneVerified ? <span className="text-primary">Verified</span> : 'Not verified'}</div>
                       </div>
-                      {twoFactorStatus?.phoneVerified && <CheckCircle className="h-4 w-4 text-green-400" />}
+                      {twoFactorStatus?.phoneVerified && <CheckCircle className="h-4 w-4 text-primary" />}
                     </div>
                   </div>
                   {twoFactorStatus?.emailVerified && twoFactorStatus?.phoneVerified ? (
@@ -1431,10 +1431,10 @@ export default function ProfilePage() {
                 </div>
               ) : twoFactorStep === 'complete' ? (
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
-                    <CheckCircle className="h-5 w-5 text-green-400" />
+                  <div className="flex items-center gap-3 p-3 bg-primary/10 rounded-lg border border-primary/20">
+                    <CheckCircle className="h-5 w-5 text-primary" />
                     <div>
-                      <div className="text-sm text-green-400 font-medium">Both verifications complete!</div>
+                      <div className="text-sm text-primary font-medium">Both verifications complete!</div>
                       <div className="text-xs text-muted-foreground">You can now enable two-factor authentication.</div>
                     </div>
                   </div>
