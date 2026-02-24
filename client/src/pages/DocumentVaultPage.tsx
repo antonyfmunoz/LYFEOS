@@ -147,10 +147,10 @@ export default function DocumentVaultPage() {
   const deleteFolder = useMutation({
     mutationFn: (id: number) =>
       apiRequest(`/api/folders/${id}`, { method: 'DELETE' }),
-    onMutate: (id) => {
-      queryClient.cancelQueries({ queryKey: ['/api/folders'] });
-      queryClient.cancelQueries({ queryKey: ['/api/documents'] });
-      queryClient.cancelQueries({ queryKey: ['/api/deleted-items'] });
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['/api/folders'] });
+      await queryClient.cancelQueries({ queryKey: ['/api/documents'] });
+      await queryClient.cancelQueries({ queryKey: ['/api/deleted-items'] });
       const prevFolders = queryClient.getQueryData<FolderType[]>(['/api/folders']);
       const prevDocs = queryClient.getQueryData<Document[]>(['/api/documents']);
       const prevDeleted = queryClient.getQueryData<{ documents: Document[]; folders: FolderType[] }>(['/api/deleted-items']);
@@ -213,9 +213,9 @@ export default function DocumentVaultPage() {
   const deleteDocument = useMutation({
     mutationFn: (id: number) =>
       apiRequest(`/api/documents/${id}`, { method: 'DELETE' }),
-    onMutate: (id) => {
-      queryClient.cancelQueries({ queryKey: ['/api/documents'] });
-      queryClient.cancelQueries({ queryKey: ['/api/deleted-items'] });
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['/api/documents'] });
+      await queryClient.cancelQueries({ queryKey: ['/api/deleted-items'] });
       const prevDocs = queryClient.getQueryData<Document[]>(['/api/documents']);
       const prevDeleted = queryClient.getQueryData<{ documents: Document[]; folders: FolderType[] }>(['/api/deleted-items']);
       const prevSelectedDoc = selectedDoc;
