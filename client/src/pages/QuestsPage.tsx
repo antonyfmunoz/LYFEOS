@@ -1367,7 +1367,7 @@ export default function QuestsPage() {
                     <SelectValue placeholder={allVisionGoals.length > 0 ? "Select objective..." : "None"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">{allVisionGoals.length > 0 ? "No objective" : "None"}</SelectItem>
+                    <SelectItem value="none">{allVisionGoals.length > 0 ? "Select objective..." : "None"}</SelectItem>
                     {["legacy", "10year", "5year", "18month", "90day"].map(cat => {
                       const catGoals = allVisionGoals.filter(g => g.category === cat);
                       if (catGoals.length === 0) return null;
@@ -1406,7 +1406,7 @@ export default function QuestsPage() {
                     <SelectValue placeholder={(allDocuments.length > 0 || allFolders.length > 0) ? "Select document or folder..." : "None"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">{(allDocuments.length > 0 || allFolders.length > 0) ? "No linked items" : "None"}</SelectItem>
+                    <SelectItem value="none">{(allDocuments.length > 0 || allFolders.length > 0) ? "Select document or folder..." : "None"}</SelectItem>
                     {allDocuments.length > 0 && (
                       <>
                         <SelectItem value="__docs_header" disabled>
@@ -1934,7 +1934,7 @@ export default function QuestsPage() {
                   <SelectValue placeholder={allVisionGoals.length > 0 ? "Select objective..." : "None"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">{allVisionGoals.length > 0 ? "No objective" : "None"}</SelectItem>
+                  <SelectItem value="none">{allVisionGoals.length > 0 ? "Select objective..." : "None"}</SelectItem>
                   {["legacy", "10year", "5year", "18month", "90day"].map(cat => {
                     const catGoals = allVisionGoals.filter(g => g.category === cat);
                     if (catGoals.length === 0) return null;
@@ -1973,7 +1973,7 @@ export default function QuestsPage() {
                   <SelectValue placeholder={(allDocuments.length > 0 || allFolders.length > 0) ? "Select document or folder..." : "None"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">{(allDocuments.length > 0 || allFolders.length > 0) ? "No linked items" : "None"}</SelectItem>
+                  <SelectItem value="none">{(allDocuments.length > 0 || allFolders.length > 0) ? "Select document or folder..." : "None"}</SelectItem>
                   {allDocuments.length > 0 && (
                     <>
                       <SelectItem value="__docs_header" disabled>
