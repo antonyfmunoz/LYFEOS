@@ -241,19 +241,34 @@ async function ensureDatabaseSchema() {
   }
 
   const port = 5000;
-  const MAX_RETRIES = 20;
-  const RETRY_DELAY = 2000;
-  let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
-  function startListening(attempt: number) {
-    server.removeAllListeners('error');
-    server.removeAllListeners('listening');
+  async function killPortProcess() {
+    try {
+      const { execSync } = await import('child_process');
+      execSync(`fuser -k ${port}/tcp 2>/dev/null || true`, { stdio: 'ignore' });
+      await new Promise(resolve => setTimeout(resolve, 500));
+    } catch {}
+  }
 
-    server.once('error', (err: NodeJS.ErrnoException) => {
-      if (err.code === 'EADDRINUSE' && attempt < MAX_RETRIES) {
-        log(`Port ${port} in use, retrying in ${RETRY_DELAY}ms... (attempt ${attempt + 1}/${MAX_RETRIES})`);
-        server.close(() => {
-          retryTimer = setTimeout(() => startListening(attempt + 1), RETRY_DELAY);
+  async function startListening() {
+    await killPortProcess();
+
+    server.once('error', async (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        log(`Port ${port} in use, killing stale process and retrying...`);
+        server.close(async () => {
+          await killPortProcess();
+          server.removeAllListeners('error');
+          server.removeAllListeners('listening');
+          server.once('error', (retryErr: NodeJS.ErrnoException) => {
+            log(`Failed to start server: ${retryErr.message}`);
+            process.exit(1);
+          });
+          server.once('listening', () => {
+            log(`serving on port ${port}`);
+            startNotificationScheduler();
+          });
+          server.listen({ port, host: "0.0.0.0", reusePort: true });
         });
       } else {
         log(`Failed to start server: ${err.message}`);
@@ -262,7 +277,6 @@ async function ensureDatabaseSchema() {
     });
 
     server.once('listening', () => {
-      if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
       log(`serving on port ${port}`);
       startNotificationScheduler();
     });
@@ -270,11 +284,10 @@ async function ensureDatabaseSchema() {
     server.listen({ port, host: "0.0.0.0", reusePort: true });
   }
 
-  startListening(0);
+  startListening();
 
   const gracefulShutdown = (signal: string) => {
     log(`Received ${signal}, shutting down gracefully...`);
-    if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
     server.close(() => {
       log('Server closed');
       process.exit(0);
