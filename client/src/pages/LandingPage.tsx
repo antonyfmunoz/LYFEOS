@@ -198,7 +198,9 @@ function Placeholder({ label }: { label: string }) {
     <div className="w-full rounded-lg border border-border/40 bg-card/30 overflow-hidden">
       {srcs ? (
         <>
-          <img src={srcs.mobile} alt={label} className="w-full h-auto block md:hidden" />
+          <div className="flex justify-center py-4 md:hidden">
+            <img src={srcs.mobile} alt={label} className="h-auto max-w-[220px] rounded-lg shadow-lg shadow-primary/10" />
+          </div>
           <img src={srcs.desktop} alt={label} className="w-full h-auto hidden md:block" />
         </>
       ) : (
@@ -394,10 +396,12 @@ export default function LandingPage() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {STEPS.map((s) => (
               <div key={s.num} className="space-y-4">
-                <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center font-orbitron text-sm font-bold text-primary">
-                  {s.num}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center font-orbitron text-sm font-bold text-primary shrink-0">
+                    {s.num}
+                  </div>
+                  <h3 className="font-semibold text-foreground text-lg">{s.title}</h3>
                 </div>
-                <h3 className="font-semibold text-foreground text-lg">{s.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{s.text}</p>
                 <div className="rounded-lg border border-border/30 bg-card/20 p-1">
                   <Placeholder label={s.placeholder} />
