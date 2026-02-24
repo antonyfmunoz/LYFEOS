@@ -342,6 +342,17 @@ export default function DocumentVaultPage() {
     ? folders.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
     : currentFolders;
 
+  const getSubFolderCount = useCallback((folderId: number) => {
+    return folders.filter(f => f.parentId === folderId).length;
+  }, [folders]);
+
+  const getTotalDocCount = useCallback((folderId: number): number => {
+    const directDocs = documents.filter(d => d.folderId === folderId).length;
+    const childFolders = folders.filter(f => f.parentId === folderId);
+    const nestedDocs = childFolders.reduce((sum, cf) => sum + getTotalDocCount(cf.id), 0);
+    return directDocs + nestedDocs;
+  }, [folders, documents]);
+
   const handleSaveDoc = useCallback(() => {
     if (!selectedDoc) return;
     updateDocument.mutate({ id: selectedDoc.id, title: editTitle, content: editContent });
@@ -721,7 +732,8 @@ export default function DocumentVaultPage() {
                       onToggleFavorite={() => toggleFavoriteFolder.mutate(f.id)}
                       onMove={() => { setMoveTarget({ type: 'folder', id: f.id }); setShowMoveDialog(true); }}
                       onDropItem={(item) => handleDrop(f.id, item)}
-                      docCount={documents.filter(d => d.folderId === f.id).length}
+                      docCount={getTotalDocCount(f.id)}
+                      subFolderCount={getSubFolderCount(f.id)}
                     />
                   ))}
                   {favoriteDocuments.map(d => (
@@ -754,7 +766,8 @@ export default function DocumentVaultPage() {
                       onToggleFavorite={() => toggleFavoriteFolder.mutate(f.id)}
                       onMove={() => { setMoveTarget({ type: 'folder', id: f.id }); setShowMoveDialog(true); }}
                       onDropItem={(item) => handleDrop(f.id, item)}
-                      docCount={documents.filter(d => d.folderId === f.id).length}
+                      docCount={getTotalDocCount(f.id)}
+                      subFolderCount={getSubFolderCount(f.id)}
                     />
                   ))}
                 </div>
@@ -1023,7 +1036,7 @@ export default function DocumentVaultPage() {
   );
 }
 
-function FolderCard({ folder, onOpen, onRename, onDelete, onToggleFavorite, onMove, onDropItem, docCount }: {
+function FolderCard({ folder, onOpen, onRename, onDelete, onToggleFavorite, onMove, onDropItem, docCount, subFolderCount }: {
   folder: FolderType;
   onOpen: () => void;
   onRename: () => void;
@@ -1032,6 +1045,7 @@ function FolderCard({ folder, onOpen, onRename, onDelete, onToggleFavorite, onMo
   onMove: () => void;
   onDropItem: (item: { type: string; id: number }) => void;
   docCount: number;
+  subFolderCount: number;
 }) {
   const [{ isDragging }, dragRef] = useDrag({
     type: DND_TYPES.FOLDER,
@@ -1078,7 +1092,10 @@ function FolderCard({ folder, onOpen, onRename, onDelete, onToggleFavorite, onMo
             <span className="font-medium truncate">{folder.name}</span>
             {folder.favorite && <Star className="h-3 w-3 text-yellow-500 fill-yellow-500 shrink-0" />}
           </div>
-          <span className="text-xs text-muted-foreground">{docCount} document{docCount !== 1 ? 's' : ''}</span>
+          <span className="text-xs text-muted-foreground">
+            {subFolderCount > 0 && <>{subFolderCount} folder{subFolderCount !== 1 ? 's' : ''}, </>}
+            {docCount} document{docCount !== 1 ? 's' : ''}
+          </span>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
