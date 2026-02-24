@@ -8,6 +8,20 @@ async function ensureFCMServiceWorker(): Promise<ServiceWorkerRegistration | nul
     console.log('[Push] Registering firebase-messaging-sw.js...');
     const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
     await navigator.serviceWorker.ready;
+
+    const firebaseConfig = {
+      apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+      authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || `${import.meta.env.VITE_FIREBASE_PROJECT_ID || 'lyfeos-a55f4'}.firebaseapp.com`,
+      projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'lyfeos-a55f4',
+      storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID || 'lyfeos-a55f4'}.firebasestorage.googleapis.com`,
+      messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+      appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    };
+
+    if (registration.active) {
+      registration.active.postMessage({ type: 'FIREBASE_CONFIG', config: firebaseConfig });
+    }
+
     console.log('[Push] Service worker registered successfully');
     return registration;
   } catch (err) {

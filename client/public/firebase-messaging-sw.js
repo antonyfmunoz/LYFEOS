@@ -1,21 +1,12 @@
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
 
-const firebaseConfig = {
-  apiKey: 'AIzaSyC3bxVpzyTn4sa23QCIcI3-KGGPR1XSHfY',
-  authDomain: 'lyfeos-a55f4.firebaseapp.com',
-  projectId: 'lyfeos-a55f4',
-  storageBucket: 'lyfeos-a55f4.firebasestorage.googleapis.com',
-  messagingSenderId: '76858514072',
-  appId: '1:76858514072:web:bce43144623e8aa0388eed',
-};
-
 let messagingInitialized = false;
 
-function initFirebase() {
+function initFirebase(config) {
   if (messagingInitialized) return;
   try {
-    firebase.initializeApp(firebaseConfig);
+    firebase.initializeApp(config);
     const messaging = firebase.messaging();
 
     messaging.onBackgroundMessage((payload) => {
@@ -44,7 +35,11 @@ function initFirebase() {
   }
 }
 
-initFirebase();
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'FIREBASE_CONFIG') {
+    initFirebase(event.data.config);
+  }
+});
 
 self.addEventListener('push', (event) => {
   if (messagingInitialized) return;
