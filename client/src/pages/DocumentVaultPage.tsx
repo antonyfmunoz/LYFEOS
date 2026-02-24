@@ -150,21 +150,35 @@ export default function DocumentVaultPage() {
     onMutate: (id) => {
       queryClient.cancelQueries({ queryKey: ['/api/folders'] });
       queryClient.cancelQueries({ queryKey: ['/api/documents'] });
+      queryClient.cancelQueries({ queryKey: ['/api/deleted-items'] });
       const prevFolders = queryClient.getQueryData<FolderType[]>(['/api/folders']);
       const prevDocs = queryClient.getQueryData<Document[]>(['/api/documents']);
+      const prevDeleted = queryClient.getQueryData<{ documents: Document[]; folders: FolderType[] }>(['/api/deleted-items']);
+      const deletedFolder = prevFolders?.find(f => f.id === id);
       queryClient.setQueryData<FolderType[]>(['/api/folders'], old => old?.filter(f => f.id !== id) ?? []);
       queryClient.setQueryData<Document[]>(['/api/documents'], old => old?.map(d => d.folderId === id ? { ...d, folderId: null } : d) ?? []);
+      if (deletedFolder) {
+        queryClient.setQueryData<{ documents: Document[]; folders: FolderType[] }>(['/api/deleted-items'], old => ({
+          documents: old?.documents ?? [],
+          folders: [...(old?.folders ?? []), { ...deletedFolder, deletedAt: new Date() }],
+        }));
+      }
       setLocalFolders(prev => prev.filter(f => f.id !== id));
       setLocalDocs(prev => prev.map(d => d.folderId === id ? { ...d, folderId: null } : d));
-      return { prevFolders, prevDocs };
+      setShowDeletedSection(true);
+      return { prevFolders, prevDocs, prevDeleted };
     },
     onError: (_err, _id, context) => {
       if (context?.prevFolders) queryClient.setQueryData(['/api/folders'], context.prevFolders);
       if (context?.prevDocs) queryClient.setQueryData(['/api/documents'], context.prevDocs);
+      if (context?.prevDeleted !== undefined) queryClient.setQueryData(['/api/deleted-items'], context.prevDeleted);
       if (context?.prevFolders) setLocalFolders(context.prevFolders);
       if (context?.prevDocs) setLocalDocs(context.prevDocs);
     },
-    onSettled: refetchAll,
+    onSettled: () => {
+      refetchAll();
+      queryClient.invalidateQueries({ queryKey: ['/api/deleted-items'] });
+    },
   });
 
   const createDocument = useMutation({
@@ -200,28 +214,42 @@ export default function DocumentVaultPage() {
       apiRequest(`/api/documents/${id}`, { method: 'DELETE' }),
     onMutate: (id) => {
       queryClient.cancelQueries({ queryKey: ['/api/documents'] });
+      queryClient.cancelQueries({ queryKey: ['/api/deleted-items'] });
       const prevDocs = queryClient.getQueryData<Document[]>(['/api/documents']);
+      const prevDeleted = queryClient.getQueryData<{ documents: Document[]; folders: FolderType[] }>(['/api/deleted-items']);
       const prevSelectedDoc = selectedDoc;
       const prevViewMode = viewMode;
+      const deletedDoc = prevDocs?.find(d => d.id === id);
       queryClient.setQueryData<Document[]>(['/api/documents'], old => old?.filter(d => d.id !== id) ?? []);
+      if (deletedDoc) {
+        queryClient.setQueryData<{ documents: Document[]; folders: FolderType[] }>(['/api/deleted-items'], old => ({
+          documents: [...(old?.documents ?? []), { ...deletedDoc, deletedAt: new Date() }],
+          folders: old?.folders ?? [],
+        }));
+      }
       setLocalDocs(prev => prev.filter(d => d.id !== id));
+      setShowDeletedSection(true);
       if (selectedDoc?.id === id) {
         setSelectedDoc(null);
         setViewMode('browse');
       }
-      return { prevDocs, prevSelectedDoc, prevViewMode };
+      return { prevDocs, prevDeleted, prevSelectedDoc, prevViewMode };
     },
     onError: (_err, _id, context) => {
       if (context?.prevDocs) {
         queryClient.setQueryData(['/api/documents'], context.prevDocs);
         setLocalDocs(context.prevDocs);
       }
+      if (context?.prevDeleted !== undefined) queryClient.setQueryData(['/api/deleted-items'], context.prevDeleted);
       if (context) {
         setSelectedDoc(context.prevSelectedDoc);
         setViewMode(context.prevViewMode);
       }
     },
-    onSettled: refetchAll,
+    onSettled: () => {
+      refetchAll();
+      queryClient.invalidateQueries({ queryKey: ['/api/deleted-items'] });
+    },
   });
 
   const toggleFavoriteDoc = useMutation({
