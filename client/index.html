@@ -51,6 +51,11 @@
     </style>
     <script>
       (function() {
+        var params = new URLSearchParams(window.location.search);
+        if (params.get('access') === 'beta') {
+          localStorage.setItem('lyfeos_access', 'true');
+          document.cookie = 'lyfeos_access=true; path=/; max-age=' + (365 * 24 * 60 * 60) + '; SameSite=Lax';
+        }
         var hasBetaAccess = localStorage.getItem('lyfeos_access') === 'true' ||
           document.cookie.split(';').some(function(c) { return c.trim().indexOf('lyfeos_access=true') === 0; });
         if (hasBetaAccess) {
