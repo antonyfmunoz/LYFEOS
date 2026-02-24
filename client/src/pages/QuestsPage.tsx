@@ -2692,7 +2692,7 @@ export default function QuestsPage() {
                             <div className="flex items-center gap-2">
                               <Repeat className="h-4 w-4 text-primary" />
                               <span className="text-sm font-mono text-primary capitalize line-through">{getRitualGroupLabel(group.ritualGroup)}</span>
-                              <span className="text-xs text-muted-foreground ml-1 line-through">({group.missions.length})</span>
+                              <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
                               <div className="ml-auto">
                                 {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
                               </div>
@@ -2701,7 +2701,7 @@ export default function QuestsPage() {
                               const dr = getRitualGroupDateRange(group.missions);
                               if (!dr) return null;
                               return (
-                                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 ml-6 flex-wrap line-through">
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 ml-6 flex-wrap">
                                   {dr.startDate && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dr.formatDate(dr.startDate)}</span>}
                                   {dr.startTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{dr.formatTime(dr.startTime)}</span>}
                                   {(dr.endDate || dr.endTime) && <span className="text-primary">→</span>}
