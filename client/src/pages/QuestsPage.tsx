@@ -1354,34 +1354,32 @@ export default function QuestsPage() {
                 </div>
               </div>
 
-              {allVisionGoals.length > 0 && (
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    <Target className="h-4 w-4" />
-                    Link to Mission Objective
-                  </Label>
-                  <Select
-                    value={createFormData.visionGoalId?.toString() || "none"}
-                    onValueChange={(val) => setCreateFormData(prev => ({ ...prev, visionGoalId: val === "none" ? null : parseInt(val) }))}
-                  >
-                    <SelectTrigger className="bg-background/50 border-primary/30">
-                      <SelectValue placeholder="None" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {["legacy", "10year", "5year", "18month", "90day"].map(cat => {
-                        const catGoals = allVisionGoals.filter(g => g.category === cat);
-                        if (catGoals.length === 0) return null;
-                        return catGoals.map(g => (
-                          <SelectItem key={g.id} value={g.id.toString()}>
-                            <span className="text-muted-foreground text-xs mr-1">[{CATEGORY_LABELS[cat]}]</span> {g.title}
-                          </SelectItem>
-                        ));
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Target className="h-4 w-4" />
+                  Link to Mission Objective
+                </Label>
+                <Select
+                  value={createFormData.visionGoalId?.toString() || "none"}
+                  onValueChange={(val) => setCreateFormData(prev => ({ ...prev, visionGoalId: val === "none" ? null : parseInt(val) }))}
+                >
+                  <SelectTrigger className="bg-background/50 border-primary/30">
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {["legacy", "10year", "5year", "18month", "90day"].map(cat => {
+                      const catGoals = allVisionGoals.filter(g => g.category === cat);
+                      if (catGoals.length === 0) return null;
+                      return catGoals.map(g => (
+                        <SelectItem key={g.id} value={g.id.toString()}>
+                          <span className="text-muted-foreground text-xs mr-1">[{CATEGORY_LABELS[cat]}]</span> {g.title}
+                        </SelectItem>
+                      ));
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
 
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
@@ -1927,34 +1925,32 @@ export default function QuestsPage() {
               </div>
             </div>
 
-            {allVisionGoals.length > 0 && (
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Target className="h-4 w-4" />
-                  Link to Mission Objective
-                </Label>
-                <Select
-                  value={editFormData.visionGoalId?.toString() || "none"}
-                  onValueChange={(val) => setEditFormData(prev => ({ ...prev, visionGoalId: val === "none" ? null : parseInt(val) }))}
-                >
-                  <SelectTrigger className="bg-background/50 border-primary/30">
-                    <SelectValue placeholder="None" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {["legacy", "10year", "5year", "18month", "90day"].map(cat => {
-                      const catGoals = allVisionGoals.filter(g => g.category === cat);
-                      if (catGoals.length === 0) return null;
-                      return catGoals.map(g => (
-                        <SelectItem key={g.id} value={g.id.toString()}>
-                          <span className="text-muted-foreground text-xs mr-1">[{CATEGORY_LABELS[cat]}]</span> {g.title}
-                        </SelectItem>
-                      ));
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Target className="h-4 w-4" />
+                Link to Mission Objective
+              </Label>
+              <Select
+                value={editFormData.visionGoalId?.toString() || "none"}
+                onValueChange={(val) => setEditFormData(prev => ({ ...prev, visionGoalId: val === "none" ? null : parseInt(val) }))}
+              >
+                <SelectTrigger className="bg-background/50 border-primary/30">
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {["legacy", "10year", "5year", "18month", "90day"].map(cat => {
+                    const catGoals = allVisionGoals.filter(g => g.category === cat);
+                    if (catGoals.length === 0) return null;
+                    return catGoals.map(g => (
+                      <SelectItem key={g.id} value={g.id.toString()}>
+                        <span className="text-muted-foreground text-xs mr-1">[{CATEGORY_LABELS[cat]}]</span> {g.title}
+                      </SelectItem>
+                    ));
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
 
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
