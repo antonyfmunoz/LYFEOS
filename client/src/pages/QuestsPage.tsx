@@ -1049,7 +1049,23 @@ export default function QuestsPage() {
       repeatDays: quest.repeatDays || [],
       repeatEndDate: quest.repeatEndDate || "",
       visionGoalId: quest.visionGoalId || null,
-      linkedItems: (quest.linkedItems as { type: "document" | "folder"; id: number; title: string }[]) || [],
+      linkedItems: ((quest.linkedItems as { type: "document" | "folder"; id: number; title: string }[]) || [])
+        .filter(item => {
+          if (item.type === 'document') return allDocuments.some(d => d.id === item.id);
+          if (item.type === 'folder') return allFolders.some(f => f.id === item.id);
+          return true;
+        })
+        .map(item => {
+          if (item.type === 'document') {
+            const doc = allDocuments.find(d => d.id === item.id);
+            return doc ? { ...item, title: doc.title } : item;
+          }
+          if (item.type === 'folder') {
+            const folder = allFolders.find(f => f.id === item.id);
+            return folder ? { ...item, title: folder.name } : item;
+          }
+          return item;
+        }),
     });
     setIsEditOpen(true);
   };
