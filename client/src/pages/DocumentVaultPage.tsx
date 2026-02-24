@@ -146,8 +146,17 @@ export default function DocumentVaultPage() {
     mutationFn: (id: number) =>
       apiRequest(`/api/folders/${id}`, { method: 'DELETE' }),
     onMutate: (id) => {
+      const prevFolders = localFolders;
+      const prevDocs = localDocs;
       setLocalFolders(prev => prev.filter(f => f.id !== id));
       setLocalDocs(prev => prev.filter(d => d.folderId !== id));
+      return { prevFolders, prevDocs };
+    },
+    onError: (_err, _id, context) => {
+      if (context) {
+        setLocalFolders(context.prevFolders);
+        setLocalDocs(context.prevDocs);
+      }
     },
     onSettled: refetchAll,
   });
@@ -184,10 +193,21 @@ export default function DocumentVaultPage() {
     mutationFn: (id: number) =>
       apiRequest(`/api/documents/${id}`, { method: 'DELETE' }),
     onMutate: (id) => {
+      const prevDocs = localDocs;
+      const prevSelectedDoc = selectedDoc;
+      const prevViewMode = viewMode;
       setLocalDocs(prev => prev.filter(d => d.id !== id));
       if (selectedDoc?.id === id) {
         setSelectedDoc(null);
         setViewMode('browse');
+      }
+      return { prevDocs, prevSelectedDoc, prevViewMode };
+    },
+    onError: (_err, _id, context) => {
+      if (context) {
+        setLocalDocs(context.prevDocs);
+        setSelectedDoc(context.prevSelectedDoc);
+        setViewMode(context.prevViewMode);
       }
     },
     onSettled: refetchAll,
