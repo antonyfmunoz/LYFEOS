@@ -100,11 +100,41 @@ export default function QuestItem({ quest, index, section, onToggle, onDelete, o
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const { title, description, completed, energyCost, attentionCost, timeCost, experienceReward, startDate, startTime, endDate, endTime, notificationEnabled, difficulty, category, visionGoalId } = quest;
-  const questLinkedItems = (quest.linkedItems as { type: "document" | "folder"; id: number; title: string }[]) || [];
+  const rawLinkedItems = (quest.linkedItems as { type: "document" | "folder"; id: number; title: string }[]) || [];
 
   const { data: allVisionGoals = [] } = useQuery<{ id: number; category: string; title: string }[]>({
     queryKey: ['/api/vision-goals/all'],
     enabled: !!user,
+  });
+
+  const { data: activeDocuments = [] } = useQuery<{ id: number; title: string }[]>({
+    queryKey: ['/api/documents'],
+    enabled: !!user && rawLinkedItems.some(i => i.type === 'document'),
+  });
+
+  const { data: activeFolders = [] } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ['/api/folders'],
+    enabled: !!user && rawLinkedItems.some(i => i.type === 'folder'),
+  });
+
+  const questLinkedItems = rawLinkedItems.filter(item => {
+    if (item.type === 'document') {
+      return activeDocuments.some(d => d.id === item.id);
+    }
+    if (item.type === 'folder') {
+      return activeFolders.some(f => f.id === item.id);
+    }
+    return true;
+  }).map(item => {
+    if (item.type === 'document') {
+      const doc = activeDocuments.find(d => d.id === item.id);
+      return doc ? { ...item, title: doc.title } : item;
+    }
+    if (item.type === 'folder') {
+      const folder = activeFolders.find(f => f.id === item.id);
+      return folder ? { ...item, title: folder.name } : item;
+    }
+    return item;
   });
 
   const { data: userCategories = [] } = useQuery<UserCategoryOption[]>({
