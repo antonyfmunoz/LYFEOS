@@ -2424,15 +2424,6 @@ export default function QuestsPage() {
                               );
                             })()}
                           </button>
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); handleDoneGroup(group.missions); }}
-                            className="flex items-center gap-1 px-2 py-1 mr-2 text-xs font-mono text-primary hover:text-green-400 border border-primary/20 rounded bg-primary/10 hover:bg-green-400/10 transition-colors"
-                            title="Complete all missions in group"
-                          >
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            <span>Done</span>
-                          </button>
                           </div>
                           {!isCollapsed && (
                             <div className="px-2 pb-2 space-y-2">
@@ -2458,6 +2449,16 @@ export default function QuestsPage() {
                               ))}
                             </div>
                           )}
+                          <div className="px-3 pb-2">
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); handleDoneGroup(group.missions); }}
+                              className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                              title="Complete all missions in group"
+                            >
+                              Done
+                            </button>
+                          </div>
                         </div>
                       </DraggableVisualItem>
                     );
@@ -2567,15 +2568,6 @@ export default function QuestsPage() {
                                 );
                               })()}
                             </button>
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); handleDoneGroup(group.missions); }}
-                              className="flex items-center gap-1 px-2 py-1 mr-2 text-xs font-mono text-primary hover:text-green-400 border border-primary/20 rounded bg-primary/10 hover:bg-green-400/10 transition-colors"
-                              title="Complete all missions in group"
-                            >
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-                              <span>Done</span>
-                            </button>
                             </div>
                             {!isCollapsed && (
                               <div className="px-2 pb-2 space-y-2">
@@ -2601,6 +2593,16 @@ export default function QuestsPage() {
                                 ))}
                               </div>
                             )}
+                            <div className="px-3 pb-2">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleDoneGroup(group.missions); }}
+                                className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                                title="Complete all missions in group"
+                              >
+                                Done
+                              </button>
+                            </div>
                           </div>
                         </DraggableVisualItem>
                       );
@@ -2709,15 +2711,6 @@ export default function QuestsPage() {
                               );
                             })()}
                           </button>
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); handleUndoGroup(group.missions); }}
-                            className="flex items-center gap-1 px-2 py-1 mr-2 text-xs font-mono text-primary hover:text-yellow-400 border border-primary/20 rounded bg-primary/10 hover:bg-yellow-400/10 transition-colors"
-                            title="Undo all missions in group"
-                          >
-                            <Undo2 className="h-3.5 w-3.5" />
-                            <span>Undo</span>
-                          </button>
                           </div>
                           {!isCollapsed && (
                             <div className="px-2 pb-2 space-y-2">
@@ -2738,6 +2731,17 @@ export default function QuestsPage() {
                               ))}
                             </div>
                           )}
+                          <div className="px-3 pb-2">
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); handleUndoGroup(group.missions); }}
+                              className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5"
+                              title="Undo all missions in group"
+                            >
+                              <Undo2 className="h-3 w-3" />
+                              Undo
+                            </button>
+                          </div>
                         </div>
                       </DraggableVisualItem>
                     );
@@ -2839,15 +2843,6 @@ export default function QuestsPage() {
                               );
                             })()}
                           </button>
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); handleDoneGroup(group.missions); }}
-                            className="flex items-center gap-1 px-2 py-1 mr-2 text-xs font-mono text-primary hover:text-green-400 border border-primary/20 rounded bg-primary/10 hover:bg-green-400/10 transition-colors"
-                            title="Complete all missions in group"
-                          >
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            <span>Done</span>
-                          </button>
                           </div>
                           {!isCollapsed && (
                             <div className="px-2 pb-2 space-y-2">
@@ -2873,6 +2868,16 @@ export default function QuestsPage() {
                               ))}
                             </div>
                           )}
+                          <div className="px-3 pb-2">
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); handleDoneGroup(group.missions); }}
+                              className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                              title="Complete all missions in group"
+                            >
+                              Done
+                            </button>
+                          </div>
                         </div>
                       </DraggableVisualItem>
                     );
