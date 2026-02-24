@@ -58,6 +58,23 @@ import BlueLightFilter from "./components/BlueLightFilter";
 const isTouchDevice = () =>
   typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 
+function setAccessCookie(value: string) {
+  document.cookie = `lyfeos_access=${value}; path=/; max-age=${365 * 24 * 60 * 60}; SameSite=Lax`;
+}
+
+function getAccessCookie(): boolean {
+  return document.cookie.split(';').some(c => c.trim().startsWith('lyfeos_access=true'));
+}
+
+function hasAccess(): boolean {
+  return localStorage.getItem('lyfeos_access') === 'true' || getAccessCookie();
+}
+
+function grantAccess() {
+  localStorage.setItem('lyfeos_access', 'true');
+  setAccessCookie('true');
+}
+
 function hideOAuthPreloader() {
   const el = document.getElementById('oauth-preloader');
   if (el) el.style.display = 'none';
@@ -209,16 +226,20 @@ function Router() {
     const searchParams = new URLSearchParams(window.location.search);
 
     if (searchParams.get('access') === 'beta') {
-      localStorage.setItem('lyfeos_access', 'true');
+      grantAccess();
       searchParams.delete('access');
       const cleanUrl = currentPath + (searchParams.toString() ? '?' + searchParams.toString() : '');
       window.history.replaceState({}, '', cleanUrl);
     }
 
-    const hasAccess = localStorage.getItem('lyfeos_access') === 'true';
+    if (isAuthenticated) {
+      grantAccess();
+    }
+
+    const userHasAccess = hasAccess();
     const isWaitlistPath = currentPath.startsWith('/waitlist');
 
-    if (!hasAccess && !isAuthenticated && !isWaitlistPath) {
+    if (!userHasAccess && !isAuthenticated && !isWaitlistPath) {
       navigate('/waitlist', { replace: true });
       return;
     }
@@ -252,7 +273,7 @@ function Router() {
       if (isAuthenticated) {
         console.log('Authenticated at root, redirecting to dashboard');
         navigate('/dashboard', { replace: true });
-      } else if (hasAccess) {
+      } else if (userHasAccess) {
         console.log('Not authenticated at root, redirecting to login');
         navigate('/login', { replace: true });
       } else {
