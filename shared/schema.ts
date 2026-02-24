@@ -1356,3 +1356,18 @@ export const insertSmartReminderSchema = createInsertSchema(smartReminders).omit
 
 export type SmartReminder = typeof smartReminders.$inferSelect;
 export type InsertSmartReminder = z.infer<typeof insertSmartReminderSchema>;
+
+export const waitlistEmails = pgTable("waitlist_emails", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  referralSource: text("referral_source"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertWaitlistEmailSchema = createInsertSchema(waitlistEmails).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type WaitlistEmail = typeof waitlistEmails.$inferSelect;
+export type InsertWaitlistEmail = z.infer<typeof insertWaitlistEmailSchema>;

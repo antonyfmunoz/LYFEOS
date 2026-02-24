@@ -29,7 +29,8 @@ import {
   userCategories, type UserCategory, type InsertUserCategory,
   ritualGroups, type RitualGroup, type InsertRitualGroup,
   userActivityEvents, type UserActivityEvent, type InsertUserActivityEvent,
-  smartReminders, type SmartReminder, type InsertSmartReminder
+  smartReminders, type SmartReminder, type InsertSmartReminder,
+  waitlistEmails, type WaitlistEmail
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, isNull, isNotNull, gt, lt, sql } from "drizzle-orm";
@@ -276,6 +277,9 @@ export interface IStorage {
   updateSmartReminderLastSent(id: number): Promise<void>;
   getAllEnabledSmartReminders(): Promise<SmartReminder[]>;
   initDefaultReminders(userId: number): Promise<SmartReminder[]>;
+
+  addWaitlistEmail(email: string, referralSource?: string): Promise<WaitlistEmail>;
+  getWaitlistEmail(email: string): Promise<WaitlistEmail | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2282,6 +2286,22 @@ export class DatabaseStorage implements IStorage {
       }
     }
     return this.getSmartReminders(userId);
+  }
+
+  async addWaitlistEmail(email: string, referralSource?: string): Promise<WaitlistEmail> {
+    const [entry] = await db.insert(waitlistEmails).values({
+      email: email.toLowerCase().trim(),
+      referralSource: referralSource || null,
+    }).onConflictDoUpdate({
+      target: waitlistEmails.email,
+      set: { referralSource: referralSource || null },
+    }).returning();
+    return entry;
+  }
+
+  async getWaitlistEmail(email: string): Promise<WaitlistEmail | undefined> {
+    const [entry] = await db.select().from(waitlistEmails).where(eq(waitlistEmails.email, email.toLowerCase().trim()));
+    return entry;
   }
 }
 

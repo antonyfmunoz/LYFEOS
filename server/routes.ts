@@ -7,6 +7,7 @@ import { registerQuestRoutes } from "./routes/quests";
 import { registerContentRoutes } from "./routes/content";
 import { registerGoalRoutes } from "./routes/goals";
 import { registerDocumentRoutes } from "./routes/documents";
+import { registerWaitlistRoutes } from "./routes/waitlist";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   registerAuthRoutes(app);
@@ -16,6 +17,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerGoalRoutes(app);
   registerDocumentRoutes(app);
   registerChatRoutes(app);
+  registerWaitlistRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;

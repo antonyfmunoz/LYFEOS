@@ -51,6 +51,8 @@ import SubscriptionPage from "./pages/SubscriptionPage";
 import LandingPage from "./pages/LandingPage";
 import RolodexPage from "./pages/RolodexPage";
 import DocumentVaultPage from "./pages/DocumentVaultPage";
+import WaitlistPage from "./pages/WaitlistPage";
+import WaitlistThankYouPage from "./pages/WaitlistThankYouPage";
 import BlueLightFilter from "./components/BlueLightFilter";
 
 const isTouchDevice = () =>
@@ -252,7 +254,7 @@ function Router() {
     }
     
     // Public paths that don't require auth
-    const publicPaths = ['/login', '/register', '/login-success'];
+    const publicPaths = ['/login', '/register', '/login-success', '/waitlist'];
     const exactPublicPaths = ['/subscription'];
     if (publicPaths.some(path => currentPath.startsWith(path)) || exactPublicPaths.includes(currentPath)) {
       return;
@@ -494,6 +496,9 @@ function Router() {
           </RootLayout>
         </ProtectedRoute>
       </Route>
+
+      <Route path="/waitlist/thank-you" component={WaitlistThankYouPage} />
+      <Route path="/waitlist" component={WaitlistPage} />
 
       <Route path="/subscription" component={LandingPage} />
 
