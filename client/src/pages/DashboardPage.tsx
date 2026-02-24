@@ -15,7 +15,6 @@ import { MarkdownEditor } from '@/components/ui/markdown-editor';
 import { CustomTimePicker } from '@/components/ui/custom-time-picker';
 import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 import EnhancedMissionWidget from '@/components/dashboard/EnhancedMissionWidget';
-import { DailyInitModal } from '@/components/dailyInit/DailyInitModal';
 import { useToast } from '@/hooks/use-toast';
 import { DraggableWidget, DraggableWidgetProps } from '@/components/ui/draggable-widget';
 import update from 'immutability-helper';
@@ -1595,7 +1594,6 @@ export default function DashboardPage() {
   return (
       <div className="dashboard-container pb-20">
         <PageTutorial steps={DASHBOARD_TOUR_STEPS} storageKey="dashboard" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} isLoading={isTutorialLoading} />
-        {!isTutorialActive && <DailyInitModal />}
         
         {/* Level-up modal - shows when user levels up */}
         <LevelUpModal 
