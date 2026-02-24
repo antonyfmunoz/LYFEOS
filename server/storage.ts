@@ -1086,6 +1086,7 @@ export class DatabaseStorage implements IStorage {
       timeCost: quest.timeCost,
       visionGoalId: quest.visionGoalId,
       ritualGroup: quest.ritualGroup,
+      linkedItems: quest.linkedItems as any,
     });
     
     return newQuest;
