@@ -1386,63 +1386,59 @@ export default function QuestsPage() {
                   <Link2 className="h-4 w-4" />
                   Link Documents / Folders
                 </Label>
-                {(allDocuments.length > 0 || allFolders.length > 0) ? (
-                  <div className="flex gap-2">
-                    <Select
-                      value=""
-                      onValueChange={(val) => {
-                        const [type, idStr] = val.split(":");
-                        const id = parseInt(idStr);
-                        if (createFormData.linkedItems.some(li => li.type === type && li.id === id)) return;
-                        const title = type === "document"
-                          ? allDocuments.find(d => d.id === id)?.title || "Untitled"
-                          : allFolders.find(f => f.id === id)?.name || "Untitled";
-                        setCreateFormData(prev => ({
-                          ...prev,
-                          linkedItems: [...prev.linkedItems, { type: type as "document" | "folder", id, title }],
-                        }));
-                      }}
-                    >
-                      <SelectTrigger className="bg-background/50 border-primary/30">
-                        <SelectValue placeholder="Select a document or folder..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {allDocuments.length > 0 && (
-                          <>
-                            <SelectItem value="__docs_header" disabled>
-                              <span className="font-semibold text-primary">Documents</span>
-                            </SelectItem>
-                            {allDocuments.map(doc => (
-                              <SelectItem key={`document:${doc.id}`} value={`document:${doc.id}`}>
-                                <span className="flex items-center gap-1.5">
-                                  <FileText className="h-3 w-3 text-primary" />
-                                  {doc.title}
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </>
-                        )}
-                        {allFolders.length > 0 && (
-                          <>
-                            <SelectItem value="__folders_header" disabled>
-                              <span className="font-semibold text-primary">Folders</span>
-                            </SelectItem>
-                            {allFolders.map(folder => (
-                              <SelectItem key={`folder:${folder.id}`} value={`folder:${folder.id}`}>
-                                <span className="flex items-center gap-1.5">
-                                  <FolderOpen className="h-3 w-3 text-primary" />
-                                  {folder.name}
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground">No documents or folders yet. Create them in the Document Vault to link here.</p>
-                )}
+                <Select
+                  value="none"
+                  onValueChange={(val) => {
+                    if (val === "none") return;
+                    const [type, idStr] = val.split(":");
+                    const id = parseInt(idStr);
+                    if (createFormData.linkedItems.some(li => li.type === type && li.id === id)) return;
+                    const title = type === "document"
+                      ? allDocuments.find(d => d.id === id)?.title || "Untitled"
+                      : allFolders.find(f => f.id === id)?.name || "Untitled";
+                    setCreateFormData(prev => ({
+                      ...prev,
+                      linkedItems: [...prev.linkedItems, { type: type as "document" | "folder", id, title }],
+                    }));
+                  }}
+                >
+                  <SelectTrigger className="bg-background/50 border-primary/30">
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {allDocuments.length > 0 && (
+                      <>
+                        <SelectItem value="__docs_header" disabled>
+                          <span className="font-semibold text-primary">Documents</span>
+                        </SelectItem>
+                        {allDocuments.map(doc => (
+                          <SelectItem key={`document:${doc.id}`} value={`document:${doc.id}`}>
+                            <span className="flex items-center gap-1.5">
+                              <FileText className="h-3 w-3 text-primary" />
+                              {doc.title}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+                    {allFolders.length > 0 && (
+                      <>
+                        <SelectItem value="__folders_header" disabled>
+                          <span className="font-semibold text-primary">Folders</span>
+                        </SelectItem>
+                        {allFolders.map(folder => (
+                          <SelectItem key={`folder:${folder.id}`} value={`folder:${folder.id}`}>
+                            <span className="flex items-center gap-1.5">
+                              <FolderOpen className="h-3 w-3 text-primary" />
+                              {folder.name}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
                 {createFormData.linkedItems.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-1">
                     {createFormData.linkedItems.map((item, idx) => (
@@ -1957,63 +1953,59 @@ export default function QuestsPage() {
                 <Link2 className="h-4 w-4" />
                 Link Documents / Folders
               </Label>
-              {(allDocuments.length > 0 || allFolders.length > 0) ? (
-                <div className="flex gap-2">
-                  <Select
-                    value=""
-                    onValueChange={(val) => {
-                      const [type, idStr] = val.split(":");
-                      const id = parseInt(idStr);
-                      if (editFormData.linkedItems.some(li => li.type === type && li.id === id)) return;
-                      const title = type === "document"
-                        ? allDocuments.find(d => d.id === id)?.title || "Untitled"
-                        : allFolders.find(f => f.id === id)?.name || "Untitled";
-                      setEditFormData(prev => ({
-                        ...prev,
-                        linkedItems: [...prev.linkedItems, { type: type as "document" | "folder", id, title }],
-                      }));
-                    }}
-                  >
-                    <SelectTrigger className="bg-background/50 border-primary/30">
-                      <SelectValue placeholder="Select a document or folder..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {allDocuments.length > 0 && (
-                        <>
-                          <SelectItem value="__docs_header" disabled>
-                            <span className="font-semibold text-primary">Documents</span>
-                          </SelectItem>
-                          {allDocuments.map(doc => (
-                            <SelectItem key={`document:${doc.id}`} value={`document:${doc.id}`}>
-                              <span className="flex items-center gap-1.5">
-                                <FileText className="h-3 w-3 text-primary" />
-                                {doc.title}
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </>
-                      )}
-                      {allFolders.length > 0 && (
-                        <>
-                          <SelectItem value="__folders_header" disabled>
-                            <span className="font-semibold text-primary">Folders</span>
-                          </SelectItem>
-                          {allFolders.map(folder => (
-                            <SelectItem key={`folder:${folder.id}`} value={`folder:${folder.id}`}>
-                              <span className="flex items-center gap-1.5">
-                                <FolderOpen className="h-3 w-3 text-primary" />
-                                {folder.name}
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">No documents or folders yet. Create them in the Document Vault to link here.</p>
-              )}
+              <Select
+                value="none"
+                onValueChange={(val) => {
+                  if (val === "none") return;
+                  const [type, idStr] = val.split(":");
+                  const id = parseInt(idStr);
+                  if (editFormData.linkedItems.some(li => li.type === type && li.id === id)) return;
+                  const title = type === "document"
+                    ? allDocuments.find(d => d.id === id)?.title || "Untitled"
+                    : allFolders.find(f => f.id === id)?.name || "Untitled";
+                  setEditFormData(prev => ({
+                    ...prev,
+                    linkedItems: [...prev.linkedItems, { type: type as "document" | "folder", id, title }],
+                  }));
+                }}
+              >
+                <SelectTrigger className="bg-background/50 border-primary/30">
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {allDocuments.length > 0 && (
+                    <>
+                      <SelectItem value="__docs_header" disabled>
+                        <span className="font-semibold text-primary">Documents</span>
+                      </SelectItem>
+                      {allDocuments.map(doc => (
+                        <SelectItem key={`document:${doc.id}`} value={`document:${doc.id}`}>
+                          <span className="flex items-center gap-1.5">
+                            <FileText className="h-3 w-3 text-primary" />
+                            {doc.title}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                  {allFolders.length > 0 && (
+                    <>
+                      <SelectItem value="__folders_header" disabled>
+                        <span className="font-semibold text-primary">Folders</span>
+                      </SelectItem>
+                      {allFolders.map(folder => (
+                        <SelectItem key={`folder:${folder.id}`} value={`folder:${folder.id}`}>
+                          <span className="flex items-center gap-1.5">
+                            <FolderOpen className="h-3 w-3 text-primary" />
+                            {folder.name}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
               {editFormData.linkedItems.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {editFormData.linkedItems.map((item, idx) => (
