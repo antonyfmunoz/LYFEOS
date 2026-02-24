@@ -275,11 +275,13 @@ export default function QuestsPage() {
   const { data: allDocuments = [] } = useQuery<{ id: number; title: string }[]>({
     queryKey: ['/api/documents'],
     enabled: !!user,
+    staleTime: 0,
   });
 
   const { data: allFolders = [] } = useQuery<{ id: number; name: string }[]>({
     queryKey: ['/api/folders'],
     enabled: !!user,
+    staleTime: 0,
   });
 
   const [localCategoryOverrides, setLocalCategoryOverrides] = useState<UserCategoryOption[] | null>(null);
