@@ -60,14 +60,19 @@ export function registerDocumentRoutes(app: Express): void {
         await storage.updateFolder(child.id, { parentId: existing.parentId });
       }
       await storage.deleteFolder(id);
-      await db.execute(sql`
-        UPDATE quests SET linked_items = (
-          SELECT COALESCE(jsonb_agg(item), '[]'::jsonb)
-          FROM jsonb_array_elements(linked_items) AS item
-          WHERE NOT (item->>'type' = 'folder' AND (item->>'id')::int = ${id})
-        )
-        WHERE linked_items @> ${JSON.stringify([{ type: "folder", id }])}::jsonb
-      `);
+      try {
+        await db.execute(sql`
+          UPDATE quests SET linked_items = (
+            SELECT COALESCE(jsonb_agg(item), '[]'::jsonb)
+            FROM jsonb_array_elements(linked_items) AS item
+            WHERE NOT (item->>'type' = 'folder' AND (item->>'id')::int = ${id})
+          )
+          WHERE linked_items::text LIKE ${'%"type": "folder"%'}
+            AND linked_items::text LIKE ${'%"id": ' + id + '%'}
+        `);
+      } catch (e) {
+        console.error("Failed to clean up linked items for folder", id, e);
+      }
       return res.json({ success: true });
     } catch (error) {
       return res.status(500).json({ error: "Failed to delete folder" });
@@ -138,14 +143,19 @@ export function registerDocumentRoutes(app: Express): void {
       const existing = await storage.getDocument(id);
       if (!existing || existing.userId !== req.session.userId!) return res.status(404).json({ error: "Document not found" });
       await storage.deleteDocument(id);
-      await db.execute(sql`
-        UPDATE quests SET linked_items = (
-          SELECT COALESCE(jsonb_agg(item), '[]'::jsonb)
-          FROM jsonb_array_elements(linked_items) AS item
-          WHERE NOT (item->>'type' = 'document' AND (item->>'id')::int = ${id})
-        )
-        WHERE linked_items @> ${JSON.stringify([{ type: "document", id }])}::jsonb
-      `);
+      try {
+        await db.execute(sql`
+          UPDATE quests SET linked_items = (
+            SELECT COALESCE(jsonb_agg(item), '[]'::jsonb)
+            FROM jsonb_array_elements(linked_items) AS item
+            WHERE NOT (item->>'type' = 'document' AND (item->>'id')::int = ${id})
+          )
+          WHERE linked_items::text LIKE ${'%"type": "document"%'}
+            AND linked_items::text LIKE ${'%"id": ' + id + '%'}
+        `);
+      } catch (e) {
+        console.error("Failed to clean up linked items for document", id, e);
+      }
       return res.json({ success: true });
     } catch (error) {
       return res.status(500).json({ error: "Failed to delete document" });
