@@ -129,9 +129,11 @@ export default function DocumentVaultPage() {
     fetchDeletedItems();
   }, [fetchDeletedItems]);
 
-  const refetchAll = () => {
-    queryClient.refetchQueries({ queryKey: ['/api/folders'] });
-    queryClient.refetchQueries({ queryKey: ['/api/documents'] });
+  const refetchAll = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['/api/folders'] }),
+      queryClient.invalidateQueries({ queryKey: ['/api/documents'] }),
+    ]);
   };
 
   const createFolder = useMutation({
@@ -261,18 +263,26 @@ export default function DocumentVaultPage() {
 
   const restoreDocument = useMutation({
     mutationFn: (id: number) =>
-      apiRequest(`/api/documents/${id}/restore`, { method: 'POST' }),
+      apiRequest<Document>(`/api/documents/${id}/restore`, { method: 'POST' }),
     onMutate: (id) => {
+      const restoredDoc = deletedItems.documents.find(d => d.id === id);
       setDeletedItems(prev => ({ ...prev, documents: prev.documents.filter(d => d.id !== id) }));
+      if (restoredDoc) {
+        setLocalDocs(prev => [...prev, { ...restoredDoc, deletedAt: null } as any]);
+      }
     },
     onSettled: () => { refetchAll(); fetchDeletedItems(); },
   });
 
   const restoreFolder = useMutation({
     mutationFn: (id: number) =>
-      apiRequest(`/api/folders/${id}/restore`, { method: 'POST' }),
+      apiRequest<FolderType>(`/api/folders/${id}/restore`, { method: 'POST' }),
     onMutate: (id) => {
+      const restoredFolder = deletedItems.folders.find(f => f.id === id);
       setDeletedItems(prev => ({ ...prev, folders: prev.folders.filter(f => f.id !== id) }));
+      if (restoredFolder) {
+        setLocalFolders(prev => [...prev, { ...restoredFolder, deletedAt: null } as any]);
+      }
     },
     onSettled: () => { refetchAll(); fetchDeletedItems(); },
   });
