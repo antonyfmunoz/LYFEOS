@@ -116,9 +116,16 @@ export default function DocumentVaultPage() {
     }
   }, [documents, folders]);
 
-  const refetchAll = () => {
+  const refetchAll = async () => {
     queryClient.refetchQueries({ queryKey: ['/api/folders'] });
     queryClient.refetchQueries({ queryKey: ['/api/documents'] });
+    try {
+      const res = await fetch('/api/deleted-items', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        queryClient.setQueryData(['/api/deleted-items'], data);
+      }
+    } catch {}
   };
 
   const createFolder = useMutation({
@@ -176,10 +183,7 @@ export default function DocumentVaultPage() {
       if (context?.prevFolders) setLocalFolders(context.prevFolders);
       if (context?.prevDocs) setLocalDocs(context.prevDocs);
     },
-    onSettled: () => {
-      refetchAll();
-      queryClient.refetchQueries({ queryKey: ['/api/deleted-items'] });
-    },
+    onSettled: refetchAll,
   });
 
   const createDocument = useMutation({
@@ -248,10 +252,7 @@ export default function DocumentVaultPage() {
         setViewMode(context.prevViewMode);
       }
     },
-    onSettled: () => {
-      refetchAll();
-      queryClient.refetchQueries({ queryKey: ['/api/deleted-items'] });
-    },
+    onSettled: refetchAll,
   });
 
   const toggleFavoriteDoc = useMutation({
