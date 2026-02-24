@@ -277,8 +277,8 @@ export default function DocumentVaultPage() {
 
   const { data: deletedItems, refetch: refetchDeleted } = useQuery<{ documents: Document[]; folders: FolderType[] }>({
     queryKey: ['/api/deleted-items'],
-    enabled: !!user && showDeletedSection,
-    staleTime: 0,
+    enabled: !!user,
+    staleTime: 30000,
   });
 
   const refetchAllWithDeleted = () => {
