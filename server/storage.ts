@@ -906,7 +906,9 @@ export class DatabaseStorage implements IStorage {
             isNull(quests.deletedAt)
           )
         );
-        const child = childQuests.find(c => c.id !== quest.id);
+        const child = childQuests
+          .filter(c => c.id !== quest.id && c.id > quest.id)
+          .sort((a, b) => b.id - a.id)[0];
         if (child) {
           await db.delete(quests).where(eq(quests.id, child.id));
         }
