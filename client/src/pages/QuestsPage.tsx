@@ -164,14 +164,17 @@ const MISSION_CATEGORIES = [
   { value: "event", label: "Event" },
 ];
 
-function DroppableSection({ section, onDropQuest, children, className }: { section: string; onDropQuest: (item: DragItem, targetSection: string) => void; children: React.ReactNode; className?: string }) {
+function DroppableSection({ section, onDropQuest, onDropGroup, children, className }: { section: string; onDropQuest: (item: DragItem, targetSection: string) => void; onDropGroup?: (item: VisualDragItem, targetSection: string) => void; children: React.ReactNode; className?: string }) {
   const dropRef = useRef<HTMLDivElement>(null);
   const [{ isOver, canDrop }, drop] = useDrop({
-    accept: QUEST_DND_TYPE,
-    canDrop: (item: DragItem) => item.section !== section,
-    drop: (item: DragItem) => {
-      if (item.section !== section) {
-        onDropQuest(item, section);
+    accept: [QUEST_DND_TYPE, VISUAL_ITEM_DND_TYPE],
+    canDrop: (item: any) => item.section !== section,
+    drop: (item: any) => {
+      if (item.section === section) return;
+      if (item.type === VISUAL_ITEM_DND_TYPE && onDropGroup) {
+        onDropGroup(item as VisualDragItem, section);
+      } else if (item.type === QUEST_DND_TYPE) {
+        onDropQuest(item as DragItem, section);
       }
     },
     collect: (monitor: any) => ({
@@ -978,6 +981,51 @@ export default function QuestsPage() {
       toast({ title: "Failed to move mission", variant: "destructive" });
     }
   }, [updateQuest, toggleQuestCompletion, handleDeleteMission, handleRestoreMission, refetchQuests, fetchArchivedQuests, toast]);
+
+  const handleCrossSectionGroupDrop = useCallback(async (item: VisualDragItem, targetSection: string) => {
+    const { missionIds, section: fromSection } = item;
+    if (fromSection === targetSection || !missionIds.length) return;
+
+    const allQuests = [...quests];
+    const archivedList = archivedQuests || [];
+    const combined = [...allQuests, ...archivedList];
+    const groupQuests = combined.filter(q => missionIds.includes(String(q.id)));
+    if (!groupQuests.length) return;
+
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    try {
+      for (const quest of groupQuests) {
+        const questId = String(quest.id);
+        if (targetSection === 'today') {
+          if (fromSection === 'terminated') await handleRestoreMission(quest.id);
+          if (quest.completed) await toggleQuestCompletion(questId);
+          await updateQuest(questId, { startDate: todayStr, endDate: todayStr, category: '' });
+        } else if (targetSection === 'upcoming') {
+          if (fromSection === 'terminated') await handleRestoreMission(quest.id);
+          if (quest.completed) await toggleQuestCompletion(questId);
+          const tomorrow = new Date(now);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+          await updateQuest(questId, { startDate: quest.startDate || tomorrowStr, endDate: quest.endDate || '', category: '' });
+        } else if (targetSection === 'completed') {
+          if (fromSection === 'terminated') await handleRestoreMission(quest.id);
+          if (!quest.completed) await toggleQuestCompletion(questId);
+        } else if (targetSection === 'inbox') {
+          if (fromSection === 'terminated') await handleRestoreMission(quest.id);
+          if (quest.completed) await toggleQuestCompletion(questId);
+          await updateQuest(questId, { category: 'todo', startDate: '', endDate: '', startTime: '', endTime: '' });
+        } else if (targetSection === 'terminated') {
+          await handleDeleteMission(quest);
+        }
+      }
+      await refetchQuests();
+      await fetchArchivedQuests();
+    } catch (err) {
+      toast({ title: "Failed to move group", variant: "destructive" });
+    }
+  }, [quests, archivedQuests, updateQuest, toggleQuestCompletion, handleDeleteMission, handleRestoreMission, refetchQuests, fetchArchivedQuests, toast]);
 
   const openEditDialog = (quest: Quest) => {
     setEditingQuest(quest);
@@ -2254,7 +2302,7 @@ export default function QuestsPage() {
         </DialogContent>
       </Dialog>
       <div data-tour="today-missions">
-      <DroppableSection section="today" onDropQuest={handleCrossSectionDrop} className="mb-6">
+      <DroppableSection section="today" onDropQuest={handleCrossSectionDrop} onDropGroup={handleCrossSectionGroupDrop} className="mb-6">
       <Collapsible open={todayExpanded} onOpenChange={setTodayExpanded}>
         <div className="glassmorphic rounded-xl overflow-hidden neon-border">
           <div className="p-3 flex items-center justify-between">
@@ -2413,7 +2461,7 @@ export default function QuestsPage() {
       </div>
       
       <div data-tour="upcoming-missions">
-      <DroppableSection section="upcoming" onDropQuest={handleCrossSectionDrop} className="mb-6">
+      <DroppableSection section="upcoming" onDropQuest={handleCrossSectionDrop} onDropGroup={handleCrossSectionGroupDrop} className="mb-6">
         <Collapsible open={upcomingExpanded} onOpenChange={setUpcomingExpanded}>
           <div className="glassmorphic rounded-xl overflow-hidden neon-border">
             <div className="p-3 flex items-center justify-between">
@@ -2544,7 +2592,7 @@ export default function QuestsPage() {
       </div>
       
       {/* Completed Missions */}
-      <DroppableSection section="completed" onDropQuest={handleCrossSectionDrop} className="mb-6">
+      <DroppableSection section="completed" onDropQuest={handleCrossSectionDrop} onDropGroup={handleCrossSectionGroupDrop} className="mb-6">
       <Collapsible open={completedExpanded} onOpenChange={setCompletedExpanded}>
         <div className="glassmorphic rounded-xl overflow-hidden neon-border" data-tour="completed-missions">
           <div className="p-3 flex items-center justify-between">
@@ -2664,7 +2712,7 @@ export default function QuestsPage() {
       </DroppableSection>
       
       <div data-tour="inbox-missions">
-      <DroppableSection section="inbox" onDropQuest={handleCrossSectionDrop} className="mb-6">
+      <DroppableSection section="inbox" onDropQuest={handleCrossSectionDrop} onDropGroup={handleCrossSectionGroupDrop} className="mb-6">
         <Collapsible open={inboxExpanded} onOpenChange={setInboxExpanded}>
           <div className="glassmorphic rounded-xl overflow-hidden neon-border">
             <div className="p-3 flex items-center justify-between">
@@ -2794,7 +2842,7 @@ export default function QuestsPage() {
       </div>
 
       {/* Terminated Missions - recently deleted, held for 24 hours */}
-      <DroppableSection section="terminated" onDropQuest={handleCrossSectionDrop} className="mb-6">
+      <DroppableSection section="terminated" onDropQuest={handleCrossSectionDrop} onDropGroup={handleCrossSectionGroupDrop} className="mb-6">
       <Collapsible open={archivedExpanded} onOpenChange={setArchivedExpanded}>
         <div className="glassmorphic rounded-xl overflow-hidden neon-border" data-tour="terminated-missions">
           <div className="p-3 flex items-center justify-between">
