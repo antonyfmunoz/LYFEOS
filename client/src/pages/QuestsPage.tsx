@@ -1151,6 +1151,32 @@ export default function QuestsPage() {
     toggleQuestCompletion(quest.id);
   };
 
+  const handleDoneGroup = useCallback(async (missions: Quest[]) => {
+    const incomplete = missions.filter(q => !q.completed);
+    if (!incomplete.length) return;
+    try {
+      for (const quest of incomplete) {
+        await toggleQuestCompletion(quest.id);
+      }
+      await refetchQuests();
+    } catch (err) {
+      toast({ title: "Failed to complete group", variant: "destructive" });
+    }
+  }, [toggleQuestCompletion, refetchQuests, toast]);
+
+  const handleUndoGroup = useCallback(async (missions: Quest[]) => {
+    const completed = missions.filter(q => q.completed);
+    if (!completed.length) return;
+    try {
+      for (const quest of completed) {
+        await toggleQuestCompletion(quest.id);
+      }
+      await refetchQuests();
+    } catch (err) {
+      toast({ title: "Failed to undo group", variant: "destructive" });
+    }
+  }, [toggleQuestCompletion, refetchQuests, toast]);
+
   return (
     <div className="pb-20">
       <PageTutorial steps={MISSIONS_TOUR_STEPS} storageKey="missions" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} isLoading={isTutorialLoading} />
@@ -2370,10 +2396,11 @@ export default function QuestsPage() {
                     return (
                       <DraggableVisualItem key={groupKey} index={visualIdx} section="today" ritualGroup={group.ritualGroup} missionIds={missionIds} onMoveVisualItem={moveVisualItem}>
                         <div className="rounded-lg border border-primary/20 bg-primary/5 overflow-hidden pl-5">
+                          <div className="flex items-center">
                           <button
                             type="button"
                             onClick={() => toggleRitualGroupCollapsed(groupKey)}
-                            className="w-full px-3 py-2"
+                            className="flex-1 px-3 py-2 text-left"
                           >
                             <div className="flex items-center gap-2">
                               <Repeat className="h-4 w-4 text-primary" />
@@ -2397,6 +2424,15 @@ export default function QuestsPage() {
                               );
                             })()}
                           </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleDoneGroup(group.missions); }}
+                            className="px-2 py-2 mr-2 text-primary hover:text-green-400 transition-colors"
+                            title="Complete all missions in group"
+                          >
+                            <CheckCircle2 className="h-5 w-5" />
+                          </button>
+                          </div>
                           {!isCollapsed && (
                             <div className="px-2 pb-2 space-y-2">
                               {group.missions.map((quest, idx) => (
@@ -2502,10 +2538,11 @@ export default function QuestsPage() {
                       return (
                         <DraggableVisualItem key={groupKey} index={visualIdx} section="upcoming" ritualGroup={group.ritualGroup} missionIds={missionIds} onMoveVisualItem={moveVisualItem}>
                           <div className="rounded-lg border border-primary/20 bg-primary/5 overflow-hidden pl-5">
+                            <div className="flex items-center">
                             <button
                               type="button"
                               onClick={() => toggleRitualGroupCollapsed(groupKey)}
-                              className="w-full px-3 py-2"
+                              className="flex-1 px-3 py-2 text-left"
                             >
                               <div className="flex items-center gap-2">
                                 <Repeat className="h-4 w-4 text-primary" />
@@ -2529,6 +2566,15 @@ export default function QuestsPage() {
                                 );
                               })()}
                             </button>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); handleDoneGroup(group.missions); }}
+                              className="px-2 py-2 mr-2 text-primary hover:text-green-400 transition-colors"
+                              title="Complete all missions in group"
+                            >
+                              <CheckCircle2 className="h-5 w-5" />
+                            </button>
+                            </div>
                             {!isCollapsed && (
                               <div className="px-2 pb-2 space-y-2">
                                 {group.missions.map((quest, idx) => (
@@ -2633,10 +2679,11 @@ export default function QuestsPage() {
                     return (
                       <DraggableVisualItem key={groupKey} index={visualIdx} section="completed" ritualGroup={group.ritualGroup} missionIds={missionIds} onMoveVisualItem={moveVisualItem}>
                         <div className="rounded-lg border border-primary/20 bg-primary/5 overflow-hidden pl-5">
+                          <div className="flex items-center">
                           <button
                             type="button"
                             onClick={() => toggleRitualGroupCollapsed(groupKey)}
-                            className="w-full px-3 py-2"
+                            className="flex-1 px-3 py-2 text-left"
                           >
                             <div className="flex items-center gap-2">
                               <Repeat className="h-4 w-4 text-primary" />
@@ -2660,6 +2707,15 @@ export default function QuestsPage() {
                               );
                             })()}
                           </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleUndoGroup(group.missions); }}
+                            className="px-2 py-2 mr-2 text-primary hover:text-yellow-400 transition-colors"
+                            title="Undo all missions in group"
+                          >
+                            <Undo2 className="h-5 w-5" />
+                          </button>
+                          </div>
                           {!isCollapsed && (
                             <div className="px-2 pb-2 space-y-2">
                               {group.missions.map((quest, idx) => (
@@ -2752,10 +2808,11 @@ export default function QuestsPage() {
                     return (
                       <DraggableVisualItem key={groupKey} index={visualIdx} section="inbox" ritualGroup={group.ritualGroup} missionIds={missionIds} onMoveVisualItem={moveVisualItem}>
                         <div className="rounded-lg border border-primary/20 bg-primary/5 overflow-hidden pl-5">
+                          <div className="flex items-center">
                           <button
                             type="button"
                             onClick={() => toggleRitualGroupCollapsed(groupKey)}
-                            className="w-full px-3 py-2"
+                            className="flex-1 px-3 py-2 text-left"
                           >
                             <div className="flex items-center gap-2">
                               <Repeat className="h-4 w-4 text-primary" />
@@ -2779,6 +2836,15 @@ export default function QuestsPage() {
                               );
                             })()}
                           </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleDoneGroup(group.missions); }}
+                            className="px-2 py-2 mr-2 text-primary hover:text-green-400 transition-colors"
+                            title="Complete all missions in group"
+                          >
+                            <CheckCircle2 className="h-5 w-5" />
+                          </button>
+                          </div>
                           {!isCollapsed && (
                             <div className="px-2 pb-2 space-y-2">
                               {group.missions.map((quest, idx) => (
