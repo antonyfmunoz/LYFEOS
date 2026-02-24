@@ -1403,10 +1403,10 @@ export default function QuestsPage() {
                   }}
                 >
                   <SelectTrigger className="bg-background/50 border-primary/30">
-                    <SelectValue placeholder="None" />
+                    <SelectValue placeholder={createFormData.linkedItems.length > 0 ? "Add document or folder..." : "None"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="none">{createFormData.linkedItems.length > 0 ? "Add document or folder..." : "None"}</SelectItem>
                     {allDocuments.length > 0 && (
                       <>
                         <SelectItem value="__docs_header" disabled>
@@ -1970,10 +1970,10 @@ export default function QuestsPage() {
                 }}
               >
                 <SelectTrigger className="bg-background/50 border-primary/30">
-                  <SelectValue placeholder="None" />
+                  <SelectValue placeholder={editFormData.linkedItems.length > 0 ? "Add document or folder..." : "None"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="none">{editFormData.linkedItems.length > 0 ? "Add document or folder..." : "None"}</SelectItem>
                   {allDocuments.length > 0 && (
                     <>
                       <SelectItem value="__docs_header" disabled>
