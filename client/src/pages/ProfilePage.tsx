@@ -343,11 +343,13 @@ export default function ProfilePage() {
       if (loopingRef.current) {
         setTimeout(() => speakAffirmation(text), 500);
       } else {
+        stopThetaBeats();
         setIsPlayingAffirmation(false);
       }
     };
     
     utterance.onerror = () => {
+      stopThetaBeats();
       setIsPlayingAffirmation(false);
     };
     
