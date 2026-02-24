@@ -845,8 +845,9 @@ export const folders = pgTable("folders", {
   userId: integer("user_id").notNull().references(() => users.id),
   name: text("name").notNull(),
   description: text("description"),
-  parentId: integer("parent_id"), // null for root folders
+  parentId: integer("parent_id"),
   favorite: boolean("favorite").default(false).notNull(),
+  deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -859,9 +860,10 @@ export const documents = pgTable("documents", {
   title: text("title").notNull(),
   content: text("content").notNull(),
   description: text("description"),
-  format: text("format").default("markdown").notNull(), // markdown, text, etc.
+  format: text("format").default("markdown").notNull(),
   favorite: boolean("favorite").default(false).notNull(),
-  tags: text("tags").array(), // Array of tags
+  tags: text("tags").array(),
+  deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -895,6 +897,7 @@ export const documentRelations = relations(documents, ({ one }) => ({
 // Insert schema for Folder
 export const insertFolderSchema = createInsertSchema(folders).omit({
   id: true,
+  deletedAt: true,
   createdAt: true,
   updatedAt: true,
 });
@@ -902,6 +905,7 @@ export const insertFolderSchema = createInsertSchema(folders).omit({
 // Insert schema for Document
 export const insertDocumentSchema = createInsertSchema(documents).omit({
   id: true,
+  deletedAt: true,
   createdAt: true,
   updatedAt: true,
 });
