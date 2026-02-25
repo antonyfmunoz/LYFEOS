@@ -183,10 +183,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } else {
             console.log("Checking OAuth redirect result for:", redirectPending);
             try {
-              await new Promise(r => setTimeout(r, 500));
+              console.log("[OAuth] Waiting 1.5s for Firebase to hydrate from IndexedDB...");
+              await new Promise(r => setTimeout(r, 1500));
+              console.log("[OAuth] auth.currentUser after hydration wait:", auth.currentUser?.email || null);
+
               const redirectResult = await checkRedirectResult();
               if (redirectResult && redirectResult.user) {
-                console.log("OAuth redirect successful, processing result");
+                console.log("[OAuth] getRedirectResult succeeded:", redirectResult.user.email);
                 const savedMode = localStorage.getItem('lyfeos-oauth-mode') as 'login' | 'register' | null;
                 localStorage.removeItem('lyfeos-oauth-mode');
                 localStorage.removeItem('lyfeos-oauth-mode-ts');
@@ -194,37 +197,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 return;
               }
               
-              console.log("getRedirectResult returned null, checking Firebase auth state fallback...");
+              console.log("[OAuth] getRedirectResult returned null, trying onAuthStateChanged fallback (8s)...");
               let firebaseUserFromState = auth.currentUser || firebaseUserRef.current;
+
               if (!firebaseUserFromState) {
+                let gotInitialNull = false;
                 firebaseUserFromState = await new Promise<FirebaseUser | null>((resolve) => {
-                  const timeout = setTimeout(() => resolve(null), 5000);
+                  const timeout = setTimeout(() => {
+                    console.log("[OAuth] onAuthStateChanged timed out after 8s");
+                    resolve(null);
+                  }, 8000);
                   const unsub = onAuthStateChanged(auth, (fbUser) => {
                     if (fbUser) {
+                      console.log("[OAuth] onAuthStateChanged got user:", fbUser.email);
                       clearTimeout(timeout);
                       unsub();
                       resolve(fbUser);
+                    } else if (!gotInitialNull) {
+                      gotInitialNull = true;
+                      console.log("[OAuth] onAuthStateChanged initial null, still waiting...");
                     }
                   });
                 });
               }
 
               if (!firebaseUserFromState) {
-                console.log("First auth state check returned null, retrying with longer wait...");
-                firebaseUserFromState = await new Promise<FirebaseUser | null>((resolve) => {
-                  const timeout = setTimeout(() => resolve(null), 5000);
-                  const unsub = onAuthStateChanged(auth, (fbUser) => {
-                    if (fbUser) {
-                      clearTimeout(timeout);
-                      unsub();
-                      resolve(fbUser);
-                    }
-                  });
-                });
+                console.log("[OAuth] Still no user, final wait 3s then check auth.currentUser...");
+                await new Promise(r => setTimeout(r, 3000));
+                firebaseUserFromState = auth.currentUser || firebaseUserRef.current;
+                console.log("[OAuth] Final auth.currentUser check:", firebaseUserFromState?.email || null);
+              }
+
+              if (!firebaseUserFromState) {
+                console.log("[OAuth] Last resort: retry getRedirectResult...");
+                const retryResult = await checkRedirectResult();
+                if (retryResult && retryResult.user) {
+                  console.log("[OAuth] Retry getRedirectResult succeeded:", retryResult.user.email);
+                  const savedMode = localStorage.getItem('lyfeos-oauth-mode') as 'login' | 'register' | null;
+                  localStorage.removeItem('lyfeos-oauth-mode');
+                  localStorage.removeItem('lyfeos-oauth-mode-ts');
+                  await processOAuthResult(retryResult, savedMode || 'login');
+                  return;
+                }
               }
               
               if (firebaseUserFromState) {
-                console.log("Firebase auth state has user after redirect, using fallback:", firebaseUserFromState.email);
+                console.log("[OAuth] Firebase user found via fallback:", firebaseUserFromState.email);
                 const savedMode = localStorage.getItem('lyfeos-oauth-mode') as 'login' | 'register' | null;
                 localStorage.removeItem('lyfeos-oauth-mode');
                 localStorage.removeItem('lyfeos-oauth-mode-ts');
@@ -234,7 +252,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 return;
               }
               
-              console.log("No Firebase user found after redirect, clearing redirect state");
+              console.log("[OAuth] No Firebase user found after all attempts, giving up");
               localStorage.removeItem('lyfeos-oauth-redirect-pending');
               localStorage.removeItem('lyfeos-oauth-mode');
               localStorage.removeItem('lyfeos-oauth-mode-ts');
@@ -245,7 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 duration: 5000,
               });
             } catch (err: any) {
-              console.error("OAuth redirect processing failed:", err);
+              console.error("[OAuth] Redirect processing failed:", err);
               localStorage.removeItem('lyfeos-oauth-redirect-pending');
               localStorage.removeItem('lyfeos-oauth-mode');
               localStorage.removeItem('lyfeos-oauth-mode-ts');
