@@ -93,31 +93,34 @@ async function captureAffirmation(page: any, suffix: string) {
 }
 
 async function captureOnboarding(page: any, suffix: string) {
-  let attempts = 0;
-  while (attempts < 6) {
-    console.log(`Navigating to /onboarding?mission=1 (attempt ${attempts + 1})...`);
-    await page.goto(`${BASE_URL}/onboarding?mission=1`, { waitUntil: 'networkidle0', timeout: 30000 });
-    await new Promise(r => setTimeout(r, 3000));
+  console.log('Resetting onboarding status for demo user...');
+  await page.evaluate(() => {
+    return fetch('/api/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ onboardingCompleted: false, completedOnboardingMissions: [] }),
+    });
+  });
+  await new Promise(r => setTimeout(r, 1000));
 
-    const url = page.url();
-    if (!url.includes('/login') && !url.includes('/waitlist') && url.includes('/onboarding')) {
-      break;
-    }
-    attempts++;
-    console.log(`  Onboarding redirected to ${url}, re-authing...`);
-    await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'load', timeout: 30000 });
-    await new Promise(r => setTimeout(r, 2000));
-  }
+  console.log('Navigating to /onboarding via SPA pushState...');
+  await page.evaluate(() => {
+    window.history.pushState({}, '', '/onboarding');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+  await new Promise(r => setTimeout(r, 5000));
 
   try {
     await page.waitForFunction(
       () => {
         const body = document.body.innerText || '';
         return !body.includes('Loading...') && (
-          body.includes('Start') || body.includes('Mission') || body.includes('Know') || body.length > 200
+          body.includes('Start') || body.includes('Mission') || body.includes('Know') ||
+          body.includes('username') || body.includes('LYFEOS') && body.length > 200
         );
       },
-      { timeout: 15000 }
+      { timeout: 20000 }
     );
   } catch {
     console.log('  Onboarding content did not fully load, capturing anyway...');
@@ -128,6 +131,24 @@ async function captureOnboarding(page: any, suffix: string) {
   const name = `preview-onboarding${suffix}`;
   await page.screenshot({ path: `${OUTPUT_DIR}/${name}.png`, fullPage: false });
   console.log(`Saved ${name}.png (at: ${page.url()})`);
+
+  console.log('Restoring onboarding status for demo user...');
+  await page.evaluate(() => {
+    return fetch('/api/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ onboardingCompleted: true, completedOnboardingMissions: [0,1,2,3,4,5,6,7] }),
+    });
+  });
+  await new Promise(r => setTimeout(r, 500));
+
+  console.log('Navigating back to /dashboard...');
+  await page.evaluate(() => {
+    window.history.pushState({}, '', '/dashboard');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+  await new Promise(r => setTimeout(r, 2000));
 }
 
 async function captureSet(page: any, suffix: string) {

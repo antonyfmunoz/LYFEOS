@@ -184,7 +184,7 @@ function FAQItem({ q, a }: { q: string; a: string }) {
 }
 
 const PREVIEW_IMAGES: Record<string, { desktop: string; mobile: string }> = {
-  "Onboarding Start": { desktop: "/images/preview-onboarding.png", mobile: "/images/preview-onboarding.png" },
+  "Onboarding Start": { desktop: "/images/preview-onboarding.png", mobile: "/images/preview-onboarding-mobile.png" },
   "Dashboard Stats HUD": { desktop: "/images/preview-profile-stats.png", mobile: "/images/preview-profile-stats-mobile.png" },
   "Dashboard": { desktop: "/images/preview-dashboard.png", mobile: "/images/preview-dashboard-mobile.png" },
   "Character Affirmation": { desktop: "/images/preview-affirmation.png", mobile: "/images/preview-affirmation-mobile.png" },

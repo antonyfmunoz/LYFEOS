@@ -61,7 +61,8 @@ import {
   CheckCircle,
   Clock,
   Target,
-  Moon
+  Moon,
+  HelpCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -1594,6 +1595,58 @@ export default function ProfilePage() {
                   <div
                     className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
                       (userProfileData as any)?.blueLightFilter ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
+                    }`}
+                  ></div>
+                </button>
+              </div>
+            </div>
+            
+            {/* Tutorial Tooltips Reset */}
+            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <HelpCircle className="h-4 w-4 text-primary" />
+                <Label className="text-sm text-foreground">Tutorial Tooltips</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Re-enable the guided tutorial tooltips on all pages. They will appear again as you navigate through the app.
+              </p>
+              <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
+                <div className="flex items-center">
+                  <HelpCircle className="h-4 w-4 text-primary mr-2" />
+                  <span className="text-sm">Show Tutorials</span>
+                </div>
+                <button
+                  onClick={async () => {
+                    const currentCompleted: string[] = (userProfileData as any)?.completedTutorials || [];
+                    if (currentCompleted.length === 0) return;
+                    try {
+                      const userId = user?.id;
+                      if (userId) {
+                        const skipKey = `lyfeos-tutorials-all-skipped-${userId}`;
+                        localStorage.removeItem(skipKey);
+                        ['dashboard', 'missions', 'profile', 'chronilog', 'ai'].forEach(p => {
+                          localStorage.removeItem(`lyfeos-tutorial-done-${p}-${userId}`);
+                        });
+                      }
+                      await apiRequest("/api/profile", {
+                        method: "PATCH",
+                        body: JSON.stringify({ completedTutorials: [] }),
+                      });
+                      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+                      toast({ title: "Tutorials re-enabled", description: "Tutorial tooltips will appear as you navigate." });
+                    } catch {
+                      toast({ title: "Error", description: "Could not reset tutorials.", variant: "destructive" });
+                    }
+                  }}
+                  className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
+                    ((userProfileData as any)?.completedTutorials || []).length === 0 ? 'bg-primary/30' : 'bg-card'
+                  }`}
+                  aria-pressed={((userProfileData as any)?.completedTutorials || []).length === 0}
+                  role="switch"
+                >
+                  <div
+                    className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
+                      ((userProfileData as any)?.completedTutorials || []).length === 0 ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
                     }`}
                   ></div>
                 </button>
