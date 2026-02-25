@@ -196,7 +196,7 @@ function WaitlistForm({
       <button
         type="submit"
         disabled={isSubmitting}
-        className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 shrink-0 w-full sm:w-auto justify-center"
+        className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary/10 text-primary font-semibold hover:bg-primary/20 border border-primary transition-colors disabled:opacity-50 shrink-0 w-full sm:w-auto justify-center"
       >
         {isSubmitting ? (
           <>
@@ -289,7 +289,7 @@ export default function WaitlistPage() {
       <section>
         <div className="max-w-6xl mx-auto px-4 py-16 sm:py-20">
           <h2 className="font-orbitron text-2xl sm:text-3xl font-bold text-center mb-4">
-            You're Not Lazy. <span className="text-primary">You're Scattered.</span>
+            You're Not Lazy. You're Scattered.
           </h2>
           <p className="text-center text-muted-foreground mb-12 max-w-lg mx-auto text-sm">
             Sound familiar?
@@ -315,8 +315,7 @@ export default function WaitlistPage() {
       {/* ─── SOLUTION ─── */}
       <section className="max-w-6xl mx-auto px-4 py-16 sm:py-20">
         <h2 className="font-orbitron text-2xl sm:text-3xl font-bold text-center mb-4">
-          One System. Your Identity. Your Goals.{" "}
-          <span className="text-primary">Your Daily Actions.</span>
+          One System. Your Identity. Your Goals. Your Daily Actions.
         </h2>
         <p className="text-center text-muted-foreground mb-14 max-w-lg mx-auto text-sm">
           Everything you need in one place.
@@ -351,7 +350,7 @@ export default function WaitlistPage() {
       <section>
         <div className="max-w-6xl mx-auto px-4 py-16 sm:py-20">
           <h2 className="font-orbitron text-2xl sm:text-3xl font-bold text-center mb-14">
-            How It <span className="text-primary">Works</span>
+            How It Works
           </h2>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -376,7 +375,7 @@ export default function WaitlistPage() {
       {/* ─── FAQ ─── */}
       <section className="max-w-3xl mx-auto px-4 py-16 sm:py-20">
         <h2 className="font-orbitron text-2xl sm:text-3xl font-bold text-center mb-12">
-          Frequently Asked <span className="text-primary">Questions</span>
+          Frequently Asked Questions
         </h2>
         <div className="space-y-3">
           {FAQ_ITEMS.map((item) => (
@@ -389,7 +388,7 @@ export default function WaitlistPage() {
       <section>
         <div className="max-w-3xl mx-auto px-4 py-16 sm:py-20 text-center space-y-6">
           <h2 className="font-orbitron text-2xl sm:text-3xl font-bold">
-            Ready to Stop Being <span className="text-primary">Scattered?</span>
+            Ready to Stop Being Scattered?
           </h2>
           <p className="text-muted-foreground max-w-lg mx-auto">
             Be the first to know when LYFEOS launches. Join the waitlist today.
