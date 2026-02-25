@@ -1,5 +1,5 @@
 import { initializeApp, FirebaseApp } from "firebase/app";
-import { getAuth, Auth, Unsubscribe, NextOrObserver, User, connectAuthEmulator, setPersistence, browserLocalPersistence } from "firebase/auth";
+import { initializeAuth, Auth, Unsubscribe, NextOrObserver, User, connectAuthEmulator, indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence, browserPopupRedirectResolver } from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 
 function resolveProjectId(): string {
@@ -47,11 +47,10 @@ try {
   if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "undefined") {
     console.warn("Firebase API key not found. Firebase authentication will not be available.");
   } else {
-    // Initialize Firebase with persistence options
     app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    setPersistence(auth, browserLocalPersistence).catch((err) => {
-      console.warn("Failed to set Firebase auth persistence:", err);
+    auth = initializeAuth(app, {
+      persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence],
+      popupRedirectResolver: browserPopupRedirectResolver,
     });
     
     db = getFirestore(app);
