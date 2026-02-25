@@ -28,6 +28,10 @@ const initialStats: UserStats = {
     current: 100,
     max: 100,
   },
+  wealthTokens: {
+    current: 100,
+    max: 100,
+  },
   experience: {
     current: 0,
     max: 1000, // Level 1 threshold is 1000 XP

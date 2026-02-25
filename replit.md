@@ -1,7 +1,7 @@
 # LYFEOS - Gamified Life Operating System
 
 ## Overview
-LYFEOS is a gamified personal productivity and life management web application that transforms daily tasks, habits, and goals into a game-like experience. It features XP systems, levels, stats (Energy Points, Health Points, Time Tokens, Attention Tokens), quests, and an AI assistant. The application has a "Solo Leveling" anime-inspired aesthetic with dark themes, neon accents, and futuristic HUD-style interfaces. Its core purpose is to enhance user engagement and motivation in managing their life.
+LYFEOS is a gamified personal productivity and life management web application that transforms daily tasks, habits, and goals into a game-like experience. It features XP systems, levels, stats (Energy Points, Health Points, Wealth Tokens, Time Tokens, Attention Tokens), quests, and an AI assistant. The application has a "Solo Leveling" anime-inspired aesthetic with dark themes, neon accents, and futuristic HUD-style interfaces. Its core purpose is to enhance user engagement and motivation in managing their life.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -20,9 +20,9 @@ The application uses a dark theme with neon accents and a futuristic HUD-style i
 - **Authentication**: Email/password and optional OAuth (Firebase for Google/Apple/Facebook). Features include email verification (via Firebase Auth), password reset (via Firebase Auth), 2FA (email via Firebase email verification, phone via Firebase Phone Auth), rate limiting, security headers (Helmet), and Zod-based input validation. Server registration creates Firebase Auth users via Admin SDK alongside database users. Dual auth system: Firebase handles verification/reset flows, bcrypt validates login passwords in PostgreSQL.
 - **Key Data Models**: Users, UserStats, UserProfile, Quests (with repeat patterns, vision goal linkage, ritual groups, and linked documents/folders via JSONB `linkedItems` column), Onboarding Missions, VisionGoals (milestone-based with time horizons, rewards, and XP bonuses), UserCategories (custom, AI-described), CalendarEvents, MissionPages, KanbanBoards, Documents, Contacts, Spreadsheets, Canvases, Graphs.
 - **Gamification System**:
-    - **Player Stats**: Energy Points, Health Points, Time Tokens, Attention Tokens (all starting at 100/100, with specific reset and calculation logic). An Efficiency Score tracks daily performance.
+    - **Player Stats**: Energy Points, Health Points, Wealth Tokens, Time Tokens, Attention Tokens (all starting at 100/100, with specific reset and calculation logic). An Efficiency Score tracks daily performance.
     - **XP and Leveling**: Exponential growth curve across three tiers of levels (1-10, 11-50, 51-100) with increasing XP multipliers.
-    - **Stat Detail Pages**: Dedicated pages for Experience, Health, Efficiency, Energy, Time, and Attention, featuring real-time data fetching, recharts visualizations, time range selectors, and AI-powered insights.
+    - **Stat Detail Pages**: Dedicated pages for Experience, Health, Wealth, Efficiency, Energy, Time, and Attention, featuring real-time data fetching, recharts visualizations, time range selectors, and AI-powered insights.
 - **Tracker Page**: Renamed from "Analytics," it includes a Milestone Analytics widget for vision goal progress and recent completions.
 - **Document Vault**: A Google Docs + Google Drive hybrid feature. Users can create, edit (markdown), and organize documents in a nested folder system. Accessible from the Chronilog page widget and via `/document-vault` route. Features include folder navigation with breadcrumbs, search, favorites, move-to-folder, and inline markdown editing with preview. API routes in `server/routes/documents.ts`, page in `client/src/pages/DocumentVaultPage.tsx`.
 - **Progressive Web App (PWA)**: Includes a manifest, service worker for offline caching, an install prompt, and Firebase Cloud Messaging (FCM) for push notifications with token-based subscription management.

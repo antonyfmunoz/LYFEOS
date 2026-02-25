@@ -94,10 +94,10 @@ async function captureAffirmation(page: any, suffix: string) {
 
 async function captureOnboarding(page: any, suffix: string) {
   let attempts = 0;
-  while (attempts < 4) {
+  while (attempts < 6) {
     console.log(`Navigating to /onboarding?mission=1 (attempt ${attempts + 1})...`);
-    await page.goto(`${BASE_URL}/onboarding?mission=1`, { waitUntil: 'load', timeout: 30000 });
-    await new Promise(r => setTimeout(r, 4000));
+    await page.goto(`${BASE_URL}/onboarding?mission=1`, { waitUntil: 'networkidle0', timeout: 30000 });
+    await new Promise(r => setTimeout(r, 3000));
 
     const url = page.url();
     if (!url.includes('/login') && !url.includes('/waitlist') && url.includes('/onboarding')) {
@@ -108,6 +108,21 @@ async function captureOnboarding(page: any, suffix: string) {
     await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'load', timeout: 30000 });
     await new Promise(r => setTimeout(r, 2000));
   }
+
+  try {
+    await page.waitForFunction(
+      () => {
+        const body = document.body.innerText || '';
+        return !body.includes('Loading...') && (
+          body.includes('Start') || body.includes('Mission') || body.includes('Know') || body.length > 200
+        );
+      },
+      { timeout: 15000 }
+    );
+  } catch {
+    console.log('  Onboarding content did not fully load, capturing anyway...');
+  }
+  await new Promise(r => setTimeout(r, 2000));
 
   await hideTutorials(page);
   const name = `preview-onboarding${suffix}`;

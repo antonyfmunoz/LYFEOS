@@ -50,6 +50,8 @@ export const userStats = pgTable("user_stats", {
   energyPointsMax: integer("energy_points_max").notNull().default(100),
   healthPointsCurrent: integer("health_points_current").notNull().default(100),
   healthPointsMax: integer("health_points_max").notNull().default(100),
+  wealthTokensCurrent: integer("wealth_tokens_current").notNull().default(100),
+  wealthTokensMax: integer("wealth_tokens_max").notNull().default(100),
   attentionTokensCurrent: integer("attention_tokens_current").notNull().default(100),
   attentionTokensMax: integer("attention_tokens_max").notNull().default(100),
   experienceCurrent: integer("experience_current").notNull().default(0),

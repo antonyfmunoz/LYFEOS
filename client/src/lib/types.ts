@@ -15,6 +15,10 @@ export interface UserStats {
     current: number;
     max: number;
   };
+  wealthTokens: {
+    current: number;
+    max: number;
+  };
   experience: {
     current: number;
     max: number;
@@ -110,7 +114,7 @@ export interface MissionPage {
   date?: string; // format: "YYYY-MM-DD" - used for filtering by day
 }
 
-export type StatType = "attention" | "time" | "energy" | "health" | "experience" | "streak" | "efficiency";
+export type StatType = "attention" | "time" | "energy" | "health" | "wealth" | "experience" | "streak" | "efficiency";
 
 export type KanbanStatus = "backlog" | "inProgress" | "review" | "done";
 

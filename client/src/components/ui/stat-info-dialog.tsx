@@ -11,7 +11,7 @@ interface StatInfoDialogProps {
   titleColor?: string;
   description: string;
   additionalInfo?: string;
-  statType?: "attention" | "time" | "energy" | "health" | "experience" | "streak" | "efficiency";
+  statType?: "attention" | "time" | "energy" | "health" | "wealth" | "experience" | "streak" | "efficiency";
   hideMoreDetails?: boolean;
 }
 
@@ -37,6 +37,8 @@ export function StatInfoDialog({
         return "/energy";
       case "health":
         return "/health";
+      case "wealth":
+        return "/wealth";
       case "experience":
         return "/experience";
       case "streak":

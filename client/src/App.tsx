@@ -27,6 +27,7 @@ import StreakDetailPage from "./pages/StreakDetailPage";
 import EfficiencyDetailPage from "./pages/EfficiencyDetailPage";
 import EnergyDetailPage from "./pages/EnergyDetailPage";
 import HealthDetailPage from "./pages/HealthDetailPage";
+import WealthDetailPage from "./pages/WealthDetailPage";
 import AttentionDetailPage from "./pages/AttentionDetailPage";
 import TimeDetailPage from "./pages/TimeDetailPage";
 import ExperienceDetailPage from "./pages/ExperienceDetailPage";
@@ -443,6 +444,14 @@ function Router() {
         <ProtectedRoute>
           <RootLayout>
             <HealthDetailPage />
+          </RootLayout>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/wealth">
+        <ProtectedRoute>
+          <RootLayout>
+            <WealthDetailPage />
           </RootLayout>
         </ProtectedRoute>
       </Route>

@@ -491,6 +491,10 @@ Generate the complete affirmation now:`;
           current: dbStats.healthPointsCurrent,
           max: dbStats.healthPointsMax,
         },
+        wealthTokens: {
+          current: dbStats.wealthTokensCurrent ?? 100,
+          max: dbStats.wealthTokensMax ?? 100,
+        },
         experience: {
           current: xpData.experienceCurrent,
           max: xpData.experienceMax,
@@ -561,6 +565,15 @@ Generate the complete affirmation now:`;
         }
         if (frontendStats.healthPoints.max !== undefined) {
           dbStatsUpdate.healthPointsMax = frontendStats.healthPoints.max;
+        }
+      }
+      
+      if (frontendStats.wealthTokens) {
+        if (frontendStats.wealthTokens.current !== undefined) {
+          dbStatsUpdate.wealthTokensCurrent = frontendStats.wealthTokens.current;
+        }
+        if (frontendStats.wealthTokens.max !== undefined) {
+          dbStatsUpdate.wealthTokensMax = frontendStats.wealthTokens.max;
         }
       }
       
@@ -637,6 +650,10 @@ Generate the complete affirmation now:`;
         healthPoints: {
           current: dbUpdatedStats.healthPointsCurrent,
           max: dbUpdatedStats.healthPointsMax,
+        },
+        wealthTokens: {
+          current: dbUpdatedStats.wealthTokensCurrent ?? 100,
+          max: dbUpdatedStats.wealthTokensMax ?? 100,
         },
         experience: {
           current: dbUpdatedStats.experienceCurrent,
@@ -1438,6 +1455,7 @@ Generate the complete affirmation now:`;
           currentStreak: stats?.streakDays ?? 0,
           energyMax: stats?.energyPointsMax ?? 100,
           healthMax: stats?.healthPointsMax ?? 100,
+          wealthMax: stats?.wealthTokensMax ?? 100,
           timeMax: stats?.timeTokensMax ?? 100,
           attentionMax: stats?.attentionTokensMax ?? 100,
           daysTracked: dailyLogs.length,

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Award, Clock, Zap, Heart, Info, BrainCircuit, Calendar, BarChart } from "lucide-react";
+import { Award, Clock, Zap, Heart, Info, BrainCircuit, Calendar, BarChart, Coins } from "lucide-react";
 import { UserStats } from "@/lib/types";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
 import { useLocation } from "wouter";
@@ -18,6 +18,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
   const ttPercentage = (stats.timeTokens.current / stats.timeTokens.max) * 100;
   const epPercentage = (stats.energyPoints.current / stats.energyPoints.max) * 100;
   const hpPercentage = (stats.healthPoints.current / stats.healthPoints.max) * 100;
+  const wpPercentage = ((stats.wealthTokens?.current ?? 100) / (stats.wealthTokens?.max ?? 100)) * 100;
   
   // Calculate percentages for efficiency and streak
   const efficiencyPercentage = stats.efficiencyScore; // Already stored as a percentage (0-100)
@@ -75,9 +76,8 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
         </div>
       </div>
       
-      {/* All Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-        {/* Streak */}
+      {/* Streak Row */}
+      <div className="grid grid-cols-1 gap-2 mb-2">
         <div className="stat-block rounded-lg p-2 border border-primary/20 relative">
           <StatInfoDialog
             trigger={
@@ -100,20 +100,28 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center">
-              <Calendar className="h-3 w-3 text-primary mr-1" />
-              <h3 className="text-xs font-orbitron text-[#D6F4FF]">STREAK</h3>
+              <Calendar className="h-4 w-4 text-primary mr-1" />
+              <h3 className="font-orbitron text-[#D6F4FF] text-xs">STREAK</h3>
             </div>
           </div>
           <div className="progress-bar progress-streak h-1.5 mb-1">
             <div className="progress-fill" style={{ width: `${streakPercentage}%`, backgroundColor: "var(--primary)" }}></div>
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[#D6F4FF] font-mono text-sm">
+                {stats.streakDays}
+              </span>
+            </div>
             <span className="text-[#D6F4FF] font-mono text-xs">
-              {stats.streakDays} <span className="text-[#7DAAB2] text-xs">days</span>
+              {stats.streakDays} <span className="text-[#7DAAB2]">days</span>
             </span>
           </div>
         </div>
-        
+      </div>
+      
+      {/* All Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
         {/* Efficiency */}
         <div className="stat-block rounded-lg p-2 border border-primary/20 relative">
           <StatInfoDialog
@@ -295,6 +303,43 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <div className="flex justify-between">
             <span className="text-[#D6F4FF] font-mono text-xs">
               {Math.round(hpPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
+            </span>
+          </div>
+        </div>
+        
+        {/* Wealth Tokens */}
+        <div className="stat-block rounded-lg p-2 border border-primary/20 relative">
+          <StatInfoDialog
+            trigger={
+              <button 
+                className="absolute top-0.5 right-0.5 h-5 w-5 flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLocation("/wealth");
+                }}
+              >
+                <Info className="h-3 w-3" />
+              </button>
+            }
+            title="Wealth Tokens (WT)"
+            titleColor="text-primary"
+            description="WT represents your financial health and resource accumulation."
+            additionalInfo="Build wealth tokens through smart financial habits and goal completion."
+            statType="wealth"
+          />
+          
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center">
+              <Coins className="h-3 w-3 text-primary mr-1" />
+              <h3 className="text-xs font-orbitron text-[#D6F4FF]">WEALTH</h3>
+            </div>
+          </div>
+          <div className="progress-bar progress-wp h-1.5 mb-1">
+            <div className="progress-fill" style={{ width: `${wpPercentage}%`, backgroundColor: "var(--primary)" }}></div>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-[#D6F4FF] font-mono text-xs">
+              {Math.round(wpPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
             </span>
           </div>
         </div>

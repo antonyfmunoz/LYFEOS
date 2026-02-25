@@ -1549,7 +1549,7 @@ export function registerChatRoutes(app: Express): void {
       const userId = req.session.userId!;
       const { statType } = req.body;
 
-      const validTypes = ["experience", "energy", "health", "time", "attention", "efficiency", "streak"];
+      const validTypes = ["experience", "energy", "health", "wealth", "time", "attention", "efficiency", "streak"];
       if (!validTypes.includes(statType)) {
         return res.status(400).json({ error: "Invalid stat type" });
       }
@@ -1569,6 +1569,7 @@ export function registerChatRoutes(app: Express): void {
         experience: `XP: ${stats.experienceCurrent}/${stats.experienceMax}, Level: ${stats.level}, Active missions: ${activeMissions.length}, Completed missions: ${completedMissions.length}`,
         energy: `Energy: ${stats.energyPointsCurrent}/${stats.energyPointsMax}, Level: ${stats.level}, Active missions: ${activeMissions.length}`,
         health: `Health: ${stats.healthPointsCurrent}/${stats.healthPointsMax}, Level: ${stats.level}, Streak: ${stats.streakDays} days`,
+        wealth: `Wealth Tokens: ${stats.wealthTokensCurrent ?? 100}/${stats.wealthTokensMax ?? 100}, Level: ${stats.level}, Completed missions: ${completedMissions.length}`,
         time: `Time Tokens: ${stats.timeTokensCurrent}/${stats.timeTokensMax}, Active missions: ${activeMissions.length}, Level: ${stats.level}`,
         attention: `Attention Tokens: ${stats.attentionTokensCurrent}/${stats.attentionTokensMax}, Active missions: ${activeMissions.length}, Level: ${stats.level}`,
         efficiency: `Efficiency Score: ${stats.efficiencyScore || 0}%, Active missions: ${activeMissions.length}, Completed: ${completedMissions.length}, Streak: ${stats.streakDays} days`,
@@ -1579,6 +1580,7 @@ export function registerChatRoutes(app: Express): void {
         experience: "Experience Points (XP) and Leveling",
         energy: "Energy Points",
         health: "Health Points",
+        wealth: "Wealth Tokens",
         time: "Time Tokens",
         attention: "Attention Tokens",
         efficiency: "System Efficiency",
@@ -1629,6 +1631,7 @@ Provide 3 concise, personalized, actionable tips to help them improve this stat.
       const allContext = `User: ${user.displayName || user.username}
 Level: ${stats.level}, Total XP: ${stats.experienceCurrent}/${stats.experienceMax}
 Energy: ${stats.energyPointsCurrent}/${stats.energyPointsMax}, Health: ${stats.healthPointsCurrent}/${stats.healthPointsMax}
+Wealth Tokens: ${stats.wealthTokensCurrent ?? 100}/${stats.wealthTokensMax ?? 100}
 Time Tokens: ${stats.timeTokensCurrent}/${stats.timeTokensMax}, Attention Tokens: ${stats.attentionTokensCurrent}/${stats.attentionTokensMax}
 Efficiency: ${stats.efficiencyScore || 0}%, Streak: ${stats.streakDays} days
 Active missions: ${activeMissions.length}, Completed missions: ${completedMissions.length}
@@ -1639,10 +1642,10 @@ Total energy allocated to missions: ${totalEnergyCost}, Total time allocated: ${
 User data:
 ${allContext}
 
-Generate personalized tips for ALL 7 stat categories. For each category, provide exactly 3 concise, actionable tips (1-2 sentences each). Base advice on their actual numbers. Be direct, motivating, specific. No emojis.
+Generate personalized tips for ALL 8 stat categories. For each category, provide exactly 3 concise, actionable tips (1-2 sentences each). Base advice on their actual numbers. Be direct, motivating, specific. No emojis.
 
 Format your response as JSON with this exact structure:
-{"experience":["tip1","tip2","tip3"],"energy":["tip1","tip2","tip3"],"health":["tip1","tip2","tip3"],"time":["tip1","tip2","tip3"],"attention":["tip1","tip2","tip3"],"efficiency":["tip1","tip2","tip3"],"streak":["tip1","tip2","tip3"]}
+{"experience":["tip1","tip2","tip3"],"energy":["tip1","tip2","tip3"],"health":["tip1","tip2","tip3"],"wealth":["tip1","tip2","tip3"],"time":["tip1","tip2","tip3"],"attention":["tip1","tip2","tip3"],"efficiency":["tip1","tip2","tip3"],"streak":["tip1","tip2","tip3"]}
 
 Return ONLY the JSON, no other text.`;
 

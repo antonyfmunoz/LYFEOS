@@ -7,6 +7,7 @@ const STAT_TITLES: Record<string, string> = {
   experience: "XP Growth Strategies",
   energy: "Energy Optimization Tips",
   health: "Wellness Recommendations",
+  wealth: "Wealth Growth Strategies",
   time: "Time Management Tips",
   attention: "Focus Enhancement Techniques",
   efficiency: "Efficiency Tips",
@@ -14,7 +15,7 @@ const STAT_TITLES: Record<string, string> = {
 };
 
 interface AIStatTipProps {
-  statType: "experience" | "energy" | "health" | "time" | "attention" | "efficiency" | "streak";
+  statType: "experience" | "energy" | "health" | "wealth" | "time" | "attention" | "efficiency" | "streak";
 }
 
 export default function AIStatTip({ statType }: AIStatTipProps) {
