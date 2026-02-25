@@ -224,6 +224,7 @@ export const userProfile = pgTable("user_profile", {
 
   // === DISPLAY SETTINGS ===
   blueLightFilter: boolean("blue_light_filter").default(false),
+  hapticFeedback: boolean("haptic_feedback").default(true),
 
   // === ONBOARDING TRACKING ===
   onboardingMission: integer("onboarding_mission").default(0), // Current mission (0-7)

@@ -55,6 +55,7 @@ import DocumentVaultPage from "./pages/DocumentVaultPage";
 import WaitlistPage from "./pages/WaitlistPage";
 import WaitlistThankYouPage from "./pages/WaitlistThankYouPage";
 import BlueLightFilter from "./components/BlueLightFilter";
+import { setHapticEnabled } from "./lib/haptics";
 
 const isTouchDevice = () =>
   typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
@@ -114,6 +115,20 @@ function OAuthLoadingScreen() {
       <p className="text-muted-foreground text-sm mt-4">Signing you in...</p>
     </div>
   );
+}
+
+function HapticInit() {
+  const { user } = useAuth();
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/profile", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data) setHapticEnabled(data.hapticFeedback !== false);
+      })
+      .catch(() => {});
+  }, [user?.id]);
+  return null;
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -607,6 +622,7 @@ function App() {
           <ThemeProvider>
             <DndProvider backend={isTouchDevice() ? TouchBackend : HTML5Backend} options={isTouchDevice() ? { enableMouseEvents: true } : undefined}>
               <Router />
+              <HapticInit />
               <VoiceOverlay />
               <CelebrationOverlay />
               <BlueLightFilter />

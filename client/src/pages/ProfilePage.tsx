@@ -62,7 +62,8 @@ import {
   Clock,
   Target,
   Moon,
-  HelpCircle
+  HelpCircle,
+  Vibrate
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -1595,6 +1596,53 @@ export default function ProfilePage() {
                   <div
                     className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
                       (userProfileData as any)?.blueLightFilter ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
+                    }`}
+                  ></div>
+                </button>
+              </div>
+            </div>
+            
+            {/* Haptic Feedback */}
+            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Vibrate className="h-4 w-4 text-primary" />
+                <Label className="text-sm text-foreground">Haptic Feedback</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Feel a vibration on your device when you complete missions, level up, or receive notifications.
+              </p>
+              <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
+                <div className="flex items-center">
+                  <Vibrate className="h-4 w-4 text-primary mr-2" />
+                  <span className="text-sm">Vibration Feedback</span>
+                </div>
+                <button
+                  onClick={async () => {
+                    const current = (userProfileData as any)?.hapticFeedback !== false;
+                    const newVal = !current;
+                    try {
+                      await apiRequest("/api/profile", {
+                        method: "PATCH",
+                        body: JSON.stringify({ hapticFeedback: newVal }),
+                      });
+                      const { setHapticEnabled, triggerHaptic } = await import("@/lib/haptics");
+                      setHapticEnabled(newVal);
+                      if (newVal) triggerHaptic("medium");
+                      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+                      toast({ title: newVal ? "Haptic feedback enabled" : "Haptic feedback disabled", description: newVal ? "You'll feel vibrations for key actions." : "Vibration feedback turned off." });
+                    } catch {
+                      toast({ title: "Error", description: "Could not update setting.", variant: "destructive" });
+                    }
+                  }}
+                  className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
+                    (userProfileData as any)?.hapticFeedback !== false ? 'bg-primary/30' : 'bg-card'
+                  }`}
+                  aria-pressed={(userProfileData as any)?.hapticFeedback !== false}
+                  role="switch"
+                >
+                  <div
+                    className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
+                      (userProfileData as any)?.hapticFeedback !== false ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
                     }`}
                   ></div>
                 </button>

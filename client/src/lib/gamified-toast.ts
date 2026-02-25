@@ -1,6 +1,8 @@
 import { toast } from "@/hooks/use-toast";
+import { hapticTap, hapticMissionComplete, hapticLevelUp, hapticNotification } from "@/lib/haptics";
 
 export function xpToast(amount: number) {
+  hapticTap();
   toast({
     title: `+${amount} XP`,
     description: "Experience gained!",
@@ -10,6 +12,7 @@ export function xpToast(amount: number) {
 }
 
 export function levelUpToast(newLevel: number, rankName?: string) {
+  hapticLevelUp();
   toast({
     title: `LEVEL UP — Level ${newLevel}`,
     description: rankName ? `New Rank: ${rankName}` : "Keep up the great work!",
@@ -19,6 +22,7 @@ export function levelUpToast(newLevel: number, rankName?: string) {
 }
 
 export function streakToast(days: number) {
+  hapticNotification();
   toast({
     title: `${days}-Day Streak`,
     description: "Keep the momentum going.",
@@ -28,6 +32,7 @@ export function streakToast(days: number) {
 }
 
 export function missionCompleteToast(title: string, xp: number) {
+  hapticMissionComplete();
   toast({
     title: "Mission Complete",
     description: `${title} — +${xp} XP`,
@@ -37,6 +42,7 @@ export function missionCompleteToast(title: string, xp: number) {
 }
 
 export function objectiveToast(title: string, rewardText?: string | null, bonusXp?: number) {
+  hapticMissionComplete();
   const parts = [title];
   if (bonusXp && bonusXp > 0) parts.push(`+${bonusXp} Bonus XP`);
   if (rewardText) parts.push(`Reward: ${rewardText}`);
@@ -49,6 +55,7 @@ export function objectiveToast(title: string, rewardText?: string | null, bonusX
 }
 
 export function achievementToast(title: string, description?: string) {
+  hapticNotification();
   toast({
     title: title,
     description: description || "Achievement unlocked!",
