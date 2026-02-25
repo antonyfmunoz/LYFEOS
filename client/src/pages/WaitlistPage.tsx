@@ -282,6 +282,16 @@ export default function WaitlistPage() {
             </div>
           </div>
 
+          <div className="hidden lg:flex lg:col-span-2 justify-center items-center">
+            <div className="relative rounded-2xl overflow-hidden border border-primary/20 shadow-[0_0_30px_rgba(var(--primary-rgb,200,120,50),0.15)]">
+              <img
+                src="/images/preview-dashboard.png"
+                alt="LYFEOS Dashboard Preview"
+                className="w-full h-auto object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent pointer-events-none" />
+            </div>
+          </div>
         </div>
       </section>
 

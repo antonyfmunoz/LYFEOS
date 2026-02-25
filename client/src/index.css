@@ -334,6 +334,11 @@ select::placeholder,
     @apply shadow-[0_0_10px_rgba(251,191,36,0.7)]; /* Yellow glow */
   }
 
+  /* Navel Chakra: Gold/Amber - Wealth Tokens */
+  .progress-wp .progress-fill::after {
+    @apply shadow-[0_0_10px_rgba(251,191,36,0.7)]; /* Gold glow */
+  }
+
   /* All progress bars use theme primary color */
   .progress-tt .progress-fill,
   .progress-ep .progress-fill,
@@ -341,7 +346,8 @@ select::placeholder,
   .progress-xp .progress-fill,
   .progress-at .progress-fill,
   .progress-streak .progress-fill,
-  .progress-efficiency .progress-fill {
+  .progress-efficiency .progress-fill,
+  .progress-wp .progress-fill {
     background: linear-gradient(to right, hsl(var(--primary) / 0.7), hsl(var(--primary)));
     background-color: hsl(var(--primary));
   }
