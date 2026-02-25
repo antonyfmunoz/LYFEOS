@@ -70,6 +70,8 @@ export function usePushNotifications() {
         const messaging = getMessaging(firebaseApp);
         unsubscribe = onMessage(messaging, (payload) => {
           console.log('[Push] Foreground message received:', payload);
+          import("@/lib/sounds").then(m => m.playNotification()).catch(() => {});
+          import("@/lib/haptics").then(m => m.hapticNotification()).catch(() => {});
           const data = payload.data || {};
           const notification = payload.notification || {};
           const title = notification.title || data.title || 'LYFEOS';

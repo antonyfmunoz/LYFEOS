@@ -56,6 +56,7 @@ import WaitlistPage from "./pages/WaitlistPage";
 import WaitlistThankYouPage from "./pages/WaitlistThankYouPage";
 import BlueLightFilter from "./components/BlueLightFilter";
 import { setHapticEnabled } from "./lib/haptics";
+import { setSoundEnabled } from "./lib/sounds";
 
 const isTouchDevice = () =>
   typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
@@ -124,7 +125,10 @@ function HapticInit() {
     fetch("/api/profile", { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (data) setHapticEnabled(data.hapticFeedback !== false);
+        if (data) {
+          setHapticEnabled(data.hapticFeedback !== false);
+          setSoundEnabled(data.soundEffects !== false);
+        }
       })
       .catch(() => {});
   }, [user?.id]);

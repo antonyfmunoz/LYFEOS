@@ -63,7 +63,8 @@ import {
   Target,
   Moon,
   HelpCircle,
-  Vibrate
+  Vibrate,
+  Volume2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -1643,6 +1644,53 @@ export default function ProfilePage() {
                   <div
                     className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
                       (userProfileData as any)?.hapticFeedback !== false ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
+                    }`}
+                  ></div>
+                </button>
+              </div>
+            </div>
+            
+            {/* Sound Effects */}
+            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Volume2 className="h-4 w-4 text-primary" />
+                <Label className="text-sm text-foreground">Sound Effects</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Play short sound effects when you complete missions, level up, hit streaks, or receive notifications.
+              </p>
+              <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
+                <div className="flex items-center">
+                  <Volume2 className="h-4 w-4 text-primary mr-2" />
+                  <span className="text-sm">Game Sounds</span>
+                </div>
+                <button
+                  onClick={async () => {
+                    const current = (userProfileData as any)?.soundEffects !== false;
+                    const newVal = !current;
+                    try {
+                      await apiRequest("/api/profile", {
+                        method: "PATCH",
+                        body: JSON.stringify({ soundEffects: newVal }),
+                      });
+                      const { setSoundEnabled, playNotification } = await import("@/lib/sounds");
+                      setSoundEnabled(newVal);
+                      if (newVal) playNotification();
+                      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+                      toast({ title: newVal ? "Sound effects enabled" : "Sound effects disabled", description: newVal ? "You'll hear sounds for key actions." : "Sound effects turned off." });
+                    } catch {
+                      toast({ title: "Error", description: "Could not update setting.", variant: "destructive" });
+                    }
+                  }}
+                  className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 ${
+                    (userProfileData as any)?.soundEffects !== false ? 'bg-primary/30' : 'bg-card'
+                  }`}
+                  aria-pressed={(userProfileData as any)?.soundEffects !== false}
+                  role="switch"
+                >
+                  <div
+                    className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
+                      (userProfileData as any)?.soundEffects !== false ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
                     }`}
                   ></div>
                 </button>
