@@ -63,7 +63,7 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
 
   const isApple = isAppleProvider(provider);
 
-  if (isMobileBrowser() && !isApple) {
+  if (isMobileBrowser()) {
     console.log(`Mobile browser detected, using redirect flow directly for ${providerName}`);
     try {
       localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
@@ -82,7 +82,7 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
   }
 
   try {
-    console.log(`Attempting popup sign-in for ${providerName}${isApple && isMobileBrowser() ? ' (Apple always uses popup on mobile)' : ''}`);
+    console.log(`Attempting popup sign-in for ${providerName}`);
     const result = await signInWithPopup(auth, provider, browserPopupRedirectResolver);
     return result;
   } catch (error: any) {
@@ -92,7 +92,7 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
       return null;
     }
 
-    if (!isApple && isPopupRecoverableError(error)) {
+    if (isPopupRecoverableError(error)) {
       console.log(`Popup failed (${error.code || error?.message || 'unknown'}), falling back to redirect for ${providerName}`);
       try {
         localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
@@ -107,18 +107,6 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
           variant: "destructive"
         });
         return null;
-      }
-    }
-
-    if (isApple && isPopupRecoverableError(error)) {
-      console.log(`Apple popup failed (${error.code || error?.message || 'unknown'}), trying redirect as last resort`);
-      try {
-        localStorage.setItem('lyfeos-oauth-redirect-pending', 'apple');
-        await signInWithRedirect(auth, provider, browserPopupRedirectResolver);
-        return null;
-      } catch (redirectError: any) {
-        console.error('Apple redirect also failed:', redirectError?.code, redirectError?.message);
-        localStorage.removeItem('lyfeos-oauth-redirect-pending');
       }
     }
 
