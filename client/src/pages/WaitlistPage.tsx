@@ -41,8 +41,8 @@ const SOLUTION_BLOCKS = [
   {
     icon: <Target className="w-6 h-6" />,
     badge: "Know Yourself",
-    text: "Complete 8 missions to calibrate your archetype, values, and vision. LYFEOS generates your Character Affirmation — a 300-word synthesis of who you are and what you're building. Not a template. Your identity.",
-    placeholder: "Character Affirmation",
+    text: "Complete 8 missions to calibrate your archetype, values, and vision. LYFEOS generates your Character Affirmation — a synthesis of who you are and what you're building. Not a template. Your identity.",
+    placeholder: "Onboarding Start",
     color: "#b44dff",
   },
   {
@@ -109,8 +109,8 @@ const FAQ_ITEMS = [
 ];
 
 const PREVIEW_IMAGES: Record<string, { desktop: string; mobile: string }> = {
-  "Dashboard Preview": { desktop: "/images/preview-dashboard.png", mobile: "/images/preview-dashboard-mobile.png" },
-  "Dashboard Stats HUD": { desktop: "/images/preview-dashboard.png", mobile: "/images/preview-dashboard-mobile.png" },
+  "Onboarding Start": { desktop: "/images/preview-onboarding.png", mobile: "/images/preview-onboarding.png" },
+  "Dashboard Stats HUD": { desktop: "/images/preview-profile-stats.png", mobile: "/images/preview-profile-stats-mobile.png" },
   "Dashboard": { desktop: "/images/preview-dashboard.png", mobile: "/images/preview-dashboard-mobile.png" },
   "Character Affirmation": { desktop: "/images/preview-affirmation.png", mobile: "/images/preview-affirmation-mobile.png" },
   "NOVA Chat": { desktop: "/images/preview-nova-chat.png", mobile: "/images/preview-nova-chat-mobile.png" },
@@ -282,11 +282,6 @@ export default function WaitlistPage() {
             </div>
           </div>
 
-          <div className="lg:col-span-2">
-            <div className="md:rounded-xl md:border md:border-border/40 md:bg-card/30 md:p-1">
-              <Placeholder label="Dashboard Preview" />
-            </div>
-          </div>
         </div>
       </section>
 
