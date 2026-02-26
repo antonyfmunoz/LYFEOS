@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { X, Download, Share } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/authContext";
@@ -82,12 +82,22 @@ export default function PWAInstallPrompt({ tutorialActive = false, tutorialLoadi
   const [showBanner, setShowBanner] = useState(false);
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
   const [dismissed, setDismissed] = useState(() => wasPermanentlyDismissed(user?.id));
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const prevTutorialActiveRef = useRef(tutorialActive);
 
-  const { data: profile } = useQuery<any>({
+  const { data: profile, refetch: refetchProfile } = useQuery<any>({
     queryKey: ["/api/profile"],
     enabled: !!user,
-    staleTime: 60000,
+    staleTime: 5000,
   });
+
+  useEffect(() => {
+    if (prevTutorialActiveRef.current && !tutorialActive) {
+      setRefreshTrigger(c => c + 1);
+      refetchProfile();
+    }
+    prevTutorialActiveRef.current = tutorialActive;
+  }, [tutorialActive]);
 
   const dashboardTutorialDone = isDashboardTutorialDone(profile, user?.id);
   const alreadyShown = wasAlreadyShown(user?.id);
@@ -128,7 +138,7 @@ export default function PWAInstallPrompt({ tutorialActive = false, tutorialLoadi
       window.removeEventListener("beforeinstallprompt", handler);
       window.removeEventListener("appinstalled", installedHandler);
     };
-  }, [canShow, tutorialActive]);
+  }, [canShow, tutorialActive, refreshTrigger]);
 
   const handleInstall = useCallback(async () => {
     if (!deferredPrompt) return;
