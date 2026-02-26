@@ -89,6 +89,10 @@ interface MissionFormData {
   repeatEndDate: string;
   visionGoalId: number | null;
   linkedItems: { type: "document" | "folder"; id: number; title: string }[];
+  location: string;
+  url: string;
+  allDay: boolean;
+  missionStatus: string;
 }
 
 const defaultFormData: MissionFormData = {
@@ -110,6 +114,10 @@ const defaultFormData: MissionFormData = {
   repeatEndDate: "",
   visionGoalId: null,
   linkedItems: [],
+  location: "",
+  url: "",
+  allDay: false,
+  missionStatus: "confirmed",
 };
 
 interface VisionGoalOption {
@@ -1086,7 +1094,7 @@ export default function QuestsPage() {
     setEditingQuest(quest);
     setEditFormData({
       title: quest.title,
-      description: quest.description,
+      description: quest.description || "",
       experienceReward: quest.experienceReward,
       difficulty: quest.difficulty || "D",
       category: quest.category || "general",
@@ -1102,6 +1110,10 @@ export default function QuestsPage() {
       repeatDays: quest.repeatDays || [],
       repeatEndDate: quest.repeatEndDate || "",
       visionGoalId: quest.visionGoalId || null,
+      location: (quest as any).location || "",
+      url: (quest as any).url || "",
+      allDay: (quest as any).allDay || false,
+      missionStatus: (quest as any).missionStatus || "confirmed",
       linkedItems: ((quest.linkedItems as { type: "document" | "folder"; id: number; title: string }[]) || [])
         .filter(item => {
           if (item.type === 'document') return allDocuments.some(d => d.id === item.id);
@@ -1124,13 +1136,13 @@ export default function QuestsPage() {
   };
 
   const handleCreateMission = async () => {
-    if (!createFormData.title.trim() || !createFormData.description.trim() || !createFormData.startDate || !createFormData.startTime || !createFormData.endDate || !createFormData.endTime) return;
+    if (!createFormData.title.trim()) return;
     
     setIsSubmitting(true);
     try {
       await createQuest({
         title: createFormData.title.trim(),
-        description: createFormData.description.trim() || "No description",
+        description: createFormData.description.trim() || "",
         experienceReward: createFormData.experienceReward,
         difficulty: createFormData.difficulty,
         category: createFormData.category,
@@ -1149,6 +1161,10 @@ export default function QuestsPage() {
         repeatEndDate: createFormData.isRitualized && createFormData.repeatEndDate ? createFormData.repeatEndDate : null,
         visionGoalId: createFormData.visionGoalId,
         linkedItems: createFormData.linkedItems.length > 0 ? createFormData.linkedItems : [],
+        location: createFormData.location || null,
+        url: createFormData.url || null,
+        allDay: createFormData.allDay,
+        missionStatus: createFormData.missionStatus,
       });
       
       setCreateFormData(defaultFormData);
@@ -1161,13 +1177,13 @@ export default function QuestsPage() {
   };
 
   const handleUpdateMission = async () => {
-    if (!editingQuest || !editFormData.title.trim() || !editFormData.startDate || !editFormData.startTime || !editFormData.endDate || !editFormData.endTime) return;
+    if (!editingQuest || !editFormData.title.trim()) return;
     
     setIsSubmitting(true);
     try {
       await updateQuest(editingQuest.id, {
         title: editFormData.title.trim(),
-        description: editFormData.description.trim() || "No description",
+        description: editFormData.description.trim() || "",
         experienceReward: editFormData.experienceReward,
         difficulty: editFormData.difficulty,
         category: editFormData.category,
@@ -1186,6 +1202,10 @@ export default function QuestsPage() {
         repeatEndDate: editFormData.isRitualized && editFormData.repeatEndDate ? editFormData.repeatEndDate : null,
         visionGoalId: editFormData.visionGoalId,
         linkedItems: editFormData.linkedItems.length > 0 ? editFormData.linkedItems : [],
+        location: editFormData.location || null,
+        url: editFormData.url || null,
+        allDay: editFormData.allDay,
+        missionStatus: editFormData.missionStatus,
       });
       
       setEditFormData(defaultFormData);
@@ -1290,7 +1310,7 @@ export default function QuestsPage() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="create-description">Description <span className="text-primary">*</span></Label>
+                <Label htmlFor="create-description">Description</Label>
                 <RichTextArea
                   id="create-description"
                   placeholder="What needs to be done?"
@@ -1813,10 +1833,61 @@ export default function QuestsPage() {
                 <p className="text-xs text-destructive">Please select at least one day for weekly repeat.</p>
               )}
 
+              <Collapsible>
+                <CollapsibleTrigger asChild>
+                  <button type="button" className="flex items-center gap-2 text-xs font-mono text-muted-foreground hover:text-primary transition-colors w-full py-2">
+                    <MapPin className="h-3.5 w-3.5" />
+                    Event Details
+                    <ChevronDown className="h-3.5 w-3.5 ml-auto" />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="space-y-3 pt-1">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Location</Label>
+                      <Input
+                        placeholder="Add location..."
+                        value={createFormData.location}
+                        onChange={(e) => setCreateFormData(prev => ({ ...prev, location: e.target.value }))}
+                        className="bg-background/50 border-primary/30 h-9"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">URL / Link</Label>
+                      <Input
+                        placeholder="https://..."
+                        value={createFormData.url}
+                        onChange={(e) => setCreateFormData(prev => ({ ...prev, url: e.target.value }))}
+                        className="bg-background/50 border-primary/30 h-9"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-muted-foreground">All Day</Label>
+                      <Switch
+                        checked={createFormData.allDay}
+                        onCheckedChange={(checked) => setCreateFormData(prev => ({ ...prev, allDay: checked }))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Status</Label>
+                      <Select value={createFormData.missionStatus} onValueChange={(v) => setCreateFormData(prev => ({ ...prev, missionStatus: v }))}>
+                        <SelectTrigger className="bg-background/50 border-primary/30 h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="confirmed">Confirmed</SelectItem>
+                          <SelectItem value="tentative">Tentative</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
               <button 
                 onClick={handleCreateMission} 
                 className="w-full mt-4 text-sm font-mono px-4 py-2.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center"
-                disabled={!createFormData.title.trim() || !createFormData.description.trim() || !createFormData.startDate || !createFormData.startTime || !createFormData.endDate || !createFormData.endTime || isSubmitting || (createFormData.isRitualized && createFormData.repeatFrequency === "weekly" && createFormData.repeatDays.length === 0)}
+                disabled={!createFormData.title.trim() || isSubmitting || (createFormData.isRitualized && createFormData.repeatFrequency === "weekly" && createFormData.repeatDays.length === 0)}
               >
                 {isSubmitting ? "Creating..." : "Create Mission"}
               </button>
@@ -2380,10 +2451,61 @@ export default function QuestsPage() {
               <p className="text-xs text-destructive">Please select at least one day for weekly repeat.</p>
             )}
 
+            <Collapsible defaultOpen={!!(editFormData.location || editFormData.url || editFormData.allDay || editFormData.missionStatus !== "confirmed")}>
+              <CollapsibleTrigger asChild>
+                <button type="button" className="flex items-center gap-2 text-xs font-mono text-muted-foreground hover:text-primary transition-colors w-full py-2">
+                  <MapPin className="h-3.5 w-3.5" />
+                  Event Details
+                  <ChevronDown className="h-3.5 w-3.5 ml-auto" />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="space-y-3 pt-1">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Location</Label>
+                    <Input
+                      placeholder="Add location..."
+                      value={editFormData.location}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, location: e.target.value }))}
+                      className="bg-background/50 border-primary/30 h-9"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">URL / Link</Label>
+                    <Input
+                      placeholder="https://..."
+                      value={editFormData.url}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, url: e.target.value }))}
+                      className="bg-background/50 border-primary/30 h-9"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs text-muted-foreground">All Day</Label>
+                    <Switch
+                      checked={editFormData.allDay}
+                      onCheckedChange={(checked) => setEditFormData(prev => ({ ...prev, allDay: checked }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Status</Label>
+                    <Select value={editFormData.missionStatus} onValueChange={(v) => setEditFormData(prev => ({ ...prev, missionStatus: v }))}>
+                      <SelectTrigger className="bg-background/50 border-primary/30 h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="confirmed">Confirmed</SelectItem>
+                        <SelectItem value="tentative">Tentative</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+
             <button 
               onClick={handleUpdateMission} 
               className="w-full mt-4 text-sm font-mono px-4 py-2.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center justify-center"
-              disabled={!editFormData.title.trim() || !editFormData.startDate || !editFormData.startTime || !editFormData.endDate || !editFormData.endTime || isSubmitting || (editFormData.isRitualized && editFormData.repeatFrequency === "weekly" && editFormData.repeatDays.length === 0)}
+              disabled={!editFormData.title.trim() || isSubmitting || (editFormData.isRitualized && editFormData.repeatFrequency === "weekly" && editFormData.repeatDays.length === 0)}
             >
               {isSubmitting ? "Updating..." : "Update Mission"}
             </button>
