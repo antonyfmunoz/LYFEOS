@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lyfeos-v20';
+const CACHE_NAME = 'lyfeos-v21';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -36,6 +36,8 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.pathname.startsWith('/api/')) return;
   if (url.pathname.startsWith('/__/')) return;
+  if (url.origin !== self.location.origin) return;
+  if (event.request.mode === 'navigate' && url.search) return;
   
   event.respondWith(
     fetch(event.request)
