@@ -28,15 +28,15 @@ export default function StatWidget({
             type === 'energy' ? 'text-secondary' : 
             'text-accent'
           } mr-2`}>{icon}</span>
-          <h3 className="font-orbitron text-primary">{title}</h3>
+          <h3 className="font-orbitron text-muted-foreground">{title}</h3>
         </div>
         <div className="text-right">
           {type === 'time' ? (
-            <p className="text-primary font-mono text-xl">
+            <p className="text-muted-foreground font-mono text-xl">
               {current}<span className="text-muted-foreground text-sm">/{max}</span>
             </p>
           ) : (
-            <p className="text-primary font-mono text-xl">
+            <p className="text-muted-foreground font-mono text-xl">
               {Math.round((current / max) * 100)}<span className="text-muted-foreground text-sm">%</span>
             </p>
           )}

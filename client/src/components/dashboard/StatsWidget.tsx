@@ -45,7 +45,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
               <Award className="h-4 w-4 text-primary mr-2" /> {/* Using primary theme color */}
-              <h3 className="font-orbitron text-primary text-sm">LEVEL PROGRESS</h3>
+              <h3 className="font-orbitron text-muted-foreground text-sm">LEVEL PROGRESS</h3>
             </div>
             <div className="flex items-center mr-6">
               <span className="bg-primary/20 text-primary px-2 py-1 rounded-md text-xs font-orbitron mr-2">
@@ -62,7 +62,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <span className="text-muted-foreground">{stats.experience.max.toLocaleString()} XP</span>
           </div>
           {stats.experience.totalXP !== undefined && (
-            <div className="text-xs text-right mt-1 text-primary/70">
+            <div className="text-xs text-right mt-1 text-muted-foreground">
               Total Career XP: {stats.experience.totalXP.toLocaleString()} XP
             </div>
           )}
@@ -93,7 +93,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
                 <Calendar className="h-4 w-4 text-primary mr-2" />
-                <h3 className="text-sm font-orbitron text-primary">STREAK</h3>
+                <h3 className="text-sm font-orbitron text-muted-foreground">STREAK</h3>
               </div>
               <div className="mr-6">
                 <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -106,7 +106,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               ></div>
             </div>
             <div className="flex justify-between">
-              <span className="text-primary font-mono text-base">
+              <span className="text-muted-foreground font-mono text-base">
                 {stats.streakDays}<span className="text-muted-foreground text-xs"> days</span>
               </span>
               <span className="text-xs text-muted-foreground self-end">consecutive</span>
@@ -136,7 +136,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
                 <BarChart className="h-4 w-4 text-primary mr-2" />
-                <h3 className="text-sm font-orbitron text-primary">EFFICIENCY</h3>
+                <h3 className="text-sm font-orbitron text-muted-foreground">EFFICIENCY</h3>
               </div>
               <div className="mr-6">
                 <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -149,7 +149,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               ></div>
             </div>
             <div className="flex justify-between">
-              <span className="text-primary font-mono text-base">
+              <span className="text-muted-foreground font-mono text-base">
                 {efficiencyPercentage}<span className="text-muted-foreground text-xs">%</span>
               </span>
               <span className="text-xs text-muted-foreground self-end">optimization</span>
@@ -185,7 +185,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
                 <BrainCircuit className="h-4 w-4 text-primary mr-2" />
-                <h3 className="text-sm font-orbitron text-primary">ATTENTION TOKENS</h3>
+                <h3 className="text-sm font-orbitron text-muted-foreground">ATTENTION TOKENS</h3>
               </div>
               <div className="mr-6">
                 <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -195,7 +195,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               <div className="progress-fill" style={{ width: `${atPercentage}%` }}></div>
             </div>
             <div className="flex justify-between">
-              <span className="text-primary font-mono text-base">
+              <span className="text-muted-foreground font-mono text-base">
                 {Math.round(atPercentage)}<span className="text-muted-foreground text-xs">%</span>
               </span>
               <span className="text-xs text-muted-foreground self-end">focus</span>
@@ -225,7 +225,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
                 <Clock className="h-4 w-4 text-primary mr-2" />
-                <h3 className="text-sm font-orbitron text-primary">TIME TOKENS</h3>
+                <h3 className="text-sm font-orbitron text-muted-foreground">TIME TOKENS</h3>
               </div>
               <div className="mr-6">
                 <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -235,7 +235,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               <div className="progress-fill" style={{ width: `${ttPercentage}%` }}></div>
             </div>
             <div className="flex justify-between">
-              <span className="text-primary font-mono text-base">
+              <span className="text-muted-foreground font-mono text-base">
                 {stats.timeTokens.current}<span className="text-muted-foreground text-xs">/{stats.timeTokens.max}</span>
               </span>
               <span className="text-xs text-muted-foreground self-end">remaining today</span>
@@ -265,7 +265,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
                 <Zap className="h-4 w-4 text-primary mr-2" />
-                <h3 className="text-sm font-orbitron text-primary">ENERGY TOKENS</h3>
+                <h3 className="text-sm font-orbitron text-muted-foreground">ENERGY TOKENS</h3>
               </div>
               <div className="mr-6">
                 <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -275,7 +275,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               <div className="progress-fill" style={{ width: `${epPercentage}%` }}></div>
             </div>
             <div className="flex justify-between">
-              <span className="text-primary font-mono text-base">
+              <span className="text-muted-foreground font-mono text-base">
                 {Math.round(epPercentage)}<span className="text-muted-foreground text-xs">%</span>
               </span>
               <span className="text-xs text-muted-foreground self-end">capacity</span>
@@ -305,7 +305,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
                 <Heart className="h-4 w-4 text-primary mr-2" />
-                <h3 className="text-sm font-orbitron text-primary">HEALTH POINTS</h3>
+                <h3 className="text-sm font-orbitron text-muted-foreground">HEALTH POINTS</h3>
               </div>
               <div className="mr-6">
                 <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -315,7 +315,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               <div className="progress-fill" style={{ width: `${hpPercentage}%` }}></div>
             </div>
             <div className="flex justify-between">
-              <span className="text-primary font-mono text-base">
+              <span className="text-muted-foreground font-mono text-base">
                 {Math.round(hpPercentage)}<span className="text-muted-foreground text-xs">%</span>
               </span>
               <span className="text-xs text-muted-foreground self-end">wellness</span>

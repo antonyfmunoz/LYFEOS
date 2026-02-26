@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
 import { Award, Sparkles, ArrowRight } from "lucide-react";
-import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
 import { getRank } from "@/lib/ranks";
 
@@ -25,15 +24,6 @@ export function LevelUpModal({ level, primaryColor = "#00e0ff", isOpen, onClose 
     if (isOpen) {
       setStep(0);
       
-      // Launch confetti effect
-      setTimeout(() => {
-        confetti({
-          particleCount: isMajorMilestone ? 150 : 100,
-          spread: 70,
-          origin: { y: 0.5 },
-          colors: [primaryColor, '#ffffff', '#D6F4FF'],
-        });
-      }, 500);
     }
   }, [isOpen, isMajorMilestone, primaryColor]);
   
@@ -56,15 +46,6 @@ export function LevelUpModal({ level, primaryColor = "#00e0ff", isOpen, onClose 
     if (step < 1) {
       setStep(step + 1);
       
-      // Additional confetti for next step
-      if (isMajorMilestone) {
-        confetti({
-          particleCount: 50,
-          spread: 45,
-          origin: { y: 0.6 },
-          colors: [primaryColor, '#ffffff', '#D6F4FF'],
-        });
-      }
     } else {
       onClose();
     }

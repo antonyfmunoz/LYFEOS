@@ -2,7 +2,6 @@ import { useContext, useEffect, useState } from "react";
 import { LYFEOSContext } from "@/lib/context";
 import { motion, AnimatePresence } from "framer-motion";
 import { Award } from "lucide-react";
-import confetti from "canvas-confetti";
 
 
 interface ExperienceBarProps {
@@ -39,13 +38,6 @@ export default function ExperienceBar({
     if (showLevelUp) {
       setAnimate(true);
       setShowConfetti(true);
-      
-      // Launch confetti effect
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 }
-      });
       
       // Reset animation state after a delay
       const timer = setTimeout(() => {
@@ -90,7 +82,7 @@ export default function ExperienceBar({
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center">
           <Award className="h-5 w-5 mr-2" style={{ color: primaryColor }} />
-          <h3 className="font-orbitron text-primary">LEVEL PROGRESS</h3>
+          <h3 className="font-orbitron text-muted-foreground">LEVEL PROGRESS</h3>
         </div>
         <div className="flex items-center gap-2">
           <motion.span 
