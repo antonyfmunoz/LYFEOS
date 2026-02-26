@@ -53,13 +53,6 @@ function getStreakEmoji(streak: number): string {
   return "START";
 }
 
-function getStreakGlow(streak: number): string {
-  if (streak >= 100) return "shadow-[0_0_60px_hsl(var(--primary)/0.4)]";
-  if (streak >= 30) return "shadow-[0_0_40px_hsl(var(--primary)/0.3)]";
-  if (streak >= 7) return "shadow-[0_0_30px_hsl(var(--primary)/0.25)]";
-  if (streak >= 3) return "shadow-[0_0_20px_hsl(var(--primary)/0.2)]";
-  return "shadow-[0_0_15px_hsl(var(--primary)/0.15)]";
-}
 
 export default function StreakDetailPage() {
   usePageTitle("Streaks - LYFEOS");
@@ -134,7 +127,6 @@ export default function StreakDetailPage() {
   }, [streakData?.heatmap]);
 
   const streakLevel = getStreakEmoji(stats.streakDays);
-  const streakGlow = getStreakGlow(stats.streakDays);
 
   return (
     <div className="mx-auto max-w-5xl py-8 px-4">
@@ -155,7 +147,7 @@ export default function StreakDetailPage() {
         </h1>
       </div>
 
-      <div className={`glassmorphic rounded-2xl p-8 mb-8 border border-primary/30 relative overflow-hidden ${streakGlow}`}>
+      <div className="glassmorphic rounded-2xl p-8 mb-8 border border-primary/30 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
         <div className="absolute top-0 left-0 w-full h-1 bg-primary" />
 
