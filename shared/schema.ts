@@ -347,7 +347,6 @@ export const quests = pgTable("quests", {
   timezone: text("timezone"),
   url: text("url"),
   attendees: jsonb("attendees").default([]),
-  color: text("color"),
   missionStatus: text("mission_status").default("confirmed"),
   deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -627,7 +626,6 @@ export const insertQuestSchema = createInsertSchema(quests).pick({
   timezone: true,
   url: true,
   attendees: true,
-  color: true,
   missionStatus: true,
   deletedAt: true,
 });
