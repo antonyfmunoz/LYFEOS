@@ -290,9 +290,9 @@ export default function ChronilogPage() {
     },
     { 
       id: "document-vault", 
-      title: "Document Vault", 
+      title: "Data Vault", 
       icon: <FolderOpen className="h-5 w-5 text-primary" />,
-      description: "Create, edit, and organize documents in folders. Your personal doc editor and file organizer."
+      description: "Create, edit, and organize documents, media, and files in folders. Your personal data organizer."
     }
   ]);
 
@@ -393,8 +393,8 @@ export default function ChronilogPage() {
     },
     {
       target: "[data-tour='chronilog-document-vault']",
-      title: "Document Vault",
-      description: "Create, edit, and organize documents in folders. Your personal doc editor and file organizer — link documents to missions for quick access.",
+      title: "Data Vault",
+      description: "Create, edit, and organize documents, media, and files in folders. Your personal data organizer — link items to missions for quick access.",
       position: "bottom",
     },
   ];

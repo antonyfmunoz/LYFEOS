@@ -94,20 +94,20 @@ export default function DocumentsWidget() {
         <div className="flex justify-between items-center">
           <div className="flex items-center">
             <FileText className="h-5 w-5 text-primary mr-2" />
-            <CardTitle className="text-lg font-orbitron">Documents</CardTitle>
+            <CardTitle className="text-lg font-orbitron">Data Vault</CardTitle>
           </div>
           <Button 
             variant="ghost" 
             size="sm" 
             className="h-7 text-xs bg-primary/10 hover:bg-primary/20 text-primary border border-primary/50 hover:shadow-[0_0_5px_var(--primary-glow-light)] transition-shadow"
-            onClick={() => navigate('/documents')}
+            onClick={() => navigate('/document-vault')}
           >
             View All
             <ChevronRight className="ml-1 h-3 w-3" />
           </Button>
         </div>
         <CardDescription className="text-xs">
-          Organized file storage and document management
+          Documents, media, and files — all organized in one place
         </CardDescription>
       </CardHeader>
       
@@ -171,7 +171,7 @@ export default function DocumentsWidget() {
                         <div 
                           key={doc.id}
                           className="flex items-center p-1.5 rounded-md hover:bg-muted/50 cursor-pointer text-sm"
-                          onClick={() => navigate(`/documents/${doc.id}`)}
+                          onClick={() => navigate(`/document-vault?doc=${doc.id}`)}
                         >
                           <FileText className="h-4 w-4 mr-2 text-primary/70" />
                           <div className="flex-1 truncate">{doc.title}</div>
@@ -199,7 +199,7 @@ export default function DocumentsWidget() {
                     <div 
                       key={doc.id}
                       className="flex items-center p-1.5 rounded-md hover:bg-muted/50 cursor-pointer"
-                      onClick={() => navigate(`/documents/${doc.id}`)}
+                      onClick={() => navigate(`/document-vault?doc=${doc.id}`)}
                     >
                       <FileText className="h-4 w-4 mr-2 text-primary/70" />
                       <div className="flex-1 truncate">{doc.title}</div>
@@ -253,7 +253,7 @@ export default function DocumentsWidget() {
                             <div 
                               key={doc.id}
                               className="flex items-center p-1.5 rounded-md hover:bg-muted/50 cursor-pointer"
-                              onClick={() => navigate(`/documents/${doc.id}`)}
+                              onClick={() => navigate(`/document-vault?doc=${doc.id}`)}
                             >
                               <FileText className="h-4 w-4 mr-2 text-primary/70" />
                               <div className="flex-1 truncate">{doc.title}</div>
@@ -315,7 +315,7 @@ export default function DocumentsWidget() {
             variant="ghost" 
             size="sm"
             className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50"
-            onClick={() => navigate('/folders/new')}
+            onClick={() => navigate('/document-vault')}
           >
             <FolderPlus className="h-3.5 w-3.5 mr-1" />
             New Folder
@@ -324,7 +324,7 @@ export default function DocumentsWidget() {
             variant="ghost" 
             size="sm"
             className="h-7 text-xs bg-primary/10 hover:bg-primary hover:text-background text-primary border border-primary/50"
-            onClick={() => navigate('/documents/new')}
+            onClick={() => navigate('/document-vault')}
           >
             <FilePlus className="h-3.5 w-3.5 mr-1" />
             New Doc

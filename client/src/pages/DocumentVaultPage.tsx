@@ -36,7 +36,7 @@ const DND_TYPES = {
 };
 
 export default function DocumentVaultPage() {
-  usePageTitle('Document Vault');
+  usePageTitle('Data Vault');
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const editorRef = useRef<HTMLTextAreaElement>(null);
@@ -636,8 +636,8 @@ export default function DocumentVaultPage() {
 
       <div className="mb-4 flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-orbitron mb-1">Document Vault</h1>
-          <p className="text-muted-foreground">Create, edit, and organize<br />your documents and folders</p>
+          <h1 className="text-2xl font-orbitron mb-1">Data Vault</h1>
+          <p className="text-muted-foreground">Create, edit, and organize<br />your documents, media, and folders</p>
         </div>
         <div className="flex gap-1.5">
           <button
