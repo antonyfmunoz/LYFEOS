@@ -158,13 +158,15 @@ export interface IStorage {
   getDocumentsByFolder(folderId: number): Promise<Document[]>;
   getDocument(id: number): Promise<Document | undefined>;
   createDocument(document: InsertDocument): Promise<Document>;
-  updateDocument(id: number, document: Partial<InsertDocument>): Promise<Document>;
+  updateDocument(id: number, document: Partial<InsertDocument> & { lastSyncedAt?: Date }): Promise<Document>;
   deleteDocument(id: number): Promise<void>;
   softDeleteDocument(id: number): Promise<void>;
   restoreDocument(id: number): Promise<Document>;
   permanentDeleteDocument(id: number): Promise<void>;
   getDeletedDocuments(userId: number): Promise<Document[]>;
   toggleFavoriteDocument(id: number): Promise<Document>;
+  getDocumentByExternalId(userId: number, source: string, externalId: string): Promise<Document | undefined>;
+  getFolderByExternalId(userId: number, source: string, externalId: string): Promise<Folder | undefined>;
   
   // Template methods
   getTemplates(userId: number): Promise<Template[]>;
@@ -1541,7 +1543,7 @@ export class DatabaseStorage implements IStorage {
     return newDocument;
   }
   
-  async updateDocument(id: number, documentUpdate: Partial<InsertDocument>): Promise<Document> {
+  async updateDocument(id: number, documentUpdate: Partial<InsertDocument> & { lastSyncedAt?: Date }): Promise<Document> {
     const [updatedDocument] = await db
       .update(documents)
       .set({ ...documentUpdate, updatedAt: new Date() })
@@ -1585,6 +1587,20 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return updatedDocument;
+  }
+
+  async getDocumentByExternalId(userId: number, source: string, externalId: string): Promise<Document | undefined> {
+    const [doc] = await db.select().from(documents).where(
+      and(eq(documents.userId, userId), eq(documents.source, source), eq(documents.externalId, externalId))
+    );
+    return doc;
+  }
+
+  async getFolderByExternalId(userId: number, source: string, externalId: string): Promise<Folder | undefined> {
+    const [folder] = await db.select().from(folders).where(
+      and(eq(folders.userId, userId), eq(folders.source, source), eq(folders.externalId, externalId))
+    );
+    return folder;
   }
 
   // Template methods

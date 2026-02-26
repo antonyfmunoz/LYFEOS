@@ -7,6 +7,7 @@ import { logger } from "../utils";
 const SCOPES = [
   "https://www.googleapis.com/auth/calendar",
   "https://www.googleapis.com/auth/tasks.readonly",
+  "https://www.googleapis.com/auth/drive",
 ];
 
 function getOAuth2Client() {
@@ -555,6 +556,488 @@ export function registerGoogleRoutes(app: Express): void {
     } catch (error) {
       logger.error("Error checking Google status:", error);
       return res.status(500).json({ error: "Failed to check status" });
+    }
+  });
+
+  app.get("/api/google/drive/folders", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId as number;
+      const client = await getAuthenticatedClient(userId);
+      if (!client) {
+        return res.status(401).json({ error: "Google not connected" });
+      }
+
+      const drive = google.drive({ version: "v3", auth: client.oauth2Client });
+      const parentId = (req.query.parentId as string) || "root";
+
+      const response = await drive.files.list({
+        q: `'${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+        fields: "files(id, name, parents, webViewLink, createdTime, modifiedTime)",
+        orderBy: "name",
+        pageSize: 1000,
+      });
+
+      const drivefolders = (response.data.files || []).map((f) => ({
+        id: f.id,
+        name: f.name,
+        parentId: f.parents?.[0] || null,
+        webViewLink: f.webViewLink,
+        createdTime: f.createdTime,
+        modifiedTime: f.modifiedTime,
+      }));
+
+      return res.json({ folders: drivefolders });
+    } catch (error: any) {
+      if (error?.code === 401 || error?.response?.status === 401) {
+        return res.status(401).json({ error: "Google token expired. Please reconnect." });
+      }
+      logger.error("Error fetching Google Drive folders:", error);
+      return res.status(500).json({ error: "Failed to fetch Drive folders" });
+    }
+  });
+
+  app.get("/api/google/drive/files", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId as number;
+      const client = await getAuthenticatedClient(userId);
+      if (!client) {
+        return res.status(401).json({ error: "Google not connected" });
+      }
+
+      const drive = google.drive({ version: "v3", auth: client.oauth2Client });
+      const pageToken = req.query.pageToken as string | undefined;
+      const pageSize = Math.min(parseInt(req.query.pageSize as string) || 100, 1000);
+
+      const response = await drive.files.list({
+        q: "trashed = false",
+        fields: "nextPageToken, files(id, name, mimeType, parents, webViewLink, createdTime, modifiedTime, size, thumbnailLink)",
+        orderBy: "modifiedTime desc",
+        pageSize,
+        pageToken: pageToken || undefined,
+      });
+
+      const files = (response.data.files || []).map((f) => ({
+        id: f.id,
+        name: f.name,
+        mimeType: f.mimeType,
+        parentId: f.parents?.[0] || null,
+        webViewLink: f.webViewLink,
+        createdTime: f.createdTime,
+        modifiedTime: f.modifiedTime,
+        size: f.size ? parseInt(f.size) : null,
+        thumbnailLink: f.thumbnailLink,
+      }));
+
+      return res.json({
+        files,
+        nextPageToken: response.data.nextPageToken || null,
+      });
+    } catch (error: any) {
+      if (error?.code === 401 || error?.response?.status === 401) {
+        return res.status(401).json({ error: "Google token expired. Please reconnect." });
+      }
+      logger.error("Error fetching Google Drive files:", error);
+      return res.status(500).json({ error: "Failed to fetch Drive files" });
+    }
+  });
+
+  app.post("/api/google/drive/sync", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId as number;
+      const client = await getAuthenticatedClient(userId);
+      if (!client) {
+        return res.status(401).json({ error: "Google not connected" });
+      }
+
+      const drive = google.drive({ version: "v3", auth: client.oauth2Client });
+
+      let rootFolder = await storage.getFolderByExternalId(userId, "google_drive", "root");
+      if (!rootFolder) {
+        rootFolder = await storage.createFolder({
+          userId,
+          name: "Google Drive",
+          source: "google_drive",
+          externalId: "root",
+          favorite: false,
+        });
+      }
+
+      let imported = 0;
+      let updated = 0;
+      let skipped = 0;
+
+      const folderIdMap = new Map<string, number>();
+      folderIdMap.set("root", rootFolder.id);
+
+      let folderPageToken: string | undefined;
+      const allDriveFolders: any[] = [];
+      do {
+        const folderRes = await drive.files.list({
+          q: "mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+          fields: "nextPageToken, files(id, name, parents, webViewLink)",
+          pageSize: 1000,
+          pageToken: folderPageToken,
+        });
+        allDriveFolders.push(...(folderRes.data.files || []));
+        folderPageToken = folderRes.data.nextPageToken || undefined;
+      } while (folderPageToken);
+
+      const processFolderBatch = async (driveFolders: any[]) => {
+        const pending = [...driveFolders];
+        let lastPendingCount = -1;
+
+        while (pending.length > 0 && pending.length !== lastPendingCount) {
+          lastPendingCount = pending.length;
+          const stillPending: any[] = [];
+
+          for (const df of pending) {
+            const driveParentId = df.parents?.[0] || "root";
+            const parentVaultId = folderIdMap.get(driveParentId);
+
+            if (parentVaultId === undefined) {
+              stillPending.push(df);
+              continue;
+            }
+
+            let existingFolder = await storage.getFolderByExternalId(userId, "google_drive", df.id!);
+            if (existingFolder) {
+              await storage.updateFolder(existingFolder.id, {
+                name: df.name!,
+                parentId: parentVaultId,
+                externalUrl: df.webViewLink || undefined,
+              });
+              folderIdMap.set(df.id!, existingFolder.id);
+            } else {
+              const newFolder = await storage.createFolder({
+                userId,
+                name: df.name!,
+                parentId: parentVaultId,
+                source: "google_drive",
+                externalId: df.id!,
+                externalUrl: df.webViewLink || undefined,
+                favorite: false,
+              });
+              folderIdMap.set(df.id!, newFolder.id);
+            }
+          }
+          pending.length = 0;
+          pending.push(...stillPending);
+        }
+      };
+
+      await processFolderBatch(allDriveFolders);
+
+      let filePageToken: string | undefined;
+      do {
+        const fileRes = await drive.files.list({
+          q: "mimeType != 'application/vnd.google-apps.folder' and trashed = false",
+          fields: "nextPageToken, files(id, name, mimeType, parents, webViewLink, modifiedTime, size)",
+          pageSize: 100,
+          pageToken: filePageToken,
+        });
+
+        const files = fileRes.data.files || [];
+
+        for (const file of files) {
+          if (!file.id || !file.name) continue;
+
+          const driveParentId = file.parents?.[0] || "root";
+          const vaultFolderId = folderIdMap.get(driveParentId) || rootFolder.id;
+          const mimeType = file.mimeType || "";
+
+          const existingDoc = await storage.getDocumentByExternalId(userId, "google_drive", file.id);
+
+          if (mimeType === "application/vnd.google-apps.document") {
+            let markdownContent = "";
+            try {
+              const exported = await drive.files.export({
+                fileId: file.id,
+                mimeType: "text/plain",
+              });
+              markdownContent = (exported.data as string) || "";
+            } catch (exportErr) {
+              logger.error(`Failed to export Google Doc ${file.id}:`, exportErr);
+              markdownContent = "";
+            }
+
+            if (existingDoc) {
+              await storage.updateDocument(existingDoc.id, {
+                title: file.name,
+                content: markdownContent,
+                folderId: vaultFolderId,
+                externalUrl: file.webViewLink || undefined,
+                lastSyncedAt: new Date(),
+              });
+              updated++;
+            } else {
+              await storage.createDocument({
+                userId,
+                folderId: vaultFolderId,
+                title: file.name,
+                content: markdownContent,
+                format: "markdown",
+                source: "google_drive",
+                externalId: file.id,
+                externalUrl: file.webViewLink || undefined,
+                favorite: false,
+              });
+              imported++;
+            }
+          } else if (
+            mimeType.startsWith("image/") ||
+            mimeType.startsWith("video/") ||
+            mimeType === "application/pdf"
+          ) {
+            let fileType: string;
+            if (mimeType.startsWith("image/")) fileType = "image";
+            else if (mimeType.startsWith("video/")) fileType = "video";
+            else fileType = "pdf";
+
+            let fileData: string | null = null;
+            try {
+              const fileSize = file.size ? parseInt(file.size) : 0;
+              if (fileSize < 10 * 1024 * 1024) {
+                const downloaded = await drive.files.get(
+                  { fileId: file.id, alt: "media" },
+                  { responseType: "arraybuffer" }
+                );
+                const buffer = Buffer.from(downloaded.data as ArrayBuffer);
+                fileData = `data:${mimeType};base64,${buffer.toString("base64")}`;
+              }
+            } catch (dlErr) {
+              logger.error(`Failed to download file ${file.id}:`, dlErr);
+            }
+
+            if (existingDoc) {
+              await storage.updateDocument(existingDoc.id, {
+                title: file.name,
+                folderId: vaultFolderId,
+                externalUrl: file.webViewLink || undefined,
+                fileType,
+                mimeType,
+                fileSize: file.size ? parseInt(file.size) : undefined,
+                fileData: fileData || undefined,
+                lastSyncedAt: new Date(),
+              });
+              updated++;
+            } else {
+              await storage.createDocument({
+                userId,
+                folderId: vaultFolderId,
+                title: file.name,
+                content: "",
+                format: "binary",
+                source: "google_drive",
+                externalId: file.id,
+                externalUrl: file.webViewLink || undefined,
+                fileType,
+                mimeType,
+                fileSize: file.size ? parseInt(file.size) : undefined,
+                fileData: fileData || undefined,
+                favorite: false,
+              });
+              imported++;
+            }
+          } else if (
+            mimeType === "application/vnd.google-apps.spreadsheet" ||
+            mimeType === "application/vnd.google-apps.presentation"
+          ) {
+            if (existingDoc) {
+              await storage.updateDocument(existingDoc.id, {
+                title: file.name,
+                folderId: vaultFolderId,
+                externalUrl: file.webViewLink || undefined,
+                lastSyncedAt: new Date(),
+              });
+              updated++;
+            } else {
+              await storage.createDocument({
+                userId,
+                folderId: vaultFolderId,
+                title: file.name,
+                content: "",
+                format: "link",
+                source: "google_drive",
+                externalId: file.id,
+                externalUrl: file.webViewLink || undefined,
+                fileType: "document",
+                favorite: false,
+              });
+              imported++;
+            }
+          } else {
+            skipped++;
+          }
+        }
+
+        filePageToken = fileRes.data.nextPageToken || undefined;
+      } while (filePageToken);
+
+      return res.json({ imported, updated, skipped, folders: allDriveFolders.length });
+    } catch (error: any) {
+      if (error?.code === 401 || error?.response?.status === 401) {
+        return res.status(401).json({ error: "Google token expired. Please reconnect." });
+      }
+      logger.error("Error syncing Google Drive:", error);
+      return res.status(500).json({ error: "Failed to sync Google Drive" });
+    }
+  });
+
+  app.post("/api/google/drive/push", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId as number;
+      const client = await getAuthenticatedClient(userId);
+      if (!client) {
+        return res.status(401).json({ error: "Google not connected" });
+      }
+
+      const drive = google.drive({ version: "v3", auth: client.oauth2Client });
+      const allDocs = await storage.getDocuments(userId);
+      const driveDocs = allDocs.filter(
+        (d) => d.source === "google_drive" && d.externalId && !d.fileType
+      );
+
+      let pushed = 0;
+      let created = 0;
+      let skippedCount = 0;
+
+      for (const doc of driveDocs) {
+        if (doc.lastSyncedAt && doc.updatedAt && doc.updatedAt <= doc.lastSyncedAt) {
+          skippedCount++;
+          continue;
+        }
+
+        try {
+          await drive.files.update({
+            fileId: doc.externalId!,
+            media: {
+              mimeType: "text/plain",
+              body: doc.content,
+            },
+          });
+          await storage.updateDocument(doc.id, { lastSyncedAt: new Date() });
+          pushed++;
+        } catch (pushErr) {
+          logger.error(`Failed to push doc ${doc.id} to Drive:`, pushErr);
+        }
+      }
+
+      const localDocs = allDocs.filter(
+        (d) => d.source === "local" && !d.fileType && d.content
+      );
+
+      if (req.body.includeLocal) {
+        for (const doc of localDocs) {
+          try {
+            const createRes = await drive.files.create({
+              requestBody: {
+                name: doc.title,
+                mimeType: "application/vnd.google-apps.document",
+              },
+              media: {
+                mimeType: "text/plain",
+                body: doc.content,
+              },
+            });
+
+            if (createRes.data.id) {
+              const fileInfo = await drive.files.get({
+                fileId: createRes.data.id,
+                fields: "webViewLink",
+              });
+
+              await storage.updateDocument(doc.id, {
+                source: "google_drive",
+                externalId: createRes.data.id,
+                externalUrl: fileInfo.data.webViewLink || undefined,
+                lastSyncedAt: new Date(),
+              });
+              created++;
+            }
+          } catch (createErr) {
+            logger.error(`Failed to create doc ${doc.id} in Drive:`, createErr);
+          }
+        }
+      }
+
+      return res.json({ pushed, created, skipped: skippedCount });
+    } catch (error: any) {
+      if (error?.code === 401 || error?.response?.status === 401) {
+        return res.status(401).json({ error: "Google token expired. Please reconnect." });
+      }
+      logger.error("Error pushing to Google Drive:", error);
+      return res.status(500).json({ error: "Failed to push to Google Drive" });
+    }
+  });
+
+  app.post("/api/google/drive/push-document/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId as number;
+      const docId = parseInt(req.params.id);
+      if (isNaN(docId)) {
+        return res.status(400).json({ error: "Invalid document ID" });
+      }
+
+      const doc = await storage.getDocument(docId);
+      if (!doc || doc.userId !== userId) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+
+      if (doc.fileType) {
+        return res.status(400).json({ error: "Cannot push media files to Google Drive as documents" });
+      }
+
+      const client = await getAuthenticatedClient(userId);
+      if (!client) {
+        return res.status(401).json({ error: "Google not connected" });
+      }
+
+      const drive = google.drive({ version: "v3", auth: client.oauth2Client });
+
+      if (doc.externalId && doc.source === "google_drive") {
+        await drive.files.update({
+          fileId: doc.externalId,
+          media: {
+            mimeType: "text/plain",
+            body: doc.content,
+          },
+        });
+        await storage.updateDocument(doc.id, { lastSyncedAt: new Date() });
+        return res.json({ success: true, action: "updated" });
+      } else {
+        const createRes = await drive.files.create({
+          requestBody: {
+            name: doc.title,
+            mimeType: "application/vnd.google-apps.document",
+          },
+          media: {
+            mimeType: "text/plain",
+            body: doc.content,
+          },
+        });
+
+        if (createRes.data.id) {
+          const fileInfo = await drive.files.get({
+            fileId: createRes.data.id,
+            fields: "webViewLink",
+          });
+
+          await storage.updateDocument(doc.id, {
+            source: "google_drive",
+            externalId: createRes.data.id,
+            externalUrl: fileInfo.data.webViewLink || undefined,
+            lastSyncedAt: new Date(),
+          });
+        }
+
+        return res.json({ success: true, action: "created", googleFileId: createRes.data.id });
+      }
+    } catch (error: any) {
+      if (error?.code === 401 || error?.response?.status === 401) {
+        return res.status(401).json({ error: "Google token expired. Please reconnect." });
+      }
+      logger.error("Error pushing document to Google Drive:", error);
+      return res.status(500).json({ error: "Failed to push document to Google Drive" });
     }
   });
 }

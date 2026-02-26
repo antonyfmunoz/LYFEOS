@@ -23,7 +23,7 @@ import { RichTextToolbar } from '@/components/ui/rich-text-toolbar';
 import {
   ArrowLeft, Plus, FolderPlus, FileText, Folder, FolderOpen, MoreHorizontal,
   Trash, Trash2, Edit, Star, StarOff, ChevronRight, Home, Search, Save, X, Eye, Pencil,
-  ArrowUpLeft, File, Clock, Undo2,
+  ArrowUpLeft, File, Clock, Undo2, Upload, Image, Video, FileDown, Play,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Document, Folder as FolderType } from '@shared/schema';
@@ -63,6 +63,8 @@ export default function DocumentVaultPage() {
   const [showDeletedSection, setShowDeletedSection] = useState(false);
   const [permanentDeleteTarget, setPermanentDeleteTarget] = useState<{ type: 'folder' | 'document'; id: number; name: string } | null>(null);
   const [deletedItems, setDeletedItems] = useState<{ documents: Document[]; folders: FolderType[] }>({ documents: [], folders: [] });
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: serverFolders, isLoading: foldersLoading, dataUpdatedAt: foldersUpdatedAt } = useQuery<FolderType[]>({
     queryKey: ['/api/folders'],
@@ -355,12 +357,58 @@ export default function DocumentVaultPage() {
     setHasUnsavedChanges(false);
   }, [selectedDoc, editTitle, editContent]);
 
+  const isMediaFile = (doc: Document) => !!doc.fileType && ['image', 'video', 'pdf'].includes(doc.fileType);
+
   const openDoc = (doc: Document) => {
     setSelectedDoc(doc);
     setEditTitle(doc.title);
     setEditContent(doc.content || '');
     setViewMode('preview');
     setHasUnsavedChanges(false);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) {
+        formData.append('files', files[i]);
+      }
+      if (currentFolderId) {
+        formData.append('folderId', String(currentFolderId));
+      }
+      const response = await fetch('/api/documents/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
+      }
+    } catch (err) {
+      console.error('Upload failed:', err);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const formatFileSize = (bytes: number | null | undefined) => {
+    if (!bytes) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const getFileIcon = (doc: Document) => {
+    switch (doc.fileType) {
+      case 'image': return <Image className="h-5 w-5 text-blue-400" />;
+      case 'video': return <Video className="h-5 w-5 text-purple-400" />;
+      case 'pdf': return <FileDown className="h-5 w-5 text-red-400" />;
+      default: return <FileText className="h-5 w-5 text-primary/70" />;
+    }
   };
 
   const handleDrop = (targetFolderId: number, item: { type: string; id: number }) => {
@@ -424,32 +472,34 @@ export default function DocumentVaultPage() {
             <h2 className="text-lg font-orbitron truncate flex-1">{selectedDoc.title}</h2>
           )}
           <div className="flex items-center gap-1 ml-auto">
-            {viewMode === 'edit' ? (
-              <>
+            {!isMediaFile(selectedDoc) && (
+              viewMode === 'edit' ? (
+                <>
+                  <button
+                    className="h-8 w-8 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                    onClick={() => setViewMode('preview')}
+                    title="Preview"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </button>
+                  <button
+                    className="h-8 px-3 inline-flex items-center justify-center gap-1.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors font-mono text-xs"
+                    onClick={handleSaveDoc}
+                    disabled={updateDocument.isPending}
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                    Save
+                  </button>
+                </>
+              ) : (
                 <button
                   className="h-8 w-8 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
-                  onClick={() => setViewMode('preview')}
-                  title="Preview"
+                  onClick={() => setViewMode('edit')}
+                  title="Edit"
                 >
-                  <Eye className="h-4 w-4" />
+                  <Pencil className="h-4 w-4" />
                 </button>
-                <button
-                  className="h-8 px-3 inline-flex items-center justify-center gap-1.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors font-mono text-xs"
-                  onClick={handleSaveDoc}
-                  disabled={updateDocument.isPending}
-                >
-                  <Save className="h-3.5 w-3.5" />
-                  Save
-                </button>
-              </>
-            ) : (
-              <button
-                className="h-8 w-8 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
-                onClick={() => setViewMode('edit')}
-                title="Edit"
-              >
-                <Pencil className="h-4 w-4" />
-              </button>
+              )
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -479,7 +529,59 @@ export default function DocumentVaultPage() {
           </div>
         </div>
         <div className="glassmorphic rounded-xl border border-primary/20 overflow-hidden">
-          {viewMode === 'edit' ? (
+          {isMediaFile(selectedDoc) ? (
+            <div className="p-4">
+              {selectedDoc.fileType === 'image' && (
+                <div className="flex flex-col items-center gap-4">
+                  <img
+                    src={`/api/documents/${selectedDoc.id}/file`}
+                    alt={selectedDoc.title}
+                    className="max-w-full max-h-[70vh] rounded-lg object-contain"
+                  />
+                  <div className="text-xs text-muted-foreground flex items-center gap-3">
+                    <span>{selectedDoc.mimeType}</span>
+                    {selectedDoc.fileSize && <span>{formatFileSize(selectedDoc.fileSize)}</span>}
+                  </div>
+                </div>
+              )}
+              {selectedDoc.fileType === 'video' && (
+                <div className="flex flex-col items-center gap-4">
+                  <video
+                    src={`/api/documents/${selectedDoc.id}/file`}
+                    controls
+                    className="max-w-full max-h-[70vh] rounded-lg"
+                  />
+                  <div className="text-xs text-muted-foreground flex items-center gap-3">
+                    <span>{selectedDoc.mimeType}</span>
+                    {selectedDoc.fileSize && <span>{formatFileSize(selectedDoc.fileSize)}</span>}
+                  </div>
+                </div>
+              )}
+              {selectedDoc.fileType === 'pdf' && (
+                <div className="flex flex-col items-center gap-4">
+                  <iframe
+                    src={`/api/documents/${selectedDoc.id}/file`}
+                    className="w-full h-[70vh] rounded-lg border border-primary/20"
+                    title={selectedDoc.title}
+                  />
+                  <div className="flex items-center gap-3">
+                    <a
+                      href={`/api/documents/${selectedDoc.id}/file`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary hover:underline flex items-center gap-1"
+                    >
+                      <FileDown className="h-3 w-3" />
+                      Open in new tab
+                    </a>
+                    {selectedDoc.fileSize && (
+                      <span className="text-xs text-muted-foreground">{formatFileSize(selectedDoc.fileSize)}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : viewMode === 'edit' ? (
             <div>
               <div className="border-b border-primary/20 px-2 py-1">
                 <RichTextToolbar
@@ -655,6 +757,22 @@ export default function DocumentVaultPage() {
             <Plus className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Document</span>
           </button>
+          <button
+            className="h-8 px-3 inline-flex items-center gap-1.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors font-mono text-xs"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+          >
+            <Upload className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{isUploading ? 'Uploading...' : 'Upload'}</span>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*,video/*,application/pdf,.txt,.md,.csv"
+            className="hidden"
+            onChange={handleFileUpload}
+          />
         </div>
       </div>
 
@@ -741,6 +859,8 @@ export default function DocumentVaultPage() {
                       onMove={() => { setMoveTarget({ type: 'document', id: d.id }); setShowMoveDialog(true); }}
                       onRename={() => { setRenameDocId(d.id); setRenameDocTitle(d.title); setShowRenameDocDialog(true); }}
                       formatDate={formatDate}
+                      getFileIcon={getFileIcon}
+                      formatFileSize={formatFileSize}
                     />
                   ))}
                 </div>
@@ -769,11 +889,11 @@ export default function DocumentVaultPage() {
               </div>
             )}
 
-            {filteredDocs.length > 0 && (
+            {filteredDocs.filter(d => !d.fileType || d.fileType === 'document').length > 0 && (
               <div>
                 <h3 className="text-xs font-mono text-primary/70 uppercase tracking-wider mb-2">Documents</h3>
                 <div className="space-y-2">
-                  {filteredDocs.map(d => (
+                  {filteredDocs.filter(d => !d.fileType || d.fileType === 'document').map(d => (
                     <DocumentCard
                       key={d.id}
                       doc={d}
@@ -783,7 +903,55 @@ export default function DocumentVaultPage() {
                       onMove={() => { setMoveTarget({ type: 'document', id: d.id }); setShowMoveDialog(true); }}
                       onRename={() => { setRenameDocId(d.id); setRenameDocTitle(d.title); setShowRenameDocDialog(true); }}
                       formatDate={formatDate}
+                      getFileIcon={getFileIcon}
+                      formatFileSize={formatFileSize}
                     />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {filteredDocs.filter(d => d.fileType && d.fileType !== 'document').length > 0 && (
+              <div>
+                <h3 className="text-xs font-mono text-primary/70 uppercase tracking-wider mb-2">Media & Files</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {filteredDocs.filter(d => d.fileType && d.fileType !== 'document').map(d => (
+                    <div
+                      key={d.id}
+                      className="glassmorphic rounded-xl border border-primary/20 cursor-pointer hover:bg-card/40 transition-colors group overflow-hidden"
+                      onClick={() => openDoc(d)}
+                    >
+                      {d.fileType === 'image' ? (
+                        <div className="aspect-square bg-primary/5 flex items-center justify-center overflow-hidden">
+                          <img
+                            src={`/api/documents/${d.id}/file`}
+                            alt={d.title}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        </div>
+                      ) : d.fileType === 'video' ? (
+                        <div className="aspect-square bg-primary/5 flex items-center justify-center relative">
+                          <Video className="h-10 w-10 text-purple-400/50" />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="h-10 w-10 rounded-full bg-primary/30 flex items-center justify-center">
+                              <Play className="h-5 w-5 text-primary ml-0.5" />
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="aspect-square bg-primary/5 flex items-center justify-center">
+                          <FileDown className="h-10 w-10 text-red-400/50" />
+                        </div>
+                      )}
+                      <div className="p-2">
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs font-medium truncate flex-1">{d.title}</span>
+                          {d.favorite && <Star className="h-2.5 w-2.5 text-yellow-500 fill-yellow-500 shrink-0" />}
+                        </div>
+                        <span className="text-[10px] text-muted-foreground">{formatFileSize(d.fileSize)}</span>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -1123,7 +1291,7 @@ function FolderCard({ folder, onOpen, onRename, onDelete, onToggleFavorite, onMo
   );
 }
 
-function DocumentCard({ doc, onOpen, onDelete, onToggleFavorite, onMove, onRename, formatDate }: {
+function DocumentCard({ doc, onOpen, onDelete, onToggleFavorite, onMove, onRename, formatDate, getFileIcon, formatFileSize }: {
   doc: Document;
   onOpen: () => void;
   onDelete: () => void;
@@ -1131,6 +1299,8 @@ function DocumentCard({ doc, onOpen, onDelete, onToggleFavorite, onMove, onRenam
   onMove: () => void;
   onRename: () => void;
   formatDate: (d: string | Date) => string;
+  getFileIcon?: (doc: Document) => React.ReactNode;
+  formatFileSize?: (bytes: number | null | undefined) => string;
 }) {
   const [{ isDragging }, dragRef] = useDrag({
     type: DND_TYPES.DOCUMENT,
@@ -1138,7 +1308,6 @@ function DocumentCard({ doc, onOpen, onDelete, onToggleFavorite, onMove, onRenam
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   });
 
-  const preview = doc.content?.slice(0, 100) || '';
   return (
     <div
       ref={dragRef as unknown as React.Ref<HTMLDivElement>}
@@ -1150,7 +1319,7 @@ function DocumentCard({ doc, onOpen, onDelete, onToggleFavorite, onMove, onRenam
     >
       <div className="p-4 flex items-center gap-3">
         <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-          <FileText className="h-5 w-5 text-primary/70" />
+          {getFileIcon ? getFileIcon(doc) : <FileText className="h-5 w-5 text-primary/70" />}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
@@ -1167,6 +1336,9 @@ function DocumentCard({ doc, onOpen, onDelete, onToggleFavorite, onMove, onRenam
                 <Pencil className="h-3 w-3" />
                 Edited {formatDate(doc.updatedAt)}
               </span>
+            )}
+            {doc.fileSize && formatFileSize && (
+              <span>{formatFileSize(doc.fileSize)}</span>
             )}
           </div>
         </div>
