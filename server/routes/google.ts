@@ -68,15 +68,7 @@ function parseGoogleDateTime(dt: string): { date: string; time: string } {
   return { date: dt, time: "00:00" };
 }
 
-function calcDuration(startTime: string, endTime: string): string {
-  const [sh, sm] = startTime.split(":").map(Number);
-  const [eh, em] = endTime.split(":").map(Number);
-  const totalMins = (eh * 60 + em) - (sh * 60 + sm);
-  if (totalMins <= 0) return "0m";
-  const hours = Math.floor(totalMins / 60);
-  const mins = totalMins % 60;
-  return hours > 0 ? (mins > 0 ? `${hours}h ${mins}m` : `${hours}h`) : `${mins}m`;
-}
+
 
 export function registerGoogleRoutes(app: Express): void {
   app.get("/api/google/auth-url", isAuthenticated, (req: Request, res: Response) => {
@@ -221,29 +213,17 @@ export function registerGoogleRoutes(app: Express): void {
       });
 
       const googleEvents = response.data.items || [];
-      const existingLocalEvents = await storage.getEvents(userId);
       const existingQuests = await storage.getQuests(userId);
 
       const externalIdMap = new Map<string, number>();
-      for (const ev of existingLocalEvents) {
-        if (ev.externalId && ev.externalSource === "google_calendar") {
-          externalIdMap.set(ev.externalId, ev.id);
-        }
-      }
-
-      const localEventFingerprints = new Map<string, number>();
-      for (const ev of existingLocalEvents) {
-        if (!ev.externalId) {
-          const key = `${normalizeTitle(ev.title)}|${ev.date}|${ev.startTime}`;
-          localEventFingerprints.set(key, ev.id);
-        }
-      }
-
-      const missionFingerprints = new Set<string>();
+      const questFingerprints = new Map<string, number>();
       for (const q of existingQuests) {
-        if (q.startDate && q.startTime) {
+        if (q.externalId && q.externalSource === "google_calendar") {
+          externalIdMap.set(q.externalId, q.id);
+        }
+        if (!q.externalId && q.startDate && q.startTime) {
           const key = `${normalizeTitle(q.title)}|${q.startDate}|${q.startTime}`;
-          missionFingerprints.add(key);
+          questFingerprints.set(key, q.id);
         }
       }
 
@@ -261,57 +241,59 @@ export function registerGoogleRoutes(app: Express): void {
         const startRaw = gEvent.start?.dateTime || gEvent.start?.date || "";
         const endRaw = gEvent.end?.dateTime || gEvent.end?.date || "";
         const gLocation = gEvent.location || "";
+        const gTimezone = gEvent.start?.timeZone || null;
+        const gUrl = gEvent.hangoutLink || gEvent.htmlLink || null;
+        const gStatus = gEvent.status || "confirmed";
+        const gAttendees = (gEvent.attendees || []).map((a: any) => ({
+          email: a.email,
+          name: a.displayName || null,
+          responseStatus: a.responseStatus || null,
+        }));
 
         const start = parseGoogleDateTime(startRaw);
         const end = parseGoogleDateTime(endRaw);
-        const duration = isAllDay ? "All day" : calcDuration(start.time, end.time);
+
+        const questFields: any = {
+          title: gTitle,
+          description: gDescription,
+          startDate: start.date,
+          startTime: isAllDay ? null : start.time,
+          endDate: end.date,
+          endTime: isAllDay ? null : end.time,
+          location: gLocation || null,
+          allDay: isAllDay,
+          timezone: gTimezone,
+          url: gUrl,
+          missionStatus: gStatus,
+          attendees: gAttendees,
+        };
 
         if (externalIdMap.has(gEvent.id)) {
-          await storage.updateEvent(externalIdMap.get(gEvent.id)!, {
-            title: gTitle,
-            description: gDescription,
-            startTime: start.time,
-            endTime: end.time,
-            duration,
-            date: start.date,
-            location: gLocation,
-            allDay: isAllDay,
-          });
+          await storage.updateQuest(externalIdMap.get(gEvent.id)!, questFields);
           updated++;
           continue;
         }
 
-        const fingerprint = `${normalizeTitle(gTitle)}|${start.date}|${start.time}`;
+        const fingerprint = `${normalizeTitle(gTitle)}|${start.date}|${isAllDay ? "00:00" : start.time}`;
 
-        if (localEventFingerprints.has(fingerprint)) {
-          const localId = localEventFingerprints.get(fingerprint)!;
-          await storage.updateEvent(localId, {
+        if (questFingerprints.has(fingerprint)) {
+          const questId = questFingerprints.get(fingerprint)!;
+          await storage.updateQuest(questId, {
+            ...questFields,
             externalId: gEvent.id,
             externalSource: "google_calendar",
-            description: gDescription || undefined,
-            location: gLocation || undefined,
-            endTime: end.time,
           });
           linkedExisting++;
           continue;
         }
 
-        if (missionFingerprints.has(fingerprint)) {
-          skipped++;
-          continue;
-        }
-
-        await storage.createEvent({
+        await storage.createQuest({
           userId,
-          title: gTitle,
-          description: gDescription,
-          startTime: start.time,
-          endTime: end.time,
-          duration,
-          category: "personal",
-          date: start.date,
-          location: gLocation,
-          allDay: isAllDay,
+          ...questFields,
+          category: "general",
+          completed: false,
+          energyCost: 1,
+          experienceReward: 25,
           externalId: gEvent.id,
           externalSource: "google_calendar",
         });
@@ -337,43 +319,55 @@ export function registerGoogleRoutes(app: Express): void {
         return res.status(401).json({ error: "Google not connected" });
       }
 
-      const { eventId } = req.body;
-      if (!eventId) {
-        return res.status(400).json({ error: "eventId is required" });
+      const { missionId } = req.body;
+      if (!missionId) {
+        return res.status(400).json({ error: "missionId is required" });
       }
 
-      const localEvent = await storage.getEvent(eventId);
-      if (!localEvent || localEvent.userId !== userId) {
-        return res.status(404).json({ error: "Event not found" });
+      const mission = await storage.getQuest(missionId);
+      if (!mission || mission.userId !== userId) {
+        return res.status(404).json({ error: "Mission not found" });
+      }
+
+      if (!mission.startDate) {
+        return res.status(400).json({ error: "Mission has no date — cannot push to Google Calendar" });
       }
 
       const calendar = google.calendar({ version: "v3", auth: client.oauth2Client });
+      const tz = mission.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-      const startDateTime = localEvent.allDay
+      const startDateTime = mission.allDay
         ? undefined
-        : `${localEvent.date}T${localEvent.startTime}:00`;
-      const endDateTime = localEvent.allDay
+        : `${mission.startDate}T${mission.startTime || "00:00"}:00`;
+      const endDate = mission.endDate || mission.startDate;
+      const endDateTime = mission.allDay
         ? undefined
-        : localEvent.endTime
-          ? `${localEvent.date}T${localEvent.endTime}:00`
-          : `${localEvent.date}T${localEvent.startTime}:00`;
+        : `${endDate}T${mission.endTime || mission.startTime || "00:00"}:00`;
 
       const eventBody: any = {
-        summary: localEvent.title,
-        description: localEvent.description,
-        location: localEvent.location || undefined,
-        start: localEvent.allDay
-          ? { date: localEvent.date }
-          : { dateTime: startDateTime, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
-        end: localEvent.allDay
-          ? { date: localEvent.date }
-          : { dateTime: endDateTime, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+        summary: mission.title,
+        description: mission.description || undefined,
+        location: mission.location || undefined,
+        start: mission.allDay
+          ? { date: mission.startDate }
+          : { dateTime: startDateTime, timeZone: tz },
+        end: mission.allDay
+          ? { date: endDate }
+          : { dateTime: endDateTime, timeZone: tz },
       };
 
-      if (localEvent.externalId && localEvent.externalSource === "google_calendar") {
+      if (mission.url) eventBody.source = { url: mission.url };
+      if (mission.attendees && Array.isArray(mission.attendees) && (mission.attendees as any[]).length > 0) {
+        eventBody.attendees = (mission.attendees as any[]).map((a: any) => ({
+          email: a.email,
+          displayName: a.name || undefined,
+        }));
+      }
+
+      if (mission.externalId && mission.externalSource === "google_calendar") {
         await calendar.events.update({
           calendarId: "primary",
-          eventId: localEvent.externalId,
+          eventId: mission.externalId,
           requestBody: eventBody,
         });
         return res.json({ success: true, action: "updated" });
@@ -383,7 +377,7 @@ export function registerGoogleRoutes(app: Express): void {
           requestBody: eventBody,
         });
         if (created.data.id) {
-          await storage.updateEvent(localEvent.id, {
+          await storage.updateQuest(mission.id, {
             externalId: created.data.id,
             externalSource: "google_calendar",
           });
@@ -394,8 +388,8 @@ export function registerGoogleRoutes(app: Express): void {
       if (error?.code === 401 || error?.response?.status === 401) {
         return res.status(401).json({ error: "Google token expired. Please reconnect." });
       }
-      logger.error("Error pushing event to Google Calendar:", error);
-      return res.status(500).json({ error: "Failed to push event to Google" });
+      logger.error("Error pushing mission to Google Calendar:", error);
+      return res.status(500).json({ error: "Failed to push mission to Google" });
     }
   });
 
