@@ -364,12 +364,12 @@ export default function KnowledgeArchivePage() {
       </div>
       <div className="mb-6">
         <h1 className="text-2xl font-orbitron mb-1">Knowledge</h1>
-        <p className="text-primary/60">Research log entries organized by author and source material</p>
+        <p className="text-muted-foreground">Research log entries organized by author and source material</p>
       </div>
 
       {authorGroups.length > 0 && (
         <div className="mb-4 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search by author, source, or note content..."
@@ -509,7 +509,7 @@ export default function KnowledgeArchivePage() {
 
                                 return (
                                   <div key={idx} className="p-3 rounded-lg bg-card/30 border border-primary/10 space-y-1.5">
-                                    <div className="flex items-center gap-1.5 text-xs text-primary/60">
+                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                       <Calendar className="h-3 w-3" />
                                       <span className="font-mono">{formatDate(entry.date)}</span>
                                     </div>
@@ -525,9 +525,9 @@ export default function KnowledgeArchivePage() {
                                             onClick={() => toggleNote(noteKey)}
                                           >
                                             {isNoteExpanded ? (
-                                              <ChevronDown className="h-3 w-3 text-primary/60 flex-shrink-0" />
+                                              <ChevronDown className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                                             ) : (
-                                              <ChevronRight className="h-3 w-3 text-primary/60 flex-shrink-0" />
+                                              <ChevronRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                                             )}
                                             <Icon className="h-3 w-3 text-primary/80" />
                                             <span className="text-xs text-primary/80">{label}</span>
@@ -566,14 +566,14 @@ export default function KnowledgeArchivePage() {
           {searchQuery.trim() ? (
             <>
               <h3 className="text-xl font-medium mb-2">No Matching Entries</h3>
-              <p className="text-primary/60 mb-4 max-w-md">
+              <p className="text-muted-foreground mb-4 max-w-md">
                 No research entries match "{searchQuery}". Try a different search term.
               </p>
             </>
           ) : (
             <>
               <h3 className="text-xl font-medium mb-2">No Research Entries Yet</h3>
-              <p className="text-primary/60 mb-4 max-w-md">
+              <p className="text-muted-foreground mb-4 max-w-md">
                 Start documenting your research in the Daily Research Log on the Dashboard. Entries will appear here organized by author and source.
               </p>
             </>

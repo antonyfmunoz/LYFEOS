@@ -114,7 +114,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
               </span>
             </div>
             <span className="text-primary font-mono text-xs">
-              {stats.streakDays} <span className="text-primary/60">days</span>
+              {stats.streakDays} <span className="text-muted-foreground">days</span>
             </span>
           </div>
         </div>
@@ -154,7 +154,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           </div>
           <div className="flex justify-between">
             <span className="text-primary font-mono text-xs">
-              {efficiencyPercentage}<span className="text-primary/60 text-xs">%</span>
+              {efficiencyPercentage}<span className="text-muted-foreground text-xs">%</span>
             </span>
           </div>
         </div>
@@ -191,7 +191,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           </div>
           <div className="flex justify-between">
             <span className="text-primary font-mono text-xs">
-              {Math.round(atPercentage)}<span className="text-primary/60 text-xs">%</span>
+              {Math.round(atPercentage)}<span className="text-muted-foreground text-xs">%</span>
             </span>
           </div>
         </div>
@@ -228,7 +228,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           </div>
           <div className="flex justify-between">
             <span className="text-primary font-mono text-xs">
-              {Math.round(ttPercentage)}<span className="text-primary/60 text-xs">%</span>
+              {Math.round(ttPercentage)}<span className="text-muted-foreground text-xs">%</span>
             </span>
           </div>
         </div>
@@ -265,7 +265,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           </div>
           <div className="flex justify-between">
             <span className="text-primary font-mono text-xs">
-              {Math.round(epPercentage)}<span className="text-primary/60 text-xs">%</span>
+              {Math.round(epPercentage)}<span className="text-muted-foreground text-xs">%</span>
             </span>
           </div>
         </div>
@@ -302,7 +302,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           </div>
           <div className="flex justify-between">
             <span className="text-primary font-mono text-xs">
-              {Math.round(hpPercentage)}<span className="text-primary/60 text-xs">%</span>
+              {Math.round(hpPercentage)}<span className="text-muted-foreground text-xs">%</span>
             </span>
           </div>
         </div>
@@ -339,7 +339,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           </div>
           <div className="flex justify-between">
             <span className="text-primary font-mono text-xs">
-              {Math.round(wpPercentage)}<span className="text-primary/60 text-xs">%</span>
+              {Math.round(wpPercentage)}<span className="text-muted-foreground text-xs">%</span>
             </span>
           </div>
         </div>

@@ -140,7 +140,7 @@ export function LevelUpModal({ level, primaryColor = "#00e0ff", isOpen, onClose 
                   >
                     {getRank(level).icon} {getRank(level).name}
                   </motion.span>
-                  <p className="text-primary/60 text-sm">
+                  <p className="text-muted-foreground text-sm">
                     Congratulations on reaching a new level in your journey.
                   </p>
                 </motion.div>
@@ -202,7 +202,7 @@ export function LevelUpModal({ level, primaryColor = "#00e0ff", isOpen, onClose 
                     <p className="text-sm font-medium" style={{ color: primaryColor }}>
                       {isMajorMilestone ? 'MAJOR MILESTONE ACHIEVED!' : 'MILESTONE ACHIEVED!'}
                     </p>
-                    <p className="text-xs text-primary/60 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       {isMajorMilestone 
                         ? `Level ${level} is a major achievement. Keep up the great work!` 
                         : `Level ${level} is a notable achievement on your journey.`}

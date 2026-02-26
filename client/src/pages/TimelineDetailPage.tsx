@@ -350,7 +350,7 @@ export default function TimelineDetailPage() {
         </Button>
         <div>
           <h1 className="text-2xl font-orbitron mb-1">{item.title}</h1>
-          <p className="text-primary/60">Timeline item details</p>
+          <p className="text-muted-foreground">Timeline item details</p>
         </div>
       </div>
       
@@ -380,7 +380,7 @@ export default function TimelineDetailPage() {
                 {item.type}
               </span>
             </div>
-            <p className="text-xs text-primary/60">Recorded on {item.date}</p>
+            <p className="text-xs text-muted-foreground">Recorded on {item.date}</p>
           </div>
         </div>
         

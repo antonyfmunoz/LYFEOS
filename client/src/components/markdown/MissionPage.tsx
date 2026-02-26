@@ -76,7 +76,7 @@ export default function MissionPage({ slug, id, onBack }: MissionPageProps) {
     return (
       <div className="p-6 text-center">
         <h2 className="text-xl font-orbitron mb-4">Mission Not Found</h2>
-        <p className="text-primary/60 mb-4">
+        <p className="text-muted-foreground mb-4">
           The mission you're looking for doesn't exist or has been deleted.
         </p>
         <Button onClick={handleBack}>
@@ -112,7 +112,7 @@ export default function MissionPage({ slug, id, onBack }: MissionPageProps) {
           ))}
         </div>
         
-        <div className="flex flex-wrap gap-4 text-sm text-primary/60">
+        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
           <div className="flex items-center">
             <Calendar className="h-4 w-4 mr-1" />
             Created: {new Date(missionPage.createdAt).toLocaleDateString()}

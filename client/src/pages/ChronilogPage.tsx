@@ -406,7 +406,7 @@ export default function ChronilogPage() {
         <PageTutorial steps={CHRONILOG_TOUR_STEPS} storageKey="chronilog" isOpen={showTutorial} onComplete={handleTutorialComplete} onSkipAll={handleSkipAllTutorials} userId={user?.id} isLoading={isTutorialLoading} />
         <div className={cn("mb-6", isTutorialLoading && "invisible")} data-tour="chronilog-header">
           <h1 className="text-2xl font-orbitron mb-1">Chronilog</h1>
-          <p className="text-primary/60">Your personal timeline of knowledge, reflections, and growth logs.</p>
+          <p className="text-muted-foreground">Your personal timeline of knowledge, reflections, and growth logs.</p>
         </div>
         
         <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-6", isTutorialLoading && "invisible")} data-tour="chronilog-categories">

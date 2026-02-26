@@ -637,7 +637,7 @@ export default function DocumentVaultPage() {
       <div className="mb-4 flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-orbitron mb-1">Document Vault</h1>
-          <p className="text-primary/60">Create, edit, and organize<br />your documents and folders</p>
+          <p className="text-muted-foreground">Create, edit, and organize<br />your documents and folders</p>
         </div>
         <div className="flex gap-1.5">
           <button
@@ -659,7 +659,7 @@ export default function DocumentVaultPage() {
       </div>
 
       <div className="mb-4 relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <input
           type="text"
           value={searchQuery}

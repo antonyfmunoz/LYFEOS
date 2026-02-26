@@ -110,7 +110,7 @@ export function QuickActionMenu() {
           </div>
           <div className="text-left">
             <span className="block font-medium text-blue-400">Work Mission</span>
-            <span className="text-xs text-primary/60">Tasks, meetings, projects</span>
+            <span className="text-xs text-muted-foreground">Tasks, meetings, projects</span>
           </div>
         </Button>
         
@@ -124,7 +124,7 @@ export function QuickActionMenu() {
           </div>
           <div className="text-left">
             <span className="block font-medium text-red-400">Health Mission</span>
-            <span className="text-xs text-primary/60">Exercise, nutrition, wellbeing</span>
+            <span className="text-xs text-muted-foreground">Exercise, nutrition, wellbeing</span>
           </div>
         </Button>
         
@@ -138,7 +138,7 @@ export function QuickActionMenu() {
           </div>
           <div className="text-left">
             <span className="block font-medium text-purple-400">Personal Mission</span>
-            <span className="text-xs text-primary/60">Hobbies, family, learning</span>
+            <span className="text-xs text-muted-foreground">Hobbies, family, learning</span>
           </div>
         </Button>
       </div>
@@ -163,7 +163,7 @@ export function QuickActionMenu() {
           variant="ghost"
           size="sm"
           onClick={() => setStep('category')}
-          className="text-primary/60 hover:text-white"
+          className="text-muted-foreground hover:text-white"
         >
           Back
         </Button>

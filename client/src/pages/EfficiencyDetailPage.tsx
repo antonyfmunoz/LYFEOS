@@ -14,7 +14,7 @@ const DAY_OPTIONS = [7, 14, 30, 90];
 function getStatusBadge(score: number): { label: string; color: string; bg: string } {
   if (score >= 80) return { label: "OPTIMAL", color: "text-primary", bg: "bg-primary/20 border-primary/30" };
   if (score >= 50) return { label: "MODERATE", color: "text-primary/80", bg: "bg-primary/15 border-primary/25" };
-  return { label: "LOW", color: "text-primary/60", bg: "bg-primary/10 border-primary/20" };
+  return { label: "LOW", color: "text-muted-foreground", bg: "bg-primary/10 border-primary/20" };
 }
 
 export default function EfficiencyDetailPage() {
@@ -114,7 +114,7 @@ export default function EfficiencyDetailPage() {
                 <span className="text-7xl font-orbitron font-bold text-primary leading-none">
                   {stats.efficiencyScore}
                 </span>
-                <span className="text-2xl text-primary/60 font-mono">%</span>
+                <span className="text-2xl text-muted-foreground font-mono">%</span>
               </div>
               <p className="text-sm text-muted-foreground mt-2">
                 {stats.efficiencyScore >= 80 ? "Systems operating at peak performance" : stats.efficiencyScore >= 50 ? "Room for improvement detected" : "Systems require attention"}
@@ -375,7 +375,7 @@ export default function EfficiencyDetailPage() {
                       </div>
                       <div className="bg-background/40 rounded-lg px-3 py-2 border border-muted/20 text-center">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Least Active</p>
-                        <p className="text-sm font-mono font-bold text-primary/60">{minDay?.day ?? "—"}</p>
+                        <p className="text-sm font-mono font-bold text-muted-foreground">{minDay?.day ?? "—"}</p>
                       </div>
                       <div className="bg-background/40 rounded-lg px-3 py-2 border border-muted/20 text-center">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Total</p>

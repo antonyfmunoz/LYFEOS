@@ -58,8 +58,8 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <div className="progress-fill" style={{ width: `${xpPercentage}%`, background: 'linear-gradient(to right, var(--primary-70), var(--primary))' }}></div>
           </div>
           <div className="flex justify-between text-xs">
-            <span className="text-primary/60">{stats.experience.current.toLocaleString()} XP</span>
-            <span className="text-primary/60">{stats.experience.max.toLocaleString()} XP</span>
+            <span className="text-muted-foreground">{stats.experience.current.toLocaleString()} XP</span>
+            <span className="text-muted-foreground">{stats.experience.max.toLocaleString()} XP</span>
           </div>
           {stats.experience.totalXP !== undefined && (
             <div className="text-xs text-right mt-1 text-primary/70">
@@ -107,9 +107,9 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             </div>
             <div className="flex justify-between">
               <span className="text-primary font-mono text-base">
-                {stats.streakDays}<span className="text-primary/60 text-xs"> days</span>
+                {stats.streakDays}<span className="text-muted-foreground text-xs"> days</span>
               </span>
-              <span className="text-xs text-primary/60 self-end">consecutive</span>
+              <span className="text-xs text-muted-foreground self-end">consecutive</span>
             </div>
           </div>
         </Link>
@@ -150,9 +150,9 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             </div>
             <div className="flex justify-between">
               <span className="text-primary font-mono text-base">
-                {efficiencyPercentage}<span className="text-primary/60 text-xs">%</span>
+                {efficiencyPercentage}<span className="text-muted-foreground text-xs">%</span>
               </span>
-              <span className="text-xs text-primary/60 self-end">optimization</span>
+              <span className="text-xs text-muted-foreground self-end">optimization</span>
             </div>
           </div>
         </Link>
@@ -196,9 +196,9 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             </div>
             <div className="flex justify-between">
               <span className="text-primary font-mono text-base">
-                {Math.round(atPercentage)}<span className="text-primary/60 text-xs">%</span>
+                {Math.round(atPercentage)}<span className="text-muted-foreground text-xs">%</span>
               </span>
-              <span className="text-xs text-primary/60 self-end">focus</span>
+              <span className="text-xs text-muted-foreground self-end">focus</span>
             </div>
           </div>
         </Link>
@@ -236,9 +236,9 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             </div>
             <div className="flex justify-between">
               <span className="text-primary font-mono text-base">
-                {stats.timeTokens.current}<span className="text-primary/60 text-xs">/{stats.timeTokens.max}</span>
+                {stats.timeTokens.current}<span className="text-muted-foreground text-xs">/{stats.timeTokens.max}</span>
               </span>
-              <span className="text-xs text-primary/60 self-end">remaining today</span>
+              <span className="text-xs text-muted-foreground self-end">remaining today</span>
             </div>
           </div>
         </Link>
@@ -276,9 +276,9 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             </div>
             <div className="flex justify-between">
               <span className="text-primary font-mono text-base">
-                {Math.round(epPercentage)}<span className="text-primary/60 text-xs">%</span>
+                {Math.round(epPercentage)}<span className="text-muted-foreground text-xs">%</span>
               </span>
-              <span className="text-xs text-primary/60 self-end">capacity</span>
+              <span className="text-xs text-muted-foreground self-end">capacity</span>
             </div>
           </div>
         </Link>
@@ -316,9 +316,9 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             </div>
             <div className="flex justify-between">
               <span className="text-primary font-mono text-base">
-                {Math.round(hpPercentage)}<span className="text-primary/60 text-xs">%</span>
+                {Math.round(hpPercentage)}<span className="text-muted-foreground text-xs">%</span>
               </span>
-              <span className="text-xs text-primary/60 self-end">wellness</span>
+              <span className="text-xs text-muted-foreground self-end">wellness</span>
             </div>
           </div>
         </Link>

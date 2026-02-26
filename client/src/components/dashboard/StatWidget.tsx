@@ -33,11 +33,11 @@ export default function StatWidget({
         <div className="text-right">
           {type === 'time' ? (
             <p className="text-primary font-mono text-xl">
-              {current}<span className="text-primary/60 text-sm">/{max}</span>
+              {current}<span className="text-muted-foreground text-sm">/{max}</span>
             </p>
           ) : (
             <p className="text-primary font-mono text-xl">
-              {Math.round((current / max) * 100)}<span className="text-primary/60 text-sm">%</span>
+              {Math.round((current / max) * 100)}<span className="text-muted-foreground text-sm">%</span>
             </p>
           )}
         </div>
@@ -45,7 +45,7 @@ export default function StatWidget({
       <div className={`progress-bar ${progressClass}`}>
         <div className="progress-fill" style={{ width: `${percentage}%` }}></div>
       </div>
-      <p className="text-xs text-primary/60 mt-2">{description}</p>
+      <p className="text-xs text-muted-foreground mt-2">{description}</p>
     </Link>
   );
 }

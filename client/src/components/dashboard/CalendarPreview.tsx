@@ -26,7 +26,7 @@ export default function CalendarPreview() {
               rounded-r-md bg-surface bg-opacity-30`}
             >
               <p className="font-medium text-sm">{event.title}</p>
-              <p className="text-primary/60 text-xs">{event.description}</p>
+              <p className="text-muted-foreground text-xs">{event.description}</p>
             </div>
           </div>
         ))}

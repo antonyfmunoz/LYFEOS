@@ -155,12 +155,12 @@ export default function MissionTimer({
             )}
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1">
-                <Swords className="h-2.5 w-2.5 text-primary/60" />
+                <Swords className="h-2.5 w-2.5 text-muted-foreground" />
                 {focusTimerDisplay}
               </div>
               {breakTimerDisplay && (
                 <div className="flex items-center gap-1">
-                  <Coffee className="h-2.5 w-2.5 text-primary/60" />
+                  <Coffee className="h-2.5 w-2.5 text-muted-foreground" />
                   {breakTimerDisplay}
                 </div>
               )}

@@ -166,7 +166,7 @@ export default function StreakDetailPage() {
               <span className="text-7xl font-orbitron font-bold text-primary leading-none">
                 {stats.streakDays}
               </span>
-              <span className="text-2xl text-primary/60 font-mono">days</span>
+              <span className="text-2xl text-muted-foreground font-mono">days</span>
             </div>
             <p className="text-sm text-muted-foreground mt-2">Current login streak</p>
           </div>
@@ -397,7 +397,7 @@ export default function StreakDetailPage() {
                           {habit.currentStreak > 0 ? (
                             <Flame className="h-6 w-6 text-primary" />
                           ) : (
-                            <Clock className="h-5 w-5 text-primary/60" />
+                            <Clock className="h-5 w-5 text-muted-foreground" />
                           )}
                         </div>
                         {habit.currentStreak >= 3 && (
@@ -432,7 +432,7 @@ export default function StreakDetailPage() {
 
                       <div className="text-right flex-shrink-0">
                         <div className="flex items-baseline gap-1">
-                          <span className={`text-2xl font-mono font-bold ${habit.currentStreak > 0 ? "text-primary" : "text-primary/60"}`}>
+                          <span className={`text-2xl font-mono font-bold ${habit.currentStreak > 0 ? "text-primary" : "text-muted-foreground"}`}>
                             {habit.currentStreak}
                           </span>
                           <span className="text-xs text-muted-foreground">day streak</span>

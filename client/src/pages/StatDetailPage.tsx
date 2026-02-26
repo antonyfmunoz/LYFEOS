@@ -80,7 +80,7 @@ export default function StatDetailPage({ stat }: StatDetailPageProps) {
 
   const statusLabel = percentage > 70 ? "OPTIMAL" : percentage > 30 ? "MODERATE" : "LOW";
   const statusBg = percentage > 70 ? "bg-primary/20" : percentage > 30 ? "bg-primary/15" : "bg-primary/10";
-  const statusText = percentage > 70 ? "text-primary" : percentage > 30 ? "text-primary/80" : "text-primary/60";
+  const statusText = percentage > 70 ? "text-primary" : percentage > 30 ? "text-primary/80" : "text-muted-foreground";
 
   const avgEnergy = summary.totalMissions > 0
     ? Math.round((summary.totalEnergySpent || 0) / summary.totalMissions)

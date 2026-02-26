@@ -213,7 +213,7 @@ export default function EnhancedMissionPage() {
       </div>
       
       {/* Metadata */}
-      <div className="flex flex-wrap gap-3 mb-6 text-xs text-primary/60">
+      <div className="flex flex-wrap gap-3 mb-6 text-xs text-muted-foreground">
         <div className="flex items-center">
           <Calendar className="h-3 w-3 mr-1" />
           <span>Created: {new Date(missionPage.createdAt).toLocaleDateString()}</span>

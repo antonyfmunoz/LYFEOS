@@ -172,7 +172,7 @@ export default function CalendarPage() {
           </h2>
           
           {currentDateEvents.length === 0 ? (
-            <p className="text-primary/60 py-8 text-center">No events scheduled for this date.</p>
+            <p className="text-muted-foreground py-8 text-center">No events scheduled for this date.</p>
           ) : (
             <div className="space-y-4">
               {currentDateEvents.map((event) => (
@@ -193,12 +193,12 @@ export default function CalendarPage() {
                     <div className="flex items-center justify-between">
                       <h3 className="font-medium">{event.title}</h3>
                       <div className="flex items-center space-x-2">
-                        <Clock className="h-3.5 w-3.5 text-primary/60" />
-                        <span className="text-xs text-primary/60">{event.duration}</span>
+                        <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">{event.duration}</span>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-5 w-5 rounded-full text-primary/60 hover:bg-primary hover:text-background"
+                          className="h-5 w-5 rounded-full text-muted-foreground hover:bg-primary hover:text-background"
                           onClick={(e) => {
                             e.stopPropagation();
                             navigate(`/mission/${event.id}`);
@@ -208,7 +208,7 @@ export default function CalendarPage() {
                         </Button>
                       </div>
                     </div>
-                    <p className="text-sm text-primary/60 mt-1">{event.description}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{event.description}</p>
                   </div>
                 </div>
               ))}

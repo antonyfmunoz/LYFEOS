@@ -146,8 +146,8 @@ export default function MissionLogWidget({
   const renderEmptyState = () => (
     <div className="glassmorphic rounded-xl p-6 text-center opacity-80 mt-2">
       <Calendar className="h-10 w-10 text-primary/50 mx-auto mb-3" />
-      <p className="text-primary/60">No missions scheduled for today</p>
-      <p className="text-xs text-primary/60 mt-2">
+      <p className="text-muted-foreground">No missions scheduled for today</p>
+      <p className="text-xs text-muted-foreground mt-2">
         Create a new mission or visit the Calendar page
       </p>
       <Button
@@ -166,8 +166,8 @@ export default function MissionLogWidget({
   const renderAllCompletedState = () => (
     <div className="glassmorphic rounded-xl p-6 text-center opacity-80 mt-2">
       <Calendar className="h-10 w-10 text-primary/50 mx-auto mb-3" />
-      <p className="text-primary/60">All missions completed for now</p>
-      <p className="text-xs text-primary/60 mt-2">
+      <p className="text-muted-foreground">All missions completed for now</p>
+      <p className="text-xs text-muted-foreground mt-2">
         Great job! Create new missions or check back later
       </p>
       <Button
@@ -258,7 +258,7 @@ export default function MissionLogWidget({
                         />
                         <div className="ml-3 flex-grow">
                           <div className="flex justify-between">
-                            <h3 className={`font-orbitron text-base ${isCompleted ? 'line-through text-primary/60' : 'text-primary'}`}>
+                            <h3 className={`font-orbitron text-base ${isCompleted ? 'line-through text-muted-foreground' : 'text-primary'}`}>
                               {event.title}
                             </h3>
                             <div className="flex items-center">
@@ -277,7 +277,7 @@ export default function MissionLogWidget({
                               </Button>
                             </div>
                           </div>
-                          <p className={`text-xs text-primary/60 mt-0.5 ${isCompleted ? 'line-through' : ''}`}>
+                          <p className={`text-xs text-muted-foreground mt-0.5 ${isCompleted ? 'line-through' : ''}`}>
                             {event.category === 'work' ? 'Conference Room 3' : 
                             event.category === 'health' ? 'Gym' : 'Virtual'} | {event.duration} | {event.startTime}
                           </p>
@@ -344,7 +344,7 @@ export default function MissionLogWidget({
                         />
                         <div className="ml-3 flex-grow">
                           <div className="flex justify-between">
-                            <h3 className={`text-base font-semibold ${isCompleted ? 'line-through text-primary/60' : 'text-white'}`}>
+                            <h3 className={`text-base font-semibold ${isCompleted ? 'line-through text-muted-foreground' : 'text-white'}`}>
                               {event.title}
                             </h3>
                             <div className="flex items-center">
@@ -395,7 +395,7 @@ export default function MissionLogWidget({
         <DialogContent className="glassmorphic backdrop-blur-lg border-primary/50">
           <DialogHeader>
             <DialogTitle className="font-orbitron text-xl">Mission Details</DialogTitle>
-            <DialogDescription className="text-primary/60 text-sm">
+            <DialogDescription className="text-muted-foreground text-sm">
               View detailed information about this mission
             </DialogDescription>
           </DialogHeader>
@@ -405,7 +405,7 @@ export default function MissionLogWidget({
               <div className="flex flex-col space-y-4">
                 <div>
                   <h3 className="font-orbitron text-lg">{selectedMission.title}</h3>
-                  <p className="text-primary/60 text-sm mt-1">
+                  <p className="text-muted-foreground text-sm mt-1">
                     {selectedMission.category === 'work' ? 'Work Mission' : 
                      selectedMission.category === 'health' ? 'Health Mission' : 'Personal Mission'}
                   </p>
@@ -418,14 +418,14 @@ export default function MissionLogWidget({
                 </div>
                 
                 <div className="flex flex-col space-y-2">
-                  <div className="flex items-center text-primary/60">
+                  <div className="flex items-center text-muted-foreground">
                     <Clock className="mr-2 h-4 w-4" />
                     <span className="text-sm">
                       {selectedMission.startTime} - {getEndTime(selectedMission.startTime, selectedMission.duration)} | {selectedMission.duration}
                     </span>
                   </div>
                   
-                  <div className="flex items-center text-primary/60">
+                  <div className="flex items-center text-muted-foreground">
                     <Calendar className="mr-2 h-4 w-4" />
                     <span className="text-sm">Today</span>
                   </div>

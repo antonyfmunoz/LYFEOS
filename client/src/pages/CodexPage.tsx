@@ -52,7 +52,7 @@ export default function ChronilogPage() {
     <>
       <div className="mb-6">
         <h1 className="text-2xl font-orbitron mb-1">Chronilog</h1>
-        <p className="text-primary/60">Your personal timeline of knowledge, reflections, and growth logs.</p>
+        <p className="text-muted-foreground">Your personal timeline of knowledge, reflections, and growth logs.</p>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -77,7 +77,7 @@ export default function ChronilogPage() {
               </div>
               <div>
                 <h3 className="text-lg font-orbitron text-primary">{category.title}</h3>
-                <p className="text-xs text-primary/60">{category.description}</p>
+                <p className="text-xs text-muted-foreground">{category.description}</p>
               </div>
             </div>
             <div className="flex justify-end">
@@ -139,8 +139,8 @@ export default function ChronilogPage() {
                     <h3 className="font-medium">{page.title}</h3>
                   </div>
                   <div className="flex items-center">
-                    <Clock className="h-3 w-3 mr-1 text-primary/60" />
-                    <span className="text-xs text-primary/60 font-mono">
+                    <Clock className="h-3 w-3 mr-1 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground font-mono">
                       {new Date(page.updatedAt).toLocaleDateString()}
                     </span>
                   </div>
@@ -156,7 +156,7 @@ export default function ChronilogPage() {
                   ))}
                 </div>
                 
-                <p className="text-sm text-primary/60 line-clamp-2">
+                <p className="text-sm text-muted-foreground line-clamp-2">
                   {page.content.length > 150 
                     ? page.content.substring(0, 150) + '...' 
                     : page.content}
@@ -165,7 +165,7 @@ export default function ChronilogPage() {
             ))
           ) : (
             <div className="text-center py-8 bg-card/30 rounded-lg border border-[#36F1CD]/20">
-              <p className="text-primary/60 mb-3">No mission logs found.</p>
+              <p className="text-muted-foreground mb-3">No mission logs found.</p>
               <button 
                 className="text-xs font-medium px-3 py-1 rounded-md bg-[#36F1CD]/10 text-[#36F1CD] hover:bg-opacity-20 transition"
                 onClick={() => {
@@ -204,9 +204,9 @@ export default function ChronilogPage() {
           <div className="glassmorphic rounded-xl p-4 border border-slate-700/50">
             <div className="flex justify-between items-start mb-2">
               <h3 className="font-medium">Morning Reflection</h3>
-              <span className="text-xs text-primary/60 font-mono">TODAY</span>
+              <span className="text-xs text-muted-foreground font-mono">TODAY</span>
             </div>
-            <p className="text-sm text-primary/60 line-clamp-2">
+            <p className="text-sm text-muted-foreground line-clamp-2">
               Today I'm focusing on the product launch strategy. Need to balance deep work with team coordination...
             </p>
           </div>
@@ -214,9 +214,9 @@ export default function ChronilogPage() {
           <div className="glassmorphic rounded-xl p-4 border border-slate-700/50">
             <div className="flex justify-between items-start mb-2">
               <h3 className="font-medium">Weekly Review</h3>
-              <span className="text-xs text-primary/60 font-mono">3 DAYS AGO</span>
+              <span className="text-xs text-muted-foreground font-mono">3 DAYS AGO</span>
             </div>
-            <p className="text-sm text-primary/60 line-clamp-2">
+            <p className="text-sm text-muted-foreground line-clamp-2">
               Completed 4/5 major objectives this week. Energy levels were consistent but sleep quality needs improvement...
             </p>
           </div>

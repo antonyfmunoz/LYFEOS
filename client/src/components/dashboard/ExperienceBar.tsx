@@ -129,12 +129,12 @@ export default function ExperienceBar({
       </motion.div>
       
       <div className="flex justify-between text-xs">
-        <span className="text-primary/60">{current.toLocaleString()} XP</span>
-        <span className="text-primary/60">{max.toLocaleString()} XP</span>
+        <span className="text-muted-foreground">{current.toLocaleString()} XP</span>
+        <span className="text-muted-foreground">{max.toLocaleString()} XP</span>
       </div>
       
       {totalXP !== undefined && (
-        <div className="text-xs text-right mt-1 text-primary/60">
+        <div className="text-xs text-right mt-1 text-muted-foreground">
           Total: {totalXP.toLocaleString()} XP
         </div>
       )}

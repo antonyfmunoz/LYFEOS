@@ -295,7 +295,7 @@ export function MarkdownEditor({
               <Save size={14} />
             </button>
           </div>
-          <div className="absolute bottom-2 right-2 text-xs dark:text-primary/60/50 light:text-slate-400/80">
+          <div className="absolute bottom-2 right-2 text-xs dark:text-muted-foreground/50 light:text-slate-400/80">
             Ctrl+Enter or Esc to save
           </div>
         </div>

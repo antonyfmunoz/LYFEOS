@@ -12,13 +12,13 @@ import { LineChart, Line, ScatterChart, Scatter, ResponsiveContainer, XAxis, YAx
 function getStatusBadge(pct: number): { label: string; color: string; bg: string } {
   if (pct >= 75) return { label: "OPTIMAL", color: "text-primary", bg: "bg-primary/20 border-primary/30" };
   if (pct >= 40) return { label: "MODERATE", color: "text-primary/80", bg: "bg-primary/15 border-primary/25" };
-  return { label: "LOW", color: "text-primary/60", bg: "bg-primary/10 border-primary/20" };
+  return { label: "LOW", color: "text-muted-foreground", bg: "bg-primary/10 border-primary/20" };
 }
 
 function getScoreColor(score: number): string {
   if (score > 7) return "text-primary";
   if (score > 4) return "text-primary/80";
-  return "text-primary/60";
+  return "text-muted-foreground";
 }
 
 function getScoreBg(score: number): string {
@@ -137,7 +137,7 @@ export default function HealthDetailPage() {
                 <span className="text-7xl font-orbitron font-bold text-primary leading-none">
                   {healthPct}
                 </span>
-                <span className="text-2xl text-primary/60 font-mono">%</span>
+                <span className="text-2xl text-muted-foreground font-mono">%</span>
               </div>
               <p className="text-sm text-muted-foreground mt-2">
                 {stats.healthPoints.current} / {stats.healthPoints.max} HP

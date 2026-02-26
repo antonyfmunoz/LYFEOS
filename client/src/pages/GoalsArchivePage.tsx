@@ -1113,7 +1113,7 @@ export default function GoalsArchivePage() {
         
         <div className="mb-6">
           <h1 className="text-2xl font-orbitron mb-1">Vision</h1>
-          <p className="text-primary/60">Set mission objectives for each time horizon and check them off as you reach them</p>
+          <p className="text-muted-foreground">Set mission objectives for each time horizon and check them off as you reach them</p>
         </div>
 
         <Dialog open={isEditOpen} onOpenChange={(open) => {
