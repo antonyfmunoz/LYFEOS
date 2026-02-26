@@ -66,7 +66,8 @@ import {
   Vibrate,
   Volume2,
   Calendar,
-  Link2
+  Link2,
+  StickyNote
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -81,7 +82,8 @@ import { auth as firebaseAuth } from "@/lib/firebase";
 
 
 const PLACEHOLDER_PROVIDERS = [
-  { provider: "apple_health", name: "Apple Health", icon: Heart },
+  { provider: "obsidian", name: "Obsidian", icon: FileText },
+  { provider: "evernote", name: "Evernote", icon: StickyNote },
   { provider: "notion", name: "Notion", icon: BookOpen },
 ] as const;
 
