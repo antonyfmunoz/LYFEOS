@@ -61,6 +61,35 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
   }
 
   const isApple = isAppleProvider(provider);
+  const isStandalonePWA = window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone === true;
+
+  if (isStandalonePWA) {
+    console.log(`Standalone PWA detected, using popup flow for ${providerName}`);
+    try {
+      const result = await signInWithPopup(auth, provider);
+      return result;
+    } catch (error: any) {
+      console.error(`${providerName} popup sign-in error in PWA:`, error?.code, error?.message);
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+        return null;
+      }
+      console.log(`Popup failed in PWA, falling back to redirect for ${providerName}`);
+      try {
+        localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
+        await signInWithRedirect(auth, provider);
+        return null;
+      } catch (redirectError: any) {
+        console.error(`${providerName} redirect also failed in PWA:`, redirectError?.code, redirectError?.message);
+        localStorage.removeItem('lyfeos-oauth-redirect-pending');
+        toast({
+          title: "Login Error",
+          description: `${providerName} sign-in failed: ${redirectError?.message || redirectError?.code || 'Please try again.'}`,
+          variant: "destructive"
+        });
+        return null;
+      }
+    }
+  }
 
   if (isMobileBrowser()) {
     console.log(`Mobile browser detected, using redirect flow directly for ${providerName}`);
