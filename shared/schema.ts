@@ -363,9 +363,14 @@ export const calendarEvents = pgTable("calendar_events", {
   title: text("title").notNull(),
   description: text("description").notNull(),
   startTime: text("start_time").notNull(), // format: "HH:MM"
+  endTime: text("end_time"), // format: "HH:MM"
   duration: text("duration").notNull(),
   category: text("category").notNull(), // 'work', 'personal', or 'health'
   date: text("date").notNull(), // format: "YYYY-MM-DD"
+  location: text("location"),
+  allDay: boolean("all_day").default(false),
+  externalId: text("external_id"),
+  externalSource: text("external_source"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -622,9 +627,14 @@ export const insertCalendarEventSchema = createInsertSchema(calendarEvents).pick
   title: true,
   description: true,
   startTime: true,
+  endTime: true,
   duration: true,
   category: true,
   date: true,
+  location: true,
+  allDay: true,
+  externalId: true,
+  externalSource: true,
 });
 
 export const insertMissionPageSchema = createInsertSchema(missionPages).pick({
