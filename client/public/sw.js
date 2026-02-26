@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lyfeos-v24';
+const CACHE_NAME = 'lyfeos-v25';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -58,32 +58,42 @@ self.addEventListener('fetch', (event) => {
 });
 
 self.addEventListener('push', (event) => {
-  let data = { title: 'LYFEOS', body: 'You have a mission reminder!' };
-  
+  let title = 'LYFEOS';
+  let body = 'You have a mission reminder!';
+  let tag = 'lyfeos-notification';
+  let url = '/';
+  let questId;
+  let actions = [];
+
   if (event.data) {
     try {
-      data = event.data.json();
+      const parsed = event.data.json();
+      const notification = parsed.notification || {};
+      const d = parsed.data || parsed;
+      title = notification.title || d.title || 'LYFEOS';
+      body = notification.body || d.body || 'You have a notification!';
+      tag = d.tag || tag;
+      url = d.url || url;
+      questId = d.questId;
+      actions = d.actions || [];
     } catch (e) {
-      data.body = event.data.text();
+      body = event.data.text() || body;
     }
   }
-  
+
   const options = {
-    body: data.body,
+    body,
     icon: '/icon-192.png',
     badge: '/icon-192.png',
     vibrate: [200, 100, 200],
-    tag: data.tag || 'lyfeos-notification',
+    tag,
     renotify: true,
-    data: {
-      url: data.url || '/',
-      questId: data.questId
-    },
-    actions: data.actions || []
+    data: { url, questId },
+    actions
   };
-  
+
   event.waitUntil(
-    self.registration.showNotification(data.title, options)
+    self.registration.showNotification(title, options)
   );
 });
 
