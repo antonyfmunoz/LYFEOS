@@ -584,7 +584,8 @@ export default function QuestsPage() {
     }
   };
   
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [viewMode, setViewMode] = useState<'board' | 'list' | 'calendar'>('board');
+  const [showCompleted, setShowCompleted] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
