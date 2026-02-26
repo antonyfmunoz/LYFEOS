@@ -67,32 +67,11 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
 
   const isApple = isAppleProvider(provider);
 
-  if (isMobileBrowser() && isStandalonePWA()) {
-    console.log(`PWA standalone mode detected, using popup flow for ${providerName}`);
-    try {
-      const result = await signInWithPopup(auth, provider);
-      return result;
-    } catch (popupError: any) {
-      console.error(`${providerName} popup in PWA failed:`, popupError?.code, popupError?.message);
-      if (popupError.code === 'auth/popup-closed-by-user' || popupError.code === 'auth/cancelled-popup-request') {
-        return null;
-      }
-      console.log(`Falling back to redirect for ${providerName} in PWA`);
-      try {
-        localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
-        await signInWithRedirect(auth, provider);
-        return null;
-      } catch (redirectError: any) {
-        console.error(`${providerName} redirect also failed in PWA:`, redirectError?.code, redirectError?.message);
-        localStorage.removeItem('lyfeos-oauth-redirect-pending');
-        toast({
-          title: "Login Error",
-          description: `${providerName} sign-in failed: ${redirectError?.message || redirectError?.code || 'Please try again.'}`,
-          variant: "destructive"
-        });
-        return null;
-      }
-    }
+  if (isMobileBrowser() && isStandalonePWA() && !isApple) {
+    console.log(`PWA standalone mode detected, using server-side OAuth for ${providerName}`);
+    const mode = localStorage.getItem('lyfeos-oauth-mode') || 'login';
+    window.location.href = `/api/auth/google/start?mode=${mode}`;
+    return null;
   }
 
   if (isMobileBrowser()) {

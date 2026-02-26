@@ -12,6 +12,8 @@ declare module "express-session" {
   interface SessionData {
     userId: number;
     username: string;
+    googleOAuthState: string;
+    googleOAuthMode: string;
   }
 }
 
@@ -802,5 +804,223 @@ export function registerAuthRoutes(app: Express): void {
     } as any);
 
     res.json({ message: "Two-factor authentication disabled" });
+  });
+
+  app.get("/api/auth/google/start", (req: Request, res: Response) => {
+    const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+    if (!clientId) {
+      return res.status(500).json({ error: "Google OAuth not configured" });
+    }
+
+    const mode = (req.query.mode as string) || 'login';
+    const state = crypto.randomBytes(32).toString('hex');
+    req.session.googleOAuthState = state;
+    req.session.googleOAuthMode = mode;
+
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
+
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'openid email profile',
+      state: state,
+      prompt: 'select_account',
+      access_type: 'offline',
+    });
+
+    req.session.save(() => {
+      res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+    });
+  });
+
+  app.get("/api/auth/google/callback", async (req: Request, res: Response) => {
+    try {
+      const { code, state, error: oauthError } = req.query;
+
+      if (oauthError) {
+        logger.error("Google OAuth error:", oauthError);
+        return res.redirect(`/login?error=${encodeURIComponent(String(oauthError))}`);
+      }
+
+      if (!code || !state) {
+        return res.redirect('/login?error=missing_params');
+      }
+
+      if (state !== req.session.googleOAuthState) {
+        logger.error("Google OAuth state mismatch");
+        return res.redirect('/login?error=state_mismatch');
+      }
+
+      const authMode = req.session.googleOAuthMode || 'login';
+      delete req.session.googleOAuthState;
+      delete req.session.googleOAuthMode;
+
+      const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+      const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+      if (!clientId || !clientSecret) {
+        return res.redirect('/login?error=oauth_not_configured');
+      }
+
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+      const host = req.headers['x-forwarded-host'] || req.headers.host;
+      const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
+
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          code: String(code),
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectUri,
+          grant_type: 'authorization_code',
+        }),
+      });
+
+      if (!tokenResponse.ok) {
+        const errBody = await tokenResponse.text();
+        logger.error("Google token exchange failed:", errBody);
+        return res.redirect('/login?error=token_exchange_failed');
+      }
+
+      const tokenData = await tokenResponse.json() as any;
+
+      const userinfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      });
+
+      if (!userinfoResponse.ok) {
+        return res.redirect('/login?error=userinfo_failed');
+      }
+
+      const userinfo = await userinfoResponse.json() as any;
+      const { email, name, picture, sub: googleUid } = userinfo;
+
+      if (!email) {
+        return res.redirect('/login?error=no_email');
+      }
+
+      let user = await storage.getUserByEmail(email);
+      let isNewUser = false;
+
+      if (!user) {
+        if (authMode === 'register') {
+          user = await storage.createUser({
+            username: null,
+            password: null,
+            displayName: name || null,
+            firstName: name?.split(' ')[0] || null,
+            lastName: name?.split(' ').slice(1).join(' ') || null,
+            title: "COMMANDER",
+            email: email,
+            authProvider: 'google',
+            firebaseUid: googleUid,
+            termsAccepted: true
+          });
+
+          await storage.createUserStats({
+            userId: user.id,
+            experienceCurrent: 0,
+            experienceMax: 1000,
+            level: 1,
+            timeTokensCurrent: 100,
+            timeTokensMax: 100,
+            energyPointsCurrent: 100,
+            energyPointsMax: 100,
+            healthPointsCurrent: 100,
+            healthPointsMax: 100,
+            attentionTokensCurrent: 100,
+            attentionTokensMax: 100,
+            streakDays: 0,
+            efficiencyScore: 0,
+            aiAssistantName: "NOVA",
+            primaryColor: "#ffffff"
+          });
+
+          await storage.upsertUserProfile(user.id, {
+            startStage: "beginner",
+            targetArchetype: "architect",
+            flowStyle: "hyperfocus",
+            coreMotivation: "growth",
+            setupMissionStatus: "not_started",
+            primaryThemeColor: "#ffe03d",
+            onboardingCompleted: false
+          });
+
+          await storage.createUserIntegration({
+            userId: user.id,
+            appleHealthConnected: false,
+            googleCalendarConnected: false,
+            notionConnected: false
+          });
+
+          const today = formatLocalDate();
+          await storage.createUserDailyLog({
+            userId: user.id,
+            date: today,
+            yesterdayXp: 0,
+            todayPrimaryMission: "Get started with LYFEOS",
+            optionalBoostsShown: false
+          });
+
+          isNewUser = true;
+          logger.debug("New user created via server-side Google OAuth:", user.id);
+        } else {
+          return res.redirect('/login?error=account_not_found');
+        }
+      } else {
+        if (!user.firebaseUid) {
+          await storage.updateUserFirebaseUid(user.id, googleUid);
+        }
+      }
+
+      req.session.userId = user.id;
+      req.session.username = user.username || user.email || String(user.id);
+
+      const { streakDays, isNewDay } = await storage.processLoginStreak(user.id);
+      if (isNewDay) {
+        await storage.processDailyHealthUpdate(user.id);
+      }
+
+      storage.logActivityEvent(user.id, 'login').catch(() => {});
+      storage.initDefaultReminders(user.id).catch(() => {});
+
+      let firebaseUid = user.firebaseUid || googleUid;
+      if (!user.firebaseUid) {
+        try {
+          const fbUser = await getFirebaseUserByEmail(email);
+          if (fbUser) {
+            firebaseUid = fbUser.uid;
+            await storage.updateUserFirebaseUid(user.id, fbUser.uid);
+          }
+        } catch (e) {
+          logger.warn("Could not find Firebase user for server-side OAuth:", e);
+        }
+      }
+
+      let customToken: string | null = null;
+      if (firebaseUid) {
+        customToken = await createCustomToken(firebaseUid);
+      }
+
+      const redirectParams = new URLSearchParams();
+      if (customToken) {
+        redirectParams.set('google_auth_token', customToken);
+      }
+      redirectParams.set('google_auth_mode', authMode);
+      if (isNewUser) {
+        redirectParams.set('google_auth_new', '1');
+      }
+
+      req.session.save(() => {
+        res.redirect(`/login?${redirectParams.toString()}`);
+      });
+    } catch (error) {
+      logger.error("Google OAuth callback error:", error);
+      return res.redirect('/login?error=server_error');
+    }
   });
 }

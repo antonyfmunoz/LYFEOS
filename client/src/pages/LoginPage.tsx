@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { useState, useEffect, useRef } from "react";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/authContext";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
+import { signInWithCustomToken } from "@/lib/firebaseAuth";
+import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
   usePageTitle('Login');
@@ -13,8 +15,61 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProcessingOAuth, setIsProcessingOAuth] = useState(false);
+  const oauthProcessed = useRef(false);
+  const [, navigate] = useLocation();
+  const { toast } = useToast();
 
   const accent = null;
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const googleAuthToken = params.get('google_auth_token');
+    const googleAuthError = params.get('error');
+
+    if (googleAuthError) {
+      const errorMessages: Record<string, string> = {
+        'account_not_found': 'No account found with this email. Please register first.',
+        'state_mismatch': 'Sign-in session expired. Please try again.',
+        'token_exchange_failed': 'Google sign-in failed. Please try again.',
+        'access_denied': 'Google sign-in was cancelled.',
+      };
+      setError(errorMessages[googleAuthError] || `Sign-in error: ${googleAuthError}`);
+      window.history.replaceState({}, '', '/login');
+      return;
+    }
+
+    if (googleAuthToken && !oauthProcessed.current) {
+      oauthProcessed.current = true;
+      setIsProcessingOAuth(true);
+      (async () => {
+        try {
+          const result = await signInWithCustomToken(googleAuthToken);
+          if (result) {
+            const { displayName, email, uid, photoURL, providerData } = result.user;
+            const mode = params.get('google_auth_mode') || 'login';
+            const response = await fetch("/api/auth/me", { credentials: "include" });
+            if (response.ok) {
+              window.history.replaceState({}, '', '/login');
+              navigate('/dashboard', { replace: true });
+              window.location.reload();
+            } else {
+              setError("Sign-in completed but session not found. Please try again.");
+            }
+          } else {
+            setError("Failed to complete sign-in. Please try again.");
+          }
+        } catch (err: any) {
+          console.error("Server-side OAuth completion error:", err);
+          setError("Failed to complete sign-in. Please try again.");
+        } finally {
+          setIsProcessingOAuth(false);
+          window.history.replaceState({}, '', '/login');
+        }
+      })();
+      return;
+    }
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -49,6 +104,15 @@ export default function LoginPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (isProcessingOAuth) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 text-white" style={{ backgroundColor: 'hsl(0 0% 7%)' }}>
+        <Loader2 className="h-8 w-8 animate-spin mb-4" />
+        <p className="text-sm text-white/60 font-mono">Completing sign-in...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center p-4 text-white" style={{ backgroundColor: 'hsl(0 0% 7%)' }}>
