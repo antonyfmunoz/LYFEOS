@@ -617,7 +617,7 @@ export default function QuestsPage() {
   const [filterStatus, setFilterStatus] = useState<string[]>([]);
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
-  const [sortBy, setSortBy] = useState<'date-newest' | 'date-oldest' | 'title-az' | 'title-za' | 'energy-high' | 'energy-low' | 'difficulty-high' | 'difficulty-low'>('date-newest');
+  const [sortBy, setSortBy] = useState<'date-newest' | 'date-oldest' | 'title-az' | 'title-za' | 'cost-high' | 'cost-low' | 'difficulty-high' | 'difficulty-low'>('date-newest');
   const [showListCompleted, setShowListCompleted] = useState(false);
   const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
   const [sortPopoverOpen, setSortPopoverOpen] = useState(false);
@@ -1056,8 +1056,8 @@ export default function QuestsPage() {
         case 'date-oldest': return (a.startDate || '').localeCompare(b.startDate || '');
         case 'title-az': return a.title.localeCompare(b.title);
         case 'title-za': return b.title.localeCompare(a.title);
-        case 'energy-high': return (b.energyCost || 0) - (a.energyCost || 0);
-        case 'energy-low': return (a.energyCost || 0) - (b.energyCost || 0);
+        case 'cost-high': return ((b.energyCost || 0) + (b.attentionCost || 0) + (b.timeCost || 0)) - ((a.energyCost || 0) + (a.attentionCost || 0) + (a.timeCost || 0));
+        case 'cost-low': return ((a.energyCost || 0) + (a.attentionCost || 0) + (a.timeCost || 0)) - ((b.energyCost || 0) + (b.attentionCost || 0) + (b.timeCost || 0));
         case 'difficulty-high': return (DIFFICULTY_ORDER[b.difficulty || 'D'] || 0) - (DIFFICULTY_ORDER[a.difficulty || 'D'] || 0);
         case 'difficulty-low': return (DIFFICULTY_ORDER[a.difficulty || 'D'] || 0) - (DIFFICULTY_ORDER[b.difficulty || 'D'] || 0);
         default: return 0;
@@ -3024,8 +3024,8 @@ export default function QuestsPage() {
                 { value: 'date-oldest' as const, label: 'Date (Oldest)' },
                 { value: 'title-az' as const, label: 'Title (A-Z)' },
                 { value: 'title-za' as const, label: 'Title (Z-A)' },
-                { value: 'energy-high' as const, label: 'Energy (High)' },
-                { value: 'energy-low' as const, label: 'Energy (Low)' },
+                { value: 'cost-high' as const, label: 'Cost (High)' },
+                { value: 'cost-low' as const, label: 'Cost (Low)' },
                 { value: 'difficulty-high' as const, label: 'Difficulty (High)' },
                 { value: 'difficulty-low' as const, label: 'Difficulty (Low)' },
               ].map(opt => (
