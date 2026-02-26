@@ -63,8 +63,8 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
 
   const isApple = isAppleProvider(provider);
 
-  if (isMobileBrowser()) {
-    console.log(`Mobile browser detected, using redirect flow directly for ${providerName}`);
+  if (isMobileSafari()) {
+    console.log(`Mobile Safari detected, using redirect flow directly for ${providerName}`);
     try {
       localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
       await signInWithRedirect(auth, provider, browserPopupRedirectResolver);

@@ -1,5 +1,5 @@
 import { initializeApp, FirebaseApp } from "firebase/app";
-import { getAuth, Auth, Unsubscribe, NextOrObserver, User, connectAuthEmulator, setPersistence, browserLocalPersistence } from "firebase/auth";
+import { getAuth, Auth, Unsubscribe, NextOrObserver, User, connectAuthEmulator } from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 
 function resolveProjectId(): string {
@@ -49,9 +49,6 @@ try {
   } else {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
-    setPersistence(auth, browserLocalPersistence).catch((err) => {
-      console.warn("Failed to set Firebase auth persistence:", err);
-    });
     
     db = getFirestore(app);
     
