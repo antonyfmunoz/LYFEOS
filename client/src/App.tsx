@@ -239,6 +239,16 @@ function Router() {
     wasAuthenticated.current = isAuthenticated;
   }, [isAuthenticated]);
   
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('access') === 'beta') {
+      grantAccess();
+      searchParams.delete('access');
+      const cleanUrl = window.location.pathname + (searchParams.toString() ? '?' + searchParams.toString() : '');
+      window.history.replaceState({}, '', cleanUrl);
+    }
+  }, []);
+
   // Redirect from root to dashboard if authenticated, or to login if not
   useEffect(() => {
     if (isLoading) {
@@ -252,14 +262,6 @@ function Router() {
     }
     
     const currentPath = window.location.pathname;
-    const searchParams = new URLSearchParams(window.location.search);
-
-    if (searchParams.get('access') === 'beta') {
-      grantAccess();
-      searchParams.delete('access');
-      const cleanUrl = currentPath + (searchParams.toString() ? '?' + searchParams.toString() : '');
-      window.history.replaceState({}, '', cleanUrl);
-    }
 
     if (isAuthenticated) {
       grantAccess();
@@ -347,7 +349,7 @@ function Router() {
     <Switch>
       {/* Public routes */}
       <Route path="/login">
-        {isLoading && localStorage.getItem('lyfeos-oauth-mode') ? (
+        {isLoading && localStorage.getItem('lyfeos-oauth-mode') && !hasAccess() ? (
           <OAuthLoadingScreen />
         ) : <LoginPage />}
       </Route>
@@ -607,7 +609,7 @@ function Router() {
           <RootLayout>
             <DashboardPage />
           </RootLayout>
-        ) : isLoading && localStorage.getItem('lyfeos-oauth-mode') ? (
+        ) : isLoading && localStorage.getItem('lyfeos-oauth-mode') && !hasAccess() ? (
           <OAuthLoadingScreen />
         ) : <LoginPage />}
       </Route>
