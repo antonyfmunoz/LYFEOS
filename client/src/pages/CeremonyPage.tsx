@@ -126,8 +126,8 @@ function StatBar({ label, loaded, value }: { label: string; loaded: boolean; val
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-xs font-mono">
-        <span className={loaded ? "text-primary" : "text-muted-foreground"}>{label}</span>
-        <span className={loaded ? "text-primary" : "text-muted-foreground"}>
+        <span className="text-muted-foreground">{label}</span>
+        <span className="text-muted-foreground">
           {loaded ? value : "..."}
         </span>
       </div>
