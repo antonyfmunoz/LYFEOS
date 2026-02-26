@@ -64,7 +64,9 @@ import {
   Moon,
   HelpCircle,
   Vibrate,
-  Volume2
+  Volume2,
+  Calendar,
+  Link2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -77,6 +79,106 @@ import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from "fi
 import { auth as firebaseAuth } from "@/lib/firebase";
 
 
+
+const INTEGRATION_PROVIDERS = [
+  { provider: "apple_health", name: "Apple Health", icon: Heart },
+  { provider: "google_calendar", name: "Google Calendar", icon: Calendar },
+  { provider: "notion", name: "Notion", icon: BookOpen },
+] as const;
+
+function IntegrationsSection({ userId }: { userId?: number }) {
+  const { toast } = useToast();
+  const { data: integrationsData, isLoading } = useQuery<{ integrations: any[] }>({
+    queryKey: ["/api/users", userId, "integrations"],
+    queryFn: async () => {
+      if (!userId) return { integrations: [] };
+      const res = await fetch(`/api/users/${userId}/integrations`, { credentials: "include" });
+      if (!res.ok) return { integrations: [] };
+      return res.json();
+    },
+    enabled: !!userId,
+  });
+
+  const integrations = integrationsData?.integrations || [];
+
+  const getIntegration = (provider: string) =>
+    integrations.find((i: any) => i.provider === provider && i.status === "active");
+
+  const [togglingProvider, setTogglingProvider] = useState<string | null>(null);
+
+  const toggleIntegration = async (provider: string, providerName: string) => {
+    if (!userId) return;
+    setTogglingProvider(provider);
+    try {
+      const existing = getIntegration(provider);
+      if (existing) {
+        await apiRequest(`/api/integrations/${existing.id}`, { method: "DELETE" });
+        toast({ title: `${providerName} disconnected` });
+      } else {
+        await apiRequest("/api/integrations", {
+          method: "POST",
+          body: JSON.stringify({ provider, providerName, status: "active" }),
+        });
+        toast({ title: `${providerName} connected` });
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "integrations"] });
+    } catch {
+      toast({ title: "Error", description: `Could not update ${providerName}.`, variant: "destructive" });
+    } finally {
+      setTogglingProvider(null);
+    }
+  };
+
+  return (
+    <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Link2 className="h-4 w-4 text-primary" />
+        <Label className="text-sm text-foreground">Connected Apps</Label>
+      </div>
+      <p className="text-xs text-muted-foreground mb-3">
+        Connect external apps to sync your data and enhance your experience.
+      </p>
+      <div className="space-y-2">
+        {INTEGRATION_PROVIDERS.map(({ provider, name, icon: Icon }) => {
+          const isConnected = !!getIntegration(provider);
+          const isToggling = togglingProvider === provider;
+          return (
+            <div key={provider} className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
+              <div className="flex items-center">
+                <Icon className="h-4 w-4 text-primary mr-2" />
+                <div>
+                  <span className="text-sm">{name}</span>
+                  {isConnected && (
+                    <p className="text-xs text-primary">Connected</p>
+                  )}
+                </div>
+              </div>
+              <button
+                disabled={isToggling || isLoading}
+                onClick={() => toggleIntegration(provider, name)}
+                className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors duration-200 disabled:opacity-40 ${
+                  isConnected ? 'bg-primary/30' : 'bg-card'
+                }`}
+                aria-pressed={isConnected}
+                role="switch"
+              >
+                {isToggling ? (
+                  <Loader2 className="h-3 w-3 animate-spin absolute top-1 left-3.5 text-primary" />
+                ) : (
+                  <div
+                    className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
+                      isConnected ? 'left-5 bg-primary shadow-[0_0_5px_var(--primary-glow-medium)]' : 'left-0.5 bg-muted-foreground'
+                    }`}
+                  ></div>
+                )}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function PersistentProfileDraggableWidget({ widgetId, ...props }: Omit<DraggableWidgetProps, 'isOpenProp' | 'onOpenChange'> & { widgetId: string }) {
   const [isOpen, setIsOpen] = useWidgetState(widgetId, props.defaultOpen ?? true);
@@ -1559,7 +1661,9 @@ export default function ProfilePage() {
               )}
             </div>
             
-            
+            {/* Connected Apps / Integrations */}
+            <IntegrationsSection userId={user?.id} />
+
             {/* Blue Light Filter */}
             <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
               <div className="flex items-center gap-2 mb-2">
