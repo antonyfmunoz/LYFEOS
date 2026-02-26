@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Clock, X, ExternalLink } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
-import { CalendarEvent } from "@/lib/types";
+type CalendarEvent = { id: string; title: string; description: string; startTime: string; duration: string; category: string; date: string; };
 import { Button } from "@/components/ui/button";
 
 interface MissionInfoDialogProps {

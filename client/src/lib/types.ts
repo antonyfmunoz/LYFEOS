@@ -90,16 +90,6 @@ export interface ChatSession {
   updatedAt: Date;
 }
 
-export interface CalendarEvent {
-  id: string;
-  title: string;
-  description: string;
-  startTime: string; // format: "HH:MM"
-  duration: string;
-  category: "work" | "personal" | "health";
-  date: string; // format: "YYYY-MM-DD"
-}
-
 export interface MissionPage {
   id: string;
   title: string;

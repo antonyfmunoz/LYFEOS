@@ -119,14 +119,13 @@ interface NOVAContext {
   missions: any[];
   dailyLogs?: any[];
   visionGoals?: any[];
-  calendarEvents?: any[];
   userCategories?: any[];
   conversationHistory?: { role: string; content: string; conversationTitle?: string; createdAt: Date }[];
   relevantKnowledge?: string;
 }
 
 function buildSystemPrompt(ctx: NOVAContext): string {
-  const { user, stats, profile, missions, dailyLogs, visionGoals, calendarEvents, userCategories, conversationHistory, relevantKnowledge } = ctx;
+  const { user, stats, profile, missions, dailyLogs, visionGoals, userCategories, conversationHistory, relevantKnowledge } = ctx;
 
   const activeMissions = missions.filter(m => !m.completed && !m.deletedAt);
   const completedMissions = missions.filter(m => m.completed && !m.deletedAt);
@@ -151,9 +150,10 @@ function buildSystemPrompt(ctx: NOVAContext): string {
 
   const todayLog = recentLogs[0];
 
-  const upcomingEvents = (calendarEvents || [])
-    .filter((e: any) => new Date(e.date) >= new Date(new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })))
-    .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  const todayDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+  const upcomingEvents = missions
+    .filter((m: any) => !m.completed && !m.deletedAt && m.startDate && m.startDate >= todayDate)
+    .sort((a: any, b: any) => (a.startDate || '').localeCompare(b.startDate || ''))
     .slice(0, 10);
 
   const goalsByHorizon: Record<string, any[]> = {};
@@ -269,7 +269,7 @@ ${completedThisWeek.slice(0, 8).map(m => `- "${m.title}" | ${m.category} | +${m.
 ${completedMissions.slice(0, 5).map(m => `- [ID:${m.id}] "${m.title}" | Completed: ${m.completedAt ? new Date(m.completedAt).toLocaleDateString() : 'unknown'}`).join('\n') || 'No completed missions'}
 
 === UPCOMING SCHEDULE ===
-${upcomingEvents.map((e: any) => `- ${e.date} ${e.startTime || ''}: "${e.title}" (${e.category || 'personal'}, ${e.duration || '?'})`).join('\n') || 'No upcoming events'}
+${upcomingEvents.map((e: any) => `- ${e.startDate}${e.dueDate ? ` to ${e.dueDate}` : ''}: "${e.title}" (${e.category || 'personal'}, ${e.difficulty || 'D'})`).join('\n') || 'No upcoming events'}
 
 === CUSTOM CATEGORIES ===
 ${customCats || 'None created'}
@@ -1323,14 +1323,13 @@ export function registerChatRoutes(app: Express): void {
         content: m.content,
       }));
 
-      const [user, stats, profile, missions, allConversationMessages, dailyLogs, calendarEvents, categories] = await Promise.all([
+      const [user, stats, profile, missions, allConversationMessages, dailyLogs, categories] = await Promise.all([
         storage.getUser(userId),
         storage.getUserStats(userId),
         storage.getUserProfile(userId),
         storage.getQuests(userId),
         chatStorage.getAllMessagesByUser(userId),
         storage.getUserDailyLogs(userId),
-        storage.getEvents(userId),
         storage.getUserCategories(userId),
       ]);
       const [archivedMissions, visionGoalResults] = await Promise.all([
@@ -1355,7 +1354,6 @@ export function registerChatRoutes(app: Express): void {
         missions: allMissions,
         dailyLogs,
         visionGoals: allVisionGoals,
-        calendarEvents,
         userCategories: categories,
         conversationHistory: otherConversationMessages,
         relevantKnowledge,
@@ -1677,7 +1675,6 @@ Return ONLY the JSON, no other text.`;
 
       const stats = await storage.getUserStats(userId);
       const missions = await storage.getQuests(userId);
-      const events = await storage.getEvents(userId);
 
       if (!stats) {
         return res.status(404).json({ error: "Stats not found" });
@@ -1709,9 +1706,9 @@ Return ONLY the JSON, no other text.`;
       });
 
       const eventCategoryHours: Record<string, number> = {};
-      (events || []).forEach((e: any) => {
-        const cat = e.category || "personal";
-        const dur = parseFloat(e.duration) || 1;
+      totalMissions.forEach((m: any) => {
+        const cat = m.category || "personal";
+        const dur = parseFloat(m.timeCost) || 1;
         eventCategoryHours[cat] = (eventCategoryHours[cat] || 0) + dur;
       });
 
@@ -1749,13 +1746,12 @@ Return ONLY the JSON, no other text.`;
         return res.status(400).json({ error: "Transcript is required" });
       }
 
-      const [user, stats, missions, profile, dailyLogs, calendarEvents, categories] = await Promise.all([
+      const [user, stats, missions, profile, dailyLogs, categories] = await Promise.all([
         storage.getUser(userId),
         storage.getUserStats(userId),
         storage.getQuests(userId),
         storage.getUserProfile(userId),
         storage.getUserDailyLogs(userId),
-        storage.getEvents(userId),
         storage.getUserCategories(userId),
       ]);
 
@@ -1792,7 +1788,6 @@ Return ONLY the JSON, no other text.`;
         missions: [...(missions || []), ...archivedMissions],
         dailyLogs,
         visionGoals: visionGoalResults.flat(),
-        calendarEvents,
         userCategories: categories,
         relevantKnowledge: voiceKnowledge,
       });

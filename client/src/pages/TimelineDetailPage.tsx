@@ -187,7 +187,7 @@ This item represents an important entry in your life timeline. Each item in your
 export default function TimelineDetailPage() {
   const [, navigate] = useLocation();
   const [match, params] = useRoute("/timeline/:id");
-  const { missionPages, events, quests, messages } = useLYFEOS();
+  const { missionPages, quests, messages } = useLYFEOS();
   const [item, setItem] = useState<TimelineItem | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   
@@ -222,22 +222,6 @@ export default function TimelineDetailPage() {
           icon: <Milestone className="h-4 w-4" />
         };
       }),
-      
-      // Events
-      ...events.map(event => ({
-        id: `event-${event.id}`,
-        date: new Date(event.startTime).toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric'
-        }),
-        title: event.title,
-        description: event.description,
-        category: 'event',
-        color: 'violet-400',
-        type: 'event' as TimelineItemType,
-        icon: <CalendarDays className="h-4 w-4" />
-      })),
       
       // Quests
       ...quests.map(quest => ({
@@ -288,7 +272,7 @@ export default function TimelineDetailPage() {
       // If item not found, redirect back to timeline
       navigate('/timeline');
     }
-  }, [match, params, navigate, missionPages, events, quests, messages]);
+  }, [match, params, navigate, missionPages, quests, messages]);
   
   // Simplified back navigation for consistency
   const goBack = () => {

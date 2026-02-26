@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { UserStats, Quest, AIMessage, CalendarEvent, MissionPage, ChatSession, KanbanTask, KanbanStatus, KanbanBoard, KanbanColumn } from "./types";
+import { UserStats, Quest, AIMessage, MissionPage, ChatSession, KanbanTask, KanbanStatus, KanbanBoard, KanbanColumn } from "./types";
 import { toast } from "@/hooks/use-toast";
 import { missionCompleteToast, levelUpToast, streakToast } from "@/lib/gamified-toast";
 import { getRank } from "@/lib/ranks";
@@ -74,9 +74,6 @@ const initialChatSessions: ChatSession[] = [
 
 // Initial AI messages (for backward compatibility)
 const initialMessages: AIMessage[] = initialChatSessions[0].messages;
-
-// Initial calendar events
-const initialEvents: CalendarEvent[] = [];
 
 // Initial mission pages
 const initialMissionPages: MissionPage[] = [];
@@ -234,7 +231,6 @@ interface LYFEOSContextType {
   quests: Quest[];
   userProfile: any | null;
   messages: AIMessage[];
-  events: CalendarEvent[];
   missionPages: MissionPage[];
   chatSessions: ChatSession[];
   kanbanTasks: KanbanTask[];
@@ -271,9 +267,6 @@ interface LYFEOSContextType {
   setAIPanelOpen: (open: boolean) => void;
   sidebarCollapsed: boolean;
   setSidebarCollapsed: (collapsed: boolean) => void;
-  addEvent: (event: Omit<CalendarEvent, "id">) => void;
-  updateEvent: (id: string, eventData: Partial<CalendarEvent>) => void;
-  deleteEvent: (id: string) => void;
   createMissionPage: (mission: Omit<MissionPage, "id">) => MissionPage;
   updateMissionPage: (id: string, pageData: Partial<MissionPage>) => Promise<void>;
   deleteMissionPage: (id: string) => void;
@@ -343,7 +336,6 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     staleTime: 60000,
   });
   const [messages, setMessages] = useState<AIMessage[]>(initialMessages);
-  const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
   const [missionPages, setMissionPages] = useState<MissionPage[]>(initialMissionPages);
   const [kanbanTasks, setKanbanTasks] = useState<KanbanTask[]>(initialKanbanTasks);
   const [kanbanBoards, setKanbanBoards] = useState<KanbanBoard[]>(initialKanbanBoards);
@@ -613,65 +605,6 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       };
       
       fetchMissionPages();
-    }
-  }, [isAuthenticated, user]);
-  
-  // Load calendar events when user logs in
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      const fetchCalendarEvents = async () => {
-        try {
-          console.log("Fetching calendar events for user:", user.id);
-          const response = await fetch(`/api/users/${user.id}/calendar-events`, { credentials: "include" });
-          if (response.ok) {
-            const data = await response.json();
-            if (data.events && Array.isArray(data.events)) {
-              console.log("Calendar events loaded successfully:", data.events.length, "events");
-              // Transform database events to frontend format (id as string)
-              const transformedEvents = data.events.map((event: any) => ({
-                id: String(event.id),
-                title: event.title,
-                description: event.description || "",
-                startTime: event.startTime,
-                duration: event.duration,
-                category: event.category,
-                date: event.date,
-              }));
-              setEvents(transformedEvents);
-              
-              // Sync calendar events to quests for the Missions page
-              const today = getLocalDateString();
-              const calendarQuests: Quest[] = transformedEvents
-                .filter((event: CalendarEvent) => event.date === today)
-                .map((event: CalendarEvent) => ({
-                  id: `quest-calendar-${event.id}`,
-                  title: event.title,
-                  description: `${event.description || event.category} - ${event.date} at ${event.startTime}`,
-                  completed: false,
-                  energyCost: 1,
-                  attentionCost: 0,
-                  timeCost: 0,
-                  experienceReward: 15,
-                }));
-              
-              if (calendarQuests.length > 0) {
-                console.log("Syncing calendar events to quests:", calendarQuests.length, "quests");
-                setQuests((prev) => {
-                  // Remove old calendar quests and add new ones
-                  const nonCalendarQuests = prev.filter(q => !q.id.startsWith('quest-calendar-'));
-                  return [...nonCalendarQuests, ...calendarQuests];
-                });
-              }
-            }
-          } else {
-            console.error("Failed to fetch calendar events, status:", response.status);
-          }
-        } catch (error) {
-          console.error("Failed to fetch calendar events:", error);
-        }
-      };
-      
-      fetchCalendarEvents();
     }
   }, [isAuthenticated, user]);
   
@@ -1148,144 +1081,6 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         };
         setMessages((prev) => [...prev, aiMessage]);
       });
-  };
-  
-  // Add a new calendar event
-  const addEvent = (event: Omit<CalendarEvent, "id">) => {
-    // Generate temporary ID for optimistic update
-    const tempId = `event-${Date.now()}`;
-    const newEvent: CalendarEvent = {
-      ...event,
-      id: tempId,
-    };
-    
-    // Optimistic update
-    setEvents((prev) => [...prev, newEvent]);
-    
-    // Show event added toast
-    toast({
-      title: "Event Added",
-      description: `${newEvent.title} - ${newEvent.startTime}`,
-      variant: "default",
-      className: "bg-background/80 border border-primary text-foreground",
-      duration: 3000,
-    });
-    
-    // Save to database if authenticated
-    if (isAuthenticated && user) {
-      apiRequest('/api/calendar-events', {
-        method: 'POST',
-        body: JSON.stringify({
-          userId: user.id,
-          title: event.title,
-          description: event.description || "",
-          startTime: event.startTime,
-          duration: event.duration,
-          category: event.category,
-          date: event.date,
-        })
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          const savedEvent = data?.event;
-          if (savedEvent && savedEvent.id) {
-            // Update the event with the real ID from the database
-            setEvents((prev) => 
-              prev.map((e) => 
-                e.id === tempId ? { 
-                  ...e, 
-                  id: String(savedEvent.id),
-                } : e
-              )
-            );
-            console.log("Calendar event saved to database:", savedEvent.id);
-            
-            // Create a corresponding quest for the Missions page
-            const questId = `quest-calendar-${savedEvent.id}`;
-            const newQuest: Quest = {
-              id: questId,
-              title: event.title,
-              description: `${event.description || event.category} - ${event.date} at ${event.startTime}`,
-              completed: false,
-              energyCost: 1,
-              attentionCost: 0,
-              timeCost: 0,
-              experienceReward: 15,
-            };
-            
-            console.log("Creating quest for calendar event:", savedEvent.id);
-            setQuests((prev) => [...prev, newQuest]);
-          }
-        })
-        .catch((error) => {
-          console.error("Error saving calendar event to database:", error);
-        });
-    }
-  };
-  
-  // Update an existing calendar event
-  const updateEvent = (id: string, eventData: Partial<CalendarEvent>) => {
-    setEvents((prev) => 
-      prev.map((event) => 
-        event.id === id ? { ...event, ...eventData } : event
-      )
-    );
-    
-    // Show event updated toast
-    toast({
-      title: "Event Updated",
-      description: "Calendar event has been updated",
-      variant: "default",
-      className: "bg-background/80 border border-primary text-foreground",
-      duration: 3000,
-    });
-    
-    // Update in database if authenticated and id is a real database ID
-    if (isAuthenticated && user && !id.startsWith('event-')) {
-      const numericId = parseInt(id);
-      if (!isNaN(numericId)) {
-        apiRequest(`/api/calendar-events/${numericId}`, {
-          method: 'PATCH',
-          body: JSON.stringify(eventData)
-        })
-          .catch((error) => {
-            console.error("Error updating calendar event in database:", error);
-          });
-      }
-    }
-  };
-  
-  // Delete a calendar event
-  const deleteEvent = (id: string) => {
-    // Find the event to show in toast
-    const eventToDelete = events.find(event => event.id === id);
-    
-    // Remove the event
-    setEvents((prev) => prev.filter((event) => event.id !== id));
-    
-    // Show event deleted toast
-    if (eventToDelete) {
-      toast({
-        title: "Event Deleted",
-        description: `${eventToDelete.title} has been removed`,
-        variant: "destructive",
-        className: "bg-background/80 border border-destructive text-foreground",
-        duration: 3000,
-      });
-    }
-    
-    // Delete from database if authenticated and id is a real database ID
-    if (isAuthenticated && user && !id.startsWith('event-')) {
-      const numericId = parseInt(id);
-      if (!isNaN(numericId)) {
-        apiRequest(`/api/calendar-events/${numericId}`, {
-          method: 'DELETE',
-        })
-          .catch((error) => {
-            console.error("Error deleting calendar event from database:", error);
-          });
-      }
-    }
   };
   
   // Mission Pages Functions
@@ -2259,7 +2054,6 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         quests,
         userProfile,
         messages,
-        events,
         missionPages,
         chatSessions,
         kanbanTasks,
@@ -2280,9 +2074,6 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         setAIPanelOpen,
         sidebarCollapsed,
         setSidebarCollapsed,
-        addEvent,
-        updateEvent,
-        deleteEvent,
         createMissionPage,
         updateMissionPage,
         deleteMissionPage,

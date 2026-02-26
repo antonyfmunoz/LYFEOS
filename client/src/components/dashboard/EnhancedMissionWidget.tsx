@@ -4,7 +4,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar, Clock, Award, Zap, Info, Sword } from "lucide-react";
-import { CalendarEvent, MissionPage } from "@/lib/types";
+import { MissionPage } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/authContext";
 import { missionCompleteToast } from "@/lib/gamified-toast";
@@ -13,7 +13,7 @@ import { useLYFEOS } from "@/lib/context";
 
 
 interface EnhancedMissionWidgetProps {
-  events: CalendarEvent[];
+  events?: any[];
   className?: string;
   maxHeight?: string;
   hideHeader?: boolean;

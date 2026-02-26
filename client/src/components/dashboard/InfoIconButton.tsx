@@ -1,7 +1,7 @@
 import { Info } from 'lucide-react';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { CalendarEvent } from '@/lib/types';
+type CalendarEvent = { id: string; title: string; description: string; startTime: string; duration: string; category: string; date: string; };
 
 interface InfoIconButtonProps {
   event: CalendarEvent;

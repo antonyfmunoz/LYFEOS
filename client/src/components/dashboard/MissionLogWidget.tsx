@@ -2,7 +2,7 @@ import React, { useState, useEffect, Fragment } from 'react';
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar, CheckCircle2, Clock, ArrowRight, Award, Zap, Info } from "lucide-react";
-import { CalendarEvent } from "@/lib/types";
+type CalendarEvent = { id: string; title: string; description: string; startTime: string; duration: string; category: string; date: string; };
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import InfoIconButton from './InfoIconButton';

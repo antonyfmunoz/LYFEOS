@@ -167,7 +167,7 @@ export default function TimelinePage() {
   usePageTitle('Timeline');
 
   const [, navigate] = useLocation();
-  const { missionPages, events, quests } = useLYFEOS();
+  const { missionPages, quests } = useLYFEOS();
   const { user } = useAuth();
   const { data: userCategories = [] } = useQuery<UserCategoryOption[]>({
     queryKey: ['/api/user-categories'],
@@ -225,23 +225,8 @@ export default function TimelinePage() {
       });
     });
 
-    events.forEach(event => {
-      const dateParts = event.date ? event.date.split('-').map(Number) : [];
-      const d = dateParts.length === 3
-        ? new Date(dateParts[0], dateParts[1] - 1, dateParts[2])
-        : new Date(event.startTime);
-      items.push({
-        id: `event-${event.id}`,
-        rawDate: d,
-        time: event.startTime && event.startTime.includes(':') ? event.startTime : '00:00',
-        title: event.title,
-        description: event.description || '',
-        type: 'event',
-      });
-    });
-
     return items;
-  }, [missionPages, events, quests]);
+  }, [missionPages, quests]);
 
   const nodes: TimelineNode[] = useMemo(() => {
     if (timelineItems.length === 0) return [];
@@ -396,23 +381,6 @@ export default function TimelinePage() {
       }
     });
 
-    events.forEach(event => {
-      if (!event.date) return;
-      const [y, m, d] = event.date.split('-').map(Number);
-      const eventDate = new Date(y, m - 1, d);
-      if (eventDate >= today) {
-        items.push({
-          id: `rm-event-${event.id}`,
-          rawDate: eventDate,
-          time: event.startTime && event.startTime.includes(':') ? event.startTime : '00:00',
-          title: event.title,
-          description: event.description || '',
-          type: 'event',
-          rmType: 'event',
-        });
-      }
-    });
-
     const categoryOffsets: Record<string, number> = {
       '90day': 90,
       '18month': 18 * 30,
@@ -439,7 +407,7 @@ export default function TimelinePage() {
     });
 
     return items;
-  }, [activeView, quests, events, visionGoals]);
+  }, [activeView, quests, visionGoals]);
 
   const roadmapNodes: TimelineNode[] = useMemo(() => {
     if (roadmapItems.length === 0) return [];
