@@ -1625,10 +1625,10 @@ export default function DashboardPage() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
               <div className="flex items-center">
                 <CalendarDays className="h-5 w-5 text-primary mr-2" />
-                <h1 className="text-xl sm:text-2xl font-orbitron text-primary">{formattedDate}</h1>
+                <h1 className="text-xl sm:text-2xl font-orbitron text-muted-foreground">{formattedDate}</h1>
               </div>
               <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                <Clock className="h-4 w-4 text-muted-foreground mr-2" />
+                <Clock className="h-4 w-4 text-primary mr-2" />
                 <span className="text-muted-foreground font-mono">{formattedTime}</span>
                 
                 <TimezoneSelector timezone={timezone} setTimezone={setTimezone} />
