@@ -30,10 +30,13 @@ export function MarkdownEditor({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const autoResize = () => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = Math.max(textareaRef.current.scrollHeight, parseInt(minHeight)) + 'px';
-    }
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const scrollY = window.scrollY;
+    const scrollX = window.scrollX;
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.max(textarea.scrollHeight, parseInt(minHeight)) + 'px';
+    window.scrollTo(scrollX, scrollY);
   };
 
   useEffect(() => {
@@ -42,7 +45,7 @@ export function MarkdownEditor({
       textareaRef.current.setSelectionRange(cursorPosition, cursorPosition);
       autoResize();
     }
-  }, [isEditing, cursorPosition, value, onChange]);
+  }, [isEditing]);
 
   // Save cursor position when input changes
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
