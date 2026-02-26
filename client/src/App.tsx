@@ -106,9 +106,12 @@ function hideAppPreloader() {
 function OAuthLoadingScreen() {
   useEffect(() => {
     hideOAuthPreloader();
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
   }, []);
   return (
-    <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background">
+    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background" style={{ touchAction: 'none' }}>
       <span className="text-3xl text-white font-orbitron font-bold mb-4">
         LYFE<span className="text-white">OS</span>
       </span>
@@ -116,6 +119,11 @@ function OAuthLoadingScreen() {
       <p className="text-muted-foreground text-sm mt-4">Signing you in...</p>
     </div>
   );
+}
+
+function useIsOAuthLoading() {
+  const { isLoading } = useAuth();
+  return isLoading && !!localStorage.getItem('lyfeos-oauth-mode') && !hasAccess();
 }
 
 function HapticInit() {
@@ -349,9 +357,7 @@ function Router() {
     <Switch>
       {/* Public routes */}
       <Route path="/login">
-        {isLoading && localStorage.getItem('lyfeos-oauth-mode') && !hasAccess() ? (
-          <OAuthLoadingScreen />
-        ) : <LoginPage />}
+        <LoginPage />
       </Route>
       <Route path="/register" component={RegisterPage} />
       <Route path="/verify-email" component={VerifyEmailPage} />
@@ -609,8 +615,6 @@ function Router() {
           <RootLayout>
             <DashboardPage />
           </RootLayout>
-        ) : isLoading && localStorage.getItem('lyfeos-oauth-mode') && !hasAccess() ? (
-          <OAuthLoadingScreen />
         ) : <LoginPage />}
       </Route>
       
@@ -618,6 +622,12 @@ function Router() {
       <Route component={NotFound} />
     </Switch>
   );
+}
+
+function OAuthLoadingOverlay() {
+  const showOverlay = useIsOAuthLoading();
+  if (!showOverlay) return null;
+  return <OAuthLoadingScreen />;
 }
 
 function App() {
@@ -628,6 +638,7 @@ function App() {
           <ThemeProvider>
             <DndProvider backend={isTouchDevice() ? TouchBackend : HTML5Backend} options={isTouchDevice() ? { enableMouseEvents: true } : undefined}>
               <Router />
+              <OAuthLoadingOverlay />
               <HapticInit />
               <VoiceOverlay />
               <CelebrationOverlay />
