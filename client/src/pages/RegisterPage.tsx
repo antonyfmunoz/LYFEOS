@@ -33,15 +33,6 @@ export default function RegisterPage() {
     }
   }, [isOAuthRedirecting]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (document.activeElement instanceof HTMLElement) {
-        document.activeElement.blur();
-      }
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
