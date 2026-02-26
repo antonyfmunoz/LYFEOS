@@ -30,6 +30,27 @@ function cleanLinkedItems(type: string, id: number) {
   `);
 }
 
+function parseEvernoteDate(dateStr: string): Date {
+  const match = dateStr.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z?$/);
+  if (match) {
+    return new Date(`${match[1]}-${match[2]}-${match[3]}T${match[4]}:${match[5]}:${match[6]}Z`);
+  }
+  return new Date(dateStr);
+}
+
+function formatEvernoteDate(date: Date): string {
+  return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+}
+
+function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
 export function registerDocumentRoutes(app: Express): void {
   app.get("/api/folders", isAuthenticated, async (req: Request, res: Response) => {
     try {
@@ -623,6 +644,283 @@ export function registerDocumentRoutes(app: Express): void {
     } catch (error) {
       console.error("Obsidian export error:", error);
       return res.status(500).json({ error: "Failed to export Obsidian vault" });
+    }
+  });
+
+  const evernoteUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 200 * 1024 * 1024 },
+    fileFilter: (_req: Express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      if (ext === '.enex' || file.mimetype === 'text/xml' || file.mimetype === 'application/xml' || file.mimetype === 'application/octet-stream') {
+        cb(null, true);
+      } else {
+        cb(null, false);
+      }
+    },
+  });
+
+  app.post("/api/documents/import/evernote", isAuthenticated, evernoteUpload.single('file'), async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ error: "No .enex file uploaded" });
+      }
+
+      const targetFolderId = req.body.folderId ? parseInt(req.body.folderId) : null;
+      let imported = 0;
+      let updated = 0;
+      let skipped = 0;
+
+      const xmlContent = file.buffer.toString('utf-8');
+      const parser = new xml2js.Parser({ explicitArray: false, mergeAttrs: false });
+      const parsed = await parser.parseStringPromise(xmlContent);
+
+      if (!parsed['en-export']) {
+        return res.status(400).json({ error: "Invalid ENEX file: missing en-export root" });
+      }
+
+      const enExport = parsed['en-export'];
+      let notes = enExport.note;
+      if (!notes) {
+        return res.json({ imported: 0, updated: 0, skipped: 0, total: 0 });
+      }
+      if (!Array.isArray(notes)) {
+        notes = [notes];
+      }
+
+      const turndownService = new TurndownService({
+        headingStyle: 'atx',
+        codeBlockStyle: 'fenced',
+      });
+
+      const notebookName = enExport.$ && enExport.$['export-name'] ? enExport.$['export-name'] : null;
+      let notebookFolderId = targetFolderId;
+
+      if (notebookName) {
+        const externalId = `evernote:notebook:${notebookName}`;
+        let folder = await storage.getFolderByExternalId(userId, "evernote", externalId);
+        if (!folder) {
+          folder = await storage.createFolder({
+            userId,
+            name: notebookName,
+            parentId: targetFolderId as any,
+            source: "evernote",
+            externalId: externalId,
+          });
+        }
+        notebookFolderId = folder.id;
+      }
+
+      for (const note of notes) {
+        try {
+          const title = note.title || 'Untitled';
+          const noteGuid = note.$ && note.$.guid ? note.$.guid : (note['note-attributes'] && note['note-attributes']['source-url'] ? note['note-attributes']['source-url'] : `evernote-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+          const externalId = `evernote:${noteGuid}`;
+          const created = note.created ? parseEvernoteDate(note.created) : new Date();
+          const updatedDate = note.updated ? parseEvernoteDate(note.updated) : created;
+
+          let tags: string[] = [];
+          if (note.tag) {
+            tags = Array.isArray(note.tag) ? note.tag : [note.tag];
+          }
+
+          let resources: Array<{ hash: string; mime: string; data: Buffer; filename?: string }> = [];
+          if (note.resource) {
+            const resourceList = Array.isArray(note.resource) ? note.resource : [note.resource];
+            for (const res of resourceList) {
+              try {
+                const data = res.data;
+                if (!data) continue;
+
+                let buffer: Buffer;
+                const encoding = data.$ && data.$.encoding ? data.$.encoding : 'base64';
+                const rawData = typeof data === 'string' ? data : (data._ || '');
+
+                if (encoding === 'base64' || !data.$) {
+                  buffer = Buffer.from(rawData.replace(/\s/g, ''), 'base64');
+                } else {
+                  buffer = Buffer.from(rawData, 'utf-8');
+                }
+
+                const mime = res.mime || 'application/octet-stream';
+                const recognition = res.recognition;
+                let hash = '';
+
+                if (res['resource-attributes'] && res['resource-attributes']['source-url']) {
+                  hash = res['resource-attributes']['source-url'];
+                }
+
+                if (!hash && data.$ && data.$.hash) {
+                  hash = data.$.hash;
+                }
+
+                if (!hash) {
+                  const crypto = await import('crypto');
+                  hash = crypto.createHash('md5').update(buffer).digest('hex');
+                }
+
+                const filename = res['resource-attributes'] && res['resource-attributes']['file-name']
+                  ? res['resource-attributes']['file-name']
+                  : undefined;
+
+                resources.push({ hash, mime, data: buffer, filename });
+              } catch (e) {
+                console.error("Error processing evernote resource:", e);
+              }
+            }
+          }
+
+          let markdownContent = '';
+          const enmlContent = note.content || '';
+
+          if (enmlContent) {
+            let htmlContent = enmlContent;
+            htmlContent = htmlContent.replace(/<\?xml[^>]*\?>/g, '');
+            htmlContent = htmlContent.replace(/<!DOCTYPE[^>]*>/g, '');
+            htmlContent = htmlContent.replace(/<\/?en-note[^>]*>/g, '');
+
+            const resourceMap = new Map<string, { mime: string; data: Buffer; filename?: string }>();
+            for (const r of resources) {
+              resourceMap.set(r.hash, { mime: r.mime, data: r.data, filename: r.filename });
+            }
+
+            htmlContent = htmlContent.replace(/<en-media[^>]*hash="([^"]*)"[^>]*\/?>/g, (match, hash) => {
+              const r = resourceMap.get(hash);
+              if (r && r.mime.startsWith('image/')) {
+                return `<img src="data:${r.mime};base64,${r.data.toString('base64')}" alt="${r.filename || 'image'}" />`;
+              }
+              return '';
+            });
+
+            htmlContent = htmlContent.replace(/<en-todo\s+checked="true"\s*\/?>/g, '[x] ');
+            htmlContent = htmlContent.replace(/<en-todo\s+checked="false"\s*\/?>/g, '[ ] ');
+            htmlContent = htmlContent.replace(/<en-todo\s*\/?>/g, '[ ] ');
+
+            markdownContent = turndownService.turndown(htmlContent);
+          }
+
+          const storedResources: number[] = [];
+          for (const r of resources) {
+            if (r.mime.startsWith('image/') || r.mime === 'application/pdf') {
+              try {
+                const base64Data = `data:${r.mime};base64,${r.data.toString('base64')}`;
+                const fileType = r.mime === 'application/pdf' ? 'pdf' : 'image';
+                const resTitle = r.filename ? r.filename.replace(/\.[^/.]+$/, '') : `resource-${r.hash.slice(0, 8)}`;
+                const resExternalId = `evernote:resource:${noteGuid}:${r.hash}`;
+
+                const existingRes = await storage.getDocumentByExternalId(userId, "evernote", resExternalId);
+                if (!existingRes) {
+                  const resDoc = await storage.createDocument({
+                    userId,
+                    folderId: notebookFolderId as any,
+                    title: resTitle,
+                    content: '',
+                    format: fileType,
+                    fileType,
+                    fileData: base64Data,
+                    fileSize: r.data.length,
+                    mimeType: r.mime,
+                    source: "evernote",
+                    externalId: resExternalId,
+                  });
+                  storedResources.push(resDoc.id);
+                }
+              } catch (e) {
+                console.error("Error storing evernote resource:", e);
+              }
+            }
+          }
+
+          const existingDoc = await storage.getDocumentByExternalId(userId, "evernote", externalId);
+
+          if (existingDoc) {
+            await storage.updateDocument(existingDoc.id, {
+              title,
+              content: markdownContent,
+              tags: tags.length > 0 ? tags : undefined,
+              lastSyncedAt: new Date(),
+            });
+            updated++;
+          } else {
+            await storage.createDocument({
+              userId,
+              folderId: notebookFolderId as any,
+              title,
+              content: markdownContent,
+              format: "markdown",
+              tags: tags.length > 0 ? tags : undefined,
+              source: "evernote",
+              externalId: externalId,
+            });
+            imported++;
+          }
+        } catch (err) {
+          console.error(`Error importing evernote note:`, err);
+          skipped++;
+        }
+      }
+
+      return res.json({ imported, updated, skipped, total: notes.length });
+    } catch (error) {
+      console.error("Evernote import error:", error);
+      return res.status(500).json({ error: "Failed to import Evernote notebook" });
+    }
+  });
+
+  app.get("/api/documents/export/evernote", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const allDocs = await storage.getDocuments(userId);
+      const docs = allDocs.filter(d => !d.deletedAt && (!d.fileType || d.fileType === 'document'));
+
+      const exportDate = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+
+      let enex = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+      enex += `<!DOCTYPE en-export SYSTEM "http://xml.evernote.com/pub/evernote-export4.dtd">\n`;
+      enex += `<en-export export-date="${exportDate}" application="LifeOS">\n`;
+
+      for (const doc of docs) {
+        const title = escapeXml(doc.title || 'Untitled');
+        const created = doc.createdAt ? formatEvernoteDate(new Date(doc.createdAt)) : formatEvernoteDate(new Date());
+
+        let enmlContent = doc.content || '';
+        enmlContent = enmlContent
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/\n/g, '<br/>');
+
+        enex += `  <note>\n`;
+        enex += `    <title>${title}</title>\n`;
+        enex += `    <content><![CDATA[<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd"><en-note>${enmlContent}</en-note>]]></content>\n`;
+        enex += `    <created>${created}</created>\n`;
+
+        if (doc.tags && Array.isArray(doc.tags)) {
+          for (const tag of doc.tags) {
+            enex += `    <tag>${escapeXml(tag)}</tag>\n`;
+          }
+        }
+
+        if (doc.externalId) {
+          enex += `    <note-attributes>\n`;
+          enex += `      <source-url>${escapeXml(doc.externalId)}</source-url>\n`;
+          enex += `    </note-attributes>\n`;
+        }
+
+        enex += `  </note>\n`;
+      }
+
+      enex += `</en-export>\n`;
+
+      res.set('Content-Type', 'application/xml');
+      res.set('Content-Disposition', 'attachment; filename="lifeos-export.enex"');
+      res.set('Content-Length', Buffer.byteLength(enex).toString());
+      return res.send(enex);
+    } catch (error) {
+      console.error("Evernote export error:", error);
+      return res.status(500).json({ error: "Failed to export as Evernote format" });
     }
   });
 

@@ -21,14 +21,21 @@ import {
 import { ObsidianMarkdown } from '@/components/ui/obsidian-markdown';
 import { RichTextToolbar } from '@/components/ui/rich-text-toolbar';
 import {
+  Tabs, TabsList, TabsTrigger, TabsContent,
+} from '@/components/ui/tabs';
+import {
   ArrowLeft, Plus, FolderPlus, FileText, Folder, FolderOpen, MoreHorizontal,
   Trash, Trash2, Edit, Star, StarOff, ChevronRight, Home, Search, Save, X, Eye, Pencil,
   ArrowUpLeft, File, Clock, Undo2, Upload, Image, Video, FileDown, Play,
+  LayoutList, LayoutGrid, RefreshCw, Download, CloudUpload, Check, AlertCircle, Loader2,
 } from 'lucide-react';
+import { SiGoogledrive, SiObsidian, SiEvernote } from 'react-icons/si';
+import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import type { Document, Folder as FolderType } from '@shared/schema';
 
 type ViewMode = 'browse' | 'edit' | 'preview';
+type VaultViewMode = 'list' | 'grid';
 
 const DND_TYPES = {
   FOLDER: 'vault-folder',
@@ -44,6 +51,7 @@ export default function DocumentVaultPage() {
   const [currentFolderId, setCurrentFolderId] = useState<number | null>(null);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('browse');
+  const [vaultViewMode, setVaultViewMode] = useState<VaultViewMode>('list');
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -64,7 +72,11 @@ export default function DocumentVaultPage() {
   const [permanentDeleteTarget, setPermanentDeleteTarget] = useState<{ type: 'folder' | 'document'; id: number; name: string } | null>(null);
   const [deletedItems, setDeletedItems] = useState<{ documents: Document[]; folders: FolderType[] }>({ documents: [], folders: [] });
   const [isUploading, setIsUploading] = useState(false);
+  const [showSyncDialog, setShowSyncDialog] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<'all' | 'document' | 'image' | 'video' | 'pdf'>('all');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const obsidianInputRef = useRef<HTMLInputElement>(null);
+  const evernoteInputRef = useRef<HTMLInputElement>(null);
 
   const { data: serverFolders, isLoading: foldersLoading, dataUpdatedAt: foldersUpdatedAt } = useQuery<FolderType[]>({
     queryKey: ['/api/folders'],
@@ -328,12 +340,18 @@ export default function DocumentVaultPage() {
     return crumbs;
   }, [currentFolderId, folders]);
 
-  const filteredDocs = searchQuery
+  const applyTypeFilter = useCallback((docs: Document[]) => {
+    if (typeFilter === 'all') return docs;
+    if (typeFilter === 'document') return docs.filter(d => !d.fileType || d.fileType === 'document');
+    return docs.filter(d => d.fileType === typeFilter);
+  }, [typeFilter]);
+
+  const filteredDocs = applyTypeFilter(searchQuery
     ? documents.filter(d =>
         d.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         d.content.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : currentDocuments;
+    : currentDocuments);
 
   const filteredFolders = searchQuery
     ? folders.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -411,6 +429,15 @@ export default function DocumentVaultPage() {
     }
   };
 
+  const getSourceBadge = (source: string) => {
+    switch (source) {
+      case 'google_drive': return <SiGoogledrive className="h-3 w-3 text-blue-400" title="Google Drive" />;
+      case 'obsidian': return <SiObsidian className="h-3 w-3 text-purple-400" title="Obsidian" />;
+      case 'evernote': return <SiEvernote className="h-3 w-3 text-green-400" title="Evernote" />;
+      default: return null;
+    }
+  };
+
   const handleDrop = (targetFolderId: number, item: { type: string; id: number }) => {
     if (item.type === DND_TYPES.DOCUMENT) {
       setLocalDocs(prev => prev.map(d => d.id === item.id ? { ...d, folderId: targetFolderId } : d));
@@ -461,16 +488,38 @@ export default function DocumentVaultPage() {
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          {viewMode === 'edit' ? (
-            <input
-              value={editTitle}
-              onChange={e => { setEditTitle(e.target.value); setHasUnsavedChanges(true); }}
-              className="text-lg font-orbitron bg-transparent border-none outline-none flex-1 min-w-0"
-              placeholder="Document title"
-            />
-          ) : (
-            <h2 className="text-lg font-orbitron truncate flex-1">{selectedDoc.title}</h2>
-          )}
+          <div className="flex-1 min-w-0">
+            {viewMode === 'edit' ? (
+              <input
+                value={editTitle}
+                onChange={e => { setEditTitle(e.target.value); setHasUnsavedChanges(true); }}
+                className="text-lg font-orbitron bg-transparent border-none outline-none w-full"
+                placeholder="Document title"
+              />
+            ) : (
+              <h2 className="text-lg font-orbitron truncate">{selectedDoc.title}</h2>
+            )}
+            <div className="flex items-center gap-2 mt-0.5">
+              {selectedDoc.source && selectedDoc.source !== 'local' && (
+                <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                  {getSourceBadge(selectedDoc.source)}
+                  <span className="capitalize">{selectedDoc.source === 'google_drive' ? 'Google Drive' : selectedDoc.source}</span>
+                </span>
+              )}
+              {selectedDoc.source === 'google_drive' && selectedDoc.externalUrl && (
+                <a
+                  href={selectedDoc.externalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 transition-colors"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <SiGoogledrive className="h-2.5 w-2.5" />
+                  Open in Google Docs
+                </a>
+              )}
+            </div>
+          </div>
           <div className="flex items-center gap-1 ml-auto">
             {!isMediaFile(selectedDoc) && (
               viewMode === 'edit' ? (
@@ -742,6 +791,35 @@ export default function DocumentVaultPage() {
           <p className="text-muted-foreground">Create, edit, and organize<br />your documents, media, and folders</p>
         </div>
         <div className="flex gap-1.5">
+          <div className="flex rounded border border-primary/50 overflow-hidden mr-1">
+            <button
+              className={cn(
+                "h-8 w-8 inline-flex items-center justify-center transition-colors",
+                vaultViewMode === 'list' ? "bg-primary/30 text-primary" : "bg-primary/10 text-primary/50 hover:bg-primary/20 hover:text-primary"
+              )}
+              onClick={() => setVaultViewMode('list')}
+              title="List view"
+            >
+              <LayoutList className="h-3.5 w-3.5" />
+            </button>
+            <button
+              className={cn(
+                "h-8 w-8 inline-flex items-center justify-center transition-colors border-l border-primary/30",
+                vaultViewMode === 'grid' ? "bg-primary/30 text-primary" : "bg-primary/10 text-primary/50 hover:bg-primary/20 hover:text-primary"
+              )}
+              onClick={() => setVaultViewMode('grid')}
+              title="Grid view"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <button
+            className="h-8 px-3 inline-flex items-center gap-1.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors font-mono text-xs"
+            onClick={() => setShowSyncDialog(true)}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Sync</span>
+          </button>
           <button
             className="h-8 px-3 inline-flex items-center gap-1.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors font-mono text-xs"
             onClick={() => setShowNewFolderDialog(true)}
@@ -795,6 +873,30 @@ export default function DocumentVaultPage() {
         )}
       </div>
 
+      <div className="flex items-center gap-1.5 mb-4 overflow-x-auto no-scrollbar">
+        {([
+          { key: 'all', label: 'All', icon: null },
+          { key: 'document', label: 'Documents', icon: <FileText className="h-3 w-3" /> },
+          { key: 'image', label: 'Images', icon: <Image className="h-3 w-3" /> },
+          { key: 'video', label: 'Videos', icon: <Video className="h-3 w-3" /> },
+          { key: 'pdf', label: 'PDFs', icon: <FileDown className="h-3 w-3" /> },
+        ] as const).map(chip => (
+          <button
+            key={chip.key}
+            className={cn(
+              "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-mono shrink-0 transition-colors border",
+              typeFilter === chip.key
+                ? "bg-primary/20 border-primary/50 text-primary"
+                : "bg-transparent border-primary/20 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+            )}
+            onClick={() => setTypeFilter(chip.key)}
+          >
+            {chip.icon}
+            {chip.label}
+          </button>
+        ))}
+      </div>
+
       {!searchQuery && (
         <div className="flex items-center gap-1 text-sm mb-4 overflow-x-auto no-scrollbar">
           {getBreadcrumbs().map((crumb, i, arr) => (
@@ -816,19 +918,167 @@ export default function DocumentVaultPage() {
 
       <div className="space-y-4">
         {isLoading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="glassmorphic rounded-xl border border-primary/20 p-4 animate-pulse">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-primary/20"></div>
-                  <div className="flex-1">
-                    <div className="h-4 bg-primary/20 rounded w-40 mb-2"></div>
-                    <div className="h-3 bg-primary/10 rounded w-24"></div>
+          <div className={vaultViewMode === 'grid' ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3" : "space-y-3"}>
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className={cn(
+                "glassmorphic rounded-xl border border-primary/20 animate-pulse",
+                vaultViewMode === 'grid' ? "p-3" : "p-4"
+              )}>
+                {vaultViewMode === 'grid' ? (
+                  <div>
+                    <div className="aspect-square rounded-lg bg-primary/10 mb-2" />
+                    <div className="h-3 bg-primary/20 rounded w-3/4 mb-1" />
+                    <div className="h-2 bg-primary/10 rounded w-1/2" />
                   </div>
-                </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-primary/20"></div>
+                    <div className="flex-1">
+                      <div className="h-4 bg-primary/20 rounded w-40 mb-2"></div>
+                      <div className="h-3 bg-primary/10 rounded w-24"></div>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
+        ) : vaultViewMode === 'grid' ? (
+          <>
+            {filteredFolders.length === 0 && filteredDocs.length === 0 ? (
+              <div className="glassmorphic rounded-xl border border-primary/20 flex flex-col items-center justify-center py-16 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+                  <FileText className="h-8 w-8 text-primary/50" />
+                </div>
+                <h3 className="text-lg font-orbitron mb-1">
+                  {searchQuery ? 'No results found' : 'Empty folder'}
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {searchQuery ? 'Try a different search term' : 'Create a folder or document to get started'}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {filteredFolders.map(f => (
+                  <GridFolderCard
+                    key={`grid-f-${f.id}`}
+                    folder={f}
+                    onOpen={() => { setCurrentFolderId(f.id); setSearchQuery(''); }}
+                    onRename={() => { setRenameFolderId(f.id); setRenameFolderName(f.name); setShowRenameFolderDialog(true); }}
+                    onDelete={() => setDeleteTarget({ type: 'folder', id: f.id, name: f.name })}
+                    onToggleFavorite={() => toggleFavoriteFolder.mutate(f.id)}
+                    onMove={() => { setMoveTarget({ type: 'folder', id: f.id }); setShowMoveDialog(true); }}
+                    docCount={getTotalDocCount(f.id)}
+                    subFolderCount={getSubFolderCount(f.id)}
+                  />
+                ))}
+                {filteredDocs.map(d => (
+                  <GridDocumentCard
+                    key={`grid-d-${d.id}`}
+                    doc={d}
+                    onOpen={() => openDoc(d)}
+                    onDelete={() => setDeleteTarget({ type: 'document', id: d.id, name: d.title })}
+                    onToggleFavorite={() => toggleFavoriteDoc.mutate(d.id)}
+                    onMove={() => { setMoveTarget({ type: 'document', id: d.id }); setShowMoveDialog(true); }}
+                    onRename={() => { setRenameDocId(d.id); setRenameDocTitle(d.title); setShowRenameDocDialog(true); }}
+                    formatFileSize={formatFileSize}
+                    getSourceBadge={getSourceBadge}
+                  />
+                ))}
+              </div>
+            )}
+
+            {!searchQuery && currentFolderId === null && (
+              <div className="mt-6">
+                <button
+                  className="flex items-center gap-2 text-xs font-mono text-muted-foreground hover:text-primary transition-colors uppercase tracking-wider"
+                  onClick={() => setShowDeletedSection(!showDeletedSection)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Recently Deleted
+                  <ChevronRight className={cn("h-3 w-3 transition-transform", showDeletedSection && "rotate-90")} />
+                </button>
+
+                {showDeletedSection && (
+                  <div className="mt-2 space-y-2">
+                    {(!deletedItems || (deletedItems.documents.length === 0 && deletedItems.folders.length === 0)) ? (
+                      <div className="glassmorphic rounded-xl border border-primary/10 p-6 text-center">
+                        <p className="text-sm text-muted-foreground">No recently deleted items</p>
+                      </div>
+                    ) : (
+                      <>
+                        {deletedItems.folders.map(f => (
+                          <div key={`del-f-${f.id}`} className="glassmorphic rounded-xl border border-primary/10 opacity-70">
+                            <div className="p-4 flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                <FolderOpen className="h-5 w-5 text-primary/50" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <span className="font-medium truncate block">{f.name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  Deleted {f.deletedAt ? formatDate(f.deletedAt) : ''}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  className="h-8 px-2 inline-flex items-center gap-1 rounded border bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 transition-colors font-mono text-xs"
+                                  onClick={() => restoreFolder.mutate(f.id)}
+                                  disabled={restoreFolder.isPending}
+                                  title="Restore"
+                                >
+                                  <Undo2 className="h-3.5 w-3.5" />
+                                  <span className="hidden sm:inline">Restore</span>
+                                </button>
+                                <button
+                                  className="h-8 px-2 inline-flex items-center gap-1 rounded border bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20 transition-colors font-mono text-xs"
+                                  onClick={() => setPermanentDeleteTarget({ type: 'folder', id: f.id, name: f.name })}
+                                  title="Delete permanently"
+                                >
+                                  <Trash className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        {deletedItems.documents.map(d => (
+                          <div key={`del-d-${d.id}`} className="glassmorphic rounded-xl border border-primary/10 opacity-70">
+                            <div className="p-4 flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                <FileText className="h-5 w-5 text-primary/50" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <span className="font-medium truncate block">{d.title}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  Deleted {d.deletedAt ? formatDate(d.deletedAt) : ''}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  className="h-8 px-2 inline-flex items-center gap-1 rounded border bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 transition-colors font-mono text-xs"
+                                  onClick={() => restoreDocument.mutate(d.id)}
+                                  disabled={restoreDocument.isPending}
+                                  title="Restore"
+                                >
+                                  <Undo2 className="h-3.5 w-3.5" />
+                                  <span className="hidden sm:inline">Restore</span>
+                                </button>
+                                <button
+                                  className="h-8 px-2 inline-flex items-center gap-1 rounded border bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20 transition-colors font-mono text-xs"
+                                  onClick={() => setPermanentDeleteTarget({ type: 'document', id: d.id, name: d.title })}
+                                  title="Delete permanently"
+                                >
+                                  <Trash className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         ) : (
           <>
             {!searchQuery && hasFavorites && currentFolderId === null && (
@@ -858,6 +1108,7 @@ export default function DocumentVaultPage() {
                       onToggleFavorite={() => toggleFavoriteDoc.mutate(d.id)}
                       onMove={() => { setMoveTarget({ type: 'document', id: d.id }); setShowMoveDialog(true); }}
                       onRename={() => { setRenameDocId(d.id); setRenameDocTitle(d.title); setShowRenameDocDialog(true); }}
+                      getSourceBadge={getSourceBadge}
                       formatDate={formatDate}
                       getFileIcon={getFileIcon}
                       formatFileSize={formatFileSize}
@@ -905,6 +1156,7 @@ export default function DocumentVaultPage() {
                       formatDate={formatDate}
                       getFileIcon={getFileIcon}
                       formatFileSize={formatFileSize}
+                      getSourceBadge={getSourceBadge}
                     />
                   ))}
                 </div>
@@ -921,29 +1173,36 @@ export default function DocumentVaultPage() {
                       className="glassmorphic rounded-xl border border-primary/20 cursor-pointer hover:bg-card/40 transition-colors group overflow-hidden"
                       onClick={() => openDoc(d)}
                     >
-                      {d.fileType === 'image' ? (
-                        <div className="aspect-square bg-primary/5 flex items-center justify-center overflow-hidden">
-                          <img
-                            src={`/api/documents/${d.id}/file`}
-                            alt={d.title}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                          />
-                        </div>
-                      ) : d.fileType === 'video' ? (
-                        <div className="aspect-square bg-primary/5 flex items-center justify-center relative">
-                          <Video className="h-10 w-10 text-purple-400/50" />
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="h-10 w-10 rounded-full bg-primary/30 flex items-center justify-center">
-                              <Play className="h-5 w-5 text-primary ml-0.5" />
+                      <div className="relative">
+                        {d.fileType === 'image' ? (
+                          <div className="aspect-square bg-primary/5 flex items-center justify-center overflow-hidden">
+                            <img
+                              src={`/api/documents/${d.id}/file`}
+                              alt={d.title}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                          </div>
+                        ) : d.fileType === 'video' ? (
+                          <div className="aspect-square bg-primary/5 flex items-center justify-center relative">
+                            <Video className="h-10 w-10 text-purple-400/50" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="h-10 w-10 rounded-full bg-primary/30 flex items-center justify-center">
+                                <Play className="h-5 w-5 text-primary ml-0.5" />
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ) : (
-                        <div className="aspect-square bg-primary/5 flex items-center justify-center">
-                          <FileDown className="h-10 w-10 text-red-400/50" />
-                        </div>
-                      )}
+                        ) : (
+                          <div className="aspect-square bg-primary/5 flex items-center justify-center">
+                            <FileDown className="h-10 w-10 text-red-400/50" />
+                          </div>
+                        )}
+                        {d.source && d.source !== 'local' && (
+                          <span className="absolute top-1.5 left-1.5 h-5 w-5 rounded-full bg-background/80 backdrop-blur-sm border border-primary/30 flex items-center justify-center">
+                            {getSourceBadge(d.source)}
+                          </span>
+                        )}
+                      </div>
                       <div className="p-2">
                         <div className="flex items-center gap-1">
                           <span className="text-xs font-medium truncate flex-1">{d.title}</span>
@@ -1170,6 +1429,14 @@ export default function DocumentVaultPage() {
 
       {renderDeleteDialog()}
       {renderMoveDialog()}
+      <SyncImportDialog
+        open={showSyncDialog}
+        onOpenChange={setShowSyncDialog}
+        obsidianInputRef={obsidianInputRef}
+        evernoteInputRef={evernoteInputRef}
+        currentFolderId={currentFolderId}
+        onSyncComplete={refetchAll}
+      />
 
       <AlertDialog open={!!permanentDeleteTarget} onOpenChange={() => setPermanentDeleteTarget(null)}>
         <AlertDialogContent>
@@ -1291,7 +1558,169 @@ function FolderCard({ folder, onOpen, onRename, onDelete, onToggleFavorite, onMo
   );
 }
 
-function DocumentCard({ doc, onOpen, onDelete, onToggleFavorite, onMove, onRename, formatDate, getFileIcon, formatFileSize }: {
+function GridFolderCard({ folder, onOpen, onRename, onDelete, onToggleFavorite, onMove, docCount, subFolderCount }: {
+  folder: FolderType;
+  onOpen: () => void;
+  onRename: () => void;
+  onDelete: () => void;
+  onToggleFavorite: () => void;
+  onMove: () => void;
+  docCount: number;
+  subFolderCount: number;
+}) {
+  return (
+    <div
+      className="glassmorphic rounded-xl border border-primary/20 cursor-pointer hover:bg-card/40 transition-colors group overflow-hidden"
+      onClick={onOpen}
+    >
+      <div className="aspect-square bg-primary/5 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-2">
+          <FolderOpen className="h-12 w-12 text-primary/60" />
+          {folder.favorite && <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />}
+        </div>
+      </div>
+      <div className="p-2.5">
+        <div className="flex items-center gap-1 mb-0.5">
+          <span className="text-xs font-medium truncate flex-1">{folder.name}</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+              <button className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+              <DropdownMenuItem onClick={onRename}>
+                <Edit className="h-4 w-4 mr-2" />
+                Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onToggleFavorite}>
+                {folder.favorite ? <StarOff className="h-4 w-4 mr-2" /> : <Star className="h-4 w-4 mr-2" />}
+                {folder.favorite ? 'Remove Favorite' : 'Add Favorite'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onMove}>
+                <ArrowUpLeft className="h-4 w-4 mr-2" />
+                Move
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={onDelete}>
+                <Trash className="h-4 w-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        <span className="text-[10px] text-muted-foreground">
+          {subFolderCount > 0 && <>{subFolderCount} folder{subFolderCount !== 1 ? 's' : ''}, </>}
+          {docCount} item{docCount !== 1 ? 's' : ''}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function GridDocumentCard({ doc, onOpen, onDelete, onToggleFavorite, onMove, onRename, formatFileSize, getSourceBadge }: {
+  doc: Document;
+  onOpen: () => void;
+  onDelete: () => void;
+  onToggleFavorite: () => void;
+  onMove: () => void;
+  onRename: () => void;
+  formatFileSize: (bytes: number | null | undefined) => string;
+  getSourceBadge?: (source: string) => React.ReactNode;
+}) {
+  const contentPreview = doc.content ? doc.content.replace(/[#*_~`>\-\[\]()!|]/g, '').trim().slice(0, 80) : '';
+
+  return (
+    <div
+      className="glassmorphic rounded-xl border border-primary/20 cursor-pointer hover:bg-card/40 transition-colors group overflow-hidden"
+      onClick={onOpen}
+    >
+      <div className="relative">
+        {doc.fileType === 'image' ? (
+          <div className="aspect-square bg-primary/5 flex items-center justify-center overflow-hidden">
+            <img
+              src={`/api/documents/${doc.id}/file`}
+              alt={doc.title}
+              className="w-full h-full object-cover"
+              loading="lazy"
+            />
+          </div>
+        ) : doc.fileType === 'video' ? (
+          <div className="aspect-square bg-primary/5 flex items-center justify-center relative">
+            <Video className="h-10 w-10 text-purple-400/50" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-full bg-primary/30 flex items-center justify-center">
+                <Play className="h-5 w-5 text-primary ml-0.5" />
+              </div>
+            </div>
+          </div>
+        ) : doc.fileType === 'pdf' ? (
+          <div className="aspect-square bg-primary/5 flex flex-col items-center justify-center gap-2">
+            <FileDown className="h-12 w-12 text-red-400/60" />
+            {doc.fileSize && (
+              <span className="text-[10px] text-muted-foreground">{formatFileSize(doc.fileSize)}</span>
+            )}
+          </div>
+        ) : (
+          <div className="aspect-square bg-primary/5 flex flex-col items-start justify-start p-3 overflow-hidden">
+            <FileText className="h-6 w-6 text-primary/40 mb-2 shrink-0" />
+            {contentPreview ? (
+              <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-4">{contentPreview}</p>
+            ) : (
+              <p className="text-[10px] text-muted-foreground/50 italic">Empty document</p>
+            )}
+          </div>
+        )}
+        {doc.source && doc.source !== 'local' && getSourceBadge && (
+          <span className="absolute top-1.5 left-1.5 h-5 w-5 rounded-full bg-background/80 backdrop-blur-sm border border-primary/30 flex items-center justify-center">
+            {getSourceBadge(doc.source)}
+          </span>
+        )}
+      </div>
+      <div className="p-2.5">
+        <div className="flex items-center gap-1 mb-0.5">
+          <span className="text-xs font-medium truncate flex-1">{doc.title}</span>
+          {doc.favorite && <Star className="h-2.5 w-2.5 text-yellow-500 fill-yellow-500 shrink-0" />}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+              <button className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+              <DropdownMenuItem onClick={onRename}>
+                <Edit className="h-4 w-4 mr-2" />
+                Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onToggleFavorite}>
+                {doc.favorite ? <StarOff className="h-4 w-4 mr-2" /> : <Star className="h-4 w-4 mr-2" />}
+                {doc.favorite ? 'Remove Favorite' : 'Add Favorite'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onMove}>
+                <ArrowUpLeft className="h-4 w-4 mr-2" />
+                Move to Folder
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={onDelete}>
+                <Trash className="h-4 w-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        {doc.tags && doc.tags.length > 0 && (
+          <div className="flex gap-1 flex-wrap mt-1">
+            {doc.tags.slice(0, 2).map((tag: string, i: number) => (
+              <span key={i} className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary/70">{tag}</span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DocumentCard({ doc, onOpen, onDelete, onToggleFavorite, onMove, onRename, formatDate, getFileIcon, formatFileSize, getSourceBadge }: {
   doc: Document;
   onOpen: () => void;
   onDelete: () => void;
@@ -1301,6 +1730,7 @@ function DocumentCard({ doc, onOpen, onDelete, onToggleFavorite, onMove, onRenam
   formatDate: (d: string | Date) => string;
   getFileIcon?: (doc: Document) => React.ReactNode;
   formatFileSize?: (bytes: number | null | undefined) => string;
+  getSourceBadge?: (source: string) => React.ReactNode;
 }) {
   const [{ isDragging }, dragRef] = useDrag({
     type: DND_TYPES.DOCUMENT,
@@ -1318,8 +1748,13 @@ function DocumentCard({ doc, onOpen, onDelete, onToggleFavorite, onMove, onRenam
       onClick={onOpen}
     >
       <div className="p-4 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+        <div className="relative w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
           {getFileIcon ? getFileIcon(doc) : <FileText className="h-5 w-5 text-primary/70" />}
+          {doc.source && doc.source !== 'local' && getSourceBadge && (
+            <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-background border border-primary/30 flex items-center justify-center">
+              {getSourceBadge(doc.source)}
+            </span>
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
@@ -1370,5 +1805,365 @@ function DocumentCard({ doc, onOpen, onDelete, onToggleFavorite, onMove, onRenam
         </DropdownMenu>
       </div>
     </div>
+  );
+}
+
+type SyncResult = { imported?: number; updated?: number; skipped?: number; total?: number; pushed?: number; created?: number; folders?: number; error?: string };
+type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
+
+function SyncImportDialog({ open, onOpenChange, obsidianInputRef, evernoteInputRef, currentFolderId, onSyncComplete }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  obsidianInputRef: React.RefObject<HTMLInputElement | null>;
+  evernoteInputRef: React.RefObject<HTMLInputElement | null>;
+  currentFolderId: number | null;
+  onSyncComplete: () => Promise<void>;
+}) {
+  const [gdStatus, setGdStatus] = useState<{ connected: boolean; connectedAt?: string } | null>(null);
+  const [gdSyncStatus, setGdSyncStatus] = useState<SyncStatus>('idle');
+  const [gdResult, setGdResult] = useState<SyncResult | null>(null);
+  const [gdPushStatus, setGdPushStatus] = useState<SyncStatus>('idle');
+  const [gdPushResult, setGdPushResult] = useState<SyncResult | null>(null);
+
+  const [obStatus, setObStatus] = useState<SyncStatus>('idle');
+  const [obResult, setObResult] = useState<SyncResult | null>(null);
+  const [obFiles, setObFiles] = useState<FileList | null>(null);
+
+  const [enStatus, setEnStatus] = useState<SyncStatus>('idle');
+  const [enResult, setEnResult] = useState<SyncResult | null>(null);
+  const [enFile, setEnFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      fetch('/api/google/status', { credentials: 'include' })
+        .then(r => r.json())
+        .then(data => setGdStatus(data))
+        .catch(() => setGdStatus({ connected: false }));
+    }
+  }, [open]);
+
+  const handleGoogleDriveSync = async () => {
+    setGdSyncStatus('syncing');
+    setGdResult(null);
+    try {
+      const res = await fetch('/api/google/drive/sync', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Sync failed');
+      setGdResult(data);
+      setGdSyncStatus('success');
+      await onSyncComplete();
+    } catch (err: any) {
+      setGdResult({ error: err.message });
+      setGdSyncStatus('error');
+    }
+  };
+
+  const handleGoogleDrivePush = async () => {
+    setGdPushStatus('syncing');
+    setGdPushResult(null);
+    try {
+      const res = await fetch('/api/google/drive/push', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ includeLocal: false }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Push failed');
+      setGdPushResult(data);
+      setGdPushStatus('success');
+    } catch (err: any) {
+      setGdPushResult({ error: err.message });
+      setGdPushStatus('error');
+    }
+  };
+
+  const handleObsidianImport = async () => {
+    if (!obFiles || obFiles.length === 0) return;
+    setObStatus('syncing');
+    setObResult(null);
+    try {
+      const formData = new FormData();
+      for (let i = 0; i < obFiles.length; i++) {
+        formData.append('files', obFiles[i]);
+      }
+      if (currentFolderId) formData.append('folderId', String(currentFolderId));
+      const res = await fetch('/api/documents/import/obsidian', { method: 'POST', body: formData, credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Import failed');
+      setObResult(data);
+      setObStatus('success');
+      setObFiles(null);
+      await onSyncComplete();
+    } catch (err: any) {
+      setObResult({ error: err.message });
+      setObStatus('error');
+    }
+  };
+
+  const handleObsidianExport = async () => {
+    try {
+      const res = await fetch('/api/documents/export/obsidian', { credentials: 'include' });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'obsidian-vault-export.zip';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export failed:', err);
+    }
+  };
+
+  const handleEvernoteImport = async () => {
+    if (!enFile) return;
+    setEnStatus('syncing');
+    setEnResult(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', enFile);
+      if (currentFolderId) formData.append('folderId', String(currentFolderId));
+      const res = await fetch('/api/documents/import/evernote', { method: 'POST', body: formData, credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Import failed');
+      setEnResult(data);
+      setEnStatus('success');
+      setEnFile(null);
+      await onSyncComplete();
+    } catch (err: any) {
+      setEnResult({ error: err.message });
+      setEnStatus('error');
+    }
+  };
+
+  const handleEvernoteExport = async () => {
+    try {
+      const res = await fetch('/api/documents/export/evernote', { credentials: 'include' });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'lifeos-export.enex';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export failed:', err);
+    }
+  };
+
+  const renderSyncResult = (result: SyncResult | null) => {
+    if (!result) return null;
+    if (result.error) {
+      return (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{result.error}</span>
+        </div>
+      );
+    }
+    const parts: string[] = [];
+    if (result.imported !== undefined && result.imported > 0) parts.push(`${result.imported} imported`);
+    if (result.updated !== undefined && result.updated > 0) parts.push(`${result.updated} updated`);
+    if (result.skipped !== undefined && result.skipped > 0) parts.push(`${result.skipped} skipped`);
+    if (result.pushed !== undefined && result.pushed > 0) parts.push(`${result.pushed} pushed`);
+    if (result.created !== undefined && result.created > 0) parts.push(`${result.created} created`);
+    if (result.folders !== undefined && result.folders > 0) parts.push(`${result.folders} folders`);
+    if (parts.length === 0) parts.push('No changes');
+    return (
+      <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-xs">
+        <Check className="h-4 w-4 shrink-0" />
+        <span>{parts.join(', ')}</span>
+      </div>
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-orbitron flex items-center gap-2">
+            <RefreshCw className="h-5 w-5 text-primary" />
+            Sync & Import
+          </DialogTitle>
+        </DialogHeader>
+        <Tabs defaultValue="google-drive" className="w-full">
+          <TabsList className="w-full grid grid-cols-3">
+            <TabsTrigger value="google-drive" className="text-xs gap-1.5">
+              <SiGoogledrive className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Google Drive</span>
+              <span className="sm:hidden">Drive</span>
+            </TabsTrigger>
+            <TabsTrigger value="obsidian" className="text-xs gap-1.5">
+              <SiObsidian className="h-3.5 w-3.5" />
+              Obsidian
+            </TabsTrigger>
+            <TabsTrigger value="evernote" className="text-xs gap-1.5">
+              <SiEvernote className="h-3.5 w-3.5" />
+              Evernote
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="google-drive" className="space-y-4 mt-4">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/10">
+              <div className="flex items-center gap-2">
+                <div className={cn("h-2 w-2 rounded-full", gdStatus?.connected ? "bg-green-500" : "bg-muted-foreground/50")} />
+                <span className="text-sm">{gdStatus?.connected ? 'Connected' : 'Not connected'}</span>
+              </div>
+              {gdStatus?.connectedAt && (
+                <span className="text-[10px] text-muted-foreground">
+                  Since {new Date(gdStatus.connectedAt).toLocaleDateString()}
+                </span>
+              )}
+            </div>
+
+            {gdStatus?.connected ? (
+              <div className="space-y-3">
+                <Button
+                  className="w-full bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"
+                  onClick={handleGoogleDriveSync}
+                  disabled={gdSyncStatus === 'syncing'}
+                >
+                  {gdSyncStatus === 'syncing' ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Syncing...</>
+                  ) : (
+                    <><RefreshCw className="h-4 w-4 mr-2" /> Sync All from Drive</>
+                  )}
+                </Button>
+                {gdSyncStatus === 'syncing' && <Progress value={undefined} className="h-1" />}
+                {renderSyncResult(gdResult)}
+
+                <Button
+                  variant="outline"
+                  className="w-full border-primary/30 text-foreground hover:bg-primary/10 font-mono text-xs"
+                  onClick={handleGoogleDrivePush}
+                  disabled={gdPushStatus === 'syncing'}
+                >
+                  {gdPushStatus === 'syncing' ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Pushing...</>
+                  ) : (
+                    <><CloudUpload className="h-4 w-4 mr-2" /> Push Changes to Drive</>
+                  )}
+                </Button>
+                {renderSyncResult(gdPushResult)}
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-sm text-muted-foreground mb-3">Connect Google Drive from your Profile to sync files.</p>
+                <Button
+                  variant="outline"
+                  className="border-primary/30 text-foreground hover:bg-primary/10 font-mono text-xs"
+                  onClick={() => { onOpenChange(false); window.location.href = '/profile'; }}
+                >
+                  Go to Profile
+                </Button>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="obsidian" className="space-y-4 mt-4">
+            <div
+              className={cn(
+                "border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer",
+                obFiles ? "border-primary/50 bg-primary/5" : "border-primary/20 hover:border-primary/40 hover:bg-primary/5"
+              )}
+              onClick={() => obsidianInputRef.current?.click()}
+            >
+              <Upload className="h-8 w-8 text-primary/50 mx-auto mb-2" />
+              {obFiles ? (
+                <p className="text-sm text-primary">{obFiles.length} file{obFiles.length !== 1 ? 's' : ''} selected</p>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">Drop .md or .zip files here</p>
+                  <p className="text-[10px] text-muted-foreground/70 mt-1">Supports markdown files and zipped Obsidian vaults</p>
+                </>
+              )}
+              <input
+                ref={obsidianInputRef}
+                type="file"
+                multiple
+                accept=".md,.zip,.png,.jpg,.jpeg,.gif,.webp,.svg,.pdf"
+                className="hidden"
+                onChange={e => setObFiles(e.target.files)}
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                className="flex-1 bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"
+                onClick={handleObsidianImport}
+                disabled={!obFiles || obStatus === 'syncing'}
+              >
+                {obStatus === 'syncing' ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Importing...</>
+                ) : (
+                  <><Upload className="h-4 w-4 mr-2" /> Import</>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1 border-primary/30 text-foreground hover:bg-primary/10 font-mono text-xs"
+                onClick={handleObsidianExport}
+              >
+                <Download className="h-4 w-4 mr-2" /> Export .zip
+              </Button>
+            </div>
+            {obStatus === 'syncing' && <Progress value={undefined} className="h-1" />}
+            {renderSyncResult(obResult)}
+          </TabsContent>
+
+          <TabsContent value="evernote" className="space-y-4 mt-4">
+            <div
+              className={cn(
+                "border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer",
+                enFile ? "border-primary/50 bg-primary/5" : "border-primary/20 hover:border-primary/40 hover:bg-primary/5"
+              )}
+              onClick={() => evernoteInputRef.current?.click()}
+            >
+              <Upload className="h-8 w-8 text-primary/50 mx-auto mb-2" />
+              {enFile ? (
+                <p className="text-sm text-primary">{enFile.name}</p>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">Drop .enex file here</p>
+                  <p className="text-[10px] text-muted-foreground/70 mt-1">Export from Evernote as .enex format</p>
+                </>
+              )}
+              <input
+                ref={evernoteInputRef}
+                type="file"
+                accept=".enex"
+                className="hidden"
+                onChange={e => setEnFile(e.target.files?.[0] || null)}
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                className="flex-1 bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"
+                onClick={handleEvernoteImport}
+                disabled={!enFile || enStatus === 'syncing'}
+              >
+                {enStatus === 'syncing' ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Importing...</>
+                ) : (
+                  <><Upload className="h-4 w-4 mr-2" /> Import</>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1 border-primary/30 text-foreground hover:bg-primary/10 font-mono text-xs"
+                onClick={handleEvernoteExport}
+              >
+                <Download className="h-4 w-4 mr-2" /> Export .enex
+              </Button>
+            </div>
+            {enStatus === 'syncing' && <Progress value={undefined} className="h-1" />}
+            {renderSyncResult(enResult)}
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
   );
 }
