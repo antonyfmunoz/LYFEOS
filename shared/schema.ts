@@ -877,6 +877,9 @@ export const folders = pgTable("folders", {
   description: text("description"),
   parentId: integer("parent_id"),
   favorite: boolean("favorite").default(false).notNull(),
+  source: text("source").default("local").notNull(),
+  externalId: text("external_id"),
+  externalUrl: text("external_url"),
   deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -893,6 +896,10 @@ export const documents = pgTable("documents", {
   format: text("format").default("markdown").notNull(),
   favorite: boolean("favorite").default(false).notNull(),
   tags: text("tags").array(),
+  source: text("source").default("local").notNull(),
+  externalId: text("external_id"),
+  externalUrl: text("external_url"),
+  lastSyncedAt: timestamp("last_synced_at"),
   deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -936,6 +943,7 @@ export const insertFolderSchema = createInsertSchema(folders).omit({
 export const insertDocumentSchema = createInsertSchema(documents).omit({
   id: true,
   deletedAt: true,
+  lastSyncedAt: true,
   createdAt: true,
   updatedAt: true,
 });
