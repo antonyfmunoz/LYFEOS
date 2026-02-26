@@ -5,7 +5,7 @@ import { storage } from "../storage";
 import { db } from "../db";
 import { logger, formatLocalDate, classifyMission } from "../utils";
 import { isAuthenticated, isOwner, calculateMissionCosts, awardExperiencePoints, calculateLevelFromTotalXP } from "./middleware";
-import { insertQuestSchema, Quest, userDailyLogs, quests as questsTable } from "@shared/schema";
+import { insertQuestSchema, insertMissionViewSchema, Quest, userDailyLogs, quests as questsTable } from "@shared/schema";
 import { sendPushToUser } from "../notificationScheduler";
 
 declare module "express-session" {
@@ -487,6 +487,99 @@ export function registerQuestRoutes(app: Express): void {
         return res.status(400).json({ error: "Invalid quest data", details: error.errors });
       }
       logger.error("Error updating quest:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/quests/:questId/view-column", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const questId = parseInt(req.params.questId);
+      if (isNaN(questId)) {
+        return res.status(400).json({ error: "Invalid quest ID" });
+      }
+      const quest = await storage.getQuest(questId);
+      if (!quest) {
+        return res.status(404).json({ error: "Quest not found" });
+      }
+      if (quest.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      const { viewId, viewColumn } = req.body;
+      const updatedQuest = await storage.updateQuest(questId, {
+        viewId: viewId ?? null,
+        viewColumn: viewColumn ?? null,
+      });
+      return res.status(200).json({ quest: updatedQuest });
+    } catch (error) {
+      logger.error("Error updating quest view-column:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/mission-views", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const views = await storage.getMissionViews(userId);
+      return res.status(200).json(views);
+    } catch (error) {
+      logger.error("Error fetching mission views:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/mission-views", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const viewData = insertMissionViewSchema.parse({ ...req.body, userId });
+      const view = await storage.createMissionView(viewData);
+      return res.status(201).json(view);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      logger.error("Error creating mission view:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/mission-views/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid view ID" });
+      }
+      const view = await storage.getMissionView(id);
+      if (!view) {
+        return res.status(404).json({ error: "View not found" });
+      }
+      if (view.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      const updated = await storage.updateMissionView(id, req.body);
+      return res.status(200).json(updated);
+    } catch (error) {
+      logger.error("Error updating mission view:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/mission-views/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid view ID" });
+      }
+      const view = await storage.getMissionView(id);
+      if (!view) {
+        return res.status(404).json({ error: "View not found" });
+      }
+      if (view.userId !== req.session.userId) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      await storage.deleteMissionView(id);
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      logger.error("Error deleting mission view:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });

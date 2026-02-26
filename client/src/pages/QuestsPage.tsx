@@ -29,6 +29,7 @@ import { Switch } from "@/components/ui/switch";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import {
   Dialog,
@@ -38,7 +39,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Zap, Star, Bell, BellOff, BellRing, Edit3, Trash2, X, ChevronDown, ChevronRight, ChevronLeft, Target, Calendar, CalendarDays, LayoutList, Clock, CheckCircle2, GraduationCap, Inbox, Info, Archive, Undo2, Repeat, Loader2, FileText, FolderOpen, Link2, GripVertical, Download, MapPin, Users } from "lucide-react";
+import { Plus, Zap, Star, Bell, BellOff, BellRing, Edit3, Trash2, X, ChevronDown, ChevronRight, ChevronLeft, Target, Calendar, CalendarDays, LayoutList, Clock, CheckCircle2, GraduationCap, Inbox, Info, Archive, Undo2, Repeat, Loader2, FileText, FolderOpen, Link2, GripVertical, Download, MapPin, Users, Columns3, Search, SlidersHorizontal, ArrowUpDown, Check, MoreVertical, Eye } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import type { MissionView } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { ObsidianMarkdown } from "@/components/ui/obsidian-markdown";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
@@ -171,6 +174,28 @@ const MISSION_CATEGORIES = [
   { value: "mindfulness", label: "Mindfulness" },
   { value: "event", label: "Event" },
 ];
+
+const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  general: { bg: 'bg-slate-500/20', text: 'text-slate-300', border: 'border-slate-500/40' },
+  health: { bg: 'bg-emerald-500/20', text: 'text-emerald-300', border: 'border-emerald-500/40' },
+  career: { bg: 'bg-blue-500/20', text: 'text-blue-300', border: 'border-blue-500/40' },
+  learning: { bg: 'bg-amber-500/20', text: 'text-amber-300', border: 'border-amber-500/40' },
+  finance: { bg: 'bg-green-500/20', text: 'text-green-300', border: 'border-green-500/40' },
+  social: { bg: 'bg-pink-500/20', text: 'text-pink-300', border: 'border-pink-500/40' },
+  creative: { bg: 'bg-purple-500/20', text: 'text-purple-300', border: 'border-purple-500/40' },
+  mindfulness: { bg: 'bg-cyan-500/20', text: 'text-cyan-300', border: 'border-cyan-500/40' },
+  event: { bg: 'bg-orange-500/20', text: 'text-orange-300', border: 'border-orange-500/40' },
+  onboarding: { bg: 'bg-indigo-500/20', text: 'text-indigo-300', border: 'border-indigo-500/40' },
+  todo: { bg: 'bg-gray-500/20', text: 'text-gray-300', border: 'border-gray-500/40' },
+};
+
+function getCategoryColor(category: string | undefined) {
+  return CATEGORY_COLORS[category || 'general'] || CATEGORY_COLORS.general;
+}
+
+function formatDateStr(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
 
 function DroppableSection({ section, onDropQuest, onDropGroup, children, className }: { section: string; onDropQuest: (item: DragItem, targetSection: string) => void; onDropGroup?: (item: VisualDragItem, targetSection: string) => void; children: React.ReactNode; className?: string }) {
   const dropRef = useRef<HTMLDivElement>(null);
@@ -586,10 +611,30 @@ export default function QuestsPage() {
   
   const [viewMode, setViewMode] = useState<'board' | 'list' | 'calendar'>('board');
   const [showCompleted, setShowCompleted] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterCategories, setFilterCategories] = useState<string[]>([]);
+  const [filterDifficulties, setFilterDifficulties] = useState<string[]>([]);
+  const [filterStatus, setFilterStatus] = useState<string[]>([]);
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
+  const [sortBy, setSortBy] = useState<'date-newest' | 'date-oldest' | 'title-az' | 'title-za' | 'energy-high' | 'energy-low' | 'difficulty-high' | 'difficulty-low'>('date-newest');
+  const [showListCompleted, setShowListCompleted] = useState(false);
+  const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
+  const [sortPopoverOpen, setSortPopoverOpen] = useState(false);
+  const [calendarZoom, setCalendarZoom] = useState<'year' | 'month' | 'week' | 'day'>('month');
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
+  const [calendarWeekStart, setCalendarWeekStart] = useState(() => {
+    const now = new Date();
+    const day = now.getDay();
+    const diff = now.getDate() - day;
+    return new Date(now.getFullYear(), now.getMonth(), diff);
+  });
+  const [calendarDay, setCalendarDay] = useState(() => new Date());
+  const [calendarYear, setCalendarYear] = useState(() => new Date().getFullYear());
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [todayExpanded, setTodayExpanded] = useWidgetState("quests.today", true);
   const [upcomingExpanded, setUpcomingExpanded] = useWidgetState("quests.upcoming", true);
   const [completedExpanded, setCompletedExpanded] = useWidgetState("quests.completed", true);
@@ -597,6 +642,169 @@ export default function QuestsPage() {
   const [archivedExpanded, setArchivedExpanded] = useWidgetState("quests.archived", true);
   const [terminatedInfoOpen, setTerminatedInfoOpen] = useState<Record<string | number, boolean>>({});
   const [originalDates, setOriginalDates] = useState<Record<string, { startDate?: string; endDate?: string; startTime?: string; endTime?: string }>>({});
+
+  const { data: customViews = [], refetch: refetchViews } = useQuery<MissionView[]>({
+    queryKey: ['/api/mission-views'],
+    enabled: !!user,
+  });
+  const [activeCustomViewId, setActiveCustomViewId] = useState<number | null>(null);
+  const [isCreateViewOpen, setIsCreateViewOpen] = useState(false);
+  const [isEditViewOpen, setIsEditViewOpen] = useState(false);
+  const [editingView, setEditingView] = useState<MissionView | null>(null);
+  const [createViewName, setCreateViewName] = useState('');
+  const [createViewType, setCreateViewType] = useState<'board' | 'list' | 'calendar'>('board');
+  const [createViewColumns, setCreateViewColumns] = useState<{ id: string; title: string; order: number }[]>([
+    { id: 'todo', title: 'To Do', order: 0 },
+    { id: 'in-progress', title: 'In Progress', order: 1 },
+    { id: 'done', title: 'Done', order: 2 },
+  ]);
+  const [createViewFilterCategories, setCreateViewFilterCategories] = useState<string[]>([]);
+  const [createViewFilterDifficulties, setCreateViewFilterDifficulties] = useState<string[]>([]);
+  const [editViewName, setEditViewName] = useState('');
+  const [editViewFilterCategories, setEditViewFilterCategories] = useState<string[]>([]);
+  const [editViewFilterDifficulties, setEditViewFilterDifficulties] = useState<string[]>([]);
+  const [editViewColumns, setEditViewColumns] = useState<{ id: string; title: string; order: number }[]>([]);
+  const [isViewSubmitting, setIsViewSubmitting] = useState(false);
+  const [newColumnInput, setNewColumnInput] = useState('');
+  const [editNewColumnInput, setEditNewColumnInput] = useState('');
+  const [renamingTabViewId, setRenamingTabViewId] = useState<number | null>(null);
+  const [renameTabInput, setRenameTabInput] = useState('');
+
+  const activeCustomView = useMemo(() => {
+    if (!activeCustomViewId) return null;
+    return customViews.find(v => v.id === activeCustomViewId) || null;
+  }, [activeCustomViewId, customViews]);
+
+  const handleCreateView = async () => {
+    if (!createViewName.trim() || !user) return;
+    setIsViewSubmitting(true);
+    try {
+      const viewData: any = {
+        userId: user.id,
+        name: createViewName.trim(),
+        viewType: createViewType,
+        filters: {
+          categories: createViewFilterCategories.length > 0 ? createViewFilterCategories : undefined,
+          difficulty: createViewFilterDifficulties.length > 0 ? createViewFilterDifficulties : undefined,
+        },
+        columns: createViewType === 'board' ? createViewColumns : [],
+      };
+      const result = await apiRequest<MissionView>('/api/mission-views', {
+        method: 'POST',
+        body: JSON.stringify(viewData),
+      });
+      await refetchViews();
+      if (result?.id) setActiveCustomViewId(result.id);
+      setIsCreateViewOpen(false);
+      setCreateViewName('');
+      setCreateViewType('board');
+      setCreateViewColumns([
+        { id: 'todo', title: 'To Do', order: 0 },
+        { id: 'in-progress', title: 'In Progress', order: 1 },
+        { id: 'done', title: 'Done', order: 2 },
+      ]);
+      setCreateViewFilterCategories([]);
+      setCreateViewFilterDifficulties([]);
+    } catch (error) {
+      toast({ title: 'Failed to create view', variant: 'destructive' });
+    } finally {
+      setIsViewSubmitting(false);
+    }
+  };
+
+  const handleUpdateView = async () => {
+    if (!editingView || !editViewName.trim()) return;
+    setIsViewSubmitting(true);
+    try {
+      await apiRequest(`/api/mission-views/${editingView.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: editViewName.trim(),
+          filters: {
+            categories: editViewFilterCategories.length > 0 ? editViewFilterCategories : undefined,
+            difficulty: editViewFilterDifficulties.length > 0 ? editViewFilterDifficulties : undefined,
+          },
+          columns: editingView.viewType === 'board' ? editViewColumns : editingView.columns,
+        }),
+      });
+      await refetchViews();
+      setIsEditViewOpen(false);
+      setEditingView(null);
+    } catch (error) {
+      toast({ title: 'Failed to update view', variant: 'destructive' });
+    } finally {
+      setIsViewSubmitting(false);
+    }
+  };
+
+  const handleDeleteView = async (viewId: number) => {
+    try {
+      await apiRequest(`/api/mission-views/${viewId}`, { method: 'DELETE' });
+      if (activeCustomViewId === viewId) setActiveCustomViewId(null);
+      await refetchViews();
+    } catch (error) {
+      toast({ title: 'Failed to delete view', variant: 'destructive' });
+    }
+  };
+
+  const handleRenameTabView = async (viewId: number) => {
+    if (!renameTabInput.trim()) return;
+    try {
+      await apiRequest(`/api/mission-views/${viewId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ name: renameTabInput.trim() }),
+      });
+      await refetchViews();
+      setRenamingTabViewId(null);
+      setRenameTabInput('');
+    } catch (error) {
+      toast({ title: 'Failed to rename view', variant: 'destructive' });
+    }
+  };
+
+  const openEditViewDialog = (view: MissionView) => {
+    setEditingView(view);
+    setEditViewName(view.name);
+    const filters = (view.filters || {}) as any;
+    setEditViewFilterCategories(filters.categories || []);
+    setEditViewFilterDifficulties(filters.difficulty || []);
+    setEditViewColumns(((view.columns || []) as any[]).map((c: any, i: number) => ({
+      id: c.id || `col-${i}`,
+      title: c.title || '',
+      order: c.order ?? i,
+    })));
+    setIsEditViewOpen(true);
+  };
+
+  const applyViewFilters = useCallback((missions: Quest[], view: MissionView): Quest[] => {
+    let result = missions;
+    const filters = (view.filters || {}) as any;
+    if (filters.categories?.length > 0) {
+      result = result.filter(m => filters.categories.includes(m.category || 'general'));
+    }
+    if (filters.difficulty?.length > 0) {
+      result = result.filter(m => filters.difficulty.includes(m.difficulty || 'D'));
+    }
+    if (filters.dateRange?.from) {
+      result = result.filter(m => (m.startDate || '') >= filters.dateRange.from);
+    }
+    if (filters.dateRange?.to) {
+      result = result.filter(m => (m.startDate || '') <= filters.dateRange.to);
+    }
+    return result;
+  }, []);
+
+  const handleMoveToViewColumn = useCallback(async (questId: number, viewId: number, column: string) => {
+    try {
+      await apiRequest(`/api/quests/${questId}/view-column`, {
+        method: 'PATCH',
+        body: JSON.stringify({ viewId, viewColumn: column }),
+      });
+      await refetchQuests();
+    } catch {
+      toast({ title: 'Failed to move mission', variant: 'destructive' });
+    }
+  }, [refetchQuests, toast]);
 
   const MISSIONS_TOUR_STEPS: TutorialStep[] = [
     {
@@ -800,6 +1008,124 @@ export default function QuestsPage() {
       inboxMissions: inboxItems.sort(sortByOrder),
     };
   }, [quests, today]);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filterCategories.length > 0) count++;
+    if (filterDifficulties.length > 0) count++;
+    if (filterStatus.length > 0) count++;
+    if (filterDateFrom || filterDateTo) count++;
+    return count;
+  }, [filterCategories, filterDifficulties, filterStatus, filterDateFrom, filterDateTo]);
+
+  const DIFFICULTY_ORDER: Record<string, number> = { D: 1, C: 2, B: 3, A: 4, S: 5 };
+
+  const applySearchAndFilters = useCallback((missions: Quest[]): Quest[] => {
+    let result = missions;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(m => m.title.toLowerCase().includes(q));
+    }
+    if (filterCategories.length > 0) {
+      result = result.filter(m => filterCategories.includes(m.category || 'general'));
+    }
+    if (filterDifficulties.length > 0) {
+      result = result.filter(m => filterDifficulties.includes(m.difficulty || 'D'));
+    }
+    if (filterStatus.length > 0) {
+      result = result.filter(m => {
+        if (filterStatus.includes('active') && !m.completed) return true;
+        if (filterStatus.includes('completed') && m.completed) return true;
+        return false;
+      });
+    }
+    if (filterDateFrom) {
+      result = result.filter(m => (m.startDate || '') >= filterDateFrom);
+    }
+    if (filterDateTo) {
+      result = result.filter(m => (m.startDate || '') <= filterDateTo);
+    }
+    return result;
+  }, [searchQuery, filterCategories, filterDifficulties, filterStatus, filterDateFrom, filterDateTo]);
+
+  const applySorting = useCallback((missions: Quest[]): Quest[] => {
+    const sorted = [...missions];
+    sorted.sort((a, b) => {
+      switch (sortBy) {
+        case 'date-newest': return (b.startDate || '').localeCompare(a.startDate || '');
+        case 'date-oldest': return (a.startDate || '').localeCompare(b.startDate || '');
+        case 'title-az': return a.title.localeCompare(b.title);
+        case 'title-za': return b.title.localeCompare(a.title);
+        case 'energy-high': return (b.energyCost || 0) - (a.energyCost || 0);
+        case 'energy-low': return (a.energyCost || 0) - (b.energyCost || 0);
+        case 'difficulty-high': return (DIFFICULTY_ORDER[b.difficulty || 'D'] || 0) - (DIFFICULTY_ORDER[a.difficulty || 'D'] || 0);
+        case 'difficulty-low': return (DIFFICULTY_ORDER[a.difficulty || 'D'] || 0) - (DIFFICULTY_ORDER[b.difficulty || 'D'] || 0);
+        default: return 0;
+      }
+    });
+    return sorted;
+  }, [sortBy]);
+
+  const filteredTodayMissions = useMemo(() => applySearchAndFilters(todayMissions), [todayMissions, applySearchAndFilters]);
+  const filteredUpcomingMissions = useMemo(() => applySearchAndFilters(upcomingMissions), [upcomingMissions, applySearchAndFilters]);
+  const filteredCompletedMissions = useMemo(() => applySearchAndFilters(completedMissions), [completedMissions, applySearchAndFilters]);
+  const filteredInboxMissions = useMemo(() => applySearchAndFilters(inboxMissions), [inboxMissions, applySearchAndFilters]);
+
+  const listViewMissions = useMemo(() => {
+    const allActive = quests.filter(q => !q.completed && !q.deletedAt && q.category !== 'onboarding');
+    const allCompleted = quests.filter(q => q.completed && !q.deletedAt);
+    let pool = showListCompleted ? [...allActive, ...allCompleted] : allActive;
+    pool = applySearchAndFilters(pool);
+    pool = applySorting(pool);
+    pool.sort((a, b) => {
+      const dateA = a.startDate || '9999-12-31';
+      const dateB = b.startDate || '9999-12-31';
+      if (dateA !== dateB) return dateA.localeCompare(dateB);
+      const timeA = a.startTime || '99:99';
+      const timeB = b.startTime || '99:99';
+      return timeA.localeCompare(timeB);
+    });
+    return pool;
+  }, [quests, showListCompleted, applySearchAndFilters, applySorting]);
+
+  const listViewGrouped = useMemo(() => {
+    const groups: { label: string; dateKey: string; missions: Quest[] }[] = [];
+    const groupMap = new Map<string, Quest[]>();
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+
+    for (const mission of listViewMissions) {
+      const dateKey = mission.startDate || 'unscheduled';
+      if (!groupMap.has(dateKey)) groupMap.set(dateKey, []);
+      groupMap.get(dateKey)!.push(mission);
+    }
+
+    const sortedKeys = Array.from(groupMap.keys()).sort((a, b) => {
+      if (a === 'unscheduled') return 1;
+      if (b === 'unscheduled') return -1;
+      return a.localeCompare(b);
+    });
+
+    for (const key of sortedKeys) {
+      let label: string;
+      if (key === 'unscheduled') {
+        label = 'Unscheduled';
+      } else if (key === todayStr) {
+        label = 'Today';
+      } else if (key === tomorrowStr) {
+        label = 'Tomorrow';
+      } else {
+        const [y, m, d] = key.split('-').map(Number);
+        const date = new Date(y, m - 1, d);
+        label = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      }
+      groups.push({ label, dateKey: key, missions: groupMap.get(key)! });
+    }
+    return groups;
+  }, [listViewMissions]);
 
   const [ritualGroupCollapsed, setRitualGroupCollapsed] = useState<Record<string, boolean>>({});
   const toggleRitualGroupCollapsed = useCallback((key: string) => {
@@ -2501,171 +2827,1444 @@ export default function QuestsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* View Switcher */}
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-1 p-1 rounded-lg bg-background/30 border border-primary/20">
-          <button
-            onClick={() => setViewMode('list')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono transition-colors ${
-              viewMode === 'list'
-                ? 'bg-primary/20 border border-primary/50 text-primary'
-                : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
-            }`}
-          >
-            <LayoutList className="h-3.5 w-3.5" />
-            List
-          </button>
-          <button
-            onClick={() => setViewMode('calendar')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono transition-colors ${
-              viewMode === 'calendar'
-                ? 'bg-primary/20 border border-primary/50 text-primary'
-                : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
-            }`}
-          >
-            <CalendarDays className="h-3.5 w-3.5" />
-            Calendar
-          </button>
+      {/* View Switcher + Search + Filters */}
+      <div className="mb-4 space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-1 p-1 rounded-lg bg-background/30 border border-primary/20">
+            <button
+              onClick={() => { setViewMode('board'); setActiveCustomViewId(null); }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono transition-colors ${
+                viewMode === 'board' && !activeCustomViewId
+                  ? 'bg-primary/20 border border-primary/50 text-primary'
+                  : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
+              }`}
+            >
+              <Columns3 className="h-3.5 w-3.5" />
+              Board
+            </button>
+            <button
+              onClick={() => { setViewMode('list'); setActiveCustomViewId(null); }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono transition-colors ${
+                viewMode === 'list' && !activeCustomViewId
+                  ? 'bg-primary/20 border border-primary/50 text-primary'
+                  : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
+              }`}
+            >
+              <LayoutList className="h-3.5 w-3.5" />
+              List
+            </button>
+            <button
+              onClick={() => { setViewMode('calendar'); setActiveCustomViewId(null); }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono transition-colors ${
+                viewMode === 'calendar' && !activeCustomViewId
+                  ? 'bg-primary/20 border border-primary/50 text-primary'
+                  : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
+              }`}
+            >
+              <CalendarDays className="h-3.5 w-3.5" />
+              Calendar
+            </button>
+          </div>
+          {googleStatus?.connected && (
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-primary hover:bg-primary/10" onClick={() => syncGoogle('calendar')} disabled={isSyncing}>
+                {isSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Download className="h-3.5 w-3.5 mr-1" />}
+                Sync Calendar
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-primary hover:bg-primary/10" onClick={() => syncGoogle('tasks')} disabled={isSyncing}>
+                {isSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Download className="h-3.5 w-3.5 mr-1" />}
+                Sync Tasks
+              </Button>
+            </div>
+          )}
         </div>
-        {googleStatus?.connected && (
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-primary hover:bg-primary/10" onClick={() => syncGoogle('calendar')} disabled={isSyncing}>
-              {isSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Download className="h-3.5 w-3.5 mr-1" />}
-              Sync Calendar
-            </Button>
-            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-primary hover:bg-primary/10" onClick={() => syncGoogle('tasks')} disabled={isSyncing}>
-              {isSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Download className="h-3.5 w-3.5 mr-1" />}
-              Sync Tasks
-            </Button>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative flex-1 min-w-[180px] max-w-sm">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search missions..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 pr-8 h-8 text-xs bg-background/50 border-primary/30"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          <Popover open={filterPopoverOpen} onOpenChange={setFilterPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 text-xs border-primary/30 bg-background/50 relative">
+                <SlidersHorizontal className="h-3.5 w-3.5 mr-1.5" />
+                Filter
+                {activeFilterCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center font-bold">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-3 space-y-4" align="start">
+              <div className="space-y-2">
+                <Label className="text-xs font-mono text-muted-foreground uppercase">Category</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {mergedCategories.map(cat => (
+                    <button
+                      key={cat.value}
+                      onClick={() => setFilterCategories(prev =>
+                        prev.includes(cat.value) ? prev.filter(c => c !== cat.value) : [...prev, cat.value]
+                      )}
+                      className={`text-[10px] font-mono px-2 py-1 rounded-full border transition-colors ${
+                        filterCategories.includes(cat.value)
+                          ? 'bg-primary/20 border-primary text-primary'
+                          : 'bg-background/30 border-primary/20 text-muted-foreground hover:bg-primary/10'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-mono text-muted-foreground uppercase">Difficulty</Label>
+                <div className="flex gap-1.5">
+                  {['S', 'A', 'B', 'C', 'D'].map(d => (
+                    <button
+                      key={d}
+                      onClick={() => setFilterDifficulties(prev =>
+                        prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]
+                      )}
+                      className={`text-xs font-mono px-2.5 py-1 rounded border transition-colors ${
+                        filterDifficulties.includes(d)
+                          ? 'bg-primary/20 border-primary text-primary'
+                          : 'bg-background/30 border-primary/20 text-muted-foreground hover:bg-primary/10'
+                      }`}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-mono text-muted-foreground uppercase">Status</Label>
+                <div className="flex gap-1.5">
+                  {[{ value: 'active', label: 'Active' }, { value: 'completed', label: 'Completed' }].map(s => (
+                    <button
+                      key={s.value}
+                      onClick={() => setFilterStatus(prev =>
+                        prev.includes(s.value) ? prev.filter(x => x !== s.value) : [...prev, s.value]
+                      )}
+                      className={`text-xs font-mono px-2.5 py-1 rounded border transition-colors ${
+                        filterStatus.includes(s.value)
+                          ? 'bg-primary/20 border-primary text-primary'
+                          : 'bg-background/30 border-primary/20 text-muted-foreground hover:bg-primary/10'
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-mono text-muted-foreground uppercase">Date Range</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <DatePicker
+                    value={filterDateFrom}
+                    onChange={(date) => setFilterDateFrom(date)}
+                    placeholder="From"
+                    {...makePickerProps('filter-date-from')}
+                  />
+                  <DatePicker
+                    value={filterDateTo}
+                    onChange={(date) => setFilterDateTo(date)}
+                    placeholder="To"
+                    {...makePickerProps('filter-date-to')}
+                  />
+                </div>
+              </div>
+
+              {activeFilterCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-xs text-destructive hover:bg-destructive/10"
+                  onClick={() => {
+                    setFilterCategories([]);
+                    setFilterDifficulties([]);
+                    setFilterStatus([]);
+                    setFilterDateFrom('');
+                    setFilterDateTo('');
+                  }}
+                >
+                  Clear All Filters
+                </Button>
+              )}
+            </PopoverContent>
+          </Popover>
+
+          <Popover open={sortPopoverOpen} onOpenChange={setSortPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 text-xs border-primary/30 bg-background/50">
+                <ArrowUpDown className="h-3.5 w-3.5 mr-1.5" />
+                Sort
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-1" align="start">
+              {[
+                { value: 'date-newest' as const, label: 'Date (Newest)' },
+                { value: 'date-oldest' as const, label: 'Date (Oldest)' },
+                { value: 'title-az' as const, label: 'Title (A-Z)' },
+                { value: 'title-za' as const, label: 'Title (Z-A)' },
+                { value: 'energy-high' as const, label: 'Energy (High)' },
+                { value: 'energy-low' as const, label: 'Energy (Low)' },
+                { value: 'difficulty-high' as const, label: 'Difficulty (High)' },
+                { value: 'difficulty-low' as const, label: 'Difficulty (Low)' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => { setSortBy(opt.value); setSortPopoverOpen(false); }}
+                  className={`w-full text-left text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-2 ${
+                    sortBy === opt.value ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'
+                  }`}
+                >
+                  {sortBy === opt.value && <Check className="h-3 w-3" />}
+                  <span className={sortBy === opt.value ? '' : 'ml-5'}>{opt.label}</span>
+                </button>
+              ))}
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {/* Custom Views Tabs */}
+        {customViews.length > 0 && (
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-hide">
+            <button
+              onClick={() => { setActiveCustomViewId(null); }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono transition-colors whitespace-nowrap ${
+                !activeCustomViewId
+                  ? 'bg-primary/20 border border-primary/50 text-primary'
+                  : 'text-muted-foreground hover:text-primary hover:bg-primary/10 border border-transparent'
+              }`}
+            >
+              <Eye className="h-3 w-3" />
+              Default
+            </button>
+            {customViews.map(view => (
+              <div key={view.id} className="flex items-center group">
+                {renamingTabViewId === view.id ? (
+                  <div className="flex items-center gap-1">
+                    <Input
+                      value={renameTabInput}
+                      onChange={(e) => setRenameTabInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleRenameTabView(view.id);
+                        if (e.key === 'Escape') { setRenamingTabViewId(null); setRenameTabInput(''); }
+                      }}
+                      className="h-6 text-xs w-24 bg-background/50 border-primary/30"
+                      autoFocus
+                    />
+                    <button onClick={() => handleRenameTabView(view.id)} className="text-primary hover:text-primary/80">
+                      <Check className="h-3 w-3" />
+                    </button>
+                    <button onClick={() => { setRenamingTabViewId(null); setRenameTabInput(''); }} className="text-muted-foreground hover:text-primary">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => {
+                        setActiveCustomViewId(view.id);
+                        setViewMode(view.viewType as 'board' | 'list' | 'calendar');
+                      }}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-l-md text-xs font-mono transition-colors whitespace-nowrap ${
+                        activeCustomViewId === view.id
+                          ? 'bg-primary/20 border border-r-0 border-primary/50 text-primary'
+                          : 'text-muted-foreground hover:text-primary hover:bg-primary/10 border border-r-0 border-transparent'
+                      }`}
+                    >
+                      {view.viewType === 'board' && <Columns3 className="h-3 w-3" />}
+                      {view.viewType === 'list' && <LayoutList className="h-3 w-3" />}
+                      {view.viewType === 'calendar' && <CalendarDays className="h-3 w-3" />}
+                      {view.name}
+                    </button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className={`px-1 py-1.5 rounded-r-md text-xs transition-colors ${
+                          activeCustomViewId === view.id
+                            ? 'bg-primary/20 border border-l-0 border-primary/50 text-primary'
+                            : 'text-muted-foreground hover:text-primary hover:bg-primary/10 border border-l-0 border-transparent opacity-0 group-hover:opacity-100'
+                        }`}>
+                          <MoreVertical className="h-3 w-3" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-36">
+                        <DropdownMenuItem onClick={() => { setRenamingTabViewId(view.id); setRenameTabInput(view.name); }}>
+                          <Edit3 className="h-3 w-3 mr-2" />
+                          Rename
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openEditViewDialog(view)}>
+                          <SlidersHorizontal className="h-3 w-3 mr-2" />
+                          Edit Filters
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDeleteView(view.id)} className="text-destructive focus:text-destructive">
+                          <Trash2 className="h-3 w-3 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </>
+                )}
+              </div>
+            ))}
+            <button
+              onClick={() => setIsCreateViewOpen(true)}
+              className="flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-mono text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors whitespace-nowrap border border-dashed border-primary/20"
+            >
+              <Plus className="h-3 w-3" />
+              View
+            </button>
+          </div>
+        )}
+        {customViews.length === 0 && (
+          <div className="flex items-center">
+            <button
+              onClick={() => setIsCreateViewOpen(true)}
+              className="flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-mono text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors whitespace-nowrap border border-dashed border-primary/20"
+            >
+              <Plus className="h-3 w-3" />
+              Custom View
+            </button>
           </div>
         )}
       </div>
 
-      {/* Calendar View */}
-      {viewMode === 'calendar' && (() => {
-        const year = calendarMonth.getFullYear();
-        const month = calendarMonth.getMonth();
-        const firstDayOfMonth = new Date(year, month, 1);
-        const lastDayOfMonth = new Date(year, month + 1, 0);
-        const startDay = firstDayOfMonth.getDay();
-        const daysInMonth = lastDayOfMonth.getDate();
-
-        const calendarDays: { date: Date; isCurrentMonth: boolean }[] = [];
-        for (let i = startDay - 1; i >= 0; i--) {
-          calendarDays.push({ date: new Date(year, month, -i), isCurrentMonth: false });
-        }
-        for (let d = 1; d <= daysInMonth; d++) {
-          calendarDays.push({ date: new Date(year, month, d), isCurrentMonth: true });
-        }
-        const remaining = 7 - (calendarDays.length % 7);
-        if (remaining < 7) {
-          for (let d = 1; d <= remaining; d++) {
-            calendarDays.push({ date: new Date(year, month + 1, d), isCurrentMonth: false });
-          }
-        }
-
-        const now = new Date();
-        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
-        const allQuests = quests || [];
-        const questsByDate = new Map<string, Quest[]>();
-        for (const q of allQuests) {
-          if (q.startDate && !q.deletedAt) {
-            const existing = questsByDate.get(q.startDate) || [];
-            existing.push(q);
-            questsByDate.set(q.startDate, existing);
-          }
-        }
-
-        const monthLabel = firstDayOfMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-        const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-        return (
-          <div className="glassmorphic rounded-xl overflow-hidden neon-border">
-            <div className="p-3 flex items-center justify-between">
-              <button onClick={() => setCalendarMonth(new Date(year, month - 1, 1))} className="h-8 w-8 inline-flex items-center justify-center rounded hover:bg-primary/10 transition-colors">
-                <ChevronLeft className="h-5 w-5 text-primary" />
-              </button>
-              <h2 className="text-lg font-orbitron">{monthLabel}</h2>
-              <button onClick={() => setCalendarMonth(new Date(year, month + 1, 1))} className="h-8 w-8 inline-flex items-center justify-center rounded hover:bg-primary/10 transition-colors">
-                <ChevronRight className="h-5 w-5 text-primary" />
-              </button>
+      {/* Create Custom View Dialog */}
+      <Dialog open={isCreateViewOpen} onOpenChange={setIsCreateViewOpen}>
+        <DialogContent className="glassmorphic border-primary/30 sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="font-orbitron text-lg">Create Custom View</DialogTitle>
+            <DialogDescription className="sr-only">Create a new custom mission view</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div className="space-y-2">
+              <Label>View Name</Label>
+              <Input
+                placeholder="e.g. Work Tasks, Health Board..."
+                value={createViewName}
+                onChange={(e) => setCreateViewName(e.target.value)}
+                className="bg-background/50 border-primary/30"
+              />
             </div>
-
-            <div className="px-3 pb-3">
-              <div className="grid grid-cols-7 mb-1">
-                {weekDays.map(d => (
-                  <div key={d} className="text-center text-[10px] font-mono text-muted-foreground uppercase py-1">{d}</div>
+            <div className="space-y-2">
+              <Label>View Type</Label>
+              <div className="flex gap-2">
+                {([
+                  { value: 'board' as const, icon: Columns3, label: 'Board' },
+                  { value: 'list' as const, icon: LayoutList, label: 'List' },
+                  { value: 'calendar' as const, icon: CalendarDays, label: 'Calendar' },
+                ] as const).map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setCreateViewType(opt.value)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-mono transition-colors flex-1 justify-center ${
+                      createViewType === opt.value
+                        ? 'bg-primary/20 border border-primary/50 text-primary'
+                        : 'bg-background/30 border border-primary/20 text-muted-foreground hover:bg-primary/10'
+                    }`}
+                  >
+                    <opt.icon className="h-3.5 w-3.5" />
+                    {opt.label}
+                  </button>
                 ))}
               </div>
-              <div className="grid grid-cols-7 gap-px bg-primary/5 rounded-lg overflow-hidden">
-                {calendarDays.map((cell, idx) => {
-                  const dateStr = `${cell.date.getFullYear()}-${String(cell.date.getMonth() + 1).padStart(2, '0')}-${String(cell.date.getDate()).padStart(2, '0')}`;
-                  const dayQuests = questsByDate.get(dateStr) || [];
-                  const isToday = dateStr === todayStr;
-                  const maxShow = 3;
-                  const overflow = dayQuests.length - maxShow;
+            </div>
+            {createViewType === 'board' && (
+              <div className="space-y-2">
+                <Label>Board Columns</Label>
+                <div className="space-y-1">
+                  {createViewColumns.map((col, idx) => (
+                    <div key={col.id} className="flex items-center gap-2">
+                      <Input
+                        value={col.title}
+                        onChange={(e) => {
+                          const updated = [...createViewColumns];
+                          updated[idx] = { ...updated[idx], title: e.target.value };
+                          setCreateViewColumns(updated);
+                        }}
+                        className="bg-background/50 border-primary/30 h-8 text-xs flex-1"
+                      />
+                      {createViewColumns.length > 1 && (
+                        <button
+                          onClick={() => setCreateViewColumns(createViewColumns.filter((_, i) => i !== idx))}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="New column name..."
+                    value={newColumnInput}
+                    onChange={(e) => setNewColumnInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newColumnInput.trim()) {
+                        setCreateViewColumns([...createViewColumns, {
+                          id: newColumnInput.trim().toLowerCase().replace(/\s+/g, '-'),
+                          title: newColumnInput.trim(),
+                          order: createViewColumns.length,
+                        }]);
+                        setNewColumnInput('');
+                      }
+                    }}
+                    className="bg-background/50 border-primary/30 h-8 text-xs flex-1"
+                  />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 px-2"
+                    disabled={!newColumnInput.trim()}
+                    onClick={() => {
+                      if (newColumnInput.trim()) {
+                        setCreateViewColumns([...createViewColumns, {
+                          id: newColumnInput.trim().toLowerCase().replace(/\s+/g, '-'),
+                          title: newColumnInput.trim(),
+                          order: createViewColumns.length,
+                        }]);
+                        setNewColumnInput('');
+                      }
+                    }}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Filter by Category (optional)</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {mergedCategories.map(cat => (
+                  <button
+                    key={cat.value}
+                    onClick={() => setCreateViewFilterCategories(prev =>
+                      prev.includes(cat.value) ? prev.filter(c => c !== cat.value) : [...prev, cat.value]
+                    )}
+                    className={`text-[10px] font-mono px-2 py-1 rounded-full border transition-colors ${
+                      createViewFilterCategories.includes(cat.value)
+                        ? 'bg-primary/20 border-primary text-primary'
+                        : 'bg-background/30 border-primary/20 text-muted-foreground hover:bg-primary/10'
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Filter by Difficulty (optional)</Label>
+              <div className="flex gap-1.5">
+                {['S', 'A', 'B', 'C', 'D'].map(d => (
+                  <button
+                    key={d}
+                    onClick={() => setCreateViewFilterDifficulties(prev =>
+                      prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]
+                    )}
+                    className={`text-xs font-mono px-2.5 py-1 rounded border transition-colors ${
+                      createViewFilterDifficulties.includes(d)
+                        ? 'bg-primary/20 border-primary text-primary'
+                        : 'bg-background/30 border-primary/20 text-muted-foreground hover:bg-primary/10'
+                    }`}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Button
+              onClick={handleCreateView}
+              disabled={!createViewName.trim() || isViewSubmitting}
+              className="w-full bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"
+            >
+              {isViewSubmitting ? 'Creating...' : 'Create View'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
+      {/* Edit Custom View Dialog */}
+      <Dialog open={isEditViewOpen} onOpenChange={(open) => { setIsEditViewOpen(open); if (!open) setEditingView(null); }}>
+        <DialogContent className="glassmorphic border-primary/30 sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="font-orbitron text-lg">Edit View</DialogTitle>
+            <DialogDescription className="sr-only">Edit custom view settings</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div className="space-y-2">
+              <Label>View Name</Label>
+              <Input
+                value={editViewName}
+                onChange={(e) => setEditViewName(e.target.value)}
+                className="bg-background/50 border-primary/30"
+              />
+            </div>
+            {editingView?.viewType === 'board' && (
+              <div className="space-y-2">
+                <Label>Board Columns</Label>
+                <div className="space-y-1">
+                  {editViewColumns.map((col, idx) => (
+                    <div key={col.id} className="flex items-center gap-2">
+                      <Input
+                        value={col.title}
+                        onChange={(e) => {
+                          const updated = [...editViewColumns];
+                          updated[idx] = { ...updated[idx], title: e.target.value };
+                          setEditViewColumns(updated);
+                        }}
+                        className="bg-background/50 border-primary/30 h-8 text-xs flex-1"
+                      />
+                      {editViewColumns.length > 1 && (
+                        <button
+                          onClick={() => setEditViewColumns(editViewColumns.filter((_, i) => i !== idx))}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="New column name..."
+                    value={editNewColumnInput}
+                    onChange={(e) => setEditNewColumnInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && editNewColumnInput.trim()) {
+                        setEditViewColumns([...editViewColumns, {
+                          id: editNewColumnInput.trim().toLowerCase().replace(/\s+/g, '-'),
+                          title: editNewColumnInput.trim(),
+                          order: editViewColumns.length,
+                        }]);
+                        setEditNewColumnInput('');
+                      }
+                    }}
+                    className="bg-background/50 border-primary/30 h-8 text-xs flex-1"
+                  />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 px-2"
+                    disabled={!editNewColumnInput.trim()}
+                    onClick={() => {
+                      if (editNewColumnInput.trim()) {
+                        setEditViewColumns([...editViewColumns, {
+                          id: editNewColumnInput.trim().toLowerCase().replace(/\s+/g, '-'),
+                          title: editNewColumnInput.trim(),
+                          order: editViewColumns.length,
+                        }]);
+                        setEditNewColumnInput('');
+                      }
+                    }}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Filter by Category</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {mergedCategories.map(cat => (
+                  <button
+                    key={cat.value}
+                    onClick={() => setEditViewFilterCategories(prev =>
+                      prev.includes(cat.value) ? prev.filter(c => c !== cat.value) : [...prev, cat.value]
+                    )}
+                    className={`text-[10px] font-mono px-2 py-1 rounded-full border transition-colors ${
+                      editViewFilterCategories.includes(cat.value)
+                        ? 'bg-primary/20 border-primary text-primary'
+                        : 'bg-background/30 border-primary/20 text-muted-foreground hover:bg-primary/10'
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Filter by Difficulty</Label>
+              <div className="flex gap-1.5">
+                {['S', 'A', 'B', 'C', 'D'].map(d => (
+                  <button
+                    key={d}
+                    onClick={() => setEditViewFilterDifficulties(prev =>
+                      prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]
+                    )}
+                    className={`text-xs font-mono px-2.5 py-1 rounded border transition-colors ${
+                      editViewFilterDifficulties.includes(d)
+                        ? 'bg-primary/20 border-primary text-primary'
+                        : 'bg-background/30 border-primary/20 text-muted-foreground hover:bg-primary/10'
+                    }`}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Button
+              onClick={handleUpdateView}
+              disabled={!editViewName.trim() || isViewSubmitting}
+              className="w-full bg-primary/20 border border-primary/50 text-primary hover:bg-primary/30 font-mono text-xs"
+            >
+              {isViewSubmitting ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Custom View Rendering */}
+      {activeCustomView && (() => {
+        const allMissions = (quests || []).filter(q => !q.deletedAt);
+        let viewMissions = applyViewFilters(allMissions, activeCustomView);
+        viewMissions = applySearchAndFilters(viewMissions);
+
+        if (activeCustomView.viewType === 'board') {
+          const columns = ((activeCustomView.columns || []) as any[]).sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
+          const missionsByColumn = new Map<string, Quest[]>();
+          for (const col of columns) {
+            missionsByColumn.set(col.id, []);
+          }
+          const uncategorized: Quest[] = [];
+          for (const m of viewMissions) {
+            if (m.viewId === activeCustomView.id && m.viewColumn && missionsByColumn.has(m.viewColumn)) {
+              missionsByColumn.get(m.viewColumn)!.push(m);
+            } else {
+              uncategorized.push(m);
+            }
+          }
+          if (uncategorized.length > 0 && columns.length > 0) {
+            const firstCol = columns[0];
+            missionsByColumn.get(firstCol.id)!.push(...uncategorized);
+          }
+
+          return (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {columns.map((col: any) => {
+                  const colMissions = missionsByColumn.get(col.id) || [];
                   return (
-                    <div
-                      key={idx}
-                      className={`min-h-[80px] sm:min-h-[100px] p-1 bg-background/50 transition-colors hover:bg-primary/5 cursor-pointer ${
-                        !cell.isCurrentMonth ? 'opacity-30' : ''
-                      }`}
-                      onClick={() => {
-                        setCreateFormData(prev => ({
-                          ...prev,
-                          startDate: dateStr,
-                          endDate: dateStr,
-                        }));
-                        setIsCreateOpen(true);
-                      }}
-                    >
-                      <div className={`text-xs font-mono mb-1 ${
-                        isToday
-                          ? 'bg-primary text-primary-foreground w-6 h-6 rounded-full flex items-center justify-center font-bold'
-                          : 'text-muted-foreground pl-1'
-                      }`}>
-                        {cell.date.getDate()}
+                    <div key={col.id} className="glassmorphic rounded-xl neon-border overflow-hidden">
+                      <div className="p-3 border-b border-primary/10 flex items-center justify-between">
+                        <h3 className="text-sm font-orbitron text-primary">{col.title}</h3>
+                        <Badge variant="outline" className="text-[10px] border-primary/30">{colMissions.length}</Badge>
                       </div>
-                      <div className="space-y-0.5">
-                        {dayQuests.slice(0, maxShow).map(q => (
-                          <div
-                            key={q.id}
-                            className={`text-[10px] leading-tight px-1 py-0.5 rounded truncate cursor-pointer transition-colors ${
-                              q.completed
-                                ? 'bg-muted/50 text-muted-foreground line-through'
-                                : q.externalSource === 'google_calendar'
-                                  ? 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30'
-                                  : q.externalSource === 'google_tasks'
-                                    ? 'bg-green-500/20 text-green-300 hover:bg-green-500/30'
-                                    : 'bg-primary/20 text-primary hover:bg-primary/30'
-                            }`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openEditDialog(q);
-                            }}
-                            title={`${q.title}${q.startTime ? ` • ${q.startTime}` : ''}${q.location ? ` • ${q.location}` : ''}`}
-                          >
-                            <span className="hidden sm:inline">{q.title}</span>
-                            <span className="sm:hidden">•</span>
-                          </div>
-                        ))}
-                        {overflow > 0 && (
-                          <div className="text-[9px] text-muted-foreground pl-1">+{overflow} more</div>
+                      <div className="p-2 space-y-1.5 min-h-[100px]">
+                        {colMissions.map(mission => {
+                          const catColor = getCategoryColor(mission.category);
+                          return (
+                            <div
+                              key={mission.id}
+                              className={`${catColor.bg} border ${catColor.border} rounded-lg p-2.5 cursor-pointer hover:brightness-110 transition-all`}
+                              onClick={() => openEditDialog(mission)}
+                            >
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  checked={mission.completed}
+                                  onCheckedChange={() => toggleQuestCompletion(mission.id)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="h-4 w-4 border-primary/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                />
+                                <span className={`text-xs font-medium truncate ${mission.completed ? 'line-through text-muted-foreground' : ''}`}>
+                                  {mission.title}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5 mt-1.5 ml-6">
+                                <span className="text-[9px] font-mono px-1 py-0.5 rounded border border-primary/20 text-muted-foreground">
+                                  {mission.difficulty || 'D'}
+                                </span>
+                                <span className="text-[9px] font-mono text-muted-foreground flex items-center gap-0.5">
+                                  <Zap className="h-2 w-2" />{mission.energyCost}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {colMissions.length === 0 && (
+                          <div className="text-center py-6 text-muted-foreground text-xs">No missions</div>
                         )}
+                      </div>
+                      <div className="p-2 border-t border-primary/10">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="text-[10px] font-mono text-muted-foreground hover:text-primary flex items-center gap-1 w-full justify-center py-1">
+                              <MoreVertical className="h-3 w-3" />
+                              Column Options
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="center" className="w-36">
+                            {viewMissions.filter(m => !(m.viewId === activeCustomView.id && m.viewColumn === col.id)).length > 0 && (
+                              <>
+                                {viewMissions
+                                  .filter(m => !(m.viewId === activeCustomView.id && m.viewColumn === col.id))
+                                  .slice(0, 5)
+                                  .map(m => (
+                                    <DropdownMenuItem key={m.id} onClick={() => handleMoveToViewColumn(m.id as number, activeCustomView.id, col.id)}>
+                                      <Plus className="h-3 w-3 mr-2" />
+                                      {m.title.length > 20 ? m.title.slice(0, 20) + '...' : m.title}
+                                    </DropdownMenuItem>
+                                  ))}
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                   );
                 })}
               </div>
             </div>
+          );
+        }
+
+        if (activeCustomView.viewType === 'list') {
+          const sorted = applySorting(viewMissions);
+          sorted.sort((a, b) => {
+            const dateA = a.startDate || '9999-12-31';
+            const dateB = b.startDate || '9999-12-31';
+            if (dateA !== dateB) return dateA.localeCompare(dateB);
+            const timeA = a.startTime || '99:99';
+            const timeB = b.startTime || '99:99';
+            return timeA.localeCompare(timeB);
+          });
+          const groupMap = new Map<string, Quest[]>();
+          const nowD = new Date();
+          const todayStr2 = formatDateStr(nowD);
+          const tmrw = new Date(nowD);
+          tmrw.setDate(tmrw.getDate() + 1);
+          const tomorrowStr2 = formatDateStr(tmrw);
+          for (const mission of sorted) {
+            const dateKey = mission.startDate || 'unscheduled';
+            if (!groupMap.has(dateKey)) groupMap.set(dateKey, []);
+            groupMap.get(dateKey)!.push(mission);
+          }
+          const sortedKeys = Array.from(groupMap.keys()).sort((a, b) => {
+            if (a === 'unscheduled') return 1;
+            if (b === 'unscheduled') return -1;
+            return a.localeCompare(b);
+          });
+          const groups = sortedKeys.map(key => {
+            let label: string;
+            if (key === 'unscheduled') label = 'Unscheduled';
+            else if (key === todayStr2) label = 'Today';
+            else if (key === tomorrowStr2) label = 'Tomorrow';
+            else {
+              const [y, m, d] = key.split('-').map(Number);
+              const date = new Date(y, m - 1, d);
+              label = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            }
+            return { label, dateKey: key, missions: groupMap.get(key)! };
+          });
+
+          return (
+            <div className="space-y-4">
+              {groups.length > 0 ? groups.map(group => (
+                <div key={group.dateKey}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="text-sm font-orbitron text-primary">{group.label}</h3>
+                    <div className="flex-1 h-px bg-primary/20" />
+                  </div>
+                  <div className="space-y-1">
+                    {group.missions.map(mission => {
+                      const catLabel = mergedCategories.find(c => c.value === (mission.category || 'general'))?.label || mission.category || 'General';
+                      const difficultyColors: Record<string, string> = {
+                        S: 'bg-red-500/20 text-red-400 border-red-500/30',
+                        A: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+                        B: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+                        C: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+                        D: 'bg-green-500/20 text-green-400 border-green-500/30',
+                      };
+                      const diffColor = difficultyColors[mission.difficulty || 'D'] || difficultyColors['D'];
+                      const formatTimeStr = (timeStr: string) => {
+                        const [hours, minutes] = timeStr.split(':');
+                        const hour = parseInt(hours);
+                        const ampm = hour >= 12 ? 'PM' : 'AM';
+                        const hour12 = hour % 12 || 12;
+                        return `${hour12}:${minutes} ${ampm}`;
+                      };
+                      return (
+                        <div
+                          key={mission.id}
+                          className={`glassmorphic rounded-lg p-3 flex items-center gap-3 cursor-pointer hover:bg-primary/5 transition-colors neon-border ${mission.completed ? 'opacity-60' : ''}`}
+                          onClick={() => openEditDialog(mission)}
+                        >
+                          <Checkbox
+                            checked={mission.completed}
+                            onCheckedChange={() => toggleQuestCompletion(mission.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="h-5 w-5 border-primary/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <span className={`text-sm font-medium truncate ${mission.completed ? 'line-through text-muted-foreground' : ''}`}>
+                              {mission.title}
+                            </span>
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              {mission.startTime && (
+                                <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-0.5">
+                                  <Clock className="h-2.5 w-2.5" />
+                                  {formatTimeStr(mission.startTime)}
+                                </span>
+                              )}
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/30 text-muted-foreground">
+                                {catLabel}
+                              </Badge>
+                              <span className={`text-[10px] font-mono px-1.5 py-0 rounded border ${diffColor}`}>
+                                {mission.difficulty || 'D'}
+                              </span>
+                              <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-0.5">
+                                <Zap className="h-2.5 w-2.5" />{mission.energyCost}
+                              </span>
+                            </div>
+                          </div>
+                          {mission.completed && <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )) : (
+                <div className="glassmorphic rounded-xl p-8 text-center neon-border">
+                  <p className="text-muted-foreground">No missions in this view{searchQuery ? ' matching your search' : ''}.</p>
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        if (activeCustomView.viewType === 'calendar') {
+          const questsByDate = new Map<string, Quest[]>();
+          for (const q of viewMissions) {
+            if (q.startDate) {
+              const existing = questsByDate.get(q.startDate) || [];
+              existing.push(q);
+              questsByDate.set(q.startDate, existing);
+            }
+          }
+          const todayStr3 = formatDateStr(new Date());
+          const year = calendarMonth.getFullYear();
+          const month = calendarMonth.getMonth();
+          const firstDay = new Date(year, month, 1).getDay();
+          const daysInMonth = new Date(year, month + 1, 0).getDate();
+          const calDays: (number | null)[] = [];
+          for (let i = 0; i < firstDay; i++) calDays.push(null);
+          for (let d = 1; d <= daysInMonth; d++) calDays.push(d);
+
+          return (
+            <div className="space-y-4">
+              <div className="glassmorphic rounded-xl neon-border overflow-hidden">
+                <div className="p-3 flex items-center justify-between border-b border-primary/10">
+                  <button onClick={() => setCalendarMonth(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))} className="text-primary hover:bg-primary/10 rounded p-1">
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <h3 className="text-sm font-orbitron text-primary">
+                    {calendarMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                  </h3>
+                  <button onClick={() => setCalendarMonth(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))} className="text-primary hover:bg-primary/10 rounded p-1">
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-7">
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                    <div key={d} className="text-[10px] font-mono text-muted-foreground text-center py-2 border-b border-primary/5">{d}</div>
+                  ))}
+                  {calDays.map((day, idx) => {
+                    if (day === null) return <div key={`empty-${idx}`} className="min-h-[70px] border-b border-r border-primary/5" />;
+                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const dayMissions = questsByDate.get(dateStr) || [];
+                    const isToday = dateStr === todayStr3;
+                    return (
+                      <div
+                        key={dateStr}
+                        className={`min-h-[70px] border-b border-r border-primary/5 p-1 cursor-pointer hover:bg-primary/5 transition-colors ${isToday ? 'bg-primary/10' : ''}`}
+                        onClick={() => setSelectedDate(selectedDate === dateStr ? null : dateStr)}
+                      >
+                        <span className={`text-[10px] font-mono ${isToday ? 'text-primary font-bold' : 'text-muted-foreground'}`}>{day}</span>
+                        <div className="space-y-0.5 mt-0.5">
+                          {dayMissions.slice(0, 3).map(m => {
+                            const catColor = getCategoryColor(m.category);
+                            return (
+                              <div key={m.id} className={`text-[8px] px-1 py-0.5 rounded truncate ${catColor.bg} ${catColor.text} border ${catColor.border}`}>
+                                {m.startTime && <span className="font-mono mr-0.5">{m.startTime}</span>}
+                                {m.title}
+                              </div>
+                            );
+                          })}
+                          {dayMissions.length > 3 && (
+                            <div className="text-[8px] text-primary font-mono text-center">+{dayMissions.length - 3} more</div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              {selectedDate && (() => {
+                const dayMissions = questsByDate.get(selectedDate) || [];
+                const [sy, sm, sd] = selectedDate.split('-').map(Number);
+                const selDate = new Date(sy, sm - 1, sd);
+                return (
+                  <div className="glassmorphic rounded-xl neon-border p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-orbitron text-primary">
+                        {selDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                      </h3>
+                      <button onClick={() => setSelectedDate(null)} className="text-muted-foreground hover:text-primary">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    {dayMissions.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {dayMissions.map(m => (
+                          <div key={m.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-primary/5 cursor-pointer" onClick={() => openEditDialog(m)}>
+                            <Checkbox checked={m.completed} onCheckedChange={() => toggleQuestCompletion(m.id)} onClick={(e) => e.stopPropagation()} className="h-4 w-4" />
+                            <span className={`text-xs flex-1 ${m.completed ? 'line-through text-muted-foreground' : ''}`}>{m.title}</span>
+                            {m.startTime && <span className="text-[10px] font-mono text-muted-foreground">{m.startTime}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground text-center py-4">No missions scheduled</p>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          );
+        }
+
+        return null;
+      })()}
+
+      {/* Calendar View */}
+      {!activeCustomView && viewMode === 'calendar' && (() => {
+        const allQuests = applySearchAndFilters((quests || []).filter(q => !q.deletedAt));
+        const questsByDate = new Map<string, Quest[]>();
+        for (const q of allQuests) {
+          if (q.startDate) {
+            const existing = questsByDate.get(q.startDate) || [];
+            existing.push(q);
+            questsByDate.set(q.startDate, existing);
+          }
+        }
+
+        const nowDate = new Date();
+        const todayStr = formatDateStr(nowDate);
+        const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+        const calNavPrev = () => {
+          if (calendarZoom === 'year') setCalendarYear(y => y - 1);
+          else if (calendarZoom === 'month') setCalendarMonth(d => new Date(d.getFullYear(), d.getMonth() - 1, 1));
+          else if (calendarZoom === 'week') setCalendarWeekStart(d => new Date(d.getFullYear(), d.getMonth(), d.getDate() - 7));
+          else setCalendarDay(d => new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1));
+        };
+        const calNavNext = () => {
+          if (calendarZoom === 'year') setCalendarYear(y => y + 1);
+          else if (calendarZoom === 'month') setCalendarMonth(d => new Date(d.getFullYear(), d.getMonth() + 1, 1));
+          else if (calendarZoom === 'week') setCalendarWeekStart(d => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7));
+          else setCalendarDay(d => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1));
+        };
+        const calNavToday = () => {
+          const n = new Date();
+          setCalendarYear(n.getFullYear());
+          setCalendarMonth(new Date(n.getFullYear(), n.getMonth(), 1));
+          const dayOfWeek = n.getDay();
+          setCalendarWeekStart(new Date(n.getFullYear(), n.getMonth(), n.getDate() - dayOfWeek));
+          setCalendarDay(n);
+        };
+
+        let calTitle = '';
+        if (calendarZoom === 'year') calTitle = String(calendarYear);
+        else if (calendarZoom === 'month') calTitle = calendarMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+        else if (calendarZoom === 'week') {
+          const weekEnd = new Date(calendarWeekStart.getFullYear(), calendarWeekStart.getMonth(), calendarWeekStart.getDate() + 6);
+          calTitle = `${calendarWeekStart.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${weekEnd.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`;
+        } else {
+          calTitle = calendarDay.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+        }
+
+        const renderChip = (q: Quest, compact?: boolean) => {
+          const colors = q.completed
+            ? { bg: 'bg-muted/50', text: 'text-muted-foreground', border: 'border-muted' }
+            : getCategoryColor(q.category);
+          return (
+            <div
+              key={q.id}
+              className={`${colors.bg} ${colors.text} text-[10px] leading-tight px-1.5 py-0.5 rounded-md truncate cursor-pointer transition-colors border ${colors.border} hover:brightness-125 ${q.completed ? 'line-through' : ''}`}
+              onClick={(e) => { e.stopPropagation(); openEditDialog(q); }}
+              title={`${q.title}${q.startTime ? ` • ${q.startTime}` : ''}${q.location ? ` • ${q.location}` : ''}`}
+            >
+              {compact ? '' : (q.startTime ? `${q.startTime} ` : '')}{compact ? '•' : q.title}
+            </div>
+          );
+        };
+
+        const buildMonthGrid = (yr: number, mo: number) => {
+          const first = new Date(yr, mo, 1);
+          const last = new Date(yr, mo + 1, 0);
+          const startDay = first.getDay();
+          const daysInMonth = last.getDate();
+          const cells: { date: Date; isCurrentMonth: boolean }[] = [];
+          for (let i = startDay - 1; i >= 0; i--) cells.push({ date: new Date(yr, mo, -i), isCurrentMonth: false });
+          for (let d = 1; d <= daysInMonth; d++) cells.push({ date: new Date(yr, mo, d), isCurrentMonth: true });
+          const rem = 7 - (cells.length % 7);
+          if (rem < 7) for (let d = 1; d <= rem; d++) cells.push({ date: new Date(yr, mo + 1, d), isCurrentMonth: false });
+          return cells;
+        };
+
+        return (
+          <div className="glassmorphic rounded-xl overflow-hidden neon-border">
+            <div className="p-3 flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-1">
+                <button onClick={calNavPrev} className="h-8 w-8 inline-flex items-center justify-center rounded hover:bg-primary/10 transition-colors">
+                  <ChevronLeft className="h-5 w-5 text-primary" />
+                </button>
+                <button onClick={calNavNext} className="h-8 w-8 inline-flex items-center justify-center rounded hover:bg-primary/10 transition-colors">
+                  <ChevronRight className="h-5 w-5 text-primary" />
+                </button>
+                <button onClick={calNavToday} className="text-xs font-mono px-2 py-1 rounded border border-primary/30 hover:bg-primary/10 transition-colors ml-1">
+                  Today
+                </button>
+                <h2 className="text-lg font-orbitron ml-3">{calTitle}</h2>
+              </div>
+              <div className="flex rounded-lg border border-primary/30 overflow-hidden">
+                {(['year', 'month', 'week', 'day'] as const).map(z => (
+                  <button
+                    key={z}
+                    onClick={() => setCalendarZoom(z)}
+                    className={`text-[11px] font-mono px-3 py-1.5 transition-colors capitalize ${
+                      calendarZoom === z ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'
+                    }`}
+                  >
+                    {z}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="px-3 pb-3">
+              {calendarZoom === 'year' && (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                  {Array.from({ length: 12 }, (_, mo) => {
+                    const monthName = new Date(calendarYear, mo, 1).toLocaleDateString(undefined, { month: 'short' });
+                    const cells = buildMonthGrid(calendarYear, mo);
+                    return (
+                      <div
+                        key={mo}
+                        className="cursor-pointer hover:bg-primary/5 rounded-lg p-2 transition-colors border border-transparent hover:border-primary/20"
+                        onClick={() => {
+                          setCalendarMonth(new Date(calendarYear, mo, 1));
+                          setCalendarZoom('month');
+                        }}
+                      >
+                        <div className="text-xs font-mono text-primary mb-1 text-center">{monthName}</div>
+                        <div className="grid grid-cols-7 gap-px">
+                          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+                            <div key={i} className="text-[8px] text-muted-foreground text-center">{d}</div>
+                          ))}
+                          {cells.map((cell, idx) => {
+                            const ds = formatDateStr(cell.date);
+                            const hasQuests = questsByDate.has(ds) && (questsByDate.get(ds)!.length > 0);
+                            const isT = ds === todayStr;
+                            return (
+                              <div key={idx} className={`text-[8px] text-center relative ${!cell.isCurrentMonth ? 'opacity-20' : ''}`}>
+                                <span className={isT ? 'bg-primary text-primary-foreground rounded-full w-4 h-4 inline-flex items-center justify-center text-[7px] font-bold' : ''}>
+                                  {cell.date.getDate()}
+                                </span>
+                                {hasQuests && cell.isCurrentMonth && (
+                                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {calendarZoom === 'month' && (() => {
+                const yr = calendarMonth.getFullYear();
+                const mo = calendarMonth.getMonth();
+                const cells = buildMonthGrid(yr, mo);
+                return (
+                  <>
+                    <div className="grid grid-cols-7 mb-1">
+                      {weekDays.map(d => (
+                        <div key={d} className="text-center text-[10px] font-mono text-muted-foreground uppercase py-1">{d}</div>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-7 gap-px bg-primary/5 rounded-lg overflow-hidden">
+                      {cells.map((cell, idx) => {
+                        const dateStr = formatDateStr(cell.date);
+                        const dayQuests = questsByDate.get(dateStr) || [];
+                        const isToday = dateStr === todayStr;
+                        const maxShow = 3;
+                        const overflow = dayQuests.length - maxShow;
+                        return (
+                          <div
+                            key={idx}
+                            className={`min-h-[80px] sm:min-h-[100px] p-1 bg-background/50 transition-colors hover:bg-primary/5 cursor-pointer ${
+                              !cell.isCurrentMonth ? 'opacity-30' : ''
+                            } ${selectedDate === formatDateStr(cell.date) ? 'ring-2 ring-primary bg-primary/10' : ''}`}
+                            onClick={() => {
+                              const ds = formatDateStr(cell.date);
+                              setSelectedDate(prev => prev === ds ? null : ds);
+                            }}
+                          >
+                            <div className={`text-xs font-mono mb-1 ${
+                              isToday
+                                ? 'bg-primary text-primary-foreground w-6 h-6 rounded-full flex items-center justify-center font-bold'
+                                : 'text-muted-foreground pl-1'
+                            }`}>
+                              {cell.date.getDate()}
+                            </div>
+                            <div className="space-y-0.5">
+                              {dayQuests.slice(0, maxShow).map(q => renderChip(q, false))}
+                              {overflow > 0 && (
+                                <div className="text-[9px] text-muted-foreground pl-1">+{overflow} more</div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
+
+              {calendarZoom === 'week' && (() => {
+                const weekDates = Array.from({ length: 7 }, (_, i) =>
+                  new Date(calendarWeekStart.getFullYear(), calendarWeekStart.getMonth(), calendarWeekStart.getDate() + i)
+                );
+                const currentHour = nowDate.getHours();
+                const currentMinute = nowDate.getMinutes();
+
+                return (
+                  <div className="overflow-x-auto">
+                    <div className="min-w-[700px]">
+                      <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-primary/10">
+                        <div className="text-[10px] text-muted-foreground p-1" />
+                        {weekDates.map((d, i) => {
+                          const ds = formatDateStr(d);
+                          const isT = ds === todayStr;
+                          return (
+                            <div
+                              key={i}
+                              className={`text-center p-2 border-l border-primary/10 cursor-pointer hover:bg-primary/5 transition-colors ${isT ? 'bg-primary/5' : ''} ${selectedDate === ds ? 'ring-2 ring-primary bg-primary/10' : ''}`}
+                              onClick={() => { setSelectedDate(prev => prev === ds ? null : ds); }}
+                            >
+                              <div className="text-[10px] font-mono text-muted-foreground uppercase">{weekDays[d.getDay()]}</div>
+                              <div className={`text-sm font-mono mt-0.5 ${isT ? 'bg-primary text-primary-foreground w-7 h-7 rounded-full inline-flex items-center justify-center font-bold' : ''}`}>
+                                {d.getDate()}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-primary/10">
+                        <div className="text-[9px] text-muted-foreground p-1 text-right pr-2">All day</div>
+                        {weekDates.map((d, i) => {
+                          const ds = formatDateStr(d);
+                          const dayQ = (questsByDate.get(ds) || []).filter(q => q.allDay || !q.startTime);
+                          return (
+                            <div key={i} className="border-l border-primary/10 p-0.5 min-h-[28px] space-y-0.5">
+                              {dayQ.slice(0, 2).map(q => renderChip(q))}
+                              {dayQ.length > 2 && <div className="text-[8px] text-muted-foreground px-1">+{dayQ.length - 2}</div>}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="relative max-h-[600px] overflow-y-auto">
+                        {HOURS.map(h => (
+                          <div key={h} className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-primary/5 min-h-[48px]">
+                            <div className="text-[9px] text-muted-foreground text-right pr-2 pt-0.5 font-mono">
+                              {h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`}
+                            </div>
+                            {weekDates.map((d, i) => {
+                              const ds = formatDateStr(d);
+                              const dayQ = (questsByDate.get(ds) || []).filter(q => {
+                                if (!q.startTime || q.allDay) return false;
+                                const [hh] = q.startTime.split(':').map(Number);
+                                return hh === h;
+                              });
+                              return (
+                                <div
+                                  key={i}
+                                  className="border-l border-primary/10 p-0.5 relative cursor-pointer hover:bg-primary/3 transition-colors"
+                                  onClick={() => {
+                                    const dateStr = ds;
+                                    setCreateFormData(prev => ({
+                                      ...prev,
+                                      startDate: dateStr,
+                                      endDate: dateStr,
+                                      startTime: `${String(h).padStart(2, '0')}:00`,
+                                    }));
+                                    setIsCreateOpen(true);
+                                  }}
+                                >
+                                  {dayQ.map(q => {
+                                    const colors = q.completed
+                                      ? { bg: 'bg-muted/50', text: 'text-muted-foreground', border: 'border-muted' }
+                                      : getCategoryColor(q.category);
+                                    return (
+                                      <div
+                                        key={q.id}
+                                        className={`${colors.bg} ${colors.text} border-l-2 ${colors.border} text-[10px] px-1.5 py-1 rounded-r-md mb-0.5 truncate cursor-pointer hover:brightness-125 ${q.completed ? 'line-through' : ''}`}
+                                        onClick={(e) => { e.stopPropagation(); openEditDialog(q); }}
+                                        title={q.title}
+                                      >
+                                        {q.startTime} {q.title}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ))}
+                        {weekDates.some(d => formatDateStr(d) === todayStr) && (
+                          <div
+                            className="absolute left-[60px] right-0 h-[2px] bg-red-500 z-10 pointer-events-none"
+                            style={{ top: `${((currentHour * 60 + currentMinute) / (24 * 60)) * 100}%` }}
+                          >
+                            <div className="absolute -left-1.5 -top-1.5 w-3 h-3 rounded-full bg-red-500" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {calendarZoom === 'day' && (() => {
+                const ds = formatDateStr(calendarDay);
+                const dayQuests = questsByDate.get(ds) || [];
+                const untimedQuests = dayQuests.filter(q => q.allDay || !q.startTime);
+                const currentHour = nowDate.getHours();
+                const currentMinute = nowDate.getMinutes();
+                const isDayToday = ds === todayStr;
+
+                return (
+                  <div>
+                    {untimedQuests.length > 0 && (
+                      <div className="mb-2 p-2 bg-primary/5 rounded-lg space-y-1">
+                        <div className="text-[10px] font-mono text-muted-foreground uppercase mb-1">All Day / Unscheduled</div>
+                        {untimedQuests.map(q => renderChip(q))}
+                      </div>
+                    )}
+
+                    <div className="relative max-h-[600px] overflow-y-auto">
+                      {HOURS.map(h => {
+                        const hourQuests = dayQuests.filter(q => {
+                          if (!q.startTime || q.allDay) return false;
+                          const [hh] = q.startTime.split(':').map(Number);
+                          return hh === h;
+                        });
+                        return (
+                          <div key={h} className="grid grid-cols-[60px_1fr] border-b border-primary/5 min-h-[52px]">
+                            <div className="text-[10px] text-muted-foreground text-right pr-3 pt-1 font-mono">
+                              {h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`}
+                            </div>
+                            <div
+                              className="border-l border-primary/10 p-1 cursor-pointer hover:bg-primary/5 transition-colors space-y-0.5"
+                              onClick={() => {
+                                setCreateFormData(prev => ({
+                                  ...prev,
+                                  startDate: ds,
+                                  endDate: ds,
+                                  startTime: `${String(h).padStart(2, '0')}:00`,
+                                }));
+                                setIsCreateOpen(true);
+                              }}
+                            >
+                              {hourQuests.map(q => {
+                                const colors = q.completed
+                                  ? { bg: 'bg-muted/50', text: 'text-muted-foreground', border: 'border-muted' }
+                                  : getCategoryColor(q.category);
+                                return (
+                                  <div
+                                    key={q.id}
+                                    className={`${colors.bg} ${colors.text} border-l-2 ${colors.border} text-xs px-2 py-1.5 rounded-r-md truncate cursor-pointer hover:brightness-125 ${q.completed ? 'line-through' : ''}`}
+                                    onClick={(e) => { e.stopPropagation(); openEditDialog(q); }}
+                                  >
+                                    <span className="font-mono text-[10px] mr-1.5">{q.startTime}</span>
+                                    {q.title}
+                                    {q.category && q.category !== 'general' && (
+                                      <span className="ml-2 text-[9px] opacity-70">{mergedCategories.find(c => c.value === q.category)?.label || q.category}</span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {isDayToday && (
+                        <div
+                          className="absolute left-[60px] right-0 h-[2px] bg-red-500 z-10 pointer-events-none"
+                          style={{ top: `${((currentHour * 60 + currentMinute) / (24 * 60)) * 100}%` }}
+                        >
+                          <div className="absolute -left-1.5 -top-1.5 w-3 h-3 rounded-full bg-red-500" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {selectedDate && (() => {
+              const selDateObj = (() => {
+                const [y, m, d] = selectedDate.split('-').map(Number);
+                return new Date(y, m - 1, d);
+              })();
+              const selDateLabel = selDateObj.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+              const selDayQuests = (questsByDate.get(selectedDate) || []).sort((a, b) => {
+                if (!a.startTime && !b.startTime) return 0;
+                if (!a.startTime) return -1;
+                if (!b.startTime) return 1;
+                return a.startTime.localeCompare(b.startTime);
+              });
+              const difficultyColors: Record<string, string> = {
+                S: 'bg-red-500/20 text-red-400 border-red-500/30',
+                A: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+                B: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+                C: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+                D: 'bg-green-500/20 text-green-400 border-green-500/30',
+              };
+              const fmtTime = (t: string) => {
+                const [hours, minutes] = t.split(':');
+                const hour = parseInt(hours);
+                const ampm = hour >= 12 ? 'PM' : 'AM';
+                const hour12 = hour % 12 || 12;
+                return `${hour12}:${minutes} ${ampm}`;
+              };
+
+              return (
+                <div className="mt-4 glassmorphic rounded-xl border border-primary/20 overflow-hidden">
+                  <div className="p-3 flex items-center justify-between border-b border-primary/10">
+                    <h3 className="text-sm font-orbitron text-primary">{selDateLabel}</h3>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDate(null)}
+                      className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-primary/10 transition-colors text-muted-foreground hover:text-primary"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <div className="p-3">
+                    {selDayQuests.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {selDayQuests.map(q => {
+                          const colors = q.completed
+                            ? { bg: 'bg-muted/50', text: 'text-muted-foreground', border: 'border-muted' }
+                            : getCategoryColor(q.category);
+                          const catLabel = mergedCategories.find(c => c.value === (q.category || 'general'))?.label || q.category || 'General';
+                          const diffColor = difficultyColors[q.difficulty || 'D'] || difficultyColors['D'];
+
+                          return (
+                            <div
+                              key={q.id}
+                              className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer hover:bg-primary/5 transition-colors border-l-2 ${colors.border} ${colors.bg}`}
+                              onClick={() => openEditDialog(q)}
+                            >
+                              <Checkbox
+                                checked={q.completed}
+                                onCheckedChange={() => toggleQuestCompletion(q.id)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="h-4 w-4 border-primary/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary flex-shrink-0"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className={`text-sm font-medium truncate ${q.completed ? 'line-through text-muted-foreground' : colors.text}`}>
+                                  {q.title}
+                                </div>
+                                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                  {q.startTime && (
+                                    <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-0.5">
+                                      <Clock className="h-2.5 w-2.5" />
+                                      {fmtTime(q.startTime)}
+                                      {q.endTime && ` – ${fmtTime(q.endTime)}`}
+                                    </span>
+                                  )}
+                                  {q.allDay && !q.startTime && (
+                                    <span className="text-[10px] font-mono text-muted-foreground">All day</span>
+                                  )}
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/30 text-muted-foreground">
+                                    {catLabel}
+                                  </Badge>
+                                  <span className={`text-[10px] font-mono px-1.5 py-0 rounded border ${diffColor}`}>
+                                    {q.difficulty || 'D'}
+                                  </span>
+                                  <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-0.5">
+                                    <Zap className="h-2.5 w-2.5" />
+                                    {q.energyCost}
+                                  </span>
+                                </div>
+                              </div>
+                              {q.completed && (
+                                <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6">
+                        <p className="text-muted-foreground text-sm mb-3">No missions scheduled</p>
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      className="w-full mt-3 text-xs font-mono px-3 py-2 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center justify-center gap-1.5"
+                      onClick={() => {
+                        setCreateFormData(prev => ({
+                          ...prev,
+                          startDate: selectedDate,
+                          endDate: selectedDate,
+                        }));
+                        setIsCreateOpen(true);
+                      }}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Add Mission
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         );
       })()}
 
-      {/* List View */}
-      {viewMode === 'list' && (<>
+      {/* Board View */}
+      {!activeCustomView && viewMode === 'board' && (<>
       <div data-tour="today-missions">
       <DroppableSection section="today" onDropQuest={handleCrossSectionDrop} onDropGroup={handleCrossSectionGroupDrop} className="mb-6">
       <Collapsible open={todayExpanded} onOpenChange={setTodayExpanded}>
@@ -2726,8 +4325,8 @@ export default function QuestsPage() {
                   timerBlocked={!!activeTimerQuest}
                 />
               )}
-              {todayMissions.length > 0 ? (
-                groupMissionsByRitual(todayMissions).map((group, visualIdx) => {
+              {filteredTodayMissions.length > 0 ? (
+                groupMissionsByRitual(filteredTodayMissions).map((group, visualIdx) => {
                   const missionIds = group.missions.map(q => String(q.id));
                   if (group.ritualGroup) {
                     const groupKey = `today-${group.ritualGroup}`;
@@ -2870,8 +4469,8 @@ export default function QuestsPage() {
             
             <CollapsibleContent>
               <div className="px-4 pb-4 space-y-3">
-                {upcomingMissions.length > 0 ? (
-                  groupMissionsByRitual(upcomingMissions).map((group, visualIdx) => {
+                {filteredUpcomingMissions.length > 0 ? (
+                  groupMissionsByRitual(filteredUpcomingMissions).map((group, visualIdx) => {
                     const missionIds = group.missions.map(q => String(q.id));
                     if (group.ritualGroup) {
                       const groupKey = `upcoming-${group.ritualGroup}`;
@@ -3014,8 +4613,8 @@ export default function QuestsPage() {
           
           <CollapsibleContent>
             <div className="px-4 pb-4 space-y-3">
-              {completedMissions.length > 0 ? (
-                groupMissionsByRitual(completedMissions).map((group, visualIdx) => {
+              {filteredCompletedMissions.length > 0 ? (
+                groupMissionsByRitual(filteredCompletedMissions).map((group, visualIdx) => {
                   const missionIds = group.missions.map(q => String(q.id));
                   if (group.ritualGroup) {
                     const groupKey = `completed-${group.ritualGroup}`;
@@ -3147,7 +4746,7 @@ export default function QuestsPage() {
             
             <CollapsibleContent>
               <div className="px-4 pb-4 space-y-3">
-                {groupMissionsByRitual(inboxMissions).map((group, visualIdx) => {
+                {groupMissionsByRitual(filteredInboxMissions).map((group, visualIdx) => {
                   const missionIds = group.missions.map(q => String(q.id));
                   if (group.ritualGroup) {
                     const groupKey = `inbox-${group.ritualGroup}`;
@@ -3244,7 +4843,7 @@ export default function QuestsPage() {
                     </DraggableVisualItem>
                   ));
                 })}
-                {inboxMissions.length === 0 && (
+                {filteredInboxMissions.length === 0 && (
                   <div className="glassmorphic rounded-xl p-6 text-center neon-border">
                     <p className="text-muted-foreground">No archived missions. Drag a mission here to archive it.</p>
                   </div>
@@ -3492,6 +5091,111 @@ export default function QuestsPage() {
       </Collapsible>
       </DroppableSection>
       </>)}
+
+      {/* List View — Schedule-style chronological list */}
+      {!activeCustomView && viewMode === 'list' && (
+        <div className="space-y-4">
+          {listViewGrouped.length > 0 ? (
+            listViewGrouped.map(group => (
+              <div key={group.dateKey}>
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-sm font-orbitron text-primary">{group.label}</h3>
+                  <div className="flex-1 h-px bg-primary/20" />
+                </div>
+                <div className="space-y-1">
+                  {group.missions.map(mission => {
+                    const catLabel = mergedCategories.find(c => c.value === (mission.category || 'general'))?.label || mission.category || 'General';
+                    const difficultyColors: Record<string, string> = {
+                      S: 'bg-red-500/20 text-red-400 border-red-500/30',
+                      A: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+                      B: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+                      C: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+                      D: 'bg-green-500/20 text-green-400 border-green-500/30',
+                    };
+                    const diffColor = difficultyColors[mission.difficulty || 'D'] || difficultyColors['D'];
+                    const formatTime = (timeStr: string) => {
+                      const [hours, minutes] = timeStr.split(':');
+                      const hour = parseInt(hours);
+                      const ampm = hour >= 12 ? 'PM' : 'AM';
+                      const hour12 = hour % 12 || 12;
+                      return `${hour12}:${minutes} ${ampm}`;
+                    };
+
+                    return (
+                      <div
+                        key={mission.id}
+                        className={`glassmorphic rounded-lg p-3 flex items-center gap-3 cursor-pointer hover:bg-primary/5 transition-colors neon-border ${mission.completed ? 'opacity-60' : ''}`}
+                        onClick={() => openEditDialog(mission)}
+                      >
+                        <Checkbox
+                          checked={mission.completed}
+                          onCheckedChange={(e) => {
+                            e && typeof e === 'object' && 'stopPropagation' in e && (e as any).stopPropagation();
+                            toggleQuestCompletion(mission.id);
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="h-5 w-5 border-primary/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-sm font-medium truncate ${mission.completed ? 'line-through text-muted-foreground' : ''}`}>
+                              {mission.title}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            {mission.startTime && (
+                              <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-0.5">
+                                <Clock className="h-2.5 w-2.5" />
+                                {formatTime(mission.startTime)}
+                              </span>
+                            )}
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/30 text-muted-foreground">
+                              {catLabel}
+                            </Badge>
+                            <span className={`text-[10px] font-mono px-1.5 py-0 rounded border ${diffColor}`}>
+                              {mission.difficulty || 'D'}
+                            </span>
+                            <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-0.5">
+                              <Zap className="h-2.5 w-2.5" />
+                              {mission.energyCost}
+                            </span>
+                          </div>
+                        </div>
+                        {mission.completed && (
+                          <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="glassmorphic rounded-xl p-8 text-center neon-border">
+              <p className="text-muted-foreground">No missions found{searchQuery ? ' matching your search' : ''}.</p>
+            </div>
+          )}
+
+          <div className="flex items-center justify-center pt-2">
+            <button
+              onClick={() => setShowListCompleted(!showListCompleted)}
+              className="flex items-center gap-2 text-xs font-mono text-muted-foreground hover:text-primary transition-colors px-3 py-1.5 rounded-md hover:bg-primary/10"
+            >
+              {showListCompleted ? (
+                <>
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Hide completed
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Show completed
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

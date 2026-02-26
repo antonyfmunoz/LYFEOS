@@ -348,6 +348,8 @@ export const quests = pgTable("quests", {
   url: text("url"),
   attendees: jsonb("attendees").default([]),
   missionStatus: text("mission_status").default("confirmed"),
+  viewId: integer("view_id"),
+  viewColumn: text("view_column"),
   deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -1399,6 +1401,35 @@ export const insertSmartReminderSchema = createInsertSchema(smartReminders).omit
 
 export type SmartReminder = typeof smartReminders.$inferSelect;
 export type InsertSmartReminder = z.infer<typeof insertSmartReminderSchema>;
+
+export const missionViews = pgTable("mission_views", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  viewType: text("view_type").notNull(),
+  filters: jsonb("filters").default({}),
+  columns: jsonb("columns").default([]),
+  sortBy: text("sort_by"),
+  sortDirection: text("sort_direction"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const missionViewsRelations = relations(missionViews, ({ one }) => ({
+  user: one(users, {
+    fields: [missionViews.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertMissionViewSchema = createInsertSchema(missionViews).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type MissionView = typeof missionViews.$inferSelect;
+export type InsertMissionView = z.infer<typeof insertMissionViewSchema>;
 
 export const waitlistEmails = pgTable("waitlist_emails", {
   id: serial("id").primaryKey(),

@@ -29,7 +29,8 @@ import {
   ritualGroups, type RitualGroup, type InsertRitualGroup,
   userActivityEvents, type UserActivityEvent, type InsertUserActivityEvent,
   smartReminders, type SmartReminder, type InsertSmartReminder,
-  waitlistEmails, type WaitlistEmail
+  waitlistEmails, type WaitlistEmail,
+  missionViews, type MissionView, type InsertMissionView
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, isNull, isNotNull, gt, lt, sql } from "drizzle-orm";
@@ -274,6 +275,12 @@ export interface IStorage {
 
   addWaitlistEmail(email: string, referralSource?: string): Promise<WaitlistEmail>;
   getWaitlistEmail(email: string): Promise<WaitlistEmail | undefined>;
+
+  getMissionViews(userId: number): Promise<MissionView[]>;
+  getMissionView(id: number): Promise<MissionView | undefined>;
+  createMissionView(view: InsertMissionView): Promise<MissionView>;
+  updateMissionView(id: number, updates: Partial<InsertMissionView>): Promise<MissionView>;
+  deleteMissionView(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2278,6 +2285,32 @@ export class DatabaseStorage implements IStorage {
   async getWaitlistEmail(email: string): Promise<WaitlistEmail | undefined> {
     const [entry] = await db.select().from(waitlistEmails).where(eq(waitlistEmails.email, email.toLowerCase().trim()));
     return entry;
+  }
+
+  async getMissionViews(userId: number): Promise<MissionView[]> {
+    return db.select().from(missionViews).where(eq(missionViews.userId, userId)).orderBy(asc(missionViews.createdAt));
+  }
+
+  async getMissionView(id: number): Promise<MissionView | undefined> {
+    const [view] = await db.select().from(missionViews).where(eq(missionViews.id, id));
+    return view;
+  }
+
+  async createMissionView(view: InsertMissionView): Promise<MissionView> {
+    const [created] = await db.insert(missionViews).values(view).returning();
+    return created;
+  }
+
+  async updateMissionView(id: number, updates: Partial<InsertMissionView>): Promise<MissionView> {
+    const [updated] = await db.update(missionViews)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(missionViews.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteMissionView(id: number): Promise<void> {
+    await db.delete(missionViews).where(eq(missionViews.id, id));
   }
 }
 
