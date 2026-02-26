@@ -56,5 +56,3 @@ integrations = ["javascript_anthropic_ai_integrations:2.0.0", "resend:1.0.0", "s
 VITE_FIREBASE_ACTUAL_PROJECT_ID = "lyfeos-a55f4"
 VITE_FIREBASE_AUTH_DOMAIN = "lyfeos.net"
 VITE_FIREBASE_MESSAGING_SENDER_ID = "76858514072"
-GOOGLE_OAUTH_CLIENT_ID = "76858514072-n7f0u6clca7ftip2b37n2fij8db02ll5.apps.googleusercontent.com"
-GOOGLE_OAUTH_CLIENT_SECRET = "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"
