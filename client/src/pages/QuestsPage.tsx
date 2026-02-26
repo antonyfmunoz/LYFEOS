@@ -175,22 +175,10 @@ const MISSION_CATEGORIES = [
   { value: "event", label: "Event" },
 ];
 
-const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  general: { bg: 'bg-slate-500/20', text: 'text-slate-300', border: 'border-slate-500/40' },
-  health: { bg: 'bg-emerald-500/20', text: 'text-emerald-300', border: 'border-emerald-500/40' },
-  career: { bg: 'bg-blue-500/20', text: 'text-blue-300', border: 'border-blue-500/40' },
-  learning: { bg: 'bg-amber-500/20', text: 'text-amber-300', border: 'border-amber-500/40' },
-  finance: { bg: 'bg-green-500/20', text: 'text-green-300', border: 'border-green-500/40' },
-  social: { bg: 'bg-pink-500/20', text: 'text-pink-300', border: 'border-pink-500/40' },
-  creative: { bg: 'bg-purple-500/20', text: 'text-purple-300', border: 'border-purple-500/40' },
-  mindfulness: { bg: 'bg-cyan-500/20', text: 'text-cyan-300', border: 'border-cyan-500/40' },
-  event: { bg: 'bg-orange-500/20', text: 'text-orange-300', border: 'border-orange-500/40' },
-  onboarding: { bg: 'bg-indigo-500/20', text: 'text-indigo-300', border: 'border-indigo-500/40' },
-  todo: { bg: 'bg-gray-500/20', text: 'text-gray-300', border: 'border-gray-500/40' },
-};
+const PRIMARY_CATEGORY_COLOR = { bg: 'bg-primary/15', text: 'text-primary', border: 'border-primary/40' };
 
-function getCategoryColor(category: string | undefined) {
-  return CATEGORY_COLORS[category || 'general'] || CATEGORY_COLORS.general;
+function getCategoryColor(_category: string | undefined) {
+  return PRIMARY_CATEGORY_COLOR;
 }
 
 function formatDateStr(date: Date): string {
@@ -3585,62 +3573,26 @@ export default function QuestsPage() {
                     <h3 className="text-sm font-orbitron text-primary">{group.label}</h3>
                     <div className="flex-1 h-px bg-primary/20" />
                   </div>
-                  <div className="space-y-1">
-                    {group.missions.map(mission => {
-                      const catLabel = mergedCategories.find(c => c.value === (mission.category || 'general'))?.label || mission.category || 'General';
-                      const difficultyColors: Record<string, string> = {
-                        S: 'bg-red-500/20 text-red-400 border-red-500/30',
-                        A: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-                        B: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-                        C: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-                        D: 'bg-green-500/20 text-green-400 border-green-500/30',
-                      };
-                      const diffColor = difficultyColors[mission.difficulty || 'D'] || difficultyColors['D'];
-                      const formatTimeStr = (timeStr: string) => {
-                        const [hours, minutes] = timeStr.split(':');
-                        const hour = parseInt(hours);
-                        const ampm = hour >= 12 ? 'PM' : 'AM';
-                        const hour12 = hour % 12 || 12;
-                        return `${hour12}:${minutes} ${ampm}`;
-                      };
-                      return (
-                        <div
-                          key={mission.id}
-                          className={`glassmorphic rounded-lg p-3 flex items-center gap-3 cursor-pointer hover:bg-primary/5 transition-colors neon-border ${mission.completed ? 'opacity-60' : ''}`}
-                          onClick={() => openEditDialog(mission)}
-                        >
-                          <Checkbox
-                            checked={mission.completed}
-                            onCheckedChange={() => toggleQuestCompletion(mission.id)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="h-5 w-5 border-primary/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <span className={`text-sm font-medium truncate ${mission.completed ? 'line-through text-muted-foreground' : ''}`}>
-                              {mission.title}
-                            </span>
-                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                              {mission.startTime && (
-                                <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-0.5">
-                                  <Clock className="h-2.5 w-2.5" />
-                                  {formatTimeStr(mission.startTime)}
-                                </span>
-                              )}
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/30 text-muted-foreground">
-                                {catLabel}
-                              </Badge>
-                              <span className={`text-[10px] font-mono px-1.5 py-0 rounded border ${diffColor}`}>
-                                {mission.difficulty || 'D'}
-                              </span>
-                              <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-0.5">
-                                <Zap className="h-2.5 w-2.5" />{mission.energyCost}
-                              </span>
-                            </div>
-                          </div>
-                          {mission.completed && <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />}
-                        </div>
-                      );
-                    })}
+                  <div className="space-y-3">
+                    {group.missions.map((mission, idx) => (
+                      <QuestItem
+                        key={mission.id}
+                        quest={mission}
+                        index={idx}
+                        section="custom-list"
+                        onToggle={() => toggleQuestCompletion(mission.id)}
+                        onDelete={() => handleDeleteMission(mission)}
+                        onEdit={() => openEditDialog(mission)}
+                        onStart={() => handleStartMission(mission)}
+                        onResume={() => handleResumeMission(mission)}
+                        onDone={() => handleDoneMission(mission)}
+                        onRestart={restartMissionTimer}
+                        elapsedSeconds={missionElapsedTimes[mission.id]}
+                        breakSeconds={missionBreakTimes[mission.id]}
+                        isTimerActive={activeTimerQuest?.id === mission.id}
+                        timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== mission.id}
+                      />
+                    ))}
                   </div>
                 </div>
               )) : (
@@ -4150,20 +4102,6 @@ export default function QuestsPage() {
                 if (!b.startTime) return 1;
                 return a.startTime.localeCompare(b.startTime);
               });
-              const difficultyColors: Record<string, string> = {
-                S: 'bg-red-500/20 text-red-400 border-red-500/30',
-                A: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-                B: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-                C: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-                D: 'bg-green-500/20 text-green-400 border-green-500/30',
-              };
-              const fmtTime = (t: string) => {
-                const [hours, minutes] = t.split(':');
-                const hour = parseInt(hours);
-                const ampm = hour >= 12 ? 'PM' : 'AM';
-                const hour12 = hour % 12 || 12;
-                return `${hour12}:${minutes} ${ampm}`;
-              };
 
               return (
                 <div className="mt-4 glassmorphic rounded-xl border border-primary/20 overflow-hidden">
@@ -4180,59 +4118,26 @@ export default function QuestsPage() {
 
                   <div className="p-3">
                     {selDayQuests.length > 0 ? (
-                      <div className="space-y-1.5">
-                        {selDayQuests.map(q => {
-                          const colors = q.completed
-                            ? { bg: 'bg-muted/50', text: 'text-muted-foreground', border: 'border-muted' }
-                            : getCategoryColor(q.category);
-                          const catLabel = mergedCategories.find(c => c.value === (q.category || 'general'))?.label || q.category || 'General';
-                          const diffColor = difficultyColors[q.difficulty || 'D'] || difficultyColors['D'];
-
-                          return (
-                            <div
-                              key={q.id}
-                              className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer hover:bg-primary/5 transition-colors border-l-2 ${colors.border} ${colors.bg}`}
-                              onClick={() => openEditDialog(q)}
-                            >
-                              <Checkbox
-                                checked={q.completed}
-                                onCheckedChange={() => toggleQuestCompletion(q.id)}
-                                onClick={(e) => e.stopPropagation()}
-                                className="h-4 w-4 border-primary/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary flex-shrink-0"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <div className={`text-sm font-medium truncate ${q.completed ? 'line-through text-muted-foreground' : colors.text}`}>
-                                  {q.title}
-                                </div>
-                                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                  {q.startTime && (
-                                    <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-0.5">
-                                      <Clock className="h-2.5 w-2.5" />
-                                      {fmtTime(q.startTime)}
-                                      {q.endTime && ` – ${fmtTime(q.endTime)}`}
-                                    </span>
-                                  )}
-                                  {q.allDay && !q.startTime && (
-                                    <span className="text-[10px] font-mono text-muted-foreground">All day</span>
-                                  )}
-                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/30 text-muted-foreground">
-                                    {catLabel}
-                                  </Badge>
-                                  <span className={`text-[10px] font-mono px-1.5 py-0 rounded border ${diffColor}`}>
-                                    {q.difficulty || 'D'}
-                                  </span>
-                                  <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-0.5">
-                                    <Zap className="h-2.5 w-2.5" />
-                                    {q.energyCost}
-                                  </span>
-                                </div>
-                              </div>
-                              {q.completed && (
-                                <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
-                              )}
-                            </div>
-                          );
-                        })}
+                      <div className="space-y-3">
+                        {selDayQuests.map((q, idx) => (
+                          <QuestItem
+                            key={q.id}
+                            quest={q}
+                            index={idx}
+                            section="calendar-detail"
+                            onToggle={() => toggleQuestCompletion(q.id)}
+                            onDelete={() => handleDeleteMission(q)}
+                            onEdit={() => openEditDialog(q)}
+                            onStart={() => handleStartMission(q)}
+                            onResume={() => handleResumeMission(q)}
+                            onDone={() => handleDoneMission(q)}
+                            onRestart={restartMissionTimer}
+                            elapsedSeconds={missionElapsedTimes[q.id]}
+                            breakSeconds={missionBreakTimes[q.id]}
+                            isTimerActive={activeTimerQuest?.id === q.id}
+                            timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== q.id}
+                          />
+                        ))}
                       </div>
                     ) : (
                       <div className="text-center py-6">
@@ -5095,6 +5000,41 @@ export default function QuestsPage() {
       {/* List View — Schedule-style chronological list */}
       {!activeCustomView && viewMode === 'list' && (
         <div className="space-y-4">
+          {nextOnboardingMission && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="text-sm font-orbitron text-primary">Onboarding</h3>
+                <div className="flex-1 h-px bg-primary/20" />
+              </div>
+              <div className="space-y-3">
+                <QuestItem
+                  quest={{
+                    id: `onboarding-${nextOnboardingMission.id}`,
+                    title: nextOnboardingMission.title,
+                    description: nextOnboardingMission.description,
+                    completed: false,
+                    experienceReward: nextOnboardingMission.xp,
+                    difficulty: nextOnboardingMission.difficulty,
+                    category: "onboarding",
+                    energyCost: nextOnboardingMission.energyCost,
+                    attentionCost: nextOnboardingMission.attentionCost,
+                    timeCost: nextOnboardingMission.timeCost,
+                    startDate: "",
+                    startTime: "",
+                    endDate: "",
+                    endTime: "",
+                    notificationEnabled: false,
+                    isRitualized: false,
+                  } as Quest}
+                  index={0}
+                  section="list-onboarding"
+                  onToggle={() => {}}
+                  onStart={() => navigate(`/onboarding?mission=${nextOnboardingMission.id}`)}
+                  timerBlocked={!!activeTimerQuest}
+                />
+              </div>
+            </div>
+          )}
           {listViewGrouped.length > 0 ? (
             listViewGrouped.map(group => (
               <div key={group.dateKey}>
@@ -5102,79 +5042,34 @@ export default function QuestsPage() {
                   <h3 className="text-sm font-orbitron text-primary">{group.label}</h3>
                   <div className="flex-1 h-px bg-primary/20" />
                 </div>
-                <div className="space-y-1">
-                  {group.missions.map(mission => {
-                    const catLabel = mergedCategories.find(c => c.value === (mission.category || 'general'))?.label || mission.category || 'General';
-                    const difficultyColors: Record<string, string> = {
-                      S: 'bg-red-500/20 text-red-400 border-red-500/30',
-                      A: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-                      B: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-                      C: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-                      D: 'bg-green-500/20 text-green-400 border-green-500/30',
-                    };
-                    const diffColor = difficultyColors[mission.difficulty || 'D'] || difficultyColors['D'];
-                    const formatTime = (timeStr: string) => {
-                      const [hours, minutes] = timeStr.split(':');
-                      const hour = parseInt(hours);
-                      const ampm = hour >= 12 ? 'PM' : 'AM';
-                      const hour12 = hour % 12 || 12;
-                      return `${hour12}:${minutes} ${ampm}`;
-                    };
-
-                    return (
-                      <div
-                        key={mission.id}
-                        className={`glassmorphic rounded-lg p-3 flex items-center gap-3 cursor-pointer hover:bg-primary/5 transition-colors neon-border ${mission.completed ? 'opacity-60' : ''}`}
-                        onClick={() => openEditDialog(mission)}
-                      >
-                        <Checkbox
-                          checked={mission.completed}
-                          onCheckedChange={(e) => {
-                            e && typeof e === 'object' && 'stopPropagation' in e && (e as any).stopPropagation();
-                            toggleQuestCompletion(mission.id);
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                          className="h-5 w-5 border-primary/50 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className={`text-sm font-medium truncate ${mission.completed ? 'line-through text-muted-foreground' : ''}`}>
-                              {mission.title}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                            {mission.startTime && (
-                              <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-0.5">
-                                <Clock className="h-2.5 w-2.5" />
-                                {formatTime(mission.startTime)}
-                              </span>
-                            )}
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/30 text-muted-foreground">
-                              {catLabel}
-                            </Badge>
-                            <span className={`text-[10px] font-mono px-1.5 py-0 rounded border ${diffColor}`}>
-                              {mission.difficulty || 'D'}
-                            </span>
-                            <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-0.5">
-                              <Zap className="h-2.5 w-2.5" />
-                              {mission.energyCost}
-                            </span>
-                          </div>
-                        </div>
-                        {mission.completed && (
-                          <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
-                        )}
-                      </div>
-                    );
-                  })}
+                <div className="space-y-3">
+                  {group.missions.map((mission, idx) => (
+                    <QuestItem
+                      key={mission.id}
+                      quest={mission}
+                      index={idx}
+                      section="list"
+                      onToggle={() => toggleQuestCompletion(mission.id)}
+                      onDelete={() => handleDeleteMission(mission)}
+                      onEdit={() => openEditDialog(mission)}
+                      onStart={() => handleStartMission(mission)}
+                      onResume={() => handleResumeMission(mission)}
+                      onDone={() => handleDoneMission(mission)}
+                      onRestart={restartMissionTimer}
+                      elapsedSeconds={missionElapsedTimes[mission.id]}
+                      breakSeconds={missionBreakTimes[mission.id]}
+                      isTimerActive={activeTimerQuest?.id === mission.id}
+                      timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== mission.id}
+                    />
+                  ))}
                 </div>
               </div>
             ))
-          ) : (
+          ) : !nextOnboardingMission ? (
             <div className="glassmorphic rounded-xl p-8 text-center neon-border">
               <p className="text-muted-foreground">No missions found{searchQuery ? ' matching your search' : ''}.</p>
             </div>
-          )}
+          ) : null}
 
           <div className="flex items-center justify-center pt-2">
             <button
