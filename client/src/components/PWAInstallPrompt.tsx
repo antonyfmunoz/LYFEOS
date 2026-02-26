@@ -5,7 +5,6 @@ import { useAuth } from "@/lib/authContext";
 
 const DISMISS_KEY_PREFIX = "lyfeos_pwa_dismissed_";
 const SHOWN_KEY_PREFIX = "lyfeos_pwa_prompt_shown_";
-const NEW_USER_WINDOW = 3 * 24 * 60 * 60 * 1000;
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -90,19 +89,10 @@ export default function PWAInstallPrompt({ tutorialActive = false, tutorialLoadi
     staleTime: 60000,
   });
 
-  const isReturningUser = profile?.onboardingCompleted === true;
-
-  const isNewUser = (() => {
-    if (isReturningUser) return false;
-    if (!profile?.createdAt) return false;
-    const created = new Date(profile.createdAt).getTime();
-    return Date.now() - created < NEW_USER_WINDOW;
-  })();
-
   const dashboardTutorialDone = isDashboardTutorialDone(profile, user?.id);
   const alreadyShown = wasAlreadyShown(user?.id);
 
-  const canShow = !isStandalone() && isMobileDevice() && !wasPermanentlyDismissed(user?.id) && isNewUser && !isReturningUser && !tutorialActive && !tutorialLoading && dashboardTutorialDone && !alreadyShown && !dismissed;
+  const canShow = !isStandalone() && isMobileDevice() && !wasPermanentlyDismissed(user?.id) && !tutorialActive && !tutorialLoading && dashboardTutorialDone && !alreadyShown && !dismissed;
 
   useEffect(() => {
     if (!canShow) {
