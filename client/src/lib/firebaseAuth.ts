@@ -12,6 +12,7 @@ import {
   verifyPasswordResetCode as firebaseVerifyPasswordResetCode,
   applyActionCode as firebaseApplyActionCode,
   UserCredential,
+  browserPopupRedirectResolver,
 } from "firebase/auth";
 import { auth } from "./firebase";
 import { toast } from "@/hooks/use-toast";
@@ -61,37 +62,12 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
   }
 
   const isApple = isAppleProvider(provider);
-  const isStandalonePWA = window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone === true;
-  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-  if (isStandalonePWA && isIOS) {
-    console.log(`iOS standalone PWA detected, using same-origin redirect for ${providerName}`);
-    try {
-      const originalAuthDomain = (auth.config as any).authDomain;
-      (auth.config as any).authDomain = window.location.hostname;
-      console.log(`Temporarily set authDomain to ${window.location.hostname} for PWA redirect`);
-      localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
-      localStorage.setItem('lyfeos-pwa-auth-domain-override', originalAuthDomain);
-      await signInWithRedirect(auth, provider);
-      return null;
-    } catch (redirectError: any) {
-      console.error(`${providerName} PWA redirect failed:`, redirectError?.code, redirectError?.message);
-      localStorage.removeItem('lyfeos-oauth-redirect-pending');
-      localStorage.removeItem('lyfeos-pwa-auth-domain-override');
-      toast({
-        title: "Login Error",
-        description: `${providerName} sign-in failed: ${redirectError?.message || redirectError?.code || 'Please try again.'}`,
-        variant: "destructive"
-      });
-      return null;
-    }
-  }
 
   if (isMobileBrowser()) {
     console.log(`Mobile browser detected, using redirect flow directly for ${providerName}`);
     try {
       localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
-      await signInWithRedirect(auth, provider);
+      await signInWithRedirect(auth, provider, browserPopupRedirectResolver);
       return null;
     } catch (redirectError: any) {
       console.error(`${providerName} redirect failed:`, redirectError?.code, redirectError?.message);
@@ -107,7 +83,7 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
 
   try {
     console.log(`Attempting popup sign-in for ${providerName}`);
-    const result = await signInWithPopup(auth, provider);
+    const result = await signInWithPopup(auth, provider, browserPopupRedirectResolver);
     return result;
   } catch (error: any) {
     console.error(`${providerName} popup sign-in error:`, error?.code, error?.message);
@@ -120,7 +96,7 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
       console.log(`Popup failed (${error.code || error?.message || 'unknown'}), falling back to redirect for ${providerName}`);
       try {
         localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
-        await signInWithRedirect(auth, provider);
+        await signInWithRedirect(auth, provider, browserPopupRedirectResolver);
         return null;
       } catch (redirectError: any) {
         console.error(`${providerName} redirect also failed:`, redirectError?.code, redirectError?.message);
@@ -153,17 +129,7 @@ export const signInWithApple = async (): Promise<UserCredential | null> => {
 
 export const checkRedirectResult = async (): Promise<UserCredential | null> => {
   try {
-    const savedAuthDomain = localStorage.getItem('lyfeos-pwa-auth-domain-override');
-    if (savedAuthDomain) {
-      (auth.config as any).authDomain = window.location.hostname;
-      console.log(`PWA redirect return: set authDomain to ${window.location.hostname} for getRedirectResult`);
-    }
-    const result = await getRedirectResult(auth);
-    if (savedAuthDomain) {
-      (auth.config as any).authDomain = savedAuthDomain;
-      localStorage.removeItem('lyfeos-pwa-auth-domain-override');
-      console.log(`Restored authDomain to ${savedAuthDomain}`);
-    }
+    const result = await getRedirectResult(auth, browserPopupRedirectResolver);
     if (result) {
       localStorage.removeItem('lyfeos-oauth-redirect-pending');
       console.log("OAuth redirect result received:", result.user?.email);
@@ -171,11 +137,6 @@ export const checkRedirectResult = async (): Promise<UserCredential | null> => {
     return result;
   } catch (error: any) {
     console.error("OAuth redirect result error:", error?.code, error?.message);
-    const savedAuthDomain = localStorage.getItem('lyfeos-pwa-auth-domain-override');
-    if (savedAuthDomain) {
-      (auth.config as any).authDomain = savedAuthDomain;
-      localStorage.removeItem('lyfeos-pwa-auth-domain-override');
-    }
     localStorage.removeItem('lyfeos-oauth-redirect-pending');
     return null;
   }
