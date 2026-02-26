@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/authContext";
 
 const DISMISS_KEY_PREFIX = "lyfeos_pwa_dismissed_";
+const SHOWN_KEY_PREFIX = "lyfeos_pwa_prompt_shown_";
 const NEW_USER_WINDOW = 3 * 24 * 60 * 60 * 1000;
 
 interface BeforeInstallPromptEvent extends Event {
@@ -33,6 +34,10 @@ function getDismissKey(userId: number | undefined | null): string {
   return `${DISMISS_KEY_PREFIX}${userId || "anon"}`;
 }
 
+function getShownKey(userId: number | undefined | null): string {
+  return `${SHOWN_KEY_PREFIX}${userId || "anon"}`;
+}
+
 function wasPermanentlyDismissed(userId: number | undefined | null): boolean {
   try {
     return localStorage.getItem(getDismissKey(userId)) === "true";
@@ -41,18 +46,30 @@ function wasPermanentlyDismissed(userId: number | undefined | null): boolean {
   }
 }
 
-const ALL_TUTORIAL_PAGES = [
-  "dashboard", "missions", "profile", "chronilog", "ai",
-];
+function wasAlreadyShown(userId: number | undefined | null): boolean {
+  try {
+    return localStorage.getItem(getShownKey(userId)) === "true";
+  } catch {
+    return false;
+  }
+}
 
-function areAllTutorialsComplete(profile: any, userId: number | undefined | null): boolean {
+function markAsShown(userId: number | undefined | null): void {
+  try {
+    localStorage.setItem(getShownKey(userId), "true");
+  } catch {}
+}
+
+function isDashboardTutorialDone(profile: any, userId: number | undefined | null): boolean {
   try {
     const skipKey = `lyfeos-tutorials-all-skipped-${userId || "anon"}`;
     if (localStorage.getItem(skipKey) === "true") return true;
+    const pageKey = `lyfeos-tutorial-done-dashboard-${userId || "anon"}`;
+    if (localStorage.getItem(pageKey) === "true") return true;
   } catch {}
 
   const completed: string[] = profile?.completedTutorials || [];
-  return ALL_TUTORIAL_PAGES.every(page => completed.includes(page));
+  return completed.includes("dashboard");
 }
 
 interface PWAInstallPromptProps {
@@ -82,9 +99,10 @@ export default function PWAInstallPrompt({ tutorialActive = false, tutorialLoadi
     return Date.now() - created < NEW_USER_WINDOW;
   })();
 
-  const allTutorialsDone = areAllTutorialsComplete(profile, user?.id);
+  const dashboardTutorialDone = isDashboardTutorialDone(profile, user?.id);
+  const alreadyShown = wasAlreadyShown(user?.id);
 
-  const canShow = !isStandalone() && isMobileDevice() && !wasPermanentlyDismissed(user?.id) && isNewUser && !isReturningUser && !tutorialActive && !tutorialLoading && allTutorialsDone && !dismissed;
+  const canShow = !isStandalone() && isMobileDevice() && !wasPermanentlyDismissed(user?.id) && isNewUser && !isReturningUser && !tutorialActive && !tutorialLoading && dashboardTutorialDone && !alreadyShown && !dismissed;
 
   useEffect(() => {
     if (!canShow) {
@@ -97,6 +115,7 @@ export default function PWAInstallPrompt({ tutorialActive = false, tutorialLoadi
     if (isIOS()) {
       setShowIOSInstructions(true);
       setShowBanner(true);
+      markAsShown(user?.id);
       return;
     }
 
@@ -104,6 +123,7 @@ export default function PWAInstallPrompt({ tutorialActive = false, tutorialLoadi
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setShowBanner(true);
+      markAsShown(user?.id);
     };
 
     window.addEventListener("beforeinstallprompt", handler);
