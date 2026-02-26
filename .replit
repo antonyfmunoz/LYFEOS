@@ -8,7 +8,7 @@ packages = ["jq", "chromium"]
 
 [deployment]
 deploymentTarget = "autoscale"
-build = ["bash", "-c", "npm install && npm run build"]
+build = ["bash", "build.sh"]
 run = ["node", "dist/index.js"]
 publicDir = "dist/public"
 
