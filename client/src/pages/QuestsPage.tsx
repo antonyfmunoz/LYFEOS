@@ -38,7 +38,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Zap, Star, Bell, BellOff, BellRing, Edit3, Trash2, X, ChevronDown, ChevronRight, Target, Calendar, Clock, CheckCircle2, GraduationCap, Inbox, Info, Archive, Undo2, Repeat, Loader2, FileText, FolderOpen, Link2, GripVertical, Download } from "lucide-react";
+import { Plus, Zap, Star, Bell, BellOff, BellRing, Edit3, Trash2, X, ChevronDown, ChevronRight, ChevronLeft, Target, Calendar, CalendarDays, LayoutList, Clock, CheckCircle2, GraduationCap, Inbox, Info, Archive, Undo2, Repeat, Loader2, FileText, FolderOpen, Link2, GripVertical, Download, MapPin, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ObsidianMarkdown } from "@/components/ui/obsidian-markdown";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
@@ -290,20 +290,6 @@ export default function QuestsPage() {
     enabled: !!user,
   });
 
-  interface LocalCalendarEvent { id: number; title: string; description: string; startTime: string; endTime: string | null; duration: string; category: string; date: string; location: string | null; allDay: boolean | null; externalId: string | null; externalSource: string | null; }
-  const { data: localEventsData, isLoading: isLoadingCalendar } = useQuery<LocalCalendarEvent[]>({
-    queryKey: ['/api/users', user?.id, 'calendar-events'],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      const res = await fetch(`/api/users/${user.id}/calendar-events`, { credentials: 'include' });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return data.events || data || [];
-    },
-    enabled: !!user,
-    staleTime: 60 * 1000,
-  });
-
   const [isSyncing, setIsSyncing] = useState(false);
   const syncGoogle = async (mode: 'calendar' | 'tasks') => {
     if (isSyncing) return;
@@ -318,7 +304,7 @@ export default function QuestsPage() {
         if (result.linkedExisting > 0) parts.push(`${result.linkedExisting} linked`);
         if (result.skipped > 0) parts.push(`${result.skipped} already existed`);
         toast({ title: "Calendar synced", description: parts.join(", ") || "Everything is up to date." });
-        queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'calendar-events'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'quests'] });
       } else {
         const tasksRes = await fetch('/api/google/tasks', { credentials: 'include' });
         if (!tasksRes.ok) throw new Error('Failed to fetch tasks');
@@ -345,48 +331,6 @@ export default function QuestsPage() {
     }
   };
 
-  const [showNewEventDialog, setShowNewEventDialog] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<LocalCalendarEvent | null>(null);
-  const [newEventForm, setNewEventForm] = useState({ title: '', description: '', date: '', startTime: '', endTime: '', category: 'personal' });
-  const resetEventForm = () => setNewEventForm({ title: '', description: '', date: '', startTime: '', endTime: '', category: 'personal' });
-
-  const saveCalendarEvent = async () => {
-    if (!user?.id || !newEventForm.title || !newEventForm.date || !newEventForm.startTime) return;
-    try {
-      const duration = newEventForm.endTime
-        ? (() => { const [sh,sm] = newEventForm.startTime.split(':').map(Number); const [eh,em] = newEventForm.endTime.split(':').map(Number); const mins = (eh*60+em)-(sh*60+sm); return mins > 0 ? (mins >= 60 ? `${Math.floor(mins/60)}h${mins%60 > 0 ? ` ${mins%60}m` : ''}` : `${mins}m`) : '0m'; })()
-        : '0m';
-      if (editingEvent) {
-        await apiRequest(`/api/calendar-events/${editingEvent.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ title: newEventForm.title, description: newEventForm.description, date: newEventForm.date, startTime: newEventForm.startTime, endTime: newEventForm.endTime || null, duration, category: newEventForm.category }),
-        });
-        toast({ title: "Event updated" });
-      } else {
-        await apiRequest('/api/calendar-events', {
-          method: 'POST',
-          body: JSON.stringify({ userId: user.id, title: newEventForm.title, description: newEventForm.description, date: newEventForm.date, startTime: newEventForm.startTime, endTime: newEventForm.endTime || null, duration, category: newEventForm.category }),
-        });
-        toast({ title: "Event created" });
-      }
-      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'calendar-events'] });
-      setShowNewEventDialog(false);
-      setEditingEvent(null);
-      resetEventForm();
-    } catch {
-      toast({ title: "Error", description: "Could not save event.", variant: "destructive" });
-    }
-  };
-
-  const deleteCalendarEvent = async (id: number) => {
-    try {
-      await apiRequest(`/api/calendar-events/${id}`, { method: 'DELETE' });
-      toast({ title: "Event deleted" });
-      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'calendar-events'] });
-    } catch {
-      toast({ title: "Error", description: "Could not delete event.", variant: "destructive" });
-    }
-  };
 
   const [localCategoryOverrides, setLocalCategoryOverrides] = useState<UserCategoryOption[] | null>(null);
   
@@ -632,9 +576,13 @@ export default function QuestsPage() {
     }
   };
   
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
   const [todayExpanded, setTodayExpanded] = useWidgetState("quests.today", true);
   const [upcomingExpanded, setUpcomingExpanded] = useWidgetState("quests.upcoming", true);
-  const [calendarExpanded, setCalendarExpanded] = useWidgetState("quests.calendar", true);
   const [completedExpanded, setCompletedExpanded] = useWidgetState("quests.completed", true);
   const [inboxExpanded, setInboxExpanded] = useWidgetState("quests.inbox", true);
   const [archivedExpanded, setArchivedExpanded] = useWidgetState("quests.archived", true);
@@ -2442,6 +2390,172 @@ export default function QuestsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* View Switcher */}
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-1 p-1 rounded-lg bg-background/30 border border-primary/20">
+          <button
+            onClick={() => setViewMode('list')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono transition-colors ${
+              viewMode === 'list'
+                ? 'bg-primary/20 border border-primary/50 text-primary'
+                : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
+            }`}
+          >
+            <LayoutList className="h-3.5 w-3.5" />
+            List
+          </button>
+          <button
+            onClick={() => setViewMode('calendar')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono transition-colors ${
+              viewMode === 'calendar'
+                ? 'bg-primary/20 border border-primary/50 text-primary'
+                : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
+            }`}
+          >
+            <CalendarDays className="h-3.5 w-3.5" />
+            Calendar
+          </button>
+        </div>
+        {googleStatus?.connected && (
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-primary hover:bg-primary/10" onClick={() => syncGoogle('calendar')} disabled={isSyncing}>
+              {isSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Download className="h-3.5 w-3.5 mr-1" />}
+              Sync Calendar
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-primary hover:bg-primary/10" onClick={() => syncGoogle('tasks')} disabled={isSyncing}>
+              {isSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Download className="h-3.5 w-3.5 mr-1" />}
+              Sync Tasks
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Calendar View */}
+      {viewMode === 'calendar' && (() => {
+        const year = calendarMonth.getFullYear();
+        const month = calendarMonth.getMonth();
+        const firstDayOfMonth = new Date(year, month, 1);
+        const lastDayOfMonth = new Date(year, month + 1, 0);
+        const startDay = firstDayOfMonth.getDay();
+        const daysInMonth = lastDayOfMonth.getDate();
+
+        const calendarDays: { date: Date; isCurrentMonth: boolean }[] = [];
+        for (let i = startDay - 1; i >= 0; i--) {
+          calendarDays.push({ date: new Date(year, month, -i), isCurrentMonth: false });
+        }
+        for (let d = 1; d <= daysInMonth; d++) {
+          calendarDays.push({ date: new Date(year, month, d), isCurrentMonth: true });
+        }
+        const remaining = 7 - (calendarDays.length % 7);
+        if (remaining < 7) {
+          for (let d = 1; d <= remaining; d++) {
+            calendarDays.push({ date: new Date(year, month + 1, d), isCurrentMonth: false });
+          }
+        }
+
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+        const allQuests = quests || [];
+        const questsByDate = new Map<string, Quest[]>();
+        for (const q of allQuests) {
+          if (q.startDate && !q.deletedAt) {
+            const existing = questsByDate.get(q.startDate) || [];
+            existing.push(q);
+            questsByDate.set(q.startDate, existing);
+          }
+        }
+
+        const monthLabel = firstDayOfMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+        const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+        return (
+          <div className="glassmorphic rounded-xl overflow-hidden neon-border">
+            <div className="p-3 flex items-center justify-between">
+              <button onClick={() => setCalendarMonth(new Date(year, month - 1, 1))} className="h-8 w-8 inline-flex items-center justify-center rounded hover:bg-primary/10 transition-colors">
+                <ChevronLeft className="h-5 w-5 text-primary" />
+              </button>
+              <h2 className="text-lg font-orbitron">{monthLabel}</h2>
+              <button onClick={() => setCalendarMonth(new Date(year, month + 1, 1))} className="h-8 w-8 inline-flex items-center justify-center rounded hover:bg-primary/10 transition-colors">
+                <ChevronRight className="h-5 w-5 text-primary" />
+              </button>
+            </div>
+
+            <div className="px-3 pb-3">
+              <div className="grid grid-cols-7 mb-1">
+                {weekDays.map(d => (
+                  <div key={d} className="text-center text-[10px] font-mono text-muted-foreground uppercase py-1">{d}</div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-px bg-primary/5 rounded-lg overflow-hidden">
+                {calendarDays.map((cell, idx) => {
+                  const dateStr = `${cell.date.getFullYear()}-${String(cell.date.getMonth() + 1).padStart(2, '0')}-${String(cell.date.getDate()).padStart(2, '0')}`;
+                  const dayQuests = questsByDate.get(dateStr) || [];
+                  const isToday = dateStr === todayStr;
+                  const maxShow = 3;
+                  const overflow = dayQuests.length - maxShow;
+
+                  return (
+                    <div
+                      key={idx}
+                      className={`min-h-[80px] sm:min-h-[100px] p-1 bg-background/50 transition-colors hover:bg-primary/5 cursor-pointer ${
+                        !cell.isCurrentMonth ? 'opacity-30' : ''
+                      }`}
+                      onClick={() => {
+                        setCreateFormData(prev => ({
+                          ...prev,
+                          startDate: dateStr,
+                          endDate: dateStr,
+                        }));
+                        setIsCreateOpen(true);
+                      }}
+                    >
+                      <div className={`text-xs font-mono mb-1 ${
+                        isToday
+                          ? 'bg-primary text-primary-foreground w-6 h-6 rounded-full flex items-center justify-center font-bold'
+                          : 'text-muted-foreground pl-1'
+                      }`}>
+                        {cell.date.getDate()}
+                      </div>
+                      <div className="space-y-0.5">
+                        {dayQuests.slice(0, maxShow).map(q => (
+                          <div
+                            key={q.id}
+                            className={`text-[10px] leading-tight px-1 py-0.5 rounded truncate cursor-pointer transition-colors ${
+                              q.completed
+                                ? 'bg-muted/50 text-muted-foreground line-through'
+                                : q.externalSource === 'google_calendar'
+                                  ? 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30'
+                                  : q.externalSource === 'google_tasks'
+                                    ? 'bg-green-500/20 text-green-300 hover:bg-green-500/30'
+                                    : 'bg-primary/20 text-primary hover:bg-primary/30'
+                            }`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditDialog(q);
+                            }}
+                            title={`${q.title}${q.startTime ? ` • ${q.startTime}` : ''}${q.location ? ` • ${q.location}` : ''}`}
+                          >
+                            <span className="hidden sm:inline">{q.title}</span>
+                            <span className="sm:hidden">•</span>
+                          </div>
+                        ))}
+                        {overflow > 0 && (
+                          <div className="text-[9px] text-muted-foreground pl-1">+{overflow} more</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* List View */}
+      {viewMode === 'list' && (<>
       <div data-tour="today-missions">
       <DroppableSection section="today" onDropQuest={handleCrossSectionDrop} onDropGroup={handleCrossSectionGroupDrop} className="mb-6">
       <Collapsible open={todayExpanded} onOpenChange={setTodayExpanded}>
@@ -2756,226 +2870,6 @@ export default function QuestsPage() {
       </DroppableSection>
       </div>
       
-      {/* Unified Calendar */}
-      <div className="mb-6">
-        <Collapsible open={calendarExpanded} onOpenChange={setCalendarExpanded}>
-          <div className="glassmorphic rounded-xl overflow-hidden neon-border">
-            <div className="p-3 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-orbitron">Calendar</h2>
-                <StatInfoDialog
-                  trigger={
-                    <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">
-                      <Info className="h-3.5 w-3.5" />
-                    </button>
-                  }
-                  title="Calendar"
-                  description="Your unified schedule — missions with scheduled dates and standalone calendar events all in one view."
-                  additionalInfo="Create events directly, or sync from Google Calendar in Settings. Duplicate events are automatically detected during sync."
-                  hideMoreDetails
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                {googleStatus?.connected && (
-                  <>
-                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-primary hover:bg-primary/10" onClick={() => syncGoogle('calendar')} disabled={isSyncing}>
-                      {isSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Download className="h-3.5 w-3.5 mr-1" />}
-                      Sync
-                    </Button>
-                  </>
-                )}
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-primary hover:bg-primary/10" onClick={() => { resetEventForm(); setEditingEvent(null); setShowNewEventDialog(true); }}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center cursor-pointer hover:bg-primary/5 transition-colors rounded-md px-2 py-1">
-                    {calendarExpanded ? <ChevronDown className="h-5 w-5 text-primary" /> : <ChevronRight className="h-5 w-5 text-primary" />}
-                  </div>
-                </CollapsibleTrigger>
-              </div>
-            </div>
-
-            <CollapsibleContent>
-              <div className="px-4 pb-4 space-y-3">
-                {isLoadingCalendar ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                    <span className="ml-2 text-muted-foreground text-sm">Loading schedule...</span>
-                  </div>
-                ) : (() => {
-                  type CalendarItem = { type: 'event'; data: LocalCalendarEvent } | { type: 'mission'; data: Quest };
-                  const items: CalendarItem[] = [];
-
-                  const localEvents = localEventsData || [];
-                  const now = new Date();
-                  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
-                  for (const ev of localEvents) {
-                    if (ev.date >= todayStr) {
-                      items.push({ type: 'event', data: ev });
-                    }
-                  }
-
-                  const allQuests = [...(todayMissions || []), ...(upcomingMissions || [])];
-                  for (const q of allQuests) {
-                    if (q.startDate && q.startTime && !q.completed) {
-                      items.push({ type: 'mission', data: q });
-                    }
-                  }
-
-                  const grouped: Record<string, CalendarItem[]> = {};
-                  for (const item of items) {
-                    const dateStr = item.type === 'event' ? item.data.date : (item.data as Quest).startDate!;
-                    if (!grouped[dateStr]) grouped[dateStr] = [];
-                    grouped[dateStr].push(item);
-                  }
-
-                  for (const day of Object.keys(grouped)) {
-                    grouped[day].sort((a, b) => {
-                      const timeA = a.type === 'event' ? a.data.startTime : (a.data as Quest).startTime || '00:00';
-                      const timeB = b.type === 'event' ? b.data.startTime : (b.data as Quest).startTime || '00:00';
-                      return timeA.localeCompare(timeB);
-                    });
-                  }
-
-                  const sortedDays = Object.keys(grouped).sort();
-
-                  if (sortedDays.length === 0) {
-                    return (
-                      <div className="rounded-xl p-6 text-center bg-primary/5 border border-primary/10">
-                        <Calendar className="h-10 w-10 text-primary/50 mx-auto mb-3" />
-                        <p className="text-muted-foreground text-sm">No upcoming events or scheduled missions.</p>
-                        <Button variant="outline" size="sm" className="mt-4 hover:bg-primary hover:text-background" onClick={() => { resetEventForm(); setEditingEvent(null); setShowNewEventDialog(true); }}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Event
-                        </Button>
-                      </div>
-                    );
-                  }
-
-                  return sortedDays.map((day) => {
-                    const dayDate = new Date(day + 'T00:00:00');
-                    const label = day === todayStr ? 'Today' : dayDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-                    return (
-                      <div key={day}>
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-xs font-mono text-primary uppercase tracking-wider">{label}</span>
-                          <div className="flex-1 h-px bg-primary/20" />
-                        </div>
-                        <div className="space-y-2 mb-3">
-                          {grouped[day].map((item) => {
-                            if (item.type === 'mission') {
-                              const q = item.data as Quest;
-                              return (
-                                <div key={`m-${q.id}`} className="p-3 rounded-lg bg-accent/10 border border-accent/30 hover:border-accent/50 transition-all cursor-pointer" onClick={() => {
-                                  const el = document.getElementById(`quest-${q.id}`);
-                                  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                }}>
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2">
-                                        <Target className="h-3.5 w-3.5 text-accent flex-shrink-0" />
-                                        <h4 className="text-sm font-medium truncate">{q.title}</h4>
-                                        <Badge variant="outline" className="text-[10px] px-1 py-0 border-accent/50 text-accent">{q.experienceReward} XP</Badge>
-                                      </div>
-                                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                                        <Clock className="h-3 w-3 flex-shrink-0" />
-                                        <span>{q.startTime}{q.endTime ? ` – ${q.endTime}` : ''}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            }
-                            const ev = item.data as LocalCalendarEvent;
-                            return (
-                              <div key={`e-${ev.id}`} className="p-3 rounded-lg bg-primary/5 border border-primary/20 hover:border-primary/40 transition-all group">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2">
-                                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${ev.category === 'work' ? 'bg-blue-400' : ev.category === 'health' ? 'bg-green-400' : 'bg-primary'}`} />
-                                      <h4 className="text-sm font-medium truncate">{ev.title}</h4>
-                                    </div>
-                                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                                      <Clock className="h-3 w-3 flex-shrink-0" />
-                                      <span>{ev.allDay ? 'All day' : ev.startTime}{ev.endTime && !ev.allDay ? ` – ${ev.endTime}` : ''}</span>
-                                    </div>
-                                    {ev.location && <p className="text-xs text-muted-foreground mt-1 truncate">{ev.location}</p>}
-                                    {ev.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{ev.description}</p>}
-                                  </div>
-                                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => { setEditingEvent(ev); setNewEventForm({ title: ev.title, description: ev.description, date: ev.date, startTime: ev.startTime, endTime: ev.endTime || '', category: ev.category }); setShowNewEventDialog(true); }} className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors flex-shrink-0">
-                                      <Edit3 className="h-3 w-3" />
-                                    </button>
-                                    <button onClick={() => deleteCalendarEvent(ev.id)} className="h-6 w-6 inline-flex items-center justify-center rounded border bg-destructive/20 border-destructive/50 text-destructive hover:bg-destructive/30 transition-colors flex-shrink-0">
-                                      <Trash2 className="h-3 w-3" />
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-            </CollapsibleContent>
-          </div>
-        </Collapsible>
-
-        <Dialog open={showNewEventDialog} onOpenChange={(open) => { if (!open) { setShowNewEventDialog(false); setEditingEvent(null); resetEventForm(); } else setShowNewEventDialog(true); }}>
-          <DialogContent className="glassmorphic neon-border max-w-md">
-            <DialogHeader>
-              <DialogTitle className="font-orbitron">{editingEvent ? 'Edit Event' : 'New Event'}</DialogTitle>
-              <DialogDescription className="sr-only">{editingEvent ? 'Edit calendar event' : 'Create a new calendar event'}</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label className="text-sm">Title</Label>
-                <Input value={newEventForm.title} onChange={(e) => setNewEventForm(f => ({ ...f, title: e.target.value }))} placeholder="Event title" className="mt-1" />
-              </div>
-              <div>
-                <Label className="text-sm">Date</Label>
-                <Input type="date" value={newEventForm.date} onChange={(e) => setNewEventForm(f => ({ ...f, date: e.target.value }))} className="mt-1" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-sm">Start Time</Label>
-                  <Input type="time" value={newEventForm.startTime} onChange={(e) => setNewEventForm(f => ({ ...f, startTime: e.target.value }))} className="mt-1" />
-                </div>
-                <div>
-                  <Label className="text-sm">End Time</Label>
-                  <Input type="time" value={newEventForm.endTime} onChange={(e) => setNewEventForm(f => ({ ...f, endTime: e.target.value }))} className="mt-1" />
-                </div>
-              </div>
-              <div>
-                <Label className="text-sm">Category</Label>
-                <Select value={newEventForm.category} onValueChange={(v) => setNewEventForm(f => ({ ...f, category: v }))}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="personal">Personal</SelectItem>
-                    <SelectItem value="work">Work</SelectItem>
-                    <SelectItem value="health">Health</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-sm">Description</Label>
-                <Input value={newEventForm.description} onChange={(e) => setNewEventForm(f => ({ ...f, description: e.target.value }))} placeholder="Optional description" className="mt-1" />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => { setShowNewEventDialog(false); setEditingEvent(null); resetEventForm(); }}>Cancel</Button>
-                <Button onClick={saveCalendarEvent} disabled={!newEventForm.title || !newEventForm.date || !newEventForm.startTime}>
-                  {editingEvent ? 'Update' : 'Create'}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
 
       {/* Completed Missions */}
       <DroppableSection section="completed" onDropQuest={handleCrossSectionDrop} onDropGroup={handleCrossSectionGroupDrop} className="mb-6">
@@ -3487,6 +3381,7 @@ export default function QuestsPage() {
         </div>
       </Collapsible>
       </DroppableSection>
+      </>)}
     </div>
   );
 }
