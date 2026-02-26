@@ -12,7 +12,6 @@ import {
   verifyPasswordResetCode as firebaseVerifyPasswordResetCode,
   applyActionCode as firebaseApplyActionCode,
   UserCredential,
-  browserPopupRedirectResolver,
 } from "firebase/auth";
 import { auth } from "./firebase";
 import { toast } from "@/hooks/use-toast";
@@ -63,11 +62,11 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
 
   const isApple = isAppleProvider(provider);
 
-  if (isMobileSafari()) {
-    console.log(`Mobile Safari detected, using redirect flow directly for ${providerName}`);
+  if (isMobileBrowser()) {
+    console.log(`Mobile browser detected, using redirect flow directly for ${providerName}`);
     try {
       localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
-      await signInWithRedirect(auth, provider, browserPopupRedirectResolver);
+      await signInWithRedirect(auth, provider);
       return null;
     } catch (redirectError: any) {
       console.error(`${providerName} redirect failed:`, redirectError?.code, redirectError?.message);
@@ -83,7 +82,7 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
 
   try {
     console.log(`Attempting popup sign-in for ${providerName}`);
-    const result = await signInWithPopup(auth, provider, browserPopupRedirectResolver);
+    const result = await signInWithPopup(auth, provider);
     return result;
   } catch (error: any) {
     console.error(`${providerName} popup sign-in error:`, error?.code, error?.message);
@@ -96,7 +95,7 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
       console.log(`Popup failed (${error.code || error?.message || 'unknown'}), falling back to redirect for ${providerName}`);
       try {
         localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
-        await signInWithRedirect(auth, provider, browserPopupRedirectResolver);
+        await signInWithRedirect(auth, provider);
         return null;
       } catch (redirectError: any) {
         console.error(`${providerName} redirect also failed:`, redirectError?.code, redirectError?.message);
@@ -129,7 +128,7 @@ export const signInWithApple = async (): Promise<UserCredential | null> => {
 
 export const checkRedirectResult = async (): Promise<UserCredential | null> => {
   try {
-    const result = await getRedirectResult(auth, browserPopupRedirectResolver);
+    const result = await getRedirectResult(auth);
     if (result) {
       localStorage.removeItem('lyfeos-oauth-redirect-pending');
       console.log("OAuth redirect result received:", result.user?.email);

@@ -34,14 +34,12 @@ export default function RegisterPage() {
   }, [isOAuthRedirecting]);
 
   useEffect(() => {
-    const isOAuthReturn = !!localStorage.getItem('lyfeos-oauth-redirect-pending') || !!localStorage.getItem('lyfeos-oauth-mode');
-    const delays = isOAuthReturn ? [0, 100, 300, 500, 1000] : [100];
-    const timers = delays.map(ms => setTimeout(() => {
+    const timer = setTimeout(() => {
       if (document.activeElement instanceof HTMLElement) {
         document.activeElement.blur();
       }
-    }, ms));
-    return () => timers.forEach(clearTimeout);
+    }, 100);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
