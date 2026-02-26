@@ -9,7 +9,7 @@ packages = ["jq", "chromium"]
 [deployment]
 deploymentTarget = "autoscale"
 build = ["bash", "build.sh"]
-run = ["node", "dist/index.js"]
+run = ["bash", "-c", "NODE_ENV=production node dist/index.js"]
 publicDir = "dist/public"
 
 [[ports]]
