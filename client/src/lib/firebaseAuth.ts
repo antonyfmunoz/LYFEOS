@@ -1,6 +1,7 @@
 import {
   GoogleAuthProvider,
   OAuthProvider,
+  signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
   signInWithEmailAndPassword,
@@ -22,71 +23,121 @@ const appleProvider = new OAuthProvider("apple.com");
 appleProvider.addScope("email");
 appleProvider.addScope("name");
 
-export const signInWithGoogle = async (): Promise<UserCredential | null> => {
-  try {
-    if (!import.meta.env.VITE_FIREBASE_API_KEY) {
+function isMobileBrowser(): boolean {
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
+
+function isMobileSafari(): boolean {
+  const ua = navigator.userAgent;
+  return /iPhone|iPad|iPod/i.test(ua) && /Safari/i.test(ua) && !/CriOS|FxiOS|OPiOS|EdgiOS/i.test(ua);
+}
+
+function isPopupRecoverableError(error: any): boolean {
+  const recoverableCodes = [
+    'auth/popup-blocked',
+    'auth/cancelled-popup-request',
+    'auth/operation-not-supported-in-this-environment',
+    'auth/unauthorized-domain',
+  ];
+  if (recoverableCodes.includes(error?.code)) return true;
+  if (isMobileBrowser() && !error?.code) return true;
+  const msg = (error?.message || '').toLowerCase();
+  if (msg.includes('load failed') || msg.includes('network request failed') || msg.includes('popup_closed')) return true;
+  return false;
+}
+
+function isAppleProvider(provider: GoogleAuthProvider | OAuthProvider): boolean {
+  return provider instanceof OAuthProvider && (provider as any).providerId === 'apple.com';
+}
+
+async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, providerName: string): Promise<UserCredential | null> {
+  if (!import.meta.env.VITE_FIREBASE_API_KEY) {
+    toast({
+      title: "Firebase Configuration Missing",
+      description: `Firebase API keys are not set. Please configure Firebase to use ${providerName} Sign-in.`,
+      variant: "destructive"
+    });
+    return null;
+  }
+
+  const isApple = isAppleProvider(provider);
+
+  if (isMobileBrowser()) {
+    console.log(`Mobile browser detected, using redirect flow directly for ${providerName}`);
+    try {
+      localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
+      await signInWithRedirect(auth, provider);
+      return null;
+    } catch (redirectError: any) {
+      console.error(`${providerName} redirect failed:`, redirectError?.code, redirectError?.message);
+      localStorage.removeItem('lyfeos-oauth-redirect-pending');
       toast({
-        title: "Firebase Configuration Missing",
-        description: "Firebase API keys are not set. Please configure Firebase to use Google Sign-in.",
+        title: "Login Error",
+        description: `${providerName} sign-in failed: ${redirectError?.message || redirectError?.code || 'Please try again.'}`,
         variant: "destructive"
       });
       return null;
     }
-    await signInWithRedirect(auth, googleProvider);
-    return null;
-  } catch (error: any) {
-    console.error("Google sign-in error:", error);
-    throw error;
   }
+
+  try {
+    console.log(`Attempting popup sign-in for ${providerName}`);
+    const result = await signInWithPopup(auth, provider);
+    return result;
+  } catch (error: any) {
+    console.error(`${providerName} popup sign-in error:`, error?.code, error?.message);
+
+    if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+      return null;
+    }
+
+    if (isPopupRecoverableError(error)) {
+      console.log(`Popup failed (${error.code || error?.message || 'unknown'}), falling back to redirect for ${providerName}`);
+      try {
+        localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
+        await signInWithRedirect(auth, provider);
+        return null;
+      } catch (redirectError: any) {
+        console.error(`${providerName} redirect also failed:`, redirectError?.code, redirectError?.message);
+        localStorage.removeItem('lyfeos-oauth-redirect-pending');
+        toast({
+          title: "Login Error",
+          description: `${providerName} sign-in failed: ${redirectError?.message || redirectError?.code || 'Please try again.'}`,
+          variant: "destructive"
+        });
+        return null;
+      }
+    }
+
+    toast({
+      title: "Login Error",
+      description: `${providerName} sign-in failed: ${error?.message || error?.code || 'Please try again.'}`,
+      variant: "destructive"
+    });
+    return null;
+  }
+}
+
+export const signInWithGoogle = async (): Promise<UserCredential | null> => {
+  return signInWithProvider(googleProvider, "Google");
 };
 
 export const signInWithApple = async (): Promise<UserCredential | null> => {
-  try {
-    if (!import.meta.env.VITE_FIREBASE_API_KEY) {
-      toast({
-        title: "Firebase Configuration Missing",
-        description: "Firebase API keys are not set. Please configure Firebase to use Apple Sign-in.",
-        variant: "destructive"
-      });
-      return null;
-    }
-    await signInWithRedirect(auth, appleProvider);
-    return null;
-  } catch (error: any) {
-    console.error("Apple sign-in error:", error);
-    throw error;
-  }
+  return signInWithProvider(appleProvider, "Apple");
 };
 
-export const handleRedirectResult = async () => {
+export const checkRedirectResult = async (): Promise<UserCredential | null> => {
   try {
     const result = await getRedirectResult(auth);
-
     if (result) {
-      const user = result.user;
-      const providerId = result.providerId;
-
-      let token: string | undefined;
-      if (providerId === "google.com") {
-        const credential = GoogleAuthProvider.credentialFromResult(result);
-        token = credential?.accessToken;
-      } else if (providerId === "apple.com") {
-        const credential = OAuthProvider.credentialFromResult(result);
-        token = credential?.accessToken;
-      }
-
-      return { user, token, providerId };
+      localStorage.removeItem('lyfeos-oauth-redirect-pending');
+      console.log("OAuth redirect result received:", result.user?.email);
     }
-
-    return null;
+    return result;
   } catch (error: any) {
-    console.error("Redirect result error:", error);
-    toast({
-      title: "Authentication Error",
-      description: error.message || "Error authenticating. Please try again.",
-      variant: "destructive"
-    });
-    throw error;
+    console.error("OAuth redirect result error:", error?.code, error?.message);
+    localStorage.removeItem('lyfeos-oauth-redirect-pending');
+    return null;
   }
 };
 

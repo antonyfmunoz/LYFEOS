@@ -14,8 +14,14 @@ if ('serviceWorker' in navigator) {
       for (const reg of registrations) {
         await reg.update();
       }
+      const cacheNames = await caches.keys();
+      for (const name of cacheNames) {
+        if (name !== 'lyfeos-v24') {
+          await caches.delete(name);
+        }
+      }
     } catch (e) {
-      console.warn('SW update error:', e);
+      console.warn('SW cleanup error:', e);
     }
     navigator.serviceWorker.register('/sw.js').catch((err) => {
       console.warn('Service worker registration failed:', err);
