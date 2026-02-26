@@ -154,7 +154,7 @@ export default function MissionLogWidget({
         variant="outline"
         size="sm"
         className="mt-4 hover:bg-primary hover:text-background"
-        onClick={() => window.location.href = '/calendar'}
+        onClick={() => window.location.href = '/missions'}
       >
         <Calendar className="mr-2 h-4 w-4" />
         Create Mission
@@ -174,7 +174,7 @@ export default function MissionLogWidget({
         variant="outline"
         size="sm"
         className="mt-4 hover:bg-primary hover:text-background"
-        onClick={() => window.location.href = '/calendar'}
+        onClick={() => window.location.href = '/missions'}
       >
         <Calendar className="mr-2 h-4 w-4" />
         Create Mission
@@ -222,7 +222,7 @@ export default function MissionLogWidget({
                 variant="outline"
                 size="sm"
                 className="absolute top-0 right-0 text-xs py-1 px-2 h-auto"
-                onClick={() => window.location.href = '/calendar'}
+                onClick={() => window.location.href = '/missions'}
               >
                 <Calendar className="h-3 w-3 mr-1" /> Calendar
               </Button>
@@ -311,7 +311,7 @@ export default function MissionLogWidget({
                 variant="outline"
                 size="sm"
                 className="absolute top-0 right-0 text-xs py-1 px-2 h-auto"
-                onClick={() => window.location.href = '/calendar'}
+                onClick={() => window.location.href = '/missions'}
               >
                 <Calendar className="h-3 w-3 mr-1" /> Calendar
               </Button>

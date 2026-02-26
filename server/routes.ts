@@ -8,6 +8,7 @@ import { registerContentRoutes } from "./routes/content";
 import { registerGoalRoutes } from "./routes/goals";
 import { registerDocumentRoutes } from "./routes/documents";
 import { registerWaitlistRoutes } from "./routes/waitlist";
+import { registerGoogleRoutes } from "./routes/google";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   registerAuthRoutes(app);
@@ -18,6 +19,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerDocumentRoutes(app);
   registerChatRoutes(app);
   registerWaitlistRoutes(app);
+  registerGoogleRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;

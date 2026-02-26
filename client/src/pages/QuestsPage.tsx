@@ -38,7 +38,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Zap, Star, Bell, BellOff, BellRing, Edit3, Trash2, X, ChevronDown, ChevronRight, Target, Calendar, Clock, CheckCircle2, GraduationCap, Inbox, Info, Archive, Undo2, Repeat, Loader2, FileText, FolderOpen, Link2, GripVertical } from "lucide-react";
+import { Plus, Zap, Star, Bell, BellOff, BellRing, Edit3, Trash2, X, ChevronDown, ChevronRight, Target, Calendar, Clock, CheckCircle2, GraduationCap, Inbox, Info, Archive, Undo2, Repeat, Loader2, FileText, FolderOpen, Link2, GripVertical, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ObsidianMarkdown } from "@/components/ui/obsidian-markdown";
 import { StatInfoDialog } from "@/components/ui/stat-info-dialog";
@@ -283,6 +283,48 @@ export default function QuestsPage() {
     enabled: !!user,
     staleTime: 0,
   });
+
+  interface GoogleStatus { connected: boolean; scope: string | null; connectedAt: string | null; }
+  const { data: googleStatus } = useQuery<GoogleStatus>({
+    queryKey: ['/api/google/status'],
+    enabled: !!user,
+  });
+
+  interface GoogleCalendarEvent { id: string; title: string; description: string; start: string; end: string; allDay: boolean; location: string; status: string; htmlLink: string; }
+  const { data: googleCalendarData, isLoading: isLoadingCalendar } = useQuery<{ events: GoogleCalendarEvent[] }>({
+    queryKey: ['/api/google/calendar/events'],
+    enabled: !!user && !!googleStatus?.connected,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const [isSyncingTasks, setIsSyncingTasks] = useState(false);
+  const syncGoogleTasks = async () => {
+    if (isSyncingTasks) return;
+    setIsSyncingTasks(true);
+    try {
+      const tasksRes = await fetch('/api/google/tasks', { credentials: 'include' });
+      if (!tasksRes.ok) throw new Error('Failed to fetch tasks');
+      const { tasks } = await tasksRes.json();
+      if (!tasks || tasks.length === 0) {
+        toast({ title: "No tasks found", description: "Your Google Tasks lists are empty." });
+        return;
+      }
+      const importRes = await apiRequest('/api/google/tasks/import', {
+        method: 'POST',
+        body: JSON.stringify({ tasks }),
+      });
+      const result = await importRes.json();
+      toast({
+        title: "Tasks synced",
+        description: `Imported ${result.imported} task${result.imported !== 1 ? 's' : ''}${result.skipped > 0 ? `, ${result.skipped} already existed` : ''}.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id, 'quests'] });
+    } catch (err) {
+      toast({ title: "Sync failed", description: "Could not import Google Tasks.", variant: "destructive" });
+    } finally {
+      setIsSyncingTasks(false);
+    }
+  };
 
   const [localCategoryOverrides, setLocalCategoryOverrides] = useState<UserCategoryOption[] | null>(null);
   
@@ -530,6 +572,7 @@ export default function QuestsPage() {
   
   const [todayExpanded, setTodayExpanded] = useWidgetState("quests.today", true);
   const [upcomingExpanded, setUpcomingExpanded] = useWidgetState("quests.upcoming", true);
+  const [calendarExpanded, setCalendarExpanded] = useWidgetState("quests.calendar", true);
   const [completedExpanded, setCompletedExpanded] = useWidgetState("quests.completed", true);
   const [inboxExpanded, setInboxExpanded] = useWidgetState("quests.inbox", true);
   const [archivedExpanded, setArchivedExpanded] = useWidgetState("quests.archived", true);
@@ -2651,6 +2694,156 @@ export default function QuestsPage() {
       </DroppableSection>
       </div>
       
+      {/* Google Calendar Events */}
+      <div className="mb-6">
+        <Collapsible open={calendarExpanded} onOpenChange={setCalendarExpanded}>
+          <div className="glassmorphic rounded-xl overflow-hidden neon-border">
+            <div className="p-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Calendar className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-orbitron">Calendar</h2>
+                <StatInfoDialog
+                  trigger={
+                    <button className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">
+                      <Info className="h-3.5 w-3.5" />
+                    </button>
+                  }
+                  title="Google Calendar"
+                  description="Your upcoming Google Calendar events synced directly into your mission flow."
+                  additionalInfo="Connect your Google account from Settings to see your calendar events here."
+                  hideMoreDetails
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                {googleStatus?.connected && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-primary hover:bg-primary/10"
+                    onClick={syncGoogleTasks}
+                    disabled={isSyncingTasks}
+                  >
+                    {isSyncingTasks ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                    ) : (
+                      <Download className="h-3.5 w-3.5 mr-1" />
+                    )}
+                    Sync Tasks
+                  </Button>
+                )}
+                <CollapsibleTrigger asChild>
+                  <div className="flex items-center cursor-pointer hover:bg-primary/5 transition-colors rounded-md px-2 py-1">
+                    {calendarExpanded ? (
+                      <ChevronDown className="h-5 w-5 text-primary" />
+                    ) : (
+                      <ChevronRight className="h-5 w-5 text-primary" />
+                    )}
+                  </div>
+                </CollapsibleTrigger>
+              </div>
+            </div>
+
+            <CollapsibleContent>
+              <div className="px-4 pb-4 space-y-3">
+                {!googleStatus?.connected ? (
+                  <div className="glassmorphic rounded-xl p-6 text-center neon-border">
+                    <Calendar className="h-10 w-10 text-primary/50 mx-auto mb-3" />
+                    <p className="text-muted-foreground text-sm">Connect your Google account to see your calendar events here.</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-4 hover:bg-primary hover:text-background"
+                      onClick={() => navigate('/profile')}
+                    >
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Connect Google Calendar
+                    </Button>
+                  </div>
+                ) : isLoadingCalendar ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    <span className="ml-2 text-muted-foreground text-sm">Loading calendar events...</span>
+                  </div>
+                ) : (googleCalendarData?.events || []).length === 0 ? (
+                  <div className="glassmorphic rounded-xl p-6 text-center neon-border">
+                    <Calendar className="h-10 w-10 text-primary/50 mx-auto mb-3" />
+                    <p className="text-muted-foreground text-sm">No upcoming calendar events found.</p>
+                  </div>
+                ) : (
+                  (() => {
+                    const grouped: Record<string, GoogleCalendarEvent[]> = {};
+                    for (const ev of googleCalendarData!.events) {
+                      const dateStr = ev.allDay
+                        ? ev.start
+                        : ev.start.split('T')[0];
+                      if (!grouped[dateStr]) grouped[dateStr] = [];
+                      grouped[dateStr].push(ev);
+                    }
+                    const sortedDays = Object.keys(grouped).sort();
+                    return sortedDays.map((day) => {
+                      const dayDate = new Date(day + 'T00:00:00');
+                      const label = day === today
+                        ? 'Today'
+                        : dayDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+                      return (
+                        <div key={day}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-xs font-mono text-primary uppercase tracking-wider">{label}</span>
+                            <div className="flex-1 h-px bg-primary/20" />
+                          </div>
+                          <div className="space-y-2 mb-3">
+                            {grouped[day].map((ev) => {
+                              const startTime = ev.allDay
+                                ? 'All day'
+                                : new Date(ev.start).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+                              const endTime = !ev.allDay
+                                ? new Date(ev.end).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+                                : '';
+                              return (
+                                <div
+                                  key={ev.id}
+                                  className="p-3 rounded-lg bg-primary/5 border border-primary/20 hover:border-primary/40 transition-all"
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1 min-w-0">
+                                      <h4 className="text-sm font-medium truncate">{ev.title}</h4>
+                                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                                        <Clock className="h-3 w-3 flex-shrink-0" />
+                                        <span>{startTime}{endTime ? ` – ${endTime}` : ''}</span>
+                                      </div>
+                                      {ev.location && (
+                                        <p className="text-xs text-muted-foreground mt-1 truncate">{ev.location}</p>
+                                      )}
+                                      {ev.description && (
+                                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{ev.description}</p>
+                                      )}
+                                    </div>
+                                    {ev.htmlLink && (
+                                      <a
+                                        href={ev.htmlLink}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="h-6 w-6 inline-flex items-center justify-center rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors flex-shrink-0"
+                                      >
+                                        <Link2 className="h-3.5 w-3.5" />
+                                      </a>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()
+                )}
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+      </div>
+
       {/* Completed Missions */}
       <DroppableSection section="completed" onDropQuest={handleCrossSectionDrop} onDropGroup={handleCrossSectionGroupDrop} className="mb-6">
       <Collapsible open={completedExpanded} onOpenChange={setCompletedExpanded}>

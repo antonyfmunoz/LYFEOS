@@ -80,14 +80,21 @@ import { auth as firebaseAuth } from "@/lib/firebase";
 
 
 
-const INTEGRATION_PROVIDERS = [
+const PLACEHOLDER_PROVIDERS = [
   { provider: "apple_health", name: "Apple Health", icon: Heart },
-  { provider: "google_calendar", name: "Google Calendar", icon: Calendar },
   { provider: "notion", name: "Notion", icon: BookOpen },
 ] as const;
 
 function IntegrationsSection({ userId }: { userId?: number }) {
   const { toast } = useToast();
+  const [connectingGoogle, setConnectingGoogle] = useState(false);
+  const [disconnectingGoogle, setDisconnectingGoogle] = useState(false);
+
+  const { data: googleStatus, isLoading: isGoogleLoading } = useQuery<{ connected: boolean; scope: string | null; connectedAt: string | null }>({
+    queryKey: ["/api/google/status"],
+    enabled: !!userId,
+  });
+
   const { data: integrationsData, isLoading } = useQuery<{ integrations: any[] }>({
     queryKey: ["/api/users", userId, "integrations"],
     queryFn: async () => {
@@ -129,6 +136,49 @@ function IntegrationsSection({ userId }: { userId?: number }) {
     }
   };
 
+  const connectGoogle = async () => {
+    setConnectingGoogle(true);
+    try {
+      const res = await fetch("/api/google/auth-url", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to get auth URL");
+      const data = await res.json();
+      window.location.href = data.url;
+    } catch {
+      toast({ title: "Error", description: "Could not start Google connection.", variant: "destructive" });
+      setConnectingGoogle(false);
+    }
+  };
+
+  const disconnectGoogle = async () => {
+    setDisconnectingGoogle(true);
+    try {
+      await apiRequest("/api/google/disconnect", { method: "POST" });
+      toast({ title: "Google disconnected" });
+      queryClient.invalidateQueries({ queryKey: ["/api/google/status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "integrations"] });
+    } catch {
+      toast({ title: "Error", description: "Could not disconnect Google.", variant: "destructive" });
+    } finally {
+      setDisconnectingGoogle(false);
+    }
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const googleParam = params.get("google");
+    if (googleParam === "connected") {
+      toast({ title: "Google Connected", description: "Your Google account has been linked successfully." });
+      window.history.replaceState({}, "", window.location.pathname);
+      queryClient.invalidateQueries({ queryKey: ["/api/google/status"] });
+    } else if (googleParam === "error") {
+      const reason = params.get("reason") || "unknown";
+      toast({ title: "Connection Failed", description: `Google connection failed (${reason}). Please try again.`, variant: "destructive" });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
+  const isGoogleConnected = googleStatus?.connected ?? false;
+
   return (
     <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
       <div className="flex items-center gap-2 mb-2">
@@ -139,7 +189,40 @@ function IntegrationsSection({ userId }: { userId?: number }) {
         Connect external apps to sync your data and enhance your experience.
       </p>
       <div className="space-y-2">
-        {INTEGRATION_PROVIDERS.map(({ provider, name, icon: Icon }) => {
+        <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
+          <div className="flex items-center">
+            <Calendar className="h-4 w-4 text-primary mr-2" />
+            <div>
+              <span className="text-sm">Google</span>
+              {isGoogleConnected && (
+                <p className="text-xs text-primary">Connected — Calendar &amp; Tasks</p>
+              )}
+            </div>
+          </div>
+          {isGoogleLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          ) : isGoogleConnected ? (
+            <button
+              disabled={disconnectingGoogle}
+              onClick={disconnectGoogle}
+              className="text-xs font-mono px-3 py-1.5 rounded border border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors inline-flex items-center gap-1 disabled:opacity-50"
+            >
+              {disconnectingGoogle ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+              Disconnect
+            </button>
+          ) : (
+            <button
+              disabled={connectingGoogle}
+              onClick={connectGoogle}
+              className="text-xs font-mono px-3 py-1.5 rounded border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors inline-flex items-center gap-1 disabled:opacity-50"
+            >
+              {connectingGoogle ? <Loader2 className="h-3 w-3 animate-spin" /> : <Globe className="h-3 w-3" />}
+              Connect
+            </button>
+          )}
+        </div>
+
+        {PLACEHOLDER_PROVIDERS.map(({ provider, name, icon: Icon }) => {
           const isConnected = !!getIntegration(provider);
           const isToggling = togglingProvider === provider;
           return (

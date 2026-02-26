@@ -340,6 +340,8 @@ export const quests = pgTable("quests", {
   visionGoalId: integer("vision_goal_id").references(() => visionGoals.id),
   linkedItems: jsonb("linked_items").default([]),
   sortOrder: integer("sort_order").default(0),
+  externalId: text("external_id"),
+  externalSource: text("external_source"),
   deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
