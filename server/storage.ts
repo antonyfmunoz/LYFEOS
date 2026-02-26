@@ -496,11 +496,11 @@ export class DatabaseStorage implements IStorage {
     
     const allQuests = await this.getQuests(userId);
     
+    // Scope to today's quests (by startDate or completedAt)
     const today = new Date();
     const todayStr = formatLocalDate(today);
     
     const todaysQuests = allQuests.filter(q => {
-      if (q.category === "onboarding") return false;
       if (q.startDate === todayStr) return true;
       if (q.completedAt) {
         const completedDate = new Date(q.completedAt);
@@ -510,26 +510,31 @@ export class DatabaseStorage implements IStorage {
       return false;
     });
     
-    const MIN_QUESTS_FOR_EFFICIENCY = 3;
-    if (todaysQuests.length < MIN_QUESTS_FOR_EFFICIENCY) {
+    if (todaysQuests.length === 0) {
       await this.updateUserStats(userId, { efficiencyScore: 0 });
       return 0;
     }
     
+    // Component 1: Daily mission completion rate (40% weight)
     const completedToday = todaysQuests.filter(q => q.completed);
     const completionRate = completedToday.length / todaysQuests.length;
     
+    // Component 2: Token allocation effectiveness (30% weight)
+    // Ratio of energy cost in completed vs all today's missions
     const totalCostAll = todaysQuests.reduce((sum, q) => sum + (q.energyCost || 1), 0);
     const totalCostCompleted = completedToday.reduce((sum, q) => sum + (q.energyCost || 1), 0);
     const allocationEfficiency = totalCostAll > 0 ? totalCostCompleted / totalCostAll : 0;
     
+    // Component 3: Token utilization (30% weight)
+    // How much of today's available tokens have been used
     const totalTokensMax = stats.energyPointsMax + stats.timeTokensMax + stats.attentionTokensMax;
     const totalTokensCurrent = stats.energyPointsCurrent + stats.timeTokensCurrent + stats.attentionTokensCurrent;
     const tokensUsed = totalTokensMax - totalTokensCurrent;
     const utilizationRate = totalTokensMax > 0 ? Math.min(1, tokensUsed / totalTokensMax) : 0;
     
+    // Weighted formula: 40% completion + 30% allocation + 30% utilization
     const efficiency = Math.round(
-      (completionRate * 30) + (allocationEfficiency * 30) + (utilizationRate * 40)
+      (completionRate * 40) + (allocationEfficiency * 30) + (utilizationRate * 30)
     );
     
     await this.updateUserStats(userId, {
