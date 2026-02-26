@@ -62,32 +62,28 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
 
   const isApple = isAppleProvider(provider);
   const isStandalonePWA = window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone === true;
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-  if (isStandalonePWA) {
-    console.log(`Standalone PWA detected, using popup flow for ${providerName}`);
+  if (isStandalonePWA && isIOS) {
+    console.log(`iOS standalone PWA detected, using same-origin redirect for ${providerName}`);
     try {
-      const result = await signInWithPopup(auth, provider);
-      return result;
-    } catch (error: any) {
-      console.error(`${providerName} popup sign-in error in PWA:`, error?.code, error?.message);
-      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
-        return null;
-      }
-      console.log(`Popup failed in PWA, falling back to redirect for ${providerName}`);
-      try {
-        localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
-        await signInWithRedirect(auth, provider);
-        return null;
-      } catch (redirectError: any) {
-        console.error(`${providerName} redirect also failed in PWA:`, redirectError?.code, redirectError?.message);
-        localStorage.removeItem('lyfeos-oauth-redirect-pending');
-        toast({
-          title: "Login Error",
-          description: `${providerName} sign-in failed: ${redirectError?.message || redirectError?.code || 'Please try again.'}`,
-          variant: "destructive"
-        });
-        return null;
-      }
+      const originalAuthDomain = (auth.config as any).authDomain;
+      (auth.config as any).authDomain = window.location.hostname;
+      console.log(`Temporarily set authDomain to ${window.location.hostname} for PWA redirect`);
+      localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
+      localStorage.setItem('lyfeos-pwa-auth-domain-override', originalAuthDomain);
+      await signInWithRedirect(auth, provider);
+      return null;
+    } catch (redirectError: any) {
+      console.error(`${providerName} PWA redirect failed:`, redirectError?.code, redirectError?.message);
+      localStorage.removeItem('lyfeos-oauth-redirect-pending');
+      localStorage.removeItem('lyfeos-pwa-auth-domain-override');
+      toast({
+        title: "Login Error",
+        description: `${providerName} sign-in failed: ${redirectError?.message || redirectError?.code || 'Please try again.'}`,
+        variant: "destructive"
+      });
+      return null;
     }
   }
 
@@ -157,7 +153,17 @@ export const signInWithApple = async (): Promise<UserCredential | null> => {
 
 export const checkRedirectResult = async (): Promise<UserCredential | null> => {
   try {
+    const savedAuthDomain = localStorage.getItem('lyfeos-pwa-auth-domain-override');
+    if (savedAuthDomain) {
+      (auth.config as any).authDomain = window.location.hostname;
+      console.log(`PWA redirect return: set authDomain to ${window.location.hostname} for getRedirectResult`);
+    }
     const result = await getRedirectResult(auth);
+    if (savedAuthDomain) {
+      (auth.config as any).authDomain = savedAuthDomain;
+      localStorage.removeItem('lyfeos-pwa-auth-domain-override');
+      console.log(`Restored authDomain to ${savedAuthDomain}`);
+    }
     if (result) {
       localStorage.removeItem('lyfeos-oauth-redirect-pending');
       console.log("OAuth redirect result received:", result.user?.email);
@@ -165,6 +171,11 @@ export const checkRedirectResult = async (): Promise<UserCredential | null> => {
     return result;
   } catch (error: any) {
     console.error("OAuth redirect result error:", error?.code, error?.message);
+    const savedAuthDomain = localStorage.getItem('lyfeos-pwa-auth-domain-override');
+    if (savedAuthDomain) {
+      (auth.config as any).authDomain = savedAuthDomain;
+      localStorage.removeItem('lyfeos-pwa-auth-domain-override');
+    }
     localStorage.removeItem('lyfeos-oauth-redirect-pending');
     return null;
   }
