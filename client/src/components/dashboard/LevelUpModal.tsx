@@ -140,7 +140,7 @@ export function LevelUpModal({ level, primaryColor = "#00e0ff", isOpen, onClose 
                   >
                     {getRank(level).icon} {getRank(level).name}
                   </motion.span>
-                  <p className="text-[#7DAAB2] text-sm">
+                  <p className="text-primary/60 text-sm">
                     Congratulations on reaching a new level in your journey.
                   </p>
                 </motion.div>
@@ -171,7 +171,7 @@ export function LevelUpModal({ level, primaryColor = "#00e0ff", isOpen, onClose 
                 transition={{ duration: 0.3 }}
                 className="space-y-4 pt-6"
               >
-                <h3 className="text-center font-orbitron text-lg text-[#D6F4FF]">
+                <h3 className="text-center font-orbitron text-lg text-primary">
                   New Features Unlocked
                 </h3>
                 
@@ -186,7 +186,7 @@ export function LevelUpModal({ level, primaryColor = "#00e0ff", isOpen, onClose 
                       style={{ backgroundColor: `${primaryColor}10` }}
                     >
                       <div className="h-2 w-2 rounded-full" style={{ backgroundColor: primaryColor }}></div>
-                      <p className="text-sm text-[#D6F4FF]">{benefit}</p>
+                      <p className="text-sm text-primary">{benefit}</p>
                     </motion.div>
                   ))}
                 </div>
@@ -202,7 +202,7 @@ export function LevelUpModal({ level, primaryColor = "#00e0ff", isOpen, onClose 
                     <p className="text-sm font-medium" style={{ color: primaryColor }}>
                       {isMajorMilestone ? 'MAJOR MILESTONE ACHIEVED!' : 'MILESTONE ACHIEVED!'}
                     </p>
-                    <p className="text-xs text-[#7DAAB2] mt-1">
+                    <p className="text-xs text-primary/60 mt-1">
                       {isMajorMilestone 
                         ? `Level ${level} is a major achievement. Keep up the great work!` 
                         : `Level ${level} is a notable achievement on your journey.`}

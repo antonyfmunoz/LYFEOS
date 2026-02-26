@@ -383,7 +383,7 @@ export default function MissionArchivePage() {
       
       <div className="mb-6">
         <h1 className="text-2xl font-orbitron mb-1">Missions</h1>
-        <p className="text-[#7DAAB2]">Review your completed missions from previous days</p>
+        <p className="text-primary/60">Review your completed missions from previous days</p>
       </div>
       
       {hierarchicalData.length > 0 ? (
@@ -520,7 +520,7 @@ export default function MissionArchivePage() {
         <div className="text-center py-16 glassmorphic rounded-xl border border-primary/20 flex flex-col items-center justify-center">
           <Archive className="h-16 w-16 text-primary/40 mb-4" />
           <h3 className="text-xl font-medium mb-2">No Archived Missions Yet</h3>
-          <p className="text-[#7DAAB2] mb-4 max-w-md">
+          <p className="text-primary/60 mb-4 max-w-md">
             Complete missions to see them archived here. Missions completed today will appear here tomorrow.
           </p>
         </div>

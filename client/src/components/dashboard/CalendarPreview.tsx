@@ -17,7 +17,7 @@ export default function CalendarPreview() {
         {events.map((event) => (
           <div key={event.id} className="flex items-start">
             <div className="text-right mr-3 text-xs pt-1 w-16 flex-shrink-0">
-              <p className="text-[#D6F4FF] font-mono">{event.startTime}</p>
+              <p className="text-primary font-mono">{event.startTime}</p>
             </div>
             <div className={`flex-grow p-3 border-l-2 
               ${event.category === 'work' ? 'border-primary' : 
@@ -26,7 +26,7 @@ export default function CalendarPreview() {
               rounded-r-md bg-surface bg-opacity-30`}
             >
               <p className="font-medium text-sm">{event.title}</p>
-              <p className="text-[#7DAAB2] text-xs">{event.description}</p>
+              <p className="text-primary/60 text-xs">{event.description}</p>
             </div>
           </div>
         ))}

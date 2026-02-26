@@ -416,7 +416,7 @@ export default function PageTutorial({ steps, storageKey, isOpen, onComplete, on
           </button>
         </div>
 
-        <h3 className="font-orbitron text-base text-[#D6F4FF] mb-2">{step.title}</h3>
+        <h3 className="font-orbitron text-base text-primary mb-2">{step.title}</h3>
         <p className="text-sm text-muted-foreground leading-relaxed mb-4">{step.description}</p>
 
         <div className="flex items-center justify-between">

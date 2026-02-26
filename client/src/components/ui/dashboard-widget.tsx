@@ -36,9 +36,9 @@ export function DashboardWidget({
             </div>
           )}
           <div className="flex-grow">
-            <h3 className="text-lg font-orbitron mb-1 dark:text-[#D6F4FF] light:text-slate-700">{title}</h3>
+            <h3 className="text-lg font-orbitron mb-1 dark:text-primary light:text-slate-700">{title}</h3>
             {description && (
-              <p className="text-sm dark:text-[#7DAAB2] light:text-slate-500">{description}</p>
+              <p className="text-sm dark:text-primary/60 light:text-slate-500">{description}</p>
             )}
           </div>
           <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center">

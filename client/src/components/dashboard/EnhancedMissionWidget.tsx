@@ -138,8 +138,8 @@ export default function EnhancedMissionWidget({
   const renderEmptyState = () => (
     <div className="glassmorphic rounded-xl p-6 text-center opacity-80 mt-2">
       <Calendar className="h-10 w-10 text-primary/50 mx-auto mb-3" />
-      <p className="text-[#7DAAB2]">No missions scheduled for today</p>
-      <p className="text-xs text-[#7DAAB2] mt-2">
+      <p className="text-primary/60">No missions scheduled for today</p>
+      <p className="text-xs text-primary/60 mt-2">
         Create a new mission or visit the Calendar page
       </p>
       <Button
@@ -158,8 +158,8 @@ export default function EnhancedMissionWidget({
   const renderAllCompletedState = () => (
     <div className="glassmorphic rounded-xl p-6 text-center opacity-80 mt-2">
       <Calendar className="h-10 w-10 text-primary/50 mx-auto mb-3" />
-      <p className="text-[#7DAAB2]">All missions completed for now</p>
-      <p className="text-xs text-[#7DAAB2] mt-2">
+      <p className="text-primary/60">All missions completed for now</p>
+      <p className="text-xs text-primary/60 mt-2">
         Great job! Create new missions or check back later
       </p>
       <Button
@@ -292,7 +292,7 @@ export default function EnhancedMissionWidget({
                   />
                   <div className="ml-3 flex-grow">
                     <div className="flex justify-between">
-                      <h3 className={`font-orbitron text-base ${mission.completed ? 'line-through text-[#7DAAB2]' : 'text-[#D6F4FF]'}`}>
+                      <h3 className={`font-orbitron text-base ${mission.completed ? 'line-through text-primary/60' : 'text-primary'}`}>
                         {mission.title}
                       </h3>
                       <div className="flex items-center mr-8">
@@ -300,7 +300,7 @@ export default function EnhancedMissionWidget({
                         <span className="text-primary text-xs font-mono mr-2">+{mission.xpValue} XP</span>
                       </div>
                     </div>
-                    <p className={`text-xs text-[#7DAAB2] mt-0.5 ${mission.completed ? 'line-through' : ''}`}>
+                    <p className={`text-xs text-primary/60 mt-0.5 ${mission.completed ? 'line-through' : ''}`}>
                       {mission.tags?.join(', ') || 'Mission'}
                     </p>
                   </div>
@@ -338,7 +338,7 @@ export default function EnhancedMissionWidget({
                     />
                     <div className="ml-3 flex-grow">
                       <div className="flex justify-between">
-                        <h3 className={`font-orbitron text-base ${isCompleted ? 'line-through text-[#7DAAB2]' : 'text-[#D6F4FF]'}`}>
+                        <h3 className={`font-orbitron text-base ${isCompleted ? 'line-through text-primary/60' : 'text-primary'}`}>
                           {event.title}
                         </h3>
                         <div className="flex items-center mr-8">
@@ -346,7 +346,7 @@ export default function EnhancedMissionWidget({
                           <span className="text-primary text-xs font-mono mr-2">+15 XP</span>
                         </div>
                       </div>
-                      <p className={`text-xs text-[#7DAAB2] mt-0.5 ${isCompleted ? 'line-through' : ''}`}>
+                      <p className={`text-xs text-primary/60 mt-0.5 ${isCompleted ? 'line-through' : ''}`}>
                         {event.category === 'work' ? 'Conference Room 3' : 
                         event.category === 'health' ? 'Gym' : 'Virtual'} | {event.duration} | {event.startTime}
                       </p>

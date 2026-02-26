@@ -346,7 +346,7 @@ export default function RolodexPage() {
       <div className="flex items-center justify-between mb-6" data-tour="rolodex-header">
         <div>
           <h1 className="text-2xl font-orbitron mb-1">Rolodex</h1>
-          <p className="text-[#7DAAB2]">Your personal contacts</p>
+          <p className="text-primary/60">Your personal contacts</p>
         </div>
         <Button
           onClick={openCreateForm}
@@ -482,7 +482,7 @@ export default function RolodexPage() {
                       )}
                     </div>
                     {(contact.jobTitle || contact.company) && (
-                      <p className="text-xs text-[#7DAAB2] truncate">
+                      <p className="text-xs text-primary/60 truncate">
                         {contact.jobTitle}{contact.jobTitle && contact.company ? ' at ' : ''}{contact.company}
                       </p>
                     )}

@@ -426,7 +426,7 @@ export default function MarkdownEditor({
                 onKeyDown={handleKeyDown}
                 onPaste={handlePaste}
                 placeholder={placeholder}
-                className="w-full h-[500px] p-4 bg-transparent resize-vertical border-none outline-none placeholder:text-muted-foreground/50 dark:text-[#D6F4FF] light:text-slate-700 text-base"
+                className="w-full h-[500px] p-4 bg-transparent resize-vertical border-none outline-none placeholder:text-muted-foreground/50 dark:text-primary light:text-slate-700 text-base"
                 disabled={readOnly}
               />
               {!readOnly && (

@@ -52,7 +52,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center">
               <Award className="h-3 w-3 text-primary mr-1" />
-              <h3 className="font-orbitron text-[#D6F4FF] text-xs">LEVEL</h3>
+              <h3 className="font-orbitron text-primary text-xs">LEVEL</h3>
             </div>
           </div>
           <div className="progress-bar progress-xp h-1.5 mb-1">
@@ -60,11 +60,11 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           </div>
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-1.5">
-              <span className="text-[#D6F4FF] font-mono text-sm">
+              <span className="text-primary font-mono text-sm">
                 {stats.experience.level}
               </span>
             </div>
-            <span className="text-[#D6F4FF] font-mono text-xs">
+            <span className="text-primary font-mono text-xs">
               {stats.experience.current.toLocaleString()}/{stats.experience.max.toLocaleString()} XP
             </span>
           </div>
@@ -101,7 +101,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center">
               <Calendar className="h-4 w-4 text-primary mr-1" />
-              <h3 className="font-orbitron text-[#D6F4FF] text-xs">STREAK</h3>
+              <h3 className="font-orbitron text-primary text-xs">STREAK</h3>
             </div>
           </div>
           <div className="progress-bar progress-streak h-1.5 mb-1">
@@ -109,12 +109,12 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           </div>
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-1.5">
-              <span className="text-[#D6F4FF] font-mono text-sm">
+              <span className="text-primary font-mono text-sm">
                 {stats.streakDays}
               </span>
             </div>
-            <span className="text-[#D6F4FF] font-mono text-xs">
-              {stats.streakDays} <span className="text-[#7DAAB2]">days</span>
+            <span className="text-primary font-mono text-xs">
+              {stats.streakDays} <span className="text-primary/60">days</span>
             </span>
           </div>
         </div>
@@ -146,15 +146,15 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center">
               <BarChart className="h-3 w-3 text-primary mr-1" />
-              <h3 className="text-xs font-orbitron text-[#D6F4FF]">EFFICIENCY</h3>
+              <h3 className="text-xs font-orbitron text-primary">EFFICIENCY</h3>
             </div>
           </div>
           <div className="progress-bar progress-efficiency h-1.5 mb-1">
             <div className="progress-fill" style={{ width: `${efficiencyPercentage}%`, backgroundColor: "var(--primary)" }}></div>
           </div>
           <div className="flex justify-between">
-            <span className="text-[#D6F4FF] font-mono text-xs">
-              {efficiencyPercentage}<span className="text-[#7DAAB2] text-xs">%</span>
+            <span className="text-primary font-mono text-xs">
+              {efficiencyPercentage}<span className="text-primary/60 text-xs">%</span>
             </span>
           </div>
         </div>
@@ -183,15 +183,15 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center">
               <BrainCircuit className="h-3 w-3 text-primary mr-1" />
-              <h3 className="text-xs font-orbitron text-[#D6F4FF]">ATTENTION</h3>
+              <h3 className="text-xs font-orbitron text-primary">ATTENTION</h3>
             </div>
           </div>
           <div className="progress-bar progress-at h-1.5 mb-1">
             <div className="progress-fill" style={{ width: `${atPercentage}%`, backgroundColor: "var(--primary)" }}></div>
           </div>
           <div className="flex justify-between">
-            <span className="text-[#D6F4FF] font-mono text-xs">
-              {Math.round(atPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
+            <span className="text-primary font-mono text-xs">
+              {Math.round(atPercentage)}<span className="text-primary/60 text-xs">%</span>
             </span>
           </div>
         </div>
@@ -220,15 +220,15 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center">
               <Clock className="h-3 w-3 text-primary mr-1" />
-              <h3 className="text-xs font-orbitron text-[#D6F4FF]">TIME</h3>
+              <h3 className="text-xs font-orbitron text-primary">TIME</h3>
             </div>
           </div>
           <div className="progress-bar progress-tt h-1.5 mb-1">
             <div className="progress-fill" style={{ width: `${ttPercentage}%`, backgroundColor: "var(--primary)" }}></div>
           </div>
           <div className="flex justify-between">
-            <span className="text-[#D6F4FF] font-mono text-xs">
-              {Math.round(ttPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
+            <span className="text-primary font-mono text-xs">
+              {Math.round(ttPercentage)}<span className="text-primary/60 text-xs">%</span>
             </span>
           </div>
         </div>
@@ -257,15 +257,15 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center">
               <Zap className="h-3 w-3 text-primary mr-1" />
-              <h3 className="text-xs font-orbitron text-[#D6F4FF]">ENERGY</h3>
+              <h3 className="text-xs font-orbitron text-primary">ENERGY</h3>
             </div>
           </div>
           <div className="progress-bar progress-ep h-1.5 mb-1">
             <div className="progress-fill" style={{ width: `${epPercentage}%`, backgroundColor: "var(--primary)" }}></div>
           </div>
           <div className="flex justify-between">
-            <span className="text-[#D6F4FF] font-mono text-xs">
-              {Math.round(epPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
+            <span className="text-primary font-mono text-xs">
+              {Math.round(epPercentage)}<span className="text-primary/60 text-xs">%</span>
             </span>
           </div>
         </div>
@@ -294,15 +294,15 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center">
               <Heart className="h-3 w-3 text-primary mr-1" />
-              <h3 className="text-xs font-orbitron text-[#D6F4FF]">HEALTH</h3>
+              <h3 className="text-xs font-orbitron text-primary">HEALTH</h3>
             </div>
           </div>
           <div className="progress-bar progress-hp h-1.5 mb-1">
             <div className="progress-fill" style={{ width: `${hpPercentage}%`, backgroundColor: "var(--primary)" }}></div>
           </div>
           <div className="flex justify-between">
-            <span className="text-[#D6F4FF] font-mono text-xs">
-              {Math.round(hpPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
+            <span className="text-primary font-mono text-xs">
+              {Math.round(hpPercentage)}<span className="text-primary/60 text-xs">%</span>
             </span>
           </div>
         </div>
@@ -331,15 +331,15 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center">
               <Coins className="h-3 w-3 text-primary mr-1" />
-              <h3 className="text-xs font-orbitron text-[#D6F4FF]">WEALTH</h3>
+              <h3 className="text-xs font-orbitron text-primary">WEALTH</h3>
             </div>
           </div>
           <div className="progress-bar progress-wp h-1.5 mb-1">
             <div className="progress-fill" style={{ width: `${wpPercentage}%`, backgroundColor: "var(--primary)" }}></div>
           </div>
           <div className="flex justify-between">
-            <span className="text-[#D6F4FF] font-mono text-xs">
-              {Math.round(wpPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
+            <span className="text-primary font-mono text-xs">
+              {Math.round(wpPercentage)}<span className="text-primary/60 text-xs">%</span>
             </span>
           </div>
         </div>

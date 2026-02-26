@@ -90,7 +90,7 @@ export default function ExperienceBar({
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center">
           <Award className="h-5 w-5 mr-2" style={{ color: primaryColor }} />
-          <h3 className="font-orbitron text-[#D6F4FF]">LEVEL PROGRESS</h3>
+          <h3 className="font-orbitron text-primary">LEVEL PROGRESS</h3>
         </div>
         <div className="flex items-center gap-2">
           <motion.span 
@@ -129,12 +129,12 @@ export default function ExperienceBar({
       </motion.div>
       
       <div className="flex justify-between text-xs">
-        <span className="text-[#7DAAB2]">{current.toLocaleString()} XP</span>
-        <span className="text-[#7DAAB2]">{max.toLocaleString()} XP</span>
+        <span className="text-primary/60">{current.toLocaleString()} XP</span>
+        <span className="text-primary/60">{max.toLocaleString()} XP</span>
       </div>
       
       {totalXP !== undefined && (
-        <div className="text-xs text-right mt-1 text-[#7DAAB2]">
+        <div className="text-xs text-right mt-1 text-primary/60">
           Total: {totalXP.toLocaleString()} XP
         </div>
       )}

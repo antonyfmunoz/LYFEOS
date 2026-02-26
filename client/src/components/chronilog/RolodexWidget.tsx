@@ -177,7 +177,7 @@ export default function RolodexWidget() {
                       </div>
 
                       {(currentContact.jobTitle || currentContact.company) && (
-                        <div className="flex items-center gap-1.5 text-xs text-[#7DAAB2] mb-2">
+                        <div className="flex items-center gap-1.5 text-xs text-primary/60 mb-2">
                           <Briefcase className="h-3 w-3 flex-shrink-0" />
                           <span className="truncate">
                             {currentContact.jobTitle}{currentContact.jobTitle && currentContact.company ? ' at ' : ''}{currentContact.company}

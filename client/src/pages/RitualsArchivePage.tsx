@@ -152,7 +152,7 @@ export default function RitualsArchivePage() {
       <div className="mb-6 flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-orbitron mb-1">Rituals Archive</h1>
-          <p className="text-[#7DAAB2]">Document your daily, weekly, and monthly practices</p>
+          <p className="text-primary/60">Document your daily, weekly, and monthly practices</p>
         </div>
         <Button 
           onClick={createNewRitual}
@@ -182,7 +182,7 @@ export default function RitualsArchivePage() {
                     <h2 className="text-lg font-medium">{category.title}</h2>
                   </div>
                 </div>
-                <span className="text-xs text-[#7DAAB2] px-2 py-1 bg-slate-800/50 rounded-full">
+                <span className="text-xs text-primary/60 px-2 py-1 bg-slate-800/50 rounded-full">
                   {category.entries.length} {category.entries.length === 1 ? 'ritual' : 'rituals'}
                 </span>
               </div>
@@ -204,8 +204,8 @@ export default function RitualsArchivePage() {
                               <h3 className="font-medium">{entry.title}</h3>
                             </div>
                             <div className="flex items-center">
-                              <Clock className="h-3 w-3 mr-1 text-[#7DAAB2]" />
-                              <span className="text-xs text-[#7DAAB2] font-mono">
+                              <Clock className="h-3 w-3 mr-1 text-primary/60" />
+                              <span className="text-xs text-primary/60 font-mono">
                                 {new Date(entry.updatedAt).toLocaleDateString()}
                               </span>
                             </div>
@@ -221,7 +221,7 @@ export default function RitualsArchivePage() {
                             ))}
                           </div>
                           
-                          <p className="text-sm text-[#7DAAB2] line-clamp-2">
+                          <p className="text-sm text-primary/60 line-clamp-2">
                             {entry.content.length > 150 
                               ? entry.content.substring(0, 150) + '...' 
                               : entry.content}
@@ -230,7 +230,7 @@ export default function RitualsArchivePage() {
                       ))
                   ) : (
                     <div className="text-center py-6">
-                      <p className="text-[#7DAAB2]">No {category.frequency} rituals found.</p>
+                      <p className="text-primary/60">No {category.frequency} rituals found.</p>
                     </div>
                   )}
                 </div>
@@ -242,7 +242,7 @@ export default function RitualsArchivePage() {
         <div className="text-center py-16 glassmorphic rounded-xl border border-primary/20 flex flex-col items-center justify-center">
           <Archive className="h-16 w-16 text-primary/40 mb-4" />
           <h3 className="text-xl font-medium mb-2">No Rituals Yet</h3>
-          <p className="text-[#7DAAB2] mb-4 max-w-md">
+          <p className="text-primary/60 mb-4 max-w-md">
             Start documenting your daily, weekly, and monthly rituals to maintain balance and build positive habits.
           </p>
           <Button 

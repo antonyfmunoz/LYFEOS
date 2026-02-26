@@ -1072,11 +1072,11 @@ export default function DashboardPage() {
   ) => (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
-        <label className="text-sm flex items-center text-[#7DAAB2]">
+        <label className="text-sm flex items-center text-primary/60">
           {icon}
           <span className="ml-2">{label}</span>
         </label>
-        <span className="text-[#D6F4FF] font-mono">{state}/10</span>
+        <span className="text-primary font-mono">{state}/10</span>
       </div>
       <div className="flex gap-0.5">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
@@ -1160,7 +1160,7 @@ export default function DashboardPage() {
           <div className="space-y-4">
             {promptFields.map(({ key, icon: Icon, placeholder }) => (
               <div key={key} className="space-y-2">
-                <div className="text-sm flex items-center text-[#7DAAB2]">
+                <div className="text-sm flex items-center text-primary/60">
                   <Icon className="h-4 w-4 text-primary" />
                   {editingPrompt === key ? (
                     <div className="ml-2 flex items-center gap-1 flex-1">
@@ -1222,7 +1222,7 @@ export default function DashboardPage() {
         return (
           <div className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm flex items-center text-[#7DAAB2]">
+              <label className="text-sm flex items-center text-primary/60">
                 <Brain className="h-4 w-4 text-primary" />
                 <span className="ml-2">Today's Thoughts</span>
               </label>
@@ -1236,7 +1236,7 @@ export default function DashboardPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm flex items-center text-[#7DAAB2]">
+              <label className="text-sm flex items-center text-primary/60">
                 <Book className="h-4 w-4 text-primary" />
                 <span className="ml-2">Information Consumed</span>
               </label>
@@ -1250,7 +1250,7 @@ export default function DashboardPage() {
             </div>
             
             <div className="space-y-2">
-              <label className="text-sm flex items-center text-[#7DAAB2]">
+              <label className="text-sm flex items-center text-primary/60">
                 <ListChecks className="h-4 w-4 text-primary" />
                 <span className="ml-2">To-Do Ideas</span>
               </label>
@@ -1334,7 +1334,7 @@ export default function DashboardPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm flex items-center text-[#7DAAB2]">
+              <label className="text-sm flex items-center text-primary/60">
                 <BookOpen className="h-4 w-4 text-primary" />
                 <span className="ml-2">Source Author</span>
               </label>
@@ -1349,7 +1349,7 @@ export default function DashboardPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm flex items-center text-[#7DAAB2]">
+              <label className="text-sm flex items-center text-primary/60">
                 <Link2 className="h-4 w-4 text-primary" />
                 <span className="ml-2">Source Material</span>
               </label>
@@ -1367,7 +1367,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={() => toggleNoteCollapse('researchNote')}
-                className="text-sm flex items-center text-[#7DAAB2] w-full cursor-pointer hover:text-primary transition-colors"
+                className="text-sm flex items-center text-primary/60 w-full cursor-pointer hover:text-primary transition-colors"
               >
                 <Search className="h-4 w-4 text-primary" />
                 <span className="ml-2 flex-1 text-left">Research Note</span>
@@ -1388,7 +1388,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={() => toggleNoteCollapse('revisionNote')}
-                className="text-sm flex items-center text-[#7DAAB2] w-full cursor-pointer hover:text-primary transition-colors"
+                className="text-sm flex items-center text-primary/60 w-full cursor-pointer hover:text-primary transition-colors"
               >
                 <FileText className="h-4 w-4 text-primary" />
                 <span className="ml-2 flex-1 text-left">Summary Note</span>
@@ -1409,7 +1409,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={() => toggleNoteCollapse('executionNote')}
-                className="text-sm flex items-center text-[#7DAAB2] w-full cursor-pointer hover:text-primary transition-colors"
+                className="text-sm flex items-center text-primary/60 w-full cursor-pointer hover:text-primary transition-colors"
               >
                 <Play className="h-4 w-4 text-primary" />
                 <span className="ml-2 flex-1 text-left">Execution Note</span>
@@ -1431,7 +1431,7 @@ export default function DashboardPage() {
         return (
           <div className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm flex items-center text-[#7DAAB2]">
+              <label className="text-sm flex items-center text-primary/60">
                 <Smile className="h-4 w-4 text-primary" />
                 <span className="ml-2">Gratitude</span>
               </label>
@@ -1447,7 +1447,7 @@ export default function DashboardPage() {
             </div>
             
             <div className="space-y-2">
-              <label className="text-sm flex items-center text-[#7DAAB2]">
+              <label className="text-sm flex items-center text-primary/60">
                 <ListChecks className="h-4 w-4 text-primary" />
                 <span className="ml-2">Tomorrow's Goals</span>
               </label>
@@ -1463,7 +1463,7 @@ export default function DashboardPage() {
             </div>
             
             <div className="space-y-2">
-              <label className="text-sm flex items-center text-[#7DAAB2]">
+              <label className="text-sm flex items-center text-primary/60">
                 <TargetIcon className="h-4 w-4 text-primary" />
                 <span className="ml-2">Annual Goals</span>
               </label>
@@ -1625,11 +1625,11 @@ export default function DashboardPage() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
               <div className="flex items-center">
                 <CalendarDays className="h-5 w-5 text-primary mr-2" />
-                <h1 className="text-xl sm:text-2xl font-orbitron text-[#D6F4FF]">{formattedDate}</h1>
+                <h1 className="text-xl sm:text-2xl font-orbitron text-primary">{formattedDate}</h1>
               </div>
               <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                <Clock className="h-4 w-4 text-[#7DAAB2] mr-2" />
-                <span className="text-[#7DAAB2] font-mono">{formattedTime}</span>
+                <Clock className="h-4 w-4 text-primary/60 mr-2" />
+                <span className="text-primary/60 font-mono">{formattedTime}</span>
                 
                 <TimezoneSelector timezone={timezone} setTimezone={setTimezone} />
                 

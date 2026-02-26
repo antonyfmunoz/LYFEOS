@@ -274,7 +274,7 @@ export function MarkdownEditor({
             onChange={handleInput}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            className="w-full p-3 bg-transparent resize-none outline-none border-none rounded-md placeholder:text-muted-foreground/50 dark:text-[#D6F4FF] light:text-slate-700 text-base overflow-hidden"
+            className="w-full p-3 bg-transparent resize-none outline-none border-none rounded-md placeholder:text-muted-foreground/50 dark:text-primary light:text-slate-700 text-base overflow-hidden"
             placeholder={placeholder}
             style={{ minHeight }}
           />
@@ -295,7 +295,7 @@ export function MarkdownEditor({
               <Save size={14} />
             </button>
           </div>
-          <div className="absolute bottom-2 right-2 text-xs dark:text-[#7DAAB2]/50 light:text-slate-400/80">
+          <div className="absolute bottom-2 right-2 text-xs dark:text-primary/60/50 light:text-slate-400/80">
             Ctrl+Enter or Esc to save
           </div>
         </div>
@@ -303,7 +303,7 @@ export function MarkdownEditor({
         <div className="relative rounded-md border border-primary/30 bg-background overflow-hidden" style={{ height: minHeight }}>
           <div className="p-3 cursor-default h-full" onDoubleClick={handleDoubleClick}>
             {value ? (
-              <ObsidianMarkdown className="dark:text-[#D6F4FF] light:text-slate-700 [&_p:first-of-type]:mt-0 [&_ul:first-of-type]:mt-0 [&_ol:first-of-type]:mt-0 [&_h1:first-of-type]:mt-0 [&_h2:first-of-type]:mt-0 [&_h3:first-of-type]:mt-0">
+              <ObsidianMarkdown className="dark:text-primary light:text-slate-700 [&_p:first-of-type]:mt-0 [&_ul:first-of-type]:mt-0 [&_ol:first-of-type]:mt-0 [&_h1:first-of-type]:mt-0 [&_h2:first-of-type]:mt-0 [&_h3:first-of-type]:mt-0">
                 {value}
               </ObsidianMarkdown>
             ) : (

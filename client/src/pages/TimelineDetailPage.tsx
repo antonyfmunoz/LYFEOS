@@ -350,7 +350,7 @@ export default function TimelineDetailPage() {
         </Button>
         <div>
           <h1 className="text-2xl font-orbitron mb-1">{item.title}</h1>
-          <p className="text-[#7DAAB2]">Timeline item details</p>
+          <p className="text-primary/60">Timeline item details</p>
         </div>
       </div>
       
@@ -369,7 +369,7 @@ export default function TimelineDetailPage() {
           </div>
           <div>
             <div className="flex items-center">
-              <h2 className="text-xl font-orbitron text-[#D6F4FF]">{item.title}</h2>
+              <h2 className="text-xl font-orbitron text-primary">{item.title}</h2>
               <span 
                 className="text-xs px-2 py-0.5 rounded ml-3 flex items-center"
                 style={{ 
@@ -380,7 +380,7 @@ export default function TimelineDetailPage() {
                 {item.type}
               </span>
             </div>
-            <p className="text-xs text-[#7DAAB2]">Recorded on {item.date}</p>
+            <p className="text-xs text-primary/60">Recorded on {item.date}</p>
           </div>
         </div>
         

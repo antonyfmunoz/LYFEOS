@@ -68,7 +68,7 @@ code {
   font-family: 'Orbitron', sans-serif;
   margin-top: 1.5em;
   margin-bottom: 0.75em;
-  color: #D6F4FF;
+  color: hsl(var(--primary));
 }
 
 .markdown-preview h1 {

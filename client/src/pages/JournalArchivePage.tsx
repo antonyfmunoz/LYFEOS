@@ -101,7 +101,7 @@ function LogSection({ icon: Icon, title, fields }: { icon: any; title: string; f
         <div className="space-y-3 pl-2">
           {fields.map(({ label, value, labelIcon }) => (
             <div key={label} className="pl-6">
-              <p className="text-xs text-[#7DAAB2] mb-1 flex items-center gap-1">
+              <p className="text-xs text-primary/60 mb-1 flex items-center gap-1">
                 {labelIcon}
                 {label}
               </p>
@@ -391,7 +391,7 @@ export default function JournalArchivePage() {
       
       <div className="mb-6">
         <h1 className="text-2xl font-orbitron mb-1">Journal</h1>
-        <p className="text-[#7DAAB2]">Your daily logs organized by date - energy, intentions, data, and reflections</p>
+        <p className="text-primary/60">Your daily logs organized by date - energy, intentions, data, and reflections</p>
       </div>
       
       {isLoading ? (
@@ -512,7 +512,7 @@ export default function JournalArchivePage() {
         <div className="text-center py-16 glassmorphic rounded-xl border border-primary/20 flex flex-col items-center justify-center">
           <Archive className="h-16 w-16 text-primary/40 mb-4" />
           <h3 className="text-xl font-medium mb-2">No Journal Entries Yet</h3>
-          <p className="text-[#7DAAB2] mb-4 max-w-md">
+          <p className="text-primary/60 mb-4 max-w-md">
             Start documenting your journey by filling out your daily logs on the dashboard.
             They will be automatically archived here.
           </p>

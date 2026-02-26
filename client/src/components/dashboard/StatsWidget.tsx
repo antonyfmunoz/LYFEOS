@@ -45,7 +45,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
               <Award className="h-4 w-4 text-primary mr-2" /> {/* Using primary theme color */}
-              <h3 className="font-orbitron text-[#D6F4FF] text-sm">LEVEL PROGRESS</h3>
+              <h3 className="font-orbitron text-primary text-sm">LEVEL PROGRESS</h3>
             </div>
             <div className="flex items-center mr-6">
               <span className="bg-primary/20 text-primary px-2 py-1 rounded-md text-xs font-orbitron mr-2">
@@ -58,8 +58,8 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <div className="progress-fill" style={{ width: `${xpPercentage}%`, background: 'linear-gradient(to right, var(--primary-70), var(--primary))' }}></div>
           </div>
           <div className="flex justify-between text-xs">
-            <span className="text-[#7DAAB2]">{stats.experience.current.toLocaleString()} XP</span>
-            <span className="text-[#7DAAB2]">{stats.experience.max.toLocaleString()} XP</span>
+            <span className="text-primary/60">{stats.experience.current.toLocaleString()} XP</span>
+            <span className="text-primary/60">{stats.experience.max.toLocaleString()} XP</span>
           </div>
           {stats.experience.totalXP !== undefined && (
             <div className="text-xs text-right mt-1 text-primary/70">
@@ -93,7 +93,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
                 <Calendar className="h-4 w-4 text-primary mr-2" />
-                <h3 className="text-sm font-orbitron text-[#D6F4FF]">STREAK</h3>
+                <h3 className="text-sm font-orbitron text-primary">STREAK</h3>
               </div>
               <div className="mr-6">
                 <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -106,10 +106,10 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               ></div>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#D6F4FF] font-mono text-base">
-                {stats.streakDays}<span className="text-[#7DAAB2] text-xs"> days</span>
+              <span className="text-primary font-mono text-base">
+                {stats.streakDays}<span className="text-primary/60 text-xs"> days</span>
               </span>
-              <span className="text-xs text-[#7DAAB2] self-end">consecutive</span>
+              <span className="text-xs text-primary/60 self-end">consecutive</span>
             </div>
           </div>
         </Link>
@@ -136,7 +136,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
                 <BarChart className="h-4 w-4 text-primary mr-2" />
-                <h3 className="text-sm font-orbitron text-[#D6F4FF]">EFFICIENCY</h3>
+                <h3 className="text-sm font-orbitron text-primary">EFFICIENCY</h3>
               </div>
               <div className="mr-6">
                 <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -149,10 +149,10 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               ></div>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#D6F4FF] font-mono text-base">
-                {efficiencyPercentage}<span className="text-[#7DAAB2] text-xs">%</span>
+              <span className="text-primary font-mono text-base">
+                {efficiencyPercentage}<span className="text-primary/60 text-xs">%</span>
               </span>
-              <span className="text-xs text-[#7DAAB2] self-end">optimization</span>
+              <span className="text-xs text-primary/60 self-end">optimization</span>
             </div>
           </div>
         </Link>
@@ -185,7 +185,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
                 <BrainCircuit className="h-4 w-4 text-primary mr-2" />
-                <h3 className="text-sm font-orbitron text-[#D6F4FF]">ATTENTION TOKENS</h3>
+                <h3 className="text-sm font-orbitron text-primary">ATTENTION TOKENS</h3>
               </div>
               <div className="mr-6">
                 <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -195,10 +195,10 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               <div className="progress-fill" style={{ width: `${atPercentage}%` }}></div>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#D6F4FF] font-mono text-base">
-                {Math.round(atPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
+              <span className="text-primary font-mono text-base">
+                {Math.round(atPercentage)}<span className="text-primary/60 text-xs">%</span>
               </span>
-              <span className="text-xs text-[#7DAAB2] self-end">focus</span>
+              <span className="text-xs text-primary/60 self-end">focus</span>
             </div>
           </div>
         </Link>
@@ -225,7 +225,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
                 <Clock className="h-4 w-4 text-primary mr-2" />
-                <h3 className="text-sm font-orbitron text-[#D6F4FF]">TIME TOKENS</h3>
+                <h3 className="text-sm font-orbitron text-primary">TIME TOKENS</h3>
               </div>
               <div className="mr-6">
                 <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -235,10 +235,10 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               <div className="progress-fill" style={{ width: `${ttPercentage}%` }}></div>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#D6F4FF] font-mono text-base">
-                {stats.timeTokens.current}<span className="text-[#7DAAB2] text-xs">/{stats.timeTokens.max}</span>
+              <span className="text-primary font-mono text-base">
+                {stats.timeTokens.current}<span className="text-primary/60 text-xs">/{stats.timeTokens.max}</span>
               </span>
-              <span className="text-xs text-[#7DAAB2] self-end">remaining today</span>
+              <span className="text-xs text-primary/60 self-end">remaining today</span>
             </div>
           </div>
         </Link>
@@ -265,7 +265,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
                 <Zap className="h-4 w-4 text-primary mr-2" />
-                <h3 className="text-sm font-orbitron text-[#D6F4FF]">ENERGY TOKENS</h3>
+                <h3 className="text-sm font-orbitron text-primary">ENERGY TOKENS</h3>
               </div>
               <div className="mr-6">
                 <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -275,10 +275,10 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               <div className="progress-fill" style={{ width: `${epPercentage}%` }}></div>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#D6F4FF] font-mono text-base">
-                {Math.round(epPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
+              <span className="text-primary font-mono text-base">
+                {Math.round(epPercentage)}<span className="text-primary/60 text-xs">%</span>
               </span>
-              <span className="text-xs text-[#7DAAB2] self-end">capacity</span>
+              <span className="text-xs text-primary/60 self-end">capacity</span>
             </div>
           </div>
         </Link>
@@ -305,7 +305,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
                 <Heart className="h-4 w-4 text-primary mr-2" />
-                <h3 className="text-sm font-orbitron text-[#D6F4FF]">HEALTH POINTS</h3>
+                <h3 className="text-sm font-orbitron text-primary">HEALTH POINTS</h3>
               </div>
               <div className="mr-6">
                 <ArrowRight className="h-4 w-4 text-primary/40 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -315,10 +315,10 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
               <div className="progress-fill" style={{ width: `${hpPercentage}%` }}></div>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#D6F4FF] font-mono text-base">
-                {Math.round(hpPercentage)}<span className="text-[#7DAAB2] text-xs">%</span>
+              <span className="text-primary font-mono text-base">
+                {Math.round(hpPercentage)}<span className="text-primary/60 text-xs">%</span>
               </span>
-              <span className="text-xs text-[#7DAAB2] self-end">wellness</span>
+              <span className="text-xs text-primary/60 self-end">wellness</span>
             </div>
           </div>
         </Link>
