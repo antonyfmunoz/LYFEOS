@@ -32,6 +32,11 @@ function isMobileSafari(): boolean {
   return /iPhone|iPad|iPod/i.test(ua) && /Safari/i.test(ua) && !/CriOS|FxiOS|OPiOS|EdgiOS/i.test(ua);
 }
 
+function isStandalonePWA(): boolean {
+  return (navigator as any).standalone === true ||
+    window.matchMedia('(display-mode: standalone)').matches;
+}
+
 function isPopupRecoverableError(error: any): boolean {
   const recoverableCodes = [
     'auth/popup-blocked',
@@ -61,6 +66,34 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
   }
 
   const isApple = isAppleProvider(provider);
+
+  if (isMobileBrowser() && isStandalonePWA()) {
+    console.log(`PWA standalone mode detected, using popup flow for ${providerName}`);
+    try {
+      const result = await signInWithPopup(auth, provider);
+      return result;
+    } catch (popupError: any) {
+      console.error(`${providerName} popup in PWA failed:`, popupError?.code, popupError?.message);
+      if (popupError.code === 'auth/popup-closed-by-user' || popupError.code === 'auth/cancelled-popup-request') {
+        return null;
+      }
+      console.log(`Falling back to redirect for ${providerName} in PWA`);
+      try {
+        localStorage.setItem('lyfeos-oauth-redirect-pending', providerName.toLowerCase());
+        await signInWithRedirect(auth, provider);
+        return null;
+      } catch (redirectError: any) {
+        console.error(`${providerName} redirect also failed in PWA:`, redirectError?.code, redirectError?.message);
+        localStorage.removeItem('lyfeos-oauth-redirect-pending');
+        toast({
+          title: "Login Error",
+          description: `${providerName} sign-in failed: ${redirectError?.message || redirectError?.code || 'Please try again.'}`,
+          variant: "destructive"
+        });
+        return null;
+      }
+    }
+  }
 
   if (isMobileBrowser()) {
     console.log(`Mobile browser detected, using redirect flow directly for ${providerName}`);
