@@ -349,7 +349,7 @@ function Router() {
     <Switch>
       {/* Public routes */}
       <Route path="/login">
-        {isLoading && localStorage.getItem('lyfeos-oauth-mode') && !hasAccess() ? (
+        {isLoading && localStorage.getItem('lyfeos-oauth-mode') ? (
           <OAuthLoadingScreen />
         ) : <LoginPage />}
       </Route>

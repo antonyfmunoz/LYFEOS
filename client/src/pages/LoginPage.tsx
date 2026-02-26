@@ -92,7 +92,7 @@ export default function LoginPage() {
           </div>
         )}
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
           <div className="space-y-2">
             <label htmlFor="identifier" className="block text-sm text-white">USERNAME OR EMAIL</label>
             <Input 
@@ -113,6 +113,7 @@ export default function LoginPage() {
             <Input 
               type="password" 
               id="password"
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full bg-transparent rounded-lg p-3 outline-none text-white"
