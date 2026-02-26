@@ -183,8 +183,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } else {
             console.log("Checking OAuth redirect result for:", redirectPending);
             try {
-              console.log("[OAuth] Waiting 1.5s for Firebase to hydrate from IndexedDB...");
-              await new Promise(r => setTimeout(r, 1500));
+              console.log("[OAuth] Waiting 800ms for Firebase to hydrate from IndexedDB...");
+              await new Promise(r => setTimeout(r, 800));
               console.log("[OAuth] auth.currentUser after hydration wait:", auth.currentUser?.email || null);
 
               const redirectResult = await checkRedirectResult();
@@ -204,9 +204,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 let gotInitialNull = false;
                 firebaseUserFromState = await new Promise<FirebaseUser | null>((resolve) => {
                   const timeout = setTimeout(() => {
-                    console.log("[OAuth] onAuthStateChanged timed out after 8s");
+                    console.log("[OAuth] onAuthStateChanged timed out after 3s");
                     resolve(null);
-                  }, 8000);
+                  }, 3000);
                   const unsub = onAuthStateChanged(auth, (fbUser) => {
                     if (fbUser) {
                       console.log("[OAuth] onAuthStateChanged got user:", fbUser.email);
@@ -222,8 +222,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               }
 
               if (!firebaseUserFromState) {
-                console.log("[OAuth] Still no user, final wait 3s then check auth.currentUser...");
-                await new Promise(r => setTimeout(r, 3000));
+                console.log("[OAuth] Still no user, final wait 1s then check auth.currentUser...");
+                await new Promise(r => setTimeout(r, 1000));
                 firebaseUserFromState = auth.currentUser || firebaseUserRef.current;
                 console.log("[OAuth] Final auth.currentUser check:", firebaseUserFromState?.email || null);
               }
@@ -256,6 +256,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               localStorage.removeItem('lyfeos-oauth-redirect-pending');
               localStorage.removeItem('lyfeos-oauth-mode');
               localStorage.removeItem('lyfeos-oauth-mode-ts');
+              localStorage.removeItem('lyfeos_user');
               toast({
                 title: "Sign-in incomplete",
                 description: "The sign-in process didn't complete. Please try again.",
@@ -412,6 +413,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       navigate("/login-success", { replace: true });
     } catch (error: any) {
       console.error("Login error:", error);
+      localStorage.removeItem("lyfeos_user");
       throw error;
     } finally {
       setIsLoading(false);

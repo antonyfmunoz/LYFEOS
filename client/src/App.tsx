@@ -151,7 +151,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
         const timeout = setTimeout(() => {
           setIsRecoveringSession(false);
-        }, 5000);
+        }, 2500);
 
         fetch("/api/auth/me", { credentials: "include" })
           .then(resp => {
