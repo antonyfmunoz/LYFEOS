@@ -32,6 +32,12 @@ function isMobileSafari(): boolean {
   return /iPhone|iPad|iPod/i.test(ua) && /Safari/i.test(ua) && !/CriOS|FxiOS|OPiOS|EdgiOS/i.test(ua);
 }
 
+function isIOSStandalone(): boolean {
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isStandalone = (navigator as any).standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+  return isIOS && isStandalone;
+}
+
 function isPopupRecoverableError(error: any): boolean {
   const recoverableCodes = [
     'auth/popup-blocked',
@@ -61,6 +67,25 @@ async function signInWithProvider(provider: GoogleAuthProvider | OAuthProvider, 
   }
 
   const isApple = isAppleProvider(provider);
+
+  if (isIOSStandalone()) {
+    console.log(`iOS standalone PWA detected, using popup flow for ${providerName}`);
+    try {
+      const result = await signInWithPopup(auth, provider);
+      return result;
+    } catch (error: any) {
+      console.error(`${providerName} popup sign-in error in iOS PWA:`, error?.code, error?.message);
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+        return null;
+      }
+      toast({
+        title: "Login Error",
+        description: `${providerName} sign-in failed. Please try again.`,
+        variant: "destructive"
+      });
+      return null;
+    }
+  }
 
   if (isMobileBrowser()) {
     console.log(`Mobile browser detected, using redirect flow directly for ${providerName}`);
