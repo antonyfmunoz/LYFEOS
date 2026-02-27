@@ -2469,11 +2469,11 @@ export function registerContentRoutes(app: Express): void {
   app.post("/api/ritual-groups", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
-      const { value, label } = req.body;
+      const { value, label, parentGroupValue } = req.body;
       if (!value || !label) {
         return res.status(400).json({ error: "Value and label are required" });
       }
-      const group = await storage.createRitualGroup({ userId, value, label });
+      const group = await storage.createRitualGroup({ userId, value, label, parentGroupValue: parentGroupValue || null });
       res.json(group);
     } catch (error) {
       logger.error("Error creating ritual group:", error);
@@ -2513,12 +2513,13 @@ export function registerContentRoutes(app: Express): void {
     try {
       const userId = req.session.userId!;
       const id = parseInt(req.params.id);
-      const { value, label, description } = req.body;
+      const { value, label, description, parentGroupValue } = req.body;
       if (!value || !label) {
         return res.status(400).json({ error: "Value and label are required" });
       }
-      const updateData: { value?: string; label?: string; description?: string } = { value, label };
+      const updateData: { value?: string; label?: string; description?: string; parentGroupValue?: string | null } = { value, label };
       if (description) updateData.description = description;
+      if (parentGroupValue !== undefined) updateData.parentGroupValue = parentGroupValue || null;
       const updated = await storage.updateRitualGroup(id, userId, updateData);
       if (!updated) {
         return res.status(404).json({ error: "Ritual group not found" });

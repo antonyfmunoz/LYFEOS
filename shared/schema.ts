@@ -1339,6 +1339,7 @@ export const ritualGroups = pgTable("ritual_groups", {
   value: text("value").notNull(),
   label: text("label").notNull(),
   description: text("description"),
+  parentGroupValue: text("parent_group_value"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

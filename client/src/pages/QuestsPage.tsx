@@ -368,7 +368,7 @@ export default function QuestsPage() {
     return [...MISSION_CATEGORIES, ...custom];
   }, [userCategories]);
 
-  interface RitualGroupOption { id: number; value: string; label: string; description?: string | null; }
+  interface RitualGroupOption { id: number; value: string; label: string; description?: string | null; parentGroupValue?: string | null; }
   const DEFAULT_RITUAL_GROUPS = [
     { value: "morning_routine", label: "Morning Routine" },
     { value: "evening_winddown", label: "Evening Wind-down" },
@@ -388,14 +388,26 @@ export default function QuestsPage() {
   }, [customRitualGroupsFromQuery]);
 
   const allRitualGroups = useMemo(() => {
-    return [...DEFAULT_RITUAL_GROUPS, ...customRitualGroups.map(g => ({ value: g.value, label: g.label }))];
+    return [
+      ...DEFAULT_RITUAL_GROUPS.map(g => ({ value: g.value, label: g.label, parentGroupValue: null as string | null })),
+      ...customRitualGroups.map(g => ({ value: g.value, label: g.label, parentGroupValue: g.parentGroupValue || null }))
+    ];
   }, [customRitualGroups]);
 
   const [customRitualGroupMode, setCustomRitualGroupMode] = useState<'create' | null>(null);
   const [customRitualGroupInput, setCustomRitualGroupInput] = useState("");
+  const [customRitualGroupParent, setCustomRitualGroupParent] = useState<string>("");
   const [isSavingRitualGroup, setIsSavingRitualGroup] = useState(false);
   const [editingRitualGroupId, setEditingRitualGroupId] = useState<number | null>(null);
   const [editRitualGroupInput, setEditRitualGroupInput] = useState("");
+
+  const topLevelRitualGroups = useMemo(() => {
+    return allRitualGroups.filter(g => !g.parentGroupValue);
+  }, [allRitualGroups]);
+
+  const getChildGroups = useCallback((parentValue: string) => {
+    return allRitualGroups.filter(g => g.parentGroupValue === parentValue);
+  }, [allRitualGroups]);
 
   const handleSaveCustomRitualGroup = async (formType: 'create' | 'edit') => {
     const inputValue = customRitualGroupInput.trim();
@@ -407,13 +419,14 @@ export default function QuestsPage() {
         body: JSON.stringify({ groupName: inputValue }),
       });
       const newValue = inputValue.toLowerCase().replace(/\s+/g, '_');
+      const parentVal = customRitualGroupParent || null;
       const created = await apiRequest<RitualGroupOption>("/api/ritual-groups", {
         method: "POST",
-        body: JSON.stringify({ value: newValue, label: inputValue, description: descResult.description }),
+        body: JSON.stringify({ value: newValue, label: inputValue, description: descResult.description, parentGroupValue: parentVal }),
       });
       const newEntry: RitualGroupOption = created && typeof created === 'object' && 'id' in created
         ? created
-        : { id: Date.now(), value: newValue, label: inputValue, description: descResult.description };
+        : { id: Date.now(), value: newValue, label: inputValue, description: descResult.description, parentGroupValue: parentVal };
       setLocalRitualGroupOverrides([...customRitualGroups, newEntry]);
       if (formType === 'create') {
         setCreateFormData(prev => ({ ...prev, ritualGroup: newValue }));
@@ -422,6 +435,7 @@ export default function QuestsPage() {
       }
       setCustomRitualGroupMode(null);
       setCustomRitualGroupInput("");
+      setCustomRitualGroupParent("");
       queryClient.invalidateQueries({ queryKey: ['/api/ritual-groups'] });
     } catch (error) {
       console.error("Failed to save ritual group:", error);
@@ -1120,37 +1134,72 @@ export default function QuestsPage() {
     setRitualGroupCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
-  const groupMissionsByRitual = useCallback((missions: Quest[]) => {
-    const grouped: { ritualGroup: string | null; missions: Quest[] }[] = [];
+  interface RitualVisualGroup {
+    ritualGroup: string | null;
+    missions: Quest[];
+    childGroups?: { ritualGroup: string; missions: Quest[] }[];
+  }
+
+  const groupMissionsByRitual = useCallback((missions: Quest[]): RitualVisualGroup[] => {
     const groupMap = new Map<string, Quest[]>();
-    const ungrouped: Quest[] = [];
     missions.forEach(q => {
       const rg = (q as any).ritualGroup as string | null | undefined;
       if (rg) {
         if (!groupMap.has(rg)) groupMap.set(rg, []);
         groupMap.get(rg)!.push(q);
-      } else {
-        ungrouped.push(q);
       }
     });
+
+    const childToParent = new Map<string, string>();
+    const parentToChildren = new Map<string, string[]>();
+    allRitualGroups.forEach(g => {
+      if (g.parentGroupValue) {
+        childToParent.set(g.value, g.parentGroupValue);
+        const siblings = parentToChildren.get(g.parentGroupValue) || [];
+        siblings.push(g.value);
+        parentToChildren.set(g.parentGroupValue, siblings);
+      }
+    });
+
     const insertionOrder: { type: 'group' | 'single'; key: string; idx: number }[] = [];
     const seenGroups = new Set<string>();
     missions.forEach((q, idx) => {
       const rg = (q as any).ritualGroup as string | null | undefined;
       if (rg && !seenGroups.has(rg)) {
+        const effectiveKey = childToParent.get(rg) || rg;
+        if (!seenGroups.has(effectiveKey)) {
+          seenGroups.add(effectiveKey);
+          insertionOrder.push({ type: 'group', key: effectiveKey, idx });
+        }
         seenGroups.add(rg);
-        insertionOrder.push({ type: 'group', key: rg, idx });
       } else if (!rg) {
         insertionOrder.push({ type: 'single', key: q.id, idx });
       }
     });
+
     return insertionOrder.map(item => {
       if (item.type === 'group') {
-        return { ritualGroup: item.key, missions: groupMap.get(item.key)! };
+        const parentKey = item.key;
+        const childGroupValues = parentToChildren.get(parentKey) || [];
+        const hasChildren = childGroupValues.some(cv => groupMap.has(cv));
+        const parentMissions = groupMap.get(parentKey) || [];
+
+        if (hasChildren) {
+          const childGroups = childGroupValues
+            .filter(cv => groupMap.has(cv))
+            .map(cv => ({ ritualGroup: cv, missions: groupMap.get(cv)! }));
+          return { ritualGroup: parentKey, missions: parentMissions, childGroups };
+        }
+
+        if (parentMissions.length > 0) {
+          return { ritualGroup: parentKey, missions: parentMissions };
+        }
+
+        return { ritualGroup: parentKey, missions: [], childGroups: childGroupValues.filter(cv => groupMap.has(cv)).map(cv => ({ ritualGroup: cv, missions: groupMap.get(cv)! })) };
       }
       return { ritualGroup: null, missions: [missions[item.idx]] };
     });
-  }, []);
+  }, [allRitualGroups]);
 
   const getRitualGroupLabel = useCallback((value: string) => {
     const custom = customRitualGroups.find(g => g.value === value);
@@ -1982,28 +2031,52 @@ export default function QuestsPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__none__">None</SelectItem>
-                          {allRitualGroups.map(g => (
-                            <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
-                          ))}
+                          {topLevelRitualGroups.map(g => {
+                            const children = getChildGroups(g.value);
+                            return [
+                              <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>,
+                              ...children.map(c => (
+                                <SelectItem key={c.value} value={c.value}>
+                                  <span className="pl-4 text-muted-foreground">↳</span> {c.label}
+                                </SelectItem>
+                              ))
+                            ];
+                          })}
                           <SelectItem value="__custom__">+ Add Custom...</SelectItem>
                         </SelectContent>
                       </Select>
                       {customRitualGroupMode === 'create' && (
-                        <div className="flex items-center gap-2 mt-2">
+                        <div className="space-y-2 mt-2">
                           <Input
                             placeholder="Group name..."
                             value={customRitualGroupInput}
                             onChange={(e) => setCustomRitualGroupInput(e.target.value)}
-                            className="bg-background/50 border-primary/30 flex-1"
+                            className="bg-background/50 border-primary/30"
                             disabled={isSavingRitualGroup}
                           />
-                          <Button
-                            size="sm"
-                            onClick={() => handleSaveCustomRitualGroup('create')}
-                            disabled={!customRitualGroupInput.trim() || isSavingRitualGroup}
-                          >
-                            {isSavingRitualGroup ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
-                          </Button>
+                          <Select value={customRitualGroupParent || "__none__"} onValueChange={(val) => setCustomRitualGroupParent(val === "__none__" ? "" : val)}>
+                            <SelectTrigger className="bg-background/50 border-primary/30 h-9">
+                              <SelectValue placeholder="Parent group (optional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">No parent (top-level)</SelectItem>
+                              {topLevelRitualGroups.map(g => (
+                                <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleSaveCustomRitualGroup('create')}
+                              disabled={!customRitualGroupInput.trim() || isSavingRitualGroup}
+                            >
+                              {isSavingRitualGroup ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => { setCustomRitualGroupMode(null); setCustomRitualGroupInput(""); setCustomRitualGroupParent(""); }}>
+                              Cancel
+                            </Button>
+                          </div>
                         </div>
                       )}
                       {editingRitualGroupId && customRitualGroupMode !== 'create' && (
@@ -2600,28 +2673,52 @@ export default function QuestsPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__none__">None</SelectItem>
-                        {allRitualGroups.map(g => (
-                          <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
-                        ))}
+                        {topLevelRitualGroups.map(g => {
+                          const children = getChildGroups(g.value);
+                          return [
+                            <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>,
+                            ...children.map(c => (
+                              <SelectItem key={c.value} value={c.value}>
+                                <span className="pl-4 text-muted-foreground">↳</span> {c.label}
+                              </SelectItem>
+                            ))
+                          ];
+                        })}
                         <SelectItem value="__custom__">+ Add Custom...</SelectItem>
                       </SelectContent>
                     </Select>
                     {customRitualGroupMode === 'create' && (
-                      <div className="flex items-center gap-2 mt-2">
+                      <div className="space-y-2 mt-2">
                         <Input
                           placeholder="Group name..."
                           value={customRitualGroupInput}
                           onChange={(e) => setCustomRitualGroupInput(e.target.value)}
-                          className="bg-background/50 border-primary/30 flex-1"
+                          className="bg-background/50 border-primary/30"
                           disabled={isSavingRitualGroup}
                         />
-                        <Button
-                          size="sm"
-                          onClick={() => handleSaveCustomRitualGroup('edit')}
-                          disabled={!customRitualGroupInput.trim() || isSavingRitualGroup}
-                        >
-                          {isSavingRitualGroup ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
-                        </Button>
+                        <Select value={customRitualGroupParent || "__none__"} onValueChange={(val) => setCustomRitualGroupParent(val === "__none__" ? "" : val)}>
+                          <SelectTrigger className="bg-background/50 border-primary/30 h-9">
+                            <SelectValue placeholder="Parent group (optional)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">No parent (top-level)</SelectItem>
+                            {topLevelRitualGroups.map(g => (
+                              <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleSaveCustomRitualGroup('edit')}
+                            disabled={!customRitualGroupInput.trim() || isSavingRitualGroup}
+                          >
+                            {isSavingRitualGroup ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => { setCustomRitualGroupMode(null); setCustomRitualGroupInput(""); setCustomRitualGroupParent(""); }}>
+                            Cancel
+                          </Button>
+                        </div>
                       </div>
                     )}
                     {editingRitualGroupId && customRitualGroupMode !== 'create' && (
@@ -4232,10 +4329,12 @@ export default function QuestsPage() {
               )}
               {filteredTodayMissions.length > 0 ? (
                 groupMissionsByRitual(filteredTodayMissions).map((group, visualIdx) => {
-                  const missionIds = group.missions.map(q => String(q.id));
+                  const allGroupMissions = [...group.missions, ...(group.childGroups || []).flatMap(cg => cg.missions)];
+                  const missionIds = allGroupMissions.map(q => String(q.id));
                   if (group.ritualGroup) {
                     const groupKey = `today-${group.ritualGroup}`;
                     const isCollapsed = ritualGroupCollapsed[groupKey] !== false;
+                    const totalCount = allGroupMissions.length;
                     return (
                       <DraggableVisualItem key={groupKey} index={visualIdx} section="today" ritualGroup={group.ritualGroup} missionIds={missionIds} onMoveVisualItem={moveVisualItem}>
                         <div className="rounded-lg border border-primary/20 bg-primary/5 overflow-hidden pl-5">
@@ -4248,13 +4347,13 @@ export default function QuestsPage() {
                             <div className="flex items-center gap-2">
                               <Repeat className="h-4 w-4 text-primary" />
                               <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
-                              <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
+                              <span className="text-xs text-muted-foreground ml-1">({totalCount})</span>
                               <div className="ml-auto">
                                 {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
                               </div>
                             </div>
                             {(() => {
-                              const dr = getRitualGroupDateRange(group.missions);
+                              const dr = getRitualGroupDateRange(allGroupMissions);
                               if (!dr) return null;
                               return (
                                 <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 ml-6 flex-wrap">
@@ -4290,12 +4389,66 @@ export default function QuestsPage() {
                                   timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
                                 />
                               ))}
+                              {group.childGroups?.map(child => {
+                                const childKey = `today-${child.ritualGroup}`;
+                                const childCollapsed = ritualGroupCollapsed[childKey] !== false;
+                                return (
+                                  <div key={childKey} className="rounded-lg border border-primary/15 bg-primary/5 overflow-hidden ml-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleRitualGroupCollapsed(childKey)}
+                                      className="w-full px-3 py-1.5 text-left"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <Repeat className="h-3.5 w-3.5 text-primary/70" />
+                                        <span className="text-xs font-mono text-primary capitalize">{getRitualGroupLabel(child.ritualGroup)}</span>
+                                        <span className="text-[10px] text-muted-foreground ml-1">({child.missions.length})</span>
+                                        <div className="ml-auto">
+                                          {childCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-primary/70" /> : <ChevronDown className="h-3.5 w-3.5 text-primary/70" />}
+                                        </div>
+                                      </div>
+                                    </button>
+                                    {!childCollapsed && (
+                                      <div className="px-2 pb-2 space-y-2">
+                                        {child.missions.map((quest, idx) => (
+                                          <QuestItem
+                                            key={quest.id}
+                                            quest={quest}
+                                            index={idx}
+                                            section="today"
+                                            onToggle={() => toggleQuestCompletion(quest.id)}
+                                            onDelete={() => handleDeleteMission(quest)}
+                                            onEdit={() => openEditDialog(quest)}
+                                            onStart={() => handleStartMission(quest)}
+                                            onResume={() => handleResumeMission(quest)}
+                                            onDone={() => handleDoneMission(quest)}
+                                            onRestart={restartMissionTimer}
+                                            elapsedSeconds={missionElapsedTimes[quest.id]}
+                                            breakSeconds={missionBreakTimes[quest.id]}
+                                            isTimerActive={activeTimerQuest?.id === quest.id}
+                                            timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
+                                          />
+                                        ))}
+                                      </div>
+                                    )}
+                                    <div className="px-3 pt-1 pb-2">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); handleDoneGroup(child.missions); }}
+                                        className="text-[10px] font-mono px-1.5 py-0.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
+                                      >
+                                        Done
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                           <div className="px-3 pt-2 pb-3">
                             <button
                               type="button"
-                              onClick={(e) => { e.stopPropagation(); handleDoneGroup(group.missions); }}
+                              onClick={(e) => { e.stopPropagation(); handleDoneGroup(allGroupMissions); }}
                               className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
                               title="Complete all missions in group"
                             >
@@ -4376,10 +4529,12 @@ export default function QuestsPage() {
               <div className="px-4 pb-4 space-y-3">
                 {filteredUpcomingMissions.length > 0 ? (
                   groupMissionsByRitual(filteredUpcomingMissions).map((group, visualIdx) => {
-                    const missionIds = group.missions.map(q => String(q.id));
+                    const allGroupMissions = [...group.missions, ...(group.childGroups || []).flatMap(cg => cg.missions)];
+                    const missionIds = allGroupMissions.map(q => String(q.id));
                     if (group.ritualGroup) {
                       const groupKey = `upcoming-${group.ritualGroup}`;
                       const isCollapsed = ritualGroupCollapsed[groupKey] !== false;
+                      const totalCount = allGroupMissions.length;
                       return (
                         <DraggableVisualItem key={groupKey} index={visualIdx} section="upcoming" ritualGroup={group.ritualGroup} missionIds={missionIds} onMoveVisualItem={moveVisualItem}>
                           <div className="rounded-lg border border-primary/20 bg-primary/5 overflow-hidden pl-5">
@@ -4392,13 +4547,13 @@ export default function QuestsPage() {
                               <div className="flex items-center gap-2">
                                 <Repeat className="h-4 w-4 text-primary" />
                                 <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
-                                <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
+                                <span className="text-xs text-muted-foreground ml-1">({totalCount})</span>
                                 <div className="ml-auto">
                                   {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
                                 </div>
                               </div>
                               {(() => {
-                                const dr = getRitualGroupDateRange(group.missions);
+                                const dr = getRitualGroupDateRange(allGroupMissions);
                                 if (!dr) return null;
                                 return (
                                   <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 ml-6 flex-wrap">
@@ -4434,12 +4589,36 @@ export default function QuestsPage() {
                                     timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
                                   />
                                 ))}
+                                {group.childGroups?.map(child => {
+                                  const childKey = `upcoming-${child.ritualGroup}`;
+                                  const childCollapsed = ritualGroupCollapsed[childKey] !== false;
+                                  return (
+                                    <div key={childKey} className="rounded-lg border border-primary/15 bg-primary/5 overflow-hidden ml-2">
+                                      <button type="button" onClick={() => toggleRitualGroupCollapsed(childKey)} className="w-full px-3 py-1.5 text-left">
+                                        <div className="flex items-center gap-2">
+                                          <Repeat className="h-3.5 w-3.5 text-primary/70" />
+                                          <span className="text-xs font-mono text-primary capitalize">{getRitualGroupLabel(child.ritualGroup)}</span>
+                                          <span className="text-[10px] text-muted-foreground ml-1">({child.missions.length})</span>
+                                          <div className="ml-auto">{childCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-primary/70" /> : <ChevronDown className="h-3.5 w-3.5 text-primary/70" />}</div>
+                                        </div>
+                                      </button>
+                                      {!childCollapsed && (
+                                        <div className="px-2 pb-2 space-y-2">
+                                          {child.missions.map((quest, idx) => (
+                                            <QuestItem key={quest.id} quest={quest} index={idx} section="upcoming" onToggle={() => toggleQuestCompletion(quest.id)} onDelete={() => handleDeleteMission(quest)} onEdit={() => openEditDialog(quest)} onStart={() => handleStartMission(quest)} onResume={() => handleResumeMission(quest)} onDone={() => handleDoneMission(quest)} onRestart={restartMissionTimer} elapsedSeconds={missionElapsedTimes[quest.id]} breakSeconds={missionBreakTimes[quest.id]} isTimerActive={activeTimerQuest?.id === quest.id} timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id} />
+                                          ))}
+                                        </div>
+                                      )}
+                                      <div className="px-3 pt-1 pb-2"><button type="button" onClick={(e) => { e.stopPropagation(); handleDoneGroup(child.missions); }} className="text-[10px] font-mono px-1.5 py-0.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">Done</button></div>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             )}
                             <div className="px-3 pt-2 pb-3">
                               <button
                                 type="button"
-                                onClick={(e) => { e.stopPropagation(); handleDoneGroup(group.missions); }}
+                                onClick={(e) => { e.stopPropagation(); handleDoneGroup(allGroupMissions); }}
                                 className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
                                 title="Complete all missions in group"
                               >
@@ -4520,10 +4699,12 @@ export default function QuestsPage() {
             <div className="px-4 pb-4 space-y-3">
               {filteredCompletedMissions.length > 0 ? (
                 groupMissionsByRitual(filteredCompletedMissions).map((group, visualIdx) => {
-                  const missionIds = group.missions.map(q => String(q.id));
+                  const allGroupMissions = [...group.missions, ...(group.childGroups || []).flatMap(cg => cg.missions)];
+                  const missionIds = allGroupMissions.map(q => String(q.id));
                   if (group.ritualGroup) {
                     const groupKey = `completed-${group.ritualGroup}`;
                     const isCollapsed = ritualGroupCollapsed[groupKey] !== false;
+                    const totalCount = allGroupMissions.length;
                     return (
                       <DraggableVisualItem key={groupKey} index={visualIdx} section="completed" ritualGroup={group.ritualGroup} missionIds={missionIds} onMoveVisualItem={moveVisualItem}>
                         <div className="rounded-lg border border-primary/20 bg-primary/5 overflow-hidden pl-5">
@@ -4536,13 +4717,13 @@ export default function QuestsPage() {
                             <div className="flex items-center gap-2">
                               <Repeat className="h-4 w-4 text-primary" />
                               <span className="text-sm font-mono text-primary capitalize line-through">{getRitualGroupLabel(group.ritualGroup)}</span>
-                              <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
+                              <span className="text-xs text-muted-foreground ml-1">({totalCount})</span>
                               <div className="ml-auto">
                                 {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
                               </div>
                             </div>
                             {(() => {
-                              const dr = getRitualGroupDateRange(group.missions);
+                              const dr = getRitualGroupDateRange(allGroupMissions);
                               if (!dr) return null;
                               return (
                                 <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 ml-6 flex-wrap">
@@ -4573,12 +4754,36 @@ export default function QuestsPage() {
                                   breakSeconds={missionBreakTimes[quest.id]}
                                 />
                               ))}
+                              {group.childGroups?.map(child => {
+                                const childKey = `completed-${child.ritualGroup}`;
+                                const childCollapsed = ritualGroupCollapsed[childKey] !== false;
+                                return (
+                                  <div key={childKey} className="rounded-lg border border-primary/15 bg-primary/5 overflow-hidden ml-2">
+                                    <button type="button" onClick={() => toggleRitualGroupCollapsed(childKey)} className="w-full px-3 py-1.5 text-left">
+                                      <div className="flex items-center gap-2">
+                                        <Repeat className="h-3.5 w-3.5 text-primary/70" />
+                                        <span className="text-xs font-mono text-primary capitalize line-through">{getRitualGroupLabel(child.ritualGroup)}</span>
+                                        <span className="text-[10px] text-muted-foreground ml-1">({child.missions.length})</span>
+                                        <div className="ml-auto">{childCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-primary/70" /> : <ChevronDown className="h-3.5 w-3.5 text-primary/70" />}</div>
+                                      </div>
+                                    </button>
+                                    {!childCollapsed && (
+                                      <div className="px-2 pb-2 space-y-2">
+                                        {child.missions.map((quest, idx) => (
+                                          <QuestItem key={quest.id} quest={quest} index={idx} section="completed" onToggle={() => toggleQuestCompletion(quest.id)} onDelete={() => handleDeleteMission(quest)} onEdit={() => openEditDialog(quest)} onUndo={() => handleUndoMission(quest)} elapsedSeconds={missionElapsedTimes[quest.id]} breakSeconds={missionBreakTimes[quest.id]} />
+                                        ))}
+                                      </div>
+                                    )}
+                                    <div className="px-3 pt-1 pb-2"><button type="button" onClick={(e) => { e.stopPropagation(); handleUndoGroup(child.missions); }} className="text-[10px] font-mono px-1.5 py-0.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1"><Undo2 className="h-2.5 w-2.5" />Undo</button></div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                           <div className="px-3 pt-2 pb-3">
                             <button
                               type="button"
-                              onClick={(e) => { e.stopPropagation(); handleUndoGroup(group.missions); }}
+                              onClick={(e) => { e.stopPropagation(); handleUndoGroup(allGroupMissions); }}
                               className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1.5"
                               title="Undo all missions in group"
                             >
@@ -4652,10 +4857,12 @@ export default function QuestsPage() {
             <CollapsibleContent>
               <div className="px-4 pb-4 space-y-3">
                 {groupMissionsByRitual(filteredInboxMissions).map((group, visualIdx) => {
-                  const missionIds = group.missions.map(q => String(q.id));
+                  const allGroupMissions = [...group.missions, ...(group.childGroups || []).flatMap(cg => cg.missions)];
+                  const missionIds = allGroupMissions.map(q => String(q.id));
                   if (group.ritualGroup) {
                     const groupKey = `inbox-${group.ritualGroup}`;
                     const isCollapsed = ritualGroupCollapsed[groupKey] !== false;
+                    const totalCount = allGroupMissions.length;
                     return (
                       <DraggableVisualItem key={groupKey} index={visualIdx} section="inbox" ritualGroup={group.ritualGroup} missionIds={missionIds} onMoveVisualItem={moveVisualItem}>
                         <div className="rounded-lg border border-primary/20 bg-primary/5 overflow-hidden pl-5">
@@ -4668,13 +4875,13 @@ export default function QuestsPage() {
                             <div className="flex items-center gap-2">
                               <Repeat className="h-4 w-4 text-primary" />
                               <span className="text-sm font-mono text-primary capitalize">{getRitualGroupLabel(group.ritualGroup)}</span>
-                              <span className="text-xs text-muted-foreground ml-1">({group.missions.length})</span>
+                              <span className="text-xs text-muted-foreground ml-1">({totalCount})</span>
                               <div className="ml-auto">
                                 {isCollapsed ? <ChevronRight className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
                               </div>
                             </div>
                             {(() => {
-                              const dr = getRitualGroupDateRange(group.missions);
+                              const dr = getRitualGroupDateRange(allGroupMissions);
                               if (!dr) return null;
                               return (
                                 <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 ml-6 flex-wrap">
@@ -4710,12 +4917,36 @@ export default function QuestsPage() {
                                   timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id}
                                 />
                               ))}
+                              {group.childGroups?.map(child => {
+                                const childKey = `inbox-${child.ritualGroup}`;
+                                const childCollapsed = ritualGroupCollapsed[childKey] !== false;
+                                return (
+                                  <div key={childKey} className="rounded-lg border border-primary/15 bg-primary/5 overflow-hidden ml-2">
+                                    <button type="button" onClick={() => toggleRitualGroupCollapsed(childKey)} className="w-full px-3 py-1.5 text-left">
+                                      <div className="flex items-center gap-2">
+                                        <Repeat className="h-3.5 w-3.5 text-primary/70" />
+                                        <span className="text-xs font-mono text-primary capitalize">{getRitualGroupLabel(child.ritualGroup)}</span>
+                                        <span className="text-[10px] text-muted-foreground ml-1">({child.missions.length})</span>
+                                        <div className="ml-auto">{childCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-primary/70" /> : <ChevronDown className="h-3.5 w-3.5 text-primary/70" />}</div>
+                                      </div>
+                                    </button>
+                                    {!childCollapsed && (
+                                      <div className="px-2 pb-2 space-y-2">
+                                        {child.missions.map((quest, idx) => (
+                                          <QuestItem key={quest.id} quest={quest} index={idx} section="inbox" onToggle={() => toggleQuestCompletion(quest.id)} onDelete={() => handleDeleteMission(quest)} onEdit={() => openEditDialog(quest)} onStart={() => handleStartMission(quest)} onResume={() => handleResumeMission(quest)} onDone={() => handleDoneMission(quest)} onRestart={restartMissionTimer} elapsedSeconds={missionElapsedTimes[quest.id]} breakSeconds={missionBreakTimes[quest.id]} isTimerActive={activeTimerQuest?.id === quest.id} timerBlocked={!!activeTimerQuest && activeTimerQuest.id !== quest.id} />
+                                        ))}
+                                      </div>
+                                    )}
+                                    <div className="px-3 pt-1 pb-2"><button type="button" onClick={(e) => { e.stopPropagation(); handleDoneGroup(child.missions); }} className="text-[10px] font-mono px-1.5 py-0.5 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors">Done</button></div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                           <div className="px-3 pt-2 pb-3">
                             <button
                               type="button"
-                              onClick={(e) => { e.stopPropagation(); handleDoneGroup(group.missions); }}
+                              onClick={(e) => { e.stopPropagation(); handleDoneGroup(allGroupMissions); }}
                               className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors"
                               title="Complete all missions in group"
                             >
