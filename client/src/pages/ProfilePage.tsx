@@ -67,7 +67,8 @@ import {
   Volume2,
   Calendar,
   Link2,
-  StickyNote
+  StickyNote,
+  Search
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -114,6 +115,7 @@ function IntegrationsSection({ userId }: { userId?: number }) {
     integrations.find((i: any) => i.provider === provider && i.status === "active");
 
   const [togglingProvider, setTogglingProvider] = useState<string | null>(null);
+  const [appSearchQuery, setAppSearchQuery] = useState("");
 
   const toggleIntegration = async (provider: string, providerName: string) => {
     if (!userId) return;
@@ -190,7 +192,17 @@ function IntegrationsSection({ userId }: { userId?: number }) {
       <p className="text-xs text-muted-foreground mb-3">
         Connect external apps to sync your data and enhance your experience.
       </p>
+      <div className="relative mb-3">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+        <Input
+          placeholder="Search apps..."
+          value={appSearchQuery}
+          onChange={(e) => setAppSearchQuery(e.target.value)}
+          className="pl-8 h-8 text-sm bg-card/50 border-primary/10"
+        />
+      </div>
       <div className="space-y-2">
+        {"google".includes(appSearchQuery.toLowerCase()) ? (
         <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg hover:bg-card/70 transition-colors">
           <div className="flex items-center">
             <Calendar className="h-4 w-4 text-primary mr-2" />
@@ -223,8 +235,9 @@ function IntegrationsSection({ userId }: { userId?: number }) {
             </button>
           )}
         </div>
+        ) : null}
 
-        {PLACEHOLDER_PROVIDERS.map(({ provider, name, icon: Icon }) => {
+        {PLACEHOLDER_PROVIDERS.filter(({ name }) => name.toLowerCase().includes(appSearchQuery.toLowerCase())).map(({ provider, name, icon: Icon }) => {
           const isConnected = !!getIntegration(provider);
           const isToggling = togglingProvider === provider;
           return (
