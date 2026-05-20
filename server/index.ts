@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -240,7 +241,7 @@ async function ensureDatabaseSchema() {
     serveStatic(app);
   }
 
-  const port = 5000;
+  const port = process.env.PORT || 5000;
 
   server.once('error', (err: NodeJS.ErrnoException) => {
     log(`Failed to start server: ${err.message}`);
@@ -252,7 +253,7 @@ async function ensureDatabaseSchema() {
     startNotificationScheduler();
   });
 
-  server.listen({ port, host: "0.0.0.0", reusePort: true });
+  server.listen({ port, host: "127.0.0.1" });
 
   const gracefulShutdown = (signal: string) => {
     log(`Received ${signal}, shutting down gracefully...`);
