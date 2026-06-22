@@ -44,10 +44,12 @@ export interface IStorage {
   getUserByPhone(phoneNumber: string): Promise<User | undefined>;
   getUserByIdentifier(identifier: string): Promise<User | undefined>;
   getUserByFirebaseUid(firebaseUid: string): Promise<User | undefined>;
+  getUserByClerkId(clerkId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, userData: Partial<Omit<InsertUser, 'password'>>): Promise<User>;
   updateUserPassword(id: number, password: string): Promise<User>;
   updateUserFirebaseUid(id: number, firebaseUid: string): Promise<User>;
+  updateUserClerkId(id: number, clerkId: string): Promise<User>;
   
   // Stats methods
   getUserStats(userId: number): Promise<UserStats | undefined>;
@@ -321,7 +323,12 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db.select().from(users).where(eq(users.firebaseUid, firebaseUid));
     return user;
   }
-  
+
+  async getUserByClerkId(clerkId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.clerkId, clerkId));
+    return user;
+  }
+
   async updateUserPassword(id: number, password: string): Promise<User> {
     const [updatedUser] = await db
       .update(users)
@@ -335,6 +342,15 @@ export class DatabaseStorage implements IStorage {
     const [updatedUser] = await db
       .update(users)
       .set({ firebaseUid })
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
+  }
+
+  async updateUserClerkId(id: number, clerkId: string): Promise<User> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ clerkId })
       .where(eq(users.id, id))
       .returning();
     return updatedUser;

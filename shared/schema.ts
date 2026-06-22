@@ -22,6 +22,7 @@ export const users = pgTable("users", {
   phoneNumber: text("phone_number"), // Phone number for contact
   authProvider: text("auth_provider").default("email"), // ("email", "google", "apple", "facebook")
   firebaseUid: text("firebase_uid"), // Firebase UID for Firebase-authenticated users
+  clerkId: text("clerk_id").unique(), // Clerk user ID for Clerk-authenticated users
   termsAccepted: boolean("terms_accepted").default(false),
   emailVerified: boolean("email_verified").default(false),
   emailVerificationToken: text("email_verification_token"),
@@ -559,6 +560,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
   phoneNumber: true,
   authProvider: true,
   firebaseUid: true,
+  clerkId: true,
   termsAccepted: true,
   lastLoginAt: true,
   stripeCustomerId: true,
