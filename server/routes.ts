@@ -11,6 +11,10 @@ import { registerWaitlistRoutes } from "./routes/waitlist";
 import { registerGoogleRoutes } from "./routes/google";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok", timestamp: Date.now() });
+  });
+
   registerAuthRoutes(app);
   registerProfileRoutes(app);
   registerQuestRoutes(app);

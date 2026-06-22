@@ -91,10 +91,6 @@ setInterval(() => {
   }
 }, 60000);
 
-app.get("/api/health", (_req: Request, res: Response) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
-});
-
 app.use("/api/auth/register", createRateLimiter(5, 60 * 1000));
 app.use("/api/auth/login", createRateLimiter(10, 60 * 1000));
 app.use("/api/auth/sync-email-verified", createRateLimiter(5, 60 * 1000));
