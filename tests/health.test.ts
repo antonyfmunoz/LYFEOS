@@ -8,8 +8,12 @@ let port: number;
 beforeAll(async () => {
   const app = express();
   // Register the same handler as in server/routes.ts
-  app.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok', timestamp: Date.now(), buildTime: '2026-06-22', uptime: process.uptime() });
+  app.get('/api/health', (req, res) => {
+    const payload: Record<string, any> = { status: 'ok', timestamp: Date.now(), buildTime: '2026-06-22', uptime: process.uptime() };
+    if (req.query.verbose === 'true') {
+      payload.memory = process.memoryUsage();
+    }
+    res.json(payload);
   });
 
   await new Promise<void>((resolve) => {
@@ -49,5 +53,23 @@ describe('Health Check API', () => {
     const res = await fetch(`http://127.0.0.1:${port}/api/health`);
     const data = await res.json();
     expect(Object.keys(data).sort()).toEqual(['buildTime', 'status', 'timestamp', 'uptime']);
+  });
+
+  it('includes memory usage when verbose=true', async () => {
+    const res = await fetch(`http://127.0.0.1:${port}/api/health?verbose=true`);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.status).toBe('ok');
+    expect(data.memory).toBeDefined();
+    expect(typeof data.memory.rss).toBe('number');
+    expect(typeof data.memory.heapTotal).toBe('number');
+    expect(typeof data.memory.heapUsed).toBe('number');
+    expect(typeof data.memory.external).toBe('number');
+  });
+
+  it('does not include memory usage without verbose', async () => {
+    const res = await fetch(`http://127.0.0.1:${port}/api/health`);
+    const data = await res.json();
+    expect(data.memory).toBeUndefined();
   });
 });
