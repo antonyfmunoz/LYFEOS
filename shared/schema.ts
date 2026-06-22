@@ -16,7 +16,8 @@ export const users = pgTable("users", {
   avatarColor: text("avatar_color").default("#00e0ff"),
   title: text("title").default("COMMANDER"),
   profilePicture: text("profile_picture"),
-  
+  avatarUrl: text("avatar_url"),
+
   // New V2 fields
   email: text("email"), // Email (or blank if using OAuth)
   phoneNumber: text("phone_number"), // Phone number for contact
