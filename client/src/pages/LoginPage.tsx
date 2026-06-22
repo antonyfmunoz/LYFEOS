@@ -41,7 +41,7 @@ export default function LoginPage() {
     } catch (err: any) {
       console.error("Login error:", err);
       if (!err?.message) {
-        setError("Login failed. Please check your credentials and try again.");
+        setError("Invalid email or password. Please try again.");
       } else {
         setError(err.message);
       }
