@@ -1,10 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { useLocation } from "wouter";
 import { toast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "./queryClient";
-import { auth } from "./firebase";
-import { signInWithGoogle, signInWithApple, firebaseSignInWithEmail, sendVerificationEmail, checkRedirectResult } from "./firebaseAuth";
-import { User as FirebaseUser, onAuthStateChanged, Auth } from "firebase/auth";
+import { queryClient } from "./queryClient";
+import { useUser, useAuth as useClerkAuth, useClerk, useSignIn, useSignUp } from "@clerk/clerk-react";
 import { applyPrimaryColor } from "./applyPrimaryColor";
 import { getLocalDateString } from "./utils";
 
@@ -26,7 +24,6 @@ interface AuthResponse {
 
 interface AuthContextType {
   user: User | null;
-  firebaseUser: FirebaseUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (identifier: string, password: string) => Promise<void>;
@@ -46,242 +43,51 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [, navigate] = useLocation();
-  
+
+  const { user: clerkUser, isLoaded: clerkUserLoaded } = useUser();
+  const { isSignedIn } = useClerkAuth();
+  const { signOut } = useClerk();
+  const { signIn } = useSignIn();
+  const { signUp } = useSignUp();
+
   const pendingPasswordRef = React.useRef<string | null>(null);
   const setPendingPassword = (password: string) => { pendingPasswordRef.current = password; };
   const getPendingPassword = () => pendingPasswordRef.current;
 
-  // Pre-logout callbacks - called BEFORE logout clears auth to allow saving data
   const preLogoutCallbacksRef = React.useRef<Set<() => Promise<void> | void>>(new Set());
-  
-  const registerPreLogoutCallback = React.useCallback((callback: () => Promise<void> | void) => {
+
+  const registerPreLogoutCallback = useCallback((callback: () => Promise<void> | void) => {
     preLogoutCallbacksRef.current.add(callback);
   }, []);
-  
-  const unregisterPreLogoutCallback = React.useCallback((callback: () => Promise<void> | void) => {
+
+  const unregisterPreLogoutCallback = useCallback((callback: () => Promise<void> | void) => {
     preLogoutCallbacksRef.current.delete(callback);
   }, []);
 
-  const processOAuthResult = async (result: any, mode: 'login' | 'register' = 'login') => {
-    if (!result || !result.user) return;
-    
-    const { displayName, email, uid, photoURL, providerData } = result.user;
-    const provider = providerData?.[0]?.providerId === 'apple.com' ? 'apple' : 'google';
-    console.log("Successfully signed in via OAuth:", { displayName, email, uid, mode, provider });
-    
-    const response = await fetch("/api/auth/firebase", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uid, email, displayName, photoURL, mode, provider }),
-      credentials: "include"
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: "Failed to authenticate" }));
-      if (errorData.code === "ACCOUNT_NOT_REGISTERED") {
-        await auth.signOut();
-        toast({
-          title: "Account Not Found",
-          description: "No account found with this email. Please register first, then you can link your Google account.",
-          variant: "destructive",
-          duration: 6000,
-        });
-        navigate("/register", { replace: true });
-        return;
-      }
-      throw new Error(errorData.error || "Failed to authenticate with server");
-    }
-    
-    const userData = await response.json();
-    
-    if (userData.primaryColor && !userData.isNewUser) {
-      applyPrimaryColor(userData.primaryColor);
-    }
-    
-    setUser(userData.user);
-    localStorage.setItem("lyfeos_user", JSON.stringify(userData.user));
-    
-    if (userData.isNewUser || userData.onboardingCompleted === false) {
-      console.log("New or incomplete onboarding user, redirecting to onboarding. isNewUser:", userData.isNewUser, "onboardingCompleted:", userData.onboardingCompleted);
-      localStorage.removeItem("lyfeos-has-seen-dashboard");
-      localStorage.removeItem("lyfeos-primary-color");
-      localStorage.removeItem("lyfeos-last-primary-color");
-      localStorage.setItem("lyfeos-pending-onboarding", "true");
-      navigate("/onboarding", { replace: true });
-    } else {
-      console.log("Returning OAuth user, using standard login flow");
-      const todayStr = getLocalDateString();
-      queryClient.prefetchQuery({ queryKey: ["/api/profile"] });
-      queryClient.prefetchQuery({
-        queryKey: ['/api/users', userData.user.id, 'daily-logs', todayStr],
-        queryFn: async () => {
-          const response = await fetch(`/api/users/${userData.user.id}/daily-logs?date=${todayStr}`, {
-            credentials: 'include'
-          });
-          if (!response.ok) return { _noData: true, _confirmed: true };
-          const result = await response.json();
-          return result.logs?.[0] || { _noData: true, _confirmed: true };
-        },
-      });
-      queryClient.prefetchQuery({ queryKey: ["/api/users", userData.user.id, "profile"] });
-      queryClient.prefetchQuery({ queryKey: ["/api/account"] });
-      
-      sessionStorage.setItem("login_success_username", userData.user.username || "");
-      sessionStorage.setItem("login_success_new_user", "false");
-      navigate("/login-success", { replace: true });
-    }
-  };
-
-  const firebaseUserRef = React.useRef<FirebaseUser | null>(null);
-
+  // Sync Clerk auth state with server session
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUserData) => {
-      console.log("Firebase auth state changed:", firebaseUserData);
-      setFirebaseUser(firebaseUserData);
-      firebaseUserRef.current = firebaseUserData;
-    });
-    
-    return () => unsubscribe();
-  }, []);
+    if (!clerkUserLoaded) return;
 
-  // Check if the user is logged in on initial load (server-side auth)
-  useEffect(() => {
-    const checkAuth = async () => {
+    const syncAuth = async () => {
       try {
         const cachedUser = localStorage.getItem("lyfeos_user");
         if (cachedUser) {
           try {
             const parsedUser = JSON.parse(cachedUser);
             if (parsedUser && parsedUser.id) {
-              console.log("Using cached user data from localStorage:", parsedUser);
               setUser(parsedUser);
             }
           } catch (e) {
             console.error("Failed to parse cached user data:", e);
           }
         }
-        
-        const staleTs = localStorage.getItem('lyfeos-oauth-mode-ts');
-        if (staleTs && Date.now() - Number(staleTs) > 10 * 60 * 1000) {
-          console.log("Cleaning up stale OAuth state");
-          localStorage.removeItem('lyfeos-oauth-mode');
-          localStorage.removeItem('lyfeos-oauth-mode-ts');
-          localStorage.removeItem('lyfeos-oauth-redirect-pending');
-        }
-        
-        const redirectPending = localStorage.getItem('lyfeos-oauth-redirect-pending');
-        if (redirectPending) {
-          const modeTs = localStorage.getItem('lyfeos-oauth-mode-ts');
-          if (modeTs && Date.now() - Number(modeTs) > 10 * 60 * 1000) {
-            console.log("Stale OAuth mode detected, clearing");
-            localStorage.removeItem('lyfeos-oauth-redirect-pending');
-            localStorage.removeItem('lyfeos-oauth-mode');
-            localStorage.removeItem('lyfeos-oauth-mode-ts');
-          } else {
-            console.log("Checking OAuth redirect result for:", redirectPending);
-            try {
-              console.log("[OAuth] Waiting 800ms for Firebase to hydrate from IndexedDB...");
-              await new Promise(r => setTimeout(r, 800));
-              console.log("[OAuth] auth.currentUser after hydration wait:", auth.currentUser?.email || null);
-
-              const redirectResult = await checkRedirectResult();
-              if (redirectResult && redirectResult.user) {
-                console.log("[OAuth] getRedirectResult succeeded:", redirectResult.user.email);
-                const savedMode = localStorage.getItem('lyfeos-oauth-mode') as 'login' | 'register' | null;
-                localStorage.removeItem('lyfeos-oauth-mode');
-                localStorage.removeItem('lyfeos-oauth-mode-ts');
-                await processOAuthResult(redirectResult, savedMode || 'login');
-                return;
-              }
-              
-              console.log("[OAuth] getRedirectResult returned null, trying onAuthStateChanged fallback (8s)...");
-              let firebaseUserFromState = auth.currentUser || firebaseUserRef.current;
-
-              if (!firebaseUserFromState) {
-                let gotInitialNull = false;
-                firebaseUserFromState = await new Promise<FirebaseUser | null>((resolve) => {
-                  const timeout = setTimeout(() => {
-                    console.log("[OAuth] onAuthStateChanged timed out after 3s");
-                    resolve(null);
-                  }, 3000);
-                  const unsub = onAuthStateChanged(auth, (fbUser) => {
-                    if (fbUser) {
-                      console.log("[OAuth] onAuthStateChanged got user:", fbUser.email);
-                      clearTimeout(timeout);
-                      unsub();
-                      resolve(fbUser);
-                    } else if (!gotInitialNull) {
-                      gotInitialNull = true;
-                      console.log("[OAuth] onAuthStateChanged initial null, still waiting...");
-                    }
-                  });
-                });
-              }
-
-              if (!firebaseUserFromState) {
-                console.log("[OAuth] Still no user, final wait 1s then check auth.currentUser...");
-                await new Promise(r => setTimeout(r, 1000));
-                firebaseUserFromState = auth.currentUser || firebaseUserRef.current;
-                console.log("[OAuth] Final auth.currentUser check:", firebaseUserFromState?.email || null);
-              }
-
-              if (!firebaseUserFromState) {
-                console.log("[OAuth] Last resort: retry getRedirectResult...");
-                const retryResult = await checkRedirectResult();
-                if (retryResult && retryResult.user) {
-                  console.log("[OAuth] Retry getRedirectResult succeeded:", retryResult.user.email);
-                  const savedMode = localStorage.getItem('lyfeos-oauth-mode') as 'login' | 'register' | null;
-                  localStorage.removeItem('lyfeos-oauth-mode');
-                  localStorage.removeItem('lyfeos-oauth-mode-ts');
-                  await processOAuthResult(retryResult, savedMode || 'login');
-                  return;
-                }
-              }
-              
-              if (firebaseUserFromState) {
-                console.log("[OAuth] Firebase user found via fallback:", firebaseUserFromState.email);
-                const savedMode = localStorage.getItem('lyfeos-oauth-mode') as 'login' | 'register' | null;
-                localStorage.removeItem('lyfeos-oauth-mode');
-                localStorage.removeItem('lyfeos-oauth-mode-ts');
-                localStorage.removeItem('lyfeos-oauth-redirect-pending');
-                const syntheticResult = { user: firebaseUserFromState } as any;
-                await processOAuthResult(syntheticResult, savedMode || 'login');
-                return;
-              }
-              
-              console.log("[OAuth] No Firebase user found after all attempts, giving up");
-              localStorage.removeItem('lyfeos-oauth-redirect-pending');
-              localStorage.removeItem('lyfeos-oauth-mode');
-              localStorage.removeItem('lyfeos-oauth-mode-ts');
-              localStorage.removeItem('lyfeos_user');
-              toast({
-                title: "Sign-in incomplete",
-                description: "The sign-in process didn't complete. Please try again.",
-                variant: "destructive",
-                duration: 5000,
-              });
-            } catch (err: any) {
-              console.error("[OAuth] Redirect processing failed:", err);
-              localStorage.removeItem('lyfeos-oauth-redirect-pending');
-              localStorage.removeItem('lyfeos-oauth-mode');
-              localStorage.removeItem('lyfeos-oauth-mode-ts');
-              toast({
-                title: "Sign-in error",
-                description: err?.message || "Something went wrong during sign-in. Please try again.",
-                variant: "destructive",
-                duration: 5000,
-              });
-            }
-          }
-        }
 
         const response = await fetch("/api/auth/me", {
           credentials: "include"
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           console.log("Server auth check successful, user data:", data.user);
@@ -305,8 +111,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    checkAuth();
-  }, []);
+    syncAuth();
+  }, [clerkUserLoaded, isSignedIn]);
 
   const login = async (identifier: string, password: string) => {
     try {
@@ -317,67 +123,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("lyfeos-onboarding-resume");
       localStorage.removeItem("lyfeos-continued-past-mission0");
       sessionStorage.removeItem("lyfeos-pending-registration");
-      
+
       const trimmedIdentifier = identifier.trim();
-      
+
       if (!trimmedIdentifier || !password) {
         throw new Error("Username, email, or phone number and password are required");
       }
-      
-      // Make the login request with identifier (username, email, or phone)
+
+      if (!signIn) throw new Error("Sign-in not available");
+
+      const result = await signIn.create({
+        identifier: trimmedIdentifier,
+        password,
+      });
+
+      if (result.status !== "complete") {
+        throw new Error("Sign-in requires additional steps");
+      }
+
+      // Sync with server
       const response = await fetch("/api/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          identifier: trimmedIdentifier, 
-          password: password 
-        }),
-        credentials: "include" // Important for maintaining session cookies
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: trimmedIdentifier, password }),
+        credentials: "include",
       });
-      
-      console.log("Login response status:", response.status);
-      
-      // Get the response text first to handle JSON parsing errors
+
       const responseText = await response.text();
-      
-      // Log full response for debugging
-      console.log("Login response body:", responseText);
-      
-      // Attempt to parse the JSON response
-      let data;
+      let data: AuthResponse;
       try {
         data = JSON.parse(responseText) as AuthResponse;
       } catch (e) {
-        console.error("Failed to parse JSON response:", e);
         throw new Error("Invalid server response. Please try again.");
       }
-      
+
       if (!response.ok) {
         throw new Error(data?.error || "Check your username and password");
       }
-      
+
       if (!data || !data.user || !data.user.id) {
         throw new Error("Invalid user data received from server");
       }
-      
-      // Success path
+
       console.log("Login successful, user data:", data.user);
-      
+
       if (data.primaryColor) {
         applyPrimaryColor(data.primaryColor);
       }
-      
-      // Update application state
+
       setUser(data.user);
       localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
       localStorage.removeItem("lyfeos-pending-onboarding");
-      
-      // Wait for session cookie to be fully established before navigating
+
       await new Promise(resolve => setTimeout(resolve, 200));
-      
-      // Verify session is established
+
       try {
         const verifyResponse = await fetch("/api/auth/me", { credentials: "include" });
         if (verifyResponse.ok) {
@@ -387,7 +186,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.warn("Session verification failed, proceeding anyway");
       }
 
-      // Prefetch key data so pages load instantly (keys must match destination page queryKeys)
       const todayStr = getLocalDateString();
       queryClient.prefetchQuery({ queryKey: ["/api/profile"] });
       queryClient.prefetchQuery({
@@ -404,11 +202,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.prefetchQuery({ queryKey: ["/api/users", data.user.id, "profile"] });
       queryClient.prefetchQuery({ queryKey: ["/api/account"] });
 
-      // Store username for the transition page toast
       sessionStorage.setItem("login_success_username", data.user.username || "");
       sessionStorage.setItem("login_success_new_user", data.isNewUser ? "true" : "false");
-      
-      // Navigate to transition page — toast shows there, then auto-redirects
+
       console.log("Navigating to login success transition...");
       navigate("/login-success", { replace: true });
     } catch (error: any) {
@@ -429,9 +225,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("lyfeos-onboarding-resume");
       localStorage.removeItem("lyfeos-continued-past-mission0");
       sessionStorage.removeItem("lyfeos-pending-registration");
-      
+
       const trimmedEmail = email.trim();
-      
+
       if (!trimmedEmail || !password) {
         const error = new Error("Email and password are required");
         toast({
@@ -441,35 +237,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         throw error;
       }
-      
+
+      if (!signUp) throw new Error("Sign-up not available");
+
+      await signUp.create({
+        emailAddress: trimmedEmail,
+        password,
+      });
+
+      // Sync with server
       const response = await fetch("/api/auth/register", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          email: trimmedEmail, 
-          password: password,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: trimmedEmail,
+          password,
           termsAccepted: true,
           ...(extraData || {}),
         }),
-        credentials: "include"
+        credentials: "include",
       });
-      
-      console.log("Register response status:", response.status);
-      
-      // Get the response text first to handle JSON parsing errors
+
       const responseText = await response.text();
-      
-      // Log full response for debugging
-      console.log("Register response body:", responseText);
-      
-      // Attempt to parse the JSON response
-      let data;
+      let data: AuthResponse;
       try {
         data = JSON.parse(responseText) as AuthResponse;
       } catch (e) {
-        console.error("Failed to parse JSON response:", e);
         const error = new Error("Invalid server response. Please try again.");
         toast({
           title: "Registration Error",
@@ -478,7 +271,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         throw error;
       }
-      
+
       if (!response.ok) {
         const errorMessage = data?.error || "Registration failed. Please try again.";
         const error = new Error(errorMessage);
@@ -489,7 +282,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         throw error;
       }
-      
+
       if (!data || !data.user || !data.user.id) {
         const error = new Error("Invalid user data received from server");
         toast({
@@ -499,24 +292,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         throw error;
       }
-      
-      // Success path
+
       console.log("Registration successful, user data:", data.user);
-      
-      // Update application state
+
       setUser(data.user);
       localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
-      
-      // CRITICAL FIX: Wait a moment to ensure the session cookie is properly set
-      // This prevents the immediate redirect that's happening after registration
+
       await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Verify the session is properly established
+
       try {
-        const verifyResponse = await fetch("/api/auth/me", {
-          credentials: "include"
-        });
-        
+        const verifyResponse = await fetch("/api/auth/me", { credentials: "include" });
         if (verifyResponse.ok) {
           console.log("Session verified successfully after registration");
         } else {
@@ -524,34 +309,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (verifyError) {
         console.error("Error verifying session after registration:", verifyError);
-        // Continue despite error - user is already authenticated client-side
-      }
-      
-      // Set loading to false BEFORE navigation so onboarding page renders immediately
-      setIsLoading(false);
-      
-      // Clear widget states for new users so all widgets start open with their defaults
-      localStorage.removeItem("lyfeos-widget-states");
-      
-      if (trimmedEmail && password) {
-        firebaseSignInWithEmail(trimmedEmail, password).then((cred) => {
-          if (cred) {
-            sendVerificationEmail().catch((err) => {
-              console.warn("Failed to send Firebase verification email:", err);
-            });
-          }
-        }).catch((err) => {
-          console.warn("Firebase sign-in after registration failed:", err);
-        });
       }
 
+      setIsLoading(false);
+
+      localStorage.removeItem("lyfeos-widget-states");
       localStorage.setItem("lyfeos-pending-onboarding", "true");
-      
+
       console.log("New user registered, redirecting to onboarding");
       navigate("/onboarding", { replace: true });
     } catch (error: any) {
       console.error("Registration error:", error);
-      // If the error doesn't have a message property, show a generic error
       if (!error.message) {
         toast({
           title: "Registration Error",
@@ -609,9 +377,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       console.log("Logging out user...");
-      
-      // Call all pre-logout callbacks BEFORE clearing auth
-      // This allows components to save their data while the session is still valid
+
       const callbacks = Array.from(preLogoutCallbacksRef.current);
       console.log(`Calling ${callbacks.length} pre-logout callbacks...`);
       for (let i = 0; i < callbacks.length; i++) {
@@ -619,14 +385,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await callbacks[i]();
         } catch (error) {
           console.error("Pre-logout callback error:", error);
-          // Continue with other callbacks even if one fails
         }
       }
       console.log("Pre-logout callbacks completed");
-      
-      // Now clear local state
+
       setUser(null);
-      setFirebaseUser(null);
       queryClient.removeQueries({ queryKey: ["/api/profile"] });
       localStorage.removeItem("lyfeos_user");
       localStorage.removeItem("lyfeos-pending-onboarding");
@@ -637,25 +400,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("lyfeos-onboarding-resume");
       localStorage.removeItem("lyfeos-continued-past-mission0");
       localStorage.removeItem("lyfeos-widget-states");
-      
-      // Sign out from Firebase
+
+      // Sign out from Clerk
       try {
-        await auth.signOut();
+        await signOut();
       } catch (error) {
-        console.error("Firebase sign out error:", error);
-        // Continue with logout process even if Firebase fails
+        console.error("Clerk sign out error:", error);
       }
-      
-      // API call to server to logout - using await for better error handling
+
+      // API call to server to logout
       try {
         const response = await fetch("/api/auth/logout", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include" // Important for session cookie handling
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
         });
-        
+
         if (!response.ok) {
           console.error("Logout request failed with status:", response.status);
         } else {
@@ -663,23 +423,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.error("Logout server request error:", error);
-        // Continue with client-side logout even if server request fails
       }
-      
-      // Small delay to let the logout process complete
+
       await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Always navigate to login page
+
       console.log("Redirecting to login page after logout");
       navigate("/login", { replace: true });
-      
     } catch (error) {
       console.error("Unexpected logout error:", error);
-      // Always navigate to login as a fallback
       navigate("/login", { replace: true });
     }
   };
-  
+
   const refreshUser = async () => {
     try {
       const response = await fetch("/api/auth/me", { credentials: "include" });
@@ -701,31 +456,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("lyfeos-onboarding-resume");
       localStorage.removeItem("lyfeos-continued-past-mission0");
       sessionStorage.removeItem("lyfeos-pending-registration");
-      localStorage.setItem('lyfeos-oauth-mode', mode);
-      localStorage.setItem('lyfeos-oauth-mode-ts', String(Date.now()));
-      const result = await signInWithGoogle();
-      if (result) {
-        await processOAuthResult(result, mode);
-        localStorage.removeItem('lyfeos-oauth-mode');
-        localStorage.removeItem('lyfeos-oauth-mode-ts');
-      }
+
+      if (!signIn) throw new Error("Sign-in not available");
+
+      await signIn.authenticateWithRedirect({
+        strategy: "oauth_google",
+        redirectUrl: "/sso-callback",
+        redirectUrlComplete: mode === 'register' ? "/onboarding" : "/login-success",
+      });
     } catch (error: any) {
-      console.error("Google login error:", error?.code, error?.message, error);
-      localStorage.removeItem('lyfeos-oauth-mode');
-      localStorage.removeItem('lyfeos-oauth-mode-ts');
-      const errorDetail = error?.code
-        ? `${error.code}: ${error.message || 'Unknown'}`
-        : error?.message || String(error);
+      console.error("Google login error:", error);
       toast({
         title: "Login Error",
-        description: `Google sign-in failed: ${errorDetail}`,
+        description: `Google sign-in failed: ${error?.message || String(error)}`,
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
   };
-  
+
   const loginWithApple = async (mode: 'login' | 'register' = 'login') => {
     try {
       setIsLoading(true);
@@ -734,24 +484,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("lyfeos-onboarding-resume");
       localStorage.removeItem("lyfeos-continued-past-mission0");
       sessionStorage.removeItem("lyfeos-pending-registration");
-      localStorage.setItem('lyfeos-oauth-mode', mode);
-      localStorage.setItem('lyfeos-oauth-mode-ts', String(Date.now()));
-      const result = await signInWithApple();
-      if (result) {
-        await processOAuthResult(result, mode);
-        localStorage.removeItem('lyfeos-oauth-mode');
-        localStorage.removeItem('lyfeos-oauth-mode-ts');
-      }
+
+      if (!signIn) throw new Error("Sign-in not available");
+
+      await signIn.authenticateWithRedirect({
+        strategy: "oauth_apple",
+        redirectUrl: "/sso-callback",
+        redirectUrlComplete: mode === 'register' ? "/onboarding" : "/login-success",
+      });
     } catch (error: any) {
-      console.error("Apple login error:", error?.code, error?.message, error);
-      localStorage.removeItem('lyfeos-oauth-mode');
-      localStorage.removeItem('lyfeos-oauth-mode-ts');
-      const errorDetail = error?.code
-        ? `${error.code}: ${error.message || 'Unknown'}`
-        : error?.message || String(error);
+      console.error("Apple login error:", error);
       toast({
         title: "Login Error",
-        description: `Apple sign-in failed: ${errorDetail}`,
+        description: `Apple sign-in failed: ${error?.message || String(error)}`,
         variant: "destructive",
       });
     } finally {
@@ -763,7 +508,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
-        firebaseUser,
         isAuthenticated: !!user,
         isLoading,
         login,
