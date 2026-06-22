@@ -1,7 +1,8 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
+import { clerkMiddleware, getAuth } from "@clerk/express";
 import { storage } from "../storage";
 import { logger, formatLocalDate } from "../utils";
 import { isAuthenticated } from "./middleware";
@@ -17,7 +18,114 @@ declare module "express-session" {
   }
 }
 
+const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
+  const { userId } = getAuth(req);
+  if (!userId) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+  const user = await storage.getUserByClerkId(userId);
+  if (!user) {
+    return res.status(401).json({ error: "User not found" });
+  }
+  (req as any).dbUser = user;
+  return next();
+};
+
 export function registerAuthRoutes(app: Express): void {
+  app.use(clerkMiddleware());
+
+  app.post("/api/webhooks/clerk", async (req: Request, res: Response) => {
+    try {
+      const { type, data } = req.body;
+
+      if (type === "user.created") {
+        const clerkId = data.id;
+        const email = data.email_addresses?.[0]?.email_address;
+        const firstName = data.first_name || null;
+        const lastName = data.last_name || null;
+
+        if (!email) {
+          logger.error("Clerk webhook user.created: no email found");
+          return res.status(400).json({ error: "No email in webhook payload" });
+        }
+
+        const existing = await storage.getUserByEmail(email);
+        if (existing) {
+          if (!existing.clerkId) {
+            await storage.updateUserClerkId(existing.id, clerkId);
+          }
+          return res.json({ success: true, userId: existing.id });
+        }
+
+        const displayName = [firstName, lastName].filter(Boolean).join(" ") || email.split("@")[0];
+        const user = await storage.createUser({
+          username: null,
+          password: null,
+          displayName,
+          firstName,
+          lastName,
+          title: "COMMANDER",
+          email,
+          authProvider: "clerk",
+          clerkId,
+          termsAccepted: true,
+        });
+
+        await storage.createUserStats({
+          userId: user.id,
+          experienceCurrent: 0,
+          experienceMax: 1000,
+          level: 1,
+          timeTokensCurrent: 100,
+          timeTokensMax: 100,
+          energyPointsCurrent: 100,
+          energyPointsMax: 100,
+          healthPointsCurrent: 100,
+          healthPointsMax: 100,
+          attentionTokensCurrent: 100,
+          attentionTokensMax: 100,
+          streakDays: 0,
+          efficiencyScore: 0,
+          aiAssistantName: "NOVA",
+          primaryColor: "#ffffff",
+        });
+
+        await storage.upsertUserProfile(user.id, {
+          startStage: "beginner",
+          targetArchetype: "architect",
+          flowStyle: "hyperfocus",
+          coreMotivation: "growth",
+          setupMissionStatus: "not_started",
+          primaryThemeColor: "#ffe03d",
+          onboardingCompleted: false,
+        });
+
+        await storage.createUserIntegration({
+          userId: user.id,
+          appleHealthConnected: false,
+          googleCalendarConnected: false,
+          notionConnected: false,
+        });
+
+        const today = formatLocalDate();
+        await storage.createUserDailyLog({
+          userId: user.id,
+          date: today,
+          yesterdayXp: 0,
+          todayPrimaryMission: "Get started with LYFEOS",
+          optionalBoostsShown: false,
+        });
+
+        logger.debug("Clerk webhook: created new user", user.id);
+        return res.json({ success: true, userId: user.id });
+      }
+
+      return res.json({ success: true });
+    } catch (error) {
+      logger.error("Clerk webhook error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
   app.get("/api/auth/check-email", async (req: Request, res: Response) => {
     try {
       const email = req.query.email as string;
@@ -272,9 +380,10 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
-  app.patch("/api/auth/set-username", isAuthenticated, async (req: Request, res: Response) => {
+  app.patch("/api/auth/set-username", requireAuth, async (req: Request, res: Response) => {
     try {
-      const userId = req.session.userId!;
+      const user = (req as any).dbUser;
+      const userId = user.id;
       const { username, firstName, lastName } = req.body;
 
       if (!username || username.trim().length < 3) {
@@ -293,8 +402,6 @@ export function registerAuthRoutes(app: Express): void {
         firstName: firstName || null,
         lastName: lastName || null,
       });
-
-      req.session.username = updatedUser.username || updatedUser.email || String(updatedUser.id);
 
       const { password, ...userData } = updatedUser;
       return res.json(userData);
@@ -685,30 +792,26 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
   
-  app.get("/api/auth/me", async (req: Request, res: Response) => {
-    if (req.session.userId) {
-      const userProfile = await storage.getUserProfile(req.session.userId);
-      const userStats = await storage.getUserStats(req.session.userId);
-      
-      const effectiveColor = (userProfile?.primaryThemeColor && userProfile.primaryThemeColor !== "#ffe03d" ? userProfile.primaryThemeColor : null)
-        || (userStats?.primaryColor && userStats.primaryColor !== "#ffffff" ? userStats.primaryColor : null)
-        || "#00e0ff";
-      
-      return res.status(200).json({ 
-        user: { 
-          id: req.session.userId, 
-          username: req.session.username 
-        },
-        primaryColor: effectiveColor
-      });
-    }
-    
-    return res.status(401).json({ error: "Not authenticated" });
+  app.get("/api/auth/me", requireAuth, async (req: Request, res: Response) => {
+    const user = (req as any).dbUser;
+    const userProfile = await storage.getUserProfile(user.id);
+    const userStats = await storage.getUserStats(user.id);
+
+    const effectiveColor = (userProfile?.primaryThemeColor && userProfile.primaryThemeColor !== "#ffe03d" ? userProfile.primaryThemeColor : null)
+      || (userStats?.primaryColor && userStats.primaryColor !== "#ffffff" ? userStats.primaryColor : null)
+      || "#00e0ff";
+
+    return res.status(200).json({
+      user: {
+        id: user.id,
+        username: user.username
+      },
+      primaryColor: effectiveColor
+    });
   });
 
-  app.get("/api/auth/2fa/status", isAuthenticated, async (req, res) => {
-    const user = await storage.getUser(req.session.userId!);
-    if (!user) return res.status(404).json({ error: "User not found" });
+  app.get("/api/auth/2fa/status", requireAuth, async (req, res) => {
+    const user = (req as any).dbUser;
 
     let emailVerified = user.emailVerified || false;
     if (!emailVerified && user.firebaseUid) {
@@ -733,9 +836,8 @@ export function registerAuthRoutes(app: Express): void {
     });
   });
 
-  app.post("/api/auth/2fa/verify-email-firebase", isAuthenticated, async (req, res) => {
-    const user = await storage.getUser(req.session.userId!);
-    if (!user) return res.status(404).json({ error: "User not found" });
+  app.post("/api/auth/2fa/verify-email-firebase", requireAuth, async (req, res) => {
+    const user = (req as any).dbUser;
 
     if (user.firebaseUid) {
       const verified = await checkFirebaseEmailVerified(user.firebaseUid);
@@ -748,7 +850,7 @@ export function registerAuthRoutes(app: Express): void {
     return res.json({ emailVerified: false, message: "Email not yet verified. Please check your inbox." });
   });
 
-  app.post("/api/auth/2fa/verify-phone-firebase", isAuthenticated, async (req, res) => {
+  app.post("/api/auth/2fa/verify-phone-firebase", requireAuth, async (req, res) => {
     const { firebaseIdToken } = req.body;
     if (!firebaseIdToken || typeof firebaseIdToken !== 'string') {
       return res.status(400).json({ error: "Firebase ID token is required" });
@@ -764,8 +866,7 @@ export function registerAuthRoutes(app: Express): void {
       return res.status(400).json({ error: "No phone number found in Firebase token" });
     }
 
-    const user = await storage.getUser(req.session.userId!);
-    if (!user) return res.status(404).json({ error: "User not found" });
+    const user = (req as any).dbUser;
 
     await storage.updateUser(user.id, {
       phoneNumber,
@@ -777,9 +878,8 @@ export function registerAuthRoutes(app: Express): void {
     res.json({ message: "Phone verified successfully" });
   });
 
-  app.post("/api/auth/2fa/enable", isAuthenticated, async (req, res) => {
-    const user = await storage.getUser(req.session.userId!);
-    if (!user) return res.status(404).json({ error: "User not found" });
+  app.post("/api/auth/2fa/enable", requireAuth, async (req, res) => {
+    const user = (req as any).dbUser;
 
     if (!user.emailVerified) {
       return res.status(400).json({ error: "Email must be verified first" });
@@ -795,9 +895,8 @@ export function registerAuthRoutes(app: Express): void {
     res.json({ message: "Two-factor authentication enabled" });
   });
 
-  app.post("/api/auth/2fa/disable", isAuthenticated, async (req, res) => {
-    const user = await storage.getUser(req.session.userId!);
-    if (!user) return res.status(404).json({ error: "User not found" });
+  app.post("/api/auth/2fa/disable", requireAuth, async (req, res) => {
+    const user = (req as any).dbUser;
 
     await storage.updateUser(user.id, {
       twoFactorEnabled: false,
