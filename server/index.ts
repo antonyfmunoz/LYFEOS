@@ -1,4 +1,10 @@
 import 'dotenv/config'
+
+if (!process.env.DATABASE_URL) {
+  console.warn("WARNING: DATABASE_URL is not set. Server cannot start without a database connection.");
+  process.exit(1);
+}
+
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic, log } from "./vite";
