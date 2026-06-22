@@ -24,6 +24,15 @@ export default function LoginPage() {
       setError("Please enter your email and password");
       return;
     }
+
+    // If input looks like an email (contains a dot or @), validate @ is present
+    const trimmed = identifier.trim();
+    if (trimmed.includes('.') || trimmed.includes('@')) {
+      if (!trimmed.includes('@')) {
+        setError("Please enter a valid email address (must contain @)");
+        return;
+      }
+    }
     
     try {
       setIsSubmitting(true);
