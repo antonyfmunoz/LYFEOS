@@ -14,14 +14,14 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const accent = null;
+  const accent = null as { color?: string; glow?: string; bg20?: string; border20?: string; border30?: string; border50?: string } | null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     
     if (!identifier.trim() || !password.trim()) {
-      setError("Please enter your username or email and password");
+      setError("Please enter your email and password");
       return;
     }
     
@@ -101,7 +101,7 @@ export default function LoginPage() {
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               className="w-full bg-transparent rounded-lg p-3 outline-none text-white"
-              placeholder="Enter username or email"
+              placeholder="Enter email"
               required
 
               style={{ borderColor: accent?.border30 || 'rgba(255,255,255,0.3)', '--tw-ring-color': accent?.border30 || 'rgba(255,255,255,0.3)' } as any}
@@ -152,6 +152,11 @@ export default function LoginPage() {
               Register
             </Link></span>
           </p>
+        </div>
+        <div className="mt-4 text-center">
+          <Link href="/" className="text-sm text-white/60 hover:text-white transition">
+            &larr; Back to Home
+          </Link>
         </div>
       </div>
       </div>
