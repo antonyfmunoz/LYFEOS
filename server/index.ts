@@ -5,6 +5,11 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
+if (!process.env.CLERK_SECRET_KEY) {
+  console.error("CLERK_SECRET_KEY required");
+  process.exit(1);
+}
+
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic, log } from "./vite";
