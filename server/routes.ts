@@ -15,6 +15,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ status: "ok", timestamp: Date.now() });
   });
 
+  app.get("/api/version", (_req, res) => {
+    res.json({ version: "1.0.0", env: process.env.NODE_ENV || "development" });
+  });
+
   registerAuthRoutes(app);
   registerProfileRoutes(app);
   registerQuestRoutes(app);
