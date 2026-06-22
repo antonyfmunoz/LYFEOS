@@ -12,7 +12,7 @@ import { registerGoogleRoutes } from "./routes/google";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", timestamp: Date.now() });
+    res.json({ status: "ok", timestamp: Date.now(), buildTime: "2026-06-22" });
   });
 
   app.get("/api/version", (_req, res) => {
