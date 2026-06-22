@@ -10,5 +10,7 @@ describe('Version API', () => {
     const data = await res.json();
     expect(data).toHaveProperty('version');
     expect(data).toHaveProperty('env');
+    expect(data).toHaveProperty('createdAt');
+    expect(new Date(data.createdAt).toISOString()).toBe(data.createdAt);
   });
 });
