@@ -13,7 +13,7 @@ import { registerGoogleRoutes } from "./routes/google";
 export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/health", (_req, res) => {
     try {
-      res.json({ status: "ok", timestamp: Date.now(), buildTime: "2026-06-22" });
+      res.json({ status: "ok", timestamp: Date.now(), buildTime: "2026-06-22", uptime: process.uptime() });
     } catch (err: any) {
       res.status(500).json({ status: "error", message: err.message });
     }
