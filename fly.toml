@@ -1,8 +1,10 @@
 app = "lyfeos-app"
-primary_region = "sea"
+primary_region = "sjc"
 
 [build]
   dockerfile = "Dockerfile"
+  [build.args]
+    VITE_CLERK_PUBLISHABLE_KEY = "pk_test_YmFsYW5jZWQtc2t5bGFyay02My5jbGVyay5hY2NvdW50cy5kZXYk"
 
 [env]
   NODE_ENV = "production"

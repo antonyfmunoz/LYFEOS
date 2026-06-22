@@ -10,6 +10,11 @@ COPY package.json package-lock.json* ./
 RUN npm ci
 
 COPY . .
+
+# Vite inlines VITE_* env vars at build time via import.meta.env
+ARG VITE_CLERK_PUBLISHABLE_KEY
+ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
+
 RUN npm run build
 
 # -- Stage 2: Production --
