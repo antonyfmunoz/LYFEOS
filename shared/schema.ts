@@ -12,7 +12,7 @@ export const users = pgTable("users", {
   displayName: text("display_name"),
   firstName: text("first_name"),
   lastName: text("last_name"),
-  bio: text("bio"),
+  bio: varchar("bio", { length: 500 }),
   avatarColor: text("avatar_color").default("#00e0ff"),
   title: text("title").default("COMMANDER"),
   profilePicture: text("profile_picture"),
