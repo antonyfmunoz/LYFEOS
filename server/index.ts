@@ -9,65 +9,9 @@ import compression from "compression";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 import { startNotificationScheduler } from "./notificationScheduler";
-import { createProxyMiddleware } from "http-proxy-middleware";
 import { execSync } from "child_process";
 
 const app = express();
-
-function getFirebaseProjectIdForProxy(): string | null {
-  const actualProjectId = process.env.VITE_FIREBASE_ACTUAL_PROJECT_ID;
-  if (actualProjectId && !actualProjectId.includes(':')) {
-    return actualProjectId;
-  }
-  const saKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  if (saKey) {
-    try {
-      const parsed = JSON.parse(saKey);
-      if (parsed.project_id) return parsed.project_id;
-    } catch {}
-  }
-  const envProjectId = process.env.VITE_FIREBASE_PROJECT_ID;
-  if (envProjectId && !envProjectId.includes(':')) {
-    return envProjectId;
-  }
-  return null;
-}
-
-const firebaseProjectIdForProxy = getFirebaseProjectIdForProxy();
-if (firebaseProjectIdForProxy) {
-  app.use('/__/auth', createProxyMiddleware({
-    target: `https://${firebaseProjectIdForProxy}.firebaseapp.com`,
-    changeOrigin: true,
-    secure: true,
-    pathRewrite: (path) => `/__/auth${path}`,
-    on: {
-      proxyReq: (proxyReq, req) => {
-        log(`Firebase proxy: ${req.method} ${req.url}`);
-        proxyReq.removeHeader('x-forwarded-host');
-        proxyReq.removeHeader('x-forwarded-for');
-        proxyReq.removeHeader('x-forwarded-port');
-        proxyReq.setHeader('x-forwarded-proto', 'https');
-      },
-      proxyRes: (proxyRes, req) => {
-        log(`Firebase proxy response: ${proxyRes.statusCode} for ${req.url}`);
-        delete proxyRes.headers['cross-origin-opener-policy'];
-        delete proxyRes.headers['cross-origin-embedder-policy'];
-        delete proxyRes.headers['cross-origin-resource-policy'];
-        delete proxyRes.headers['x-frame-options'];
-        delete proxyRes.headers['content-security-policy'];
-        proxyRes.headers['access-control-allow-origin'] = '*';
-        proxyRes.headers['access-control-allow-methods'] = 'GET, POST, OPTIONS';
-        proxyRes.headers['access-control-allow-headers'] = 'Content-Type, Authorization';
-      },
-      error: (err, req, res) => {
-        log(`Firebase proxy error: ${err.message} for ${req.url}`);
-      },
-    },
-  }));
-  log(`Firebase auth proxy configured for ${firebaseProjectIdForProxy}.firebaseapp.com`);
-} else {
-  log("WARNING: Could not determine Firebase project ID for auth proxy. Set FIREBASE_SERVICE_ACCOUNT_KEY or ensure VITE_FIREBASE_PROJECT_ID is the project ID (not the App ID).");
-}
 
 app.use(compression());
 
@@ -153,8 +97,6 @@ app.get("/api/health", (_req: Request, res: Response) => {
 
 app.use("/api/auth/register", createRateLimiter(5, 60 * 1000));
 app.use("/api/auth/login", createRateLimiter(10, 60 * 1000));
-app.use("/api/auth/ensure-firebase-user", createRateLimiter(3, 60 * 1000));
-app.use("/api/auth/reset-password-firebase", createRateLimiter(5, 60 * 1000));
 app.use("/api/auth/sync-email-verified", createRateLimiter(5, 60 * 1000));
 app.use("/api/profile/generate-affirmation", createRateLimiter(5, 60 * 1000));
 app.use("/api/voice-command", createRateLimiter(20, 60 * 1000));
@@ -253,7 +195,7 @@ async function ensureDatabaseSchema() {
     startNotificationScheduler();
   });
 
-  server.listen({ port, host: "127.0.0.1" });
+  server.listen({ port, host: "0.0.0.0" });
 
   const gracefulShutdown = (signal: string) => {
     log(`Received ${signal}, shutting down gracefully...`);
