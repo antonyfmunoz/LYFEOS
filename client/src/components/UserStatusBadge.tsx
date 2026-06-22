@@ -6,7 +6,7 @@ const statusConfig: Record<Status, { color: string; label: string }> = {
   away: { color: 'bg-yellow-500', label: 'Away' },
 };
 
-export function StatusBadge({ status }: { status: Status }) {
+export function UserStatusBadge({ status }: { status: Status }) {
   const { color, label } = statusConfig[status];
 
   return (
