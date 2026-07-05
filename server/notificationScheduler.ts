@@ -1,22 +1,9 @@
-import admin from "firebase-admin";
 import { storage } from "./storage";
-import { getFirebaseAdmin } from "./firebaseAdmin";
 import type { SmartReminder } from "@shared/schema";
 import { formatLocalDate, logger } from "./utils";
 
-function getFirebaseMessaging(): admin.messaging.Messaging | null {
-  try {
-    const app = getFirebaseAdmin();
-    if (!app) {
-      logger.warn("Firebase Admin not available for messaging");
-      return null;
-    }
-    return admin.messaging(app);
-  } catch (err) {
-    logger.error("Failed to get Firebase Messaging:", err);
-    return null;
-  }
-}
+// Push notifications are currently disabled (firebase-admin removed during Clerk migration).
+// TODO: Re-implement push via a provider-agnostic solution (e.g. web-push / Clerk notifications).
 
 interface NotificationPayload {
   title: string;
@@ -28,49 +15,7 @@ interface NotificationPayload {
 }
 
 export async function sendPushToUser(userId: number, payload: NotificationPayload) {
-  const messaging = getFirebaseMessaging();
-  if (!messaging) {
-    logger.warn("sendPushToUser: Firebase messaging not available, cannot send push");
-    throw new Error("Firebase messaging not available. Check FIREBASE_SERVICE_ACCOUNT_KEY and Firebase Cloud Messaging API.");
-  }
-
-  try {
-    const subs = await storage.getPushSubscriptions(userId);
-    if (subs.length === 0) {
-      logger.info(`sendPushToUser: No FCM tokens found for user ${userId}`);
-      return;
-    }
-
-    logger.info(`sendPushToUser: Sending to ${subs.length} device(s) for user ${userId}`);
-
-    for (const sub of subs) {
-      try {
-        await messaging.send({
-          token: sub.fcmToken,
-          data: {
-            title: payload.title,
-            body: payload.body,
-            tag: payload.tag || "lyfeos-notification",
-            url: payload.url || "/",
-            questId: payload.questId ? String(payload.questId) : "",
-            icon: "/icon-192.png",
-            badge: "/icon-192.png",
-          },
-        });
-        logger.info(`sendPushToUser: Sent notification to device successfully`);
-      } catch (err: any) {
-        logger.error(`sendPushToUser: Failed to send to device: ${err?.code || err?.message}`);
-        if (err?.code === "messaging/registration-token-not-registered" ||
-            err?.code === "messaging/invalid-registration-token") {
-          await storage.deletePushSubscription(sub.fcmToken);
-          logger.info(`sendPushToUser: Removed invalid FCM token`);
-        }
-      }
-    }
-  } catch (err) {
-    logger.error("sendPushToUser error:", err);
-    throw err;
-  }
+  logger.warn(`sendPushToUser: Push notifications disabled (no provider configured). Skipping notification for user ${userId}: ${payload.title}`);
 }
 
 async function checkAndSendNotifications() {
@@ -295,11 +240,7 @@ let learningInterval: ReturnType<typeof setInterval> | null = null;
 export function startNotificationScheduler() {
   if (schedulerInterval) return;
 
-  const messaging = getFirebaseMessaging();
-  if (!messaging) {
-    logger.warn("Firebase messaging not available - notification scheduler disabled");
-    return;
-  }
+  logger.warn("Push notifications disabled - notification scheduler running without push delivery");
 
   logger.info("Notification scheduler started (checking every 60s)");
   schedulerInterval = setInterval(checkAndSendNotifications, 60_000);

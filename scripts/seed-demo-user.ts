@@ -32,10 +32,9 @@ async function seedDemoUser() {
   const hashedPassword = await bcrypt.hash(DEMO_PASSWORD, 10);
 
   const [user] = await db.insert(schema.users).values({
-    username: DEMO_USERNAME,
     password: hashedPassword,
     email: DEMO_EMAIL,
-    displayName: 'Alex Chen',
+    displayName: DEMO_USERNAME,
     firstName: 'Alex',
     lastName: 'Chen',
     bio: 'Building a creative studio while mastering the craft of storytelling.',

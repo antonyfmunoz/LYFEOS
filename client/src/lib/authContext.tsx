@@ -9,13 +9,13 @@ import { getLocalDateString } from "./utils";
 
 interface User {
   id: number;
-  username: string | null;
+  displayName: string | null;
 }
 
 interface AuthResponse {
   user: {
     id: number;
-    username: string | null;
+    displayName: string | null;
   };
   isNewUser?: boolean;
   primaryColor?: string;
@@ -28,7 +28,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (identifier: string, password: string) => Promise<void>;
   register: (email: string, password: string, extraData?: { avatarColor?: string }) => Promise<void>;
-  completeRegistration: (data: Record<string, any>) => Promise<{ id: number; username: string } | null>;
+  completeRegistration: (data: Record<string, any>) => Promise<{ id: number; displayName: string } | null>;
   logout: () => void;
   loginWithGoogle: (mode?: 'login' | 'register') => Promise<void>;
   loginWithApple: (mode?: 'login' | 'register') => Promise<void>;
@@ -158,7 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (!response.ok) {
-        throw new Error(data?.error || "Check your username and password");
+        throw new Error(data?.error || "Check your email and password");
       }
 
       if (!data || !data.user || !data.user.id) {
@@ -202,7 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.prefetchQuery({ queryKey: ["/api/users", data.user.id, "profile"] });
       queryClient.prefetchQuery({ queryKey: ["/api/account"] });
 
-      sessionStorage.setItem("login_success_username", data.user.username || "");
+      sessionStorage.setItem("login_success_username", data.user.displayName || "");
       sessionStorage.setItem("login_success_new_user", data.isNewUser ? "true" : "false");
 
       console.log("Navigating to login success transition...");
@@ -332,7 +332,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const completeRegistration = async (data: Record<string, any>): Promise<{ id: number; username: string } | null> => {
+  const completeRegistration = async (data: Record<string, any>): Promise<{ id: number; displayName: string } | null> => {
     try {
       setIsLoading(true);
       const response = await fetch("/api/auth/complete-registration", {

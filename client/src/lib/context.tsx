@@ -259,8 +259,8 @@ interface LYFEOSContextType {
   refetchQuests: (overrideUserId?: number) => Promise<void>;
   sendMessage: (content: string, imageIds?: number[]) => void;
   sendMessageInSession: (sessionId: string, content: string, imageIds?: number[]) => void;
-  username: string;
-  setUsername: (name: string) => void;
+  displayName: string;
+  setDisplayName: (name: string) => void;
   aiCompanionName: string;
   setAICompanionName: (name: string) => void;
   aiPanelOpen: boolean;
@@ -343,7 +343,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
   const [intentionLog, setIntentionLog] = useState<IntentionLogData>(initialIntentionLog);
   const [dataLog, setDataLog] = useState<DataLogData>(initialDataLog);
   const [reflectionLog, setReflectionLog] = useState<ReflectionLogData>(initialReflectionLog);
-  const [username, setUsername] = useState<string>("Alex Chen");
+  const [displayName, setDisplayName] = useState<string>("Alex Chen");
   const streakToastFired = useRef(false);
   const levelUpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [aiCompanionName, setAICompanionNameState] = useState<string>("Lyfe");
@@ -457,8 +457,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      const name = user.displayName || user.username || user.firstName || "Player";
-      setUsername(name);
+      const name = user.displayName || "Player";
+      setDisplayName(name);
     }
   }, [isAuthenticated, user]);
 
@@ -2066,8 +2066,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         refetchQuests,
         sendMessage,
         sendMessageInSession,
-        username,
-        setUsername,
+        displayName,
+        setDisplayName,
         aiCompanionName,
         setAICompanionName,
         aiPanelOpen,

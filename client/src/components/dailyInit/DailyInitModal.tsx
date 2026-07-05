@@ -84,10 +84,9 @@ export function DailyInitModal() {
   const [newBoostTitle, setNewBoostTitle] = useState("");
   const [newBoostDescription, setNewBoostDescription] = useState("");
   
-  // Extract username from user object with type safety
-  const username = user ? (
-    // Check both Firebase-specific fields and regular fields
-    (user as any).displayName || (user as any).username || "Commander"
+  // Extract display name from user object with type safety
+  const userDisplayName = user ? (
+    (user as any).displayName || "Commander"
   ) : "Commander";
   
   // Fetch user stats with proper type annotation
@@ -123,7 +122,7 @@ export function DailyInitModal() {
       return;
     }
     
-    console.log("Starting daily init check for user:", user.username);
+    console.log("Starting daily init check for user:", user.displayName);
     
     // Check if user has completed onboarding first
     const checkOnboardingStatus = async () => {
@@ -347,7 +346,7 @@ export function DailyInitModal() {
                     style={{ boxShadow: "0 0 20px var(--primary-glow-light)" }}>
         <DialogHeader>
           <DialogTitle className="text-2xl text-center font-orbitron text-primary">
-            Good to see you, Commander {username}
+            Good to see you, Commander {userDisplayName}
           </DialogTitle>
           <DialogDescription className="text-center text-muted-foreground">
             Your mission control is activated for another day of progress
