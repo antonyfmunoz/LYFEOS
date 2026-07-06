@@ -33,30 +33,28 @@ export function registerProfileRoutes(app: Express): void {
     const userId = parseInt(req.params.userId);
     if (isNaN(userId)) return res.status(400).json({ error: "Invalid ID" });
     try {
-      const { 
-        username,
-        displayName, 
+      const {
+        displayName,
         firstName,
         lastName,
-        bio, 
-        avatarColor, 
-        title, 
+        bio,
+        avatarColor,
+        title,
         profilePicture
       } = req.body;
-      
-      if (username !== undefined) {
-        const trimmed = username.trim();
+
+      if (displayName !== undefined) {
+        const trimmed = displayName.trim();
         if (trimmed.length < 3) {
-          return res.status(400).json({ error: "Username must be at least 3 characters." });
+          return res.status(400).json({ error: "Display name must be at least 3 characters." });
         }
-        const existing = await storage.getUserByUsername(trimmed);
+        const existing = await storage.getUserByDisplayName(trimmed);
         if (existing && existing.id !== userId) {
-          return res.status(409).json({ error: "Username is already taken." });
+          return res.status(409).json({ error: "Display name is already taken." });
         }
       }
-      
+
       const updateData: Partial<Omit<InsertUser, 'password'>> = {};
-      if (username !== undefined) updateData.username = username.trim();
       if (displayName !== undefined) updateData.displayName = displayName;
       if (firstName !== undefined) updateData.firstName = firstName;
       if (lastName !== undefined) updateData.lastName = lastName;

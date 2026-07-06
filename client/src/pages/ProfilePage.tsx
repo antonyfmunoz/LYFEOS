@@ -77,8 +77,8 @@ import { DraggableWidget, type DraggableWidgetProps } from '@/components/ui/drag
 import update from 'immutability-helper';
 import type { UserProfile as UserProfileSchema } from "@shared/schema";
 import { startThetaBeats, stopThetaBeats } from '@/lib/theta-beats';
-import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
-import { auth as firebaseAuth } from "@/lib/firebase";
+import { useUser } from "@clerk/clerk-react";
+import type { PhoneNumberResource } from "@clerk/shared";
 
 
 
@@ -414,8 +414,7 @@ const STAT_COLORS = [
 
 interface UserProfile {
   id: number;
-  username: string;
-  displayName?: string;
+  displayName: string;
   firstName?: string;
   lastName?: string;
   bio?: string;
@@ -427,7 +426,7 @@ export default function ProfilePage() {
   // Set the page title
   usePageTitle('Profile');
   
-  const { username, stats, updateUserStats, setPrimaryColor: setContextPrimaryColor } = useLYFEOS();
+  const { displayName, stats, updateUserStats, setPrimaryColor: setContextPrimaryColor } = useLYFEOS();
   const { setPrimaryColor: setThemePrimaryColor } = useTheme();
   const { user, logout } = useAuth();
   const { toast } = useToast();
@@ -470,12 +469,12 @@ export default function ProfilePage() {
   const { showTutorial, markComplete: handleTutorialComplete, skipAll: handleSkipAllTutorials, isLoading: isTutorialLoading } = useTutorialStatus("profile");
 
   const [isEditing, setIsEditing] = useState(false);
-  const [editUsername, setEditUsername] = useState(username);
+  const [editDisplayName, setEditDisplayName] = useState(displayName);
   const [isProfileOpen, setIsProfileOpen] = useWidgetState("profile.details", true);
 
   const cachedProfile = queryClient.getQueryData<UserProfile>(["/api/users", user?.id, "profile"]);
   const [profileData, setProfileData] = useState<UserProfile>(() => {
-    const defaults: UserProfile = { id: user?.id || 0, username, displayName: "", firstName: "", lastName: "", bio: "", title: "", profilePicture: "" };
+    const defaults: UserProfile = { id: user?.id || 0, displayName: displayName || "", firstName: "", lastName: "", bio: "", title: "", profilePicture: "" };
     return cachedProfile ? { ...defaults, ...cachedProfile } : defaults;
   });
   
@@ -597,7 +596,8 @@ export default function ProfilePage() {
   const [twoFactorError, setTwoFactorError] = useState('');
   const [emailCodeSent, setEmailCodeSent] = useState(false);
   const [phoneCodeSent, setPhoneCodeSent] = useState(false);
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [clerkPhoneNumber, setClerkPhoneNumber] = useState<PhoneNumberResource | null>(null);
+  const { user: clerkUser } = useUser();
   
   // Fetch account data
   const { data: accountData, isLoading: isAccountLoading } = useQuery<{ email?: string; phoneNumber?: string; authProvider?: string }>({
@@ -729,8 +729,8 @@ export default function ProfilePage() {
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id, "profile"] });
-      if (data?.username) {
-        setEditUsername(data.username);
+      if (data?.displayName) {
+        setEditDisplayName(data.displayName);
       }
       setIsEditing(false);
     },
@@ -867,7 +867,7 @@ export default function ProfilePage() {
     const { affirmation } = await apiRequest<{ affirmation: string }>("/api/profile/generate-affirmation", {
       method: "POST",
       body: JSON.stringify({
-        displayName: profileData.displayName || username,
+        displayName: profileData.displayName || displayName,
         archetypePrimary: profile?.archetypePrimary,
         archetypeSecondary: profile?.archetypeSecondary,
         coreValues: profile?.primaryValues,
@@ -1479,13 +1479,11 @@ export default function ProfilePage() {
                       setTwoFactorLoading(true);
                       setTwoFactorError('');
                       try {
-                        const { sendVerificationEmail: sendVerifEmail } = await import('@/lib/firebaseAuth');
-                        const sent = await sendVerifEmail();
-                        if (sent) {
-                          toast({ title: "Verification Email Sent", description: "Check your inbox and click the verification link." });
-                        }
+                        if (!clerkUser?.primaryEmailAddress) throw new Error('No email address found');
+                        await clerkUser.primaryEmailAddress.prepareVerification({ strategy: 'email_code' });
+                        toast({ title: "Verification Email Sent", description: "Check your inbox for the verification code." });
                       } catch (err: any) {
-                        const msg = err.message || 'Failed to send verification email';
+                        const msg = err.errors?.[0]?.longMessage || err.message || 'Failed to send verification email';
                         setTwoFactorError(msg);
                         toast({ title: "Email Verification Failed", description: msg, variant: "destructive" });
                       } finally {
@@ -1504,17 +1502,17 @@ export default function ProfilePage() {
                       setTwoFactorLoading(true);
                       setTwoFactorError('');
                       try {
-                        const res = await fetch('/api/auth/2fa/verify-email-firebase', { method: 'POST', credentials: 'include' });
-                        const data = await res.json();
-                        if (data.emailVerified) {
+                        await clerkUser?.reload();
+                        const emailVerified = clerkUser?.primaryEmailAddress?.verification?.status === 'verified';
+                        if (emailVerified) {
                           setTwoFactorStep('phone');
                           refetchTwoFactorStatus();
                           toast({ title: "Email Verified", description: "Now let's verify your phone number." });
                         } else {
-                          setTwoFactorError('Email not yet verified. Please check your inbox and click the verification link first.');
+                          setTwoFactorError('Email not yet verified. Please check your inbox and enter the verification code.');
                         }
                       } catch (err: any) {
-                        setTwoFactorError(err.message || 'Failed to check verification status');
+                        setTwoFactorError(err.errors?.[0]?.longMessage || err.message || 'Failed to check verification status');
                       } finally {
                         setTwoFactorLoading(false);
                       }
@@ -1550,7 +1548,7 @@ export default function ProfilePage() {
                       />
                       <button
                         onClick={async () => {
-                          if (!phoneInput.trim()) return;
+                          if (!phoneInput.trim() || !clerkUser) return;
                           setTwoFactorLoading(true);
                           setTwoFactorError('');
                           try {
@@ -1558,15 +1556,14 @@ export default function ProfilePage() {
                             if (!formattedPhone.startsWith('+')) {
                               formattedPhone = '+1' + formattedPhone.replace(/[\s\-\(\)]/g, '');
                             }
-                            const recaptchaVerifier = new RecaptchaVerifier(firebaseAuth, 'recaptcha-container', {
-                              size: 'invisible',
-                            });
-                            const result = await signInWithPhoneNumber(firebaseAuth, formattedPhone, recaptchaVerifier);
-                            setConfirmationResult(result);
+                            const phoneNumber = await clerkUser.createPhoneNumber({ phoneNumber: formattedPhone });
+                            setClerkPhoneNumber(phoneNumber);
+                            await phoneNumber.prepareVerification();
+                            setPhoneCodeSent(true);
                             toast({ title: "Code Sent", description: "Check your phone for the verification text." });
                           } catch (err: any) {
-                            console.error("Firebase phone auth error:", err);
-                            setTwoFactorError(err.message || 'Failed to send verification code');
+                            console.error("Clerk phone auth error:", err);
+                            setTwoFactorError(err.errors?.[0]?.longMessage || err.message || 'Failed to send verification code');
                           } finally {
                             setTwoFactorLoading(false);
                           }
@@ -1593,32 +1590,24 @@ export default function ProfilePage() {
                       />
                       <button
                         onClick={async () => {
-                          if (phoneCode.length !== 6 || !confirmationResult) return;
+                          if (phoneCode.length !== 6 || !clerkPhoneNumber) return;
                           setTwoFactorLoading(true);
                           setTwoFactorError('');
                           try {
-                            const userCredential = await confirmationResult.confirm(phoneCode);
-                            const firebaseIdToken = await userCredential.user.getIdToken();
-                            const res = await fetch('/api/auth/2fa/verify-phone-firebase', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              credentials: 'include',
-                              body: JSON.stringify({ firebaseIdToken }),
-                            });
-                            if (!res.ok) { const data = await res.json(); throw new Error(data.error); }
+                            await clerkPhoneNumber.attemptVerification({ code: phoneCode });
                             setPhoneCode('');
-                            setConfirmationResult(null);
+                            setClerkPhoneNumber(null);
                             setTwoFactorStep('complete');
                             refetchTwoFactorStatus();
                             toast({ title: "Phone Verified", description: "You can now enable two-factor authentication." });
                           } catch (err: any) {
-                            console.error("Firebase verify error:", err);
-                            setTwoFactorError(err.message || 'Invalid verification code');
+                            console.error("Clerk phone verify error:", err);
+                            setTwoFactorError(err.errors?.[0]?.longMessage || err.message || 'Invalid verification code');
                           } finally {
                             setTwoFactorLoading(false);
                           }
                         }}
-                        disabled={phoneCode.length !== 6 || twoFactorLoading || !confirmationResult}
+                        disabled={phoneCode.length !== 6 || twoFactorLoading || !clerkPhoneNumber}
                         className="text-xs font-mono px-3 py-2 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors disabled:opacity-40 inline-flex items-center gap-1"
                       >
                         {twoFactorLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Verify'}
@@ -1626,9 +1615,8 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
-                  <div id="recaptcha-container"></div>
                   <button
-                    onClick={() => { setTwoFactorStep('idle'); setPhoneCode(''); setPhoneInput(''); setPhoneCodeSent(false); setTwoFactorError(''); setConfirmationResult(null); }}
+                    onClick={() => { setTwoFactorStep('idle'); setPhoneCode(''); setPhoneInput(''); setPhoneCodeSent(false); setTwoFactorError(''); setClerkPhoneNumber(null); }}
                     className="text-xs font-mono px-2 py-1 rounded border bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 transition-colors inline-flex items-center gap-1"
                   >
                     <X className="h-3 w-3" />Cancel
@@ -2031,8 +2019,8 @@ export default function ProfilePage() {
       lastName: profileData.lastName,
       profilePicture: profileData.profilePicture,
     };
-    if (editUsername && editUsername !== username) {
-      mutationData.username = editUsername;
+    if (editDisplayName && editDisplayName !== displayName) {
+      mutationData.displayName = editDisplayName;
     }
     updateProfileMutation.mutate(mutationData);
   };
@@ -2044,7 +2032,7 @@ export default function ProfilePage() {
         ...profileFromApi,
       });
     }
-    setEditUsername(username);
+    setEditDisplayName(displayName);
     setIsEditing(false);
   };
 
@@ -2217,7 +2205,7 @@ export default function ProfilePage() {
             {/* User Info - Centered below profile picture */}
             <div className="flex flex-col items-center text-center mb-4 min-h-[52px]">
               <h2 className="text-xl font-orbitron text-foreground mb-1">
-                {profileData.displayName || username}
+                {profileData.displayName || displayName}
               </h2>
               <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded border text-[10px] font-orbitron font-bold uppercase tracking-wider ${stats ? "bg-primary/20 border-primary/50 text-primary" : "border-transparent text-transparent"}`}>
                 {stats ? getRank(stats.experience.level).name : "\u00A0"}
@@ -2229,12 +2217,12 @@ export default function ProfilePage() {
                 <div>
                   <Label className="flex items-center gap-2 mb-2">
                     <User className="h-4 w-4 text-primary" />
-                    Username
+                    Display Name
                   </Label>
                   <Input
-                    value={editUsername}
-                    onChange={(e) => setEditUsername(e.target.value)}
-                    placeholder="Enter username"
+                    value={editDisplayName}
+                    onChange={(e) => setEditDisplayName(e.target.value)}
+                    placeholder="Enter display name"
                     className="bg-background/50 border-primary/30 focus:border-primary/50"
                   />
                 </div>

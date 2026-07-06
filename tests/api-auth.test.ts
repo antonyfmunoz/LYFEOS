@@ -20,7 +20,7 @@ async function apiRequest(method: string, path: string, body?: any, cookie?: str
 
 describe('Auth API', () => {
   const testUser = {
-    username: `testuser_${Date.now()}`,
+    displayName: `testuser_${Date.now()}`,
     password: 'TestPass123!',
     firstName: 'Test',
     lastName: 'User',
@@ -29,7 +29,7 @@ describe('Auth API', () => {
 
   let sessionCookie = '';
 
-  it('rejects registration without username', async () => {
+  it('rejects registration without displayName', async () => {
     const { status, data } = await apiRequest('POST', '/api/auth/register', {
       password: 'TestPass123!',
     });
@@ -39,7 +39,7 @@ describe('Auth API', () => {
 
   it('rejects registration without password', async () => {
     const { status, data } = await apiRequest('POST', '/api/auth/register', {
-      username: 'test',
+      displayName: 'test',
     });
     expect(status).toBe(400);
     expect(data.error).toBeTruthy();
@@ -49,13 +49,13 @@ describe('Auth API', () => {
     const { status, data, cookie } = await apiRequest('POST', '/api/auth/register', testUser);
     expect(status).toBe(201);
     expect(data.user).toBeTruthy();
-    expect(data.user.username).toBe(testUser.username);
+    expect(data.user.displayName).toBe(testUser.displayName);
     if (cookie) sessionCookie = cookie;
   });
 
-  it('rejects duplicate username registration', async () => {
+  it('rejects duplicate displayName registration', async () => {
     const { status } = await apiRequest('POST', '/api/auth/login', {
-      identifier: testUser.username + '_nonexistent',
+      identifier: testUser.displayName + '_nonexistent',
       password: 'wrong',
     });
     expect(status).toBe(401);
@@ -63,7 +63,7 @@ describe('Auth API', () => {
 
   it('rejects login with wrong password', async () => {
     const { status } = await apiRequest('POST', '/api/auth/login', {
-      identifier: testUser.username,
+      identifier: testUser.displayName,
       password: 'WrongPassword!',
     });
     expect(status).toBe(401);
@@ -71,11 +71,11 @@ describe('Auth API', () => {
 
   it('logs in with correct credentials', async () => {
     const { status, data, cookie } = await apiRequest('POST', '/api/auth/login', {
-      identifier: testUser.username,
+      identifier: testUser.displayName,
       password: testUser.password,
     });
     expect(status).toBe(200);
-    expect(data.user.username).toBe(testUser.username);
+    expect(data.user.displayName).toBe(testUser.displayName);
     if (cookie) sessionCookie = cookie;
   });
 
@@ -83,7 +83,7 @@ describe('Auth API', () => {
     const { status, data } = await apiRequest('GET', '/api/auth/me', undefined, sessionCookie);
     expect(status).toBe(200);
     expect(data.user).toBeTruthy();
-    expect(data.user.username).toBe(testUser.username);
+    expect(data.user.displayName).toBe(testUser.displayName);
   });
 
   it('rejects auth check without session', async () => {

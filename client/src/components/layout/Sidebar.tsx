@@ -4,10 +4,10 @@ import { useLYFEOS } from "@/lib/context";
 
 interface SidebarProps {
   currentPage: string;
-  username: string;
+  displayName: string;
 }
 
-export default function Sidebar({ currentPage, username }: SidebarProps) {
+export default function Sidebar({ currentPage, displayName }: SidebarProps) {
   const { sidebarCollapsed: collapsed, setSidebarCollapsed: setCollapsed } = useLYFEOS();
 
   const navItems = [
