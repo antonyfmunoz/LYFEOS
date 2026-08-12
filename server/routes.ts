@@ -9,6 +9,9 @@ import { registerGoalRoutes } from "./routes/goals";
 import { registerDocumentRoutes } from "./routes/documents";
 import { registerWaitlistRoutes } from "./routes/waitlist";
 import { registerGoogleRoutes } from "./routes/google";
+import { registerUMHRoutes } from "./routes/umh";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/health", (req, res) => {
@@ -20,6 +23,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(payload);
     } catch (err: any) {
       res.status(500).json({ status: "error", message: err.message });
+    }
+  });
+
+  app.get("/api/ready", async (_req, res) => {
+    try {
+      await db.execute(sql`SELECT 1`);
+      res.json({ status: "ready" });
+    } catch {
+      res.status(503).json({ status: "unavailable" });
     }
   });
 
@@ -36,6 +48,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerChatRoutes(app);
   registerWaitlistRoutes(app);
   registerGoogleRoutes(app);
+  registerUMHRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;

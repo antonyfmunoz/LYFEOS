@@ -1,16 +1,18 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Loader2, ArrowLeft, Mail } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { sendPasswordReset } from "@/lib/firebaseAuth";
+import { useSignIn } from "@clerk/clerk-react";
 
 export default function ForgotPasswordPage() {
+  const { signIn } = useSignIn();
+  const [, navigate] = useLocation();
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
 
-  const accent = null;
+  const accent = null as { color?: string; glow?: string; bg20?: string; border20?: string; border30?: string; border50?: string } | null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,16 +20,14 @@ export default function ForgotPasswordPage() {
     setIsSubmitting(true);
 
     try {
-      await fetch("/api/auth/ensure-firebase-user", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+      if (!signIn) throw new Error("Sign-in not available");
+      await signIn.create({
+        strategy: "reset_password_email_code",
+        identifier: email,
       });
-
-      await sendPasswordReset(email);
       setSubmitted(true);
     } catch (err: any) {
-      setError(err.message || "Something went wrong. Please try again.");
+      setError(err.errors?.[0]?.longMessage || err.message || "Something went wrong. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -46,9 +46,16 @@ export default function ForgotPasswordPage() {
           <Mail className="w-12 h-12 mx-auto" style={{ color: accent?.color || 'white' }} />
           <h2 className="text-xl font-orbitron" style={{ color: accent?.color || 'white' }}>Check your email</h2>
           <p className="text-white text-sm">
-            If an account exists with that email, we've sent a password reset link. Check your inbox and spam folder.
+            We've sent a verification code to your email. Enter it on the next page to reset your password.
           </p>
-          <div className="pt-2">
+          <div className="pt-2 space-y-3">
+            <button
+              onClick={() => navigate("/reset-password")}
+              className="w-full text-sm font-mono px-4 py-2.5 rounded border hover:opacity-80 transition-colors inline-flex items-center justify-center gap-2"
+              style={{ backgroundColor: accent?.bg20 || 'rgba(255,255,255,0.2)', borderColor: accent?.border50 || 'rgba(255,255,255,0.5)', color: accent?.color || 'white' }}
+            >
+              Enter Code
+            </button>
             <span className="auth-link" style={{ color: accent?.color || 'white' }}><Link href="/login" className="hover:opacity-80 transition" style={{ color: accent?.color || 'white' }}>
               <span className="inline-flex items-center gap-2 text-sm cursor-pointer">
                 <ArrowLeft className="w-4 h-4" />
@@ -63,7 +70,7 @@ export default function ForgotPasswordPage() {
           <h2 className="text-xl font-orbitron text-center mb-6" style={{ color: accent?.color || 'white' }}>Reset Password</h2>
 
           <p className="text-white text-sm text-center mb-6">
-            Enter the email address associated with your account and we'll send you a reset link.
+            Enter the email address associated with your account and we'll send you a reset code.
           </p>
 
           {error && (
@@ -98,7 +105,7 @@ export default function ForgotPasswordPage() {
                   Sending...
                 </>
               ) : (
-                "Send Reset Link"
+                "Send Reset Code"
               )}
             </button>
           </form>

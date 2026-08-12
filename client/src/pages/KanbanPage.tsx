@@ -146,13 +146,13 @@ export default function KanbanPage() {
     setIsEditBoardDialogOpen(true);
   };
 
-  const handleDeleteBoard = (boardId: number) => {
+  const handleDeleteBoard = (boardId: string) => {
     if (confirm('Are you sure you want to delete this board? This action cannot be undone.')) {
       deleteKanbanBoard(boardId);
     }
   };
 
-  const handleViewBoard = (boardId: number) => {
+  const handleViewBoard = (boardId: string) => {
     navigate(`/kanban/board/${boardId}`);
   };
 

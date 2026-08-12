@@ -89,7 +89,7 @@ export default function CeremonyPage() {
               </h1>
             </div>
             <p className="text-muted-foreground font-mono text-sm animate-fade-in">
-              Welcome, {user?.username || "Player"}
+              Welcome, {user?.displayName || "Player"}
             </p>
           </div>
         )}

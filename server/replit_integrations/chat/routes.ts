@@ -133,7 +133,7 @@ function buildSystemPrompt(ctx: NOVAContext): string {
 
   const todayStr = new Date().toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-  const playerName = user?.displayName || user?.username || 'Commander';
+  const playerName = user?.displayName || 'Commander';
 
   const recentLogs = (dailyLogs || [])
     .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -836,14 +836,15 @@ async function executeTool(toolName: string, input: any, userId: number): Promis
       }
 
       case "create_calendar_event": {
-        const event = await storage.createEvent({
+        const event = await storage.createQuest({
           userId,
           title: input.title,
           description: input.description || "",
-          date: input.date,
+          startDate: input.date,
           startTime: input.startTime,
-          duration: input.duration,
+          timeCost: typeof input.duration === "number" ? input.duration : 0,
           category: input.category || "personal",
+          experienceReward: 10,
         });
         return JSON.stringify({ success: true, action: "create_calendar_event", message: `Calendar event "${event.title}" created for ${input.date} at ${input.startTime}.` });
       }
@@ -891,7 +892,7 @@ async function executeTool(toolName: string, input: any, userId: number): Promis
             max_tokens: 512,
             messages: [{ role: "user", content: "Generate a powerful, personalized character affirmation." }],
             system: `Generate a deeply personal character affirmation for this person:
-Name: ${user?.displayName || user?.username || 'Commander'}
+Name: ${user?.displayName || 'Commander'}
 Archetype: ${userProfile?.archetypePrimary || 'Warrior'}/${userProfile?.archetypeSecondary || 'Architect'}
 Core Motivation: ${userProfile?.coreMotivation || 'growth, discipline'}
 5-Year Vision: ${userProfile?.vision5Year || 'mastery'}
@@ -1585,7 +1586,7 @@ export function registerChatRoutes(app: Express): void {
         streak: "Streak Tracking",
       };
 
-      const prompt = `You are NOVA, the user's personal AI life coach. The user "${user.displayName || user.username}" is viewing their ${statLabelMap[statType]} stats page.
+      const prompt = `You are NOVA, the user's personal AI life coach. The user "${user.displayName}" is viewing their ${statLabelMap[statType]} stats page.
 
 Their current data: ${statContextMap[statType]}
 
@@ -1626,7 +1627,7 @@ Provide 3 concise, personalized, actionable tips to help them improve this stat.
       const totalTimeCost = activeMissions.reduce((sum: number, m: any) => sum + (m.timeCost || 0), 0);
       const totalAttentionCost = activeMissions.reduce((sum: number, m: any) => sum + (m.attentionCost || 0), 0);
 
-      const allContext = `User: ${user.displayName || user.username}
+      const allContext = `User: ${user.displayName}
 Level: ${stats.level}, Total XP: ${stats.experienceCurrent}/${stats.experienceMax}
 Energy: ${stats.energyPointsCurrent}/${stats.energyPointsMax}, Health: ${stats.healthPointsCurrent}/${stats.healthPointsMax}
 Wealth Tokens: ${stats.wealthTokensCurrent ?? 100}/${stats.wealthTokensMax ?? 100}

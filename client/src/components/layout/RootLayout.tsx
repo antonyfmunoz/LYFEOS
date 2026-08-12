@@ -11,7 +11,7 @@ interface RootLayoutProps {
 }
 
 export default function RootLayout({ children }: RootLayoutProps) {
-  const { username, activeTimerQuest, timerStartedAt, timerPausedElapsed, timerIsPaused, isOnBreak, breakStartedAt, breakElapsed, endMissionTimer, pauseResumeTimer } = useLYFEOS();
+  const { displayName, activeTimerQuest, timerStartedAt, timerPausedElapsed, timerIsPaused, isOnBreak, breakStartedAt, breakElapsed, endMissionTimer, pauseResumeTimer } = useLYFEOS();
   const [location] = useLocation();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -46,7 +46,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <div className="flex flex-col bg-background" style={{ height: 'calc(100dvh + env(safe-area-inset-bottom, 0px))' }}>
       <div className="flex flex-grow overflow-hidden">
-        <Sidebar currentPage={currentPage} username={username} />
+        <Sidebar currentPage={currentPage} displayName={displayName} />
         
         <div className="flex-grow flex flex-col overflow-hidden">
           <div ref={scrollContainerRef} className="flex-grow overflow-y-auto relative safe-area-top">

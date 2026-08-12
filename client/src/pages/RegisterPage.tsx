@@ -22,7 +22,7 @@ export default function RegisterPage() {
     return !!localStorage.getItem('lyfeos-oauth-redirect-pending');
   });
 
-  const accent = null;
+  const [accent] = useState<{ color: string; glow: string; border20: string; border30: string; border50: string; bg20: string } | null>(null);
 
   useEffect(() => {
     if (isOAuthRedirecting) {
@@ -95,10 +95,8 @@ export default function RegisterPage() {
         email: trimmedEmail,
         avatarColor: "#00e0ff",
       }));
-
       localStorage.removeItem("lyfeos-has-seen-dashboard");
       localStorage.setItem("lyfeos-pending-onboarding", "true");
-
       navigate("/onboarding", { replace: true });
     } catch (err: any) {
       console.error("Registration error:", err);

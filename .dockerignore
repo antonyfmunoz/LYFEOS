@@ -1,0 +1,26 @@
+# Keep the deployment context small, reproducible, and free of local secrets.
+.git
+.gitignore
+node_modules
+dist
+attached_assets
+
+# Local runtime state and secret-bearing files
+.env
+.env.*
+!.env.example
+!.env.tpl
+!.env.op.tpl
+dump.sql
+cookies.txt
+cookies2.txt
+*.log
+
+# Local/editor/test artifacts
+.claude
+.vscode
+.idea
+coverage
+.DS_Store
+*.tsbuildinfo
+*.tar.gz

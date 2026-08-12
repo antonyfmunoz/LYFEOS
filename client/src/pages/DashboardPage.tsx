@@ -175,7 +175,7 @@ export default function DashboardPage() {
   }, []);
   
   const { 
-    stats, username, updateUserStats, 
+    stats, displayName, updateUserStats,
     energyLog, updateEnergyLog, resetEnergyLog,
     intentionLog, updateIntentionLog, resetIntentionLog,
     dataLog, updateDataLog, resetDataLog,

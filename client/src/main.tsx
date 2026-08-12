@@ -5,7 +5,11 @@ import "./index.css";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 
-const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+const runtimeConfig = (window as Window & {
+  __LYFEOS_RUNTIME_CONFIG__?: { clerkPublishableKey?: string };
+}).__LYFEOS_RUNTIME_CONFIG__;
+
+const PUBLISHABLE_KEY = runtimeConfig?.clerkPublishableKey || import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 if (!PUBLISHABLE_KEY) {
   throw new Error("Missing Publishable Key");

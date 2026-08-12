@@ -2,20 +2,20 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { useLocation } from "wouter";
 import { toast } from "@/hooks/use-toast";
 import { queryClient } from "./queryClient";
-import { useUser, useAuth as useClerkAuth, useClerk, useSignIn, useSignUp } from "@clerk/clerk-react";
+import { useUser, useAuth as useClerkAuth, useClerk, useSignIn } from "@clerk/clerk-react";
 import { applyPrimaryColor } from "./applyPrimaryColor";
 import { getLocalDateString } from "./utils";
 
 
 interface User {
   id: number;
-  username: string | null;
+  displayName: string | null;
 }
 
 interface AuthResponse {
   user: {
     id: number;
-    username: string | null;
+    displayName: string | null;
   };
   isNewUser?: boolean;
   primaryColor?: string;
@@ -28,7 +28,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (identifier: string, password: string) => Promise<void>;
   register: (email: string, password: string, extraData?: { avatarColor?: string }) => Promise<void>;
-  completeRegistration: (data: Record<string, any>) => Promise<{ id: number; username: string } | null>;
+  completeRegistration: (data: Record<string, any>) => Promise<{ id: number; displayName: string } | null>;
   logout: () => void;
   loginWithGoogle: (mode?: 'login' | 'register') => Promise<void>;
   loginWithApple: (mode?: 'login' | 'register') => Promise<void>;
@@ -49,8 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { user: clerkUser, isLoaded: clerkUserLoaded } = useUser();
   const { isSignedIn } = useClerkAuth();
   const { signOut } = useClerk();
-  const { signIn } = useSignIn();
-  const { signUp } = useSignUp();
+  const { signIn, setActive: setSignInActive } = useSignIn();
 
   const pendingPasswordRef = React.useRef<string | null>(null);
   const setPendingPassword = (password: string) => { pendingPasswordRef.current = password; };
@@ -130,24 +129,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Username, email, or phone number and password are required");
       }
 
-      if (!signIn) throw new Error("Sign-in not available");
-
-      const result = await signIn.create({
-        identifier: trimmedIdentifier,
-        password,
-      });
-
-      if (result.status !== "complete") {
-        throw new Error("Sign-in requires additional steps");
-      }
-
-      // Sync with server
-      const response = await fetch("/api/auth/login", {
+      let response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identifier: trimmedIdentifier, password }),
         credentials: "include",
       });
+
+      // Local email/password accounts do not require an email verification
+      // detour. Fall back to Clerk only for accounts that live there.
+      if (!response.ok) {
+        if (!signIn) throw new Error("Sign-in not available");
+        const result = await signIn.create({ identifier: trimmedIdentifier, password });
+        if (result.status !== "complete" || !setSignInActive || !result.createdSessionId) {
+          throw new Error("Check your email and password");
+        }
+        await setSignInActive({ session: result.createdSessionId });
+        response = await fetch("/api/auth/me", { credentials: "include" });
+      }
 
       const responseText = await response.text();
       let data: AuthResponse;
@@ -158,7 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (!response.ok) {
-        throw new Error(data?.error || "Check your username and password");
+        throw new Error(data?.error || "Check your email and password");
       }
 
       if (!data || !data.user || !data.user.id) {
@@ -202,7 +201,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.prefetchQuery({ queryKey: ["/api/users", data.user.id, "profile"] });
       queryClient.prefetchQuery({ queryKey: ["/api/account"] });
 
-      sessionStorage.setItem("login_success_username", data.user.username || "");
+      sessionStorage.setItem("login_success_username", data.user.displayName || "");
       sessionStorage.setItem("login_success_new_user", data.isNewUser ? "true" : "false");
 
       console.log("Navigating to login success transition...");
@@ -238,85 +237,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
 
-      if (!signUp) throw new Error("Sign-up not available");
-
-      await signUp.create({
-        emailAddress: trimmedEmail,
-        password,
-      });
-
-      // Sync with server
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: trimmedEmail,
-          password,
-          termsAccepted: true,
-          ...(extraData || {}),
-        }),
+        body: JSON.stringify({ email: trimmedEmail, password, termsAccepted: true, ...(extraData || {}) }),
         credentials: "include",
       });
-
-      const responseText = await response.text();
-      let data: AuthResponse;
-      try {
-        data = JSON.parse(responseText) as AuthResponse;
-      } catch (e) {
-        const error = new Error("Invalid server response. Please try again.");
-        toast({
-          title: "Registration Error",
-          description: error.message,
-          variant: "destructive",
-        });
-        throw error;
+      const data = await response.json() as AuthResponse;
+      if (!response.ok || !data?.user?.id) {
+        throw new Error(data?.error || "Registration failed. Please try again.");
       }
-
-      if (!response.ok) {
-        const errorMessage = data?.error || "Registration failed. Please try again.";
-        const error = new Error(errorMessage);
-        toast({
-          title: "Registration Failed",
-          description: errorMessage,
-          variant: "destructive",
-        });
-        throw error;
-      }
-
-      if (!data || !data.user || !data.user.id) {
-        const error = new Error("Invalid user data received from server");
-        toast({
-          title: "Registration Error",
-          description: error.message,
-          variant: "destructive",
-        });
-        throw error;
-      }
-
-      console.log("Registration successful, user data:", data.user);
-
       setUser(data.user);
       localStorage.setItem("lyfeos_user", JSON.stringify(data.user));
-
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      try {
-        const verifyResponse = await fetch("/api/auth/me", { credentials: "include" });
-        if (verifyResponse.ok) {
-          console.log("Session verified successfully after registration");
-        } else {
-          console.warn("Session verification failed after registration - proceeding anyway");
-        }
-      } catch (verifyError) {
-        console.error("Error verifying session after registration:", verifyError);
-      }
-
-      setIsLoading(false);
-
       localStorage.removeItem("lyfeos-widget-states");
       localStorage.setItem("lyfeos-pending-onboarding", "true");
-
-      console.log("New user registered, redirecting to onboarding");
       navigate("/onboarding", { replace: true });
     } catch (error: any) {
       console.error("Registration error:", error);
@@ -332,7 +266,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const completeRegistration = async (data: Record<string, any>): Promise<{ id: number; username: string } | null> => {
+  const completeRegistration = async (data: Record<string, any>): Promise<{ id: number; displayName: string } | null> => {
     try {
       setIsLoading(true);
       const response = await fetch("/api/auth/complete-registration", {

@@ -39,7 +39,7 @@ import { formatLocalDate, logger } from "./utils";
 export interface IStorage {
   // User methods
   getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByDisplayName(displayName: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByPhone(phoneNumber: string): Promise<User | undefined>;
   getUserByIdentifier(identifier: string): Promise<User | undefined>;
@@ -292,8 +292,8 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+  async getUserByDisplayName(displayName: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.displayName, displayName));
     return user;
   }
   
@@ -308,8 +308,8 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getUserByIdentifier(identifier: string): Promise<User | undefined> {
-    // Try to find user by username, email, or phone number
-    let user = await this.getUserByUsername(identifier);
+    // Try to find user by displayName, email, or phone number
+    let user = await this.getUserByDisplayName(identifier);
     if (user) return user;
     
     user = await this.getUserByEmail(identifier);

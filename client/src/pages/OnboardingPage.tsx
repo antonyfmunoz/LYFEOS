@@ -912,7 +912,7 @@ export default function OnboardingPage() {
       const mission = MISSIONS.find(m => m.id === missionId);
       if (!mission) return;
       
-      let registeredUser: { id: number; username: string } | null = null;
+      let registeredUser: { id: number; displayName: string } | null = null;
       if (missionId === 0) {
         const pendingRegData = sessionStorage.getItem("lyfeos-pending-registration");
         if (pendingRegData) {
@@ -930,7 +930,7 @@ export default function OnboardingPage() {
           registeredUser = await completeRegistration({
             email,
             password,
-            username: onboardingUsername.trim(),
+            displayName: onboardingUsername.trim(),
             firstName: onboardingFirstName.trim(),
             lastName: onboardingLastName.trim(),
             avatarColor: colorForRegistration,
@@ -960,23 +960,23 @@ export default function OnboardingPage() {
           }
         } else if (onboardingUsername.trim()) {
           try {
-            const usernameRes = await fetch("/api/auth/set-username", {
+            const displayNameRes = await fetch("/api/auth/set-display-name", {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               credentials: "include",
               body: JSON.stringify({
-                username: onboardingUsername.trim(),
+                displayName: onboardingUsername.trim(),
                 firstName: onboardingFirstName.trim(),
                 lastName: onboardingLastName.trim(),
               }),
             });
-            if (usernameRes.ok) {
-              const updatedUser = await usernameRes.json();
+            if (displayNameRes.ok) {
+              const updatedUser = await displayNameRes.json();
               localStorage.setItem("lyfeos_user", JSON.stringify(updatedUser));
               await refreshUser();
             }
           } catch (err) {
-            console.error("Failed to set username:", err);
+            console.error("Failed to set display name:", err);
           }
         }
       }
@@ -1108,7 +1108,7 @@ export default function OnboardingPage() {
   
   const canProceed = () => {
     if (currentMission === 0) {
-      if (currentStep === 0) return onboardingUsername.trim().length >= 3 && usernameAvailable === true;
+      if (currentStep === 0) return onboardingUsername.trim().length >= 3 && usernameAvailable !== false;
       if (currentStep === 1) return onboardingFirstName.trim() !== "" && onboardingLastName.trim() !== "";
       if (currentStep === 2) return birthMonth > 0 && birthDay > 0 && birthYear > 0;
       if (currentStep === 3) return location.trim() !== "";
@@ -1222,6 +1222,10 @@ export default function OnboardingPage() {
   };
   
   const handleNext = async () => {
+    if (currentMission === 0 && currentStep === 0) {
+      const available = await checkUsernameAvailability(onboardingUsername);
+      if (!available) return;
+    }
     const maxSteps = getMaxSteps(currentMission);
     
     if (currentStep < maxSteps - 1) {
@@ -1403,7 +1407,7 @@ export default function OnboardingPage() {
   const getMissionProfileData = (missionId: number): Record<string, any> => {
     switch (missionId) {
       case 0:
-        return { username: onboardingUsername.trim(), firstName: onboardingFirstName.trim(), lastName: onboardingLastName.trim(), ageRange: birthYear && birthMonth && birthDay ? ageToRange(calculateAge(birthYear, birthMonth, birthDay)) : "", birthday: birthYear && birthMonth && birthDay ? `${birthYear}-${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}` : "", location, timezone, primaryColor: selectedThemeColor };
+        return { displayName: onboardingUsername.trim(), firstName: onboardingFirstName.trim(), lastName: onboardingLastName.trim(), ageRange: birthYear && birthMonth && birthDay ? ageToRange(calculateAge(birthYear, birthMonth, birthDay)) : "", birthday: birthYear && birthMonth && birthDay ? `${birthYear}-${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}` : "", location, timezone, primaryColor: selectedThemeColor };
       case 1: {
         const archetypeResults = getArchetypeResults();
         return {
@@ -1442,11 +1446,11 @@ export default function OnboardingPage() {
         return {
           primaryCraft,
           primaryCraftWhy,
-          knowledgeAreas: knowledgeAreas.split(",").map(s => s.trim()).filter(Boolean),
-          skillsToAcquire: skillsToAcquire.split(",").map(s => s.trim()).filter(Boolean),
+          knowledgeAreas: knowledgeAreas.split(",").map((s: string) => s.trim()).filter(Boolean),
+          skillsToAcquire: skillsToAcquire.split(",").map((s: string) => s.trim()).filter(Boolean),
           learningStyle: { preference: learningPreference },
           practiceCadence: { hoursPerWeek: practiceHours },
-          domainsOfCompetence: knowledgeAreas.split(",").map(s => s.trim()).filter(Boolean),
+          domainsOfCompetence: knowledgeAreas.split(",").map((s: string) => s.trim()).filter(Boolean),
           integrationMethod: learningPreference,
           activePhase: lifeStage || "Building",
           careerVocation,
@@ -1512,7 +1516,7 @@ export default function OnboardingPage() {
   };
 
   const generateAffirmationRequest = async () => {
-    const displayName = [onboardingFirstName.trim(), onboardingLastName.trim()].filter(Boolean).join(" ") || (userProfile as any)?.firstName || user?.username || "Player";
+    const displayName = [onboardingFirstName.trim(), onboardingLastName.trim()].filter(Boolean).join(" ") || (userProfile as any)?.firstName || user?.displayName || "Player";
     const missionDepth = currentMission;
     
     const body: Record<string, any> = {
@@ -1633,18 +1637,21 @@ export default function OnboardingPage() {
     }
   };
   
-  const checkUsernameAvailability = async (name: string) => {
+  const checkUsernameAvailability = async (name: string): Promise<boolean> => {
     if (name.trim().length < 3) {
       setUsernameAvailable(null);
-      return;
+      return false;
     }
     setCheckingUsername(true);
     try {
-      const res = await fetch(`/api/auth/check-username?username=${encodeURIComponent(name.trim())}`, { credentials: "include" });
+      const res = await fetch(`/api/auth/check-display-name?displayName=${encodeURIComponent(name.trim())}`, { credentials: "include" });
       const data = await res.json();
-      setUsernameAvailable(data.available === true);
+      const available = data.available === true;
+      setUsernameAvailable(available);
+      return available;
     } catch {
       setUsernameAvailable(null);
+      return false;
     } finally {
       setCheckingUsername(false);
     }
@@ -1688,7 +1695,7 @@ export default function OnboardingPage() {
       case 0:
         return (
           <div className="space-y-5">
-            <h2 className="text-2xl font-orbitron font-bold text-center">Choose your username</h2>
+            <h2 className="text-2xl font-orbitron font-bold text-center">Choose your display name</h2>
             <p className="text-sm text-muted-foreground text-center">This is how you'll be known in LYFEOS</p>
             <div className="max-w-sm mx-auto space-y-2">
               <Input
@@ -1698,7 +1705,7 @@ export default function OnboardingPage() {
                   setOnboardingUsername(val);
                   setUsernameAvailable(null);
                 }}
-                onBlur={() => checkUsernameAvailability(onboardingUsername)}
+                onBlur={() => { void checkUsernameAvailability(onboardingUsername); }}
                 placeholder="e.g., phantom_coder"
                 autoComplete="off"
                 className="bg-card/30 border-primary/20 text-center text-lg"
@@ -1710,10 +1717,10 @@ export default function OnboardingPage() {
                 <p className="text-xs text-muted-foreground text-center">Checking availability...</p>
               )}
               {usernameAvailable === true && onboardingUsername.trim().length >= 3 && (
-                <p className="text-xs text-green-400 text-center">Username is available!</p>
+                <p className="text-xs text-green-400 text-center">Display name is available!</p>
               )}
               {usernameAvailable === false && (
-                <p className="text-xs text-red-400 text-center">Username is already taken</p>
+                <p className="text-xs text-red-400 text-center">Display name is already taken</p>
               )}
             </div>
           </div>

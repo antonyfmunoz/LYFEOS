@@ -1,12 +1,11 @@
 import React, { useState, useEffect, Fragment } from 'react';
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar, CheckCircle2, Clock, ArrowRight, Award, Zap, Info } from "lucide-react";
 type CalendarEvent = { id: string; title: string; description: string; startTime: string; duration: string; category: string; date: string; };
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import InfoIconButton from './InfoIconButton';
-import { Button } from '@/components/ui/dynamic-color-button';
+import { DynamicColorButton as Button } from '@/components/ui/dynamic-color-button';
 
 // Helper function to convert hex to rgba
 const hexToRgba = (hex: string, alpha: number = 1) => {
@@ -194,7 +193,7 @@ export default function MissionLogWidget({
       variant="outline"
       size="icon"
       className="h-6 w-6 p-0 rounded-full"
-      onClick={(e) => {
+      onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
         e.stopPropagation();
         openMissionInfo(event);
       }}
@@ -268,7 +267,7 @@ export default function MissionLogWidget({
                                 variant="ghost"
                                 size="icon"
                                 className="h-5 w-5 p-0"
-                                onClick={(e) => {
+                                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                                   e.stopPropagation();
                                   openMissionInfo(event);
                                 }}
@@ -354,7 +353,7 @@ export default function MissionLogWidget({
                                 variant="ghost"
                                 size="icon"
                                 className="h-5 w-5 p-0"
-                                onClick={(e) => {
+                                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                                   e.stopPropagation();
                                   openMissionInfo(event);
                                 }}

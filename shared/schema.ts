@@ -7,7 +7,6 @@ import { relations } from "drizzle-orm";
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   // Original fields
-  username: text("username").unique(),
   password: text("password"),
   displayName: text("display_name"),
   firstName: text("first_name"),
@@ -548,7 +547,6 @@ export const spreadsheetsRelations = relations(spreadsheets, ({ one }) => ({
 
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
   password: true,
   displayName: true,
   firstName: true,
@@ -578,6 +576,8 @@ export const insertUserStatsSchema = createInsertSchema(userStats).pick({
   healthPointsMax: true,
   attentionTokensCurrent: true,
   attentionTokensMax: true,
+  wealthTokensCurrent: true,
+  wealthTokensMax: true,
   experienceCurrent: true,
   experienceMax: true,
   level: true,
@@ -632,6 +632,8 @@ export const insertQuestSchema = createInsertSchema(quests).pick({
   url: true,
   attendees: true,
   missionStatus: true,
+  viewId: true,
+  viewColumn: true,
   deletedAt: true,
 });
 
@@ -1449,3 +1451,78 @@ export const insertWaitlistEmailSchema = createInsertSchema(waitlistEmails).omit
 
 export type WaitlistEmail = typeof waitlistEmails.$inferSelect;
 export type InsertWaitlistEmail = z.infer<typeof insertWaitlistEmailSchema>;
+
+// UMH federation bridge. LyfeOS remains authoritative for missions; these
+// records provide durable, replay-safe coordination at the HTTPS boundary.
+export const umhFederationInstallations = pgTable("umh_federation_installations", {
+  id: serial("id").primaryKey(),
+  installationId: text("installation_id").notNull().unique(),
+  tenantId: text("tenant_id").notNull(),
+  keyId: text("key_id").notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const umhInboundCommands = pgTable("umh_inbound_commands", {
+  id: serial("id").primaryKey(),
+  commandId: text("command_id").notNull().unique(),
+  nonce: text("nonce").notNull().unique(),
+  installationId: text("installation_id").notNull(),
+  tenantId: text("tenant_id").notNull(),
+  localUserId: integer("local_user_id").notNull().references(() => users.id),
+  capability: text("capability").notNull(),
+  idempotencyKey: text("idempotency_key").notNull(),
+  payloadHash: text("payload_hash").notNull(),
+  status: text("status").notNull().default("received"),
+  outcome: jsonb("outcome"),
+  receivedAt: timestamp("received_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+}, (table) => [
+  uniqueIndex("umh_command_idempotency_idx").on(
+    table.installationId,
+    table.localUserId,
+    table.capability,
+    table.idempotencyKey,
+  ),
+]);
+
+export const umhApprovalRequests = pgTable("umh_approval_requests", {
+  id: serial("id").primaryKey(),
+  commandId: text("command_id").notNull().references(() => umhInboundCommands.commandId),
+  risk: text("risk").notNull(),
+  state: text("state").notNull().default("not_required"),
+  rationale: text("rationale"),
+  requestedAt: timestamp("requested_at").notNull().defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+});
+
+export const umhAuditRecords = pgTable("umh_audit_records", {
+  id: serial("id").primaryKey(),
+  commandId: text("command_id").references(() => umhInboundCommands.commandId),
+  action: text("action").notNull(),
+  actorType: text("actor_type").notNull(),
+  actorId: text("actor_id").notNull(),
+  localUserId: integer("local_user_id").references(() => users.id),
+  correlationId: text("correlation_id"),
+  details: jsonb("details").notNull().default({}),
+  occurredAt: timestamp("occurred_at").notNull().defaultNow(),
+});
+
+export const umhOutboxEvents = pgTable("umh_outbox_events", {
+  id: serial("id").primaryKey(),
+  eventId: text("event_id").notNull().unique(),
+  eventType: text("event_type").notNull(),
+  aggregateType: text("aggregate_type").notNull(),
+  aggregateId: text("aggregate_id").notNull(),
+  payload: jsonb("payload").notNull(),
+  status: text("status").notNull().default("pending"),
+  attempts: integer("attempts").notNull().default(0),
+  nextAttemptAt: timestamp("next_attempt_at").notNull().defaultNow(),
+  deliveredAt: timestamp("delivered_at"),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type UMHInboundCommand = typeof umhInboundCommands.$inferSelect;
+export type UMHOutboxEvent = typeof umhOutboxEvents.$inferSelect;
