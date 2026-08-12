@@ -1,12 +1,18 @@
+import "./instrument";
+
 import { createRoot } from "react-dom/client";
 import { ClerkProvider } from "@clerk/clerk-react";
 import App from "./App";
 import "./index.css";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
+import * as Sentry from "@sentry/react";
+import { sentryEnabled } from "./instrument";
 
 const runtimeConfig = (window as Window & {
-  __LYFEOS_RUNTIME_CONFIG__?: { clerkPublishableKey?: string };
+  __LYFEOS_RUNTIME_CONFIG__?: {
+    clerkPublishableKey?: string;
+  };
 }).__LYFEOS_RUNTIME_CONFIG__;
 
 const PUBLISHABLE_KEY = runtimeConfig?.clerkPublishableKey || import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -40,10 +46,18 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-createRoot(document.getElementById("root")!).render(
+const application = (
   <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
     <QueryClientProvider client={queryClient}>
       <App />
     </QueryClientProvider>
   </ClerkProvider>
+);
+
+createRoot(document.getElementById("root")!).render(
+  sentryEnabled ? (
+    <Sentry.ErrorBoundary fallback={<p role="alert">LyfeOS encountered an unexpected error. Please refresh and try again.</p>}>
+      {application}
+    </Sentry.ErrorBoundary>
+  ) : application,
 );
