@@ -200,11 +200,12 @@ async function ensureDatabaseSchema() {
     const { setupVite } = await import("./vite-dev");
     await setupVite(app, server);
   } else {
-    app.use(express.static("dist/public", {
-      maxAge: "1y",
-      immutable: true,
-    }));
-    serveStatic(app);
+    const clerkPublishableKey = process.env.VITE_CLERK_PUBLISHABLE_KEY;
+    if (!clerkPublishableKey) {
+      console.error("VITE_CLERK_PUBLISHABLE_KEY required in production");
+      process.exit(1);
+    }
+    serveStatic(app, { clerkPublishableKey });
   }
 
   const port = process.env.PORT || 5000;
