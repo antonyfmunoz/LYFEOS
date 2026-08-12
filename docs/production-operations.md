@@ -8,9 +8,15 @@ Before a production release, run `npm run verify`, review `git diff --check`, an
 
 Fly checks `/api/ready`, which verifies a live database query. Authentication sessions are stored in Postgres table `session`, so a machine restart does not sign users out. The release migration `0009_postgres_sessions.sql` must be applied before enabling a release that uses the Postgres session store.
 
+## Monitoring and alerts
+
+GitHub Actions runs the `Production monitor` workflow every five minutes against `https://lyfeos.net/api/ready` and the expected anonymous `401` response from `/api/auth/me`. A failed check opens one labelled `production-monitor` incident issue with the failing workflow receipt. The first successful subsequent check comments on and closes that incident. Configure GitHub notification delivery to **Email** and **Only notify for failed workflows** for the `antonyfmunoz/LYFEOS` repository so incident creation and monitor failures reach the operational owner.
+
+The application emits structured request logs with `x-request-id`; Fly remains the live source for runtime logs and machine health. A dedicated error-tracking vendor has not been configured, so errors are not yet aggregated or alerted independently of the availability monitor.
+
 ## Backup and restore
 
-The database provider remains the authoritative backup system. Before changing schema or destructive data, create a provider snapshot and record its timestamp and restore point in the release notes. At least quarterly, restore a snapshot into an isolated non-production database and verify: schema, one login, one account creation, and one mission read/write. Never run a restore against production without an explicit change window and approval.
+Neon is the authoritative recovery provider. Its branch history supports point-in-time recovery; retain at least seven days of history (or 30 days on a plan that supports it). Before changing schema or destructive data, create a Neon snapshot and record its timestamp and restore point in the release notes. At least quarterly, create an isolated branch from a snapshot or a point in time and verify: schema, one login, one account creation, and one mission read/write. Delete the temporary branch after the evidence is recorded. Never run a restore against production without an explicit change window and approval.
 
 ## Incident response
 
@@ -21,4 +27,4 @@ The database provider remains the authoritative backup system. Before changing s
 
 ## External operating gates
 
-These controls require separate provider configuration or ownership before claiming mature SaaS operations: a production Clerk instance/key, central error monitoring and alert routing, database-provider backup retention, automated off-site recovery evidence, product analytics consent and retention policy, billing/entitlement controls, support intake, and a named operational owner.
+These controls require separate provider configuration or ownership before claiming mature SaaS operations: central error monitoring beyond synthetic availability checks, Neon backup retention and quarterly recovery evidence, product analytics consent and retention policy, billing/entitlement controls, support intake, and a named operational owner.
