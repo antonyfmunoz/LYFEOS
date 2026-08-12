@@ -8,3 +8,6 @@ GOOGLE_OAUTH_CLIENT_SECRET=your-google-client-secret
 VITE_CLERK_PUBLISHABLE_KEY=pk_live_or_test_value
 CLERK_SECRET_KEY=sk_live_or_test_value
 CLERK_WEBHOOK_SIGNING_SECRET=whsec_value_from_clerk
+SENTRY_DSN=https://public-key@o0.ingest.sentry.io/project-id
+SENTRY_ENVIRONMENT=development_or_production
+SENTRY_RELEASE=git-commit-or-semantic-release

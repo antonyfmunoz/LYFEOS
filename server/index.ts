@@ -23,6 +23,32 @@ import connectPgSimple from "connect-pg-simple";
 import { startNotificationScheduler } from "./notificationScheduler";
 import { startUMHOutboxWorker } from "./umh/outbox";
 import { execSync } from "child_process";
+import * as Sentry from "@sentry/node";
+
+const sentryDsn = process.env.SENTRY_DSN;
+const sentryEnvironment = process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || "development";
+const sentryRelease = process.env.SENTRY_RELEASE;
+
+Sentry.init({
+  dsn: sentryDsn,
+  enabled: Boolean(sentryDsn),
+  environment: sentryEnvironment,
+  release: sentryRelease,
+  // Error monitoring is the production-MVP need. Keep performance sampling
+  // intentionally low until real traffic establishes a useful baseline.
+  tracesSampleRate: sentryEnvironment === "production" ? 0.1 : 1,
+  sendDefaultPii: false,
+  beforeSend(event) {
+    if (event.request) {
+      delete event.request.cookies;
+      if (event.request.headers) {
+        delete event.request.headers.authorization;
+        delete event.request.headers.cookie;
+      }
+    }
+    return event;
+  },
+});
 
 const app = express();
 
@@ -189,6 +215,12 @@ async function ensureDatabaseSchema() {
       : (err.message || "Internal Server Error");
 
     log(`Error: ${err.message || "Internal Server Error"} (${status}) requestId=${requestId || "unknown"}`);
+    Sentry.withScope((scope) => {
+      scope.setTag("request_id", requestId || "unknown");
+      scope.setTag("http_status", String(status));
+      scope.setContext("request", { method: _req.method, path: _req.path });
+      Sentry.captureException(err);
+    });
     console.error(err);
     res.status(status).json({ message, requestId });
   });
@@ -205,7 +237,12 @@ async function ensureDatabaseSchema() {
       console.error("VITE_CLERK_PUBLISHABLE_KEY required in production");
       process.exit(1);
     }
-    serveStatic(app, { clerkPublishableKey });
+    serveStatic(app, {
+      clerkPublishableKey,
+      sentryDsn,
+      environment: sentryEnvironment,
+      sentryRelease,
+    });
   }
 
   const port = process.env.PORT || 5000;
@@ -239,14 +276,18 @@ async function ensureDatabaseSchema() {
   process.on('SIGINT', () => gracefulShutdown('SIGINT'));
   process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));
 
-  process.on('uncaughtException', (err) => {
+  process.on('uncaughtException', async (err) => {
     log(`Uncaught exception: ${err.message}`);
+    Sentry.captureException(err);
+    await Sentry.flush(2000);
     console.error(err);
     gracefulShutdown('uncaughtException');
   });
 
-  process.on('unhandledRejection', (reason, promise) => {
+  process.on('unhandledRejection', async (reason, promise) => {
     log(`Unhandled rejection at: ${promise}, reason: ${reason}`);
+    Sentry.captureException(reason);
+    await Sentry.flush(2000);
     console.error(reason);
     gracefulShutdown('unhandledRejection');
   });

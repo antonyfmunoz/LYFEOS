@@ -12,7 +12,7 @@ Fly checks `/api/ready`, which verifies a live database query. Authentication se
 
 GitHub Actions runs the `Production monitor` workflow every five minutes against `https://lyfeos.net/api/ready` and the expected anonymous `401` response from `/api/auth/me`. A failed check opens one labelled `production-monitor` incident issue with the failing workflow receipt. The first successful subsequent check comments on and closes that incident. Configure GitHub notification delivery to **Email** and **Only notify for failed workflows** for the `antonyfmunoz/LYFEOS` repository so incident creation and monitor failures reach the operational owner.
 
-The application emits structured request logs with `x-request-id`; Fly remains the live source for runtime logs and machine health. A dedicated error-tracking vendor has not been configured, so errors are not yet aggregated or alerted independently of the availability monitor.
+The application emits structured request logs with `x-request-id`; Fly remains the live source for runtime logs and machine health. Sentry is initialized only when `SENTRY_DSN` is present. Its React initializer runs before the application, captures browser errors, and traces page/API activity; the server captures Express errors, uncaught exceptions, and unhandled rejections. Set `SENTRY_ENVIRONMENT=production` and `SENTRY_RELEASE` to the deployed commit. The client disables automatic user, cookie, header, query, body, AI input/output, and local-variable collection. The server strips authorization/cookie headers before an event is sent. Session replay is intentionally deferred pending an explicit consent and retention decision. Create a Sentry alert for new issues in the LyfeOS project and route it to the operational owner. The Sentry project is not live until its DSN is stored in Fly and a test event is received.
 
 ## Backup and restore
 
@@ -27,4 +27,4 @@ Neon is the authoritative recovery provider. Its branch history supports point-i
 
 ## External operating gates
 
-These controls require separate provider configuration or ownership before claiming mature SaaS operations: central error monitoring beyond synthetic availability checks, Neon backup retention and quarterly recovery evidence, product analytics consent and retention policy, billing/entitlement controls, support intake, and a named operational owner.
+These controls require separate provider configuration or ownership before claiming mature SaaS operations: Neon backup retention and quarterly recovery evidence, product analytics consent and retention policy, billing/entitlement controls, support intake, and a named operational owner.

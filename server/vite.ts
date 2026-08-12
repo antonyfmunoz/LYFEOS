@@ -13,7 +13,12 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
-export function serveStatic(app: Express, runtimeConfig: { clerkPublishableKey: string }) {
+export function serveStatic(app: Express, runtimeConfig: {
+  clerkPublishableKey: string;
+  sentryDsn?: string;
+  environment?: string;
+  sentryRelease?: string;
+}) {
   const distPath = path.resolve(import.meta.dirname, "public");
 
   if (!fs.existsSync(distPath)) {
