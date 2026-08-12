@@ -78,7 +78,11 @@ import update from 'immutability-helper';
 import type { UserProfile as UserProfileSchema } from "@shared/schema";
 import { startThetaBeats, stopThetaBeats } from '@/lib/theta-beats';
 import { useUser } from "@clerk/clerk-react";
-import type { PhoneNumberResource } from "@clerk/shared";
+type ClerkPhoneNumber = {
+  id: string;
+  phoneNumber: string;
+  attemptVerification: (input: { code: string }) => Promise<unknown>;
+};
 
 
 
@@ -596,7 +600,7 @@ export default function ProfilePage() {
   const [twoFactorError, setTwoFactorError] = useState('');
   const [emailCodeSent, setEmailCodeSent] = useState(false);
   const [phoneCodeSent, setPhoneCodeSent] = useState(false);
-  const [clerkPhoneNumber, setClerkPhoneNumber] = useState<PhoneNumberResource | null>(null);
+  const [clerkPhoneNumber, setClerkPhoneNumber] = useState<ClerkPhoneNumber | null>(null);
   const { user: clerkUser } = useUser();
   
   // Fetch account data

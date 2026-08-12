@@ -15,6 +15,8 @@ export default function DailyQuests() {
         <QuestItem 
           key={quest.id}
           quest={quest}
+          index={0}
+          section="daily"
           onToggle={() => toggleQuestCompletion(quest.id)}
         />
       ))}

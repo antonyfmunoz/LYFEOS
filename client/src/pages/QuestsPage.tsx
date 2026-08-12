@@ -3605,7 +3605,7 @@ export default function QuestsPage() {
                                   .filter(m => !(m.viewId === activeCustomView.id && m.viewColumn === col.id))
                                   .slice(0, 5)
                                   .map(m => (
-                                    <DropdownMenuItem key={m.id} onClick={() => handleMoveToViewColumn(m.id as number, activeCustomView.id, col.id)}>
+                                    <DropdownMenuItem key={m.id} onClick={() => handleMoveToViewColumn(Number(m.id), activeCustomView.id, col.id)}>
                                       <Plus className="h-3 w-3 mr-2" />
                                       {m.title.length > 20 ? m.title.slice(0, 20) + '...' : m.title}
                                     </DropdownMenuItem>

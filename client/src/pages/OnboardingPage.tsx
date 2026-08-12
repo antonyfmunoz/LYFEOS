@@ -1108,7 +1108,7 @@ export default function OnboardingPage() {
   
   const canProceed = () => {
     if (currentMission === 0) {
-      if (currentStep === 0) return onboardingUsername.trim().length >= 3 && usernameAvailable === true;
+      if (currentStep === 0) return onboardingUsername.trim().length >= 3 && usernameAvailable !== false;
       if (currentStep === 1) return onboardingFirstName.trim() !== "" && onboardingLastName.trim() !== "";
       if (currentStep === 2) return birthMonth > 0 && birthDay > 0 && birthYear > 0;
       if (currentStep === 3) return location.trim() !== "";
@@ -1222,6 +1222,10 @@ export default function OnboardingPage() {
   };
   
   const handleNext = async () => {
+    if (currentMission === 0 && currentStep === 0) {
+      const available = await checkUsernameAvailability(onboardingUsername);
+      if (!available) return;
+    }
     const maxSteps = getMaxSteps(currentMission);
     
     if (currentStep < maxSteps - 1) {
@@ -1442,11 +1446,11 @@ export default function OnboardingPage() {
         return {
           primaryCraft,
           primaryCraftWhy,
-          knowledgeAreas: knowledgeAreas.split(",").map(s => s.trim()).filter(Boolean),
-          skillsToAcquire: skillsToAcquire.split(",").map(s => s.trim()).filter(Boolean),
+          knowledgeAreas: knowledgeAreas.split(",").map((s: string) => s.trim()).filter(Boolean),
+          skillsToAcquire: skillsToAcquire.split(",").map((s: string) => s.trim()).filter(Boolean),
           learningStyle: { preference: learningPreference },
           practiceCadence: { hoursPerWeek: practiceHours },
-          domainsOfCompetence: knowledgeAreas.split(",").map(s => s.trim()).filter(Boolean),
+          domainsOfCompetence: knowledgeAreas.split(",").map((s: string) => s.trim()).filter(Boolean),
           integrationMethod: learningPreference,
           activePhase: lifeStage || "Building",
           careerVocation,
@@ -1633,18 +1637,21 @@ export default function OnboardingPage() {
     }
   };
   
-  const checkUsernameAvailability = async (name: string) => {
+  const checkUsernameAvailability = async (name: string): Promise<boolean> => {
     if (name.trim().length < 3) {
       setUsernameAvailable(null);
-      return;
+      return false;
     }
     setCheckingUsername(true);
     try {
       const res = await fetch(`/api/auth/check-display-name?displayName=${encodeURIComponent(name.trim())}`, { credentials: "include" });
       const data = await res.json();
-      setUsernameAvailable(data.available === true);
+      const available = data.available === true;
+      setUsernameAvailable(available);
+      return available;
     } catch {
       setUsernameAvailable(null);
+      return false;
     } finally {
       setCheckingUsername(false);
     }
@@ -1698,7 +1705,7 @@ export default function OnboardingPage() {
                   setOnboardingUsername(val);
                   setUsernameAvailable(null);
                 }}
-                onBlur={() => checkUsernameAvailability(onboardingUsername)}
+                onBlur={() => { void checkUsernameAvailability(onboardingUsername); }}
                 placeholder="e.g., phantom_coder"
                 autoComplete="off"
                 className="bg-card/30 border-primary/20 text-center text-lg"

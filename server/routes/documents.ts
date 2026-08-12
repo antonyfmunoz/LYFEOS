@@ -472,7 +472,7 @@ export function registerDocumentRoutes(app: Express): void {
 
       const folderMap = new Map<string, number>();
 
-      async function ensureFolderHierarchy(dirPath: string): Promise<number | null> {
+      const ensureFolderHierarchy = async (dirPath: string): Promise<number | null> => {
         if (!dirPath || dirPath === '.' || dirPath === '/') return targetFolderId;
 
         if (folderMap.has(dirPath)) return folderMap.get(dirPath)!;
@@ -496,7 +496,7 @@ export function registerDocumentRoutes(app: Express): void {
 
         folderMap.set(dirPath, folder.id);
         return folder.id;
-      }
+      };
 
       for (const entry of entries) {
         try {
@@ -599,7 +599,7 @@ export function registerDocumentRoutes(app: Express): void {
       const activeFolders = allFolders.filter(f => !f.deletedAt);
 
       const folderPathMap = new Map<number, string>();
-      function getFolderPath(folderId: number): string {
+      const getFolderPath = (folderId: number): string => {
         if (folderPathMap.has(folderId)) return folderPathMap.get(folderId)!;
         const folder = activeFolders.find(f => f.id === folderId);
         if (!folder) return '';
@@ -607,7 +607,7 @@ export function registerDocumentRoutes(app: Express): void {
         const fullPath = parentPath ? `${parentPath}/${folder.name}` : folder.name;
         folderPathMap.set(folderId, fullPath);
         return fullPath;
-      }
+      };
 
       const zip = new AdmZip();
 
@@ -786,7 +786,7 @@ export function registerDocumentRoutes(app: Express): void {
               resourceMap.set(r.hash, { mime: r.mime, data: r.data, filename: r.filename });
             }
 
-            htmlContent = htmlContent.replace(/<en-media[^>]*hash="([^"]*)"[^>]*\/?>/g, (match, hash) => {
+            htmlContent = htmlContent.replace(/<en-media[^>]*hash="([^"]*)"[^>]*\/?>/g, (_match: string, hash: string) => {
               const r = resourceMap.get(hash);
               if (r && r.mime.startsWith('image/')) {
                 return `<img src="data:${r.mime};base64,${r.data.toString('base64')}" alt="${r.filename || 'image'}" />`;

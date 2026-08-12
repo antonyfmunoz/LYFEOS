@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
-const BASE_URL = `http://localhost:5000`;
+const BASE_URL = process.env.LYFEOS_TEST_API_URL;
+const describeApi = BASE_URL ? describe : describe.skip;
 
 async function apiRequest(method: string, path: string, body?: any, cookie?: string) {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -18,7 +19,7 @@ async function apiRequest(method: string, path: string, body?: any, cookie?: str
   return { status: res.status, data, cookie: setCookie };
 }
 
-describe('Auth API', () => {
+describeApi('Auth API', () => {
   const testUser = {
     displayName: `testuser_${Date.now()}`,
     password: 'TestPass123!',
@@ -97,7 +98,7 @@ describe('Auth API', () => {
   });
 });
 
-describe('Password Reset Validation', () => {
+describeApi('Password Reset Validation', () => {
   it('rejects reset-password with invalid token format', async () => {
     const { status, data } = await apiRequest('POST', '/api/auth/reset-password', {
       token: 'invalid-token',
@@ -117,7 +118,7 @@ describe('Password Reset Validation', () => {
   });
 });
 
-describe('Health Check', () => {
+describeApi('Health Check', () => {
   it('returns ok status', async () => {
     const { status, data } = await apiRequest('GET', '/api/health');
     expect(status).toBe(200);

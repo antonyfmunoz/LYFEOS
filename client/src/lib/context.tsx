@@ -229,6 +229,8 @@ const initialKanbanTasks: KanbanTask[] = [
 interface LYFEOSContextType {
   stats: UserStats;
   quests: Quest[];
+  /** Compatibility view for legacy mission widgets. Quests remain canonical. */
+  events: Quest[];
   userProfile: any | null;
   messages: AIMessage[];
   missionPages: MissionPage[];
@@ -255,6 +257,8 @@ interface LYFEOSContextType {
   toggleQuestCompletion: (id: string) => Promise<void> | void;
   createQuest: (quest: Omit<Quest, "id" | "completed">) => Promise<Quest>;
   updateQuest: (id: string, quest: Partial<Quest>) => Promise<Quest>;
+  addEvent: (event: { title: string; description?: string; startTime?: string; duration?: string; category?: string; date?: string }) => Promise<Quest>;
+  updateEvent: (id: string, event: Partial<Quest>) => Promise<Quest>;
   deleteQuest: (id: string) => Promise<void>;
   refetchQuests: (overrideUserId?: number) => Promise<void>;
   sendMessage: (content: string, imageIds?: number[]) => void;
@@ -909,6 +913,10 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         repeatInterval: questData.repeatInterval || null,
         repeatDays: questData.repeatDays || null,
         repeatEndDate: questData.repeatEndDate || null,
+        location: questData.location || null,
+        url: questData.url || null,
+        allDay: questData.allDay || false,
+        missionStatus: questData.missionStatus || "confirmed",
       }),
     });
     
@@ -945,6 +953,16 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       visionGoalId: quest.visionGoalId ?? null,
       ritualGroup: quest.ritualGroup || null,
       linkedItems: quest.linkedItems || [],
+      location: quest.location ?? null,
+      allDay: quest.allDay ?? false,
+      timezone: quest.timezone ?? null,
+      url: quest.url ?? null,
+      attendees: quest.attendees || [],
+      missionStatus: quest.missionStatus ?? "confirmed",
+      viewId: quest.viewId ?? null,
+      viewColumn: quest.viewColumn ?? null,
+      date: quest.startDate ?? null,
+      duration: quest.timeCost ? `${quest.timeCost} mins` : null,
     };
     
     setQuests((prev) => [...prev, newQuest]);
@@ -998,6 +1016,16 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       visionGoalId: quest.visionGoalId ?? null,
       ritualGroup: quest.ritualGroup || null,
       linkedItems: quest.linkedItems || [],
+      location: quest.location ?? null,
+      allDay: quest.allDay ?? false,
+      timezone: quest.timezone ?? null,
+      url: quest.url ?? null,
+      attendees: quest.attendees || [],
+      missionStatus: quest.missionStatus ?? "confirmed",
+      viewId: quest.viewId ?? null,
+      viewColumn: quest.viewColumn ?? null,
+      date: quest.startDate ?? null,
+      duration: quest.timeCost ? `${quest.timeCost} mins` : null,
     };
     
     setQuests((prev) => prev.map((q) => (q.id === id ? updatedQuest : q)));
@@ -1007,6 +1035,23 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     
     return updatedQuest;
   };
+
+  const addEvent = async (event: { title: string; description?: string; startTime?: string; duration?: string; category?: string; date?: string }): Promise<Quest> => {
+    const duration = Number.parseInt(event.duration ?? "", 10);
+    return createQuest({
+      title: event.title,
+      description: event.description ?? "",
+      category: event.category ?? "general",
+      startDate: event.date ?? new Date().toISOString().slice(0, 10),
+      startTime: event.startTime ?? null,
+      timeCost: Number.isFinite(duration) ? duration : 0,
+      experienceReward: 10,
+      date: event.date ?? new Date().toISOString().slice(0, 10),
+      duration: event.duration ?? null,
+    });
+  };
+
+  const updateEvent = (id: string, event: Partial<Quest>): Promise<Quest> => updateQuest(id, event);
 
   // Delete a quest/mission
   const deleteQuest = async (id: string): Promise<void> => {
@@ -2052,6 +2097,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       value={{
         stats,
         quests,
+        events: quests.map((quest) => ({ ...quest, date: quest.startDate ?? null, duration: quest.duration ?? (quest.timeCost ? `${quest.timeCost} mins` : null) })),
         userProfile,
         messages,
         missionPages,
@@ -2062,6 +2108,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         toggleQuestCompletion,
         createQuest,
         updateQuest,
+        addEvent,
+        updateEvent,
         deleteQuest,
         refetchQuests,
         sendMessage,

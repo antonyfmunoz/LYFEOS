@@ -8,7 +8,6 @@ interface DynamicColorButtonProps {
   className?: string;
   variant?: 'default' | 'outline' | 'ghost' | 'link';
   size?: 'default' | 'sm' | 'lg' | 'icon';
-  onClick?: () => void;
   style?: React.CSSProperties;
 }
 

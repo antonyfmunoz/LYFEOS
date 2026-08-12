@@ -2080,7 +2080,7 @@ function SyncImportDialog({ open, onOpenChange, obsidianInputRef, evernoteInputR
                 </>
               )}
               <input
-                ref={obsidianInputRef}
+                ref={obsidianInputRef as React.RefObject<HTMLInputElement>}
                 type="file"
                 multiple
                 accept=".md,.zip,.png,.jpg,.jpeg,.gif,.webp,.svg,.pdf"
@@ -2131,7 +2131,7 @@ function SyncImportDialog({ open, onOpenChange, obsidianInputRef, evernoteInputR
                 </>
               )}
               <input
-                ref={evernoteInputRef}
+                ref={evernoteInputRef as React.RefObject<HTMLInputElement>}
                 type="file"
                 accept=".enex"
                 className="hidden"

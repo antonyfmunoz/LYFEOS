@@ -72,6 +72,17 @@ export interface Quest {
   parentRitualId?: number | null;
   visionGoalId?: number | null;
   linkedItems?: { type: "document" | "folder"; id: number; title: string }[];
+  location?: string | null;
+  allDay?: boolean | null;
+  timezone?: string | null;
+  url?: string | null;
+  attendees?: unknown[];
+  missionStatus?: string | null;
+  viewId?: number | null;
+  viewColumn?: string | null;
+  /** Legacy presentation aliases; persisted data remains a quest. */
+  date?: string | null;
+  duration?: string | null;
   deletedAt?: string | null;
 }
 

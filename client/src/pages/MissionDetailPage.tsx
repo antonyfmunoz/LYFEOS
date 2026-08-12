@@ -38,7 +38,8 @@ export default function MissionDetailPage() {
         setMissionPage(existingPage);
         setContent(existingPage.content);
       } else {
-        const categoryTag = mission.category.charAt(0).toUpperCase() + mission.category.slice(1);
+        const category = mission.category ?? "general";
+        const categoryTag = category.charAt(0).toUpperCase() + category.slice(1);
         const newPage = createMissionPage({
           title: mission.title,
           slug: mission.title.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '-'),
@@ -162,26 +163,26 @@ export default function MissionDetailPage() {
       <div className="glassmorphic rounded-xl p-6 neon-border mb-8">
         <div className="flex flex-col md:flex-row gap-6">
           <div className="md:w-1/3">
-            <div className={`p-4 rounded-xl ${getCategoryBg(mission.category)} mb-4`}>
-              <h2 className={`text-lg font-orbitron ${getCategoryColor(mission.category)}`}>
-                {getCategoryText(mission.category)}
+            <div className={"p-4 rounded-xl " + getCategoryBg(mission.category ?? "general") + " mb-4"}>
+              <h2 className={"text-lg font-orbitron " + getCategoryColor(mission.category ?? "general")}>
+                {getCategoryText(mission.category ?? "general")}
               </h2>
               
               <Separator className="my-3 opacity-50" />
               
               <div className="space-y-4 mt-4">
                 <div className="flex items-center">
-                  <Clock className={`h-4 w-4 ${getCategoryColor(mission.category)} mr-2`} />
+                  <Clock className={"h-4 w-4 " + getCategoryColor(mission.category ?? "general") + " mr-2"} />
                   <span className="text-sm">{mission.startTime} ({mission.duration})</span>
                 </div>
                 
                 <div className="flex items-center">
-                  <MapPin className={`h-4 w-4 ${getCategoryColor(mission.category)} mr-2`} />
-                  <span className="text-sm">{getLocationText(mission.category)}</span>
+                  <MapPin className={"h-4 w-4 " + getCategoryColor(mission.category ?? "general") + " mr-2"} />
+                  <span className="text-sm">{getLocationText(mission.category ?? "general")}</span>
                 </div>
                 
                 <div className="flex items-center">
-                  <Calendar className={`h-4 w-4 ${getCategoryColor(mission.category)} mr-2`} />
+                  <Calendar className={"h-4 w-4 " + getCategoryColor(mission.category ?? "general") + " mr-2"} />
                   <span className="text-sm">Today</span>
                 </div>
               </div>

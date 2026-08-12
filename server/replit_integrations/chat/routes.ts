@@ -836,14 +836,15 @@ async function executeTool(toolName: string, input: any, userId: number): Promis
       }
 
       case "create_calendar_event": {
-        const event = await storage.createEvent({
+        const event = await storage.createQuest({
           userId,
           title: input.title,
           description: input.description || "",
-          date: input.date,
+          startDate: input.date,
           startTime: input.startTime,
-          duration: input.duration,
+          timeCost: typeof input.duration === "number" ? input.duration : 0,
           category: input.category || "personal",
+          experienceReward: 10,
         });
         return JSON.stringify({ success: true, action: "create_calendar_event", message: `Calendar event "${event.title}" created for ${input.date} at ${input.startTime}.` });
       }

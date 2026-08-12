@@ -17,9 +17,11 @@ import session from "express-session";
 import crypto from "crypto";
 import helmet from "helmet";
 import compression from "compression";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { sql } from "drizzle-orm";
+import connectPgSimple from "connect-pg-simple";
 import { startNotificationScheduler } from "./notificationScheduler";
+import { startUMHOutboxWorker } from "./umh/outbox";
 import { execSync } from "child_process";
 
 const app = express();
@@ -47,18 +49,35 @@ app.use(helmet({
 
 app.set("trust proxy", 1);
 
+// Clerk's Svix signature covers the exact request bytes. This must run before
+// JSON parsing so the webhook route can authenticate those bytes.
+app.post("/api/webhooks/clerk", express.raw({ type: "application/json", limit: "1mb" }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
 const sessionSecret = process.env.SESSION_SECRET || crypto.randomBytes(64).toString("hex");
 if (!process.env.SESSION_SECRET) {
+  if (process.env.NODE_ENV === "production") {
+    console.error("SESSION_SECRET required in production");
+    process.exit(1);
+  }
   log("WARNING: SESSION_SECRET not set. Using auto-generated secret. Sessions will not persist across restarts. Set SESSION_SECRET in environment variables for production.");
 }
 
+
+const PostgresSessionStore = connectPgSimple(session);
 app.use(session({
+  store: new PostgresSessionStore({
+    pool,
+    tableName: "session",
+    createTableIfMissing: false,
+    pruneSessionInterval: 60,
+  }),
   secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
+  rolling: true,
+  name: "lyfeos.sid",
   cookie: { 
     secure: process.env.NODE_ENV === "production",
     httpOnly: true,
@@ -103,6 +122,7 @@ setInterval(() => {
 }, 60000);
 
 app.use("/api/auth/register", createRateLimiter(5, 60 * 1000));
+app.use("/api/auth/complete-registration", createRateLimiter(5, 60 * 1000));
 app.use("/api/auth/login", createRateLimiter(10, 60 * 1000));
 app.use("/api/auth/sync-email-verified", createRateLimiter(5, 60 * 1000));
 app.use("/api/profile/generate-affirmation", createRateLimiter(5, 60 * 1000));
@@ -110,23 +130,16 @@ app.use("/api/voice-command", createRateLimiter(20, 60 * 1000));
 app.use("/api", createRateLimiter(100, 60 * 1000, true));
 
 app.use((req, res, next) => {
+  const requestId = req.header("x-request-id") || crypto.randomUUID();
+  res.setHeader("x-request-id", requestId);
+  (req as Request & { requestId?: string }).requestId = requestId;
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
 
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
+      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms requestId=${requestId}`;
 
       if (logLine.length > 80) {
         logLine = logLine.slice(0, 79) + "…";
@@ -170,11 +183,14 @@ async function ensureDatabaseSchema() {
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    const requestId = (_req as Request & { requestId?: string }).requestId;
+    const message = status >= 500 && process.env.NODE_ENV === "production"
+      ? "Internal Server Error"
+      : (err.message || "Internal Server Error");
 
-    log(`Error: ${message} (${status})`);
+    log(`Error: ${err.message || "Internal Server Error"} (${status}) requestId=${requestId || "unknown"}`);
     console.error(err);
-    res.status(status).json({ message });
+    res.status(status).json({ message, requestId });
   });
 
   // importantly only setup vite in development and after
@@ -201,6 +217,7 @@ async function ensureDatabaseSchema() {
   server.once('listening', () => {
     log(`serving on port ${port}`);
     startNotificationScheduler();
+    startUMHOutboxWorker();
   });
 
   server.listen({ port, host: "0.0.0.0" });

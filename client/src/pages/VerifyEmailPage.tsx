@@ -27,10 +27,22 @@ export default function VerifyEmailPage() {
         if (result.status === "complete" && setActive) {
           await setActive({ session: result.createdSessionId });
         }
+        const accountResponse = await fetch("/api/auth/me", { credentials: "include" });
+        if (!accountResponse.ok) {
+          throw new Error("Your account could not be initialized. Please try again.");
+        }
+        sessionStorage.removeItem("lyfeos-pending-email-verification");
+        localStorage.setItem("lyfeos-pending-onboarding", "true");
         setStatus("success");
         setMessage("Your email has been verified successfully!");
       } else if (user?.primaryEmailAddress) {
         await user.primaryEmailAddress.attemptVerification({ code: code.trim() });
+        const accountResponse = await fetch("/api/auth/me", { credentials: "include" });
+        if (!accountResponse.ok) {
+          throw new Error("Your account could not be initialized. Please try again.");
+        }
+        sessionStorage.removeItem("lyfeos-pending-email-verification");
+        localStorage.setItem("lyfeos-pending-onboarding", "true");
         setStatus("success");
         setMessage("Your email has been verified successfully!");
       } else {
@@ -88,11 +100,11 @@ export default function VerifyEmailPage() {
             <CheckCircle className="w-16 h-16 mx-auto text-green-500" />
             <p className="text-lg text-foreground">{message}</p>
             <button
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/onboarding", { replace: true })}
               className="px-6 py-3 rounded-lg font-semibold text-sm transition-colors"
               style={{ backgroundColor: "var(--primary-hex, #00e0ff)", color: "#0a0a1a" }}
             >
-              Go to Dashboard
+              Continue
             </button>
           </div>
         )}

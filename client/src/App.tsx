@@ -44,7 +44,6 @@ import KnowledgeArchivePage from "./pages/KnowledgeArchivePage";
 import GoalsArchivePage from "./pages/GoalsArchivePage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import VoiceOverlay from "./components/VoiceOverlay";
-import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import LoginSuccessPage from "./pages/LoginSuccessPage";
@@ -354,7 +353,6 @@ function Router() {
         ) : <LoginPage />}
       </Route>
       <Route path="/register" component={RegisterPage} />
-      <Route path="/verify-email" component={VerifyEmailPage} />
       <Route path="/forgot-password" component={ForgotPasswordPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/login-success" component={LoginSuccessPage} />

@@ -15,7 +15,7 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
-  const accent = null;
+  const [accent] = useState<{ color: string; glow: string; border20: string; border30: string; border50: string; bg20: string } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -20,7 +20,7 @@ interface EnhancedMissionWidgetProps {
 }
 
 export default function EnhancedMissionWidget({ 
-  events, 
+  events = [],
   className = "", 
   maxHeight = "96",
   hideHeader = false,
