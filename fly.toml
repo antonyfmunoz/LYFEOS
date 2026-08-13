@@ -5,7 +5,7 @@ primary_region = "sjc"
   dockerfile = "Dockerfile"
 
 [deploy]
-  release_command = ["node", "dist/release-migrate.js"]
+  release_command = "node dist/release-migrate.js"
 
 [env]
   NODE_ENV = "production"
