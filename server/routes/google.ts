@@ -10,15 +10,21 @@ const SCOPES = [
   "https://www.googleapis.com/auth/drive",
 ];
 
-function getOAuth2Client() {
-  const redirectUri = process.env.REPLIT_DOMAINS
-    ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}/api/google/callback`
-    : `http://localhost:5000/api/google/callback`;
+function isGoogleOAuthConfigured(): boolean {
+  return Boolean(process.env.GOOGLE_OAUTH_CLIENT_ID && process.env.GOOGLE_OAUTH_CLIENT_SECRET);
+}
 
+function getRedirectUri(): string {
+  if (process.env.GOOGLE_OAUTH_REDIRECT_URI) return process.env.GOOGLE_OAUTH_REDIRECT_URI;
+  if (process.env.REPLIT_DOMAINS) return `https://${process.env.REPLIT_DOMAINS.split(",")[0]}/api/google/callback`;
+  return "http://localhost:5000/api/google/callback";
+}
+
+function getOAuth2Client() {
   return new google.auth.OAuth2(
     process.env.GOOGLE_OAUTH_CLIENT_ID,
     process.env.GOOGLE_OAUTH_CLIENT_SECRET,
-    redirectUri
+    getRedirectUri(),
   );
 }
 
@@ -73,6 +79,9 @@ function parseGoogleDateTime(dt: string): { date: string; time: string } {
 
 export function registerGoogleRoutes(app: Express): void {
   app.get("/api/google/auth-url", isAuthenticated, (req: Request, res: Response) => {
+    if (!isGoogleOAuthConfigured()) {
+      return res.status(503).json({ error: "Google integration is not configured for this environment." });
+    }
     try {
       const oauth2Client = getOAuth2Client();
       const state = JSON.stringify({ userId: req.session.userId });
@@ -550,6 +559,7 @@ export function registerGoogleRoutes(app: Express): void {
 
       return res.json({
         connected: !!googleIntegration,
+        configured: isGoogleOAuthConfigured(),
         scope: googleIntegration?.scope || null,
         connectedAt: googleIntegration?.connectedAt || null,
       });

@@ -328,7 +328,7 @@ export default function QuestsPage() {
     staleTime: 0,
   });
 
-  interface GoogleStatus { connected: boolean; scope: string | null; connectedAt: string | null; }
+  interface GoogleStatus { connected: boolean; configured: boolean; scope: string | null; connectedAt: string | null; }
   const { data: googleStatus } = useQuery<GoogleStatus>({
     queryKey: ['/api/google/status'],
     enabled: !!user,

@@ -95,6 +95,22 @@ export default function SubscriptionPage() {
   const yearlyCost = yearlyPrice ? (yearlyPrice.unit_amount / 100).toFixed(2) : "79.99";
   const yearlyMonthlyCost = yearlyPrice ? (yearlyPrice.unit_amount / 100 / 12).toFixed(2) : "6.67";
 
+  if (!productsLoading && products.length === 0) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="max-w-2xl mx-auto px-4 py-8">
+          <button onClick={() => navigate("/dashboard")} className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors">
+            <ArrowLeft className="w-4 h-4" /> <span className="text-sm">Back to Dashboard</span>
+          </button>
+          <div className="glassmorphic rounded-xl p-8 neon-border text-center">
+            <h1 className="font-orbitron text-xl text-foreground">Subscriptions are not available yet</h1>
+            <p className="mt-3 text-sm text-muted-foreground">LyfeOS is currently available without a payment plan. No charge or subscription will be created from this app.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto px-4 py-8">

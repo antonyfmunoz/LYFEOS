@@ -100,7 +100,7 @@ function IntegrationsSection({ userId }: { userId?: number }) {
   const [connectingGoogle, setConnectingGoogle] = useState(false);
   const [disconnectingGoogle, setDisconnectingGoogle] = useState(false);
 
-  const { data: googleStatus, isLoading: isGoogleLoading } = useQuery<{ connected: boolean; scope: string | null; connectedAt: string | null }>({
+  const { data: googleStatus, isLoading: isGoogleLoading } = useQuery<{ connected: boolean; configured: boolean; scope: string | null; connectedAt: string | null }>({
     queryKey: ["/api/google/status"],
     enabled: !!userId,
   });
@@ -189,6 +189,7 @@ function IntegrationsSection({ userId }: { userId?: number }) {
   }, []);
 
   const isGoogleConnected = googleStatus?.connected ?? false;
+  const isGoogleConfigured = googleStatus?.configured ?? false;
 
   return (
     <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
@@ -233,12 +234,12 @@ function IntegrationsSection({ userId }: { userId?: number }) {
             </button>
           ) : (
             <button
-              disabled={connectingGoogle}
+              disabled={connectingGoogle || !isGoogleConfigured}
               onClick={connectGoogle}
               className="text-xs font-mono px-3 py-1.5 rounded border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors inline-flex items-center gap-1 disabled:opacity-50"
             >
               {connectingGoogle ? <Loader2 className="h-3 w-3 animate-spin" /> : <Globe className="h-3 w-3" />}
-              Connect
+              {isGoogleConfigured ? "Connect" : "Coming soon"}
             </button>
           )}
         </div>

@@ -13,6 +13,7 @@ CLERK_SECRET_KEY
 CLERK_WEBHOOK_SIGNING_SECRET
 GOOGLE_OAUTH_CLIENT_ID                 # only if Google Calendar is enabled
 GOOGLE_OAUTH_CLIENT_SECRET             # only if Google Calendar is enabled
+GOOGLE_OAUTH_REDIRECT_URI              # https://lyfeos.net/api/google/callback in production
 UMH_FEDERATION_INSTALLATION_ID         # only if UMH is enabled
 UMH_FEDERATION_TENANT_ID               # only if UMH is enabled
 UMH_FEDERATION_KEY_ID                  # only if UMH is enabled
@@ -25,7 +26,7 @@ Build the client with a production Clerk publishable key. The checked-in `fly.to
 ## Database and Clerk
 
 1. Back up the production database.
-2. The Fly release command applies the idempotent `0010_transformation_threads` and `0011_thread_evidence` migrations before the new app version receives traffic. Confirm the release output records both migration IDs on first release and reports success on later releases. Apply any older, untracked migrations deliberately before enabling a new environment.
+2. The Fly release command applies the idempotent release migrations before the new app version receives traffic, including `0016_skill_graph_rules`. Confirm the release output records the new migration ID on first release and reports success on later releases. Apply any older, untracked migrations deliberately before enabling a new environment.
 3. In Clerk, configure the production origin, redirect URLs, and a `user.created` webhook at `https://<public-host>/api/webhooks/clerk`.
 4. Put Clerk's `whsec_...` signing secret in `CLERK_WEBHOOK_SIGNING_SECRET`. The webhook fails closed until configured; first authenticated login still provisions a LyfeOS account if webhook delivery is delayed.
 5. Verify a new Clerk user results in one LyfeOS user, stats record, profile, integration record, and daily log.
@@ -56,6 +57,7 @@ Run this acceptance pass on staging and production:
 8. From Profile settings, export data, clear chat history in a test account, reset the generated AI profile, and confirm account deletion requires the exact confirmation phrase.
 9. Rename the AI companion and confirm its selected name is used by the chat and generated AI responses after refresh.
 10. If UMH is enabled, perform one signed `lyfeos.mission.create.v1` command and confirm exactly one mission and one outbound event are recorded.
+11. On an active Thread, create a mission with one or more unlocked skills selected. Confirm its earned mission XP is split only across those skills after completion; confirm locked skills cannot be selected, and completed missions cannot have their skill mapping changed.
 
 ## Launch scope
 
