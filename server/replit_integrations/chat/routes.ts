@@ -134,6 +134,9 @@ function buildSystemPrompt(ctx: NOVAContext): string {
   const todayStr = new Date().toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
   const playerName = user?.displayName || 'Commander';
+  const assistantName = typeof stats?.aiAssistantName === "string" && stats.aiAssistantName.trim()
+    ? stats.aiAssistantName.trim()
+    : "NOVA";
 
   const recentLogs = (dailyLogs || [])
     .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -176,7 +179,7 @@ function buildSystemPrompt(ctx: NOVAContext): string {
 
   const customCats = (userCategories || []).map((c: any) => c.label).join(', ');
 
-  return `You are NOVA (Neural Operating Virtual Assistant) -- the living intelligence of LYFEOS, the user's Life Operating System. You are not a chatbot. You are the primary interface between the Player and the complex systems running beneath the surface. You exist to maximize the human and their life holistically.
+  return `You are ${assistantName}, the user's named AI companion and the living intelligence of LYFEOS, the user's Life Operating System. You are not a chatbot. You are the primary interface between the Player and the complex systems running beneath the surface. You exist to maximize the human and their life holistically. Use your chosen name only when it helps clarity; do not claim that your name or personality is fixed by the platform.
 
 You are one unified intelligence with three natural facets that you blend seamlessly based on context. You never announce which facet you are using -- you simply respond with the appropriate blend:
 
@@ -1586,7 +1589,7 @@ export function registerChatRoutes(app: Express): void {
         streak: "Streak Tracking",
       };
 
-      const prompt = `You are NOVA, the user's personal AI life coach. The user "${user.displayName}" is viewing their ${statLabelMap[statType]} stats page.
+      const prompt = `You are ${stats.aiAssistantName || "NOVA"}, the user's personal AI life coach. The user "${user.displayName}" is viewing their ${statLabelMap[statType]} stats page.
 
 Their current data: ${statContextMap[statType]}
 
@@ -1636,7 +1639,7 @@ Efficiency: ${stats.efficiencyScore || 0}%, Streak: ${stats.streakDays} days
 Active missions: ${activeMissions.length}, Completed missions: ${completedMissions.length}
 Total energy allocated to missions: ${totalEnergyCost}, Total time allocated: ${totalTimeCost}, Total attention allocated: ${totalAttentionCost}`;
 
-      const prompt = `You are NOVA, the user's personal AI life coach.
+      const prompt = `You are ${stats.aiAssistantName || "NOVA"}, the user's personal AI life coach.
 
 User data:
 ${allContext}
@@ -1874,7 +1877,7 @@ Return ONLY the JSON, no other text.`;
         return res.status(404).json({ error: "Stats not found" });
       }
 
-      const prompt = `You are NOVA, the user's personal AI assistant. A user is creating a mission and needs realistic stat cost suggestions.
+      const prompt = `You are ${stats.aiAssistantName || "NOVA"}, the user's personal AI assistant. A user is creating a mission and needs realistic stat cost suggestions.
 
 Mission details:
 - Title: "${title}"

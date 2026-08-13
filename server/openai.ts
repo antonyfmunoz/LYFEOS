@@ -11,7 +11,7 @@ const openai = new OpenAI({
  * @param messages Array of conversation messages in OpenAI format
  * @returns The AI response text
  */
-export async function generateAIResponse(prompt: string): Promise<string> {
+export async function generateAIResponse(prompt: string, assistantName = "NOVA"): Promise<string> {
   try {
     // Check if API key is available
     if (!process.env.OPENAI_API_KEY) {
@@ -25,7 +25,7 @@ export async function generateAIResponse(prompt: string): Promise<string> {
       messages: [
         {
           role: "system",
-          content: "You are a helpful AI assistant named NOVA. You help the user organize their life, manage tasks, and provide insights. Keep responses helpful, concise, and positive. Your answers should be between 2-4 sentences unless the user needs a more detailed response."
+          content: `You are a helpful AI assistant named ${assistantName}. You help the user organize their life, manage tasks, and provide insights. Keep responses helpful, concise, and positive. Your answers should be between 2-4 sentences unless the user needs a more detailed response.`
         },
         {
           role: "user",

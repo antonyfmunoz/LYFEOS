@@ -651,6 +651,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
             repeatEndDate: quest.repeatEndDate || null,
             parentRitualId: quest.parentRitualId || null,
             visionGoalId: quest.visionGoalId ?? null,
+            transformationThreadId: quest.transformationThreadId ?? null,
             ritualGroup: quest.ritualGroup || null,
             linkedItems: quest.linkedItems || [],
           }));
@@ -870,6 +871,12 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       if (currentQuest.visionGoalId) {
         queryClient.refetchQueries({ queryKey: ['/api/quests/linked-by-vision-goal'] });
       }
+
+      // Thread-linked missions can update the private Growth Map. Invalidate it
+      // here so every mission surface stays in sync with the dashboard.
+      if (currentQuest.transformationThreadId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/transformation-thread"] });
+      }
     } catch (error) {
       setQuests(quests);
       console.error("Error toggling quest completion:", error);
@@ -951,6 +958,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       repeatEndDate: quest.repeatEndDate || null,
       parentRitualId: quest.parentRitualId || null,
       visionGoalId: quest.visionGoalId ?? null,
+      transformationThreadId: quest.transformationThreadId ?? null,
       ritualGroup: quest.ritualGroup || null,
       linkedItems: quest.linkedItems || [],
       location: quest.location ?? null,
@@ -1014,6 +1022,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       repeatEndDate: quest.repeatEndDate || null,
       parentRitualId: quest.parentRitualId || null,
       visionGoalId: quest.visionGoalId ?? null,
+      transformationThreadId: quest.transformationThreadId ?? null,
       ritualGroup: quest.ritualGroup || null,
       linkedItems: quest.linkedItems || [],
       location: quest.location ?? null,

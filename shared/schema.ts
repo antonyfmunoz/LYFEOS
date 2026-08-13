@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, varchar, uuid, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, varchar, uuid, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -308,6 +308,105 @@ export const userIntegrations = pgTable("user_integrations", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Transformation Threads turn the onboarding record into one deliberate, user-owned focus.
+// Starter missions remain a reviewable draft until the user explicitly activates the thread.
+export const transformationThreads = pgTable("transformation_threads", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  focus: text("focus").notNull(),
+  rationale: text("rationale").notNull(),
+  sourceSnapshot: jsonb("source_snapshot").notNull().default({}),
+  starterMissions: jsonb("starter_missions").notNull().default([]),
+  status: text("status").notNull().default("draft"), // draft | active | paused | completed
+  activatedAt: timestamp("activated_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Durable, user-owned proof attached to a transformation thread. Sources stay
+// immutable enough to make progress reviewable without treating an AI summary
+// as ground truth.
+export const transformationThreadEvidence = pgTable("transformation_thread_evidence", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  transformationThreadId: integer("transformation_thread_id").notNull().references(() => transformationThreads.id, { onDelete: "cascade" }),
+  sourceType: text("source_type").notNull(), // mission_completion | daily_reflection | weekly_review | thread_completion
+  sourceId: text("source_id").notNull(),
+  summary: text("summary").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("transformation_thread_evidence_source_idx").on(table.transformationThreadId, table.sourceType, table.sourceId),
+  index("transformation_thread_evidence_user_created_idx").on(table.userId, table.createdAt),
+]);
+
+// A private, user-owned capability map. These skills are intentionally scoped to
+// a transformation thread: LyfeOS tracks the person's chosen development, not a
+// universal curriculum or a public ranking system.
+export const skillNodes = pgTable("skill_nodes", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  transformationThreadId: integer("transformation_thread_id").notNull().references(() => transformationThreads.id, { onDelete: "cascade" }),
+  key: text("key").notNull(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  kind: text("kind").notNull().default("supporting"), // primary | supporting | capacity
+  experience: integer("experience").notNull().default(0),
+  level: integer("level").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("skill_nodes_thread_key_idx").on(table.transformationThreadId, table.key),
+  index("skill_nodes_user_thread_idx").on(table.userId, table.transformationThreadId),
+]);
+
+// Directed edges make the developmental spillover explicit (for example, a
+// sales practice can also build communication and confidence).
+export const skillEdges = pgTable("skill_edges", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  sourceSkillId: integer("source_skill_id").notNull().references(() => skillNodes.id, { onDelete: "cascade" }),
+  targetSkillId: integer("target_skill_id").notNull().references(() => skillNodes.id, { onDelete: "cascade" }),
+  relationship: text("relationship").notNull().default("reinforces"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("skill_edges_unique_idx").on(table.sourceSkillId, table.targetSkillId, table.relationship),
+  index("skill_edges_user_source_idx").on(table.userId, table.sourceSkillId),
+]);
+
+// Missions can contribute to more than one capability. The amount is explicit
+// and visible to the user rather than an opaque score assigned by AI.
+export const questSkillContributions = pgTable("quest_skill_contributions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  questId: integer("quest_id").notNull().references(() => quests.id, { onDelete: "cascade" }),
+  skillNodeId: integer("skill_node_id").notNull().references(() => skillNodes.id, { onDelete: "cascade" }),
+  experienceAmount: integer("experience_amount").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("quest_skill_contributions_unique_idx").on(table.questId, table.skillNodeId),
+  index("quest_skill_contributions_user_quest_idx").on(table.userId, table.questId),
+]);
+
+// Append-only record of why a skill changed. Cached totals on skillNodes make
+// the dashboard fast; this ledger preserves a reviewable explanation.
+export const skillProgressionEvents = pgTable("skill_progression_events", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  skillNodeId: integer("skill_node_id").notNull().references(() => skillNodes.id, { onDelete: "cascade" }),
+  questId: integer("quest_id").references(() => quests.id, { onDelete: "set null" }),
+  transformationThreadId: integer("transformation_thread_id").references(() => transformationThreads.id, { onDelete: "set null" }),
+  sourceType: text("source_type").notNull(), // mission_completion | mission_reversal
+  experienceDelta: integer("experience_delta").notNull(),
+  evidenceSummary: text("evidence_summary").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("skill_progression_events_user_skill_created_idx").on(table.userId, table.skillNodeId, table.createdAt),
+  index("skill_progression_events_quest_idx").on(table.questId),
+]);
+
 // Quests table (Missions Management)
 export const quests = pgTable("quests", {
   id: serial("id").primaryKey(),
@@ -339,6 +438,7 @@ export const quests = pgTable("quests", {
   repeatEndDate: text("repeat_end_date"), // format: "YYYY-MM-DD", null means forever
   parentRitualId: integer("parent_ritual_id"), // links generated instances back to the original ritual
   visionGoalId: integer("vision_goal_id").references(() => visionGoals.id),
+  transformationThreadId: integer("transformation_thread_id").references(() => transformationThreads.id, { onDelete: "set null" }),
   linkedItems: jsonb("linked_items").default([]),
   sortOrder: integer("sort_order").default(0),
   externalId: text("external_id"),
@@ -604,6 +704,7 @@ export const insertQuestSchema = createInsertSchema(quests).pick({
   attentionCost: true,
   timeCost: true,
   experienceReward: true,
+  transformationThreadId: true,
   startDate: true,
   startTime: true,
   endDate: true,

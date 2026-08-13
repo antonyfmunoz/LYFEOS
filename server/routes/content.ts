@@ -59,9 +59,10 @@ export function registerContentRoutes(app: Express): void {
       if (messageData.sender === "user") {
         // Import the OpenAI client
         const { generateAIResponse } = await import('../openai');
+        const stats = await storage.getUserStats(messageData.userId);
         
         // Generate AI response
-        const aiContent = await generateAIResponse(messageData.content);
+        const aiContent = await generateAIResponse(messageData.content, stats?.aiAssistantName || "NOVA");
         
         const aiResponse = await storage.createMessage({
           userId: messageData.userId,

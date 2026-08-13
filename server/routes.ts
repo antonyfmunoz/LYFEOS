@@ -10,6 +10,7 @@ import { registerDocumentRoutes } from "./routes/documents";
 import { registerWaitlistRoutes } from "./routes/waitlist";
 import { registerGoogleRoutes } from "./routes/google";
 import { registerUMHRoutes } from "./routes/umh";
+import { registerTransformationThreadRoutes } from "./routes/transformation-threads";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 
@@ -49,6 +50,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerWaitlistRoutes(app);
   registerGoogleRoutes(app);
   registerUMHRoutes(app);
+  registerTransformationThreadRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;

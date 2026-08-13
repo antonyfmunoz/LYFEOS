@@ -2,12 +2,52 @@ import type { Express, Request, Response } from "express";
 import { z } from "zod";
 import bcrypt from "bcrypt";
 import Anthropic from "@anthropic-ai/sdk";
+import { clerkClient } from "@clerk/express";
 import { storage } from "../storage";
 import { db } from "../db";
 import { logger, formatLocalDate } from "../utils";
 import { isAuthenticated, isOwner, awardExperiencePoints, calculateLevelFromTotalXP, calculateTotalXPForLevel } from "./middleware";
 import { InsertUser, InsertUserProfile, InsertUserStats, userDailyLogs, quests as questsTable, userStats, users } from "@shared/schema";
 import { eq, desc, and, gte, asc, sql } from "drizzle-orm";
+import { recordTransformationThreadEvidence } from "../transformation-thread-evidence";
+
+const accountExportTables = [
+  "user_stats", "user_profile", "user_daily_logs", "user_integrations", "quests", "ai_messages",
+  "calendar_events", "mission_pages", "contacts", "spreadsheets", "canvases", "graphs", "folders",
+  "documents", "templates", "integrations", "progress_trackers", "kanban_boards", "media_albums",
+  "media_items", "conversations", "dismissed_knowledge", "vision_goals", "user_categories", "ritual_groups",
+  "widget_states", "user_activity_events", "smart_reminders", "mission_views", "push_subscriptions",
+  "transformation_threads", "transformation_thread_evidence",
+] as const;
+
+const identifier = (name: string) => sql.identifier(name);
+
+async function selectAccountRows(table: string, userId: number): Promise<unknown[]> {
+  const result = await db.execute(sql`SELECT * FROM ${identifier(table)} WHERE "user_id" = ${userId}`);
+  return (result as { rows?: unknown[] }).rows || [];
+}
+
+async function deleteLocalAccountData(userId: number): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx.execute(sql`DELETE FROM "messages" WHERE "conversation_id" IN (SELECT "id" FROM "conversations" WHERE "user_id" = ${userId})`);
+    await tx.execute(sql`DELETE FROM "kanban_boards" WHERE "user_id" = ${userId}`);
+    await tx.execute(sql`DELETE FROM "umh_outbox_events" WHERE "aggregate_type" = 'mission' AND "aggregate_id" IN (SELECT "id"::text FROM "quests" WHERE "user_id" = ${userId})`);
+    await tx.execute(sql`DELETE FROM "umh_approval_requests" WHERE "command_id" IN (SELECT "command_id" FROM "umh_inbound_commands" WHERE "local_user_id" = ${userId})`);
+    await tx.execute(sql`DELETE FROM "umh_audit_records" WHERE "local_user_id" = ${userId}`);
+    await tx.execute(sql`DELETE FROM "umh_inbound_commands" WHERE "local_user_id" = ${userId}`);
+
+    for (const table of [
+      "transformation_thread_evidence", "quests", "transformation_threads", "mission_pages", "calendar_events",
+      "documents", "folders", "media_items", "media_albums", "conversations", "user_stats", "user_profile",
+      "user_daily_logs", "user_integrations", "ai_messages", "contacts", "spreadsheets", "canvases", "graphs",
+      "templates", "integrations", "progress_trackers", "dismissed_knowledge", "vision_goals", "user_categories",
+      "ritual_groups", "widget_states", "user_activity_events", "smart_reminders", "mission_views", "push_subscriptions",
+    ]) {
+      await tx.execute(sql`DELETE FROM ${identifier(table)} WHERE "user_id" = ${userId}`);
+    }
+    await tx.execute(sql`DELETE FROM "users" WHERE "id" = ${userId}`);
+  });
+}
 
 export function registerProfileRoutes(app: Express): void {
   // USER PROFILE ROUTES
@@ -276,6 +316,89 @@ export function registerProfileRoutes(app: Express): void {
     } catch (error) {
       logger.error("Error fetching account:", error);
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // A portable, self-service account export. Provider credentials and password
+  // hashes are deliberately excluded even from a user's own browser download.
+  app.get("/api/account/export", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      const rows = await Promise.all(accountExportTables.map(async (table) => [table, await selectAccountRows(table, userId)] as const));
+      const data = Object.fromEntries(rows) as Record<string, unknown[]>;
+      const safeUser = { ...user, password: undefined, passwordResetToken: undefined, passwordResetExpiry: undefined, emailVerificationToken: undefined, emailVerificationExpiry: undefined, twoFactorEmailCode: undefined, twoFactorEmailExpiry: undefined, twoFactorPhoneCode: undefined, twoFactorPhoneExpiry: undefined };
+      data.integrations = data.integrations.map((entry: any) => {
+        const { access_token, refresh_token, accessToken, refreshToken, ...safe } = entry;
+        return safe;
+      });
+      const exportPayload = { exportedAt: new Date().toISOString(), formatVersion: 1, user: safeUser, data };
+      res.setHeader("Content-Type", "application/json; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="lyfeos-data-export-${new Date().toISOString().slice(0, 10)}.json"`);
+      return res.status(200).send(JSON.stringify(exportPayload, null, 2));
+    } catch (error) {
+      logger.error("Error exporting account data:", error);
+      return res.status(500).json({ error: "Could not export account data" });
+    }
+  });
+
+  app.get("/api/account/ai-memory", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const [legacyMessages, chatConversations, profile] = await Promise.all([
+        selectAccountRows("ai_messages", userId),
+        selectAccountRows("conversations", userId),
+        storage.getUserProfile(userId),
+      ]);
+      return res.json({
+        legacyMessageCount: legacyMessages.length,
+        conversationCount: chatConversations.length,
+        affirmationStored: Boolean(profile?.characterAffirmation),
+        profileContextStored: Boolean(profile?.aiPersonalityProfile && Object.keys(profile.aiPersonalityProfile as object).length),
+      });
+    } catch (error) {
+      logger.error("Error reading AI memory controls:", error);
+      return res.status(500).json({ error: "Could not read AI memory controls" });
+    }
+  });
+
+  app.delete("/api/account/ai-memory", isAuthenticated, async (req: Request, res: Response) => {
+    const parsed = z.object({ scope: z.enum(["chat-history", "assistant-profile"]) }).safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Choose what the assistant should forget." });
+    try {
+      const userId = req.session.userId!;
+      if (parsed.data.scope === "chat-history") {
+        await db.transaction(async (tx) => {
+          await tx.execute(sql`DELETE FROM "messages" WHERE "conversation_id" IN (SELECT "id" FROM "conversations" WHERE "user_id" = ${userId})`);
+          await tx.execute(sql`DELETE FROM "conversations" WHERE "user_id" = ${userId}`);
+          await tx.execute(sql`DELETE FROM "ai_messages" WHERE "user_id" = ${userId}`);
+        });
+      } else {
+        await storage.upsertUserProfile(userId, { characterAffirmation: null, aiPersonalityProfile: {} } as any);
+      }
+      return res.json({ success: true });
+    } catch (error) {
+      logger.error("Error clearing AI memory:", error);
+      return res.status(500).json({ error: "Could not clear AI memory" });
+    }
+  });
+
+  app.delete("/api/account", isAuthenticated, async (req: Request, res: Response) => {
+    const parsed = z.object({ confirmation: z.literal("DELETE MY ACCOUNT") }).safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Type DELETE MY ACCOUNT to confirm permanent deletion." });
+    try {
+      const userId = req.session.userId!;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      if (user.clerkId) await clerkClient.users.deleteUser(user.clerkId);
+      await deleteLocalAccountData(userId);
+      req.session.destroy(() => undefined);
+      res.clearCookie("connect.sid");
+      return res.json({ success: true });
+    } catch (error) {
+      logger.error("Error deleting account:", error);
+      return res.status(500).json({ error: "Could not complete account deletion. Please contact support before retrying." });
     }
   });
   
@@ -688,12 +811,10 @@ Generate the complete affirmation now:`;
         return res.status(400).json({ error: "Invalid user ID" });
       }
       
-      const { name } = req.body;
-      if (!name || typeof name !== 'string') {
-        return res.status(400).json({ error: "Valid name is required" });
-      }
+      const parsed = z.object({ name: z.string().trim().min(1, "A name is required").max(32, "Keep the name to 32 characters or fewer") }).safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.errors[0]?.message || "Valid name is required" });
       
-      const updatedStats = await storage.updateUserStats(userId, { aiAssistantName: name });
+      const updatedStats = await storage.updateUserStats(userId, { aiAssistantName: parsed.data.name });
       
       return res.status(200).json({ 
         success: true,
@@ -863,6 +984,19 @@ Generate the complete affirmation now:`;
       }).returning();
       
       const savedLog = result[0];
+
+      const reflection = [wentWell, couldBeBetter, learned]
+        .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+        .map((value) => value.trim())
+        .join(" | ");
+      if (reflection) {
+        await recordTransformationThreadEvidence({
+          userId,
+          sourceType: "daily_reflection",
+          sourceId: String(date),
+          summary: reflection.slice(0, 2000),
+        });
+      }
       
       // Convert previous day's todoIdeas into upcoming missions (quests)
       try {
@@ -993,6 +1127,18 @@ Generate the complete affirmation now:`;
           .where(eq(userDailyLogs.id, existingLog[0].id));
           
         const updatedLog = await db.select().from(userDailyLogs).where(eq(userDailyLogs.id, existingLog[0].id));
+        const reflection = [updatedLog[0]?.wentWell, updatedLog[0]?.couldBeBetter, updatedLog[0]?.learned]
+          .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+          .map((value) => value.trim())
+          .join(" | ");
+        if (reflection) {
+          await recordTransformationThreadEvidence({
+            userId,
+            sourceType: "daily_reflection",
+            sourceId: String(date),
+            summary: reflection.slice(0, 2000),
+          });
+        }
         storage.logActivityEvent(userId, 'daily_log', { date }).catch(() => {});
         
         return res.status(200).json({ log: updatedLog[0], message: "Daily log updated successfully" });
@@ -1028,6 +1174,18 @@ Generate the complete affirmation now:`;
           couldBeBetter: couldBeBetter || null,
           learned: learned || null
         }).returning();
+        const reflection = [newLog[0]?.wentWell, newLog[0]?.couldBeBetter, newLog[0]?.learned]
+          .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+          .map((value) => value.trim())
+          .join(" | ");
+        if (reflection) {
+          await recordTransformationThreadEvidence({
+            userId,
+            sourceType: "daily_reflection",
+            sourceId: String(date),
+            summary: reflection.slice(0, 2000),
+          });
+        }
         
         return res.status(201).json({ log: newLog[0] });
       }

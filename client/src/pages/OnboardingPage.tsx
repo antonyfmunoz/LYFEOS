@@ -1083,6 +1083,11 @@ export default function OnboardingPage() {
       if (profileResponse.ok) {
         setCompletedOnboardingMissions(prev => [...(prev || []), missionId].filter((v, i, a) => a.indexOf(v) === i));
         queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+        if (missionId === MISSIONS.length - 1) {
+          apiRequest("/api/transformation-thread/initialize", { method: "POST" })
+            .then(() => queryClient.invalidateQueries({ queryKey: ["/api/transformation-thread"] }))
+            .catch((error) => console.error("Failed to initialize transformation thread:", error));
+        }
       }
     } catch (error: any) {
       console.error("Failed to save completed mission:", error?.message || error);
