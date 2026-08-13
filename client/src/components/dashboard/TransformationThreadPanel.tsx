@@ -1,4 +1,4 @@
-import { CheckCircle2, ChevronRight, Pause, Play, Target } from "lucide-react";
+import { Award, CheckCircle2, ChevronRight, Pause, Play, Target } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -25,6 +25,7 @@ type TransformationThread = {
   completionReadiness?: { completedMissionCount: number; requiredMissionCount: number; reviewCount: number; requiredReviewCount: number; activeDays: number; requiredActiveDays: number; remainingDays: number; ready: boolean };
   skills?: Array<{ id: number; key: string; name: string; description: string; kind: "primary" | "supporting" | "capacity"; experience: number; level: number }>;
   skillEdges?: Array<{ id: number; sourceSkillId: number; targetSkillId: number; relationship: string }>;
+  progression?: { level: number; rank: { name: string; color: string }; badges: Array<{ key: string; name: string; description: string }>; competenceSignals: { practicingSkills: number; evidenceBackedSkills: number; note: string } };
 };
 
 export function TransformationThreadPanel() {
@@ -101,6 +102,7 @@ export function TransformationThreadPanel() {
   const edges = thread.skillEdges || [];
   const edgeLabels = new Map(edges.map((edge) => [edge.targetSkillId, edge.relationship]));
   const completionReadiness = thread.completionReadiness;
+  const progression = thread.progression;
 
   return (
     <section className="mb-6" data-tour="transformation-thread">
@@ -244,6 +246,24 @@ export function TransformationThreadPanel() {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {progression && (
+          <div className="mt-4 border-t border-primary/10 pt-3">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <p className="text-xs font-mono uppercase tracking-[0.12em] text-primary">Progress record</p>
+                <p className="mt-1 text-xs text-muted-foreground">Level {progression.level} · <span style={{ color: progression.rank.color }}>{progression.rank.name}</span> · {progression.competenceSignals.practicingSkills} practicing skills</p>
+              </div>
+              <Award className="h-4 w-4 text-primary" />
+            </div>
+            {progression.badges.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {progression.badges.map((badge) => <span key={badge.key} title={badge.description} className="rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-[11px] text-primary">{badge.name}</span>)}
+              </div>
+            ) : <p className="mt-2 text-[11px] text-muted-foreground">Complete missions and record reviews to earn evidence-backed markers.</p>}
+            <p className="mt-2 text-[10px] text-muted-foreground/80">{progression.competenceSignals.note}</p>
           </div>
         )}
       </div>

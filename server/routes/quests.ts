@@ -4,10 +4,12 @@ import { eq, desc, and, gte, asc, sql, inArray } from "drizzle-orm";
 import { storage } from "../storage";
 import { db } from "../db";
 import { logger, formatLocalDate, classifyMission } from "../utils";
-import { isAuthenticated, isOwner, calculateMissionCosts, awardExperiencePoints, calculateLevelFromTotalXP } from "./middleware";
+import { isAuthenticated, isOwner, calculateMissionCosts, calculateLevelFromTotalXP } from "./middleware";
 import { insertQuestSchema, insertMissionViewSchema, Quest, questSkillContributions, skillNodes, skillProgressionEvents, transformationThreads, userDailyLogs, quests as questsTable } from "@shared/schema";
 import { sendPushToUser } from "../notificationScheduler";
 import { recordTransformationThreadEvidence } from "../transformation-thread-evidence";
+import { refreshProgressionState } from "../progression";
+import { queueLinkedWorkItemState } from "../cross-product";
 
 declare module "express-session" {
   interface SessionData {
@@ -357,20 +359,36 @@ export function registerQuestRoutes(app: Express): void {
         }).catch(() => {});
         storage.logActivityEvent(quest.userId, 'mission_complete', { questId: quest.id, title: quest.title }).catch(() => {});
         if (quest.transformationThreadId) {
-          recordTransformationThreadEvidence({
+          await recordTransformationThreadEvidence({
             userId: quest.userId,
             transformationThreadId: quest.transformationThreadId,
             sourceType: "mission_completion",
             sourceId: String(quest.id),
             summary: `Completed mission: ${quest.title}`,
-          }).catch(() => {});
+          }).catch((e) => logger.error("Could not record Thread evidence for quest toggle:", e));
         }
+      }
+
+      let progression;
+      try {
+        progression = await refreshProgressionState(quest.userId, `mission:${quest.id}:${updatedQuest.completed ? "completed" : "reopened"}`);
+      } catch (progressionError) {
+        logger.error("Could not refresh progression for quest toggle:", progressionError);
+      }
+
+      let crossProductWorkUpdates = 0;
+      try {
+        crossProductWorkUpdates = await queueLinkedWorkItemState(quest.userId, quest.id);
+      } catch (integrationError) {
+        logger.error("Could not queue cross-product work item update:", integrationError);
       }
 
       return res.status(200).json({ 
         quest: updatedQuest,
         xpAwarded: updatedQuest.completed ? Math.floor(quest.experienceReward * ({ D: 1, C: 1.5, B: 2, A: 3, S: 5 }[quest.difficulty || 'D'] || 1)) : 0,
         skillExperienceAwarded: updatedQuest.completed ? skillExperienceAwarded : 0,
+        progression,
+        crossProductWorkUpdates,
         levelUp: levelUp,
         statsUpdated: statsUpdated,
         stats: userStats ? {

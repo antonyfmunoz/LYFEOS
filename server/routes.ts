@@ -11,6 +11,8 @@ import { registerWaitlistRoutes } from "./routes/waitlist";
 import { registerGoogleRoutes } from "./routes/google";
 import { registerUMHRoutes } from "./routes/umh";
 import { registerTransformationThreadRoutes } from "./routes/transformation-threads";
+import { registerProgressionRoutes } from "./routes/progression";
+import { registerCrossProductSharingRoutes } from "./routes/cross-product-sharing";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 
@@ -51,6 +53,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerGoogleRoutes(app);
   registerUMHRoutes(app);
   registerTransformationThreadRoutes(app);
+  registerProgressionRoutes(app);
+  registerCrossProductSharingRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;

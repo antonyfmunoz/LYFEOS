@@ -17,6 +17,11 @@ export function signUMHMessage(secret: string, timestamp: string, nonce: string,
   return crypto.createHmac("sha256", secret).update(signingPayload(timestamp, nonce, body)).digest("hex");
 }
 
+/** UMH projection ingress signs the exact JSON bytes sent over HTTPS. */
+export function signUMHProjectionEvent(secret: string, timestamp: string, nonce: string, serializedBody: string): string {
+  return crypto.createHmac("sha256", secret).update(`${timestamp}.${nonce}.${serializedBody}`).digest("hex");
+}
+
 export function verifyUMHSignature(secret: string, timestamp: string, nonce: string, signature: string, body: unknown): boolean {
   if (!/^\d{13}$/.test(timestamp) || !/^[a-zA-Z0-9_-]{16,256}$/.test(nonce) || !/^[a-f0-9]{64}$/.test(signature)) return false;
   if (Math.abs(Date.now() - Number(timestamp)) > UMH_MAX_CLOCK_SKEW_MS) return false;

@@ -300,28 +300,8 @@ export function DailyInitModal() {
         
         console.log("Daily logs update response:", updateResponse);
         
-        // Calculate XP to award based on selected boosts
-        if (selectedBoosts.length > 0) {
-          const xpToAward = selectedBoosts.reduce((sum, boostId) => {
-            const boost = dailyBoosts.find(b => b.id === boostId);
-            return sum + (boost?.xpReward || 0);
-          }, 0);
-          
-          // Award XP for selecting daily boosts
-          if (xpToAward > 0) {
-            console.log("Awarding XP for daily boosts:", xpToAward);
-            
-            const xpResponse = await apiRequest(`/api/users/${user.id}/award-xp`, {
-              method: 'POST',
-              body: JSON.stringify({ 
-                amount: xpToAward, 
-                reason: 'Daily boost selection' 
-              })
-            });
-            
-            console.log("XP award response:", xpResponse);
-          }
-        }
+        // Selecting a boost records today's intention. XP is earned later from
+        // completed missions and goals, never from a selection itself.
       } catch (error) {
         console.error("Error processing daily initialization:", error);
       }

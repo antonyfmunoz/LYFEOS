@@ -4,7 +4,7 @@ import multer from "multer";
 import Anthropic from "@anthropic-ai/sdk";
 import { storage } from "../storage";
 import { logger } from "../utils";
-import { isAuthenticated, isOwner, awardExperiencePoints } from "./middleware";
+import { isAuthenticated, isOwner } from "./middleware";
 import {
   insertAIMessageSchema,
   insertMissionPageSchema,
@@ -161,29 +161,6 @@ export function registerContentRoutes(app: Express): void {
       
       const page = await storage.createMissionPage(pageData);
       
-      // Award XP for creating a mission page
-      try {
-        // Add 15 XP for creating a mission page
-        const xpResult = await awardExperiencePoints(pageData.userId, 15);
-        if (xpResult.success) {
-          return res.status(201).json({ 
-            page,
-            stats: {
-              ...xpResult.newStats,
-              experience: {
-                ...xpResult.newStats?.experience,
-                totalXP: xpResult.totalXP,
-                showLevelUp: xpResult.levelUp
-              }
-            },
-            levelUp: xpResult.levelUp
-          });
-        }
-      } catch (xpError) {
-        logger.error("Error awarding XP for mission page creation:", xpError);
-        // Continue without failing the request if XP award fails
-      }
-      
       return res.status(201).json({ page });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -319,30 +296,6 @@ export function registerContentRoutes(app: Express): void {
       
       // Create contact
       const contact = await storage.createContact(validatedData);
-      
-      // Award XP for creating a contact
-      try {
-        // Add 3 XP for creating a contact
-        const xpResult = await awardExperiencePoints(contact.userId, 3);
-        if (xpResult.success) {
-          return res.status(201).json({
-            contact,
-            stats: {
-              ...xpResult.newStats,
-              experience: {
-                ...xpResult.newStats?.experience,
-                totalXP: xpResult.totalXP,
-                showLevelUp: xpResult.levelUp
-              }
-            },
-            xpAwarded: 3,
-            levelUp: xpResult.levelUp
-          });
-        }
-      } catch (xpError) {
-        logger.error("Error awarding XP for contact creation:", xpError);
-        // Continue without failing the request if XP award fails
-      }
       
       return res.status(201).json({ contact });
     } catch (error) {
@@ -511,30 +464,6 @@ export function registerContentRoutes(app: Express): void {
       
       // Create spreadsheet
       const spreadsheet = await storage.createSpreadsheet(validateData);
-      
-      // Award XP for creating a spreadsheet
-      try {
-        // Add 8 XP for creating a spreadsheet
-        const xpResult = await awardExperiencePoints(spreadsheet.userId, 8);
-        if (xpResult.success) {
-          return res.status(201).json({
-            spreadsheet,
-            stats: {
-              ...xpResult.newStats,
-              experience: {
-                ...xpResult.newStats?.experience,
-                totalXP: xpResult.totalXP,
-                showLevelUp: xpResult.levelUp
-              }
-            },
-            xpAwarded: 8,
-            levelUp: xpResult.levelUp
-          });
-        }
-      } catch (xpError) {
-        logger.error("Error awarding XP for spreadsheet creation:", xpError);
-        // Continue without failing the request if XP award fails
-      }
       
       return res.status(201).json({ spreadsheet });
     } catch (error) {

@@ -3,12 +3,12 @@ import { storage } from "../storage";
 import { logger } from "../utils";
 import { z } from "zod";
 import { sendPushToUser } from "../notificationScheduler";
-import { isAuthenticated, awardExperiencePoints, calculateLevelFromTotalXP } from "./middleware";
+import { isAuthenticated } from "./middleware";
 import { db } from "../db";
 import { quests as questsTable } from "@shared/schema";
 import { eq, and, inArray, isNull } from "drizzle-orm";
-import Anthropic from "@anthropic-ai/sdk";
 import type { InsertVisionGoal, InsertSmartReminder } from "@shared/schema";
+import { refreshProgressionState } from "../progression";
 
 export function registerGoalRoutes(app: Express): void {
   // Push Notification routes (FCM)
@@ -178,36 +178,14 @@ export function registerGoalRoutes(app: Express): void {
 
         let bonusXp = goal.bonusXp;
         if (bonusXp === 0) {
-          try {
-            const anthropic = new Anthropic({
-              apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
-              baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
-            });
-            const aiResponse = await anthropic.messages.create({
-              model: "claude-haiku-4-5-20250514",
-              max_tokens: 50,
-              messages: [{
-                role: "user",
-                content: `Assign bonus XP for completing this mission objective in a gamified life system. Category: ${goal.category}. Title: "${goal.title}". Respond with ONLY a number from this list: 25, 50, 75, 100, 150, 200, 250, 500. Higher XP for more ambitious/difficult objectives.`
-              }],
-            });
-            const parsed = parseInt((aiResponse.content[0] as any).text?.trim());
-            if ([25, 50, 75, 100, 150, 200, 250, 500].includes(parsed)) {
-              bonusXp = parsed;
-            } else {
-              bonusXp = 50;
-            }
-          } catch {
-            bonusXp = 50;
-          }
+          // A goal with no declared reward gets a small, predictable default.
+          // AI must not invent progression value after the fact.
+          bonusXp = 50;
           await storage.updateVisionGoal(id, userId, { bonusXp });
           goal.bonusXp = bonusXp;
         }
         if (bonusXp > 0) {
-          const xpResult = await awardExperiencePoints(userId, bonusXp);
-          if (xpResult.success) {
-            xpAwarded = bonusXp;
-          }
+          xpAwarded = bonusXp;
         }
       }
 
@@ -228,23 +206,13 @@ export function registerGoalRoutes(app: Express): void {
           await storage.updateVisionGoal(id, userId, { disconnectedMissionIds: null });
         }
 
-        const bonusXp = existingGoal.bonusXp || 0;
-        if (bonusXp > 0) {
-          const profile = await storage.getUserProfile(userId);
-          if (profile) {
-            const oldTotalXP = profile.totalXP || 0;
-            const newTotalXP = Math.max(0, oldTotalXP - bonusXp);
-            await storage.updateUserProfile(userId, { totalXP: newTotalXP });
-            const newLevelInfo = calculateLevelFromTotalXP(newTotalXP);
-            await storage.updateUserStats(userId, {
-              experienceCurrent: newLevelInfo.current,
-              experienceMax: newLevelInfo.max,
-              level: newLevelInfo.level,
-            });
-            xpRemoved = bonusXp;
-          }
-        }
+        xpRemoved = existingGoal.bonusXp || 0;
       }
+
+      const xpData = (isCompleting || isUncompleting) ? await storage.recalculateXP(userId) : undefined;
+      const progression = (isCompleting || isUncompleting)
+        ? await refreshProgressionState(userId, `goal:${goal.id}:${isCompleting ? "completed" : "reopened"}`)
+        : undefined;
 
       if (isCompleting && xpAwarded > 0) {
         sendPushToUser(userId, {
@@ -256,9 +224,6 @@ export function registerGoalRoutes(app: Express): void {
       }
 
       const dbStats = await storage.getUserStats(userId);
-      const userProfile = await storage.getUserProfile(userId);
-      const profileTotalXP = userProfile?.totalXP || 0;
-      const levelInfo = calculateLevelFromTotalXP(profileTotalXP);
       const updatedStats = dbStats ? {
         attentionTokens: {
           current: dbStats.attentionTokensCurrent,
@@ -277,10 +242,10 @@ export function registerGoalRoutes(app: Express): void {
           max: dbStats.healthPointsMax,
         },
         experience: {
-          current: levelInfo.current,
-          max: levelInfo.max,
-          level: levelInfo.level,
-          totalXP: profileTotalXP,
+          current: xpData?.experienceCurrent ?? dbStats.experienceCurrent,
+          max: xpData?.experienceMax ?? dbStats.experienceMax,
+          level: xpData?.level ?? dbStats.level,
+          totalXP: xpData?.totalXP ?? (await storage.getUserProfile(userId))?.totalXP ?? 0,
           showLevelUp: false,
         },
         streakDays: dbStats.streakDays || 0,
@@ -310,7 +275,7 @@ export function registerGoalRoutes(app: Express): void {
           isRitualized: q.isRitualized || false,
           parentRitualId: q.parentRitualId || null,
         }));
-      res.json({ ...goal, xpAwarded, xpRemoved, updatedStats, disconnectedMissionIds, remainingLinkedMissions });
+      res.json({ ...goal, xpAwarded, xpRemoved, updatedStats, progression, disconnectedMissionIds, remainingLinkedMissions });
     } catch (error) {
       logger.error("Error updating vision goal:", error);
       res.status(500).json({ error: "Internal server error" });

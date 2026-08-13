@@ -4,7 +4,7 @@ import type { UMHEventEnvelope } from "@shared/umh";
 import { umhOutboxEvents } from "@shared/schema";
 import { db } from "../db";
 import { getUMHFederationConfig } from "./config";
-import { signUMHMessage } from "./crypto";
+import { signUMHProjectionEvent } from "./crypto";
 
 let workerTimer: NodeJS.Timeout | undefined;
 let isDelivering = false;
@@ -27,20 +27,21 @@ async function deliverPendingEvents(): Promise<void> {
       .limit(25);
 
     for (const entry of events) {
-      const timestamp = String(Date.now());
+      // UMH projection ingress validates Unix seconds, not JavaScript milliseconds.
+      const timestamp = String(Math.floor(Date.now() / 1_000));
       const nonce = crypto.randomBytes(24).toString("base64url");
       const event = entry.payload as UMHEventEnvelope;
+      const body = JSON.stringify(event);
       try {
-        const response = await fetch(`${config.controlPlaneUrl}/api/umh/v1/events`, {
+        const response = await fetch(`${config.controlPlaneUrl}/api/umh/projections/lyfeos/events`, {
           method: "POST",
           headers: {
             "content-type": "application/json",
-            "x-umh-key-id": config.keyId,
             "x-umh-timestamp": timestamp,
             "x-umh-nonce": nonce,
-            "x-umh-signature": signUMHMessage(config.sharedSecret, timestamp, nonce, event),
+            "x-umh-signature": signUMHProjectionEvent(config.sharedSecret, timestamp, nonce, body),
           },
-          body: JSON.stringify(event),
+          body,
           signal: AbortSignal.timeout(10_000),
         });
 

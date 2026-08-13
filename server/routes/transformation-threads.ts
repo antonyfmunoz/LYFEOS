@@ -6,6 +6,7 @@ import { storage } from "../storage";
 import { questSkillContributions, quests, skillEdges, skillNodes, transformationThreadEvidence, transformationThreads } from "@shared/schema";
 import { isAuthenticated } from "./middleware";
 import { recordTransformationThreadEvidence } from "../transformation-thread-evidence";
+import { getProgressionSummary, refreshProgressionState } from "../progression";
 
 type StarterMission = {
   title: string;
@@ -187,7 +188,7 @@ export function registerTransformationThreadRoutes(app: Express): void {
       .limit(1);
     if (!thread) return res.json({ thread: null });
 
-    const [linkedMissions, evidence, skills] = await Promise.all([
+    const [linkedMissions, evidence, skills, progression] = await Promise.all([
       db.select({ id: quests.id, completed: quests.completed })
         .from(quests)
         .where(and(eq(quests.userId, userId), eq(quests.transformationThreadId, thread.id))),
@@ -198,6 +199,7 @@ export function registerTransformationThreadRoutes(app: Express): void {
         .limit(8),
       db.select().from(skillNodes)
         .where(and(eq(skillNodes.userId, userId), eq(skillNodes.transformationThreadId, thread.id))),
+      getProgressionSummary(userId),
     ]);
     const skillIds = skills.map((skill) => skill.id);
     const edges = skillIds.length > 0
@@ -215,6 +217,7 @@ export function registerTransformationThreadRoutes(app: Express): void {
         evidence,
         skills,
         skillEdges: edges,
+        progression,
       },
     });
   });
@@ -383,7 +386,8 @@ export function registerTransformationThreadRoutes(app: Express): void {
       sourceId: new Date().toISOString(),
       summary: parsed.data.reflection,
     });
-    return res.status(201).json({ success: true });
+    const progression = await refreshProgressionState(userId, `thread:${thread.id}:review`);
+    return res.status(201).json({ success: true, progression });
   });
 
   app.post("/api/transformation-thread/:id/complete", isAuthenticated, async (req: Request, res: Response) => {
@@ -423,6 +427,7 @@ export function registerTransformationThreadRoutes(app: Express): void {
       sourceId: String(thread.id),
       summary: parsed.data.reflection,
     });
-    return res.json({ thread });
+    const progression = await refreshProgressionState(userId, `thread:${thread.id}:completed`);
+    return res.json({ thread, progression });
   });
 }

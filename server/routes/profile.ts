@@ -6,10 +6,11 @@ import { clerkClient } from "@clerk/express";
 import { storage } from "../storage";
 import { db } from "../db";
 import { logger, formatLocalDate } from "../utils";
-import { isAuthenticated, isOwner, awardExperiencePoints, calculateLevelFromTotalXP, calculateTotalXPForLevel } from "./middleware";
+import { isAuthenticated, isOwner, calculateLevelFromTotalXP, calculateTotalXPForLevel } from "./middleware";
 import { InsertUser, InsertUserProfile, InsertUserStats, userDailyLogs, quests as questsTable, userStats, users } from "@shared/schema";
 import { eq, desc, and, gte, asc, sql } from "drizzle-orm";
 import { recordTransformationThreadEvidence } from "../transformation-thread-evidence";
+import { queueCoordinationContext } from "../cross-product";
 
 const accountExportTables = [
   "user_stats", "user_profile", "user_daily_logs", "user_integrations", "quests", "ai_messages",
@@ -17,7 +18,7 @@ const accountExportTables = [
   "documents", "templates", "integrations", "progress_trackers", "kanban_boards", "media_albums",
   "media_items", "conversations", "dismissed_knowledge", "vision_goals", "user_categories", "ritual_groups",
   "widget_states", "user_activity_events", "smart_reminders", "mission_views", "push_subscriptions",
-  "transformation_threads", "transformation_thread_evidence",
+  "transformation_threads", "transformation_thread_evidence", "skill_nodes", "skill_edges", "quest_skill_contributions", "skill_progression_events", "progression_badge_awards", "cross_product_sharing_preferences", "cross_product_work_links",
 ] as const;
 
 const identifier = (name: string) => sql.identifier(name);
@@ -32,12 +33,15 @@ async function deleteLocalAccountData(userId: number): Promise<void> {
     await tx.execute(sql`DELETE FROM "messages" WHERE "conversation_id" IN (SELECT "id" FROM "conversations" WHERE "user_id" = ${userId})`);
     await tx.execute(sql`DELETE FROM "kanban_boards" WHERE "user_id" = ${userId}`);
     await tx.execute(sql`DELETE FROM "umh_outbox_events" WHERE "aggregate_type" = 'mission' AND "aggregate_id" IN (SELECT "id"::text FROM "quests" WHERE "user_id" = ${userId})`);
+    await tx.execute(sql`DELETE FROM "umh_outbox_events" WHERE "aggregate_type" = 'progression' AND "aggregate_id" = ${String(userId)}`);
+    await tx.execute(sql`DELETE FROM "umh_outbox_events" WHERE "aggregate_type" = 'coordination_context' AND "aggregate_id" LIKE ${`${userId}:%`}`);
+    await tx.execute(sql`DELETE FROM "umh_outbox_events" WHERE "aggregate_type" = 'work_item' AND "payload"->>'actorId' = (SELECT "clerk_id" FROM "users" WHERE "id" = ${userId})`);
     await tx.execute(sql`DELETE FROM "umh_approval_requests" WHERE "command_id" IN (SELECT "command_id" FROM "umh_inbound_commands" WHERE "local_user_id" = ${userId})`);
     await tx.execute(sql`DELETE FROM "umh_audit_records" WHERE "local_user_id" = ${userId}`);
     await tx.execute(sql`DELETE FROM "umh_inbound_commands" WHERE "local_user_id" = ${userId}`);
 
     for (const table of [
-      "transformation_thread_evidence", "quests", "transformation_threads", "mission_pages", "calendar_events",
+      "cross_product_work_links", "cross_product_sharing_preferences", "progression_badge_awards", "skill_progression_events", "quest_skill_contributions", "skill_edges", "skill_nodes", "transformation_thread_evidence", "quests", "transformation_threads", "mission_pages", "calendar_events",
       "documents", "folders", "media_items", "media_albums", "conversations", "user_stats", "user_profile",
       "user_daily_logs", "user_integrations", "ai_messages", "contacts", "spreadsheets", "canvases", "graphs",
       "templates", "integrations", "progress_trackers", "dismissed_knowledge", "vision_goals", "user_categories",
@@ -825,51 +829,9 @@ Generate the complete affirmation now:`;
     }
   });
 
-  // Experience points endpoint to award XP for various actions
+  // XP must be derived from real progress records, not client-provided amounts.
   app.post("/api/users/:userId/award-xp", isOwner, async (req: Request, res: Response) => {
-    try {
-      const userId = parseInt(req.params.userId);
-      if (isNaN(userId)) {
-        return res.status(400).json({ error: "Invalid user ID" });
-      }
-      
-      const { amount, reason } = req.body;
-      logger.debug(`Awarding ${amount} XP to user ${userId} for ${reason || 'unknown action'}`);
-      
-      // Validate XP amount
-      const xpAmount = parseInt(amount);
-      if (isNaN(xpAmount) || xpAmount <= 0) {
-        logger.error(`Invalid XP amount: ${amount}`);
-        return res.status(400).json({ error: "XP amount must be a positive number" });
-      }
-      
-      // Use helper function to award XP
-      const xpResult = await awardExperiencePoints(userId, xpAmount);
-      logger.debug(`XP award result:`, xpResult);
-      
-      if (!xpResult.success) {
-        logger.error(`Failed to award XP to user ${userId}`);
-        return res.status(404).json({ error: "Failed to award XP" });
-      }
-      
-      return res.status(200).json({ 
-        success: true,
-        reason,
-        xpAwarded: xpAmount,
-        levelUp: xpResult.levelUp,
-        stats: {
-          ...xpResult.newStats,
-          experience: {
-            ...xpResult.newStats?.experience,
-            totalXP: xpResult.totalXP,
-            showLevelUp: xpResult.levelUp
-          }
-        }
-      });
-    } catch (error) {
-      logger.error("Error awarding XP:", error);
-      return res.status(500).json({ error: "Internal server error" });
-    }
+    return res.status(410).json({ error: "XP is derived from completed missions and goals; direct awards are disabled." });
   });
   
   // Daily Log APIs
@@ -1140,8 +1102,8 @@ Generate the complete affirmation now:`;
           });
         }
         storage.logActivityEvent(userId, 'daily_log', { date }).catch(() => {});
-        
-        return res.status(200).json({ log: updatedLog[0], message: "Daily log updated successfully" });
+        const coordinationContextQueued = await queueCoordinationContext(userId, date).catch(() => false);
+        return res.status(200).json({ log: updatedLog[0], message: "Daily log updated successfully", coordinationContextQueued });
       } else {
         // Create a new log if it doesn't exist
         const newLog = await db.insert(userDailyLogs).values({
@@ -1187,7 +1149,8 @@ Generate the complete affirmation now:`;
           });
         }
         
-        return res.status(201).json({ log: newLog[0] });
+        const coordinationContextQueued = await queueCoordinationContext(userId, date).catch(() => false);
+        return res.status(201).json({ log: newLog[0], coordinationContextQueued });
       }
     } catch (error) {
       logger.error("Error updating daily log:", error);

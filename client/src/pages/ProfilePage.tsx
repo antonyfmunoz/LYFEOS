@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Collapsible,
@@ -280,6 +281,195 @@ function IntegrationsSection({ userId }: { userId?: number }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+type CrossProductSharing = {
+  enabled: boolean;
+  destinations: Array<"entrepreneuros" | "creativesos">;
+  purposes: Array<"coordination" | "correlation">;
+};
+
+function CrossProductSharingSection() {
+  const { toast } = useToast();
+  const { data, isLoading } = useQuery<{ sharing: CrossProductSharing }>({ queryKey: ["/api/cross-product-sharing"] });
+  const [enabled, setEnabled] = useState(false);
+  const [destinations, setDestinations] = useState<Array<"entrepreneuros" | "creativesos">>([]);
+  const [purposes, setPurposes] = useState<Array<"coordination" | "correlation">>([]);
+
+  useEffect(() => {
+    if (!data?.sharing) return;
+    setEnabled(data.sharing.enabled);
+    setDestinations(data.sharing.destinations);
+    setPurposes(data.sharing.purposes);
+  }, [data]);
+
+  const save = useMutation({
+    mutationFn: () => apiRequest<{ sharing: CrossProductSharing }>("/api/cross-product-sharing", {
+      method: "PATCH",
+      body: JSON.stringify({ enabled, destinations, purposes }),
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/cross-product-sharing"] });
+      toast({ title: enabled ? "Ecosystem sharing updated" : "Ecosystem sharing paused" });
+    },
+    onError: (error: Error) => toast({ title: "Could not update sharing", description: error.message, variant: "destructive" }),
+  });
+  const toggleDestination = (destination: "entrepreneuros" | "creativesos") => {
+    setDestinations((current) => current.includes(destination)
+      ? current.filter((item) => item !== destination)
+      : [...current, destination]);
+  };
+  const togglePurpose = (purpose: "coordination" | "correlation") => {
+    setPurposes((current) => current.includes(purpose)
+      ? current.filter((item) => item !== purpose)
+      : [...current, purpose]);
+  };
+
+  return (
+    <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <div className="flex items-center gap-2">
+          <Link2 className="h-4 w-4 text-primary" />
+          <Label className="text-sm text-foreground">Ecosystem connections</Label>
+        </div>
+        <Switch checked={enabled} onCheckedChange={setEnabled} disabled={isLoading || save.isPending} aria-label="Enable ecosystem sharing" />
+      </div>
+      <p className="text-xs text-muted-foreground mb-3">LyfeOS keeps your XP, skills, missions, reflections, and health details private. Choose exactly what limited context may move through UMH to the products you select.</p>
+      <div className="space-y-2 rounded-lg border border-primary/10 bg-card/50 p-3">
+        {(["entrepreneuros", "creativesos"] as const).map((destination) => (
+          <label key={destination} className="flex items-center gap-2 text-sm text-foreground">
+            <input type="checkbox" checked={destinations.includes(destination)} onChange={() => toggleDestination(destination)} disabled={isLoading || save.isPending} className="accent-primary" />
+            {destination === "entrepreneuros" ? "EntrepreneurOS" : "CreativesOS"}
+          </label>
+        ))}
+      </div>
+      <div className="mt-2 space-y-2 rounded-lg border border-primary/10 bg-card/50 p-3">
+        <p className="text-xs font-medium text-foreground">Share for</p>
+        <label className="flex items-start gap-2 text-sm text-foreground">
+          <input type="checkbox" checked={purposes.includes("coordination")} onChange={() => togglePurpose("coordination")} disabled={isLoading || save.isPending} className="mt-0.5 accent-primary" />
+          <span><span className="font-medium">Linked work coordination</span><span className="block text-xs text-muted-foreground">Only for a mission you explicitly link to work in another product; shares its open/completed state and your summary.</span></span>
+        </label>
+        <label className="flex items-start gap-2 text-sm text-foreground">
+          <input type="checkbox" checked={purposes.includes("correlation")} onChange={() => togglePurpose("correlation")} disabled={isLoading || save.isPending} className="mt-0.5 accent-primary" />
+          <span><span className="font-medium">Capacity pattern insights</span><span className="block text-xs text-muted-foreground">Shares only a daily low, steady, or high capacity band. It is for patterns and hypotheses, never a health record or causal claim.</span></span>
+        </label>
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-3">
+        <span className="text-[11px] text-muted-foreground">{enabled ? `${destinations.length} destination${destinations.length === 1 ? "" : "s"} / ${purposes.length} purpose${purposes.length === 1 ? "" : "s"}` : "Sharing is off"}</span>
+        <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => save.mutate()} disabled={isLoading || save.isPending || (enabled && (destinations.length === 0 || purposes.length === 0))}>
+          {save.isPending ? "Saving…" : "Save sharing"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+type CrossProductQuest = { id: number; title: string; completed: boolean };
+type CrossProductWorkLink = {
+  id: number;
+  workItemId: string;
+  sharedSummary: string;
+  destinations: Array<"entrepreneuros" | "creativesos">;
+  questId: number;
+  missionTitle: string;
+  completed: boolean;
+};
+
+function CrossProductWorkLinksSection({ userId }: { userId?: number }) {
+  const { toast } = useToast();
+  const { data: sharingData } = useQuery<{ sharing: CrossProductSharing }>({ queryKey: ["/api/cross-product-sharing"] });
+  const { data: questsData } = useQuery<{ quests: CrossProductQuest[] }>({
+    queryKey: ["/api/users", userId, "quests"],
+    queryFn: async () => {
+      const response = await fetch("/api/users/" + userId + "/quests", { credentials: "include" });
+      if (!response.ok) throw new Error("Could not load missions.");
+      return response.json();
+    },
+    enabled: !!userId,
+  });
+  const { data: linksData } = useQuery<{ workLinks: CrossProductWorkLink[] }>({
+    queryKey: ["/api/cross-product/work-links"],
+    enabled: !!userId,
+  });
+  const [questId, setQuestId] = useState("");
+  const [sharedSummary, setSharedSummary] = useState("");
+  const [destinations, setDestinations] = useState<Array<"entrepreneuros" | "creativesos">>([]);
+  const sharing = sharingData?.sharing;
+  const coordinationEnabled = Boolean(sharing?.enabled && sharing.purposes.includes("coordination"));
+
+  useEffect(() => {
+    if (!sharing) return;
+    setDestinations((current) => current.filter((item) => sharing.destinations.includes(item)));
+  }, [sharing]);
+
+  const create = useMutation({
+    mutationFn: () => apiRequest("/api/cross-product/work-links", {
+      method: "POST",
+      body: JSON.stringify({ questId: Number(questId), sharedSummary, destinations }),
+    }),
+    onSuccess: () => {
+      setQuestId("");
+      setSharedSummary("");
+      queryClient.invalidateQueries({ queryKey: ["/api/cross-product/work-links"] });
+      toast({ title: "Mission linked for ecosystem coordination" });
+    },
+    onError: (error: Error) => toast({ title: "Could not link mission", description: error.message, variant: "destructive" }),
+  });
+  const remove = useMutation({
+    mutationFn: (id: number) => apiRequest("/api/cross-product/work-links/" + id, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/cross-product/work-links"] });
+      toast({ title: "Mission link removed" });
+    },
+    onError: (error: Error) => toast({ title: "Could not remove mission link", description: error.message, variant: "destructive" }),
+  });
+  const toggleDestination = (destination: "entrepreneuros" | "creativesos") => {
+    setDestinations((current) => current.includes(destination)
+      ? current.filter((item) => item !== destination)
+      : [...current, destination]);
+  };
+
+  return (
+    <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Link2 className="h-4 w-4 text-primary" />
+        <Label className="text-sm text-foreground">Linked ecosystem work</Label>
+      </div>
+      {!coordinationEnabled ? (
+        <p className="text-xs text-muted-foreground">Enable “Linked work coordination” above before connecting a mission. A link shares only the summary you write and the mission’s open/completed state.</p>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">Use this only when one real-world work item belongs in LyfeOS and another product. Your mission title remains private.</p>
+          <select value={questId} onChange={(event) => setQuestId(event.target.value)} className="w-full rounded-md border border-primary/20 bg-card px-3 py-2 text-sm text-foreground" aria-label="Choose LyfeOS mission">
+            <option value="">Choose a mission</option>
+            {(questsData?.quests || []).map((quest) => <option key={quest.id} value={quest.id}>{quest.title}</option>)}
+          </select>
+          <Input value={sharedSummary} onChange={(event) => setSharedSummary(event.target.value)} maxLength={280} placeholder="Shared work summary (not the private mission title)" aria-label="Shared work summary" />
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            {(sharing?.destinations || []).map((destination) => (
+              <label key={destination} className="flex items-center gap-2 text-xs text-foreground">
+                <input type="checkbox" checked={destinations.includes(destination)} onChange={() => toggleDestination(destination)} className="accent-primary" />
+                {destination === "entrepreneuros" ? "EntrepreneurOS" : "CreativesOS"}
+              </label>
+            ))}
+          </div>
+          <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => create.mutate()} disabled={create.isPending || !questId || !sharedSummary.trim() || destinations.length === 0}>
+            {create.isPending ? "Linking..." : "Link mission"}
+          </Button>
+          {(linksData?.workLinks || []).length > 0 && (
+            <div className="space-y-2 border-t border-primary/10 pt-3">
+              {linksData!.workLinks.map((link) => (
+                <div key={link.id} className="flex items-center justify-between gap-3 text-xs">
+                  <span className="min-w-0 truncate text-muted-foreground">{link.sharedSummary} / {link.completed ? "completed" : "open"}</span>
+                  <Button size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground hover:text-destructive" onClick={() => remove.mutate(link.id)} disabled={remove.isPending}>Remove</Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1399,6 +1589,9 @@ export default function ProfilePage() {
                 </div>
               )}
             </div>
+
+            <CrossProductSharingSection />
+            <CrossProductWorkLinksSection userId={user?.id} />
 
             <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
               <div className="flex items-center justify-between mb-3">

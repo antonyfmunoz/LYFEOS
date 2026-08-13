@@ -2,8 +2,7 @@ import crypto from "crypto";
 import { and, eq } from "drizzle-orm";
 import {
   LYFEOS_MISSION_CREATED_EVENT,
-  type UMHCommandEnvelope,
-  type UMHEventEnvelope,
+  type UMHCommandEnvelope, type UMHProjectionEventEnvelope,
 } from "@shared/umh";
 import {
   quests,
@@ -116,16 +115,19 @@ export async function executeMissionCreateCommand(
         missionStatus: "confirmed",
       }).returning();
 
-      const event: UMHEventEnvelope = {
-        protocolVersion: "umh.federation.v1",
-        kind: "event",
-        id: crypto.randomUUID(),
-        type: LYFEOS_MISSION_CREATED_EVENT,
+      const event: UMHProjectionEventEnvelope = {
+        schemaVersion: "umh.v1",
+        eventId: crypto.randomUUID(),
+        projectionId: "lyfeos",
+        eventType: LYFEOS_MISSION_CREATED_EVENT,
         installationId: command.installationId,
         tenantId: command.tenantId,
-        subject: command.subject,
-        correlationId: command.correlationId,
-        causationId: command.id,
+        actorId: command.subject.clerkUserId,
+        aggregateType: "mission",
+        aggregateId: String(mission.id),
+        idempotencyKey: `mission:${mission.id}:created`,
+        traceId: crypto.randomUUID(),
+        correlationId: crypto.randomUUID(),
         occurredAt: occurredAt.toISOString(),
         payload: {
           missionId: mission.id,
@@ -137,8 +139,8 @@ export async function executeMissionCreateCommand(
       };
 
       await tx.insert(umhOutboxEvents).values({
-        eventId: event.id,
-        eventType: event.type,
+        eventId: event.eventId,
+        eventType: event.eventType,
         aggregateType: "mission",
         aggregateId: String(mission.id),
         payload: event,
@@ -149,7 +151,7 @@ export async function executeMissionCreateCommand(
         status: "succeeded",
         replayed: false,
         missionId: mission.id,
-        eventId: event.id,
+        eventId: event.eventId,
       };
 
       await tx.update(umhInboundCommands)

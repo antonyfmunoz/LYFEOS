@@ -106,6 +106,52 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS "skill_progression_events_quest_idx" ON "skill_progression_events" ("quest_id");
     `,
   },
+  {
+    id: "0013_progression_badges",
+    sql: `
+      CREATE TABLE IF NOT EXISTS "progression_badge_awards" (
+        "id" serial PRIMARY KEY,
+        "user_id" integer NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "badge_key" text NOT NULL,
+        "evidence" jsonb NOT NULL DEFAULT '{}'::jsonb,
+        "awarded_at" timestamp NOT NULL DEFAULT now()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS "progression_badge_awards_user_key_idx" ON "progression_badge_awards" ("user_id", "badge_key");
+      CREATE INDEX IF NOT EXISTS "progression_badge_awards_user_awarded_idx" ON "progression_badge_awards" ("user_id", "awarded_at" DESC);
+    `,
+  },
+  {
+    id: "0014_cross_product_sharing",
+    sql: `
+      CREATE TABLE IF NOT EXISTS "cross_product_sharing_preferences" (
+        "id" serial PRIMARY KEY,
+        "user_id" integer NOT NULL UNIQUE REFERENCES "users"("id") ON DELETE CASCADE,
+        "ecosystem_sharing_enabled" boolean NOT NULL DEFAULT false,
+        "allowed_destinations" jsonb NOT NULL DEFAULT '[]'::jsonb,
+        "allowed_purposes" jsonb NOT NULL DEFAULT '[]'::jsonb,
+        "consented_at" timestamp,
+        "revoked_at" timestamp,
+        "updated_at" timestamp NOT NULL DEFAULT now()
+      );
+    `,
+  },
+  {
+    id: "0015_cross_product_work_links",
+    sql: `
+      CREATE TABLE IF NOT EXISTS "cross_product_work_links" (
+        "id" serial PRIMARY KEY,
+        "user_id" integer NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+        "quest_id" integer NOT NULL REFERENCES "quests"("id") ON DELETE CASCADE,
+        "work_item_id" uuid NOT NULL,
+        "shared_summary" text NOT NULL,
+        "destinations" jsonb NOT NULL DEFAULT '[]'::jsonb,
+        "created_at" timestamp NOT NULL DEFAULT now(),
+        "updated_at" timestamp NOT NULL DEFAULT now()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS "cross_product_work_links_quest_work_item_idx" ON "cross_product_work_links" ("quest_id", "work_item_id");
+      CREATE INDEX IF NOT EXISTS "cross_product_work_links_user_quest_idx" ON "cross_product_work_links" ("user_id", "quest_id");
+    `,
+  },
 ];
 
 async function run(): Promise<void> {

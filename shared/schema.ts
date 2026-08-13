@@ -407,6 +407,51 @@ export const skillProgressionEvents = pgTable("skill_progression_events", {
   index("skill_progression_events_quest_idx").on(table.questId),
 ]);
 
+// Earned markers are deterministic records, never decorative UI state. A
+// badge describes the evidence LyfeOS observed; it does not certify a person's
+// real-world competence beyond that evidence.
+export const progressionBadgeAwards = pgTable("progression_badge_awards", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  badgeKey: text("badge_key").notNull(),
+  evidence: jsonb("evidence").notNull().default({}),
+  awardedAt: timestamp("awarded_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("progression_badge_awards_user_key_idx").on(table.userId, table.badgeKey),
+  index("progression_badge_awards_user_awarded_idx").on(table.userId, table.awardedAt),
+]);
+
+// Cross-product sharing is opt-in, scoped, and independent from a product's
+// local progression record. LyfeOS does not send progression to UMH until the
+// user chooses at least one destination.
+export const crossProductSharingPreferences = pgTable("cross_product_sharing_preferences", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
+  ecosystemSharingEnabled: boolean("ecosystem_sharing_enabled").notNull().default(false),
+  allowedDestinations: jsonb("allowed_destinations").notNull().default([]),
+  allowedPurposes: jsonb("allowed_purposes").notNull().default([]),
+  consentedAt: timestamp("consented_at"),
+  revokedAt: timestamp("revoked_at"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// A user explicitly creates these links when one real-world work item spans
+// LyfeOS and another product. The linked products exchange state through UMH;
+// they never share databases or silently infer a linkage from private data.
+export const crossProductWorkLinks = pgTable("cross_product_work_links", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  questId: integer("quest_id").notNull().references(() => quests.id, { onDelete: "cascade" }),
+  workItemId: uuid("work_item_id").notNull(),
+  sharedSummary: text("shared_summary").notNull(),
+  destinations: jsonb("destinations").notNull().default([]),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("cross_product_work_links_quest_work_item_idx").on(table.questId, table.workItemId),
+  index("cross_product_work_links_user_quest_idx").on(table.userId, table.questId),
+]);
+
 // Quests table (Missions Management)
 export const quests = pgTable("quests", {
   id: serial("id").primaryKey(),
