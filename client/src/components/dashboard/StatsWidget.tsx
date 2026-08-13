@@ -38,7 +38,7 @@ export default function StatsWidget({ stats }: StatsWidgetProps) {
             // Violet (Crown)
             titleColor="text-primary"
             description="XP tracks your overall progress and achievements in LYFEOS. Complete quests, log activities, and maintain streaks to increase your level."
-            additionalInfo="Higher levels unlock premium features and special abilities within the LYFEOS system."
+            additionalInfo="Levels summarize LyfeOS-recorded practice. Skill branches unlock through visible evidence rules."
             statType="experience"
           />
           

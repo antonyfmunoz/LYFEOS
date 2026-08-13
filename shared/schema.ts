@@ -353,6 +353,10 @@ export const skillNodes = pgTable("skill_nodes", {
   name: text("name").notNull(),
   description: text("description").notNull(),
   kind: text("kind").notNull().default("supporting"), // primary | supporting | capacity
+  // Unlocks and mastery are declared, user-visible rules. They describe the
+  // record needed inside LyfeOS, never a verdict on real-world worth.
+  unlockRequirements: jsonb("unlock_requirements").notNull().default([]),
+  masteryRequirements: jsonb("mastery_requirements").notNull().default({}),
   experience: integer("experience").notNull().default(0),
   level: integer("level").notNull().default(1),
   createdAt: timestamp("created_at").defaultNow().notNull(),

@@ -906,6 +906,10 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
         category: questData.category || "general",
         energyCost: questData.energyCost,
         experienceReward: questData.experienceReward,
+        transformationThreadId: questData.transformationThreadId ?? null,
+        skillNodeIds: questData.skillNodeIds ?? [],
+        visionGoalId: questData.visionGoalId ?? null,
+        linkedItems: questData.linkedItems ?? [],
         startDate: questData.startDate || null,
         startTime: questData.startTime || null,
         endDate: questData.endDate || null,
@@ -977,6 +981,9 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
 
     if (newQuest.visionGoalId) {
       queryClient.invalidateQueries({ queryKey: ['/api/quests/linked-by-vision-goal'] });
+    }
+    if (newQuest.transformationThreadId) {
+      queryClient.invalidateQueries({ queryKey: ["/api/transformation-thread"] });
     }
     
     return newQuest;

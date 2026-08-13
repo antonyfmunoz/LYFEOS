@@ -72,6 +72,8 @@ export interface Quest {
   parentRitualId?: number | null;
   visionGoalId?: number | null;
   transformationThreadId?: number | null;
+  /** Selected private Thread skills that this mission will practice. */
+  skillNodeIds?: number[];
   linkedItems?: { type: "document" | "folder"; id: number; title: string }[];
   location?: string | null;
   allDay?: boolean | null;

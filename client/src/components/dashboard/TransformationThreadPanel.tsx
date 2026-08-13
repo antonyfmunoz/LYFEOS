@@ -1,9 +1,10 @@
-import { Award, CheckCircle2, ChevronRight, Pause, Play, Target } from "lucide-react";
+import { Award, CheckCircle2, ChevronRight, Pause, Play, Plus, Target } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -23,14 +24,32 @@ type TransformationThread = {
   progress?: { missionsTotal: number; missionsCompleted: number; evidenceCount: number };
   evidence?: Array<{ id: number; sourceType: string; summary: string; createdAt: string }>;
   completionReadiness?: { completedMissionCount: number; requiredMissionCount: number; reviewCount: number; requiredReviewCount: number; activeDays: number; requiredActiveDays: number; remainingDays: number; ready: boolean };
-  skills?: Array<{ id: number; key: string; name: string; description: string; kind: "primary" | "supporting" | "capacity"; experience: number; level: number }>;
+  skills?: Array<{ id: number; key: string; name: string; description: string; kind: "primary" | "supporting" | "capacity" | "application"; experience: number; level: number }>;
   skillEdges?: Array<{ id: number; sourceSkillId: number; targetSkillId: number; relationship: string }>;
+  skillGraph?: {
+    reviewCount: number;
+    nodes: Array<{
+      id: number;
+      key: string;
+      name: string;
+      description: string;
+      kind: "primary" | "supporting" | "capacity" | "application";
+      experience: number;
+      level: number;
+      status: "locked" | "unlocked" | "mastered";
+      unmetRequirements: string[];
+      masteryRequirements: { minExperience: number; minCompletedMissions: number; minReviews: number };
+      completedMissionCount: number;
+    }>;
+    nextPractice: null | { skillNodeId: number; skillName: string; title: string; description: string };
+  };
   progression?: { level: number; rank: { name: string; color: string }; badges: Array<{ key: string; name: string; description: string }>; competenceSignals: { practicingSkills: number; evidenceBackedSkills: number; note: string } };
 };
 
 export function TransformationThreadPanel() {
   const { toast } = useToast();
   const [reflection, setReflection] = useState("");
+  const [branchName, setBranchName] = useState("");
   const { data, isLoading } = useQuery<{ thread: TransformationThread | null }>({
     queryKey: ["/api/transformation-thread"],
   });
@@ -62,6 +81,15 @@ export function TransformationThreadPanel() {
   });
 
   const thread = data?.thread;
+  const addSkillBranch = useMutation({
+    mutationFn: ({ threadId, name }: { threadId: number; name: string }) =>
+      apiRequest(`/api/transformation-thread/${threadId}/skills`, { method: "POST", body: JSON.stringify({ name }) }),
+    onSuccess: () => {
+      setBranchName("");
+      queryClient.invalidateQueries({ queryKey: ["/api/transformation-thread"] });
+    },
+    onError: (error: Error) => toast({ title: "Could not add skill branch", description: error.message || "Your growth map is unchanged.", variant: "destructive" }),
+  });
   const onboardingComplete = profile?.onboardingCompleted && (profile.completedOnboardingMissions?.length || 0) >= 8;
   if (isLoading) return null;
 
@@ -100,6 +128,8 @@ export function TransformationThreadPanel() {
   const skills = thread.skills || [];
   const primarySkill = skills.find((skill) => skill.kind === "primary");
   const edges = thread.skillEdges || [];
+  const graphNodesById = new Map((thread.skillGraph?.nodes || []).map((skill) => [skill.id, skill]));
+  const nextPractice = thread.skillGraph?.nextPractice;
   const edgeLabels = new Map(edges.map((edge) => [edge.targetSkillId, edge.relationship]));
   const completionReadiness = thread.completionReadiness;
   const progression = thread.progression;
@@ -231,10 +261,12 @@ export function TransformationThreadPanel() {
             <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               {skills.map((skill) => {
                 const relationship = edgeLabels.get(skill.id);
+                const graphNode = graphNodesById.get(skill.id);
+                const status = graphNode?.status || "unlocked";
                 return (
-                  <div key={skill.id} className={`rounded-md border p-3 ${skill.kind === "primary" ? "border-primary/45 bg-primary/10" : "border-primary/15 bg-card/30"}`}>
+                  <div key={skill.id} className={`rounded-md border p-3 ${status === "locked" ? "border-primary/10 bg-card/20 opacity-70" : skill.kind === "primary" ? "border-primary/45 bg-primary/10" : status === "mastered" ? "border-emerald-400/40 bg-emerald-400/5" : "border-primary/15 bg-card/30"}`}>
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-primary/80">{skill.kind === "primary" ? "Focus" : relationship || skill.kind}</span>
+                      <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-primary/80">{status === "locked" ? "Locked" : status === "mastered" ? "Evidence met" : skill.kind === "primary" ? "Focus" : relationship || skill.kind}</span>
                       <span className="text-xs text-muted-foreground">Lv {skill.level}</span>
                     </div>
                     <p className="mt-1 text-sm text-foreground">{skill.name}</p>
@@ -242,10 +274,39 @@ export function TransformationThreadPanel() {
                       <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, skill.experience % 100)}%` }} />
                     </div>
                     <p className="mt-1 text-[11px] text-muted-foreground">{skill.experience} skill XP</p>
+                    {graphNode && status === "locked" && graphNode.unmetRequirements[0] && <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">{graphNode.unmetRequirements[0]}</p>}
+                    {graphNode && status !== "locked" && <p className="mt-1 text-[10px] text-muted-foreground">{graphNode.completedMissionCount}/{graphNode.masteryRequirements.minCompletedMissions} missions · {thread.skillGraph?.reviewCount || 0}/{graphNode.masteryRequirements.minReviews} reviews</p>}
                   </div>
                 );
               })}
             </div>
+            {nextPractice && (
+              <div className="mt-3 rounded-md border border-primary/20 bg-primary/5 p-3">
+                <p className="text-[10px] font-mono uppercase tracking-[0.12em] text-primary">Recommended next practice · {nextPractice.skillName}</p>
+                <p className="mt-1 text-sm text-foreground">{nextPractice.title}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{nextPractice.description}</p>
+              </div>
+            )}
+            {isActive && (
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <Input
+                  value={branchName}
+                  onChange={(event) => setBranchName(event.target.value)}
+                  placeholder="Add a connected skill branch"
+                  maxLength={72}
+                  className="h-9 border-primary/20 bg-background/40 text-sm"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0 border-primary/30 text-primary hover:bg-primary/10"
+                  onClick={() => thread && addSkillBranch.mutate({ threadId: thread.id, name: branchName.trim() })}
+                  disabled={branchName.trim().length < 2 || addSkillBranch.isPending}
+                >
+                  <Plus className="mr-1.5 h-3.5 w-3.5" /> Add branch
+                </Button>
+              </div>
+            )}
           </div>
         )}
 

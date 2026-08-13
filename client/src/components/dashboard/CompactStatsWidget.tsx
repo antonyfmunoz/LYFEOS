@@ -45,7 +45,7 @@ export default function CompactStatsWidget({ stats }: CompactStatsWidgetProps) {
             title="Experience Points (XP)"
             titleColor="text-primary"
             description="XP tracks your overall progress and achievements in LYFEOS."
-            additionalInfo="Higher levels unlock premium features and special abilities."
+            additionalInfo="Levels summarize LyfeOS-recorded practice. Skill branches unlock through visible evidence rules."
             statType="experience"
           />
           

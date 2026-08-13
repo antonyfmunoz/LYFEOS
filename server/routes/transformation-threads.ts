@@ -7,6 +7,7 @@ import { questSkillContributions, quests, skillEdges, skillNodes, transformation
 import { isAuthenticated } from "./middleware";
 import { recordTransformationThreadEvidence } from "../transformation-thread-evidence";
 import { getProgressionSummary, refreshProgressionState } from "../progression";
+import { buildSkillGraph, recommendNextSkill, type SkillMasteryRequirements, type SkillUnlockRequirement } from "../skill-graph";
 
 type StarterMission = {
   title: string;
@@ -18,7 +19,14 @@ type StarterMission = {
 };
 
 type SkillBlueprint = {
-  nodes: Array<{ key: string; name: string; description: string; kind: "primary" | "supporting" | "capacity" }>;
+  nodes: Array<{
+    key: string;
+    name: string;
+    description: string;
+    kind: "primary" | "supporting" | "capacity" | "application";
+    unlockRequirements: SkillUnlockRequirement[];
+    masteryRequirements: SkillMasteryRequirements;
+  }>;
   edges: Array<{ sourceKey: string; targetKey: string; relationship: string }>;
 };
 
@@ -50,6 +58,8 @@ function buildSkillBlueprint(profile: Awaited<ReturnType<typeof storage.getUserP
         name: primary,
         description: `Your current Thread is centered on building ${primary} through real-world practice.`,
         kind: "primary",
+        unlockRequirements: [],
+        masteryRequirements: { minExperience: 100, minCompletedMissions: 3, minReviews: 2 },
       },
       {
         key: "supporting",
@@ -58,6 +68,8 @@ function buildSkillBlueprint(profile: Awaited<ReturnType<typeof storage.getUserP
           ? `${supporting} is a connected capability this Thread can develop alongside your primary focus.`
           : "Deliberate practice turns isolated effort into repeatable capability.",
         kind: "supporting",
+        unlockRequirements: [{ skillKey: "primary", minExperience: 30 }],
+        masteryRequirements: { minExperience: 80, minCompletedMissions: 3, minReviews: 2 },
       },
       {
         key: "capacity",
@@ -66,18 +78,35 @@ function buildSkillBlueprint(profile: Awaited<ReturnType<typeof storage.getUserP
           ? `Your stated ritual, ${shorten(habit, 110)}, protects the capacity to practice consistently.`
           : "Sustainable time and energy make repeated practice possible.",
         kind: "capacity",
+        unlockRequirements: [],
+        masteryRequirements: { minExperience: 60, minCompletedMissions: 3, minReviews: 1 },
       },
       {
         key: "calibration",
         name: "Reflection & calibration",
         description: "Clear evidence and review let you adjust the route instead of merely checking tasks off.",
         kind: "supporting",
+        unlockRequirements: [],
+        masteryRequirements: { minExperience: 60, minCompletedMissions: 2, minReviews: 2 },
+      },
+      {
+        key: "application",
+        name: `Applied ${primary}`,
+        description: `Use ${primary} and ${supporting} together in a real-world situation after each has a practice record.`,
+        kind: "application",
+        unlockRequirements: [
+          { skillKey: "primary", minExperience: 100 },
+          { skillKey: "supporting", minExperience: 40 },
+        ],
+        masteryRequirements: { minExperience: 80, minCompletedMissions: 2, minReviews: 2 },
       },
     ],
     edges: [
-      { sourceKey: "primary", targetKey: "supporting", relationship: "reinforces" },
-      { sourceKey: "primary", targetKey: "capacity", relationship: "requires" },
+      { sourceKey: "primary", targetKey: "supporting", relationship: "unlocks" },
+      { sourceKey: "capacity", targetKey: "primary", relationship: "sustains" },
       { sourceKey: "calibration", targetKey: "primary", relationship: "clarifies" },
+      { sourceKey: "primary", targetKey: "application", relationship: "requires" },
+      { sourceKey: "supporting", targetKey: "application", relationship: "unlocks" },
     ],
   };
 }
@@ -111,7 +140,6 @@ function buildStarterMissions(profile: Awaited<ReturnType<typeof storage.getUser
       rationale: "Turns the selected focus into a concrete, editable first action.",
       skillContributions: [
         { key: "primary", experienceAmount: 30 },
-        { key: "supporting", experienceAmount: 10 },
       ],
     },
     {
@@ -188,8 +216,8 @@ export function registerTransformationThreadRoutes(app: Express): void {
       .limit(1);
     if (!thread) return res.json({ thread: null });
 
-    const [linkedMissions, evidence, skills, progression] = await Promise.all([
-      db.select({ id: quests.id, completed: quests.completed })
+    const [linkedMissions, evidence, skills, progression, completedSkillMissions] = await Promise.all([
+      db.select({ id: quests.id, title: quests.title, completed: quests.completed })
         .from(quests)
         .where(and(eq(quests.userId, userId), eq(quests.transformationThreadId, thread.id))),
       db.select()
@@ -200,11 +228,32 @@ export function registerTransformationThreadRoutes(app: Express): void {
       db.select().from(skillNodes)
         .where(and(eq(skillNodes.userId, userId), eq(skillNodes.transformationThreadId, thread.id))),
       getProgressionSummary(userId),
+      db.select({ skillNodeId: questSkillContributions.skillNodeId, questId: questSkillContributions.questId })
+        .from(questSkillContributions)
+        .innerJoin(quests, eq(questSkillContributions.questId, quests.id))
+        .where(and(
+          eq(questSkillContributions.userId, userId),
+          eq(quests.transformationThreadId, thread.id),
+          eq(quests.completed, true),
+        )),
     ]);
     const skillIds = skills.map((skill) => skill.id);
     const edges = skillIds.length > 0
       ? await db.select().from(skillEdges).where(and(eq(skillEdges.userId, userId), inArray(skillEdges.sourceSkillId, skillIds)))
       : [];
+    const reviewCount = evidence.filter((item) => item.sourceType === "weekly_review").length;
+    const completedMissionCountBySkill = new Map<number, number>();
+    for (const contribution of completedSkillMissions) {
+      completedMissionCountBySkill.set(
+        contribution.skillNodeId,
+        (completedMissionCountBySkill.get(contribution.skillNodeId) || 0) + 1,
+      );
+    }
+    const skillGraph = buildSkillGraph({ skills, completedMissionCountBySkill, reviewCount });
+    const recommendedSkill = recommendNextSkill(skillGraph);
+    const recommendedMission = recommendedSkill
+      ? linkedMissions.find((mission) => !mission.completed)
+      : undefined;
     res.json({
       thread: {
         ...thread,
@@ -217,6 +266,18 @@ export function registerTransformationThreadRoutes(app: Express): void {
         evidence,
         skills,
         skillEdges: edges,
+        skillGraph: {
+          nodes: skillGraph,
+          reviewCount,
+          nextPractice: recommendedSkill ? {
+            skillNodeId: recommendedSkill.id,
+            skillName: recommendedSkill.name,
+            title: recommendedMission?.title || `Practice ${recommendedSkill.name}`,
+            description: recommendedMission
+              ? `Complete this linked mission, then record what you observed.`
+              : `Create one real-world mission for this unlocked skill and define the evidence you will record.`,
+          } : null,
+        },
         progression,
       },
     });
@@ -264,6 +325,63 @@ export function registerTransformationThreadRoutes(app: Express): void {
       return res.status(201).json({ thread, existing: false });
     } catch (error) {
       return res.status(500).json({ error: "Could not initialize the transformation thread." });
+    }
+  });
+
+  // Users can extend their own private map without silently changing a shared
+  // curriculum. New branches deliberately open after an initial record on the
+  // Thread's primary skill, so the graph remains focused rather than a list.
+  app.post("/api/transformation-thread/:id/skills", isAuthenticated, async (req: Request, res: Response) => {
+    const parsed = z.object({
+      name: z.string().trim().min(2).max(72),
+      description: z.string().trim().max(240).optional(),
+    }).safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Add a branch name of 2 to 72 characters." });
+    const userId = req.session.userId!;
+    const threadId = Number(req.params.id);
+    if (!Number.isInteger(threadId)) return res.status(400).json({ error: "Invalid transformation thread." });
+    try {
+      const [thread] = await db.select({ id: transformationThreads.id })
+        .from(transformationThreads)
+        .where(and(
+          eq(transformationThreads.id, threadId),
+          eq(transformationThreads.userId, userId),
+          inArray(transformationThreads.status, ["draft", "active", "paused"]),
+        ))
+        .limit(1);
+      if (!thread) return res.status(404).json({ error: "Transformation thread not found." });
+      const currentSkills = await db.select({ id: skillNodes.id, key: skillNodes.key, name: skillNodes.name })
+        .from(skillNodes)
+        .where(and(eq(skillNodes.userId, userId), eq(skillNodes.transformationThreadId, threadId)));
+      const primary = currentSkills.find((skill) => skill.key === "primary");
+      if (!primary) return res.status(409).json({ error: "The primary skill is missing from this Thread." });
+      const normalized = parsed.data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) || "branch";
+      const occupied = new Set(currentSkills.map((skill) => skill.key));
+      let key = normalized;
+      let suffix = 2;
+      while (occupied.has(key)) key = `${normalized}-${suffix++}`;
+      const [created] = await db.transaction(async (tx) => {
+        const [node] = await tx.insert(skillNodes).values({
+          userId,
+          transformationThreadId: threadId,
+          key,
+          name: parsed.data.name,
+          description: parsed.data.description || `A user-defined branch connected to ${primary.name}.`,
+          kind: "supporting",
+          unlockRequirements: [{ skillKey: "primary", minExperience: 30 }],
+          masteryRequirements: { minExperience: 80, minCompletedMissions: 3, minReviews: 2 },
+        }).returning();
+        await tx.insert(skillEdges).values({
+          userId,
+          sourceSkillId: primary.id,
+          targetSkillId: node.id,
+          relationship: "unlocks",
+        });
+        return [node];
+      });
+      return res.status(201).json({ skill: created });
+    } catch (error) {
+      return res.status(500).json({ error: "Could not add the skill branch." });
     }
   });
 

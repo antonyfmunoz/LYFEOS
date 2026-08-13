@@ -5,11 +5,13 @@ import { storage } from "../storage";
 import { db } from "../db";
 import { logger, formatLocalDate, classifyMission } from "../utils";
 import { isAuthenticated, isOwner, calculateMissionCosts, calculateLevelFromTotalXP } from "./middleware";
-import { insertQuestSchema, insertMissionViewSchema, Quest, questSkillContributions, skillNodes, skillProgressionEvents, transformationThreads, userDailyLogs, quests as questsTable } from "@shared/schema";
+import { insertQuestSchema, insertMissionViewSchema, Quest, questSkillContributions, skillNodes, skillProgressionEvents, transformationThreadEvidence, transformationThreads, userDailyLogs, quests as questsTable } from "@shared/schema";
 import { sendPushToUser } from "../notificationScheduler";
 import { recordTransformationThreadEvidence } from "../transformation-thread-evidence";
 import { refreshProgressionState } from "../progression";
 import { queueLinkedWorkItemState } from "../cross-product";
+import { allocateSkillExperience, buildSkillGraph } from "../skill-graph";
+import { missionExperience } from "@shared/progression";
 
 declare module "express-session" {
   interface SessionData {
@@ -19,6 +21,75 @@ declare module "express-session" {
 }
 
 export function registerQuestRoutes(app: Express): void {
+  const skillNodeIdsSchema = z.array(z.number().int().positive()).max(3);
+
+  const assignSkillContributions = async (input: {
+    userId: number;
+    quest: Pick<Quest, "id" | "experienceReward" | "difficulty" | "transformationThreadId" | "completed">;
+    skillNodeIds: number[];
+    validateOnly?: boolean;
+  }): Promise<void> => {
+    const skillNodeIds = Array.from(new Set(input.skillNodeIds));
+    if (skillNodeIds.length === 0) return;
+    if (!input.quest.transformationThreadId) {
+      throw new Error("A mission must be linked to a Transformation Thread before it can count as skill practice.");
+    }
+    if (input.quest.completed) {
+      throw new Error("Reopen this mission before changing its skill practice mapping.");
+    }
+    const [skills, completedSkillMissions, reviews] = await Promise.all([
+      db.select().from(skillNodes).where(and(
+        eq(skillNodes.userId, input.userId),
+        eq(skillNodes.transformationThreadId, input.quest.transformationThreadId),
+      )),
+      db.select({ skillNodeId: questSkillContributions.skillNodeId })
+        .from(questSkillContributions)
+        .innerJoin(questsTable, eq(questSkillContributions.questId, questsTable.id))
+        .where(and(
+          eq(questSkillContributions.userId, input.userId),
+          eq(questsTable.transformationThreadId, input.quest.transformationThreadId),
+          eq(questsTable.completed, true),
+        )),
+      db.select({ id: transformationThreadEvidence.id })
+        .from(transformationThreadEvidence)
+        .where(and(
+          eq(transformationThreadEvidence.userId, input.userId),
+          eq(transformationThreadEvidence.transformationThreadId, input.quest.transformationThreadId),
+          eq(transformationThreadEvidence.sourceType, "weekly_review"),
+        )),
+    ]);
+    const ownedSkills = new Map(skills.map((skill) => [skill.id, skill]));
+    if (skillNodeIds.some((id) => !ownedSkills.has(id))) {
+      throw new Error("A selected skill does not belong to this Transformation Thread.");
+    }
+    const completedMissionCountBySkill = new Map<number, number>();
+    for (const item of completedSkillMissions) {
+      completedMissionCountBySkill.set(item.skillNodeId, (completedMissionCountBySkill.get(item.skillNodeId) || 0) + 1);
+    }
+    const graph = buildSkillGraph({ skills, completedMissionCountBySkill, reviewCount: reviews.length });
+    const unavailable = graph.find((skill) => skillNodeIds.includes(skill.id) && skill.status === "locked");
+    if (unavailable) {
+      throw new Error(`${unavailable.name} is still locked: ${unavailable.unmetRequirements.join("; ")}`);
+    }
+    const contributions = allocateSkillExperience(
+      missionExperience(input.quest.experienceReward, input.quest.difficulty),
+      skillNodeIds,
+    );
+    if (input.validateOnly) return;
+    await db.transaction(async (tx) => {
+      await tx.delete(questSkillContributions).where(and(
+        eq(questSkillContributions.questId, input.quest.id),
+        eq(questSkillContributions.userId, input.userId),
+      ));
+      await tx.insert(questSkillContributions).values(contributions.map(({ skillNodeId, experienceAmount }) => ({
+        userId: input.userId,
+        questId: input.quest.id,
+        skillNodeId,
+        experienceAmount,
+      })));
+    });
+  };
+
   const skillLevelForExperience = (experience: number): number => {
     let level = 1;
     let remaining = Math.max(0, experience);
@@ -189,6 +260,11 @@ export function registerQuestRoutes(app: Express): void {
       }
       
       const questData = insertQuestSchema.parse(processedBody);
+      const parsedSkillNodeIds = skillNodeIdsSchema.safeParse(processedBody.skillNodeIds ?? []);
+      if (!parsedSkillNodeIds.success) {
+        return res.status(400).json({ error: "Choose up to three skills for a mission." });
+      }
+      const skillNodeIds = Array.from(new Set(parsedSkillNodeIds.data));
       
       // Ensure user can only create quests for their own account
       if (questData.userId !== req.session.userId) {
@@ -205,6 +281,27 @@ export function registerQuestRoutes(app: Express): void {
           .limit(1);
         if (!thread) {
           return res.status(403).json({ error: "Not authorized to link this transformation thread" });
+        }
+      }
+      if (skillNodeIds.length > 0) {
+        if (!questData.transformationThreadId) {
+          return res.status(400).json({ error: "Link a mission to your active Thread before selecting skills." });
+        }
+        try {
+          await assignSkillContributions({
+            userId: questData.userId,
+            quest: {
+              id: 0,
+              experienceReward: questData.experienceReward ?? 10,
+              difficulty: questData.difficulty ?? "D",
+              transformationThreadId: questData.transformationThreadId,
+              completed: false,
+            },
+            skillNodeIds,
+            validateOnly: true,
+          });
+        } catch (error) {
+          return res.status(409).json({ error: error instanceof Error ? error.message : "Those skills cannot receive practice evidence yet." });
         }
       }
       
@@ -266,6 +363,9 @@ export function registerQuestRoutes(app: Express): void {
         timeCost,
         energyCost,
       });
+      if (skillNodeIds.length > 0) {
+        await assignSkillContributions({ userId: quest.userId, quest, skillNodeIds });
+      }
       if (classification.category === "onboarding" && quest.completed && quest.title) {
         await syncOnboardingProfile(questData.userId, quest.title);
       }
@@ -306,6 +406,30 @@ export function registerQuestRoutes(app: Express): void {
     } catch (error) {
       logger.error("Error recalculating quest costs:", error);
       return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Mapping is editable before a mission is completed. Once complete, the
+  // append-only skill ledger is the explanation for its recorded progress.
+  app.put("/api/quests/:questId/skill-contributions", isAuthenticated, async (req: Request, res: Response) => {
+    const questId = Number(req.params.questId);
+    if (!Number.isInteger(questId)) return res.status(400).json({ error: "Invalid mission." });
+    const parsed = skillNodeIdsSchema.safeParse(req.body?.skillNodeIds);
+    if (!parsed.success || parsed.data.length === 0) {
+      return res.status(400).json({ error: "Choose one to three skills for this mission." });
+    }
+    const quest = await storage.getQuest(questId);
+    if (!quest) return res.status(404).json({ error: "Mission not found." });
+    if (quest.userId !== req.session.userId) return res.status(403).json({ error: "Not authorized to map this mission." });
+    try {
+      await assignSkillContributions({
+        userId: quest.userId,
+        quest,
+        skillNodeIds: Array.from(new Set(parsed.data)),
+      });
+      return res.json({ success: true });
+    } catch (error) {
+      return res.status(409).json({ error: error instanceof Error ? error.message : "Could not map this mission." });
     }
   });
 

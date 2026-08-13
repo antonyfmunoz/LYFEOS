@@ -96,6 +96,7 @@ interface MissionFormData {
   url: string;
   allDay: boolean;
   missionStatus: string;
+  skillNodeIds: number[];
 }
 
 const defaultFormData: MissionFormData = {
@@ -121,7 +122,23 @@ const defaultFormData: MissionFormData = {
   url: "",
   allDay: false,
   missionStatus: "confirmed",
+  skillNodeIds: [],
 };
+
+interface ActiveThreadSkill {
+  id: number;
+  name: string;
+  status: "locked" | "unlocked" | "mastered";
+  unmetRequirements: string[];
+}
+
+interface ActiveThreadData {
+  thread: null | {
+    id: number;
+    status: "draft" | "active" | "paused" | "completed";
+    skillGraph?: { nodes: ActiveThreadSkill[] };
+  };
+}
 
 interface VisionGoalOption {
   id: number;
@@ -280,6 +297,12 @@ export default function QuestsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const pushNotifs = usePushNotifications();
+  const { data: activeThreadData } = useQuery<ActiveThreadData>({
+    queryKey: ["/api/transformation-thread"],
+    enabled: !!user,
+  });
+  const activeThread = activeThreadData?.thread?.status === "active" ? activeThreadData.thread : null;
+  const selectableSkills = activeThread?.skillGraph?.nodes || [];
   
   const { data: allVisionGoals = [] } = useQuery<VisionGoalOption[]>({
     queryKey: ['/api/vision-goals/all'],
@@ -1465,6 +1488,7 @@ export default function QuestsPage() {
       url: (quest as any).url || "",
       allDay: (quest as any).allDay || false,
       missionStatus: (quest as any).missionStatus || "confirmed",
+      skillNodeIds: [],
       linkedItems: ((quest.linkedItems as { type: "document" | "folder"; id: number; title: string }[]) || [])
         .filter(item => {
           if (item.type === 'document') return allDocuments.some(d => d.id === item.id);
@@ -1516,6 +1540,8 @@ export default function QuestsPage() {
         url: createFormData.url || null,
         allDay: createFormData.allDay,
         missionStatus: createFormData.missionStatus,
+        transformationThreadId: createFormData.skillNodeIds.length > 0 ? activeThread?.id ?? null : null,
+        skillNodeIds: createFormData.skillNodeIds,
       });
       
       setCreateFormData(defaultFormData);
@@ -1777,6 +1803,47 @@ export default function QuestsPage() {
                   })()}
                 </div>
               </div>
+
+              {activeThread && selectableSkills.length > 0 && (
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                  <Label className="flex items-center gap-2 text-sm">
+                    <GraduationCap className="h-4 w-4 text-primary" />
+                    Skill practice <span className="text-muted-foreground font-normal">(optional)</span>
+                  </Label>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Select only the capabilities this mission directly practices. Its mission XP is split transparently across the selected skills.</p>
+                  <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
+                    {selectableSkills.map((skill) => {
+                      const selected = createFormData.skillNodeIds.includes(skill.id);
+                      const locked = skill.status === "locked";
+                      return (
+                        <label key={skill.id} className={`flex items-start gap-2 rounded border px-2 py-1.5 text-xs ${locked ? "border-primary/10 opacity-60" : selected ? "border-primary/45 bg-primary/10" : "border-primary/15 bg-card/30"}`}>
+                          <Checkbox
+                            checked={selected}
+                            disabled={locked}
+                            onCheckedChange={(checked) => setCreateFormData((current) => {
+                              if (checked && current.skillNodeIds.length >= 3) {
+                                toast({ title: "Choose up to three skills", description: "Keep the evidence focused and reviewable." });
+                                return current;
+                              }
+                              return {
+                                ...current,
+                                skillNodeIds: checked
+                                  ? [...current.skillNodeIds, skill.id]
+                                  : current.skillNodeIds.filter((id) => id !== skill.id),
+                              };
+                            })}
+                          />
+                          <span>
+                            <span className="text-foreground">{skill.name}</span>
+                            <span className="ml-1 text-[10px] uppercase tracking-wide text-primary/80">{locked ? "locked" : skill.status}</span>
+                            {locked && skill.unmetRequirements[0] && <span className="block text-[10px] text-muted-foreground">{skill.unmetRequirements[0]}</span>}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">

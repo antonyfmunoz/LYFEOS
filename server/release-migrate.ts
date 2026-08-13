@@ -152,6 +152,13 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS "cross_product_work_links_user_quest_idx" ON "cross_product_work_links" ("user_id", "quest_id");
     `,
   },
+  {
+    id: "0016_skill_graph_rules",
+    sql: `
+      ALTER TABLE "skill_nodes" ADD COLUMN IF NOT EXISTS "unlock_requirements" jsonb NOT NULL DEFAULT '[]'::jsonb;
+      ALTER TABLE "skill_nodes" ADD COLUMN IF NOT EXISTS "mastery_requirements" jsonb NOT NULL DEFAULT '{}'::jsonb;
+    `,
+  },
 ];
 
 async function run(): Promise<void> {
