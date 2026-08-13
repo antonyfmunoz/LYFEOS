@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, varchar, uuid, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, date, varchar, uuid, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -324,6 +324,23 @@ export const transformationThreads = pgTable("transformation_threads", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// Durable, user-owned proof attached to a transformation thread. Sources stay
+// immutable enough to make progress reviewable without treating an AI summary
+// as ground truth.
+export const transformationThreadEvidence = pgTable("transformation_thread_evidence", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  transformationThreadId: integer("transformation_thread_id").notNull().references(() => transformationThreads.id, { onDelete: "cascade" }),
+  sourceType: text("source_type").notNull(), // mission_completion | daily_reflection | weekly_review | thread_completion
+  sourceId: text("source_id").notNull(),
+  summary: text("summary").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("transformation_thread_evidence_source_idx").on(table.transformationThreadId, table.sourceType, table.sourceId),
+  index("transformation_thread_evidence_user_created_idx").on(table.userId, table.createdAt),
+]);
 
 // Quests table (Missions Management)
 export const quests = pgTable("quests", {

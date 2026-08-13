@@ -1,9 +1,11 @@
 import type { Express, Request, Response } from "express";
 import { and, desc, eq, inArray } from "drizzle-orm";
+import { z } from "zod";
 import { db } from "../db";
 import { storage } from "../storage";
-import { quests, transformationThreads } from "@shared/schema";
+import { quests, transformationThreadEvidence, transformationThreads } from "@shared/schema";
 import { isAuthenticated } from "./middleware";
+import { recordTransformationThreadEvidence } from "../transformation-thread-evidence";
 
 type StarterMission = {
   title: string;
@@ -94,7 +96,29 @@ export function registerTransformationThreadRoutes(app: Express): void {
       .where(and(eq(transformationThreads.userId, userId), inArray(transformationThreads.status, ["draft", "active", "paused"])))
       .orderBy(desc(transformationThreads.updatedAt))
       .limit(1);
-    res.json({ thread: thread || null });
+    if (!thread) return res.json({ thread: null });
+
+    const [linkedMissions, evidence] = await Promise.all([
+      db.select({ id: quests.id, completed: quests.completed })
+        .from(quests)
+        .where(and(eq(quests.userId, userId), eq(quests.transformationThreadId, thread.id))),
+      db.select()
+        .from(transformationThreadEvidence)
+        .where(and(eq(transformationThreadEvidence.userId, userId), eq(transformationThreadEvidence.transformationThreadId, thread.id)))
+        .orderBy(desc(transformationThreadEvidence.createdAt))
+        .limit(8),
+    ]);
+    res.json({
+      thread: {
+        ...thread,
+        progress: {
+          missionsTotal: linkedMissions.length,
+          missionsCompleted: linkedMissions.filter((mission) => mission.completed).length,
+          evidenceCount: evidence.length,
+        },
+        evidence,
+      },
+    });
   });
 
   app.post("/api/transformation-thread/initialize", isAuthenticated, async (req: Request, res: Response) => {
@@ -173,5 +197,87 @@ export function registerTransformationThreadRoutes(app: Express): void {
     } catch (error) {
       return res.status(500).json({ error: "Could not activate the transformation thread." });
     }
+  });
+
+  app.post("/api/transformation-thread/:id/pause", isAuthenticated, async (req: Request, res: Response) => {
+    const userId = req.session.userId!;
+    const threadId = Number(req.params.id);
+    if (!Number.isInteger(threadId)) return res.status(400).json({ error: "Invalid transformation thread." });
+    const [thread] = await db.update(transformationThreads)
+      .set({ status: "paused", updatedAt: new Date() })
+      .where(and(
+        eq(transformationThreads.id, threadId),
+        eq(transformationThreads.userId, userId),
+        eq(transformationThreads.status, "active"),
+      ))
+      .returning();
+    if (!thread) return res.status(409).json({ error: "Only an active thread can be paused." });
+    return res.json({ thread });
+  });
+
+  app.post("/api/transformation-thread/:id/resume", isAuthenticated, async (req: Request, res: Response) => {
+    const userId = req.session.userId!;
+    const threadId = Number(req.params.id);
+    if (!Number.isInteger(threadId)) return res.status(400).json({ error: "Invalid transformation thread." });
+    const [otherActive] = await db.select({ id: transformationThreads.id })
+      .from(transformationThreads)
+      .where(and(eq(transformationThreads.userId, userId), eq(transformationThreads.status, "active")))
+      .limit(1);
+    if (otherActive) return res.status(409).json({ error: "Pause or complete your current thread before resuming another." });
+    const [thread] = await db.update(transformationThreads)
+      .set({ status: "active", updatedAt: new Date() })
+      .where(and(
+        eq(transformationThreads.id, threadId),
+        eq(transformationThreads.userId, userId),
+        eq(transformationThreads.status, "paused"),
+      ))
+      .returning();
+    if (!thread) return res.status(409).json({ error: "Only a paused thread can be resumed." });
+    return res.json({ thread });
+  });
+
+  app.post("/api/transformation-thread/:id/review", isAuthenticated, async (req: Request, res: Response) => {
+    const parsed = z.object({ reflection: z.string().trim().min(3).max(2000) }).safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Add a short review before recording it." });
+    const userId = req.session.userId!;
+    const threadId = Number(req.params.id);
+    if (!Number.isInteger(threadId)) return res.status(400).json({ error: "Invalid transformation thread." });
+    const [thread] = await db.select().from(transformationThreads)
+      .where(and(eq(transformationThreads.id, threadId), eq(transformationThreads.userId, userId), eq(transformationThreads.status, "active")))
+      .limit(1);
+    if (!thread) return res.status(409).json({ error: "Reviews can only be recorded on an active thread." });
+    await recordTransformationThreadEvidence({
+      userId,
+      transformationThreadId: thread.id,
+      sourceType: "weekly_review",
+      sourceId: new Date().toISOString(),
+      summary: parsed.data.reflection,
+    });
+    return res.status(201).json({ success: true });
+  });
+
+  app.post("/api/transformation-thread/:id/complete", isAuthenticated, async (req: Request, res: Response) => {
+    const parsed = z.object({ reflection: z.string().trim().min(3).max(2000) }).safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Add a short closing reflection before completing this thread." });
+    const userId = req.session.userId!;
+    const threadId = Number(req.params.id);
+    if (!Number.isInteger(threadId)) return res.status(400).json({ error: "Invalid transformation thread." });
+    const [thread] = await db.update(transformationThreads)
+      .set({ status: "completed", completedAt: new Date(), updatedAt: new Date() })
+      .where(and(
+        eq(transformationThreads.id, threadId),
+        eq(transformationThreads.userId, userId),
+        inArray(transformationThreads.status, ["active", "paused"]),
+      ))
+      .returning();
+    if (!thread) return res.status(409).json({ error: "Only an active or paused thread can be completed." });
+    await recordTransformationThreadEvidence({
+      userId,
+      transformationThreadId: thread.id,
+      sourceType: "thread_completion",
+      sourceId: String(thread.id),
+      summary: parsed.data.reflection,
+    });
+    return res.json({ thread });
   });
 }

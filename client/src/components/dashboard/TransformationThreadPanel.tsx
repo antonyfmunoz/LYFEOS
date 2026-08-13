@@ -1,8 +1,11 @@
-import { CheckCircle2, ChevronRight, Play, Target } from "lucide-react";
+import { CheckCircle2, ChevronRight, Pause, Play, Target } from "lucide-react";
+import { useState } from "react";
 import { Link } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 
 type StarterMission = {
@@ -17,10 +20,13 @@ type TransformationThread = {
   rationale: string;
   status: "draft" | "active" | "paused" | "completed";
   starterMissions: StarterMission[];
+  progress?: { missionsTotal: number; missionsCompleted: number; evidenceCount: number };
+  evidence?: Array<{ id: number; sourceType: string; summary: string; createdAt: string }>;
 };
 
 export function TransformationThreadPanel() {
   const { toast } = useToast();
+  const [reflection, setReflection] = useState("");
   const { data, isLoading } = useQuery<{ thread: TransformationThread | null }>({
     queryKey: ["/api/transformation-thread"],
   });
@@ -39,6 +45,16 @@ export function TransformationThreadPanel() {
       queryClient.invalidateQueries({ queryKey: ["/api/quests"] });
     },
     onError: () => toast({ title: "Plan activation failed", description: "Your draft is still available. Please try again.", variant: "destructive" }),
+  });
+  const updateThread = useMutation({
+    mutationFn: ({ threadId, action, body }: { threadId: number; action: "pause" | "resume" | "review" | "complete"; body?: Record<string, string> }) =>
+      apiRequest(`/api/transformation-thread/${threadId}/${action}`, { method: "POST", ...(body ? { body: JSON.stringify(body) } : {}) }),
+    onSuccess: (_, variables) => {
+      setReflection("");
+      queryClient.invalidateQueries({ queryKey: ["/api/transformation-thread"] });
+      if (variables.action === "complete") queryClient.invalidateQueries({ queryKey: ["/api/quests"] });
+    },
+    onError: (error: Error) => toast({ title: "Thread update failed", description: error.message || "Your progress has not been changed.", variant: "destructive" }),
   });
 
   const thread = data?.thread;
@@ -75,6 +91,8 @@ export function TransformationThreadPanel() {
 
   const starterMissions = Array.isArray(thread.starterMissions) ? thread.starterMissions : [];
   const isDraft = thread.status === "draft";
+  const isActive = thread.status === "active";
+  const progress = thread.progress || { missionsTotal: 0, missionsCompleted: 0, evidenceCount: 0 };
 
   return (
     <section className="mb-6" data-tour="transformation-thread">
@@ -100,9 +118,21 @@ export function TransformationThreadPanel() {
               {activateThread.isPending ? "Activating…" : "Activate plan"}
             </Button>
           ) : (
-            <Link href="/missions" className="inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-primary/50 bg-primary/20 px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/30">
-              View missions <ChevronRight className="ml-1 h-3.5 w-3.5" />
-            </Link>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <Link href="/missions" className="inline-flex h-9 items-center justify-center rounded-md border border-primary/50 bg-primary/20 px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/30">
+                View missions <ChevronRight className="ml-1 h-3.5 w-3.5" />
+              </Link>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-primary/30 text-primary hover:bg-primary/10"
+                onClick={() => updateThread.mutate({ threadId: thread.id, action: isActive ? "pause" : "resume" })}
+                disabled={updateThread.isPending}
+              >
+                {isActive ? <Pause className="mr-1.5 h-3.5 w-3.5" /> : <Play className="mr-1.5 h-3.5 w-3.5" />}
+                {isActive ? "Pause" : "Resume"}
+              </Button>
+            </div>
           )}
         </div>
 
@@ -123,9 +153,54 @@ export function TransformationThreadPanel() {
         )}
 
         {!isDraft && (
-          <div className="mt-3 flex items-center gap-2 border-t border-primary/10 pt-3 text-xs text-muted-foreground">
-            <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
-            Missions and reflections can be linked to this focus as the system evolves.
+          <div className="mt-4 border-t border-primary/10 pt-3">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              <span><CheckCircle2 className="mr-1 inline h-3.5 w-3.5 text-primary" />{progress.missionsCompleted}/{progress.missionsTotal} linked missions complete</span>
+              <span>{progress.evidenceCount} recent evidence records</span>
+              {thread.status === "paused" && <span className="text-primary">Focus paused — nothing is discarded.</span>}
+            </div>
+
+            {isActive && (
+              <div className="mt-3 rounded-md border border-primary/15 bg-card/30 p-3">
+                <Label htmlFor="thread-review" className="text-xs font-mono uppercase tracking-[0.12em] text-primary">Weekly review</Label>
+                <Textarea
+                  id="thread-review"
+                  value={reflection}
+                  onChange={(event) => setReflection(event.target.value)}
+                  placeholder="What moved forward, what needs to change, or why this focus is complete?"
+                  className="mt-2 min-h-20 border-primary/20 bg-background/40 text-sm"
+                  maxLength={2000}
+                />
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-primary/30 text-primary hover:bg-primary/10"
+                    onClick={() => updateThread.mutate({ threadId: thread.id, action: "review", body: { reflection } })}
+                    disabled={reflection.trim().length < 3 || updateThread.isPending}
+                  >
+                    Record review
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-primary/20 text-muted-foreground hover:bg-primary/10"
+                    onClick={() => updateThread.mutate({ threadId: thread.id, action: "complete", body: { reflection } })}
+                    disabled={reflection.trim().length < 3 || updateThread.isPending}
+                  >
+                    Complete focus
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {thread.evidence && thread.evidence.length > 0 && (
+              <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                {thread.evidence.slice(0, 3).map((item) => (
+                  <p key={item.id} className="truncate"><span className="mr-2 font-mono uppercase text-primary/80">{item.sourceType.replaceAll("_", " ")}</span>{item.summary}</p>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -19,7 +19,7 @@ import {
 const NAV_LINKS = [
   { label: "Features", href: "#features" },
   { label: "How It Works", href: "#how-it-works" },
-  { label: "Pricing", href: "#pricing" },
+  { label: "Access", href: "#pricing" },
   { label: "FAQ", href: "#faq" },
 ];
 
@@ -62,8 +62,8 @@ const SOLUTION_BLOCKS = [
   {
     icon: <Bot className="w-6 h-6" />,
     badge: "AI That Knows You",
-    text: "NOVA isn't ChatGPT with a prompt. It has read your entire profile: your values, goals, patterns, and constraints. It creates missions, updates your logs, and helps you execute — based on who you actually are.",
-    placeholder: "NOVA Chat",
+    text: "Name your own AI companion. It can use the profile and conversations you choose to keep in LyfeOS, then help you think through missions and execution.",
+    placeholder: "AI Chat",
     color: "#39ff14",
   },
 ];
@@ -79,14 +79,14 @@ const STEPS = [
   {
     num: 2,
     title: "LYFEOS Builds Your System",
-    text: "Based on your answers, NOVA generates your Character Affirmation and populates your dashboard with missions aligned to your goals.",
+    text: "Based on your answers, LYFEOS prepares a personal transformation thread and three editable starter missions aligned to your goals.",
     placeholder: "Character Affirmation",
     color: "#39ff14",
   },
   {
     num: 3,
     title: "Run Your Life from One Dashboard",
-    text: "Track 8 stats. Complete missions. Log daily data. Ask NOVA for help. All from one place. No more context switching.",
+    text: "Track 8 stats. Complete missions. Log daily data. Ask your named AI for help. All from one place.",
     placeholder: "Dashboard",
     color: "#00e0ff",
   },
@@ -94,33 +94,29 @@ const STEPS = [
 
 const TESTIMONIALS = [
   {
-    quote:
-      "I spent $5,000 on coaching last year. LYFEOS gives me 80% of the same clarity for $29/month. The Character Affirmation alone is worth 3 coaching sessions.",
-    name: "Alex M.",
-    title: "Product Manager, SF",
+    quote: "Your profile should create a concrete starting point, not disappear into a questionnaire.",
+    name: "Product principle",
+    title: "Onboarding to execution",
   },
   {
-    quote:
-      "I've tried Notion, Todoist, Things, and Obsidian. LYFEOS is the first system that actually knows me. It's not a blank canvas — it's a system built around who I am.",
-    name: "Jordan K.",
-    title: "Entrepreneur, NYC",
+    quote: "Progress should be reviewable through completed missions and reflections, not inferred from an opaque score.",
+    name: "Product principle",
+    title: "Evidence over automation",
   },
   {
-    quote:
-      "My 8-year-old can now explain my core values and 5-year vision. That's how clear LYFEOS made my goals. It's not just organization — it's self-knowledge.",
-    name: "Sam L.",
-    title: "Creative Director, London",
+    quote: "The user owns the data, can export it, and can decide what the AI retains.",
+    name: "Product principle",
+    title: "User control",
   },
 ];
 
 const FEATURES_LIST = [
-  "Complete 8-Mission Awakening Protocol",
-  "Full Dashboard (7 Logs, 8 Stats)",
-  "NOVA AI Assistant (Unlimited)",
-  "Unlimited Mission Creation",
-  "Character Affirmation Generation",
-  "Web App Access",
-  "Mobile Apps (Coming Q3 2026)",
+  "Complete the 8-mission onboarding flow",
+  "Personal transformation thread and starter missions",
+  "Dashboard, missions, and daily reflections",
+  "Your named AI companion",
+  "Portable data export and AI memory controls",
+  "Responsive web app access",
 ];
 
 const FAQ_ITEMS = [
@@ -134,23 +130,23 @@ const FAQ_ITEMS = [
   },
   {
     q: "What if I stop using it?",
-    a: "You can export all your data anytime. Your missions, logs, and profile are yours. We're month-to-month — cancel whenever. But most users stick because it becomes their second brain.",
+    a: "You can export your LyfeOS data from Profile settings at any time. You can also clear chat history, reset the generated AI profile, or permanently delete your account.",
   },
   {
     q: "Is my data private?",
     a: "Yes. Your data is encrypted at rest and never shared. We don't sell data. We don't train AI models on your content. Your life OS is yours.",
   },
   {
-    q: "When is the mobile app coming?",
-    a: "Native iOS and Android apps launch Q3 2026. Beta users get early access. The web app works on mobile browsers now (responsive design), but native apps will add quick-capture features.",
+    q: "Does it work on a phone?",
+    a: "The public MVP is a responsive web app. Native mobile applications are not part of this release.",
   },
   {
-    q: "Can I switch between monthly and annual?",
-    a: "Yes. You can upgrade to annual anytime to get the discount. If you downgrade from annual to monthly, you'll keep annual access until your billing period ends.",
+    q: "Is billing enabled?",
+    a: "No. This public-MVP release does not process payments or subscriptions.",
   },
   {
-    q: "What happens after the 7-day trial?",
-    a: "After 7 days, you'll be charged for your chosen plan (monthly or annual). You can cancel anytime during the trial with no charge.",
+    q: "How does the AI use my information?",
+    a: "The assistant can use your LyfeOS profile and saved conversations to provide context. Profile settings let you clear chat history or reset the generated assistant profile.",
   },
 ];
 
@@ -188,7 +184,7 @@ const PREVIEW_IMAGES: Record<string, { desktop: string; mobile: string }> = {
   "Dashboard Stats HUD": { desktop: "/images/preview-profile-stats.png", mobile: "/images/preview-profile-stats-mobile.png" },
   "Dashboard": { desktop: "/images/preview-dashboard.png", mobile: "/images/preview-dashboard-mobile.png" },
   "Character Affirmation": { desktop: "/images/preview-affirmation.png", mobile: "/images/preview-affirmation-mobile.png" },
-  "NOVA Chat": { desktop: "/images/preview-nova-chat.png", mobile: "/images/preview-nova-chat-mobile.png" },
+  "AI Chat": { desktop: "/images/preview-nova-chat.png", mobile: "/images/preview-nova-chat-mobile.png" },
   "Mission Flow": { desktop: "/images/preview-mission-flow.png", mobile: "/images/preview-mission-flow-mobile.png" },
 };
 
@@ -451,22 +447,21 @@ export default function LandingPage() {
       <section id="pricing">
         <div className="max-w-4xl mx-auto px-4 py-16 sm:py-20">
           <h2 className="font-orbitron text-2xl sm:text-3xl font-bold text-center mb-2">
-            Simple, Transparent <span className="text-primary">Pricing</span>
+            Public MVP <span className="text-primary">Access</span>
           </h2>
           <p className="text-center text-muted-foreground mb-12 text-sm">
-            One plan. Everything included. Cancel anytime.
+            Core functionality is available during the public-MVP period. Billing is not enabled.
           </p>
 
           <div className="grid sm:grid-cols-2 gap-6">
             {/* Monthly */}
             <div className="rounded-xl border border-border/50 bg-card/40 p-6 space-y-5">
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">Monthly</p>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Public MVP</p>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-bold text-foreground">$29</span>
-                  <span className="text-muted-foreground text-sm">/month</span>
+                  <span className="text-3xl font-bold text-foreground">$0</span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Billed monthly</p>
+                <p className="text-xs text-muted-foreground mt-1">No payment or subscription required</p>
               </div>
               <ul className="space-y-2.5">
                 {FEATURES_LIST.map((f) => (
@@ -485,20 +480,17 @@ export default function LandingPage() {
               <p className="text-center text-xs text-muted-foreground/60">No credit card required</p>
             </div>
 
-            {/* Annual */}
+            {/* What is intentionally included */}
             <div className="rounded-xl border-2 border-primary/50 bg-card/40 p-6 space-y-5 relative overflow-hidden">
               <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[10px] font-bold px-3 py-1 rounded-bl-lg uppercase tracking-wider">
-                2 Months Free
+                Current scope
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">Annual</p>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Built for a complete first loop</p>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-bold text-foreground">$290</span>
-                  <span className="text-muted-foreground text-sm">/year</span>
+                  <span className="text-3xl font-bold text-foreground">One focus</span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  $24.17/month &bull; Save $58
-                </p>
+                <p className="text-xs text-muted-foreground mt-1">Onboarding, execution, reflection, review, and user control.</p>
               </div>
               <ul className="space-y-2.5">
                 {FEATURES_LIST.map((f) => (
@@ -519,7 +511,7 @@ export default function LandingPage() {
           </div>
 
           <p className="text-center text-xs text-muted-foreground mt-6">
-            Cancel anytime. Full refund within 30 days.
+            Payment, subscription management, and native mobile apps are deliberately outside this MVP release.
           </p>
         </div>
       </section>
@@ -543,7 +535,7 @@ export default function LandingPage() {
             Ready to Stop Being <span className="text-primary">Scattered?</span>
           </h2>
           <p className="text-muted-foreground max-w-lg mx-auto">
-            90 minutes to build your system. $29/month or $290/year to run your life.
+            Build your system, activate one focus, and see the evidence it creates.
           </p>
           <Link
             href={ctaHref}

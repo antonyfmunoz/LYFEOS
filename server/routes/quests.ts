@@ -7,6 +7,7 @@ import { logger, formatLocalDate, classifyMission } from "../utils";
 import { isAuthenticated, isOwner, calculateMissionCosts, awardExperiencePoints, calculateLevelFromTotalXP } from "./middleware";
 import { insertQuestSchema, insertMissionViewSchema, Quest, transformationThreads, userDailyLogs, quests as questsTable } from "@shared/schema";
 import { sendPushToUser } from "../notificationScheduler";
+import { recordTransformationThreadEvidence } from "../transformation-thread-evidence";
 
 declare module "express-session" {
   interface SessionData {
@@ -292,6 +293,15 @@ export function registerQuestRoutes(app: Express): void {
           url: "/quests",
         }).catch(() => {});
         storage.logActivityEvent(quest.userId, 'mission_complete', { questId: quest.id, title: quest.title }).catch(() => {});
+        if (quest.transformationThreadId) {
+          recordTransformationThreadEvidence({
+            userId: quest.userId,
+            transformationThreadId: quest.transformationThreadId,
+            sourceType: "mission_completion",
+            sourceId: String(quest.id),
+            summary: `Completed mission: ${quest.title}`,
+          }).catch(() => {});
+        }
       }
 
       return res.status(200).json({ 

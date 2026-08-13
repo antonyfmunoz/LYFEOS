@@ -68,7 +68,9 @@ import {
   Calendar,
   Link2,
   StickyNote,
-  Search
+  Search,
+  Download,
+  Trash2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -601,6 +603,7 @@ export default function ProfilePage() {
   const [emailCodeSent, setEmailCodeSent] = useState(false);
   const [phoneCodeSent, setPhoneCodeSent] = useState(false);
   const [clerkPhoneNumber, setClerkPhoneNumber] = useState<ClerkPhoneNumber | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const { user: clerkUser } = useUser();
   
   // Fetch account data
@@ -618,6 +621,46 @@ export default function ProfilePage() {
   }>({
     queryKey: ['/api/auth/2fa/status'],
     enabled: !!user,
+  });
+
+  const { data: aiMemory } = useQuery<{
+    legacyMessageCount: number;
+    conversationCount: number;
+    affirmationStored: boolean;
+    profileContextStored: boolean;
+  }>({
+    queryKey: ["/api/account/ai-memory"],
+    enabled: !!user?.id,
+  });
+
+  const clearAiMemoryMutation = useMutation({
+    mutationFn: (scope: "chat-history" | "assistant-profile") => apiRequest("/api/account/ai-memory", {
+      method: "DELETE",
+      body: JSON.stringify({ scope }),
+    }),
+    onSuccess: (_, scope) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/account/ai-memory"] });
+      if (scope === "chat-history") {
+        queryClient.removeQueries({ queryKey: ["/api/conversations"] });
+        queryClient.removeQueries({ queryKey: ["/api/messages"] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      }
+      toast({ title: "AI memory cleared", description: scope === "chat-history" ? "Previous conversations have been permanently erased." : "The generated assistant profile and affirmation have been cleared." });
+    },
+    onError: (error: Error) => toast({ title: "Could not clear AI memory", description: error.message, variant: "destructive" }),
+  });
+
+  const deleteAccountMutation = useMutation({
+    mutationFn: () => apiRequest("/api/account", {
+      method: "DELETE",
+      body: JSON.stringify({ confirmation: deleteConfirmation }),
+    }),
+    onSuccess: async () => {
+      await logout();
+      window.location.assign("/register");
+    },
+    onError: (error: Error) => toast({ title: "Account deletion failed", description: error.message, variant: "destructive" }),
   });
   
   // Update account when data loads
@@ -1684,7 +1727,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
                 <button 
-                  disabled={!pushNotifs.isSupported || pushNotifs.permission === 'denied' || pushNotifs.loading}
+                  disabled
                   onClick={async () => {
                     if (pushNotifs.isSubscribed) {
                       const ok = await pushNotifs.unsubscribe();
@@ -1751,6 +1794,53 @@ export default function ProfilePage() {
               )}
             </div>
             
+            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Brain className="h-4 w-4 text-primary" />
+                <Label className="text-sm text-foreground">AI Memory</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Your named AI uses your profile and conversations only inside LyfeOS. You control both memory layers.
+              </p>
+              <div className="space-y-2 text-xs text-muted-foreground">
+                <p>{aiMemory?.conversationCount || 0} saved conversations and {aiMemory?.legacyMessageCount || 0} legacy messages.</p>
+                <p>{aiMemory?.affirmationStored || aiMemory?.profileContextStored ? "A generated assistant profile is stored." : "No generated assistant profile is stored."}</p>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => clearAiMemoryMutation.mutate("chat-history")} disabled={clearAiMemoryMutation.isPending}>
+                  Clear chat history
+                </Button>
+                <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => clearAiMemoryMutation.mutate("assistant-profile")} disabled={clearAiMemoryMutation.isPending}>
+                  Reset AI profile
+                </Button>
+              </div>
+            </div>
+
+            <div className="p-4 border border-primary/10 rounded-lg bg-background/40 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Download className="h-4 w-4 text-primary" />
+                <Label className="text-sm text-foreground">Your Data</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">Download a portable copy of your LyfeOS record. Sensitive provider credentials and password data are never included.</p>
+              <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => window.location.assign("/api/account/export")}>
+                <Download className="mr-2 h-3.5 w-3.5" /> Download my data
+              </Button>
+              <div className="mt-4 border-t border-red-500/20 pt-3">
+                <Label className="text-sm text-red-300">Delete account</Label>
+                <p className="mt-1 text-xs text-muted-foreground">This permanently erases your LyfeOS data and account. It cannot be undone.</p>
+                <Input
+                  value={deleteConfirmation}
+                  onChange={(event) => setDeleteConfirmation(event.target.value)}
+                  placeholder="Type DELETE MY ACCOUNT"
+                  className="mt-3 border-red-500/30 bg-background/50 text-sm"
+                  aria-label="Confirm account deletion"
+                />
+                <Button size="sm" variant="outline" className="mt-2 border-red-500/40 text-red-300 hover:bg-red-500/10" onClick={() => deleteAccountMutation.mutate()} disabled={deleteConfirmation !== "DELETE MY ACCOUNT" || deleteAccountMutation.isPending}>
+                  <Trash2 className="mr-2 h-3.5 w-3.5" /> Permanently delete account
+                </Button>
+              </div>
+            </div>
+
             {/* Connected Apps / Integrations */}
             <IntegrationsSection userId={user?.id} />
 

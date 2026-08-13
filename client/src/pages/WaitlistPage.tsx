@@ -55,8 +55,8 @@ const SOLUTION_BLOCKS = [
   {
     icon: <Bot className="w-6 h-6" />,
     badge: "AI That Knows You",
-    text: "NOVA isn't ChatGPT with a prompt. It has read your entire profile: your values, goals, patterns, and constraints. It creates missions, updates your logs, and helps you execute — based on who you actually are.",
-    placeholder: "NOVA Chat",
+    text: "Name your own AI companion. It can use the profile and conversations you choose to keep in LyfeOS, then help you think through missions and execution.",
+    placeholder: "AI Chat",
     color: "#39ff14",
   },
 ];
@@ -72,14 +72,14 @@ const STEPS = [
   {
     num: 2,
     title: "LYFEOS Builds Your System",
-    text: "Based on your answers, NOVA generates your Character Affirmation and populates your dashboard with missions aligned to your goals.",
+    text: "Based on your answers, LYFEOS prepares a personal transformation thread and three editable starter missions aligned to your goals.",
     placeholder: "Character Affirmation",
     color: "#39ff14",
   },
   {
     num: 3,
     title: "Run Your Life from One Dashboard",
-    text: "Track 8 stats. Complete missions. Log daily data. Ask NOVA for help. All from one place. No more context switching.",
+    text: "Track 8 stats. Complete missions. Log daily data. Ask your named AI for help. All from one place.",
     placeholder: "Dashboard",
     color: "#00e0ff",
   },
@@ -96,15 +96,15 @@ const FAQ_ITEMS = [
   },
   {
     q: "What if I stop using it?",
-    a: "You can export all your data anytime. Your missions, logs, and profile are yours. We're month-to-month — cancel whenever. But most users stick because it becomes their second brain.",
+    a: "You can export your LyfeOS data from Profile settings at any time. You can also clear chat history, reset the generated AI profile, or permanently delete your account.",
   },
   {
     q: "Is my data private?",
     a: "Yes. Your data is encrypted at rest and never shared. We don't sell data. We don't train AI models on your content. Your life OS is yours.",
   },
   {
-    q: "When is the mobile app coming?",
-    a: "Native iOS and Android apps launch Q3 2026. Beta users get early access. The web app works on mobile browsers now (responsive design), but native apps will add quick-capture features.",
+    q: "Does it work on a phone?",
+    a: "The public MVP is a responsive web app. Native mobile applications are not part of this release.",
   },
 ];
 
@@ -113,7 +113,7 @@ const PREVIEW_IMAGES: Record<string, { desktop: string; mobile: string }> = {
   "Dashboard Stats HUD": { desktop: "/images/preview-profile-stats.png", mobile: "/images/preview-profile-stats-mobile.png" },
   "Dashboard": { desktop: "/images/preview-dashboard.png", mobile: "/images/preview-dashboard-mobile.png" },
   "Character Affirmation": { desktop: "/images/preview-affirmation.png", mobile: "/images/preview-affirmation-mobile.png" },
-  "NOVA Chat": { desktop: "/images/preview-nova-chat.png", mobile: "/images/preview-nova-chat-mobile.png" },
+  "AI Chat": { desktop: "/images/preview-nova-chat.png", mobile: "/images/preview-nova-chat-mobile.png" },
   "Mission Flow": { desktop: "/images/preview-mission-flow.png", mobile: "/images/preview-mission-flow-mobile.png" },
 };
 

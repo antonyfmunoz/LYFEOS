@@ -4,6 +4,9 @@ primary_region = "sjc"
 [build]
   dockerfile = "Dockerfile"
 
+[deploy]
+  release_command = ["node", "dist/release-migrate.js"]
+
 [env]
   NODE_ENV = "production"
   PORT = "8080"
