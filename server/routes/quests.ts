@@ -5,7 +5,7 @@ import { storage } from "../storage";
 import { db } from "../db";
 import { logger, formatLocalDate, classifyMission } from "../utils";
 import { isAuthenticated, isOwner, calculateMissionCosts, awardExperiencePoints, calculateLevelFromTotalXP } from "./middleware";
-import { insertQuestSchema, insertMissionViewSchema, Quest, userDailyLogs, quests as questsTable } from "@shared/schema";
+import { insertQuestSchema, insertMissionViewSchema, Quest, transformationThreads, userDailyLogs, quests as questsTable } from "@shared/schema";
 import { sendPushToUser } from "../notificationScheduler";
 
 declare module "express-session" {
@@ -135,6 +135,19 @@ export function registerQuestRoutes(app: Express): void {
       // Ensure user can only create quests for their own account
       if (questData.userId !== req.session.userId) {
         return res.status(403).json({ error: "Not authorized to create quests for this user" });
+      }
+      if (questData.transformationThreadId) {
+        const [thread] = await db
+          .select({ id: transformationThreads.id })
+          .from(transformationThreads)
+          .where(and(
+            eq(transformationThreads.id, questData.transformationThreadId),
+            eq(transformationThreads.userId, questData.userId),
+          ))
+          .limit(1);
+        if (!thread) {
+          return res.status(403).json({ error: "Not authorized to link this transformation thread" });
+        }
       }
       
       // For onboarding quests, check if one already exists to prevent duplicates

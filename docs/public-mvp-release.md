@@ -51,7 +51,9 @@ Run this acceptance pass on staging and production:
 3. Create, edit, complete, restore, and delete a mission; confirm the dashboard and mission list agree after refresh.
 4. Confirm one user cannot request another user's records by altering a user ID in a request.
 5. Send an invalid Clerk webhook and confirm it returns `401`; send a valid Clerk test webhook and confirm it is accepted.
-6. If UMH is enabled, perform one signed `lyfeos.mission.create.v1` command and confirm exactly one mission and one outbound event are recorded.
+6. Complete all onboarding missions and confirm the dashboard shows one reviewable Transformation Thread derived from the saved onboarding profile. Activate it and confirm exactly three linked starter missions are created; verify no second active thread can be activated.
+7. Rename the AI companion and confirm its selected name is used by the chat and generated AI responses after refresh.
+8. If UMH is enabled, perform one signed `lyfeos.mission.create.v1` command and confirm exactly one mission and one outbound event are recorded.
 
 ## Launch scope
 

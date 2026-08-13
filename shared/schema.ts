@@ -308,6 +308,23 @@ export const userIntegrations = pgTable("user_integrations", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Transformation Threads turn the onboarding record into one deliberate, user-owned focus.
+// Starter missions remain a reviewable draft until the user explicitly activates the thread.
+export const transformationThreads = pgTable("transformation_threads", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  focus: text("focus").notNull(),
+  rationale: text("rationale").notNull(),
+  sourceSnapshot: jsonb("source_snapshot").notNull().default({}),
+  starterMissions: jsonb("starter_missions").notNull().default([]),
+  status: text("status").notNull().default("draft"), // draft | active | paused | completed
+  activatedAt: timestamp("activated_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Quests table (Missions Management)
 export const quests = pgTable("quests", {
   id: serial("id").primaryKey(),
@@ -339,6 +356,7 @@ export const quests = pgTable("quests", {
   repeatEndDate: text("repeat_end_date"), // format: "YYYY-MM-DD", null means forever
   parentRitualId: integer("parent_ritual_id"), // links generated instances back to the original ritual
   visionGoalId: integer("vision_goal_id").references(() => visionGoals.id),
+  transformationThreadId: integer("transformation_thread_id").references(() => transformationThreads.id, { onDelete: "set null" }),
   linkedItems: jsonb("linked_items").default([]),
   sortOrder: integer("sort_order").default(0),
   externalId: text("external_id"),
@@ -604,6 +622,7 @@ export const insertQuestSchema = createInsertSchema(quests).pick({
   attentionCost: true,
   timeCost: true,
   experienceReward: true,
+  transformationThreadId: true,
   startDate: true,
   startTime: true,
   endDate: true,

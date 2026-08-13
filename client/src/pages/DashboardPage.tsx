@@ -15,6 +15,7 @@ import { MarkdownEditor } from '@/components/ui/markdown-editor';
 import { CustomTimePicker } from '@/components/ui/custom-time-picker';
 import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 import EnhancedMissionWidget from '@/components/dashboard/EnhancedMissionWidget';
+import { TransformationThreadPanel } from '@/components/dashboard/TransformationThreadPanel';
 import { useToast } from '@/hooks/use-toast';
 import { DraggableWidget, DraggableWidgetProps } from '@/components/ui/draggable-widget';
 import update from 'immutability-helper';
@@ -1643,6 +1644,8 @@ export default function DashboardPage() {
             </div>
           </div>
         </section>
+
+        <TransformationThreadPanel />
         
         {/* Draggable Widget Sections */}
         {widgets.map((widget, index) => (
