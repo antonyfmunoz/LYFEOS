@@ -5,7 +5,7 @@ import { storage } from "../storage";
 import { db } from "../db";
 import { logger, formatLocalDate, classifyMission } from "../utils";
 import { isAuthenticated, isOwner, calculateMissionCosts, awardExperiencePoints, calculateLevelFromTotalXP } from "./middleware";
-import { insertQuestSchema, insertMissionViewSchema, Quest, transformationThreads, userDailyLogs, quests as questsTable } from "@shared/schema";
+import { insertQuestSchema, insertMissionViewSchema, Quest, questSkillContributions, skillNodes, skillProgressionEvents, transformationThreads, userDailyLogs, quests as questsTable } from "@shared/schema";
 import { sendPushToUser } from "../notificationScheduler";
 import { recordTransformationThreadEvidence } from "../transformation-thread-evidence";
 
@@ -17,6 +17,61 @@ declare module "express-session" {
 }
 
 export function registerQuestRoutes(app: Express): void {
+  const skillLevelForExperience = (experience: number): number => {
+    let level = 1;
+    let remaining = Math.max(0, experience);
+    let threshold = 100;
+    while (remaining >= threshold) {
+      remaining -= threshold;
+      level += 1;
+      threshold = Math.floor(threshold * 1.35);
+    }
+    return level;
+  };
+
+  const applyQuestSkillProgression = async ({ quest, completed }: { quest: Quest; completed: boolean }): Promise<number> => {
+    const contributions = await db.select({
+      skillNodeId: questSkillContributions.skillNodeId,
+      experienceAmount: questSkillContributions.experienceAmount,
+      currentExperience: skillNodes.experience,
+    })
+      .from(questSkillContributions)
+      .innerJoin(skillNodes, eq(skillNodes.id, questSkillContributions.skillNodeId))
+      .where(and(
+        eq(questSkillContributions.questId, quest.id),
+        eq(questSkillContributions.userId, quest.userId),
+        eq(skillNodes.userId, quest.userId),
+      ));
+
+    if (contributions.length === 0) return 0;
+    const direction = completed ? 1 : -1;
+    await db.transaction(async (tx) => {
+      for (const contribution of contributions) {
+        const delta = contribution.experienceAmount * direction;
+        const nextExperience = Math.max(0, contribution.currentExperience + delta);
+        await tx.update(skillNodes)
+          .set({
+            experience: nextExperience,
+            level: skillLevelForExperience(nextExperience),
+            updatedAt: new Date(),
+          })
+          .where(and(eq(skillNodes.id, contribution.skillNodeId), eq(skillNodes.userId, quest.userId)));
+        await tx.insert(skillProgressionEvents).values({
+          userId: quest.userId,
+          skillNodeId: contribution.skillNodeId,
+          questId: quest.id,
+          transformationThreadId: quest.transformationThreadId || null,
+          sourceType: completed ? "mission_completion" : "mission_reversal",
+          experienceDelta: delta,
+          evidenceSummary: completed
+            ? `Completed mission: ${quest.title}`
+            : `Reopened mission: ${quest.title}`,
+        });
+      }
+    });
+    return contributions.reduce((total, contribution) => total + contribution.experienceAmount, 0);
+  };
+
   // QUEST ROUTES
   app.get("/api/users/:userId/quests", isOwner, async (req: Request, res: Response) => {
     try {
@@ -281,6 +336,14 @@ export function registerQuestRoutes(app: Express): void {
       const userStats = await storage.getUserStats(quest.userId);
       const xpData = await storage.recalculateXP(quest.userId);
       const levelUp = updatedQuest.completed && xpData.level > previousLevel;
+      let skillExperienceAwarded = 0;
+      try {
+        skillExperienceAwarded = await applyQuestSkillProgression({ quest, completed: updatedQuest.completed });
+      } catch (progressionError) {
+        // The mission remains authoritative even if its secondary progression
+        // projection cannot be recorded. Logging preserves a repair path.
+        logger.error("Could not record skill progression for quest toggle:", progressionError);
+      }
       
       if (updatedQuest.completed) {
         const xpGained = Math.floor(quest.experienceReward * ({ D: 1, C: 1.5, B: 2, A: 3, S: 5 }[quest.difficulty || 'D'] || 1));
@@ -307,6 +370,7 @@ export function registerQuestRoutes(app: Express): void {
       return res.status(200).json({ 
         quest: updatedQuest,
         xpAwarded: updatedQuest.completed ? Math.floor(quest.experienceReward * ({ D: 1, C: 1.5, B: 2, A: 3, S: 5 }[quest.difficulty || 'D'] || 1)) : 0,
+        skillExperienceAwarded: updatedQuest.completed ? skillExperienceAwarded : 0,
         levelUp: levelUp,
         statsUpdated: statsUpdated,
         stats: userStats ? {

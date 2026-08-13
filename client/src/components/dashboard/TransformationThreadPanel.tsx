@@ -22,6 +22,9 @@ type TransformationThread = {
   starterMissions: StarterMission[];
   progress?: { missionsTotal: number; missionsCompleted: number; evidenceCount: number };
   evidence?: Array<{ id: number; sourceType: string; summary: string; createdAt: string }>;
+  completionReadiness?: { completedMissionCount: number; requiredMissionCount: number; reviewCount: number; requiredReviewCount: number; activeDays: number; requiredActiveDays: number; remainingDays: number; ready: boolean };
+  skills?: Array<{ id: number; key: string; name: string; description: string; kind: "primary" | "supporting" | "capacity"; experience: number; level: number }>;
+  skillEdges?: Array<{ id: number; sourceSkillId: number; targetSkillId: number; relationship: string }>;
 };
 
 export function TransformationThreadPanel() {
@@ -93,6 +96,11 @@ export function TransformationThreadPanel() {
   const isDraft = thread.status === "draft";
   const isActive = thread.status === "active";
   const progress = thread.progress || { missionsTotal: 0, missionsCompleted: 0, evidenceCount: 0 };
+  const skills = thread.skills || [];
+  const primarySkill = skills.find((skill) => skill.kind === "primary");
+  const edges = thread.skillEdges || [];
+  const edgeLabels = new Map(edges.map((edge) => [edge.targetSkillId, edge.relationship]));
+  const completionReadiness = thread.completionReadiness;
 
   return (
     <section className="mb-6" data-tour="transformation-thread">
@@ -186,11 +194,16 @@ export function TransformationThreadPanel() {
                     variant="outline"
                     className="border-primary/20 text-muted-foreground hover:bg-primary/10"
                     onClick={() => updateThread.mutate({ threadId: thread.id, action: "complete", body: { reflection } })}
-                    disabled={reflection.trim().length < 3 || updateThread.isPending}
+                    disabled={reflection.trim().length < 3 || !completionReadiness?.ready || updateThread.isPending}
                   >
                     Complete focus
                   </Button>
                 </div>
+                {completionReadiness && !completionReadiness.ready && (
+                  <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                    Completion is earned through sustained evidence: {completionReadiness.completedMissionCount}/{completionReadiness.requiredMissionCount} linked missions, {completionReadiness.reviewCount}/{completionReadiness.requiredReviewCount} reviews, and {completionReadiness.remainingDays > 0 ? `${completionReadiness.remainingDays} more active days` : "active duration complete"}.
+                  </p>
+                )}
               </div>
             )}
 
@@ -201,6 +214,36 @@ export function TransformationThreadPanel() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {skills.length > 0 && (
+          <div className="mt-4 border-t border-primary/10 pt-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div>
+                <p className="text-xs font-mono uppercase tracking-[0.12em] text-primary">Growth map</p>
+                <p className="mt-1 text-xs text-muted-foreground">Real-world missions can advance connected capabilities. This map is private to your Thread.</p>
+              </div>
+              {primarySkill && <span className="text-xs text-primary">Primary: {primarySkill.name}</span>}
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {skills.map((skill) => {
+                const relationship = edgeLabels.get(skill.id);
+                return (
+                  <div key={skill.id} className={`rounded-md border p-3 ${skill.kind === "primary" ? "border-primary/45 bg-primary/10" : "border-primary/15 bg-card/30"}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-mono uppercase tracking-[0.1em] text-primary/80">{skill.kind === "primary" ? "Focus" : relationship || skill.kind}</span>
+                      <span className="text-xs text-muted-foreground">Lv {skill.level}</span>
+                    </div>
+                    <p className="mt-1 text-sm text-foreground">{skill.name}</p>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-primary/10">
+                      <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, skill.experience % 100)}%` }} />
+                    </div>
+                    <p className="mt-1 text-[11px] text-muted-foreground">{skill.experience} skill XP</p>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

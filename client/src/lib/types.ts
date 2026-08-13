@@ -71,6 +71,7 @@ export interface Quest {
   repeatEndDate?: string | null;
   parentRitualId?: number | null;
   visionGoalId?: number | null;
+  transformationThreadId?: number | null;
   linkedItems?: { type: "document" | "folder"; id: number; title: string }[];
   location?: string | null;
   allDay?: boolean | null;

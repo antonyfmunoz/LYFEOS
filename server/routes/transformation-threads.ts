@@ -3,7 +3,7 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db";
 import { storage } from "../storage";
-import { quests, transformationThreadEvidence, transformationThreads } from "@shared/schema";
+import { questSkillContributions, quests, skillEdges, skillNodes, transformationThreadEvidence, transformationThreads } from "@shared/schema";
 import { isAuthenticated } from "./middleware";
 import { recordTransformationThreadEvidence } from "../transformation-thread-evidence";
 
@@ -13,9 +13,16 @@ type StarterMission = {
   category: string;
   experienceReward: number;
   rationale: string;
+  skillContributions: Array<{ key: string; experienceAmount: number }>;
+};
+
+type SkillBlueprint = {
+  nodes: Array<{ key: string; name: string; description: string; kind: "primary" | "supporting" | "capacity" }>;
+  edges: Array<{ sourceKey: string; targetKey: string; relationship: string }>;
 };
 
 const REQUIRED_ONBOARDING_MISSIONS = Array.from({ length: 8 }, (_, id) => id);
+const MIN_COMPLETION_DAYS = 28;
 
 function cleanText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -23,6 +30,55 @@ function cleanText(value: unknown): string {
 
 function shorten(value: string, maxLength = 72): string {
   return value.length > maxLength ? `${value.slice(0, maxLength - 1).trimEnd()}…` : value;
+}
+
+function buildSkillBlueprint(profile: Awaited<ReturnType<typeof storage.getUserProfile>>): SkillBlueprint {
+  const craft = cleanText(profile?.primaryCraft);
+  const desiredTrait = cleanText(profile?.desiredTrait);
+  const vocation = cleanText(profile?.careerVocation);
+  const habit = cleanText(profile?.lockedHabit);
+  const primary = shorten(craft || desiredTrait || vocation || "Focused execution", 72);
+  const supporting = desiredTrait && desiredTrait.toLocaleLowerCase() !== primary.toLocaleLowerCase()
+    ? shorten(desiredTrait, 72)
+    : "Deliberate practice";
+
+  return {
+    nodes: [
+      {
+        key: "primary",
+        name: primary,
+        description: `Your current Thread is centered on building ${primary} through real-world practice.`,
+        kind: "primary",
+      },
+      {
+        key: "supporting",
+        name: supporting,
+        description: desiredTrait
+          ? `${supporting} is a connected capability this Thread can develop alongside your primary focus.`
+          : "Deliberate practice turns isolated effort into repeatable capability.",
+        kind: "supporting",
+      },
+      {
+        key: "capacity",
+        name: "Consistency & capacity",
+        description: habit
+          ? `Your stated ritual, ${shorten(habit, 110)}, protects the capacity to practice consistently.`
+          : "Sustainable time and energy make repeated practice possible.",
+        kind: "capacity",
+      },
+      {
+        key: "calibration",
+        name: "Reflection & calibration",
+        description: "Clear evidence and review let you adjust the route instead of merely checking tasks off.",
+        kind: "supporting",
+      },
+    ],
+    edges: [
+      { sourceKey: "primary", targetKey: "supporting", relationship: "reinforces" },
+      { sourceKey: "primary", targetKey: "capacity", relationship: "requires" },
+      { sourceKey: "calibration", targetKey: "primary", relationship: "clarifies" },
+    ],
+  };
 }
 
 function buildStarterMissions(profile: Awaited<ReturnType<typeof storage.getUserProfile>>): StarterMission[] {
@@ -42,6 +98,7 @@ function buildStarterMissions(profile: Awaited<ReturnType<typeof storage.getUser
       category: "planning",
       experienceReward: 20,
       rationale: "Creates a user-owned definition of progress before execution begins.",
+      skillContributions: [{ key: "calibration", experienceAmount: 20 }],
     },
     {
       title: craft ? `Advance ${shorten(craft, 52)}` : `Take one focused step in ${shorten(focus, 52)}`,
@@ -51,6 +108,10 @@ function buildStarterMissions(profile: Awaited<ReturnType<typeof storage.getUser
       category: craft ? "learning" : "personal",
       experienceReward: 30,
       rationale: "Turns the selected focus into a concrete, editable first action.",
+      skillContributions: [
+        { key: "primary", experienceAmount: 30 },
+        { key: "supporting", experienceAmount: 10 },
+      ],
     },
     {
       title: habit ? `Protect ${shorten(habit, 52)}` : "Protect the capacity for this thread",
@@ -62,6 +123,7 @@ function buildStarterMissions(profile: Awaited<ReturnType<typeof storage.getUser
       category: "personal",
       experienceReward: 20,
       rationale: "Connects the plan to the user's stated ritual or available capacity.",
+      skillContributions: [{ key: "capacity", experienceAmount: 20 }],
     },
   ];
 }
@@ -84,7 +146,34 @@ function buildThread(profile: Awaited<ReturnType<typeof storage.getUserProfile>>
     ? `This focus begins with your 90-day vision and is bounded by the capacity and rituals you provided during onboarding.`
     : `This focus begins with the direction and capacity you provided during onboarding.`;
 
-  return { title, focus, rationale, sourceSnapshot, starterMissions: buildStarterMissions(profile) };
+  return { title, focus, rationale, sourceSnapshot, starterMissions: buildStarterMissions(profile), skillBlueprint: buildSkillBlueprint(profile) };
+}
+
+async function getCompletionReadiness(userId: number, thread: typeof transformationThreads.$inferSelect) {
+  const [linkedMissions, evidence] = await Promise.all([
+    db.select({ id: quests.id, completed: quests.completed })
+      .from(quests)
+      .where(and(eq(quests.userId, userId), eq(quests.transformationThreadId, thread.id))),
+    db.select({ sourceType: transformationThreadEvidence.sourceType })
+      .from(transformationThreadEvidence)
+      .where(and(eq(transformationThreadEvidence.userId, userId), eq(transformationThreadEvidence.transformationThreadId, thread.id))),
+  ]);
+  const reviewCount = evidence.filter((item) => item.sourceType === "weekly_review").length;
+  const completedMissionCount = linkedMissions.filter((mission) => mission.completed).length;
+  const startedAt = thread.activatedAt || thread.createdAt;
+  const activeDays = Math.max(0, Math.floor((Date.now() - startedAt.getTime()) / (1000 * 60 * 60 * 24)));
+  const remainingDays = Math.max(0, MIN_COMPLETION_DAYS - activeDays);
+
+  return {
+    completedMissionCount,
+    requiredMissionCount: 3,
+    reviewCount,
+    requiredReviewCount: 2,
+    activeDays,
+    requiredActiveDays: MIN_COMPLETION_DAYS,
+    remainingDays,
+    ready: completedMissionCount >= 3 && reviewCount >= 2 && activeDays >= MIN_COMPLETION_DAYS,
+  };
 }
 
 export function registerTransformationThreadRoutes(app: Express): void {
@@ -98,7 +187,7 @@ export function registerTransformationThreadRoutes(app: Express): void {
       .limit(1);
     if (!thread) return res.json({ thread: null });
 
-    const [linkedMissions, evidence] = await Promise.all([
+    const [linkedMissions, evidence, skills] = await Promise.all([
       db.select({ id: quests.id, completed: quests.completed })
         .from(quests)
         .where(and(eq(quests.userId, userId), eq(quests.transformationThreadId, thread.id))),
@@ -107,7 +196,13 @@ export function registerTransformationThreadRoutes(app: Express): void {
         .where(and(eq(transformationThreadEvidence.userId, userId), eq(transformationThreadEvidence.transformationThreadId, thread.id)))
         .orderBy(desc(transformationThreadEvidence.createdAt))
         .limit(8),
+      db.select().from(skillNodes)
+        .where(and(eq(skillNodes.userId, userId), eq(skillNodes.transformationThreadId, thread.id))),
     ]);
+    const skillIds = skills.map((skill) => skill.id);
+    const edges = skillIds.length > 0
+      ? await db.select().from(skillEdges).where(and(eq(skillEdges.userId, userId), inArray(skillEdges.sourceSkillId, skillIds)))
+      : [];
     res.json({
       thread: {
         ...thread,
@@ -116,7 +211,10 @@ export function registerTransformationThreadRoutes(app: Express): void {
           missionsCompleted: linkedMissions.filter((mission) => mission.completed).length,
           evidenceCount: evidence.length,
         },
+        completionReadiness: await getCompletionReadiness(userId, thread),
         evidence,
+        skills,
+        skillEdges: edges,
       },
     });
   });
@@ -140,7 +238,26 @@ export function registerTransformationThreadRoutes(app: Express): void {
       if (existing) return res.json({ thread: existing, existing: true });
 
       const draft = buildThread(profile);
-      const [thread] = await db.insert(transformationThreads).values({ userId, ...draft }).returning();
+      const { skillBlueprint, ...threadDraft } = draft;
+      const thread = await db.transaction(async (tx) => {
+        const [createdThread] = await tx.insert(transformationThreads).values({ userId, ...threadDraft }).returning();
+        const createdSkills = await tx.insert(skillNodes).values(skillBlueprint.nodes.map((skill) => ({
+          userId,
+          transformationThreadId: createdThread.id,
+          ...skill,
+        }))).returning();
+        const skillIdsByKey = new Map(createdSkills.map((skill) => [skill.key, skill.id]));
+        const edges = skillBlueprint.edges
+          .map((edge) => ({
+            userId,
+            sourceSkillId: skillIdsByKey.get(edge.sourceKey),
+            targetSkillId: skillIdsByKey.get(edge.targetKey),
+            relationship: edge.relationship,
+          }))
+          .filter((edge): edge is { userId: number; sourceSkillId: number; targetSkillId: number; relationship: string } => Boolean(edge.sourceSkillId && edge.targetSkillId));
+        if (edges.length > 0) await tx.insert(skillEdges).values(edges);
+        return createdThread;
+      });
       return res.status(201).json({ thread, existing: false });
     } catch (error) {
       return res.status(500).json({ error: "Could not initialize the transformation thread." });
@@ -170,6 +287,10 @@ export function registerTransformationThreadRoutes(app: Express): void {
       if (otherActive) return res.status(409).json({ error: "Pause or complete your current thread before activating another." });
 
       const starterMissions = Array.isArray(thread.starterMissions) ? thread.starterMissions as StarterMission[] : [];
+      const threadSkills = await db.select({ id: skillNodes.id, key: skillNodes.key })
+        .from(skillNodes)
+        .where(and(eq(skillNodes.userId, userId), eq(skillNodes.transformationThreadId, thread.id)));
+      const skillIdsByKey = new Map(threadSkills.map((skill) => [skill.key, skill.id]));
       const today = new Date().toISOString().slice(0, 10);
       const createdMissions = await db.transaction(async (tx) => {
         const inserted = starterMissions.length > 0
@@ -185,6 +306,15 @@ export function registerTransformationThreadRoutes(app: Express): void {
               linkedItems: [{ type: "transformation-thread", id: thread.id, rationale: mission.rationale }],
             }))).returning()
           : [];
+        const contributions = inserted.flatMap((quest, index) => (starterMissions[index]?.skillContributions || [])
+          .map((contribution) => ({
+            userId,
+            questId: quest.id,
+            skillNodeId: skillIdsByKey.get(contribution.key),
+            experienceAmount: contribution.experienceAmount,
+          }))
+          .filter((contribution): contribution is { userId: number; questId: number; skillNodeId: number; experienceAmount: number } => Boolean(contribution.skillNodeId)));
+        if (contributions.length > 0) await tx.insert(questSkillContributions).values(contributions);
         const [activated] = await tx
           .update(transformationThreads)
           .set({ status: "active", activatedAt: new Date(), updatedAt: new Date() })
@@ -262,6 +392,21 @@ export function registerTransformationThreadRoutes(app: Express): void {
     const userId = req.session.userId!;
     const threadId = Number(req.params.id);
     if (!Number.isInteger(threadId)) return res.status(400).json({ error: "Invalid transformation thread." });
+    const [currentThread] = await db.select().from(transformationThreads)
+      .where(and(
+        eq(transformationThreads.id, threadId),
+        eq(transformationThreads.userId, userId),
+        inArray(transformationThreads.status, ["active", "paused"]),
+      ))
+      .limit(1);
+    if (!currentThread) return res.status(409).json({ error: "Only an active or paused thread can be completed." });
+    const readiness = await getCompletionReadiness(userId, currentThread);
+    if (!readiness.ready) {
+      return res.status(409).json({
+        error: `This focus needs sustained evidence before completion: ${readiness.completedMissionCount}/${readiness.requiredMissionCount} linked missions, ${readiness.reviewCount}/${readiness.requiredReviewCount} reviews, and ${readiness.remainingDays} more active days.`,
+        completionReadiness: readiness,
+      });
+    }
     const [thread] = await db.update(transformationThreads)
       .set({ status: "completed", completedAt: new Date(), updatedAt: new Date() })
       .where(and(
@@ -270,7 +415,7 @@ export function registerTransformationThreadRoutes(app: Express): void {
         inArray(transformationThreads.status, ["active", "paused"]),
       ))
       .returning();
-    if (!thread) return res.status(409).json({ error: "Only an active or paused thread can be completed." });
+    if (!thread) return res.status(409).json({ error: "This focus changed before completion could be recorded. Please try again." });
     await recordTransformationThreadEvidence({
       userId,
       transformationThreadId: thread.id,
