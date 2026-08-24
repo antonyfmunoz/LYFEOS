@@ -286,9 +286,10 @@ describe("health and fitness foundation", () => {
     const scanner = readFileSync(resolve(process.cwd(), "client/src/components/health/IngredientScanner.tsx"), "utf8");
     expect(scanner).toContain('capture="environment"');
     expect(scanner).toContain("BarcodeDetectorApi");
-    expect(scanner).toContain("processed on-device and is not uploaded");
+    expect(scanner).toContain("TextDetectorApi");
+    expect(scanner).toContain("photos are not uploaded");
     expect(scanner).toContain("Search product catalog");
-    expect(scanner).toContain("Catalog labels stay external until you explicitly save a private copy");
+    expect(scanner).toContain("Catalog labels stay external until explicit save");
   });
 
   it("keeps structured workouts and exercise details in the release and private-account paths", () => {

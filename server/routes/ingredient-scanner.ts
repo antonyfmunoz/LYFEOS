@@ -9,7 +9,7 @@ import { parseExpectedResourceRevision } from "../revision-concurrency";
 import { verifyConfiguredFoodCatalogToken } from "../food-catalog";
 
 const scanSchema = z.object({
-  captureMethod: z.literal("manual_label").default("manual_label"),
+  captureMethod: z.enum(["manual_label", "photo_ocr"]).default("manual_label"),
   productName: z.string().trim().min(1).max(160).nullable().optional(),
   barcode: z.string().trim().regex(/^[A-Za-z0-9-]{4,64}$/).nullable().optional(),
   rawIngredientsText: z.string().trim().min(1).max(20_000),

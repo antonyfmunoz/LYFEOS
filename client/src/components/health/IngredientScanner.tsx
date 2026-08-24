@@ -5,10 +5,11 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { normalizeDetectedLabelText } from "@/lib/on-device-label-ocr";
 
 type IngredientPreference = { id: number; displayName: string; preferenceType: "avoid" | "limit" | "watch"; note: string | null };
 type ScanItem = { id: number; rawName: string; classification: string; evidenceStrength: string; preference: IngredientPreference | null };
-type IngredientScan = { id: number; productName: string | null; barcode: string | null; rawIngredientsText: string; revision: number; createdAt: string; items: ScanItem[]; catalogProviderId: string | null; catalogDatasetVersion: string | null; catalogAttributionText: string | null; catalogAttributionUrl: string | null; catalogSourceModified: boolean };
+type IngredientScan = { id: number; captureMethod: "manual_label" | "photo_ocr" | "barcode"; productName: string | null; barcode: string | null; rawIngredientsText: string; revision: number; createdAt: string; items: ScanItem[]; catalogProviderId: string | null; catalogDatasetVersion: string | null; catalogAttributionText: string | null; catalogAttributionUrl: string | null; catalogSourceModified: boolean };
 type CatalogStatus = { available: boolean; reason: string | null };
 type CatalogLookup = { provider: { name: string; datasetVersion: string; attributionText: string; attributionUrl?: string | null }; item: { name: string; barcode?: string | null; ingredientsText?: string | null; lookupToken: string } | null; found: boolean; disclosure: string };
 
@@ -22,7 +23,9 @@ export default function IngredientScanner() {
   const [editingScanId, setEditingScanId] = useState<number | null>(null);
   const [editingRevision, setEditingRevision] = useState<number | null>(null);
   const [catalogLookupToken, setCatalogLookupToken] = useState<string | null>(null);
+  const [captureMethod, setCaptureMethod] = useState<"manual_label" | "photo_ocr">("manual_label");
   const cameraInput = useRef<HTMLInputElement>(null);
+  const labelInput = useRef<HTMLInputElement>(null);
   const scans = useQuery<{ scans: IngredientScan[]; disclosure: string }>({
     queryKey: ["/api/ingredient-scans"], queryFn: () => apiRequest("/api/ingredient-scans"),
   });
@@ -33,16 +36,16 @@ export default function IngredientScanner() {
   const create = useMutation({
     mutationFn: () => apiRequest(editingScanId ? `/api/ingredient-scans/${editingScanId}` : "/api/ingredient-scans", {
       method: editingScanId ? "PATCH" : "POST", headers: editingScanId && editingRevision ? { "x-lyfeos-expected-revision": String(editingRevision) } : undefined,
-      body: JSON.stringify({ productName: productName || null, barcode: barcode || null, rawIngredientsText: ingredients, catalogLookupToken: editingScanId ? undefined : catalogLookupToken || undefined }),
+      body: JSON.stringify({ captureMethod, productName: productName || null, barcode: barcode || null, rawIngredientsText: ingredients, catalogLookupToken: editingScanId ? undefined : catalogLookupToken || undefined }),
     }),
     onSuccess: () => {
-      setProductName(""); setBarcode(""); setIngredients(""); setEditingScanId(null); setEditingRevision(null); setCatalogLookupToken(null);
+      setProductName(""); setBarcode(""); setIngredients(""); setEditingScanId(null); setEditingRevision(null); setCatalogLookupToken(null); setCaptureMethod("manual_label");
       void queryClient.invalidateQueries({ queryKey: ["/api/ingredient-scans"] });
     },
   });
   const lookup = useMutation({
     mutationFn: () => apiRequest<{ scan: IngredientScan | null; source: string }>(`/api/ingredient-scans/lookup?barcode=${encodeURIComponent(barcode)}`),
-    onSuccess: ({ scan }) => { if (scan) { setProductName(scan.productName || ""); setIngredients(scan.rawIngredientsText); setEditingScanId(scan.id); setEditingRevision(scan.revision); setCameraStatus("Loaded your most recently saved label for this barcode. Review it before using or correcting it."); } else setCameraStatus("This barcode is not in your private saved-label history."); },
+    onSuccess: ({ scan }) => { if (scan) { setProductName(scan.productName || ""); setIngredients(scan.rawIngredientsText); setCaptureMethod(scan.captureMethod === "photo_ocr" ? "photo_ocr" : "manual_label"); setEditingScanId(scan.id); setEditingRevision(scan.revision); setCameraStatus("Loaded your most recently saved label for this barcode. Review it before using or correcting it."); } else setCameraStatus("This barcode is not in your private saved-label history."); },
   });
   const catalogLookup = useMutation({
     mutationFn: () => apiRequest<CatalogLookup>(`/api/food-catalog/barcodes/${encodeURIComponent(barcode)}`),
@@ -78,6 +81,7 @@ export default function IngredientScanner() {
     const BarcodeDetectorApi = (globalThis as unknown as { BarcodeDetector?: new (options?: { formats?: string[] }) => { detect: (source: ImageBitmap) => Promise<Array<{ rawValue: string }>> } }).BarcodeDetector;
     if (!BarcodeDetectorApi || typeof createImageBitmap !== "function") {
       setCameraStatus("Barcode reading is not supported by this browser. You can still enter the number manually.");
+      if (cameraInput.current) cameraInput.current.value = "";
       return;
     }
     try {
@@ -95,8 +99,31 @@ export default function IngredientScanner() {
       if (cameraInput.current) cameraInput.current.value = "";
     }
   };
-  const editScan = (scan: IngredientScan) => { setCatalogLookupToken(null); setEditingScanId(scan.id); setEditingRevision(scan.revision); setProductName(scan.productName || ""); setBarcode(scan.barcode || ""); setIngredients(scan.rawIngredientsText); };
-  const cancelEdit = () => { setEditingScanId(null); setEditingRevision(null); setCatalogLookupToken(null); setProductName(""); setBarcode(""); setIngredients(""); };
+  const readLabelImage = async (file: File | undefined) => {
+    if (!file) return;
+    setCameraStatus("Reading label text on this device…");
+    const TextDetectorApi = (globalThis as unknown as { TextDetector?: new () => { detect: (source: ImageBitmap) => Promise<Array<{ rawValue: string; boundingBox?: { x: number; y: number } }>> } }).TextDetector;
+    if (!TextDetectorApi || typeof createImageBitmap !== "function") {
+      setCameraStatus("On-device label text reading is not supported by this browser. Paste or type the ingredient list manually; the photo was not uploaded.");
+      if (labelInput.current) labelInput.current.value = "";
+      return;
+    }
+    try {
+      const bitmap = await createImageBitmap(file);
+      try {
+        const detected = normalizeDetectedLabelText(await new TextDetectorApi().detect(bitmap));
+        if (!detected.text) { setCameraStatus("No readable label text was found. Try a close, well-lit photo of the ingredient panel or enter it manually."); return; }
+        setIngredients(detected.text); setCatalogLookupToken(null); setCaptureMethod("photo_ocr");
+        setCameraStatus(`Label text was read on-device${detected.truncated ? " and limited to 20,000 characters" : ""}. Review and correct it before saving; LyfeOS has not treated it as accurate yet.`);
+      } finally { bitmap.close(); }
+    } catch {
+      setCameraStatus("That label photo could not be read on this device. Try again or enter the ingredient list manually.");
+    } finally {
+      if (labelInput.current) labelInput.current.value = "";
+    }
+  };
+  const editScan = (scan: IngredientScan) => { setCatalogLookupToken(null); setEditingScanId(scan.id); setEditingRevision(scan.revision); setCaptureMethod(scan.captureMethod === "photo_ocr" ? "photo_ocr" : "manual_label"); setProductName(scan.productName || ""); setBarcode(scan.barcode || ""); setIngredients(scan.rawIngredientsText); };
+  const cancelEdit = () => { setEditingScanId(null); setEditingRevision(null); setCatalogLookupToken(null); setCaptureMethod("manual_label"); setProductName(""); setBarcode(""); setIngredients(""); };
 
   return <section className="glassmorphic rounded-2xl p-6 mb-8 border border-primary/30" aria-labelledby="ingredient-review-heading">
     <div>
@@ -108,12 +135,13 @@ export default function IngredientScanner() {
       <Input aria-label="Product barcode" placeholder="Barcode (optional)" value={barcode} onChange={(event) => { setBarcode(event.target.value); setCatalogLookupToken(null); }} />
     </div>
     <input ref={cameraInput} className="sr-only" type="file" accept="image/*" capture="environment" aria-label="Take a barcode photo" onChange={(event) => void decodeBarcodeImage(event.target.files?.[0])} />
-    <div className="mt-2 flex flex-wrap items-center gap-3"><Button type="button" size="sm" variant="outline" onClick={() => cameraInput.current?.click()}><Camera />Scan barcode with camera</Button><Button type="button" size="sm" variant="outline" disabled={!barcode.trim() || lookup.isPending} onClick={() => lookup.mutate()}><Search />Search my saved labels</Button><Button type="button" size="sm" variant="outline" disabled={!catalogStatus.data?.available || !/^\d{8,14}$/.test(barcode.trim()) || catalogLookup.isPending} onClick={() => catalogLookup.mutate()}><Database />Search product catalog</Button>{cameraStatus ? <p className="text-xs text-muted-foreground" role="status">{cameraStatus}</p> : null}</div>
+    <input ref={labelInput} className="sr-only" type="file" accept="image/*" capture="environment" aria-label="Take an ingredient label photo" onChange={(event) => void readLabelImage(event.target.files?.[0])} />
+    <div className="mt-2 flex flex-wrap items-center gap-3"><Button type="button" size="sm" variant="outline" onClick={() => cameraInput.current?.click()}><Camera />Scan barcode with camera</Button><Button type="button" size="sm" variant="outline" onClick={() => labelInput.current?.click()}><ScanLine />Read label text on-device</Button><Button type="button" size="sm" variant="outline" disabled={!barcode.trim() || lookup.isPending} onClick={() => lookup.mutate()}><Search />Search my saved labels</Button><Button type="button" size="sm" variant="outline" disabled={!catalogStatus.data?.available || !/^\d{8,14}$/.test(barcode.trim()) || catalogLookup.isPending} onClick={() => catalogLookup.mutate()}><Database />Search product catalog</Button>{cameraStatus ? <p className="text-xs text-muted-foreground" role="status">{cameraStatus}</p> : null}</div>
     {!catalogStatus.data?.available ? <p className="mt-2 text-xs text-muted-foreground">{catalogStatus.data?.reason || "Checking catalog availability…"}</p> : null}
-    <Textarea aria-label="Ingredient label" className="mt-2" placeholder="Ingredients: water, oats, cane sugar, natural flavor (vanilla extract, salt)" value={ingredients} onChange={(event) => { setIngredients(event.target.value); setCatalogLookupToken(null); }} />
+    <Textarea aria-label="Ingredient label" className="mt-2" placeholder="Ingredients: water, oats, cane sugar, natural flavor (vanilla extract, salt)" value={ingredients} onChange={(event) => { setIngredients(event.target.value); if (catalogLookupToken) setCaptureMethod("manual_label"); setCatalogLookupToken(null); }} />
     <div className="mt-2 flex flex-wrap items-center gap-3">
       <Button size="sm" disabled={!ingredients.trim() || create.isPending} onClick={() => create.mutate()}>{editingScanId ? <Pencil /> : <Plus />}{editingScanId ? "Save label correction" : "Review label"}</Button>{editingScanId ? <Button size="sm" variant="ghost" onClick={cancelEdit}>Cancel correction</Button> : null}
-      <p className="text-xs text-muted-foreground">The barcode photo is processed on-device and is not uploaded. Catalog labels stay external until you explicitly save a private copy; manual corrections are marked as your override.</p>
+      <p className="text-xs text-muted-foreground">Barcode and supported-browser text detection run on-device; photos are not uploaded. OCR text is only an editable draft until you review and save it. Catalog labels stay external until explicit save.</p>
     </div>
     {create.error && <p className="text-xs text-destructive mt-2">Could not review that label. Check the label text and barcode, then try again.</p>}
     <div className="mt-5 rounded-lg border border-primary/15 bg-background/20 p-3">

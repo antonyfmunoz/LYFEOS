@@ -90,4 +90,11 @@ describeApi("food catalog authenticated import contract", () => {
     expect(saved.data.scan).toMatchObject({ productName: "Catalog oats", rawIngredientsText: "Whole grain oats, salt", catalogProviderId: "licensed_fixture", catalogDatasetVersion: "2026-08-24", catalogSourceModified: false });
     expect(saved.data.scan.items.map((entry: any) => entry.rawName)).toEqual(["Whole grain oats", "salt"]);
   });
+
+  it("stores reviewed on-device OCR text only after explicit save", async () => {
+    const saved = await request("POST", "/api/ingredient-scans", { captureMethod: "photo_ocr", productName: "Reviewed package", rawIngredientsText: "Ingredients: oats, water, salt" }, ownerCookie);
+    expect(saved.status).toBe(201);
+    expect(saved.data.scan).toMatchObject({ captureMethod: "photo_ocr", productName: "Reviewed package", rawIngredientsText: "Ingredients: oats, water, salt", catalogProviderId: null });
+    expect(saved.data.scan.items.map((entry: any) => entry.rawName)).toEqual(["oats", "water", "salt"]);
+  });
 });
