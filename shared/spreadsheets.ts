@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 export const spreadsheetAddressPattern = /^[A-Z]{1,3}[1-9][0-9]{0,3}$/;
+export const spreadsheetNumberFormats = ["decimal", "percent", "currency_usd"] as const;
+export const spreadsheetColorTokens = ["red", "amber", "green", "blue", "purple"] as const;
+export type SpreadsheetNumberFormat = typeof spreadsheetNumberFormats[number];
+export type SpreadsheetColorToken = typeof spreadsheetColorTokens[number];
 
 export const spreadsheetCellSchema = z.object({
   input: z.string().max(10_000),
@@ -8,6 +12,9 @@ export const spreadsheetCellSchema = z.object({
     bold: z.boolean().optional(),
     italic: z.boolean().optional(),
     align: z.enum(["left", "center", "right"]).optional(),
+    numberFormat: z.enum(spreadsheetNumberFormats).optional(),
+    textColor: z.enum(spreadsheetColorTokens).optional(),
+    backgroundColor: z.enum(spreadsheetColorTokens).optional(),
   }).optional(),
 });
 

@@ -2,14 +2,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { AlignCenter, AlignLeft, AlignRight, Bold, ClipboardCopy, ClipboardPaste, Download, Eraser, History, Italic, Plus, Redo2, RotateCcw, Save, Trash2, Undo2, Upload } from "lucide-react";
-import type { SpreadsheetDocument, SpreadsheetSheet } from "@shared/spreadsheets";
+import type { SpreadsheetColorToken, SpreadsheetDocument, SpreadsheetNumberFormat, SpreadsheetSheet } from "@shared/spreadsheets";
 import { createEmptySpreadsheetDocument, nextSpreadsheetSheetName, normalizeSpreadsheetDocument, removeSpreadsheetSheet, renameSpreadsheetSheet, uniqueSpreadsheetSheetName } from "@shared/spreadsheets";
-import { columnLabel, evaluateSpreadsheetCell, insertSpreadsheetAxis, parseCellAddress } from "@/lib/spreadsheetFormula";
+import { columnLabel, evaluateSpreadsheetCell, formatSpreadsheetDisplayValue, insertSpreadsheetAxis, parseCellAddress } from "@/lib/spreadsheetFormula";
 import { createSpreadsheetSheetFromDelimited, formatSpreadsheetRange, pasteSpreadsheetRange, serializeSpreadsheetRange, spreadsheetRangeBounds } from "@/lib/spreadsheetRange";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { usePageTitle } from "@/hooks/use-page-title";
 
@@ -29,6 +30,22 @@ type SpreadsheetRevisionRecord = {
   action: "created" | "updated" | "restored";
   sourceRevision: number | null;
   createdAt: string;
+};
+
+const spreadsheetTextColorClasses: Record<SpreadsheetColorToken, string> = {
+  red: "text-red-700 dark:text-red-300",
+  amber: "text-amber-700 dark:text-amber-300",
+  green: "text-emerald-700 dark:text-emerald-300",
+  blue: "text-sky-700 dark:text-sky-300",
+  purple: "text-violet-700 dark:text-violet-300",
+};
+
+const spreadsheetBackgroundColorClasses: Record<SpreadsheetColorToken, string> = {
+  red: "bg-red-100 dark:bg-red-950/60",
+  amber: "bg-amber-100 dark:bg-amber-950/60",
+  green: "bg-emerald-100 dark:bg-emerald-950/60",
+  blue: "bg-sky-100 dark:bg-sky-950/60",
+  purple: "bg-violet-100 dark:bg-violet-950/60",
 };
 
 export default function SpreadsheetEditorPage() {
@@ -240,7 +257,7 @@ export default function SpreadsheetEditorPage() {
       toast({ title: "Could not add import", description: error instanceof Error ? error.message : "The import could not be added.", variant: "destructive" });
     }
   };
-  const selectedResult = useMemo(() => evaluateSpreadsheetCell(document, activeSheet.id, selectedAddress), [activeSheet.id, document, selectedAddress]);
+  const selectedResult = useMemo(() => formatSpreadsheetDisplayValue(evaluateSpreadsheetCell(document, activeSheet.id, selectedAddress), activeSheet.cells[selectedAddress]?.format?.numberFormat), [activeSheet.cells, activeSheet.id, document, selectedAddress]);
 
   const exportCsv = () => {
     const lines = rows.map((row) => columns.map((column) => {
@@ -303,6 +320,18 @@ export default function SpreadsheetEditorPage() {
         <Button type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0" aria-label="Align selected populated cells left" onClick={() => applyRangeFormat({ align: "left" })}><AlignLeft className="h-3.5 w-3.5" /></Button>
         <Button type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0" aria-label="Align selected populated cells center" onClick={() => applyRangeFormat({ align: "center" })}><AlignCenter className="h-3.5 w-3.5" /></Button>
         <Button type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0" aria-label="Align selected populated cells right" onClick={() => applyRangeFormat({ align: "right" })}><AlignRight className="h-3.5 w-3.5" /></Button>
+        <Select value={activeCellFormat?.numberFormat || "automatic"} onValueChange={(value) => applyRangeFormat({ numberFormat: value === "automatic" ? undefined : value as SpreadsheetNumberFormat })}>
+          <SelectTrigger className="h-8 w-[112px] shrink-0 text-xs" aria-label="Number display format"><SelectValue /></SelectTrigger>
+          <SelectContent><SelectItem value="automatic">Automatic</SelectItem><SelectItem value="decimal">Number 0.00</SelectItem><SelectItem value="percent">Percent</SelectItem><SelectItem value="currency_usd">USD currency</SelectItem></SelectContent>
+        </Select>
+        <Select value={activeCellFormat?.textColor || "default"} onValueChange={(value) => applyRangeFormat({ textColor: value === "default" ? undefined : value as SpreadsheetColorToken })}>
+          <SelectTrigger className="h-8 w-[104px] shrink-0 text-xs" aria-label="Text color"><SelectValue /></SelectTrigger>
+          <SelectContent><SelectItem value="default">Text default</SelectItem><SelectItem value="red">Text red</SelectItem><SelectItem value="amber">Text amber</SelectItem><SelectItem value="green">Text green</SelectItem><SelectItem value="blue">Text blue</SelectItem><SelectItem value="purple">Text purple</SelectItem></SelectContent>
+        </Select>
+        <Select value={activeCellFormat?.backgroundColor || "default"} onValueChange={(value) => applyRangeFormat({ backgroundColor: value === "default" ? undefined : value as SpreadsheetColorToken })}>
+          <SelectTrigger className="h-8 w-[104px] shrink-0 text-xs" aria-label="Cell fill color"><SelectValue /></SelectTrigger>
+          <SelectContent><SelectItem value="default">Fill default</SelectItem><SelectItem value="red">Fill red</SelectItem><SelectItem value="amber">Fill amber</SelectItem><SelectItem value="green">Fill green</SelectItem><SelectItem value="blue">Fill blue</SelectItem><SelectItem value="purple">Fill purple</SelectItem></SelectContent>
+        </Select>
         <Button type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0" aria-label="Clear formatting from selected populated cells" onClick={() => applyRangeFormat(null)}><Eraser className="h-3.5 w-3.5" /></Button>
       </div>
       <div className="overflow-auto max-h-[65vh]">
@@ -315,11 +344,14 @@ export default function SpreadsheetEditorPage() {
               const address = `${column}${row}`;
               const raw = activeSheet.cells[address]?.input || "";
               const format = activeSheet.cells[address]?.format;
-              const display = raw.startsWith("=") ? evaluateSpreadsheetCell(document, activeSheet.id, address) : raw;
+              const display = formatSpreadsheetDisplayValue(raw.startsWith("=") ? evaluateSpreadsheetCell(document, activeSheet.id, address) : raw, format?.numberFormat);
               const position = { row: row - 1, column: parseCellAddress(address)!.column };
               const inRange = position.row >= selectedRange.startRow && position.row <= selectedRange.endRow && position.column >= selectedRange.startColumn && position.column <= selectedRange.endColumn;
               const alignment = format?.align === "center" ? "text-center" : format?.align === "right" ? "text-right" : "text-left";
-              return <button key={address} type="button" title={raw || address} onClick={(event) => selectCell(address, event.shiftKey)} className={`h-9 overflow-hidden border-b border-r px-2 text-xs ${alignment} ${selectedAddress === address ? "border-primary bg-primary/15 ring-1 ring-inset ring-primary" : inRange ? "border-primary/20 bg-primary/5" : "border-primary/10 hover:bg-primary/5"}`}><span className={`${display.startsWith("#") ? "text-destructive" : ""} ${format?.bold ? "font-semibold" : ""} ${format?.italic ? "italic" : ""}`}>{display}</span></button>;
+              const textColor = format?.textColor ? spreadsheetTextColorClasses[format.textColor] : "";
+              const backgroundColor = format?.backgroundColor ? spreadsheetBackgroundColorClasses[format.backgroundColor] : "";
+              const selection = selectedAddress === address ? `border-primary ring-1 ring-inset ring-primary ${backgroundColor ? "" : "bg-primary/15"}` : inRange ? `border-primary/20 ${backgroundColor ? "" : "bg-primary/5"}` : `border-primary/10 ${backgroundColor ? "" : "hover:bg-primary/5"}`;
+              return <button key={address} type="button" title={raw || address} onClick={(event) => selectCell(address, event.shiftKey)} className={`h-9 overflow-hidden border-b border-r px-2 text-xs ${alignment} ${backgroundColor} ${selection}`}><span className={`${display.startsWith("#") ? "text-destructive" : textColor} ${format?.bold ? "font-semibold" : ""} ${format?.italic ? "italic" : ""}`}>{display}</span></button>;
             }),
           ])}
         </div>
@@ -334,7 +366,7 @@ export default function SpreadsheetEditorPage() {
         </div>
       </div>
     </div>
-    <p className="text-[11px] leading-relaxed text-muted-foreground">Undo and Redo retain up to 20 unsaved grid and tab changes on this device and reset after save, reload, or restore. Shift-click, or choose Extend and then a cell on touch devices, to select a rectangular range for copy or formatting. Formatting applies only to populated cells; clipboard and CSV/TSV transfer values and formulas, not presentation. Paste starts at the active cell and remains unsaved until you review and save. Insertions preserve populated cells, formatting, and affected formula references. Formulas support cell references, +, −, ×, ÷, parentheses, and SUM, AVERAGE, MIN, or MAX. CSV export writes calculated formula results and protects text beginning with spreadsheet-executable prefixes.</p>
+    <p className="text-[11px] leading-relaxed text-muted-foreground">Undo and Redo retain up to 20 unsaved grid and tab changes on this device and reset after save, reload, or restore. Shift-click, or choose Extend and then a cell on touch devices, to select a rectangular range for copy or formatting. Number, percent, USD currency, text-color, and fill-color formats change display only; raw values and formula inputs remain authoritative. Formatting applies only to populated cells; clipboard and CSV/TSV transfer values and formulas, not presentation, while plain-text paste preserves existing destination formatting. Paste starts at the active cell and remains unsaved until you review and save. Insertions preserve populated cells, formatting, and affected formula references. Formulas support cell references, +, −, ×, ÷, parentheses, and SUM, AVERAGE, MIN, or MAX. CSV export writes unformatted calculated formula results and protects text beginning with spreadsheet-executable prefixes.</p>
     {!isNew && <details className="rounded-xl border border-primary/15 bg-card/30 p-4">
       <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium"><History className="h-4 w-4" />Saved version history</summary>
       <p className="mt-2 text-xs text-muted-foreground">Saved versions are immutable. Restoring copies the selected snapshot into a new version; it never deletes or rewrites history. The 100 most recent versions are shown.</p>

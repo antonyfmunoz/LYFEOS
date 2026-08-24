@@ -1,4 +1,4 @@
-import type { SpreadsheetDocument, SpreadsheetSheet } from "@shared/spreadsheets";
+import type { SpreadsheetDocument, SpreadsheetNumberFormat, SpreadsheetSheet } from "@shared/spreadsheets";
 import { spreadsheetAddressPattern } from "@shared/spreadsheets";
 
 type FormulaValue = number | "#ERROR!" | "#VALUE!" | "#DIV/0!" | "#CYCLE!";
@@ -67,6 +67,15 @@ export function evaluateSpreadsheetCell(document: SpreadsheetDocument, sheetId: 
   if (!sheet || !spreadsheetAddressPattern.test(address)) return "";
   const result = evaluateAddress(sheet, address, new Set());
   return typeof result === "number" ? formatNumber(result) : result;
+}
+
+export function formatSpreadsheetDisplayValue(value: string, numberFormat?: SpreadsheetNumberFormat): string {
+  if (!numberFormat || !value.trim() || value.startsWith("#")) return value;
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return value;
+  if (numberFormat === "decimal") return new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numericValue);
+  if (numberFormat === "percent") return new Intl.NumberFormat("en-US", { style: "percent", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numericValue);
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numericValue);
 }
 
 function evaluateAddress(sheet: SpreadsheetSheet, address: string, stack: Set<string>): FormulaValue | string {

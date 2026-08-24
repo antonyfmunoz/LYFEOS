@@ -123,7 +123,7 @@ export function pasteSpreadsheetRange(sheet: SpreadsheetSheet, startAddress: str
     for (let column = 0; column < columnCount; column += 1) {
       const address = `${columnLabel(start.column + column)}${start.row + row + 1}`;
       const input = values[row][column];
-      if (input) cells[address] = { input };
+      if (input) cells[address] = cells[address]?.format ? { input, format: cells[address].format } : { input };
       else delete cells[address];
     }
   }
@@ -161,6 +161,9 @@ export function formatSpreadsheetRange(
         if (merged.bold) format.bold = true;
         if (merged.italic) format.italic = true;
         if (merged.align && merged.align !== "left") format.align = merged.align;
+        if (merged.numberFormat) format.numberFormat = merged.numberFormat;
+        if (merged.textColor) format.textColor = merged.textColor;
+        if (merged.backgroundColor) format.backgroundColor = merged.backgroundColor;
         cells[address] = Object.keys(format).length ? { ...cell, format } : { input: cell.input };
       }
       changedCellCount += 1;

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createEmptySpreadsheetDocument, nextSpreadsheetSheetName, removeSpreadsheetSheet, renameSpreadsheetSheet, spreadsheetDocumentSchema, spreadsheetRevisionSnapshotSchema, uniqueSpreadsheetSheetName } from "../shared/spreadsheets";
-import { columnLabel, evaluateSpreadsheetCell, insertSpreadsheetAxis, parseCellAddress } from "../client/src/lib/spreadsheetFormula";
+import { columnLabel, evaluateSpreadsheetCell, formatSpreadsheetDisplayValue, insertSpreadsheetAxis, parseCellAddress } from "../client/src/lib/spreadsheetFormula";
 import { createSpreadsheetSheetFromDelimited, formatSpreadsheetRange, parseSpreadsheetClipboard, parseSpreadsheetCsv, pasteSpreadsheetRange, serializeSpreadsheetRange, spreadsheetRangeBounds } from "../client/src/lib/spreadsheetRange";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
@@ -43,6 +43,15 @@ describe("Sheets instrument", () => {
     const document = createEmptySpreadsheetDocument();
     document.sheets[0].cells["not-a-cell"] = { input: "x" };
     expect(spreadsheetDocumentSchema.safeParse(document).success).toBe(false);
+  });
+
+  it("formats numeric display deterministically without converting authoritative values", () => {
+    expect(formatSpreadsheetDisplayValue("1234.5", "decimal")).toBe("1,234.50");
+    expect(formatSpreadsheetDisplayValue("0.125", "percent")).toBe("12.50%");
+    expect(formatSpreadsheetDisplayValue("-42", "currency_usd")).toBe("-$42.00");
+    expect(formatSpreadsheetDisplayValue("planning", "decimal")).toBe("planning");
+    expect(formatSpreadsheetDisplayValue("#DIV/0!", "currency_usd")).toBe("#DIV/0!");
+    expect(formatSpreadsheetDisplayValue("001.20")).toBe("001.20");
   });
 
   it("adds bounded display dimensions to legacy version-one documents without losing cells", () => {
@@ -126,12 +135,12 @@ describe("Sheets instrument", () => {
 
   it("pastes bounded ranges without mutating source cells and preserves formulas as raw inputs", () => {
     const sheet = createEmptySpreadsheetDocument().sheets[0];
-    sheet.cells = { B2: { input: "replace" }, C2: { input: "clear" }, A1: { input: "untouched" } };
+    sheet.cells = { B2: { input: "replace", format: { numberFormat: "decimal", textColor: "green" } }, C2: { input: "clear" }, A1: { input: "untouched" } };
     const pasted = pasteSpreadsheetRange(sheet, "B2", "3\t\r\n4\t=B2+B3\r\n");
     expect(pasted).toMatchObject({ endAddress: "C3", rowCount: 2, columnCount: 2 });
-    expect(pasted.sheet.cells).toMatchObject({ A1: { input: "untouched" }, B2: { input: "3" }, B3: { input: "4" }, C3: { input: "=B2+B3" } });
+    expect(pasted.sheet.cells).toMatchObject({ A1: { input: "untouched" }, B2: { input: "3", format: { numberFormat: "decimal", textColor: "green" } }, B3: { input: "4" }, C3: { input: "=B2+B3" } });
     expect(pasted.sheet.cells.C2).toBeUndefined();
-    expect(sheet.cells).toEqual({ B2: { input: "replace" }, C2: { input: "clear" }, A1: { input: "untouched" } });
+    expect(sheet.cells).toEqual({ B2: { input: "replace", format: { numberFormat: "decimal", textColor: "green" } }, C2: { input: "clear" }, A1: { input: "untouched" } });
     expect(evaluateSpreadsheetCell({ version: 1, activeSheetId: sheet.id, sheets: [pasted.sheet] }, sheet.id, "C3")).toBe("7");
   });
 
@@ -178,9 +187,26 @@ describe("Sheets instrument", () => {
     expect(formatSpreadsheetRange(formatted.sheet, "A1", "B1", null).sheet.cells).toEqual({ A1: { input: "Heading" }, B1: { input: "=1+2" } });
   });
 
+  it("applies constrained display and color formats without changing raw cell input", () => {
+    const sheet = createEmptySpreadsheetDocument().sheets[0];
+    sheet.cells = { A1: { input: "0.25" }, B1: { input: "=A1*4", format: { bold: true } } };
+    const formatted = formatSpreadsheetRange(sheet, "A1", "B1", { numberFormat: "percent", textColor: "blue", backgroundColor: "amber" });
+    expect(formatted.sheet.cells).toEqual({
+      A1: { input: "0.25", format: { numberFormat: "percent", textColor: "blue", backgroundColor: "amber" } },
+      B1: { input: "=A1*4", format: { bold: true, numberFormat: "percent", textColor: "blue", backgroundColor: "amber" } },
+    });
+    expect(formatted.sheet.cells.A1.input).toBe("0.25");
+    const resetNumber = formatSpreadsheetRange(formatted.sheet, "A1", "B1", { numberFormat: undefined });
+    expect(resetNumber.sheet.cells.A1.format).toEqual({ textColor: "blue", backgroundColor: "amber" });
+  });
+
   it("rejects ungoverned cell formats in persisted documents", () => {
     const document = createEmptySpreadsheetDocument();
     document.sheets[0].cells.A1 = { input: "x", format: { align: "diagonal" } as any };
+    expect(spreadsheetDocumentSchema.safeParse(document).success).toBe(false);
+    document.sheets[0].cells.A1 = { input: "x", format: { textColor: "#123456" } as any };
+    expect(spreadsheetDocumentSchema.safeParse(document).success).toBe(false);
+    document.sheets[0].cells.A1 = { input: "x", format: { numberFormat: "scientific" } as any };
     expect(spreadsheetDocumentSchema.safeParse(document).success).toBe(false);
   });
 
@@ -280,6 +306,12 @@ describe("Sheets instrument", () => {
     expect(editor).toContain("Toggle bold on selected populated cells");
     expect(editor).toContain("Align selected populated cells center");
     expect(editor).toContain("Clear formatting from selected populated cells");
+    expect(editor).toContain('aria-label="Number display format"');
+    expect(editor).toContain('aria-label="Text color"');
+    expect(editor).toContain('aria-label="Cell fill color"');
+    expect(editor).toContain("formatSpreadsheetDisplayValue");
+    expect(editor).toContain("raw values and formula inputs remain authoritative");
+    expect(editor).toContain("plain-text paste preserves existing destination formatting");
     expect(editor).toContain("clipboard and CSV/TSV transfer values and formulas, not presentation");
   });
 
