@@ -2027,6 +2027,50 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// The assistant persona has a portable, consent-gated identity and a separate
+// LyfeOS presentation. Nothing in this record is sent to another product by
+// default; projection builders must enforce the destination allow-list.
+export const aiPersonaProfiles = pgTable("ai_persona_profiles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  interactionStyle: jsonb("interaction_style").notNull().default({}),
+  lyfeosPresentation: jsonb("lyfeos_presentation").notNull().default({ role: "LyfeOS companion" }),
+  ecosystemSharingEnabled: boolean("ecosystem_sharing_enabled").notNull().default(false),
+  allowedDestinations: jsonb("allowed_destinations").notNull().default([]),
+  revision: integer("revision").notNull().default(1),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const aiMemoryPolicies = pgTable("ai_memory_policies", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
+  chatHistoryDays: integer("chat_history_days"), // null = keep until the user deletes it
+  contextReceiptDays: integer("context_receipt_days").notNull().default(90),
+  actionReceiptDays: integer("action_receipt_days").notNull().default(365),
+  crossProductMemoryEnabled: boolean("cross_product_memory_enabled").notNull().default(false),
+  allowedDestinations: jsonb("allowed_destinations").notNull().default([]),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// A receipt names the records made available to a model without duplicating
+// their private values. It is attribution of context, not a claim that the
+// model cited or correctly interpreted every source.
+export const aiContextReceipts = pgTable("ai_context_receipts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  conversationId: integer("conversation_id").references(() => conversations.id, { onDelete: "cascade" }),
+  assistantMessageId: integer("assistant_message_id").references(() => messages.id, { onDelete: "set null" }),
+  purpose: text("purpose").notNull().default("assistant_response"),
+  sources: jsonb("sources").notNull().default([]),
+  disclosure: text("disclosure").notNull().default("Sources were made available as context; the response remains model-generated."),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+}, (table) => [
+  index("ai_context_receipts_user_created_idx").on(table.userId, table.createdAt),
+]);
+
 // Canonical native Messages transport. The historical conversations/messages
 // tables above remain the AI companion's private chat history; keeping this
 // transport separate prevents relationship messages from being injected into
@@ -2217,6 +2261,10 @@ export const aiActionRecords = pgTable("ai_action_records", {
   inputSummary: jsonb("input_summary").notNull().default({}),
   planningContextSnapshot: jsonb("planning_context_snapshot").notNull().default({}),
   outcomeSummary: text("outcome_summary"),
+  contextReceiptId: uuid("context_receipt_id").references(() => aiContextReceipts.id, { onDelete: "set null" }),
+  repairState: text("repair_state").notNull().default("unavailable"), // unavailable | available | executing | repaired | stale | failed | expired
+  repairExpiresAt: timestamp("repair_expires_at"),
+  repairedAt: timestamp("repaired_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   completedAt: timestamp("completed_at"),
 }, (table) => [
@@ -2227,6 +2275,20 @@ export const insertConversationSchema = createInsertSchema(conversations).omit({
   id: true,
   createdAt: true,
 });
+
+// Repair payloads are user-owned operational state. They contain only the
+// minimum prior values needed for a bounded, optimistic repair and expire.
+export const aiActionRepairs = pgTable("ai_action_repairs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  actionRecordId: integer("action_record_id").notNull().unique().references(() => aiActionRecords.id, { onDelete: "cascade" }),
+  strategy: text("strategy").notNull(),
+  payload: jsonb("payload").notNull(),
+  state: text("state").notNull().default("available"),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("ai_action_repairs_user_state_idx").on(table.userId, table.state, table.createdAt)]);
 
 // Medium-risk assistant actions are held here only until the user explicitly
 // approves or rejects them. Payload is never shown in activity receipts; it is
@@ -2257,6 +2319,10 @@ export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type AIActionRecord = typeof aiActionRecords.$inferSelect;
 export type AIPendingAction = typeof aiPendingActions.$inferSelect;
+export type AIPersonaProfile = typeof aiPersonaProfiles.$inferSelect;
+export type AIMemoryPolicy = typeof aiMemoryPolicies.$inferSelect;
+export type AIContextReceipt = typeof aiContextReceipts.$inferSelect;
+export type AIActionRepair = typeof aiActionRepairs.$inferSelect;
 
 export const dismissedKnowledge = pgTable("dismissed_knowledge", {
   id: serial("id").primaryKey(),

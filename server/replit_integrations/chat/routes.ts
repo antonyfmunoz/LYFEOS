@@ -4,13 +4,15 @@ import { chatStorage } from "./storage";
 import { storage } from "../../storage";
 import { createMissionLifecycle, toggleMissionLifecycle, updateMissionLifecycle } from "../../mission-lifecycle";
 import { db } from "../../db";
-import { aiActionRecords, aiPendingActions } from "@shared/schema";
+import { aiActionRecords, aiActionRepairs, aiContextReceipts, aiMemoryPolicies, aiPendingActions } from "@shared/schema";
 import { and, eq, gt, inArray, lt } from "drizzle-orm";
 import * as cheerio from 'cheerio';
 import { detectRelevantLayers, searchKnowledgeBase, getLayerById, KNOWLEDGE_LAYERS } from "./knowledge-base";
 import { resolveAIContextPreferences, resolveAIVisibleDisplayName } from "../../ai-context-preferences";
 import { buildCalendarMissionWindow } from "@shared/calendar";
 import { buildPlanningContextSnapshot } from "../../context-snapshot";
+import { buildAIContextSources, resolveAIActionPolicy } from "../../ai-governance";
+import { fetchPublicWebPage } from "../../public-web";
 
 const anthropic = new Anthropic({
   apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
@@ -303,7 +305,7 @@ ${contextPreferences.planning ? upcomingEvents.map((e: any) => `- ${e.startDate}
 ${contextPreferences.planning ? customCats || 'None created' : 'Planning context is private unless the Player enables it.'}
 
 === CAPABILITIES ===
-You can assist the Player using tools. Low-risk actions may execute after a direct request. Medium-risk changes (including editing or terminating a mission, changing profile data, or changing player resources) are placed in the Player's approval queue and have not happened until the Player explicitly approves them. Never describe a pending action as completed; say that it is awaiting approval.
+You can assist the Player using tools. Low-risk actions may execute after a direct request. Consequential changes are placed in the Player's approval queue and have not happened until the Player explicitly approves them. Never describe a pending action as completed; say that it is awaiting approval. You cannot send email, native Messages, posts, purchases, or any other external communication or transaction; external sending stays disabled unless a separately governed capability is explicitly introduced.
 
 ASSISTED EXECUTION CAPABILITIES:
 - Search the internet with web_search and read full articles with read_webpage to gather real-world information
@@ -741,10 +743,6 @@ const tools: Anthropic.Messages.Tool[] = [
   }
 ];
 
-function toolRisk(toolName: string): "low" | "medium" {
-  return ["terminate_mission", "update_mission", "update_profile", "update_user_stats"].includes(toolName) ? "medium" : "low";
-}
-
 function actionInputSummary(input: unknown): Record<string, unknown> {
   if (!input || typeof input !== "object" || Array.isArray(input)) return {};
   const value = input as Record<string, unknown>;
@@ -768,7 +766,132 @@ function pendingActionPreview(toolName: string, input: unknown): string {
   return `Run ${toolName.replaceAll("_", " ")}${fields.length ? ` with ${fields.length} requested field${fields.length === 1 ? "" : "s"}` : ""}.`;
 }
 
-async function executeTool(toolName: string, input: any, userId: number): Promise<string> {
+type RepairCapture = { strategy: string; payload: Record<string, unknown> } | null;
+
+async function captureRepairState(toolName: string, input: any, userId: number): Promise<RepairCapture> {
+  if (["terminate_mission", "complete_mission", "update_mission", "restore_mission", "uncomplete_mission"].includes(toolName)) {
+    const quest = await storage.getQuest(input.mission_id);
+    if (!quest || quest.userId !== userId) return null;
+    if (toolName === "update_mission") {
+      const allowed = ["title", "description", "category", "difficulty", "startDate", "endDate", "dueDate", "energyCost", "attentionCost", "timeCost", "experienceReward"];
+      const before = Object.fromEntries(allowed.filter((field) => Object.prototype.hasOwnProperty.call(input, field)).map((field) => [field, (quest as any)[field] ?? null]));
+      return { strategy: "restore_mission_fields", payload: { missionId: quest.id, before } };
+    }
+    return { strategy: "restore_mission_lifecycle", payload: { missionId: quest.id, completed: quest.completed, deleted: Boolean(quest.deletedAt) } };
+  }
+  if (["create_mission", "create_calendar_event", "batch_create_missions"].includes(toolName)) {
+    return { strategy: "archive_created_missions", payload: {} };
+  }
+  if (toolName === "create_vision_goal") return { strategy: "delete_created_vision_goal", payload: {} };
+  if (["update_profile", "generate_affirmation", "suggest_reflection_prompts"].includes(toolName)) {
+    const profile = await storage.getUserProfile(userId);
+    if (!profile) return null;
+    const fields = toolName === "generate_affirmation" ? ["characterAffirmation"]
+      : toolName === "suggest_reflection_prompts" ? ["customReflectionPrompts"]
+      : Object.keys(input);
+    const before = Object.fromEntries(fields.map((field) => [field, (profile as any)[field] ?? null]));
+    return { strategy: "restore_profile_fields", payload: { before } };
+  }
+  if (toolName === "toggle_theme") {
+    const stats = await storage.getUserStats(userId);
+    return stats ? { strategy: "restore_stats_fields", payload: { before: { darkThemeEnabled: stats.darkThemeEnabled } } } : null;
+  }
+  if (["update_daily_log", "archive_research_entry"].includes(toolName)) {
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+    const log = await storage.getUserDailyLogByDate(userId, new Date(`${today}T00:00:00`));
+    const fields = toolName === "archive_research_entry"
+      ? ["researchEntries", "sourceAuthor", "sourceMaterial", "researchNote", "revisionNote", "executionNote"]
+      : Object.keys(input);
+    const before = Object.fromEntries(fields.map((field) => [field, log ? (log as any)[field] ?? null : null]));
+    return { strategy: "restore_daily_log_fields", payload: { date: today, before } };
+  }
+  return null;
+}
+
+async function persistRepairPlan(recordId: number, userId: number, toolName: string, capture: RepairCapture, resultJson: string): Promise<void> {
+  if (!capture) return;
+  let result: any;
+  try { result = JSON.parse(resultJson); } catch { return; }
+  const payload = { ...capture.payload } as Record<string, unknown>;
+  if (capture.strategy === "archive_created_missions") {
+    const missionIds = Array.isArray(result.missions) ? result.missions.map((mission: any) => mission.id).filter(Number.isInteger)
+      : Number.isInteger(result.missionId) ? [result.missionId] : [];
+    if (!missionIds.length) return;
+    payload.missionIds = missionIds;
+  }
+  if (capture.strategy === "delete_created_vision_goal") {
+    if (!Number.isInteger(result.goalId)) return;
+    payload.goalId = result.goalId;
+  }
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await db.transaction(async (tx) => {
+    await tx.insert(aiActionRepairs).values({ userId, actionRecordId: recordId, strategy: capture.strategy, payload, expiresAt });
+    await tx.update(aiActionRecords).set({ repairState: "available", repairExpiresAt: expiresAt }).where(eq(aiActionRecords.id, recordId));
+  }).catch(() => {});
+}
+
+async function executeRepair(actionRecordId: number, userId: number): Promise<"repaired" | "stale" | "failed"> {
+  const [repair] = await db.update(aiActionRepairs).set({ state: "executing", updatedAt: new Date() })
+    .where(and(eq(aiActionRepairs.actionRecordId, actionRecordId), eq(aiActionRepairs.userId, userId), eq(aiActionRepairs.state, "available"), gt(aiActionRepairs.expiresAt, new Date())))
+    .returning();
+  if (!repair) return "stale";
+  const payload = repair.payload as any;
+  const stale = async (): Promise<"stale"> => {
+    await db.transaction(async (tx) => {
+      await tx.update(aiActionRepairs).set({ state: "stale", updatedAt: new Date() }).where(eq(aiActionRepairs.id, repair.id));
+      await tx.update(aiActionRecords).set({ repairState: "stale" }).where(eq(aiActionRecords.id, actionRecordId));
+    });
+    return "stale";
+  };
+  try {
+    if (repair.strategy === "archive_created_missions") {
+      const missionIds = payload.missionIds || [];
+      const quests = await Promise.all(missionIds.map((missionId: number) => storage.getQuest(missionId)));
+      if (quests.some((quest: any) => !quest || quest.userId !== userId || quest.deletedAt)) return stale();
+      for (const missionId of missionIds) await storage.deleteQuest(missionId);
+    } else if (repair.strategy === "delete_created_vision_goal") {
+      await storage.deleteVisionGoal(payload.goalId, userId);
+    } else if (repair.strategy === "restore_mission_fields") {
+      const quest = await storage.getQuest(payload.missionId);
+      if (!quest || quest.userId !== userId) return stale();
+      await updateMissionLifecycle({ questId: payload.missionId, userId, updates: payload.before, source: "ai" });
+    } else if (repair.strategy === "restore_mission_lifecycle") {
+      let quest = await storage.getQuest(payload.missionId);
+      if (!quest || quest.userId !== userId) return stale();
+      if (Boolean(quest.deletedAt) !== Boolean(payload.deleted)) {
+        if (payload.deleted) await storage.deleteQuest(payload.missionId); else await storage.restoreQuest(payload.missionId);
+      }
+      quest = await storage.getQuest(payload.missionId);
+      if (!quest || quest.userId !== userId) return stale();
+      if (Boolean(quest.completed) !== Boolean(payload.completed)) await toggleMissionLifecycle({ questId: payload.missionId, userId, source: "ai" });
+    } else if (repair.strategy === "restore_profile_fields") {
+      await storage.updateUserProfile(userId, payload.before);
+    } else if (repair.strategy === "restore_stats_fields") {
+      await storage.updateUserStats(userId, payload.before);
+    } else if (repair.strategy === "restore_daily_log_fields") {
+      const log = await storage.getUserDailyLogByDate(userId, new Date(`${payload.date}T00:00:00`));
+      if (!log) return stale();
+      await storage.updateUserDailyLog(log.id, payload.before);
+    } else return "failed";
+    await db.transaction(async (tx) => {
+      await tx.update(aiActionRepairs).set({ state: "repaired", updatedAt: new Date() }).where(eq(aiActionRepairs.id, repair.id));
+      await tx.update(aiActionRecords).set({ repairState: "repaired", repairedAt: new Date(), outcomeSummary: "The user repaired this assistant action." }).where(eq(aiActionRecords.id, actionRecordId));
+    });
+    return "repaired";
+  } catch {
+    await db.transaction(async (tx) => {
+      await tx.update(aiActionRepairs).set({ state: "failed", updatedAt: new Date() }).where(eq(aiActionRepairs.id, repair.id));
+      await tx.update(aiActionRecords).set({ repairState: "failed" }).where(eq(aiActionRecords.id, actionRecordId));
+    }).catch(() => {});
+    return "failed";
+  }
+}
+
+async function executeTool(toolName: string, input: any, userId: number, contextReceiptId?: string): Promise<string> {
+  const policy = resolveAIActionPolicy(toolName);
+  if (policy.risk === "prohibited" || policy.externalEffect === "external_send") {
+    return JSON.stringify({ error: "This assistant action is not authorized. External sending is disabled." });
+  }
   let recordId: number | undefined;
   try {
     const [profile, stats, dailyLog] = await Promise.all([
@@ -780,9 +903,10 @@ async function executeTool(toolName: string, input: any, userId: number): Promis
     const [record] = await db.insert(aiActionRecords).values({
       userId,
       toolName,
-      risk: toolRisk(toolName),
+      risk: policy.risk,
       inputSummary: actionInputSummary(input),
       planningContextSnapshot,
+      contextReceiptId,
     }).returning({ id: aiActionRecords.id });
     recordId = record.id;
   } catch {
@@ -790,7 +914,7 @@ async function executeTool(toolName: string, input: any, userId: number): Promis
     // outage. The action still runs through its local authorization checks.
   }
 
-  if (toolRisk(toolName) === "medium") {
+  if (policy.approvalRequired) {
     if (!recordId) return JSON.stringify({ error: "This action needs approval, but its approval record could not be created. Please try again." });
     try {
       const [pending] = await db.insert(aiPendingActions).values({
@@ -813,7 +937,9 @@ async function executeTool(toolName: string, input: any, userId: number): Promis
   }
 
   try {
+    const repairBefore = await captureRepairState(toolName, input, userId);
     const result = await executeToolUnsafe(toolName, input, userId);
+    if (recordId && !result.includes('"error"')) await persistRepairPlan(recordId, userId, toolName, repairBefore, result);
     if (recordId) {
       const rejected = result.includes('"error"');
       await db.update(aiActionRecords)
@@ -1194,7 +1320,7 @@ Write a 2-3 paragraph affirmation in second person ("You are..."). Make it power
         try {
           const controller = new AbortController();
           const timeout = setTimeout(() => controller.abort(), 10000);
-          const response = await fetch(input.url, {
+          const response = await fetchPublicWebPage(input.url, {
             headers: {
               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
               'Accept': 'text/html,application/xhtml+xml'
@@ -1374,6 +1500,7 @@ async function executeApprovedPendingAction(actionId: number, userId: number): P
     .set({ state: "executing", outcomeSummary: "Approved by the user; executing now." })
     .where(eq(aiActionRecords.id, pending.actionRecordId));
   try {
+    const repairBefore = await captureRepairState(pending.toolName, pending.payload, userId);
     const result = await executeToolUnsafe(pending.toolName, pending.payload, userId);
     const rejected = result.includes('"error"');
     const state = rejected ? "rejected" as const : "succeeded" as const;
@@ -1381,6 +1508,7 @@ async function executeApprovedPendingAction(actionId: number, userId: number): P
       await tx.update(aiPendingActions).set({ state, updatedAt: new Date() }).where(eq(aiPendingActions.id, pending.id));
       await tx.update(aiActionRecords).set({ state, outcomeSummary: rejected ? "Approved action was rejected by its domain policy." : "Approved action completed.", completedAt: new Date() }).where(eq(aiActionRecords.id, pending.actionRecordId));
     });
+    if (!rejected) await persistRepairPlan(pending.actionRecordId, userId, pending.toolName, repairBefore, result);
     return { state, result };
   } catch {
     await db.transaction(async (tx) => {
@@ -1392,6 +1520,15 @@ async function executeApprovedPendingAction(actionId: number, userId: number): P
 }
 
 export function registerChatRoutes(app: Express): void {
+  app.post("/api/ai-actions/:actionId/repair", isAuthenticated, async (req: Request, res: Response) => {
+    const actionId = Number(req.params.actionId);
+    if (!Number.isInteger(actionId)) return res.status(400).json({ error: "Invalid assistant action." });
+    const state = await executeRepair(actionId, req.session.userId!);
+    if (state === "stale") return res.status(409).json({ error: "This repair is unavailable, expired, or no longer safe to apply." });
+    if (state === "failed") return res.status(500).json({ error: "The repair failed without changing its receipt to repaired." });
+    return res.json({ state });
+  });
+
   app.get("/api/ai-actions/pending", isAuthenticated, async (req: Request, res: Response) => {
     const userId = req.session.userId!;
     try {
@@ -1553,7 +1690,7 @@ export function registerChatRoutes(app: Express): void {
         relevantKnowledge = `=== CONTEXTUAL KNOWLEDGE (auto-detected from Player's message) ===\nThe following evidence-based knowledge is relevant to the Player's current query. Use this to ground your response in proven frameworks and protocols. You may also use lookup_knowledge_base for deeper details.\n\n${detectedLayers.map(l => `--- ${l.name} ---\n${l.content}`).join('\n\n')}`;
       }
 
-      const systemPrompt = buildSystemPrompt({
+      let systemPrompt = buildSystemPrompt({
         user, stats, profile,
         missions: allMissions,
         dailyLogs,
@@ -1643,6 +1780,28 @@ export function registerChatRoutes(app: Express): void {
           // Skip invalid images
         }
       }
+
+      const [memoryPolicy] = await db.select().from(aiMemoryPolicies).where(eq(aiMemoryPolicies.userId, userId)).limit(1);
+      const contextSources = buildAIContextSources({
+        planningEnabled: contextPreferences.planning,
+        identityEnabled: contextPreferences.identity,
+        dailyStateEnabled: contextPreferences.dailyState,
+        conversationHistoryEnabled: contextPreferences.conversationHistory,
+        missionCount: allMissions.length,
+        visionGoalCount: allVisionGoals.length,
+        dailyLogCount: contextPreferences.dailyState ? Math.min(dailyLogs.length, 7) : 0,
+        priorConversationMessageCount: otherConversationMessages.length,
+        knowledgeLayerNames: detectedLayers.map((layer) => layer.name),
+        imageCount: imageContentBlocks.length,
+      });
+      const receiptDays = memoryPolicy?.contextReceiptDays || 90;
+      const [contextReceipt] = await db.insert(aiContextReceipts).values({
+        userId,
+        conversationId,
+        sources: contextSources,
+        expiresAt: new Date(Date.now() + receiptDays * 24 * 60 * 60 * 1000),
+      }).returning({ id: aiContextReceipts.id });
+      systemPrompt += `\n\n=== CONTEXT SOURCE LEDGER ===\n${contextSources.map((source) => `[${source.key}] ${source.label} (${source.recordCount} record${source.recordCount === 1 ? "" : "s"})`).join("\n")}\nWhen a factual conclusion depends on supplied LyfeOS or knowledge-base context, identify the relevant source label. Never imply that a source proves a model inference. Native Messages and unauthorized cross-product memory are not available.`;
       
       // If there are images, modify the last user message to include vision content
       if (imageContentBlocks.length > 0) {
@@ -1705,7 +1864,7 @@ export function registerChatRoutes(app: Express): void {
           for (const toolUse of toolUseBlocks) {
             res.write(`data: ${JSON.stringify({ toolStart: { name: toolUse.name, input: toolUse.input } })}\n\n`);
             
-            const result = await executeTool(toolUse.name, toolUse.input, userId);
+            const result = await executeTool(toolUse.name, toolUse.input, userId, contextReceipt.id);
             toolActionsPerformed.push(result);
             toolsUsedCount++;
             
@@ -1737,9 +1896,10 @@ export function registerChatRoutes(app: Express): void {
         break;
       }
 
-      await chatStorage.createMessage(conversationId, "assistant", fullResponse);
+      const assistantMessage = await chatStorage.createMessage(conversationId, "assistant", fullResponse);
+      await db.update(aiContextReceipts).set({ assistantMessageId: assistantMessage.id }).where(eq(aiContextReceipts.id, contextReceipt.id));
 
-      res.write(`data: ${JSON.stringify({ done: true, toolActions: toolActionsPerformed.map(a => JSON.parse(a)) })}\n\n`);
+      res.write(`data: ${JSON.stringify({ done: true, toolActions: toolActionsPerformed.map(a => JSON.parse(a)), contextReceipt: { id: contextReceipt.id, sources: contextSources, disclosure: "Sources were made available as context; the response remains model-generated." } })}\n\n`);
       res.end();
     } catch (error) {
       console.error("Error sending message:", error);
@@ -1979,6 +2139,8 @@ Return ONLY the JSON, no other text.`;
       let dbConversationId = conversationId ? parseInt(conversationId) : null;
       
       if (dbConversationId) {
+        const ownedConversation = await chatStorage.getConversation(dbConversationId);
+        if (!ownedConversation || ownedConversation.userId !== userId) return res.status(403).json({ error: "Conversation access denied" });
         const messages = await chatStorage.getMessagesByConversation(dbConversationId);
         recentMessages = messages.slice(-10).map(m => ({
           role: m.role,
@@ -1996,7 +2158,7 @@ Return ONLY the JSON, no other text.`;
         voiceKnowledge = `=== CONTEXTUAL KNOWLEDGE (auto-detected from Player's message) ===\nThe following evidence-based knowledge is relevant to the Player's current query. Use this to ground your response in proven frameworks and protocols.\n\n${voiceDetectedLayers.map(l => `--- ${l.name} ---\n${l.content}`).join('\n\n')}`;
       }
 
-      const voiceSystemPrompt = buildSystemPrompt({
+      let voiceSystemPrompt = buildSystemPrompt({
         user, stats, profile,
         missions: [...(missions || []), ...archivedMissions],
         dailyLogs,
@@ -2004,6 +2166,22 @@ Return ONLY the JSON, no other text.`;
         userCategories: categories,
         relevantKnowledge: voiceKnowledge,
       });
+      const voicePreferences = resolveAIContextPreferences(profile?.aiContextPreferences);
+      const voiceSources = buildAIContextSources({
+        planningEnabled: voicePreferences.planning,
+        identityEnabled: voicePreferences.identity,
+        dailyStateEnabled: voicePreferences.dailyState,
+        conversationHistoryEnabled: voicePreferences.conversationHistory,
+        missionCount: (missions || []).length + archivedMissions.length,
+        visionGoalCount: visionGoalResults.flat().length,
+        dailyLogCount: voicePreferences.dailyState ? Math.min(dailyLogs.length, 7) : 0,
+        priorConversationMessageCount: recentMessages.length,
+        knowledgeLayerNames: voiceDetectedLayers.map((layer) => layer.name),
+        imageCount: 0,
+      });
+      const [voiceMemoryPolicy] = await db.select().from(aiMemoryPolicies).where(eq(aiMemoryPolicies.userId, userId)).limit(1);
+      const [voiceContextReceipt] = await db.insert(aiContextReceipts).values({ userId, conversationId: dbConversationId, sources: voiceSources, purpose: "voice_assistant_response", expiresAt: new Date(Date.now() + (voiceMemoryPolicy?.contextReceiptDays || 90) * 24 * 60 * 60 * 1000) }).returning({ id: aiContextReceipts.id });
+      voiceSystemPrompt += `\n\nCONTEXT SOURCE LEDGER\n${voiceSources.map((source) => `[${source.key}] ${source.label}`).join("\n")}\nName the relevant source label when a factual conclusion depends on supplied context. Sources do not prove model inference. External sending is disabled.`;
 
       const apiMessages: any[] = [
         ...recentMessages.map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
@@ -2035,7 +2213,7 @@ Return ONLY the JSON, no other text.`;
           const toolResults: Anthropic.Messages.ToolResultBlockParam[] = [];
 
           for (const toolUse of toolUseBlocks) {
-            const result = await executeTool(toolUse.name, toolUse.input, userId);
+            const result = await executeTool(toolUse.name, toolUse.input, userId, voiceContextReceipt.id);
             toolActions.push(JSON.parse(result));
 
             toolResults.push({
@@ -2062,13 +2240,15 @@ Return ONLY the JSON, no other text.`;
       }
 
       if (dbConversationId && fullResponse) {
-        await chatStorage.createMessage(dbConversationId, "assistant", fullResponse);
+        const voiceAssistantMessage = await chatStorage.createMessage(dbConversationId, "assistant", fullResponse);
+        await db.update(aiContextReceipts).set({ assistantMessageId: voiceAssistantMessage.id }).where(eq(aiContextReceipts.id, voiceContextReceipt.id));
       }
 
       res.json({ 
         speech: fullResponse || "Done.", 
         toolActions, 
-        understood: true 
+        understood: true,
+        contextReceipt: { id: voiceContextReceipt.id, sources: voiceSources, disclosure: "Sources were made available as context; the response remains model-generated." },
       });
     } catch (error) {
       console.error("Error processing voice command:", error);

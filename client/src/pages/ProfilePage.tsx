@@ -764,9 +764,43 @@ export default function ProfilePage() {
     conversationCount: number;
     affirmationStored: boolean;
     profileContextStored: boolean;
+    contextReceiptCount: number;
+    actionReceiptCount: number;
+    boundaries: { nativeMessagesIncluded: boolean; externalSendingEnabled: boolean; crossProductMemoryDefault: string; contextReceiptsContainRawValues: boolean };
   }>({
     queryKey: ["/api/account/ai-memory"],
     enabled: !!user?.id,
+  });
+  const { data: aiPersona } = useQuery<{ persona: { name: string; interactionStyle: Record<string, unknown>; ecosystemSharingEnabled: boolean; allowedDestinations: string[]; revision: number } }>({
+    queryKey: ["/api/ai/persona"], enabled: !!user?.id,
+  });
+  const [personaName, setPersonaName] = useState("");
+  useEffect(() => { if (aiPersona?.persona.name) setPersonaName(aiPersona.persona.name); }, [aiPersona?.persona.name]);
+  const savePersonaMutation = useMutation({
+    mutationFn: (sharing?: { ecosystemSharingEnabled: boolean; allowedDestinations: string[] }) => apiRequest("/api/ai/persona", { method: "PUT", body: JSON.stringify({
+      name: personaName,
+      interactionStyle: aiPersona?.persona.interactionStyle || {},
+      ecosystemSharingEnabled: sharing?.ecosystemSharingEnabled ?? aiPersona?.persona.ecosystemSharingEnabled ?? false,
+      allowedDestinations: sharing?.allowedDestinations ?? aiPersona?.persona.allowedDestinations ?? [],
+      expectedRevision: aiPersona?.persona.revision,
+    }) }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/ai/persona"] }); toast({ title: "AI persona saved", description: "Your AI name is synchronized with the portable persona record." }); },
+    onError: (error: Error) => toast({ title: "Could not save AI persona", description: error.message, variant: "destructive" }),
+  });
+  const { data: aiMemoryPolicy } = useQuery<{ policy: { chatHistoryDays: number | null; contextReceiptDays: number; actionReceiptDays: number; crossProductMemoryEnabled: boolean; allowedDestinations: string[] } }>({
+    queryKey: ["/api/account/ai-memory-policy"], enabled: !!user?.id,
+  });
+  const updateMemoryPolicyMutation = useMutation({
+    mutationFn: (changes: Partial<{ chatHistoryDays: number | null; contextReceiptDays: number; actionReceiptDays: number }>) => {
+      const current = aiMemoryPolicy?.policy;
+      if (!current) throw new Error("Memory policy is still loading.");
+      return apiRequest("/api/account/ai-memory-policy", { method: "PATCH", body: JSON.stringify({ ...current, ...changes }) });
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/account/ai-memory-policy"] }); queryClient.invalidateQueries({ queryKey: ["/api/account/ai-memory"] }); toast({ title: "Memory retention updated" }); },
+    onError: (error: Error) => toast({ title: "Could not update retention", description: error.message, variant: "destructive" }),
+  });
+  const { data: aiContextReceipts } = useQuery<{ receipts: Array<{ id: string; sources: Array<{ key: string; label: string; recordCount: number }>; disclosure: string; created_at: string }> }>({
+    queryKey: ["/api/ai/context-receipts"], enabled: !!user?.id,
   });
   const aiContextPreferences = {
     planning: (userProfileData as any)?.aiContextPreferences?.planning !== false,
@@ -786,7 +820,7 @@ export default function ProfilePage() {
   };
 
   const { data: aiActions } = useQuery<{
-    actions: Array<{ id: number; tool_name: string; risk: string; state: string; outcome_summary?: string | null; created_at: string }>;
+    actions: Array<{ id: number; tool_name: string; risk: string; state: string; outcome_summary?: string | null; repair_state: string; repair_expires_at?: string | null; repaired_at?: string | null; created_at: string }>;
   }>({
     queryKey: ["/api/account/ai-actions"],
     enabled: !!user?.id,
@@ -810,21 +844,35 @@ export default function ProfilePage() {
     },
     onError: (error: Error) => toast({ title: "Could not process approval", description: error.message, variant: "destructive" }),
   });
+  const repairAiActionMutation = useMutation({
+    mutationFn: (actionId: number) => apiRequest(`/api/ai-actions/${actionId}/repair`, { method: "POST" }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/account/ai-actions"] }); queryClient.invalidateQueries({ queryKey: ["/api/quests"] }); toast({ title: "Assistant action repaired", description: "LyfeOS restored the recorded prior state." }); },
+    onError: (error: Error) => toast({ title: "Repair unavailable", description: error.message, variant: "destructive" }),
+  });
 
   const clearAiMemoryMutation = useMutation({
-    mutationFn: (scope: "chat-history" | "assistant-profile") => apiRequest("/api/account/ai-memory", {
+    mutationFn: (scope: "chat-history" | "assistant-profile" | "context-sources" | "action-history" | "all-ai-memory") => apiRequest("/api/account/ai-memory", {
       method: "DELETE",
       body: JSON.stringify({ scope }),
     }),
     onSuccess: (_, scope) => {
       queryClient.invalidateQueries({ queryKey: ["/api/account/ai-memory"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai/context-receipts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/account/ai-actions"] });
       if (scope === "chat-history") {
         queryClient.removeQueries({ queryKey: ["/api/conversations"] });
         queryClient.removeQueries({ queryKey: ["/api/messages"] });
       } else {
         queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       }
-      toast({ title: "AI memory cleared", description: scope === "chat-history" ? "Previous conversations have been permanently erased." : "The generated assistant profile and affirmation have been cleared." });
+      const descriptions: Record<string, string> = {
+        "chat-history": "Previous AI conversations have been permanently erased.",
+        "assistant-profile": "The generated assistant profile and affirmation have been cleared.",
+        "context-sources": "Context-source receipts have been permanently erased.",
+        "action-history": "Completed assistant-action receipts and repair payloads have been erased.",
+        "all-ai-memory": "All erasable AI memory categories have been cleared.",
+      };
+      toast({ title: "AI memory cleared", description: descriptions[scope] });
     },
     onError: (error: Error) => toast({ title: "Could not clear AI memory", description: error.message, variant: "destructive" }),
   });
@@ -1946,7 +1994,10 @@ export default function ProfilePage() {
                         <p className="truncate text-foreground">{action.tool_name.replaceAll("_", " ")}</p>
                         {action.outcome_summary && <p className="mt-0.5 truncate text-muted-foreground">{action.outcome_summary}</p>}
                       </div>
-                      <span className={`shrink-0 font-mono uppercase ${action.state === "succeeded" ? "text-primary" : action.state === "failed" ? "text-red-300" : action.state === "rejected" ? "text-amber-300" : "text-muted-foreground"}`}>{action.state} · {action.risk}</span>
+                      <div className="flex shrink-0 flex-col items-end gap-1">
+                        <span className={`font-mono uppercase ${action.state === "succeeded" ? "text-primary" : action.state === "failed" ? "text-red-300" : action.state === "rejected" ? "text-amber-300" : "text-muted-foreground"}`}>{action.state} · {action.risk}</span>
+                        {action.repair_state === "available" && <Button size="sm" variant="outline" className="h-6 border-primary/30 px-2 text-[10px] text-primary" onClick={() => repairAiActionMutation.mutate(action.id)} disabled={repairAiActionMutation.isPending}>Undo safely</Button>}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1959,11 +2010,21 @@ export default function ProfilePage() {
                 <Label className="text-sm text-foreground">AI Memory</Label>
               </div>
               <p className="text-xs text-muted-foreground mb-3">
-                Your named AI uses your profile and conversations only inside LyfeOS. You control both memory layers.
+                Your named AI uses only the context you authorize. Native Messages and external sending are always excluded.
               </p>
+              <div className="mb-3 flex gap-2">
+                <Input value={personaName} onChange={(event) => setPersonaName(event.target.value)} maxLength={32} aria-label="AI persona name" className="h-8 bg-background/50 text-xs" />
+                <Button size="sm" variant="outline" className="h-8 border-primary/30 text-primary" onClick={() => savePersonaMutation.mutate(undefined)} disabled={!personaName.trim() || savePersonaMutation.isPending}>Save name</Button>
+              </div>
+              <div className="mb-3 flex items-center justify-between gap-3 rounded-md bg-card/40 px-3 py-2">
+                <div><p className="text-xs text-foreground">Portable persona via UMH</p><p className="text-[11px] text-muted-foreground">Shares only the AI name and interaction style—not chats, health data, or native Messages.</p></div>
+                <button type="button" onClick={() => { const enabled = !aiPersona?.persona.ecosystemSharingEnabled; savePersonaMutation.mutate({ ecosystemSharingEnabled: enabled, allowedDestinations: enabled ? ["umh"] : [] }); }} className={`h-5 w-10 shrink-0 rounded-full relative transition-colors ${aiPersona?.persona.ecosystemSharingEnabled ? "bg-primary/30" : "bg-card"}`} aria-pressed={aiPersona?.persona.ecosystemSharingEnabled || false} aria-label="Share portable AI persona through UMH" role="switch"><span className={`absolute top-0.5 h-4 w-4 rounded-full transition-all ${aiPersona?.persona.ecosystemSharingEnabled ? "left-5 bg-primary" : "left-0.5 bg-muted-foreground"}`} /></button>
+              </div>
               <div className="space-y-2 text-xs text-muted-foreground">
                 <p>{aiMemory?.conversationCount || 0} saved conversations and {aiMemory?.legacyMessageCount || 0} legacy messages.</p>
                 <p>{aiMemory?.affirmationStored || aiMemory?.profileContextStored ? "A generated assistant profile is stored." : "No generated assistant profile is stored."}</p>
+                <p>{aiMemory?.contextReceiptCount || 0} context-source receipts and {aiMemory?.actionReceiptCount || 0} action receipts.</p>
+                <p className="text-[11px]">Cross-product memory: off by default · Native Messages: excluded · External sending: disabled</p>
               </div>
               <div className="mt-3 space-y-2 border-t border-primary/10 pt-3">
                 <p className="text-xs text-muted-foreground">Choose what can be included in future AI prompts. Turning a setting off does not delete your data.</p>
@@ -1982,6 +2043,30 @@ export default function ProfilePage() {
                   );
                 })}
               </div>
+              {aiMemoryPolicy?.policy && <div className="mt-3 grid gap-2 border-t border-primary/10 pt-3 sm:grid-cols-3">
+                <label className="text-[11px] text-muted-foreground">Chats
+                  <select className="mt-1 w-full rounded-md border border-primary/20 bg-background px-2 py-1.5 text-xs text-foreground" value={aiMemoryPolicy.policy.chatHistoryDays ?? "until_deleted"} onChange={(event) => updateMemoryPolicyMutation.mutate({ chatHistoryDays: event.target.value === "until_deleted" ? null : Number(event.target.value) })}>
+                    <option value="until_deleted">Until deleted</option><option value="30">30 days</option><option value="90">90 days</option><option value="365">1 year</option>
+                  </select>
+                </label>
+                <label className="text-[11px] text-muted-foreground">Context receipts
+                  <select className="mt-1 w-full rounded-md border border-primary/20 bg-background px-2 py-1.5 text-xs text-foreground" value={aiMemoryPolicy.policy.contextReceiptDays} onChange={(event) => updateMemoryPolicyMutation.mutate({ contextReceiptDays: Number(event.target.value) })}>
+                    <option value="30">30 days</option><option value="90">90 days</option><option value="365">1 year</option>
+                  </select>
+                </label>
+                <label className="text-[11px] text-muted-foreground">Action receipts
+                  <select className="mt-1 w-full rounded-md border border-primary/20 bg-background px-2 py-1.5 text-xs text-foreground" value={aiMemoryPolicy.policy.actionReceiptDays} onChange={(event) => updateMemoryPolicyMutation.mutate({ actionReceiptDays: Number(event.target.value) })}>
+                    <option value="90">90 days</option><option value="365">1 year</option><option value="1095">3 years</option>
+                  </select>
+                </label>
+              </div>}
+              {(aiContextReceipts?.receipts || []).length > 0 && <div className="mt-3 border-t border-primary/10 pt-3 text-xs">
+                <p className="mb-2 text-foreground">Recent context sources</p>
+                {aiContextReceipts!.receipts.slice(0, 3).map((receipt) => <div key={receipt.id} className="mb-2 rounded-md bg-card/40 px-3 py-2 text-[11px] text-muted-foreground">
+                  {(receipt.sources || []).map((source) => `${source.label} (${source.recordCount})`).join(" · ")}
+                  <p className="mt-1 opacity-80">{receipt.disclosure}</p>
+                </div>)}
+              </div>}
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => clearAiMemoryMutation.mutate("chat-history")} disabled={clearAiMemoryMutation.isPending}>
                   Clear chat history
@@ -1989,6 +2074,8 @@ export default function ProfilePage() {
                 <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => clearAiMemoryMutation.mutate("assistant-profile")} disabled={clearAiMemoryMutation.isPending}>
                   Reset AI profile
                 </Button>
+                <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => clearAiMemoryMutation.mutate("context-sources")} disabled={clearAiMemoryMutation.isPending}>Clear context receipts</Button>
+                <Button size="sm" variant="outline" className="border-primary/30 text-primary hover:bg-primary/10" onClick={() => clearAiMemoryMutation.mutate("action-history")} disabled={clearAiMemoryMutation.isPending}>Clear action receipts</Button>
               </div>
             </div>
 

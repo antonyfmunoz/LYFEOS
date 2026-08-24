@@ -22,7 +22,7 @@ const accountExportTables = [
   "calendar_events", "mission_pages", "contacts", "personal_relationships", "relationship_interactions", "relationship_commitments", "spreadsheets", "canvases", "graphs", "workspace_databases", "workspace_database_rows", "workspace_forms", "workflow_automations", "workflow_automation_runs", "folders",
   "documents", "templates", "integrations", "progress_trackers", "kanban_boards", "project_events", "media_albums",
   "media_items", "conversations", "dismissed_knowledge", "vision_goals", "user_categories", "ritual_groups",
-  "widget_states", "user_activity_events", "smart_reminders", "mission_views", "push_subscriptions", "ai_pending_actions", "ai_action_records",
+  "widget_states", "user_activity_events", "smart_reminders", "mission_views", "push_subscriptions", "ai_pending_actions", "ai_action_records", "ai_action_repairs", "ai_context_receipts", "ai_memory_policies", "ai_persona_profiles",
   "transformation_threads", "transformation_thread_evidence", "personal_capabilities", "skill_nodes", "skill_edges", "quest_skill_contributions", "skill_progression_events", "activity_progression_events", "progression_badge_awards", "progression_badge_events", "mission_contracts", "mission_evidence", "mission_reviews", "mission_review_appeals", "mission_deferrals", "mission_dependencies", "cross_product_sharing_preferences", "cross_product_work_links", "health_profiles", "health_targets", "health_target_revisions", "body_measurements", "health_observation_calculation_preferences", "health_observations", "health_metric_definitions", "health_metric_panels", "hydration_entries", "supplement_entries", "supplement_schedules", "supplement_schedule_events", "fasting_windows", "recovery_activities", "recovery_routines", "recovery_tag_policies", "sleep_naps", "sleep_sessions", "nutrition_foods", "nutrition_food_portions", "nutrition_diary_entries", "nutrition_recipes", "nutrition_recipe_revisions", "nutrition_meal_plans", "nutrition_meal_plan_entries", "health_deletion_receipts", "health_data_rights_audit", "health_planning_drafts", "health_planning_draft_events", "health_ai_requests", "health_ai_drafts", "health_practice_reviews", "health_progression_events", "health_badge_events", "ingredient_scans", "ingredient_scan_items", "ingredient_preference_rules", "exercise_definitions", "workout_programs", "workout_program_sessions", "workouts", "workout_revisions", "workout_templates", "workout_template_revisions", "heart_rate_zone_profiles", "workout_heart_rate_samples",
 ] as const;
 
@@ -510,16 +510,28 @@ export function registerProfileRoutes(app: Express): void {
   app.get("/api/account/ai-memory", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = req.session.userId!;
-      const [legacyMessages, chatConversations, profile] = await Promise.all([
+      const [legacyMessages, chatConversations, profile, contextReceipts, actionReceipts, personaRows] = await Promise.all([
         selectAccountRows("ai_messages", userId),
         selectAccountRows("conversations", userId),
         storage.getUserProfile(userId),
+        selectAccountRows("ai_context_receipts", userId),
+        selectAccountRows("ai_action_records", userId),
+        selectAccountRows("ai_persona_profiles", userId),
       ]);
       return res.json({
         legacyMessageCount: legacyMessages.length,
         conversationCount: chatConversations.length,
         affirmationStored: Boolean(profile?.characterAffirmation),
         profileContextStored: Boolean(profile?.aiPersonalityProfile && Object.keys(profile.aiPersonalityProfile as object).length),
+        contextReceiptCount: contextReceipts.length,
+        actionReceiptCount: actionReceipts.length,
+        personaStored: personaRows.length > 0,
+        boundaries: {
+          nativeMessagesIncluded: false,
+          externalSendingEnabled: false,
+          crossProductMemoryDefault: "off",
+          contextReceiptsContainRawValues: false,
+        },
       });
     } catch (error) {
       logger.error("Error reading AI memory controls:", error);
@@ -528,18 +540,28 @@ export function registerProfileRoutes(app: Express): void {
   });
 
   app.delete("/api/account/ai-memory", isAuthenticated, async (req: Request, res: Response) => {
-    const parsed = z.object({ scope: z.enum(["chat-history", "assistant-profile"]) }).safeParse(req.body);
+    const parsed = z.object({ scope: z.enum(["chat-history", "assistant-profile", "context-sources", "action-history", "all-ai-memory"]) }).safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Choose what the assistant should forget." });
     try {
       const userId = req.session.userId!;
-      if (parsed.data.scope === "chat-history") {
+      if (parsed.data.scope === "chat-history" || parsed.data.scope === "all-ai-memory") {
         await db.transaction(async (tx) => {
           await tx.execute(sql`DELETE FROM "messages" WHERE "conversation_id" IN (SELECT "id" FROM "conversations" WHERE "user_id" = ${userId})`);
           await tx.execute(sql`DELETE FROM "conversations" WHERE "user_id" = ${userId}`);
           await tx.execute(sql`DELETE FROM "ai_messages" WHERE "user_id" = ${userId}`);
         });
-      } else {
+      }
+      if (parsed.data.scope === "assistant-profile" || parsed.data.scope === "all-ai-memory") {
         await storage.upsertUserProfile(userId, { characterAffirmation: null, aiPersonalityProfile: {} } as any);
+      }
+      if (parsed.data.scope === "context-sources" || parsed.data.scope === "all-ai-memory") {
+        await db.execute(sql`DELETE FROM "ai_context_receipts" WHERE "user_id" = ${userId}`);
+      }
+      if (parsed.data.scope === "action-history" || parsed.data.scope === "all-ai-memory") {
+        await db.transaction(async (tx) => {
+          await tx.execute(sql`UPDATE "ai_pending_actions" SET "state" = 'rejected', "updated_at" = now() WHERE "user_id" = ${userId} AND "state" = 'pending'`);
+          await tx.execute(sql`DELETE FROM "ai_action_records" WHERE "user_id" = ${userId} AND "state" NOT IN ('executing')`);
+        });
       }
       return res.json({ success: true });
     } catch (error) {
@@ -965,6 +987,10 @@ Generate the complete affirmation now:`;
       if (!parsed.success) return res.status(400).json({ error: parsed.error.errors[0]?.message || "Valid name is required" });
       
       const updatedStats = await storage.updateUserStats(userId, { aiAssistantName: parsed.data.name });
+      await db.execute(sql`
+        INSERT INTO "ai_persona_profiles" ("user_id", "name") VALUES (${userId}, ${parsed.data.name})
+        ON CONFLICT ("user_id") DO UPDATE SET "name" = EXCLUDED."name", "revision" = "ai_persona_profiles"."revision" + 1, "updated_at" = now()
+      `);
       
       return res.status(200).json({ 
         success: true,
@@ -984,8 +1010,12 @@ Generate the complete affirmation now:`;
   // attempted without duplicating private prompt or tool payload content.
   app.get("/api/account/ai-actions", isAuthenticated, async (req: Request, res: Response) => {
     try {
+      await db.transaction(async (tx) => {
+        await tx.execute(sql`UPDATE "ai_action_repairs" SET "state" = 'expired', "updated_at" = now() WHERE "user_id" = ${req.session.userId!} AND "state" = 'available' AND "expires_at" <= now()`);
+        await tx.execute(sql`UPDATE "ai_action_records" SET "repair_state" = 'expired' WHERE "user_id" = ${req.session.userId!} AND "repair_state" = 'available' AND "repair_expires_at" <= now()`);
+      });
       const result = await db.execute(sql`
-        SELECT "id", "tool_name", "risk", "state", "outcome_summary", "created_at"
+        SELECT "id", "tool_name", "risk", "state", "outcome_summary", "repair_state", "repair_expires_at", "repaired_at", "created_at"
         FROM "ai_action_records"
         WHERE "user_id" = ${req.session.userId!}
         ORDER BY "created_at" DESC

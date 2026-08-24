@@ -16,7 +16,8 @@ describe("AI action receipts", () => {
   it("holds medium-risk assistant actions for an explicit user decision", () => {
     const chat = readSource("server/replit_integrations/chat/routes.ts");
     const profile = readSource("client/src/pages/ProfilePage.tsx");
-    expect(chat).toContain('if (toolRisk(toolName) === "medium")');
+    expect(chat).toContain("if (policy.approvalRequired)");
+    expect(chat).toContain("resolveAIActionPolicy(toolName)");
     expect(chat).toContain('state: "pending_approval"');
     expect(chat).toContain('"/api/ai-actions/:actionId/approve"');
     expect(profile).toContain("Awaiting your approval");
