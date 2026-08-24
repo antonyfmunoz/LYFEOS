@@ -1,9 +1,10 @@
 import type { SpreadsheetSheet } from "@shared/spreadsheets";
-import { spreadsheetAddressPattern } from "@shared/spreadsheets";
+import { spreadsheetAddressPattern, spreadsheetSheetSchema } from "@shared/spreadsheets";
 import { columnLabel, parseCellAddress } from "./spreadsheetFormula";
 
 const MAX_RANGE_CELLS = 5_000;
 const MAX_CELL_INPUT_LENGTH = 10_000;
+const MAX_DELIMITED_TEXT_LENGTH = 2_000_000;
 
 function position(address: string) {
   const parsed = parseCellAddress(address);
@@ -43,7 +44,8 @@ export function serializeSpreadsheetRange(sheet: SpreadsheetSheet, startAddress:
   return lines.join("\r\n");
 }
 
-export function parseSpreadsheetClipboard(text: string): string[][] {
+function parseSpreadsheetDelimited(text: string, delimiter: "\t" | ","): string[][] {
+  if (text.length > MAX_DELIMITED_TEXT_LENGTH) throw new Error("Tabular input can contain at most 2,000,000 characters.");
   const rows: string[][] = [];
   let row: string[] = [];
   let field = "";
@@ -58,7 +60,7 @@ export function parseSpreadsheetClipboard(text: string): string[][] {
       continue;
     }
     if (char === '"' && field.length === 0) quoted = true;
-    else if (char === "\t") { row.push(field); field = ""; }
+    else if (char === delimiter) { row.push(field); field = ""; }
     else if (char === "\r" || char === "\n") {
       if (char === "\r" && text[index + 1] === "\n") index += 1;
       row.push(field); rows.push(row); row = []; field = "";
@@ -73,6 +75,39 @@ export function parseSpreadsheetClipboard(text: string): string[][] {
   if (cellCount > MAX_RANGE_CELLS) throw new Error("A copied or pasted range can contain at most 5,000 cells.");
   if (rows.some((candidate) => candidate.some((value) => value.length > MAX_CELL_INPUT_LENGTH))) throw new Error("A pasted cell can contain at most 10,000 characters.");
   return rows.map((candidate) => [...candidate, ...Array.from({ length: columnCount - candidate.length }, () => "")]);
+}
+
+export function parseSpreadsheetClipboard(text: string): string[][] {
+  return parseSpreadsheetDelimited(text, "\t");
+}
+
+export function parseSpreadsheetCsv(text: string): string[][] {
+  return parseSpreadsheetDelimited(text, ",");
+}
+
+export function createSpreadsheetSheetFromDelimited(id: string, name: string, text: string, format: "csv" | "tsv") {
+  const values = format === "csv" ? parseSpreadsheetCsv(text) : parseSpreadsheetClipboard(text);
+  const sourceRows = values.length;
+  const sourceColumns = values[0].length;
+  if (sourceRows > 500 || sourceColumns > 100) throw new Error("Imported data exceeds the 500-row or 100-column sheet boundary.");
+  const cells: SpreadsheetSheet["cells"] = {};
+  let formulaCount = 0;
+  for (let row = 0; row < sourceRows; row += 1) {
+    for (let column = 0; column < sourceColumns; column += 1) {
+      const input = values[row][column];
+      if (!input) continue;
+      if (input.startsWith("=")) formulaCount += 1;
+      cells[`${columnLabel(column)}${row + 1}`] = { input };
+    }
+  }
+  const sheet = spreadsheetSheetSchema.parse({
+    id,
+    name,
+    rowCount: Math.max(40, sourceRows),
+    columnCount: Math.max(10, sourceColumns),
+    cells,
+  });
+  return { sheet, sourceRows, sourceColumns, populatedCellCount: Object.keys(cells).length, formulaCount };
 }
 
 export function pasteSpreadsheetRange(sheet: SpreadsheetSheet, startAddress: string, clipboardText: string) {

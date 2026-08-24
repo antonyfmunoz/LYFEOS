@@ -64,6 +64,19 @@ export function nextSpreadsheetSheetName(document: SpreadsheetDocument): string 
   throw new Error("No additional sheet name is available.");
 }
 
+export function uniqueSpreadsheetSheetName(document: SpreadsheetDocument, requestedName: string): string {
+  const requested = requestedName.trim() || "Imported";
+  const existing = new Set(document.sheets.map((sheet) => sheet.name.trim().toLocaleLowerCase()));
+  const base = requested.slice(0, 80);
+  if (!existing.has(base.toLocaleLowerCase())) return base;
+  for (let index = 2; index <= 20; index += 1) {
+    const suffix = ` (${index})`;
+    const candidate = `${base.slice(0, 80 - suffix.length)}${suffix}`;
+    if (!existing.has(candidate.toLocaleLowerCase())) return candidate;
+  }
+  throw new Error("No unique imported sheet name is available.");
+}
+
 export function renameSpreadsheetSheet(document: SpreadsheetDocument, sheetId: string, requestedName: string): SpreadsheetDocument {
   const name = requestedName.trim();
   if (!name || name.length > 80) throw new Error("Sheet names must contain 1 to 80 characters.");

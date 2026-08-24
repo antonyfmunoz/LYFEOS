@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createEmptySpreadsheetDocument, nextSpreadsheetSheetName, removeSpreadsheetSheet, renameSpreadsheetSheet, spreadsheetDocumentSchema } from "../shared/spreadsheets";
+import { createEmptySpreadsheetDocument, nextSpreadsheetSheetName, removeSpreadsheetSheet, renameSpreadsheetSheet, spreadsheetDocumentSchema, uniqueSpreadsheetSheetName } from "../shared/spreadsheets";
 import { columnLabel, evaluateSpreadsheetCell, insertSpreadsheetAxis, parseCellAddress } from "../client/src/lib/spreadsheetFormula";
-import { parseSpreadsheetClipboard, pasteSpreadsheetRange, serializeSpreadsheetRange, spreadsheetRangeBounds } from "../client/src/lib/spreadsheetRange";
+import { createSpreadsheetSheetFromDelimited, parseSpreadsheetClipboard, parseSpreadsheetCsv, pasteSpreadsheetRange, serializeSpreadsheetRange, spreadsheetRangeBounds } from "../client/src/lib/spreadsheetRange";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 
@@ -143,6 +143,27 @@ describe("Sheets instrument", () => {
     expect(() => pasteSpreadsheetRange(sheet, "J40", "one\ttwo")).toThrow("extend beyond this sheet");
   });
 
+  it("parses quoted CSV locally and builds a bounded new sheet without converting raw formulas", () => {
+    const csv = 'name,note,total\r\n"Oats, cooked","line one\nline two",=SUM(C3:C4)\r\n"quote ""kept""",plain,3\r\n';
+    expect(parseSpreadsheetCsv(csv)).toEqual([
+      ["name", "note", "total"],
+      ["Oats, cooked", "line one\nline two", "=SUM(C3:C4)"],
+      ['quote "kept"', "plain", "3"],
+    ]);
+    const imported = createSpreadsheetSheetFromDelimited("sheet_import", "Meals", csv, "csv");
+    expect(imported).toMatchObject({ sourceRows: 3, sourceColumns: 3, populatedCellCount: 9, formulaCount: 1 });
+    expect(imported.sheet).toMatchObject({ name: "Meals", rowCount: 40, columnCount: 10, cells: { A2: { input: "Oats, cooked" }, C2: { input: "=SUM(C3:C4)" } } });
+  });
+
+  it("reconciles imported tab names and rejects excessive imported dimensions or file text", () => {
+    const document = createEmptySpreadsheetDocument();
+    expect(uniqueSpreadsheetSheetName(document, "Sheet 1")).toBe("Sheet 1 (2)");
+    document.sheets.push({ ...document.sheets[0], id: "sheet_second", name: "Sheet 1 (2)", cells: {} });
+    expect(uniqueSpreadsheetSheetName(document, "Sheet 1")).toBe("Sheet 1 (3)");
+    expect(() => createSpreadsheetSheetFromDelimited("sheet_import", "Too wide", Array.from({ length: 101 }, () => "x").join(","), "csv")).toThrow("100-column");
+    expect(() => parseSpreadsheetCsv("x".repeat(2_000_001))).toThrow("2,000,000 characters");
+  });
+
   it("validates create and update payloads without accepting a caller-supplied owner", () => {
     const routes = source("server/routes/content.ts");
     expect(routes).toContain("createSpreadsheetRequestSchema.parse(req.body)");
@@ -184,5 +205,15 @@ describe("Sheets instrument", () => {
     expect(editor).toContain("on touch devices");
     expect(editor).toContain("Clipboard writing is unavailable");
     expect(editor).toContain("Review before saving");
+  });
+
+  it("keeps CSV and TSV import local, additive, and explicitly reviewed", () => {
+    const editor = source("client/src/pages/SpreadsheetEditorPage.tsx");
+    expect(editor).toContain('accept=".csv,.tsv,text/csv,text/tab-separated-values"');
+    expect(editor).toContain("createSpreadsheetSheetFromDelimited");
+    expect(editor).toContain("The file stays on this device");
+    expect(editor).toContain("nothing changes until you add the tab, review it, and save");
+    expect(editor).toContain("Add as new tab");
+    expect(editor).not.toContain("FormData");
   });
 });

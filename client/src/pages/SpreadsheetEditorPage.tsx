@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ClipboardCopy, ClipboardPaste, Download, Plus, Save, Trash2 } from "lucide-react";
-import type { SpreadsheetDocument } from "@shared/spreadsheets";
-import { createEmptySpreadsheetDocument, nextSpreadsheetSheetName, normalizeSpreadsheetDocument, removeSpreadsheetSheet, renameSpreadsheetSheet } from "@shared/spreadsheets";
+import { ClipboardCopy, ClipboardPaste, Download, Plus, Save, Trash2, Upload } from "lucide-react";
+import type { SpreadsheetDocument, SpreadsheetSheet } from "@shared/spreadsheets";
+import { createEmptySpreadsheetDocument, nextSpreadsheetSheetName, normalizeSpreadsheetDocument, removeSpreadsheetSheet, renameSpreadsheetSheet, uniqueSpreadsheetSheetName } from "@shared/spreadsheets";
 import { columnLabel, evaluateSpreadsheetCell, insertSpreadsheetAxis, parseCellAddress } from "@/lib/spreadsheetFormula";
-import { pasteSpreadsheetRange, serializeSpreadsheetRange, spreadsheetRangeBounds } from "@/lib/spreadsheetRange";
+import { createSpreadsheetSheetFromDelimited, pasteSpreadsheetRange, serializeSpreadsheetRange, spreadsheetRangeBounds } from "@/lib/spreadsheetRange";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +37,9 @@ export default function SpreadsheetEditorPage() {
   const [rangeEnd, setRangeEnd] = useState("A1");
   const [extendSelection, setExtendSelection] = useState(false);
   const [sheetNameDraft, setSheetNameDraft] = useState("Sheet 1");
+  const [pendingImport, setPendingImport] = useState<{ sheet: SpreadsheetSheet; sourceRows: number; sourceColumns: number; populatedCellCount: number; formulaCount: number; fileName: string } | null>(null);
   const [dirty, setDirty] = useState(isNew);
+  const importInput = useRef<HTMLInputElement>(null);
   usePageTitle(title || "Sheet");
   const query = useQuery<{ spreadsheet: SpreadsheetRecord }>({
     queryKey: ["/api/spreadsheets", id],
@@ -138,6 +140,35 @@ export default function SpreadsheetEditorPage() {
       toast({ title: "Could not paste range", description: error instanceof Error ? error.message : "Clipboard reading failed.", variant: "destructive" });
     }
   };
+  const readImportFile = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      if (document.sheets.length >= 20) throw new Error("Remove a sheet tab before importing another one.");
+      const format = file.name.toLocaleLowerCase().endsWith(".csv") ? "csv" : file.name.toLocaleLowerCase().endsWith(".tsv") ? "tsv" : null;
+      if (!format) throw new Error("Choose a .csv or .tsv file.");
+      if (file.size > 2_000_000) throw new Error("Import files can be at most 2 MB.");
+      const id = `sheet_${Math.random().toString(36).slice(2, 12)}`;
+      const requestedName = file.name.replace(/\.(csv|tsv)$/i, "");
+      setPendingImport({ ...createSpreadsheetSheetFromDelimited(id, uniqueSpreadsheetSheetName(document, requestedName), await file.text(), format), fileName: file.name });
+    } catch (error) {
+      setPendingImport(null);
+      toast({ title: "Could not review import", description: error instanceof Error ? error.message : "The file could not be read.", variant: "destructive" });
+    } finally {
+      if (importInput.current) importInput.current.value = "";
+    }
+  };
+  const confirmImport = () => {
+    if (!pendingImport) return;
+    try {
+      if (document.sheets.length >= 20) throw new Error("Remove a sheet tab before adding this import.");
+      const sheet = { ...pendingImport.sheet, name: uniqueSpreadsheetSheetName(document, pendingImport.sheet.name) };
+      updateDocument({ ...document, activeSheetId: sheet.id, sheets: [...document.sheets, sheet] });
+      setSelectedAddress("A1"); setRangeAnchor("A1"); setRangeEnd("A1"); setExtendSelection(false); setPendingImport(null);
+      toast({ title: "Import added as a new tab", description: "Review the imported cells, then save the spreadsheet when they are correct." });
+    } catch (error) {
+      toast({ title: "Could not add import", description: error instanceof Error ? error.message : "The import could not be added.", variant: "destructive" });
+    }
+  };
   const selectedResult = useMemo(() => evaluateSpreadsheetCell(document, activeSheet.id, selectedAddress), [activeSheet.id, document, selectedAddress]);
 
   const exportCsv = () => {
@@ -166,12 +197,17 @@ export default function SpreadsheetEditorPage() {
         <Input aria-label="Sheet title" value={title} maxLength={160} onChange={(event) => { setTitle(event.target.value); setDirty(true); }} className="max-w-md font-medium" />
         {dirty && <span className="text-xs text-amber-400">unsaved</span>}
       </div>
-      <div className="flex gap-2"><Button variant="outline" onClick={exportCsv}><Download className="mr-1 h-4 w-4" />CSV</Button><Button disabled={!dirty || !title.trim() || save.isPending} onClick={() => save.mutate()}><Save className="mr-1 h-4 w-4" />{save.isPending ? "Saving…" : "Save"}</Button></div>
+      <div className="flex flex-wrap gap-2"><input ref={importInput} className="sr-only" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values" aria-label="Choose a CSV or TSV file" onChange={(event) => void readImportFile(event.target.files?.[0])} /><Button variant="outline" disabled={document.sheets.length >= 20} onClick={() => importInput.current?.click()}><Upload className="mr-1 h-4 w-4" />Import</Button><Button variant="outline" onClick={exportCsv}><Download className="mr-1 h-4 w-4" />CSV</Button><Button disabled={!dirty || !title.trim() || save.isPending} onClick={() => save.mutate()}><Save className="mr-1 h-4 w-4" />{save.isPending ? "Saving…" : "Save"}</Button></div>
     </div>
     <div className="grid gap-2 md:grid-cols-[180px_1fr]">
       <Input aria-label="Sheet category" value={category} maxLength={80} onChange={(event) => { setCategory(event.target.value); setDirty(true); }} placeholder="Category" />
       <Textarea aria-label="Sheet description" value={description} maxLength={800} onChange={(event) => { setDescription(event.target.value); setDirty(true); }} placeholder="What is this sheet for?" className="min-h-9 resize-y py-2" />
     </div>
+    {pendingImport && <section className="rounded-lg border border-primary/20 bg-primary/5 p-3" aria-labelledby="sheet-import-review-heading">
+      <h2 id="sheet-import-review-heading" className="text-sm font-medium">Review local import: {pendingImport.fileName}</h2>
+      <p className="mt-1 text-xs text-muted-foreground">New tab “{pendingImport.sheet.name}” · {pendingImport.sourceRows} rows × {pendingImport.sourceColumns} columns · {pendingImport.populatedCellCount} populated cells · {pendingImport.formulaCount} formula inputs. The file stays on this device and nothing changes until you add the tab, review it, and save.</p>
+      <div className="mt-2 flex gap-2"><Button type="button" size="sm" onClick={confirmImport}>Add as new tab</Button><Button type="button" size="sm" variant="ghost" onClick={() => setPendingImport(null)}>Cancel</Button></div>
+    </section>}
     <div className="rounded-xl border border-primary/15 bg-card/30 overflow-hidden">
       <div className="flex flex-wrap items-center gap-2 border-b border-primary/15 p-2">
         <span className="w-12 rounded border border-primary/15 bg-background/40 px-2 py-1 text-center font-mono text-xs">{selectedAddress}</span>
