@@ -31,6 +31,41 @@ export function getProgressionRank(level: number): ProgressionRank {
   return PROGRESSION_RANKS[0];
 }
 
+export function getNextProgressionRank(level: number): ProgressionRank | null {
+  return PROGRESSION_RANKS.find((rank) => rank.minLevel > level) || null;
+}
+
+export type ActivityLevelProgress = {
+  totalExperience: number;
+  level: number;
+  currentLevelExperience: number;
+  nextLevelExperience: number;
+  percent: number;
+};
+
+/** One authoritative level curve for server calculations and every client surface. */
+export function activityLevelProgress(totalExperience: number): ActivityLevelProgress {
+  const boundedTotal = Math.max(0, Math.floor(totalExperience || 0));
+  let level = 1;
+  let nextLevelExperience = 1000;
+  let currentLevelExperience = boundedTotal;
+  while (currentLevelExperience >= nextLevelExperience && level < 100) {
+    currentLevelExperience -= nextLevelExperience;
+    level += 1;
+    if (level <= 10) nextLevelExperience = Math.floor(nextLevelExperience * 1.0372);
+    else if (level <= 50) nextLevelExperience = Math.floor(nextLevelExperience * 1.0572);
+    else nextLevelExperience = Math.floor(nextLevelExperience * 1.0872);
+  }
+  if (level >= 100) currentLevelExperience = Math.min(currentLevelExperience, nextLevelExperience);
+  return {
+    totalExperience: boundedTotal,
+    level,
+    currentLevelExperience,
+    nextLevelExperience,
+    percent: nextLevelExperience > 0 ? Math.min(100, Math.floor((currentLevelExperience / nextLevelExperience) * 100)) : 100,
+  };
+}
+
 export function missionExperience(reward: number, difficulty?: string | null): number {
   const multipliers: Record<string, number> = { D: 1, C: 1.5, B: 2, A: 3, S: 5 };
   return Math.floor(Math.max(0, reward || 0) * (multipliers[difficulty || "D"] || 1));

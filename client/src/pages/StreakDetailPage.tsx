@@ -16,14 +16,14 @@ import {
 } from "recharts";
 
 const MILESTONES = [
-  { days: 3, title: "Spark Ignited", icon: Zap, reward: "+10 XP" },
-  { days: 7, title: "Weekly Warrior", icon: Shield, reward: "+25 XP" },
-  { days: 14, title: "Fortnightly Focus", icon: Target, reward: "+50 XP" },
-  { days: 30, title: "Monthly Master", icon: Award, reward: "+100 XP" },
-  { days: 60, title: "Dual Moon Champion", icon: Star, reward: "+250 XP" },
-  { days: 100, title: "Century Club", icon: Crown, reward: "+500 XP" },
-  { days: 200, title: "Legendary Grinder", icon: Trophy, reward: "+1000 XP" },
-  { days: 365, title: "Annual Achiever", icon: Flame, reward: "+2000 XP" },
+  { days: 3, title: "Spark Ignited", icon: Zap },
+  { days: 7, title: "Weekly Warrior", icon: Shield },
+  { days: 14, title: "Fortnightly Focus", icon: Target },
+  { days: 30, title: "Monthly Master", icon: Award },
+  { days: 60, title: "Dual Moon Champion", icon: Star },
+  { days: 100, title: "Century Club", icon: Crown },
+  { days: 200, title: "Legendary Grinder", icon: Trophy },
+  { days: 365, title: "Annual Achiever", icon: Flame },
 ];
 
 const MONTH_LABELS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -65,21 +65,22 @@ export default function StreakDetailPage() {
     enabled: !!user,
     refetchOnMount: 'always',
   });
+  const practiceStreak = streakData?.currentStreak ?? stats.streakDays;
 
   const nextMilestone = useMemo(() => {
-    return MILESTONES.find(m => stats.streakDays < m.days) || MILESTONES[MILESTONES.length - 1];
-  }, [stats.streakDays]);
+    return MILESTONES.find(m => practiceStreak < m.days) || MILESTONES[MILESTONES.length - 1];
+  }, [practiceStreak]);
 
   const prevMilestone = useMemo(() => {
-    const idx = MILESTONES.findIndex(m => stats.streakDays < m.days);
+    const idx = MILESTONES.findIndex(m => practiceStreak < m.days);
     return idx > 0 ? MILESTONES[idx - 1] : null;
-  }, [stats.streakDays]);
+  }, [practiceStreak]);
 
   const progressPct = useMemo(() => {
     const from = prevMilestone?.days || 0;
     const to = nextMilestone.days;
-    return Math.min(Math.round(((stats.streakDays - from) / (to - from)) * 100), 100);
-  }, [stats.streakDays, nextMilestone, prevMilestone]);
+    return Math.min(Math.round(((practiceStreak - from) / (to - from)) * 100), 100);
+  }, [practiceStreak, nextMilestone, prevMilestone]);
 
   const heatmapWeeks = useMemo(() => {
     if (!streakData?.heatmap) return [];
@@ -126,7 +127,7 @@ export default function StreakDetailPage() {
     return markers;
   }, [streakData?.heatmap]);
 
-  const streakLevel = getStreakEmoji(stats.streakDays);
+  const streakLevel = getStreakEmoji(practiceStreak);
 
   return (
     <div className="mx-auto max-w-5xl py-8 px-4">
@@ -156,11 +157,12 @@ export default function StreakDetailPage() {
             <p className="text-xs font-mono uppercase tracking-widest text-primary mb-2">{streakLevel}</p>
             <div className="flex items-baseline gap-2">
               <span className="text-7xl font-orbitron font-bold text-primary leading-none">
-                {stats.streakDays}
+                {practiceStreak}
               </span>
               <span className="text-2xl text-muted-foreground font-mono">days</span>
             </div>
-            <p className="text-sm text-muted-foreground mt-2">Current login streak</p>
+            <p className="text-sm text-muted-foreground mt-2">Current practice streak</p>
+            <p className="mt-2 max-w-sm text-xs leading-relaxed text-muted-foreground/80">Advances when you complete a real, non-onboarding mission. Opening LyfeOS alone does not count, and no XP is invented for a streak marker.</p>
           </div>
 
           <div className="flex flex-col items-center gap-3 min-w-[200px]">
@@ -325,7 +327,7 @@ export default function StreakDetailPage() {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {MILESTONES.map((milestone) => {
-                const achieved = stats.streakDays >= milestone.days;
+                const achieved = practiceStreak >= milestone.days;
                 const Icon = milestone.icon;
                 const isNext = milestone === nextMilestone && !achieved;
                 return (
@@ -358,7 +360,7 @@ export default function StreakDetailPage() {
                     <span className={`text-xs font-mono px-2 py-0.5 rounded-full ${
                       achieved ? "bg-primary/20 text-primary" : "bg-muted/10 text-muted-foreground"
                     }`}>
-                      {milestone.reward}
+                      Practice marker
                     </span>
                   </div>
                 );

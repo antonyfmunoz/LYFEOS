@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, ReactNod
 import { useQuery } from "@tanstack/react-query";
 import { UserStats, Quest, AIMessage, MissionPage, ChatSession, KanbanTask, KanbanStatus, KanbanBoard, KanbanColumn } from "./types";
 import { toast } from "@/hooks/use-toast";
-import { missionCompleteToast, levelUpToast, streakToast } from "@/lib/gamified-toast";
+import { achievementToast, missionCompleteToast, levelUpToast, streakToast } from "@/lib/gamified-toast";
 import { getRank } from "@/lib/ranks";
 import { useCelebration } from "@/lib/celebrationContext";
 import { useAuth } from "./authContext";
@@ -788,19 +788,7 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
     });
     setQuests(updatedQuests);
     
-    if (completed) {
-      const xpEstimate = Math.floor(currentQuest.experienceReward * ({ D: 1, C: 1.5, B: 2, A: 3, S: 5 }[currentQuest.difficulty || 'D'] || 1));
-      missionCompleteToast(currentQuest.title, xpEstimate);
-      const isOnboarding1to6 = currentQuest.category === "onboarding" && [
-        "Archetype Calibration", "Identity & Direction", "Craft & Mastery",
-        "Capacity & Constraints", "Baselines & States", "History & Roots",
-      ].some(t => currentQuest.title.includes(t));
-      if (!isOnboarding1to6) {
-        triggerCelebration({ type: "mission_complete", title: currentQuest.title, xp: xpEstimate });
-      }
-    }
-    
-    // Persist to database (runs in background after toast)
+    // Persist before celebrating so failed writes never create fictional progress.
     try {
       const response = await fetch(`/api/quests/${id}/toggle`, {
         method: "POST",
@@ -821,6 +809,20 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       }
       
       const data = await response.json();
+
+      if (data.quest.completed) {
+        missionCompleteToast(data.quest.title, data.xpAwarded || 0);
+        const isOnboarding1to6 = data.quest.category === "onboarding" && [
+          "Archetype Calibration", "Identity & Direction", "Craft & Mastery",
+          "Capacity & Constraints", "Baselines & States", "History & Roots",
+        ].some((title) => data.quest.title.includes(title));
+        if (!isOnboarding1to6) {
+          triggerCelebration({ type: "mission_complete", title: data.quest.title, xp: data.xpAwarded || 0 });
+        }
+        for (const badge of data.progression?.newlyAwardedBadges || []) {
+          achievementToast(`Badge earned — ${badge.name}`, badge.description);
+        }
+      }
       
       // Update the quest with the server response
       setQuests((prev) => prev.map((q) => 
@@ -877,6 +879,8 @@ export function LYFEOSProvider({ children }: { children: ReactNode }) {
       if (currentQuest.transformationThreadId) {
         queryClient.invalidateQueries({ queryKey: ["/api/transformation-thread"] });
       }
+      queryClient.invalidateQueries({ queryKey: ["/api/progression"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/streaks"] });
     } catch (error) {
       setQuests(quests);
       console.error("Error toggling quest completion:", error);

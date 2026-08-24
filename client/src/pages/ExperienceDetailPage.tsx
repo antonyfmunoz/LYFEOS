@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/authContext";
 import { useLYFEOS } from "@/lib/context";
 import { usePageTitle } from "@/hooks/use-page-title";
 import AIStatTip from "@/components/stats/AIStatTip";
+import { PlayerProgressPanel } from "@/components/dashboard/PlayerProgressPanel";
 import {
   ArrowLeft, Award, Star, Target, Zap, TrendingUp, Loader2,
   Trophy, BarChart3, Calendar, Swords, FolderOpen
@@ -49,6 +50,11 @@ export default function ExperienceDetailPage() {
     enabled: !!user,
     refetchOnMount: 'always',
   });
+  const { data: progressionData } = useQuery<any>({
+    queryKey: ["/api/progression"],
+    enabled: !!user,
+    refetchOnMount: "always",
+  });
 
   const currentXP = stats.experience.current;
   const maxXP = stats.experience.max;
@@ -79,6 +85,10 @@ export default function ExperienceDetailPage() {
         </h1>
       </div>
       <p className="-mt-4 mb-6 max-w-3xl text-xs leading-relaxed text-muted-foreground">XP and levels reflect recorded LyfeOS activity. Evidence-backed capability progress is tracked separately and neither is external certification or a measure of personal worth.</p>
+
+      <div className="mb-8">
+        <PlayerProgressPanel progression={progressionData?.progression} />
+      </div>
 
       <div className="flex items-center gap-2 mb-6">
         <span className="text-sm text-muted-foreground font-mono">Period:</span>

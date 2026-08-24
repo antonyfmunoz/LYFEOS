@@ -480,6 +480,26 @@ export const skillProgressionEvents = pgTable("skill_progression_events", {
   index("skill_progression_events_quest_idx").on(table.questId),
 ]);
 
+// Activity XP is an append-only, reversible record derived from canonical
+// mission and goal state. It powers game feedback without claiming skill.
+export const activityProgressionEvents = pgTable("activity_progression_events", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  eventKey: text("event_key").notNull().unique(),
+  sourceType: text("source_type").notNull(), // mission | vision_goal
+  sourceId: integer("source_id").notNull(),
+  action: text("action").notNull(), // earned | reversed
+  experienceDelta: integer("experience_delta").notNull(),
+  reason: text("reason").notNull(),
+  evidence: jsonb("evidence").notNull().default({}),
+  reversalOfId: integer("reversal_of_id"),
+  sourceOccurredAt: timestamp("source_occurred_at").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("activity_progression_events_user_created_idx").on(table.userId, table.createdAt),
+  index("activity_progression_events_user_source_idx").on(table.userId, table.sourceType, table.sourceId),
+]);
+
 // Earned markers are deterministic records, never decorative UI state. A
 // badge describes the evidence LyfeOS observed; it does not certify a person's
 // real-world competence beyond that evidence.
@@ -492,6 +512,23 @@ export const progressionBadgeAwards = pgTable("progression_badge_awards", {
 }, (table) => [
   uniqueIndex("progression_badge_awards_user_key_idx").on(table.userId, table.badgeKey),
   index("progression_badge_awards_user_awarded_idx").on(table.userId, table.awardedAt),
+]);
+
+// Badge state is reconstructed from these events. A reversed marker stays in
+// history and can be earned again if qualifying evidence returns.
+export const progressionBadgeEvents = pgTable("progression_badge_events", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  eventKey: text("event_key").notNull().unique(),
+  badgeKey: text("badge_key").notNull(),
+  action: text("action").notNull(), // awarded | reversed
+  evidence: jsonb("evidence").notNull().default({}),
+  reversalOfId: integer("reversal_of_id"),
+  reason: text("reason"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("progression_badge_events_user_created_idx").on(table.userId, table.createdAt),
+  index("progression_badge_events_user_badge_idx").on(table.userId, table.badgeKey, table.createdAt),
 ]);
 
 // Cross-product sharing is opt-in, scoped, and independent from a product's

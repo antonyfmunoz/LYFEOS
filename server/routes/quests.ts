@@ -11,6 +11,7 @@ import { missionExperience } from "@shared/progression";
 import { createMissionLifecycle, deferMissionLifecycle, MissionLifecycleError, toggleMissionLifecycle, updateMissionLifecycle } from "../mission-lifecycle";
 import { convertTodoIdeasToMissions } from "../todo-idea-conversion";
 import { localMidnight } from "../todo-idea-parsing";
+import { refreshProgressionState } from "../progression";
 
 declare module "express-session" {
   interface SessionData {
@@ -441,6 +442,7 @@ export function registerQuestRoutes(app: Express): void {
       }
       
       await storage.deleteQuest(questId);
+      await refreshProgressionState(quest.userId, "mission_archived");
       return res.status(200).json({ success: true });
     } catch (error) {
       logger.error("Error deleting quest:", error);
@@ -475,6 +477,7 @@ export function registerQuestRoutes(app: Express): void {
         return res.status(403).json({ error: "Not authorized" });
       }
       const restored = await storage.restoreQuest(questId);
+      await refreshProgressionState(quest.userId, "mission_restored");
       return res.status(200).json(restored);
     } catch (error) {
       logger.error("Error restoring quest:", error);

@@ -15,6 +15,7 @@ import { queueCoordinationContext } from "../cross-product";
 import { convertTodoIdeasToMissions } from "../todo-idea-conversion";
 import { localMidnight } from "../todo-idea-parsing";
 import { sleepDurationMinutes } from "../health-fitness";
+import { missionExperience } from "@shared/progression";
 
 const accountExportTables = [
   "user_stats", "user_profile", "user_daily_logs", "user_integrations", "quests", "ai_messages",
@@ -22,7 +23,7 @@ const accountExportTables = [
   "documents", "templates", "integrations", "progress_trackers", "kanban_boards", "project_events", "media_albums",
   "media_items", "conversations", "dismissed_knowledge", "vision_goals", "user_categories", "ritual_groups",
   "widget_states", "user_activity_events", "smart_reminders", "mission_views", "push_subscriptions", "ai_pending_actions", "ai_action_records",
-  "transformation_threads", "transformation_thread_evidence", "personal_capabilities", "skill_nodes", "skill_edges", "quest_skill_contributions", "skill_progression_events", "progression_badge_awards", "mission_contracts", "mission_evidence", "mission_reviews", "mission_review_appeals", "mission_deferrals", "mission_dependencies", "cross_product_sharing_preferences", "cross_product_work_links", "health_profiles", "health_targets", "health_target_revisions", "body_measurements", "health_observation_calculation_preferences", "health_observations", "health_metric_definitions", "health_metric_panels", "hydration_entries", "supplement_entries", "supplement_schedules", "supplement_schedule_events", "fasting_windows", "recovery_activities", "recovery_routines", "recovery_tag_policies", "sleep_naps", "sleep_sessions", "nutrition_foods", "nutrition_food_portions", "nutrition_diary_entries", "nutrition_recipes", "nutrition_recipe_revisions", "nutrition_meal_plans", "nutrition_meal_plan_entries", "health_deletion_receipts", "health_data_rights_audit", "health_planning_drafts", "health_planning_draft_events", "health_ai_requests", "health_ai_drafts", "health_practice_reviews", "health_progression_events", "health_badge_events", "ingredient_scans", "ingredient_scan_items", "ingredient_preference_rules", "exercise_definitions", "workout_programs", "workout_program_sessions", "workouts", "workout_revisions", "workout_templates", "workout_template_revisions", "heart_rate_zone_profiles", "workout_heart_rate_samples",
+  "transformation_threads", "transformation_thread_evidence", "personal_capabilities", "skill_nodes", "skill_edges", "quest_skill_contributions", "skill_progression_events", "activity_progression_events", "progression_badge_awards", "progression_badge_events", "mission_contracts", "mission_evidence", "mission_reviews", "mission_review_appeals", "mission_deferrals", "mission_dependencies", "cross_product_sharing_preferences", "cross_product_work_links", "health_profiles", "health_targets", "health_target_revisions", "body_measurements", "health_observation_calculation_preferences", "health_observations", "health_metric_definitions", "health_metric_panels", "hydration_entries", "supplement_entries", "supplement_schedules", "supplement_schedule_events", "fasting_windows", "recovery_activities", "recovery_routines", "recovery_tag_policies", "sleep_naps", "sleep_sessions", "nutrition_foods", "nutrition_food_portions", "nutrition_diary_entries", "nutrition_recipes", "nutrition_recipe_revisions", "nutrition_meal_plans", "nutrition_meal_plan_entries", "health_deletion_receipts", "health_data_rights_audit", "health_planning_drafts", "health_planning_draft_events", "health_ai_requests", "health_ai_drafts", "health_practice_reviews", "health_progression_events", "health_badge_events", "ingredient_scans", "ingredient_scan_items", "ingredient_preference_rules", "exercise_definitions", "workout_programs", "workout_program_sessions", "workouts", "workout_revisions", "workout_templates", "workout_template_revisions", "heart_rate_zone_profiles", "workout_heart_rate_samples",
 ] as const;
 
 const identifier = (name: string) => sql.identifier(name);
@@ -173,7 +174,7 @@ async function deleteLocalAccountData(userId: number): Promise<void> {
     }
 
     for (const table of [
-      "workflow_automation_runs", "workflow_automations", "cross_product_work_links", "cross_product_sharing_preferences", "progression_badge_awards", "skill_progression_events", "quest_skill_contributions", "skill_edges", "skill_nodes", "personal_capabilities", "transformation_thread_evidence", "mission_deferrals", "mission_dependencies", "quests", "transformation_threads", "mission_pages", "calendar_events",
+      "workflow_automation_runs", "workflow_automations", "cross_product_work_links", "cross_product_sharing_preferences", "progression_badge_events", "progression_badge_awards", "activity_progression_events", "skill_progression_events", "quest_skill_contributions", "skill_edges", "skill_nodes", "personal_capabilities", "transformation_thread_evidence", "mission_deferrals", "mission_dependencies", "quests", "transformation_threads", "mission_pages", "calendar_events",
       "relationship_commitments", "relationship_interactions", "personal_relationships", "documents", "folders", "media_items", "media_albums", "conversations", "user_stats", "user_profile",
       "user_daily_logs", "user_integrations", "ai_pending_actions", "ai_action_records", "ai_messages", "contacts", "spreadsheets", "canvases", "graphs", "workspace_forms", "workspace_database_rows", "workspace_databases",
       "templates", "integrations", "progress_trackers", "dismissed_knowledge", "vision_goals", "user_categories",
@@ -746,7 +747,7 @@ Generate the complete affirmation now:`;
       // This ensures streak, HP, EP, time tokens, and attention tokens are always current
       await storage.processLoginStreak(userId);
       
-      const [dbStats, userProfile] = await Promise.all([
+      let [dbStats, userProfile] = await Promise.all([
         storage.getUserStats(userId),
         storage.getUserProfile(userId),
       ]);
@@ -756,6 +757,8 @@ Generate the complete affirmation now:`;
       
       // Recalculate XP from completed missions to ensure consistency
       const xpData = await storage.recalculateXP(userId);
+      dbStats = await storage.getUserStats(userId);
+      if (!dbStats) return res.status(404).json({ error: "User stats not found" });
       
       // Transform database stats into the nested object structure expected by the frontend
       const transformedStats = {
@@ -861,25 +864,9 @@ Generate the complete affirmation now:`;
         }
       }
       
-      if (frontendStats.experience) {
-        if (frontendStats.experience.current !== undefined) {
-          dbStatsUpdate.experienceCurrent = frontendStats.experience.current;
-        }
-        if (frontendStats.experience.max !== undefined) {
-          dbStatsUpdate.experienceMax = frontendStats.experience.max;
-        }
-        if (frontendStats.experience.level !== undefined) {
-          dbStatsUpdate.level = frontendStats.experience.level;
-        }
-      }
-      
-      if (frontendStats.streakDays !== undefined) {
-        dbStatsUpdate.streakDays = frontendStats.streakDays;
-      }
-      
-      if (frontendStats.efficiencyScore !== undefined) {
-        dbStatsUpdate.efficiencyScore = frontendStats.efficiencyScore;
-      }
+      // XP, level, rank, streak, badges, capability totals, and efficiency are
+      // server-derived. Older clients may still echo them in this payload, but
+      // they can never write progression state directly.
       
       // Handle system settings
       if (frontendStats.notificationsEnabled !== undefined) {
@@ -1396,7 +1383,7 @@ Generate the complete affirmation now:`;
           const day = formatLocalDate(dt);
           if (day >= cutoffStr) {
             completionsByDay[day] = (completionsByDay[day] || 0) + 1;
-            xpByDay[day] = (xpByDay[day] || 0) + (m.experienceReward || 0);
+            xpByDay[day] = (xpByDay[day] || 0) + missionExperience(m.experienceReward, m.difficulty);
           }
         }
       });
@@ -1422,7 +1409,7 @@ Generate the complete affirmation now:`;
         categoryStats[cat].total++;
         if (m.completed) {
           categoryStats[cat].completed++;
-          categoryStats[cat].totalXp += m.experienceReward || 0;
+          categoryStats[cat].totalXp += missionExperience(m.experienceReward, m.difficulty);
         }
         categoryStats[cat].totalEnergy += m.energyCost || 0;
       });
@@ -1445,7 +1432,7 @@ Generate the complete affirmation now:`;
         if (m.completedAt) {
           const dow = new Date(m.completedAt).getDay();
           weeklyBuckets[dow].missions++;
-          weeklyBuckets[dow].xp += m.experienceReward || 0;
+          weeklyBuckets[dow].xp += missionExperience(m.experienceReward, m.difficulty);
         }
       });
       const weeklyPatterns = weeklyBuckets.map((b, i) => ({ day: dayNames[i], missions: b.missions, xp: b.xp }));
@@ -1516,7 +1503,7 @@ Generate the complete affirmation now:`;
           totalMissions: activeMissions.length,
           completedMissions: completedMissions.length,
           completionRate: activeMissions.length > 0 ? Math.round((completedMissions.length / activeMissions.length) * 100) : 0,
-          totalXpEarned: completedMissions.reduce((sum, m) => sum + (m.experienceReward || 0), 0),
+          totalXpEarned: completedMissions.reduce((sum, m) => sum + missionExperience(m.experienceReward, m.difficulty), 0),
           currentLevel: stats?.level ?? 1,
           currentXp: stats?.experienceCurrent ?? 0,
           currentStreak: stats?.streakDays ?? 0,
@@ -1569,13 +1556,13 @@ Generate the complete affirmation now:`;
           const dt = new Date(m.completedAt);
           const day = formatLocalDate(dt);
           if (day >= cutoffStr) {
-            xpByDay[day] = (xpByDay[day] || 0) + (m.experienceReward || 0);
+            xpByDay[day] = (xpByDay[day] || 0) + missionExperience(m.experienceReward, m.difficulty);
             completionsByDay[day] = (completionsByDay[day] || 0) + 1;
             energyByDay[day] = (energyByDay[day] || 0) + (m.energyCost || 0);
             if (!missionsByDay[day]) missionsByDay[day] = [];
             missionsByDay[day].push({
               title: m.title,
-              xp: m.experienceReward || 0,
+              xp: missionExperience(m.experienceReward, m.difficulty),
               energy: m.energyCost || 0,
               category: m.category || "general",
               difficulty: m.difficulty || "D",
@@ -1603,7 +1590,7 @@ Generate the complete affirmation now:`;
         categoryStats[cat].total++;
         if (m.completed) {
           categoryStats[cat].completed++;
-          categoryStats[cat].totalXp += m.experienceReward || 0;
+          categoryStats[cat].totalXp += missionExperience(m.experienceReward, m.difficulty);
           categoryStats[cat].totalEnergy += m.energyCost || 0;
         }
       });
@@ -1615,7 +1602,7 @@ Generate the complete affirmation now:`;
         difficultyBreakdown[diff].total++;
         if (m.completed) {
           difficultyBreakdown[diff].completed++;
-          difficultyBreakdown[diff].totalXp += m.experienceReward || 0;
+          difficultyBreakdown[diff].totalXp += missionExperience(m.experienceReward, m.difficulty);
         }
       });
 
@@ -1650,11 +1637,11 @@ Generate the complete affirmation now:`;
 
       const topMissions = completedMissions
         .filter(m => m.completedAt)
-        .sort((a, b) => (b.experienceReward || 0) - (a.experienceReward || 0))
+        .sort((a, b) => missionExperience(b.experienceReward, b.difficulty) - missionExperience(a.experienceReward, a.difficulty))
         .slice(0, 10)
         .map(m => ({
           title: m.title,
-          xp: m.experienceReward || 0,
+          xp: missionExperience(m.experienceReward, m.difficulty),
           energy: m.energyCost || 0,
           difficulty: m.difficulty || "D",
           category: m.category || "general",
@@ -1667,13 +1654,13 @@ Generate the complete affirmation now:`;
         if (m.completedAt) {
           const dow = new Date(m.completedAt).getDay();
           weekdayBuckets[dow].missions++;
-          weekdayBuckets[dow].xp += m.experienceReward || 0;
+          weekdayBuckets[dow].xp += missionExperience(m.experienceReward, m.difficulty);
           weekdayBuckets[dow].energy += m.energyCost || 0;
         }
       });
       const weekdayPatterns = weekdayBuckets.map((b, i) => ({ day: dayNames[i], ...b }));
 
-      const totalXpEarned = completedMissions.reduce((s, m) => s + (m.experienceReward || 0), 0);
+      const totalXpEarned = completedMissions.reduce((s, m) => s + missionExperience(m.experienceReward, m.difficulty), 0);
       const totalEnergySpent = completedMissions.reduce((s, m) => s + (m.energyCost || 0), 0);
       const avgXpPerMission = completedMissions.length > 0 ? Math.round(totalXpEarned / completedMissions.length) : 0;
       const avgEnergyPerMission = completedMissions.length > 0 ? Math.round(totalEnergySpent / completedMissions.length) : 0;
@@ -1732,6 +1719,7 @@ Generate the complete affirmation now:`;
   app.get("/api/streaks", isAuthenticated, async (req, res) => {
     try {
       const userId = req.session.userId!;
+      await storage.recalculateXP(userId);
       const stats = await storage.getUserStats(userId);
       const currentStreak = stats?.streakDays ?? 0;
 

@@ -85,6 +85,8 @@ export function registerGoalRoutes(app: Express): void {
       const existingGoal = await storage.getVisionGoalById(id, userId);
       if (!existingGoal) return res.status(404).json({ error: "Vision goal not found" });
       const wasCompleted = existingGoal.completed ?? false;
+      const previousProgression = await storage.getUserProfile(userId);
+      const previousStats = await storage.getUserStats(userId);
 
       const updateData: Partial<InsertVisionGoal> & { completedAt?: Date | null } = {};
       if (req.body.title !== undefined) updateData.title = req.body.title.trim();
@@ -164,7 +166,10 @@ export function registerGoalRoutes(app: Express): void {
 
       const xpData = (isCompleting || isUncompleting) ? await storage.recalculateXP(userId) : undefined;
       const progression = (isCompleting || isUncompleting)
-        ? await refreshProgressionState(userId, `goal:${goal.id}:${isCompleting ? "completed" : "reopened"}`)
+        ? await refreshProgressionState(userId, `goal:${goal.id}:${isCompleting ? "completed" : "reopened"}`, {
+            totalExperience: previousProgression?.totalXP || 0,
+            level: previousStats?.level || 1,
+          })
         : undefined;
 
       const dbStats = await storage.getUserStats(userId);

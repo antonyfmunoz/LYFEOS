@@ -456,7 +456,10 @@ export async function toggleMissionLifecycle(input: { questId: number; userId: n
     }
   }
 
-  const preToggleStats = await storage.getUserStats(quest.userId);
+  const [preToggleStats, preToggleProfile] = await Promise.all([
+    storage.getUserStats(quest.userId),
+    storage.getUserProfile(quest.userId),
+  ]);
   const previousLevel = preToggleStats?.level || 1;
   const { quest: updatedQuest, statsUpdated } = await storage.toggleQuestCompletion(quest.id);
   const xpData = await storage.recalculateXP(quest.userId);
@@ -502,7 +505,11 @@ export async function toggleMissionLifecycle(input: { questId: number; userId: n
 
   let progression;
   try {
-    progression = await refreshProgressionState(quest.userId, `mission:${quest.id}:${updatedQuest.completed ? "completed" : "reopened"}:${input.source}`);
+    progression = await refreshProgressionState(
+      quest.userId,
+      `mission:${quest.id}:${updatedQuest.completed ? "completed" : "reopened"}:${input.source}`,
+      { totalExperience: preToggleProfile?.totalXP || 0, level: previousLevel },
+    );
   } catch (error) {
     logger.error("Could not refresh progression for mission lifecycle:", error);
   }

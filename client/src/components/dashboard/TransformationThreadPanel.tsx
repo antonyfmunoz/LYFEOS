@@ -471,7 +471,7 @@ export function TransformationThreadPanel() {
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
                 <p className="text-xs font-mono uppercase tracking-[0.12em] text-primary">Progress record</p>
-                <p className="mt-1 text-xs text-muted-foreground">Level {progression.level} · <span style={{ color: progression.rank.color }}>{progression.rank.name}</span> · {progression.competenceSignals.practicingSkills} practicing skills</p>
+                <p className="mt-1 text-xs text-muted-foreground">Activity level {progression.level} · <span style={{ color: progression.rank.color }}>{progression.rank.name} activity rank</span> · {progression.competenceSignals.practicingSkills} evidence-backed practice branches</p>
               </div>
               <Award className="h-4 w-4 text-primary" />
             </div>
@@ -479,7 +479,7 @@ export function TransformationThreadPanel() {
               <div className="mt-2 flex flex-wrap gap-2">
                 {progression.badges.map((badge) => <span key={badge.key} title={badge.description} className="rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-[11px] text-primary">{badge.name}</span>)}
               </div>
-            ) : <p className="mt-2 text-[11px] text-muted-foreground">Complete missions and record reviews to earn evidence-backed markers.</p>}
+            ) : <p className="mt-2 text-[11px] text-muted-foreground">Complete real missions and record reviews to earn truthful, reversible markers.</p>}
             <p className="mt-2 text-[10px] text-muted-foreground/80">{progression.competenceSignals.note}</p>
           </div>
         )}

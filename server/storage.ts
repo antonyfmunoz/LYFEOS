@@ -33,6 +33,7 @@ import {
   missionViews, type MissionView, type InsertMissionView
 } from "@shared/schema";
 import { db } from "./db";
+import { reconcileActivityProgression } from "./activity-progression";
 import { eq, and, desc, asc, isNull, isNotNull, gt, lt, sql } from "drizzle-orm";
 import { formatLocalDate, logger } from "./utils";
 
@@ -423,11 +424,13 @@ export class DatabaseStorage implements IStorage {
     const todayStr = formatLocalDate(today);
     
     const lastActiveDate = stats.lastActiveDate;
-    let newStreak = stats.streakDays;
+    // Login continuity only controls the daily resource reset. The visible
+    // streak is derived from completed real-world missions during XP
+    // reconciliation, so opening the app alone never advances it.
+    const newStreak = stats.streakDays;
     let isNewDay = false;
     
     if (!lastActiveDate) {
-      newStreak = 1;
       isNewDay = true;
     } else {
       const lastDate = new Date(lastActiveDate);
@@ -442,9 +445,7 @@ export class DatabaseStorage implements IStorage {
         const yesterdayStr = formatLocalDate(yesterday);
         
         if (lastDateStr === yesterdayStr) {
-          newStreak = stats.streakDays + 1;
-        } else {
-          newStreak = 1;
+          // Consecutive login retained only for deciding whether a reset is due.
         }
         isNewDay = true;
       }
@@ -563,49 +564,21 @@ export class DatabaseStorage implements IStorage {
   async recalculateXP(userId: number): Promise<{ level: number; experienceCurrent: number; experienceMax: number; totalXP: number }> {
     const stats = await this.getUserStats(userId);
     if (!stats) return { level: 1, experienceCurrent: 0, experienceMax: 1000, totalXP: 0 };
-
-    const completedQuests = await db.select().from(quests).where(
-      and(eq(quests.userId, userId), eq(quests.completed, true))
-    );
-
-    const difficultyMultipliers: Record<string, number> = { D: 1, C: 1.5, B: 2, A: 3, S: 5 };
-    let totalXP = 0;
-    for (const q of completedQuests) {
-      const mult = difficultyMultipliers[q.difficulty || 'D'] || 1;
-      totalXP += Math.floor((q.experienceReward || 0) * mult);
-    }
-
-    const completedGoals = await db.select().from(visionGoals).where(
-      and(eq(visionGoals.userId, userId), eq(visionGoals.completed, true))
-    );
-    for (const g of completedGoals) {
-      totalXP += g.bonusXp || 0;
-    }
-
-    let level = 1;
-    let experienceMax = 1000;
-    let remaining = totalXP;
-
-    while (remaining >= experienceMax) {
-      remaining -= experienceMax;
-      level += 1;
-      if (level <= 10) {
-        experienceMax = Math.floor(experienceMax * 1.0372);
-      } else if (level <= 50) {
-        experienceMax = Math.floor(experienceMax * 1.0572);
-      } else {
-        experienceMax = Math.floor(experienceMax * 1.0872);
-      }
-    }
-
     const userProfile = await this.getUserProfile(userId);
+    const activity = await reconcileActivityProgression(userId, userProfile?.timezone || "UTC");
+    const totalXP = activity.totalExperience;
+    const level = activity.level;
+    const remaining = activity.currentLevelExperience;
+    const experienceMax = activity.nextLevelExperience;
     const profileTotalXP = userProfile?.totalXP || 0;
-    const needsUpdate = stats.experienceCurrent !== remaining || stats.level !== level || stats.experienceMax !== experienceMax || profileTotalXP !== totalXP;
+    const needsUpdate = stats.experienceCurrent !== remaining || stats.level !== level || stats.experienceMax !== experienceMax
+      || stats.streakDays !== activity.streak.current || profileTotalXP !== totalXP;
     if (needsUpdate) {
       await this.updateUserStats(userId, {
         experienceCurrent: remaining,
         level,
         experienceMax,
+        streakDays: activity.streak.current,
       });
       await this.updateUserProfile(userId, { totalXP });
     }
@@ -849,8 +822,6 @@ export class DatabaseStorage implements IStorage {
     if (!quest.completed && updatedQuest.completed) {
       const isEvent = quest.category === 'event';
       const userStats = await this.getUserStats(updatedQuest.userId);
-      const userProfileData = await this.getUserProfile(updatedQuest.userId);
-      
       if (userStats) {
         const energyCost = quest.energyCost || 1;
         
@@ -865,30 +836,6 @@ export class DatabaseStorage implements IStorage {
         const newAttentionTokens = isEvent ? userStats.attentionTokensCurrent : Math.max(0, userStats.attentionTokensCurrent - attentionDeduction);
         const newEnergyPoints = isEvent ? userStats.energyPointsCurrent : Math.max(0, userStats.energyPointsCurrent - energyDeduction);
         
-        // Difficulty rank XP multipliers: D=1x, C=1.5x, B=2x, A=3x, S=5x
-        const difficultyMultipliers: Record<string, number> = { D: 1, C: 1.5, B: 2, A: 3, S: 5 };
-        const xpMultiplier = difficultyMultipliers[quest.difficulty || 'D'] || 1;
-        const adjustedXpReward = Math.floor(quest.experienceReward * xpMultiplier);
-        
-        // Add experience reward
-        let newExperience = userStats.experienceCurrent + adjustedXpReward;
-        let newLevel = userStats.level;
-        let newExperienceMax = userStats.experienceMax;
-        
-        // Level up if necessary (tiered multipliers matching recalculateXP)
-        while (newExperience >= newExperienceMax) {
-          newExperience -= newExperienceMax;
-          newLevel += 1;
-          if (newLevel <= 10) {
-            newExperienceMax = Math.floor(newExperienceMax * 1.0372);
-          } else if (newLevel <= 50) {
-            newExperienceMax = Math.floor(newExperienceMax * 1.0572);
-          } else {
-            newExperienceMax = Math.floor(newExperienceMax * 1.0872);
-          }
-          levelUp = true;
-        }
-        
         // Track energy used today for health calculation (skip for events)
         const previousDayEnergyUsed = isEvent ? (userStats.previousDayEnergyUsed || 0) : (userStats.previousDayEnergyUsed || 0) + energyDeduction;
         
@@ -897,17 +844,8 @@ export class DatabaseStorage implements IStorage {
           timeTokensCurrent: newTimeTokens,
           attentionTokensCurrent: newAttentionTokens,
           energyPointsCurrent: newEnergyPoints,
-          experienceCurrent: newExperience,
-          level: newLevel,
-          experienceMax: newExperienceMax,
           previousDayEnergyUsed: previousDayEnergyUsed
         });
-        
-        // Also update totalXP in user profile for consistency (use difficulty-adjusted XP)
-        if (userProfileData) {
-          const newTotalXP = (userProfileData.totalXP || 0) + adjustedXpReward;
-          await this.updateUserProfile(updatedQuest.userId, { totalXP: newTotalXP });
-        }
         
         // Recalculate efficiency after completing a quest
         await this.calculateEfficiency(updatedQuest.userId);
@@ -915,7 +853,7 @@ export class DatabaseStorage implements IStorage {
         statsUpdated = true;
         
         logger.debug(`Quest completed: energyCost=${energyCost}, xp=${quest.experienceReward}, isEvent=${isEvent}`);
-        logger.debug(`Stats updated: time=${newTimeTokens}, attention=${newAttentionTokens}, energy=${newEnergyPoints}, xp=${newExperience}, level=${newLevel}`);
+        logger.debug(`Resource stats updated: time=${newTimeTokens}, attention=${newAttentionTokens}, energy=${newEnergyPoints}`);
       }
       
       if (quest.isRitualized && quest.repeatFrequency) {
@@ -944,8 +882,6 @@ export class DatabaseStorage implements IStorage {
 
       const isEventUndo = quest.category === 'event';
       const userStats = await this.getUserStats(updatedQuest.userId);
-      const userProfileData = await this.getUserProfile(updatedQuest.userId);
-      
       if (userStats) {
         const energyCost = quest.energyCost || 1;
         
@@ -959,12 +895,6 @@ export class DatabaseStorage implements IStorage {
         const newAttentionTokens = isEventUndo ? userStats.attentionTokensCurrent : Math.min(userStats.attentionTokensMax, userStats.attentionTokensCurrent + attentionRefund);
         const newEnergyPoints = isEventUndo ? userStats.energyPointsCurrent : Math.min(userStats.energyPointsMax, userStats.energyPointsCurrent + energyRefund);
         
-        // Deduct XP using difficulty-adjusted reward (but don't go below 0)
-        const difficultyMultipliers: Record<string, number> = { D: 1, C: 1.5, B: 2, A: 3, S: 5 };
-        const xpMultiplier = difficultyMultipliers[quest.difficulty || 'D'] || 1;
-        const adjustedXpRefund = Math.floor(quest.experienceReward * xpMultiplier);
-        const newExperience = Math.max(0, userStats.experienceCurrent - adjustedXpRefund);
-        
         // Reduce today's tracked energy usage when uncompleting (skip for events)
         const previousDayEnergyUsed = isEventUndo ? (userStats.previousDayEnergyUsed || 0) : Math.max(0, (userStats.previousDayEnergyUsed || 0) - energyRefund);
         
@@ -972,15 +902,8 @@ export class DatabaseStorage implements IStorage {
           timeTokensCurrent: newTimeTokens,
           attentionTokensCurrent: newAttentionTokens,
           energyPointsCurrent: newEnergyPoints,
-          experienceCurrent: newExperience,
           previousDayEnergyUsed: previousDayEnergyUsed
         });
-        
-        // Also update totalXP in user profile for consistency (use difficulty-adjusted XP)
-        if (userProfileData) {
-          const newTotalXP = Math.max(0, (userProfileData.totalXP || 0) - adjustedXpRefund);
-          await this.updateUserProfile(updatedQuest.userId, { totalXP: newTotalXP });
-        }
         
         // Recalculate efficiency after uncompleting a quest
         await this.calculateEfficiency(updatedQuest.userId);

@@ -327,7 +327,7 @@ function LevelUpOverlay({
             className="text-xs font-mono tracking-[0.3em] uppercase mb-2 opacity-70"
             style={{ color: accentColor }}
           >
-            Level Achieved
+            Activity Level Achieved
           </div>
           <div
             className="text-7xl sm:text-9xl font-black mb-2 font-mono"
@@ -346,7 +346,7 @@ function LevelUpOverlay({
                 className="text-lg sm:text-xl font-mono font-bold tracking-[0.2em] uppercase"
                 style={{ color: accentColor, textShadow: `0 0 15px ${accentColor}60` }}
               >
-                {rankName}
+                {rankName} Activity Rank
               </span>
             </div>
           )}

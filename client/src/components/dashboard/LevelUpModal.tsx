@@ -27,20 +27,11 @@ export function LevelUpModal({ level, primaryColor = "#00e0ff", isOpen, onClose 
     }
   }, [isOpen, isMajorMilestone, primaryColor]);
   
-  // Determine benefits based on level
-  const getLevelBenefits = () => {
-    if (level < 5) {
-      return ["Core features unlocked", "Basic customization options"];
-    } else if (level < 10) {
-      return ["Advanced task management", "Enhanced data visualization"];
-    } else if (level < 20) {
-      return ["Premium templates access", "Extended storage limits"];
-    } else if (level < 50) {
-      return ["Special achievement badges", "Priority feature releases"];
-    } else {
-      return ["Experimental features access", "Mentorship program eligibility"];
-    }
-  };
+  const levelMeaning = [
+    "Activity rank records missions and goals completed in LyfeOS.",
+    "Capability grows separately through reviewed, evidence-backed practice.",
+    "Certification and entrusted authority are never granted by an activity level.",
+  ];
   
   const nextStep = () => {
     if (step < 1) {
@@ -119,7 +110,7 @@ export function LevelUpModal({ level, primaryColor = "#00e0ff", isOpen, onClose 
                       border: `1px solid ${getRank(level).color}40`,
                     }}
                   >
-                    {getRank(level).icon} {getRank(level).name}
+                    {getRank(level).icon} {getRank(level).name} activity rank
                   </motion.span>
                   <p className="text-muted-foreground text-sm">
                     Congratulations on reaching a new level in your journey.
@@ -153,11 +144,11 @@ export function LevelUpModal({ level, primaryColor = "#00e0ff", isOpen, onClose 
                 className="space-y-4 pt-6"
               >
                 <h3 className="text-center font-orbitron text-lg text-primary">
-                  New Features Unlocked
+                  What This Level Means
                 </h3>
                 
                 <div className="space-y-3">
-                  {getLevelBenefits().map((benefit, index) => (
+                  {levelMeaning.map((benefit, index) => (
                     <motion.div 
                       key={index}
                       initial={{ opacity: 0, x: -10 }}

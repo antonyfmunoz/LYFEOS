@@ -18,7 +18,7 @@ export function levelUpToast(newLevel: number, rankName?: string) {
   playLevelUp();
   toast({
     title: `LEVEL UP — Level ${newLevel}`,
-    description: rankName ? `New Rank: ${rankName}` : "Keep up the great work!",
+    description: rankName ? `Activity rank: ${rankName}` : "Your recorded activity advanced.",
     variant: "default",
     duration: 4000,
   });
