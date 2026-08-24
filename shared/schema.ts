@@ -844,6 +844,7 @@ export const contacts = pgTable("contacts", {
 // context, boundaries, and cadence without exposing it to another projection.
 export const personalRelationships = pgTable("personal_relationships", {
   id: serial("id").primaryKey(),
+  ecosystemId: uuid("ecosystem_id").notNull().defaultRandom().unique(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   contactId: integer("contact_id").notNull().unique().references(() => contacts.id, { onDelete: "cascade" }),
   relationshipKind: text("relationship_kind").notNull().default("personal"),
@@ -867,6 +868,7 @@ export const relationshipInteractions = pgTable("relationship_interactions", {
   occurredAt: timestamp("occurred_at").notNull().defaultNow(),
   kind: text("kind").notNull().default("check_in"),
   summary: text("summary").notNull(),
+  structuredData: jsonb("structured_data").notNull().default({}),
   source: text("source").notNull().default("self_report"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
@@ -2026,6 +2028,55 @@ export const messages = pgTable("messages", {
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const relationshipAssessments = pgTable("relationship_assessments", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  relationshipId: integer("relationship_id").notNull().references(() => personalRelationships.id, { onDelete: "cascade" }),
+  assessmentKind: text("assessment_kind").notNull().default("periodic"),
+  dimensions: jsonb("dimensions").notNull(),
+  reflection: text("reflection"),
+  occurredAt: timestamp("occurred_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("relationship_assessments_relationship_occurred_idx").on(table.relationshipId, table.occurredAt)]);
+
+// Consent is purpose-bound, scoped, expiring, and revocable. AI context and
+// ecosystem sharing never inherit from one another.
+export const relationshipGovernanceConsents = pgTable("relationship_governance_consents", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  relationshipId: integer("relationship_id").notNull().references(() => personalRelationships.id, { onDelete: "cascade" }),
+  purpose: text("purpose").notNull(), // ai_recommendation | ecosystem_share
+  allowedScopes: jsonb("allowed_scopes").notNull().default([]),
+  allowedDestinations: jsonb("allowed_destinations").notNull().default([]),
+  disclosureVersion: text("disclosure_version").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  revokedAt: timestamp("revoked_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [index("relationship_governance_consents_user_relationship_idx").on(table.userId, table.relationshipId, table.purpose)]);
+
+export const relationshipAIRecommendations = pgTable("relationship_ai_recommendations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  relationshipId: integer("relationship_id").notNull().references(() => personalRelationships.id, { onDelete: "cascade" }),
+  consentId: uuid("consent_id").notNull().references(() => relationshipGovernanceConsents.id, { onDelete: "restrict" }),
+  model: text("model").notNull(),
+  sourceManifest: jsonb("source_manifest").notNull().default([]),
+  recommendations: jsonb("recommendations").notNull().default([]),
+  disclosure: text("disclosure").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("relationship_ai_recommendations_relationship_created_idx").on(table.relationshipId, table.createdAt)]);
+
+export const relationshipGovernanceAudit = pgTable("relationship_governance_audit", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  relationshipId: integer("relationship_id").notNull().references(() => personalRelationships.id, { onDelete: "cascade" }),
+  consentId: uuid("consent_id").references(() => relationshipGovernanceConsents.id, { onDelete: "set null" }),
+  action: text("action").notNull(),
+  metadata: jsonb("metadata").notNull().default({}),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [index("relationship_governance_audit_user_created_idx").on(table.userId, table.createdAt)]);
 
 // The assistant persona has a portable, consent-gated identity and a separate
 // LyfeOS presentation. Nothing in this record is sent to another product by

@@ -82,7 +82,12 @@ interface ContactFormData {
 
 type RelationshipRecord = {
   relationship: null | { id: number; contactId: number; relationshipKind: string; state: string; purpose?: string | null; boundaries?: string | null; desiredCadence?: string | null; privateContext?: string | null };
-  interactions: Array<{ id: number; kind: string; summary: string; occurredAt: string }>;
+  interactions: Array<{ id: number; kind: string; summary: string; occurredAt: string; structuredData?: { connection: number; energyImpact: number; boundaryAlignment: number; followUpNeeded: boolean } }>;
+  assessments: Array<{ id: number; assessmentKind: string; dimensions: Record<string, number>; reflection?: string | null; occurredAt: string }>;
+  consents: Array<{ id: string; purpose: 'ai_recommendation' | 'ecosystem_share'; allowedScopes: string[]; allowedDestinations: string[]; expiresAt: string; revokedAt?: string | null }>;
+  recommendations: Array<{ id: string; recommendations: Array<{ text: string; citations: string[] }>; sourceManifest: Array<{ key: string; label: string; recordCount: number }>; disclosure: string; createdAt: string }>;
+  governanceAudit: Array<{ id: number; action: string; createdAt: string }>;
+  disclosure?: string;
   commitments: Array<{
     id: number;
     title: string;
@@ -157,6 +162,9 @@ export default function RolodexPage() {
   const [relationshipBoundaries, setRelationshipBoundaries] = useState('');
   const [relationshipPrivateContext, setRelationshipPrivateContext] = useState('');
   const [relationshipCadence, setRelationshipCadence] = useState('');
+  const [checkInData, setCheckInData] = useState({ connection: 3, energyImpact: 0, boundaryAlignment: 3, followUpNeeded: false });
+  const [assessmentData, setAssessmentData] = useState({ connection: 3, trust: 3, reciprocity: 3, communication: 3, boundaryAlignment: 3, repairConfidence: 3 });
+  const [assessmentReflection, setAssessmentReflection] = useState('');
 
   const { isLoading } = useQuery<{ contacts: Contact[] }>({
     queryKey: ['/api/users', user?.id, 'contacts'],
@@ -242,12 +250,48 @@ export default function RolodexPage() {
     mutationFn: async (contactId: number) => {
       const res = await fetch(`/api/contacts/${contactId}/relationship/interactions`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ kind: 'check_in', summary: relationshipInteractionSummary }),
+        body: JSON.stringify({ kind: 'check_in', summary: relationshipInteractionSummary, structuredData: checkInData }),
       });
       if (!res.ok) throw new Error('Failed to record interaction');
       return res.json();
     },
     onSuccess: () => { setRelationshipInteractionSummary(''); refetchRelationship(); },
+  });
+
+  const createAssessmentMutation = useMutation({
+    mutationFn: async (contactId: number) => {
+      const res = await fetch(`/api/contacts/${contactId}/relationship/assessments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ assessmentKind: relationshipRecord?.assessments?.length ? 'periodic' : 'baseline', dimensions: assessmentData, reflection: assessmentReflection || null }) });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to save assessment');
+      return res.json();
+    },
+    onSuccess: () => { setAssessmentReflection(''); refetchRelationship(); },
+  });
+
+  const grantRelationshipConsentMutation = useMutation({
+    mutationFn: async ({ contactId, purpose }: { contactId: number; purpose: 'ai_recommendation' | 'ecosystem_share' }) => {
+      const res = await fetch(`/api/contacts/${contactId}/relationship/consents`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ purpose, allowedScopes: purpose === 'ai_recommendation' ? ['profile', 'assessments', 'check_ins', 'commitments'] : ['identity', 'lifecycle', 'commitment_status'], allowedDestinations: purpose === 'ecosystem_share' ? ['umh'] : [], expiresInDays: 30, disclosureAccepted: true }) });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to grant consent');
+      return res.json();
+    },
+    onSuccess: () => refetchRelationship(),
+  });
+
+  const revokeRelationshipConsentMutation = useMutation({
+    mutationFn: async ({ contactId, consentId }: { contactId: number; consentId: string }) => {
+      const res = await fetch(`/api/contacts/${contactId}/relationship/consents/${consentId}`, { method: 'DELETE', credentials: 'include' });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to revoke consent');
+      return res.json();
+    },
+    onSuccess: () => refetchRelationship(),
+  });
+
+  const generateRelationshipRecommendationMutation = useMutation({
+    mutationFn: async (contactId: number) => {
+      const res = await fetch(`/api/contacts/${contactId}/relationship/recommendations`, { method: 'POST', credentials: 'include' });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Relationship guidance is unavailable');
+      return res.json();
+    },
+    onSuccess: () => refetchRelationship(),
   });
 
   const createCommitmentMutation = useMutation({
@@ -775,7 +819,7 @@ export default function RolodexPage() {
                       <div className="flex items-center justify-between gap-2">
                         <div>
                           <p className="text-[10px] font-mono uppercase tracking-widest text-primary">Relationship record</p>
-                          <p className="mt-1 text-[11px] text-muted-foreground">Private context, check-ins, and commitments stay in LyfeOS. Sharing with other products is disabled; no contact notes or messages leave this record.</p>
+                          <p className="mt-1 text-[11px] text-muted-foreground">Private context stays in LyfeOS. AI use and privacy-minimal ecosystem sharing are separate, expiring permissions; contact notes and messages never leave this record.</p>
                         </div>
                         {relationshipRecord?.relationship?.contactId !== contact.id && (
                           <Button size="sm" variant="outline" className="h-7 border-primary/30 text-primary hover:bg-primary/10" onClick={() => initializeRelationshipMutation.mutate(contact)} disabled={initializeRelationshipMutation.isPending}>
@@ -791,6 +835,12 @@ export default function RolodexPage() {
                             {relationshipRecord.relationship.desiredCadence && <span>{relationshipRecord.relationship.desiredCadence}</span>}
                           </div>
                           {relationshipRecord.interactions[0] && <p className="mt-2 text-xs text-muted-foreground"><span className="text-primary/80">Latest:</span> {relationshipRecord.interactions[0].summary}</p>}
+                          <div className="mt-2 grid grid-cols-2 gap-2 text-[10px] text-muted-foreground sm:grid-cols-4">
+                            <label>Connection<select aria-label="Check-in connection" value={checkInData.connection} onChange={(event) => setCheckInData({ ...checkInData, connection: Number(event.target.value) })} className="mt-1 h-7 w-full rounded border border-primary/20 bg-background px-1">{[1,2,3,4,5].map((value) => <option key={value}>{value}</option>)}</select></label>
+                            <label>Energy impact<select aria-label="Check-in energy impact" value={checkInData.energyImpact} onChange={(event) => setCheckInData({ ...checkInData, energyImpact: Number(event.target.value) })} className="mt-1 h-7 w-full rounded border border-primary/20 bg-background px-1">{[-2,-1,0,1,2].map((value) => <option key={value}>{value > 0 ? `+${value}` : value}</option>)}</select></label>
+                            <label>Boundary alignment<select aria-label="Check-in boundary alignment" value={checkInData.boundaryAlignment} onChange={(event) => setCheckInData({ ...checkInData, boundaryAlignment: Number(event.target.value) })} className="mt-1 h-7 w-full rounded border border-primary/20 bg-background px-1">{[1,2,3,4,5].map((value) => <option key={value}>{value}</option>)}</select></label>
+                            <label className="flex items-end gap-1 pb-1"><input type="checkbox" checked={checkInData.followUpNeeded} onChange={(event) => setCheckInData({ ...checkInData, followUpNeeded: event.target.checked })} /> Follow up</label>
+                          </div>
                           <div className="mt-2 flex gap-2">
                             <input value={relationshipInteractionSummary} onChange={(event) => setRelationshipInteractionSummary(event.target.value)} placeholder="Record a check-in" maxLength={2000} className="h-8 min-w-0 flex-1 rounded-md border border-primary/20 bg-background/40 px-2 text-xs" />
                             <Button size="sm" variant="outline" className="h-8 shrink-0 border-primary/30 text-primary hover:bg-primary/10" onClick={() => recordInteractionMutation.mutate(contact.id)} disabled={relationshipInteractionSummary.trim().length < 2 || recordInteractionMutation.isPending}>Save</Button>
@@ -803,6 +853,25 @@ export default function RolodexPage() {
                               <textarea value={relationshipBoundaries} onChange={(event) => setRelationshipBoundaries(event.target.value)} placeholder="Private boundaries" maxLength={2000} className="min-h-16 w-full rounded-md border border-primary/20 bg-background/40 px-2 py-1.5 text-xs" />
                               <textarea value={relationshipPrivateContext} onChange={(event) => setRelationshipPrivateContext(event.target.value)} placeholder="Private relationship context" maxLength={4000} className="min-h-16 w-full rounded-md border border-primary/20 bg-background/40 px-2 py-1.5 text-xs" />
                               <Button size="sm" variant="outline" className="h-8 border-primary/30 text-primary hover:bg-primary/10" onClick={() => saveRelationshipProfileMutation.mutate(contact)} disabled={saveRelationshipProfileMutation.isPending}>Save private context</Button>
+                            </div>
+                          </details>
+                          <details className="mt-3 border-t border-primary/10 pt-2">
+                            <summary className="cursor-pointer text-[10px] font-mono uppercase tracking-widest text-primary/80">Assessment & governed guidance</summary>
+                            <p className="mt-2 text-[11px] text-muted-foreground">Rate your present experience from 1–5. These are self-assessments, not objective scores of another person.</p>
+                            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                              {Object.entries(assessmentData).map(([key, value]) => <label key={key} className="text-[10px] capitalize text-muted-foreground">{key.replace(/([A-Z])/g, ' $1')}<select aria-label={`Assessment ${key}`} value={value} onChange={(event) => setAssessmentData({ ...assessmentData, [key]: Number(event.target.value) })} className="mt-1 h-7 w-full rounded border border-primary/20 bg-background px-1">{[1,2,3,4,5].map((score) => <option key={score}>{score}</option>)}</select></label>)}
+                            </div>
+                            <textarea value={assessmentReflection} onChange={(event) => setAssessmentReflection(event.target.value)} placeholder="Optional private reflection" maxLength={2000} className="mt-2 min-h-14 w-full rounded-md border border-primary/20 bg-background/40 px-2 py-1.5 text-xs" />
+                            <Button size="sm" variant="outline" className="mt-2 h-8 border-primary/30 text-primary" onClick={() => createAssessmentMutation.mutate(contact.id)} disabled={createAssessmentMutation.isPending}>Save assessment</Button>
+                            {relationshipRecord.assessments?.[0] && <p className="mt-2 text-[11px] text-muted-foreground">Latest assessment: {Object.entries(relationshipRecord.assessments[0].dimensions).map(([key, value]) => `${key} ${value}/5`).join(' · ')}</p>}
+                            <div className="mt-3 rounded-md border border-primary/10 p-2">
+                              <p className="text-[11px] text-muted-foreground">AI guidance uses only explicitly authorized profile, assessments, check-ins, and commitments. It cannot message anyone or take action.</p>
+                              {(() => { const consent = relationshipRecord.consents?.find((item) => item.purpose === 'ai_recommendation' && !item.revokedAt && new Date(item.expiresAt) > new Date()); return consent ? <div className="mt-2 flex flex-wrap gap-2"><Button size="sm" variant="outline" className="h-7 border-primary/30 text-primary" onClick={() => generateRelationshipRecommendationMutation.mutate(contact.id)} disabled={generateRelationshipRecommendationMutation.isPending}>Generate guidance</Button><Button size="sm" variant="ghost" className="h-7 text-muted-foreground" onClick={() => revokeRelationshipConsentMutation.mutate({ contactId: contact.id, consentId: consent.id })}>Revoke AI consent</Button></div> : <Button size="sm" variant="outline" className="mt-2 h-7 border-primary/30 text-primary" onClick={() => grantRelationshipConsentMutation.mutate({ contactId: contact.id, purpose: 'ai_recommendation' })}>Allow for 30 days</Button>; })()}
+                              {relationshipRecord.recommendations?.[0] && <div className="mt-2 space-y-1 text-xs text-muted-foreground">{relationshipRecord.recommendations[0].recommendations.map((item, index) => <p key={index}>{index + 1}. {item.text} <span className="font-mono text-primary">{item.citations.map((citation) => `[${citation}]`).join(' ')}</span></p>)}<p className="text-[10px]">{relationshipRecord.recommendations[0].disclosure}</p></div>}
+                            </div>
+                            <div className="mt-2 rounded-md border border-primary/10 p-2">
+                              <p className="text-[11px] text-muted-foreground">UMH sharing includes only a pseudonymous relationship reference, kind, lifecycle, and open-commitment count. Names, contact details, private context, assessments, and check-ins are excluded.</p>
+                              {(() => { const consent = relationshipRecord.consents?.find((item) => item.purpose === 'ecosystem_share' && !item.revokedAt && new Date(item.expiresAt) > new Date()); return consent ? <Button size="sm" variant="ghost" className="mt-2 h-7 text-muted-foreground" onClick={() => revokeRelationshipConsentMutation.mutate({ contactId: contact.id, consentId: consent.id })}>Revoke UMH sharing</Button> : <Button size="sm" variant="outline" className="mt-2 h-7 border-primary/30 text-primary" onClick={() => grantRelationshipConsentMutation.mutate({ contactId: contact.id, purpose: 'ecosystem_share' })}>Allow UMH for 30 days</Button>; })()}
                             </div>
                           </details>
                           <div className="mt-3 border-t border-primary/10 pt-2">

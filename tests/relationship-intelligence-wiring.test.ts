@@ -10,7 +10,26 @@ describe("personal relationship intelligence", () => {
     expect(routes).toContain("sharingEnabled: false");
     expect(routes).toContain('source: "self_report"');
     expect(routes).not.toContain("sendMessage");
-    expect(source("client/src/pages/RolodexPage.tsx")).toContain("Sharing with other products is disabled");
+    expect(source("client/src/pages/RolodexPage.tsx")).toContain("privacy-minimal ecosystem sharing");
+  });
+
+  it("adds structured assessments and guided check-ins without scoring the other person", () => {
+    const routes = source("server/routes/relationships.ts");
+    const page = source("client/src/pages/RolodexPage.tsx");
+    expect(routes).toContain("relationshipAssessmentInput");
+    expect(routes).toContain("structuredData: parsed.data.structuredData");
+    expect(page).toContain("These are self-assessments, not objective scores of another person");
+    expect(page).toContain("Check-in boundary alignment");
+  });
+
+  it("separates AI authorization from expiring ecosystem consent and audit", () => {
+    const routes = source("server/routes/relationships.ts");
+    expect(routes).toContain('"ai_recommendation"');
+    expect(routes).toContain('"ecosystem_share"');
+    expect(routes).toContain('action: "consent_granted"');
+    expect(routes).toContain('action: "consent_revoked"');
+    expect(routes).toContain("Grant active AI recommendation consent first");
+    expect(routes).not.toContain("relationship.privateContext }; sourceManifest");
   });
 
   it("registers additive relationship storage in the production migration path", () => {

@@ -19,7 +19,7 @@ import { missionExperience } from "@shared/progression";
 
 const accountExportTables = [
   "user_stats", "user_profile", "user_daily_logs", "user_integrations", "quests", "ai_messages",
-  "calendar_events", "mission_pages", "contacts", "personal_relationships", "relationship_interactions", "relationship_commitments", "spreadsheets", "canvases", "graphs", "workspace_databases", "workspace_database_rows", "workspace_forms", "workflow_automations", "workflow_automation_runs", "folders",
+  "calendar_events", "mission_pages", "contacts", "personal_relationships", "relationship_interactions", "relationship_assessments", "relationship_commitments", "relationship_governance_consents", "relationship_ai_recommendations", "relationship_governance_audit", "spreadsheets", "canvases", "graphs", "workspace_databases", "workspace_database_rows", "workspace_forms", "workflow_automations", "workflow_automation_runs", "folders",
   "documents", "templates", "integrations", "progress_trackers", "kanban_boards", "project_events", "media_albums",
   "media_items", "conversations", "dismissed_knowledge", "vision_goals", "user_categories", "ritual_groups",
   "widget_states", "user_activity_events", "smart_reminders", "mission_views", "push_subscriptions", "ai_pending_actions", "ai_action_records", "ai_action_repairs", "ai_context_receipts", "ai_memory_policies", "ai_persona_profiles",
@@ -175,7 +175,7 @@ async function deleteLocalAccountData(userId: number): Promise<void> {
 
     for (const table of [
       "workflow_automation_runs", "workflow_automations", "cross_product_work_links", "cross_product_sharing_preferences", "progression_badge_events", "progression_badge_awards", "activity_progression_events", "skill_progression_events", "quest_skill_contributions", "skill_edges", "skill_nodes", "personal_capabilities", "transformation_thread_evidence", "mission_deferrals", "mission_dependencies", "quests", "transformation_threads", "mission_pages", "calendar_events",
-      "relationship_commitments", "relationship_interactions", "personal_relationships", "documents", "folders", "media_items", "media_albums", "conversations", "user_stats", "user_profile",
+      "relationship_ai_recommendations", "relationship_governance_audit", "relationship_governance_consents", "relationship_assessments", "relationship_commitments", "relationship_interactions", "personal_relationships", "documents", "folders", "media_items", "media_albums", "conversations", "user_stats", "user_profile",
       "user_daily_logs", "user_integrations", "ai_pending_actions", "ai_action_records", "ai_messages", "contacts", "spreadsheets", "canvases", "graphs", "workspace_forms", "workspace_database_rows", "workspace_databases",
       "templates", "integrations", "progress_trackers", "dismissed_knowledge", "vision_goals", "user_categories",
       "ritual_groups", "widget_states", "user_activity_events", "smart_reminders", "mission_views", "push_subscriptions",
