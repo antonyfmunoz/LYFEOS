@@ -18,6 +18,10 @@ FROM node:20-slim AS production
 
 WORKDIR /app
 
+ARG LYFEOS_RELEASE=""
+ENV LYFEOS_RELEASE=${LYFEOS_RELEASE}
+LABEL org.opencontainers.image.revision=${LYFEOS_RELEASE}
+
 RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json* ./
