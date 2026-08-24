@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createEmptySpreadsheetDocument, nextSpreadsheetSheetName, removeSpreadsheetSheet, renameSpreadsheetSheet, spreadsheetDocumentSchema, uniqueSpreadsheetSheetName } from "../shared/spreadsheets";
+import { createEmptySpreadsheetDocument, nextSpreadsheetSheetName, removeSpreadsheetSheet, renameSpreadsheetSheet, spreadsheetDocumentSchema, spreadsheetRevisionSnapshotSchema, uniqueSpreadsheetSheetName } from "../shared/spreadsheets";
 import { columnLabel, evaluateSpreadsheetCell, insertSpreadsheetAxis, parseCellAddress } from "../client/src/lib/spreadsheetFormula";
 import { createSpreadsheetSheetFromDelimited, formatSpreadsheetRange, parseSpreadsheetClipboard, parseSpreadsheetCsv, pasteSpreadsheetRange, serializeSpreadsheetRange, spreadsheetRangeBounds } from "../client/src/lib/spreadsheetRange";
 
@@ -200,6 +200,43 @@ describe("Sheets instrument", () => {
     expect(vault).toContain("navigate('/spreadsheets')");
   });
 
+  it("persists an immutable, owner-scoped version ledger with a baseline backfill", () => {
+    const migration = source("migrations/0106_spreadsheet_revisions.sql");
+    const release = source("server/release-migrate.ts");
+    const schema = source("shared/schema.ts");
+    expect(migration).toContain('CREATE TABLE IF NOT EXISTS "spreadsheet_revisions"');
+    expect(migration).toContain("spreadsheet_revisions_revision_positive");
+    expect(migration).toContain("spreadsheet_revisions_action_valid");
+    expect(migration).toContain('ON CONFLICT ("spreadsheet_id", "revision_number") DO NOTHING');
+    expect(release).toContain('id: "0106_spreadsheet_revisions"');
+    expect(schema).toContain('pgTable("spreadsheet_revisions"');
+    expect(schema).toContain('uniqueIndex("spreadsheet_revisions_spreadsheet_revision_unique_idx")');
+  });
+
+  it("validates historical snapshots before they can be restored", () => {
+    const document = createEmptySpreadsheetDocument();
+    expect(spreadsheetRevisionSnapshotSchema.safeParse({ title: "Plan", description: null, category: "general", content: document }).success).toBe(true);
+    expect(spreadsheetRevisionSnapshotSchema.safeParse({ title: "Plan", description: null, category: "general", content: { ...document, activeSheetId: "missing" } }).success).toBe(false);
+  });
+
+  it("serializes spreadsheet writes and restores history only as a new version", () => {
+    const routes = source("server/routes/content.ts");
+    expect(routes).toContain('req.header("x-lyfeos-expected-revision")');
+    expect(routes).toContain("FOR UPDATE");
+    expect(routes).toContain('kind: "conflict"');
+    expect(routes).toContain('action: "updated"');
+    expect(routes).toContain('action: "restored"');
+    expect(routes).toContain("sourceRevision: revisionNumber");
+    expect(routes).toContain("spreadsheetRevisionSnapshotSchema.safeParse(source.snapshot)");
+    expect(routes).toContain("revisionNumber: spreadsheetRevisions.revisionNumber");
+    expect(routes).not.toContain("db.select().from(spreadsheetRevisions).where(and(eq(spreadsheetRevisions.spreadsheetId, spreadsheetId), eq(spreadsheetRevisions.userId, req.session.userId!))).orderBy");
+  });
+
+  it("includes spreadsheet history in account export and deletion coverage", () => {
+    const profile = source("server/routes/profile.ts");
+    expect(profile).toContain('"spreadsheet_revisions"');
+  });
+
   it("exposes accessible row and column insertion controls in the existing editor", () => {
     const editor = source("client/src/pages/SpreadsheetEditorPage.tsx");
     expect(editor).toContain("insertSpreadsheetAxis");
@@ -244,5 +281,16 @@ describe("Sheets instrument", () => {
     expect(editor).toContain("Align selected populated cells center");
     expect(editor).toContain("Clear formatting from selected populated cells");
     expect(editor).toContain("clipboard and CSV/TSV transfer values and formulas, not presentation");
+  });
+
+  it("offers bounded unsaved undo and immutable saved-version restoration", () => {
+    const editor = source("client/src/pages/SpreadsheetEditorPage.tsx");
+    expect(editor).toContain("Undo last unsaved spreadsheet change");
+    expect(editor).toContain("Redo last undone spreadsheet change");
+    expect(editor).toContain("slice(-19)");
+    expect(editor).toContain('"x-lyfeos-expected-revision"');
+    expect(editor).toContain("Saved versions are immutable");
+    expect(editor).toContain("Restore version ${revision.revisionNumber} as a new saved version");
+    expect(editor).toContain("Save or discard your current unsaved changes before restoring");
   });
 });

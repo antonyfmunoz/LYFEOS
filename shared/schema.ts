@@ -904,9 +904,24 @@ export const spreadsheets = pgTable("spreadsheets", {
   content: jsonb("content").notNull(), // Store spreadsheet data as JSON
   favorite: boolean("favorite").notNull().default(false),
   category: text("category").notNull().default("general"),
+  revision: integer("revision").notNull().default(1),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+export const spreadsheetRevisions = pgTable("spreadsheet_revisions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  spreadsheetId: integer("spreadsheet_id").notNull().references(() => spreadsheets.id, { onDelete: "cascade" }),
+  revisionNumber: integer("revision_number").notNull(),
+  action: text("action").notNull(),
+  sourceRevision: integer("source_revision"),
+  snapshot: jsonb("snapshot").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("spreadsheet_revisions_spreadsheet_revision_unique_idx").on(table.spreadsheetId, table.revisionNumber),
+  index("spreadsheet_revisions_user_spreadsheet_created_idx").on(table.userId, table.spreadsheetId, table.createdAt),
+]);
 
 // Relationships - Note: some tables are declared later but referenced here
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -1284,6 +1299,7 @@ export type InsertContact = z.infer<typeof insertContactSchema>;
 
 export type Spreadsheet = typeof spreadsheets.$inferSelect;
 export type InsertSpreadsheet = z.infer<typeof insertSpreadsheetSchema>;
+export type SpreadsheetRevision = typeof spreadsheetRevisions.$inferSelect;
 
 // Canvas table
 export const canvases = pgTable("canvases", {

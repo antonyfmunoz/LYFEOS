@@ -3,6 +3,7 @@ import { z } from "zod";
 import multer from "multer";
 import Anthropic from "@anthropic-ai/sdk";
 import { storage } from "../storage";
+import { db } from "../db";
 import { logger } from "../utils";
 import { isAuthenticated, isOwner } from "./middleware";
 import {
@@ -17,9 +18,13 @@ import {
   insertMediaAlbumSchema,
   MediaItem,
   InsertMediaItem,
+  spreadsheets,
+  spreadsheetRevisions,
 } from "@shared/schema";
-import { createSpreadsheetRequestSchema, updateSpreadsheetRequestSchema } from "@shared/spreadsheets";
+import { createSpreadsheetRequestSchema, spreadsheetRevisionSnapshotSchema, updateSpreadsheetRequestSchema } from "@shared/spreadsheets";
 import { createCanvasRequestSchema, updateCanvasRequestSchema } from "@shared/canvases";
+import { and, desc, eq, sql } from "drizzle-orm";
+import { parseExpectedResourceRevision } from "../revision-concurrency";
 
 declare module "express-session" {
   interface SessionData {
@@ -465,12 +470,18 @@ export function registerContentRoutes(app: Express): void {
   app.post("/api/spreadsheets", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const input = createSpreadsheetRequestSchema.parse(req.body);
-      const spreadsheet = await storage.createSpreadsheet({
-        ...input,
-        description: input.description || null,
-        userId: req.session.userId!,
+      const spreadsheet = await db.transaction(async (tx) => {
+        const [created] = await tx.insert(spreadsheets).values({
+          ...input,
+          description: input.description || null,
+          userId: req.session.userId!,
+        }).returning();
+        await tx.insert(spreadsheetRevisions).values({
+          userId: req.session.userId!, spreadsheetId: created.id, revisionNumber: 1, action: "created",
+          snapshot: { title: created.title, description: created.description, category: created.category, content: created.content },
+        });
+        return created;
       });
-      
       return res.status(201).json({ spreadsheet });
     } catch (error) {
       logger.error("Error creating spreadsheet:", error);
@@ -488,29 +499,89 @@ export function registerContentRoutes(app: Express): void {
         return res.status(400).json({ error: "Invalid spreadsheet ID" });
       }
       
-      // Get the spreadsheet to check ownership
-      const spreadsheet = await storage.getSpreadsheet(spreadsheetId);
-      if (!spreadsheet) {
-        return res.status(404).json({ error: "Spreadsheet not found" });
-      }
-      
-      // Verify ownership
-      if (spreadsheet.userId !== req.session.userId) {
-        return res.status(403).json({ error: "Not authorized to update this spreadsheet" });
-      }
-      
       const input = updateSpreadsheetRequestSchema.parse(req.body);
-      const updatedSpreadsheet = await storage.updateSpreadsheet(spreadsheetId, {
-        ...input,
-        ...(input.description !== undefined ? { description: input.description || null } : {}),
+      const expectedRevision = parseExpectedResourceRevision(req.header("x-lyfeos-expected-revision"));
+      if (!expectedRevision.ok) return res.status(expectedRevision.reason === "missing" ? 428 : 400).json({ error: expectedRevision.reason === "missing" ? "Reload this spreadsheet before saving changes." : "Invalid expected spreadsheet revision." });
+      const outcome = await db.transaction(async (tx) => {
+        const locked = await tx.execute(sql`SELECT id FROM spreadsheets WHERE id = ${spreadsheetId} AND user_id = ${req.session.userId!} FOR UPDATE`);
+        if (!locked.rows.length) return { kind: "missing" } as const;
+        const [current] = await tx.select().from(spreadsheets).where(and(eq(spreadsheets.id, spreadsheetId), eq(spreadsheets.userId, req.session.userId!))).limit(1);
+        if (current.revision !== expectedRevision.revision) return { kind: "conflict", currentRevision: current.revision } as const;
+        const nextRevision = current.revision + 1;
+        const [updated] = await tx.update(spreadsheets).set({
+          ...input,
+          ...(input.description !== undefined ? { description: input.description || null } : {}),
+          revision: nextRevision,
+          updatedAt: new Date(),
+        }).where(and(eq(spreadsheets.id, spreadsheetId), eq(spreadsheets.userId, req.session.userId!))).returning();
+        await tx.insert(spreadsheetRevisions).values({
+          userId: req.session.userId!, spreadsheetId, revisionNumber: nextRevision, action: "updated",
+          snapshot: { title: updated.title, description: updated.description, category: updated.category, content: updated.content },
+        });
+        return { kind: "updated", spreadsheet: updated } as const;
       });
-      
-      return res.status(200).json({ spreadsheet: updatedSpreadsheet });
+      if (outcome.kind === "missing") return res.status(404).json({ error: "Spreadsheet not found" });
+      if (outcome.kind === "conflict") return res.status(409).json({ error: "This spreadsheet changed after you opened it. Reload it before saving another version.", currentRevision: outcome.currentRevision });
+      return res.status(200).json({ spreadsheet: outcome.spreadsheet });
     } catch (error) {
       logger.error("Error updating spreadsheet:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
       }
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/spreadsheets/:id/revisions", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const spreadsheetId = Number(req.params.id);
+      if (!Number.isInteger(spreadsheetId)) return res.status(400).json({ error: "Invalid spreadsheet ID" });
+      const revisions = await db.select({
+        id: spreadsheetRevisions.id,
+        revisionNumber: spreadsheetRevisions.revisionNumber,
+        action: spreadsheetRevisions.action,
+        sourceRevision: spreadsheetRevisions.sourceRevision,
+        createdAt: spreadsheetRevisions.createdAt,
+      }).from(spreadsheetRevisions).where(and(eq(spreadsheetRevisions.spreadsheetId, spreadsheetId), eq(spreadsheetRevisions.userId, req.session.userId!))).orderBy(desc(spreadsheetRevisions.revisionNumber)).limit(100);
+      if (!revisions.length) return res.status(404).json({ error: "Spreadsheet not found" });
+      return res.status(200).json({ revisions, disclosure: revisions.length === 100 ? "Showing the 100 most recent saved versions." : "Every saved version is immutable; restoring creates a new version." });
+    } catch (error) {
+      logger.error("Error getting spreadsheet revisions:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/spreadsheets/:id/revisions/:revisionNumber/restore", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const spreadsheetId = Number(req.params.id);
+      const revisionNumber = Number(req.params.revisionNumber);
+      if (!Number.isInteger(spreadsheetId) || !Number.isInteger(revisionNumber) || revisionNumber < 1) return res.status(400).json({ error: "Invalid spreadsheet revision" });
+      const expectedRevision = parseExpectedResourceRevision(req.header("x-lyfeos-expected-revision"));
+      if (!expectedRevision.ok) return res.status(expectedRevision.reason === "missing" ? 428 : 400).json({ error: expectedRevision.reason === "missing" ? "Reload this spreadsheet before restoring a version." : "Invalid expected spreadsheet revision." });
+      const outcome = await db.transaction(async (tx) => {
+        const locked = await tx.execute(sql`SELECT id FROM spreadsheets WHERE id = ${spreadsheetId} AND user_id = ${req.session.userId!} FOR UPDATE`);
+        if (!locked.rows.length) return { kind: "missing" } as const;
+        const [current] = await tx.select().from(spreadsheets).where(and(eq(spreadsheets.id, spreadsheetId), eq(spreadsheets.userId, req.session.userId!))).limit(1);
+        if (current.revision !== expectedRevision.revision) return { kind: "conflict", currentRevision: current.revision } as const;
+        const [source] = await tx.select().from(spreadsheetRevisions).where(and(eq(spreadsheetRevisions.spreadsheetId, spreadsheetId), eq(spreadsheetRevisions.userId, req.session.userId!), eq(spreadsheetRevisions.revisionNumber, revisionNumber))).limit(1);
+        if (!source) return { kind: "missing_revision" } as const;
+        const parsed = spreadsheetRevisionSnapshotSchema.safeParse(source.snapshot);
+        if (!parsed.success) return { kind: "invalid_revision" } as const;
+        const nextRevision = current.revision + 1;
+        const [updated] = await tx.update(spreadsheets).set({ ...parsed.data, revision: nextRevision, updatedAt: new Date() }).where(and(eq(spreadsheets.id, spreadsheetId), eq(spreadsheets.userId, req.session.userId!))).returning();
+        await tx.insert(spreadsheetRevisions).values({
+          userId: req.session.userId!, spreadsheetId, revisionNumber: nextRevision, action: "restored", sourceRevision: revisionNumber,
+          snapshot: parsed.data,
+        });
+        return { kind: "restored", spreadsheet: updated } as const;
+      });
+      if (outcome.kind === "missing") return res.status(404).json({ error: "Spreadsheet not found" });
+      if (outcome.kind === "missing_revision") return res.status(404).json({ error: "Spreadsheet revision not found" });
+      if (outcome.kind === "invalid_revision") return res.status(409).json({ error: "This historical version uses an unsupported document format and cannot be restored safely." });
+      if (outcome.kind === "conflict") return res.status(409).json({ error: "This spreadsheet changed after you opened it. Reload it before restoring a version.", currentRevision: outcome.currentRevision });
+      return res.status(200).json({ spreadsheet: outcome.spreadsheet });
+    } catch (error) {
+      logger.error("Error restoring spreadsheet revision:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });

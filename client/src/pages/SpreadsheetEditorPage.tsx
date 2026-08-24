@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { AlignCenter, AlignLeft, AlignRight, Bold, ClipboardCopy, ClipboardPaste, Download, Eraser, Italic, Plus, Save, Trash2, Upload } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, Bold, ClipboardCopy, ClipboardPaste, Download, Eraser, History, Italic, Plus, Redo2, RotateCcw, Save, Trash2, Undo2, Upload } from "lucide-react";
 import type { SpreadsheetDocument, SpreadsheetSheet } from "@shared/spreadsheets";
 import { createEmptySpreadsheetDocument, nextSpreadsheetSheetName, normalizeSpreadsheetDocument, removeSpreadsheetSheet, renameSpreadsheetSheet, uniqueSpreadsheetSheetName } from "@shared/spreadsheets";
 import { columnLabel, evaluateSpreadsheetCell, insertSpreadsheetAxis, parseCellAddress } from "@/lib/spreadsheetFormula";
@@ -19,7 +19,16 @@ type SpreadsheetRecord = {
   description: string | null;
   category: string;
   favorite: boolean;
+  revision: number;
   content: unknown;
+};
+
+type SpreadsheetRevisionRecord = {
+  id: number;
+  revisionNumber: number;
+  action: "created" | "updated" | "restored";
+  sourceRevision: number | null;
+  createdAt: string;
 };
 
 export default function SpreadsheetEditorPage() {
@@ -39,11 +48,19 @@ export default function SpreadsheetEditorPage() {
   const [sheetNameDraft, setSheetNameDraft] = useState("Sheet 1");
   const [pendingImport, setPendingImport] = useState<{ sheet: SpreadsheetSheet; sourceRows: number; sourceColumns: number; populatedCellCount: number; formulaCount: number; fileName: string } | null>(null);
   const [dirty, setDirty] = useState(isNew);
+  const [localHistoryState, setLocalHistoryState] = useState({ canUndo: false, canRedo: false });
   const importInput = useRef<HTMLInputElement>(null);
+  const undoStack = useRef<SpreadsheetDocument[]>([]);
+  const redoStack = useRef<SpreadsheetDocument[]>([]);
   usePageTitle(title || "Sheet");
   const query = useQuery<{ spreadsheet: SpreadsheetRecord }>({
     queryKey: ["/api/spreadsheets", id],
     queryFn: () => apiRequest(`/api/spreadsheets/${id}`),
+    enabled: !isNew && Number.isInteger(id),
+  });
+  const revisions = useQuery<{ revisions: SpreadsheetRevisionRecord[]; disclosure: string }>({
+    queryKey: ["/api/spreadsheets", id, "revisions"],
+    queryFn: () => apiRequest(`/api/spreadsheets/${id}/revisions`),
     enabled: !isNew && Number.isInteger(id),
   });
   useEffect(() => {
@@ -54,24 +71,65 @@ export default function SpreadsheetEditorPage() {
     setCategory(sheet.category);
     setDocument(normalizeSpreadsheetDocument(sheet.content));
     setDirty(false);
+    undoStack.current = [];
+    redoStack.current = [];
+    setLocalHistoryState({ canUndo: false, canRedo: false });
   }, [query.data?.spreadsheet.id]);
 
   const save = useMutation({
     mutationFn: () => apiRequest<{ spreadsheet: SpreadsheetRecord }>(isNew ? "/api/spreadsheets" : `/api/spreadsheets/${id}`, {
       method: isNew ? "POST" : "PATCH",
+      headers: !isNew && query.data?.spreadsheet.revision ? { "x-lyfeos-expected-revision": String(query.data.spreadsheet.revision) } : undefined,
       body: JSON.stringify({ title, description: description || null, category, favorite: query.data?.spreadsheet.favorite || false, content: document }),
     }),
     onSuccess: (result) => {
       setDirty(false);
+      undoStack.current = []; redoStack.current = []; setLocalHistoryState({ canUndo: false, canRedo: false });
+      if (!isNew) queryClient.setQueryData(["/api/spreadsheets", id], result);
+      void queryClient.invalidateQueries({ queryKey: ["/api/spreadsheets", id, "revisions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({ title: "Sheet saved", description: "Values and formulas are stored in your private LyfeOS workspace." });
       if (isNew) navigate(`/spreadsheets/${result.spreadsheet.id}`, { replace: true });
     },
   });
+  const restoreRevision = useMutation({
+    mutationFn: (revisionNumber: number) => apiRequest<{ spreadsheet: SpreadsheetRecord }>(`/api/spreadsheets/${id}/revisions/${revisionNumber}/restore`, {
+      method: "POST",
+      headers: { "x-lyfeos-expected-revision": String(query.data!.spreadsheet.revision) },
+    }),
+    onSuccess: (result) => {
+      const restored = result.spreadsheet;
+      setTitle(restored.title); setDescription(restored.description || ""); setCategory(restored.category); setDocument(normalizeSpreadsheetDocument(restored.content)); setDirty(false);
+      setSelectedAddress("A1"); setRangeAnchor("A1"); setRangeEnd("A1"); setExtendSelection(false); setPendingImport(null);
+      undoStack.current = []; redoStack.current = []; setLocalHistoryState({ canUndo: false, canRedo: false });
+      queryClient.setQueryData(["/api/spreadsheets", id], result);
+      void queryClient.invalidateQueries({ queryKey: ["/api/spreadsheets", id, "revisions"] });
+      void queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: `Restored as version ${restored.revision}`, description: "The historical snapshot was copied into a new immutable version." });
+    },
+  });
   const activeSheet = document.sheets.find((sheet) => sheet.id === document.activeSheetId) || document.sheets[0];
   useEffect(() => setSheetNameDraft(activeSheet.name), [activeSheet.id, activeSheet.name]);
   const selectedInput = activeSheet.cells[selectedAddress]?.input || "";
-  const updateDocument = (next: SpreadsheetDocument) => { setDocument(next); setDirty(true); };
+  const updateDocument = (next: SpreadsheetDocument) => {
+    undoStack.current = [...undoStack.current.slice(-19), document];
+    redoStack.current = [];
+    setDocument(next); setDirty(true); setLocalHistoryState({ canUndo: true, canRedo: false });
+  };
+  const undoDocument = () => {
+    const previous = undoStack.current.pop();
+    if (!previous) return;
+    redoStack.current = [...redoStack.current.slice(-19), document];
+    setDocument(previous); setDirty(true); setSelectedAddress("A1"); setRangeAnchor("A1"); setRangeEnd("A1");
+    setLocalHistoryState({ canUndo: undoStack.current.length > 0, canRedo: true });
+  };
+  const redoDocument = () => {
+    const next = redoStack.current.pop();
+    if (!next) return;
+    undoStack.current = [...undoStack.current.slice(-19), document];
+    setDocument(next); setDirty(true); setSelectedAddress("A1"); setRangeAnchor("A1"); setRangeEnd("A1");
+    setLocalHistoryState({ canUndo: true, canRedo: redoStack.current.length > 0 });
+  };
   const setCell = (address: string, input: string) => {
     const cells = { ...activeSheet.cells };
     if (input) cells[address] = { ...cells[address], input };
@@ -208,10 +266,19 @@ export default function SpreadsheetEditorPage() {
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <Link href="/spreadsheets"><Button variant="outline">Sheets</Button></Link>
         <Input aria-label="Sheet title" value={title} maxLength={160} onChange={(event) => { setTitle(event.target.value); setDirty(true); }} className="max-w-md font-medium" />
+        {!isNew && query.data?.spreadsheet.revision && <span className="whitespace-nowrap text-xs text-muted-foreground">version {query.data.spreadsheet.revision}</span>}
         {dirty && <span className="text-xs text-amber-400">unsaved</span>}
       </div>
-      <div className="flex flex-wrap gap-2"><input ref={importInput} className="sr-only" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values" aria-label="Choose a CSV or TSV file" onChange={(event) => void readImportFile(event.target.files?.[0])} /><Button variant="outline" disabled={document.sheets.length >= 20} onClick={() => importInput.current?.click()}><Upload className="mr-1 h-4 w-4" />Import</Button><Button variant="outline" onClick={exportCsv}><Download className="mr-1 h-4 w-4" />CSV</Button><Button disabled={!dirty || !title.trim() || save.isPending} onClick={() => save.mutate()}><Save className="mr-1 h-4 w-4" />{save.isPending ? "Saving…" : "Save"}</Button></div>
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" size="icon" variant="outline" aria-label="Undo last unsaved spreadsheet change" disabled={!localHistoryState.canUndo} onClick={undoDocument}><Undo2 className="h-4 w-4" /></Button>
+        <Button type="button" size="icon" variant="outline" aria-label="Redo last undone spreadsheet change" disabled={!localHistoryState.canRedo} onClick={redoDocument}><Redo2 className="h-4 w-4" /></Button>
+        <input ref={importInput} className="sr-only" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values" aria-label="Choose a CSV or TSV file" onChange={(event) => void readImportFile(event.target.files?.[0])} />
+        <Button variant="outline" disabled={document.sheets.length >= 20} onClick={() => importInput.current?.click()}><Upload className="mr-1 h-4 w-4" />Import</Button>
+        <Button variant="outline" onClick={exportCsv}><Download className="mr-1 h-4 w-4" />CSV</Button>
+        <Button disabled={!dirty || !title.trim() || save.isPending} onClick={() => save.mutate()}><Save className="mr-1 h-4 w-4" />{save.isPending ? "Saving…" : "Save"}</Button>
+      </div>
     </div>
+    {save.isError && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{save.error instanceof Error ? save.error.message : "The sheet could not be saved."} If this sheet changed in another session, reload it before applying your changes again.</p>}
     <div className="grid gap-2 md:grid-cols-[180px_1fr]">
       <Input aria-label="Sheet category" value={category} maxLength={80} onChange={(event) => { setCategory(event.target.value); setDirty(true); }} placeholder="Category" />
       <Textarea aria-label="Sheet description" value={description} maxLength={800} onChange={(event) => { setDescription(event.target.value); setDirty(true); }} placeholder="What is this sheet for?" className="min-h-9 resize-y py-2" />
@@ -258,7 +325,7 @@ export default function SpreadsheetEditorPage() {
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-1 border-t border-primary/15 bg-background/40 p-2">
-        {document.sheets.map((sheet) => <button key={sheet.id} type="button" onClick={() => { updateDocument({ ...document, activeSheetId: sheet.id }); setSelectedAddress("A1"); setRangeAnchor("A1"); setRangeEnd("A1"); setExtendSelection(false); }} className={`max-w-40 truncate rounded px-3 py-1 text-xs ${sheet.id === activeSheet.id ? "bg-primary/20 text-primary" : "text-muted-foreground hover:bg-primary/10"}`} title={sheet.name}>{sheet.name}</button>)}
+        {document.sheets.map((sheet) => <button key={sheet.id} type="button" onClick={() => { if (sheet.id !== activeSheet.id) updateDocument({ ...document, activeSheetId: sheet.id }); setSelectedAddress("A1"); setRangeAnchor("A1"); setRangeEnd("A1"); setExtendSelection(false); }} className={`max-w-40 truncate rounded px-3 py-1 text-xs ${sheet.id === activeSheet.id ? "bg-primary/20 text-primary" : "text-muted-foreground hover:bg-primary/10"}`} title={sheet.name}>{sheet.name}</button>)}
         <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Add sheet tab" disabled={document.sheets.length >= 20} onClick={addSheet}><Plus className="h-4 w-4" /></Button>
         <div className="ml-auto flex min-w-0 items-center gap-1">
           <Input aria-label="Active sheet name" value={sheetNameDraft} maxLength={80} onChange={(event) => setSheetNameDraft(event.target.value)} className="h-7 w-36 text-xs" />
@@ -267,6 +334,24 @@ export default function SpreadsheetEditorPage() {
         </div>
       </div>
     </div>
-    <p className="text-[11px] leading-relaxed text-muted-foreground">Shift-click, or choose Extend and then a cell on touch devices, to select a rectangular range for copy or formatting. Formatting applies only to populated cells; clipboard and CSV/TSV transfer values and formulas, not presentation. Paste starts at the active cell and remains unsaved until you review and save. Insertions preserve populated cells, formatting, and affected formula references. Formulas support cell references, +, −, ×, ÷, parentheses, and SUM, AVERAGE, MIN, or MAX. CSV export writes calculated formula results and protects text beginning with spreadsheet-executable prefixes.</p>
+    <p className="text-[11px] leading-relaxed text-muted-foreground">Undo and Redo retain up to 20 unsaved grid and tab changes on this device and reset after save, reload, or restore. Shift-click, or choose Extend and then a cell on touch devices, to select a rectangular range for copy or formatting. Formatting applies only to populated cells; clipboard and CSV/TSV transfer values and formulas, not presentation. Paste starts at the active cell and remains unsaved until you review and save. Insertions preserve populated cells, formatting, and affected formula references. Formulas support cell references, +, −, ×, ÷, parentheses, and SUM, AVERAGE, MIN, or MAX. CSV export writes calculated formula results and protects text beginning with spreadsheet-executable prefixes.</p>
+    {!isNew && <details className="rounded-xl border border-primary/15 bg-card/30 p-4">
+      <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium"><History className="h-4 w-4" />Saved version history</summary>
+      <p className="mt-2 text-xs text-muted-foreground">Saved versions are immutable. Restoring copies the selected snapshot into a new version; it never deletes or rewrites history. The 100 most recent versions are shown.</p>
+      {revisions.isLoading && <p className="mt-3 text-sm text-muted-foreground">Loading saved versions…</p>}
+      {revisions.isError && <p role="alert" className="mt-3 text-sm text-destructive">{revisions.error instanceof Error ? revisions.error.message : "Saved versions are unavailable."}</p>}
+      {restoreRevision.isError && <p role="alert" className="mt-3 text-sm text-destructive">{restoreRevision.error instanceof Error ? restoreRevision.error.message : "That version could not be restored."} Reload the sheet if another session saved a newer version.</p>}
+      {revisions.data?.revisions && <ol className="mt-3 divide-y divide-primary/10">
+        {revisions.data.revisions.map((revision) => {
+          const isCurrent = revision.revisionNumber === query.data?.spreadsheet.revision;
+          const action = revision.action === "restored" ? `restored from version ${revision.sourceRevision}` : revision.action;
+          return <li key={revision.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+            <div><p className="text-sm font-medium">Version {revision.revisionNumber}{isCurrent ? " · current" : ""}</p><p className="text-xs text-muted-foreground">{action} · {new Date(revision.createdAt).toLocaleString()}</p></div>
+            <Button type="button" size="sm" variant="outline" disabled={isCurrent || restoreRevision.isPending || dirty} onClick={() => { if (window.confirm(`Restore version ${revision.revisionNumber} as a new saved version? Your existing history will remain available.`)) restoreRevision.mutate(revision.revisionNumber); }}><RotateCcw className="mr-1 h-3.5 w-3.5" />Restore</Button>
+          </li>;
+        })}
+      </ol>}
+      {dirty && <p className="mt-2 text-xs text-amber-400">Save or discard your current unsaved changes before restoring a saved version.</p>}
+    </details>}
   </div>;
 }

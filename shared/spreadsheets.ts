@@ -47,6 +47,13 @@ export const updateSpreadsheetRequestSchema = spreadsheetMetadataSchema.partial(
   content: spreadsheetDocumentSchema.optional(),
 }).refine((value) => Object.keys(value).length > 0, "Provide at least one spreadsheet field to update.");
 
+export const spreadsheetRevisionSnapshotSchema = z.object({
+  title: z.string().trim().min(1).max(160),
+  description: z.string().trim().max(800).nullable(),
+  category: z.string().trim().min(1).max(80).regex(/^[A-Za-z0-9 _-]+$/),
+  content: spreadsheetDocumentSchema,
+});
+
 export type SpreadsheetDocument = z.infer<typeof spreadsheetDocumentSchema>;
 export type SpreadsheetSheet = z.infer<typeof spreadsheetSheetSchema>;
 
