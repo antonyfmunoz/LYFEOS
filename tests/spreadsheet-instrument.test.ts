@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createEmptySpreadsheetDocument, nextSpreadsheetSheetName, removeSpreadsheetSheet, renameSpreadsheetSheet, spreadsheetDocumentSchema } from "../shared/spreadsheets";
 import { columnLabel, evaluateSpreadsheetCell, insertSpreadsheetAxis, parseCellAddress } from "../client/src/lib/spreadsheetFormula";
+import { parseSpreadsheetClipboard, pasteSpreadsheetRange, serializeSpreadsheetRange, spreadsheetRangeBounds } from "../client/src/lib/spreadsheetRange";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 
@@ -109,6 +110,39 @@ describe("Sheets instrument", () => {
     expect(() => removeSpreadsheetSheet(createEmptySpreadsheetDocument(), firstId)).toThrow("at least one sheet tab");
   });
 
+  it("serializes rectangular raw-input ranges as interoperable quoted tabular text", () => {
+    const sheet = createEmptySpreadsheetDocument().sheets[0];
+    sheet.cells = {
+      A1: { input: "plain" },
+      B1: { input: "=SUM(A1:A2)" },
+      A2: { input: "tab\tquote\"" },
+      B2: { input: "two\nlines" },
+    };
+    const serialized = serializeSpreadsheetRange(sheet, "B2", "A1");
+    expect(serialized).toBe('plain\t=SUM(A1:A2)\r\n"tab\tquote"""\t"two\nlines"');
+    expect(parseSpreadsheetClipboard(serialized)).toEqual([["plain", "=SUM(A1:A2)"], ["tab\tquote\"", "two\nlines"]]);
+    expect(spreadsheetRangeBounds("B2", "A1")).toMatchObject({ startRow: 0, endRow: 1, startColumn: 0, endColumn: 1, cellCount: 4 });
+  });
+
+  it("pastes bounded ranges without mutating source cells and preserves formulas as raw inputs", () => {
+    const sheet = createEmptySpreadsheetDocument().sheets[0];
+    sheet.cells = { B2: { input: "replace" }, C2: { input: "clear" }, A1: { input: "untouched" } };
+    const pasted = pasteSpreadsheetRange(sheet, "B2", "3\t\r\n4\t=B2+B3\r\n");
+    expect(pasted).toMatchObject({ endAddress: "C3", rowCount: 2, columnCount: 2 });
+    expect(pasted.sheet.cells).toMatchObject({ A1: { input: "untouched" }, B2: { input: "3" }, B3: { input: "4" }, C3: { input: "=B2+B3" } });
+    expect(pasted.sheet.cells.C2).toBeUndefined();
+    expect(sheet.cells).toEqual({ B2: { input: "replace" }, C2: { input: "clear" }, A1: { input: "untouched" } });
+    expect(evaluateSpreadsheetCell({ version: 1, activeSheetId: sheet.id, sheets: [pasted.sheet] }, sheet.id, "C3")).toBe("7");
+  });
+
+  it("fails closed on malformed, oversized, or out-of-grid clipboard data", () => {
+    const sheet = createEmptySpreadsheetDocument().sheets[0];
+    expect(() => parseSpreadsheetClipboard('"unfinished')).toThrow("unfinished quoted cell");
+    expect(() => parseSpreadsheetClipboard("x".repeat(10_001))).toThrow("10,000 characters");
+    expect(() => parseSpreadsheetClipboard(Array.from({ length: 5_001 }, () => "x").join("\t"))).toThrow("at most 5,000 cells");
+    expect(() => pasteSpreadsheetRange(sheet, "J40", "one\ttwo")).toThrow("extend beyond this sheet");
+  });
+
   it("validates create and update payloads without accepting a caller-supplied owner", () => {
     const routes = source("server/routes/content.ts");
     expect(routes).toContain("createSpreadsheetRequestSchema.parse(req.body)");
@@ -139,5 +173,16 @@ describe("Sheets instrument", () => {
     expect(editor).toContain("removeSpreadsheetSheet");
     expect(editor).toContain("window.confirm");
     expect(editor).toContain("This is not permanent until you save");
+  });
+
+  it("keeps bounded range copy and paste review-first in the existing editor", () => {
+    const editor = source("client/src/pages/SpreadsheetEditorPage.tsx");
+    expect(editor).toContain("serializeSpreadsheetRange");
+    expect(editor).toContain("pasteSpreadsheetRange");
+    expect(editor).toContain("event.shiftKey");
+    expect(editor).toContain("aria-pressed={extendSelection}");
+    expect(editor).toContain("on touch devices");
+    expect(editor).toContain("Clipboard writing is unavailable");
+    expect(editor).toContain("Review before saving");
   });
 });
