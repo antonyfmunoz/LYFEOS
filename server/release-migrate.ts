@@ -2117,6 +2117,14 @@ const migrations = [
       ALTER TABLE "ingredient_scans" ADD COLUMN IF NOT EXISTS "catalog_source_modified" boolean NOT NULL DEFAULT false;
     `,
   },
+  {
+    id: "0105_food_catalog_portions",
+    sql: `
+      ALTER TABLE "nutrition_food_portions" ADD COLUMN IF NOT EXISTS "catalog_label" text;
+      ALTER TABLE "nutrition_food_portions" ADD COLUMN IF NOT EXISTS "catalog_grams_per_unit" real;
+      ALTER TABLE "nutrition_food_portions" ADD COLUMN IF NOT EXISTS "source_modified" boolean NOT NULL DEFAULT false;
+    `,
+  },
 ];
 
 async function run(): Promise<void> {

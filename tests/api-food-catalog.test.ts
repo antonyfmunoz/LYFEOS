@@ -10,7 +10,7 @@ async function request(method: string, path: string, body?: unknown, cookie = ""
 }
 
 const provider = { id: "licensed_fixture", name: "Licensed Fixture", datasetVersion: "2026-08-24", territories: ["US"], attributionText: "Fixture attribution", attributionUrl: "https://catalog.example/terms" };
-const item = { externalId: "catalog-food-1", itemVersion: "rev-1", name: "Catalog oats", brand: "Fixture", barcode: "12345678", locale: "en-US", territory: "US", servingSizeGrams: 40, ingredientsText: "Whole grain oats, salt", nutrients: [{ nutrientKey: "energy_kcal", amountPer100g: 375, unit: "kcal" }, { nutrientKey: "protein_g", amountPer100g: 12.5, unit: "g" }] };
+const item = { externalId: "catalog-food-1", itemVersion: "rev-1", name: "Catalog oats", brand: "Fixture", barcode: "12345678", locale: "en-US", territory: "US", servingSizeGrams: 40, ingredientsText: "Whole grain oats, salt", portions: [{ label: "1 cup", gramsPerUnit: 80 }, { label: "1 packet", gramsPerUnit: 40 }], nutrients: [{ nutrientKey: "energy_kcal", amountPer100g: 375, unit: "kcal" }, { nutrientKey: "protein_g", amountPer100g: 12.5, unit: "g" }] };
 
 describeApi("food catalog authenticated import contract", () => {
   const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -51,6 +51,21 @@ describeApi("food catalog authenticated import contract", () => {
     const ownerFoods = await request("GET", "/api/nutrition/foods", undefined, ownerCookie);
     expect(ownerFoods.data.foods).toHaveLength(2);
     expect(ownerFoods.data.foods).toEqual(expect.arrayContaining([expect.objectContaining({ source: "catalog", catalogProviderId: "licensed_fixture", catalogDatasetVersion: "2026-08-24", catalogSourceModified: false })]));
+  });
+
+  it("imports source-attributed portions and preserves their original values after private correction", async () => {
+    const ownerFoods = await request("GET", "/api/nutrition/foods", undefined, ownerCookie);
+    const imported = ownerFoods.data.foods.find((food: any) => food.id === foodId);
+    expect(imported.portions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: "1 cup", gramsPerUnit: 80, catalogLabel: "1 cup", catalogGramsPerUnit: 80, sourceModified: false }),
+      expect.objectContaining({ label: "1 packet", gramsPerUnit: 40, catalogLabel: "1 packet", catalogGramsPerUnit: 40, sourceModified: false }),
+    ]));
+    const cup = imported.portions.find((portion: any) => portion.label === "1 cup");
+    const corrected = await request("PATCH", `/api/nutrition/food-portions/${cup.id}`, { label: "My cup", gramsPerUnit: 82 }, ownerCookie);
+    expect(corrected.status).toBe(200);
+    expect(corrected.data.portion).toMatchObject({ label: "My cup", gramsPerUnit: 82, catalogLabel: "1 cup", catalogGramsPerUnit: 80, sourceModified: true });
+    const refreshed = await request("GET", "/api/nutrition/foods", undefined, ownerCookie);
+    expect(refreshed.data.foods.find((food: any) => food.id === foodId)).toMatchObject({ catalogSourceModified: true });
   });
 
   it("does not mislabel a manually created food as a modified catalog source", async () => {

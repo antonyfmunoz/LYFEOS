@@ -15,7 +15,7 @@ import { energyFromKcal, energyToKcal, type EnergyDisplayUnit } from "@shared/he
 const FoodCatalogSearch = lazy(() => import("./FoodCatalogSearch"));
 
 type Nutrient = { nutrientKey: string; amountPer100g: number; unit: string };
-type FoodPortion = { id: number; foodId: number; label: string; gramsPerUnit: number };
+type FoodPortion = { id: number; foodId: number; label: string; gramsPerUnit: number; source: string; sourceModified: boolean; catalogLabel: string | null; catalogGramsPerUnit: number | null };
 type Food = { id: number; name: string; brand: string | null; barcode: string | null; servingSizeGrams: number; densityGramsPerMl: number | null; favorite: boolean; note: string | null; recentUseCount: number; lastLoggedAt: string | null; catalogProviderId: string | null; catalogDatasetVersion: string | null; catalogItemVersion: string | null; catalogAttributionText: string | null; catalogAttributionUrl: string | null; catalogSourceModified: boolean; nutrients: Nutrient[]; portions: FoodPortion[] };
 type DiaryEntry = { id: number; foodId: number; foodName: string; foodBrand: string | null; servingGrams: number; inputQuantity: number | null; inputUnit: "g" | "serving" | "ml" | "portion" | null; inputPortionId: number | null; inputUnitLabel: string | null; inputGramsPerUnit: number | null; mealSlot: string; nutrients: Nutrient[] };
 type Diary = { date: string; entries: DiaryEntry[]; totals: Record<string, { amount: number; unit: string }> };

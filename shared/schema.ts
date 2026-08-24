@@ -2669,6 +2669,9 @@ export const nutritionFoodPortions = pgTable("nutrition_food_portions", {
   label: text("label").notNull(),
   gramsPerUnit: real("grams_per_unit").notNull(),
   source: text("source").notNull().default("manual"),
+  catalogLabel: text("catalog_label"),
+  catalogGramsPerUnit: real("catalog_grams_per_unit"),
+  sourceModified: boolean("source_modified").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => [uniqueIndex("nutrition_food_portions_food_label_unique_idx").on(table.foodId, table.label), index("nutrition_food_portions_user_idx").on(table.userId, table.foodId)]);

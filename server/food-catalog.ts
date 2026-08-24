@@ -1,8 +1,10 @@
 import crypto from "crypto";
 import {
   foodCatalogBarcodeResponseSchema,
+  foodCatalogCursorReceiptSchema,
   foodCatalogLookupReceiptSchema,
   foodCatalogSearchResponseSchema,
+  type FoodCatalogCursorReceipt,
   type FoodCatalogItem,
   type FoodCatalogLookupReceipt,
   type FoodCatalogProvider,
@@ -11,7 +13,7 @@ import {
 const lookupLifetimeMs = 10 * 60 * 1000;
 
 export class FoodCatalogError extends Error {
-  constructor(public readonly code: "unavailable" | "provider_failure" | "invalid_response", message: string) {
+  constructor(public readonly code: "unavailable" | "provider_failure" | "invalid_response" | "invalid_cursor", message: string) {
     super(message);
   }
 }
@@ -69,6 +71,32 @@ export function verifyFoodCatalogLookupToken(token: string, secret: string, now 
   }
 }
 
+export function createFoodCatalogCursorToken(receipt: Omit<FoodCatalogCursorReceipt, "version" | "expiresAt">, secret: string, now = Date.now()): string {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", crypto.createHash("sha256").update(secret).digest(), iv);
+  cipher.setAAD(Buffer.from("lyfeos.food-catalog.cursor.v1", "utf8"));
+  const ciphertext = Buffer.concat([cipher.update(JSON.stringify({ version: 1, expiresAt: now + lookupLifetimeMs, ...receipt }), "utf8"), cipher.final()]);
+  return `v1.${iv.toString("base64url")}.${ciphertext.toString("base64url")}.${cipher.getAuthTag().toString("base64url")}`;
+}
+
+export function verifyFoodCatalogCursorToken(token: string, secret: string, now = Date.now()): FoodCatalogCursorReceipt | null {
+  try {
+    const [version, encodedIv, encodedCiphertext, encodedTag, extra] = token.split(".");
+    if (version !== "v1" || !encodedIv || !encodedCiphertext || !encodedTag || extra) return null;
+    const iv = Buffer.from(encodedIv, "base64url");
+    const tag = Buffer.from(encodedTag, "base64url");
+    if (iv.length !== 12 || tag.length !== 16) return null;
+    const decipher = crypto.createDecipheriv("aes-256-gcm", crypto.createHash("sha256").update(secret).digest(), iv);
+    decipher.setAAD(Buffer.from("lyfeos.food-catalog.cursor.v1", "utf8"));
+    decipher.setAuthTag(tag);
+    const plaintext = Buffer.concat([decipher.update(Buffer.from(encodedCiphertext, "base64url")), decipher.final()]).toString("utf8");
+    const parsed = foodCatalogCursorReceiptSchema.safeParse(JSON.parse(plaintext));
+    return parsed.success && parsed.data.expiresAt > now ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
 async function gatewayRequest(path: string, config: CatalogConfig, fetchImpl: typeof fetch = fetch): Promise<unknown> {
   let response: Response;
   try {
@@ -87,15 +115,28 @@ async function gatewayRequest(path: string, config: CatalogConfig, fetchImpl: ty
   }
 }
 
-export async function searchFoodCatalog(input: { query: string; territory: string; locale: string; limit: number }, env: NodeJS.ProcessEnv = process.env, fetchImpl: typeof fetch = fetch) {
+type FoodCatalogSearchInput = { query: string; territory: string; locale: string; limit: number } | { cursor: string };
+
+export async function searchFoodCatalog(input: FoodCatalogSearchInput, env: NodeJS.ProcessEnv = process.env, fetchImpl: typeof fetch = fetch) {
   const config = getFoodCatalogConfig(env);
   if (!config) throw new FoodCatalogError("unavailable", foodCatalogAvailability(env).reason!);
-  const params = new URLSearchParams({ q: input.query, territory: input.territory, locale: input.locale, limit: String(input.limit) });
+  const continuation = "cursor" in input ? verifyFoodCatalogCursorToken(input.cursor, config.signingSecret) : null;
+  if ("cursor" in input && !continuation) throw new FoodCatalogError("invalid_cursor", "This catalog result page expired or is invalid. Start the search again.");
+  const request = "cursor" in input ? continuation! : input;
+  const params = new URLSearchParams({ q: request.query, territory: request.territory, locale: request.locale, limit: String(request.limit) });
+  if (continuation) params.set("cursor", continuation.providerCursor);
   const parsed = foodCatalogSearchResponseSchema.safeParse(await gatewayRequest(`/v1/foods/search?${params}`, config, fetchImpl));
   if (!parsed.success) throw new FoodCatalogError("invalid_response", "The food catalog response did not satisfy the LyfeOS attribution contract.");
+  if (continuation && (parsed.data.provider.id !== continuation.providerId || parsed.data.provider.datasetVersion !== continuation.datasetVersion)) {
+    throw new FoodCatalogError("invalid_response", "The food catalog changed source identity during pagination. Start the search again.");
+  }
   return {
-    ...parsed.data,
+    provider: parsed.data.provider,
     items: parsed.data.items.map((item) => ({ ...item, lookupToken: createFoodCatalogLookupToken(parsed.data.provider, item, config.signingSecret) })),
+    nextCursor: parsed.data.nextCursor ? createFoodCatalogCursorToken({
+      query: request.query, territory: request.territory, locale: request.locale, limit: request.limit,
+      providerId: parsed.data.provider.id, datasetVersion: parsed.data.provider.datasetVersion, providerCursor: parsed.data.nextCursor,
+    }, config.signingSecret) : null,
   };
 }
 

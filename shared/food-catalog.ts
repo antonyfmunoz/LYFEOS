@@ -15,6 +15,11 @@ export const foodCatalogNutrientSchema = z.object({
   unit: z.string().trim().min(1).max(24),
 }).strict();
 
+export const foodCatalogPortionSchema = z.object({
+  label: z.string().trim().min(1).max(80),
+  gramsPerUnit: z.number().finite().positive().max(100_000),
+}).strict();
+
 export const foodCatalogItemSchema = z.object({
   externalId: z.string().trim().min(1).max(200),
   itemVersion: z.string().trim().min(1).max(120),
@@ -25,16 +30,19 @@ export const foodCatalogItemSchema = z.object({
   territory: z.string().trim().min(2).max(16),
   servingSizeGrams: z.number().finite().positive().max(100_000).nullable().optional(),
   ingredientsText: z.string().trim().max(20_000).nullable().optional(),
+  portions: z.array(foodCatalogPortionSchema).max(25).default([]),
   nutrients: z.array(foodCatalogNutrientSchema).max(100),
 }).strict().superRefine((value, context) => {
   const keys = value.nutrients.map((nutrient) => nutrient.nutrientKey);
   if (new Set(keys).size !== keys.length) context.addIssue({ code: z.ZodIssueCode.custom, message: "Catalog nutrients must be unique." });
+  const portionLabels = value.portions.map((portion) => portion.label.toLocaleLowerCase());
+  if (new Set(portionLabels).size !== portionLabels.length) context.addIssue({ code: z.ZodIssueCode.custom, message: "Catalog portion labels must be unique." });
 });
 
 export const foodCatalogSearchResponseSchema = z.object({
   provider: foodCatalogProviderSchema,
   items: z.array(foodCatalogItemSchema).max(25),
-  nextCursor: z.string().trim().min(1).max(500).nullable().optional(),
+  nextCursor: z.string().min(1).max(500).nullable().optional(),
 }).strict().superRefine((value, context) => {
   value.items.forEach((item, index) => {
     if (!value.provider.territories.includes(item.territory)) {
@@ -59,6 +67,19 @@ export const foodCatalogLookupReceiptSchema = z.object({
   item: foodCatalogItemSchema,
 }).strict();
 
+export const foodCatalogCursorReceiptSchema = z.object({
+  version: z.literal(1),
+  expiresAt: z.number().int().positive(),
+  query: z.string().trim().min(2).max(80),
+  territory: z.string().trim().min(2).max(16),
+  locale: z.string().trim().min(2).max(35),
+  limit: z.number().int().min(1).max(20),
+  providerId: z.string().trim().min(1).max(80),
+  datasetVersion: z.string().trim().min(1).max(120),
+  providerCursor: z.string().min(1).max(500),
+}).strict();
+
 export type FoodCatalogProvider = z.infer<typeof foodCatalogProviderSchema>;
 export type FoodCatalogItem = z.infer<typeof foodCatalogItemSchema>;
 export type FoodCatalogLookupReceipt = z.infer<typeof foodCatalogLookupReceiptSchema>;
+export type FoodCatalogCursorReceipt = z.infer<typeof foodCatalogCursorReceiptSchema>;

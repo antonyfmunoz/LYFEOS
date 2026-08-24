@@ -200,14 +200,21 @@ export function registerNutritionRoutes(app: Express): void {
           eq(nutritionFoods.catalogDatasetVersion, receipt.provider.datasetVersion), eq(nutritionFoods.catalogItemVersion, receipt.item.itemVersion),
         )).limit(1);
         if (!existing) throw new Error("Catalog import conflict without an owned record.");
-        const nutrients = await tx.select().from(nutritionFoodNutrients).where(eq(nutritionFoodNutrients.foodId, existing.id));
-        return { food: { ...existing, nutrients }, replayed: true };
+        const [nutrients, portions] = await Promise.all([
+          tx.select().from(nutritionFoodNutrients).where(eq(nutritionFoodNutrients.foodId, existing.id)),
+          tx.select().from(nutritionFoodPortions).where(and(eq(nutritionFoodPortions.userId, userId), eq(nutritionFoodPortions.foodId, existing.id))),
+        ]);
+        return { food: { ...existing, nutrients, portions }, replayed: true };
       }
       const source = `catalog:${receipt.provider.id}:${receipt.provider.datasetVersion}:${receipt.item.itemVersion}`;
       const nutrients = await tx.insert(nutritionFoodNutrients).values(receipt.item.nutrients.map((nutrient) => ({
         foodId: created.id, nutrientKey: nutrient.nutrientKey, amountPer100g: nutrient.amountPer100g, unit: nutrient.unit, source,
       }))).returning();
-      return { food: { ...created, nutrients }, replayed: false };
+      const portions = receipt.item.portions.length ? await tx.insert(nutritionFoodPortions).values(receipt.item.portions.map((portion) => ({
+        userId, foodId: created.id, label: portion.label, gramsPerUnit: portion.gramsPerUnit, source,
+        catalogLabel: portion.label, catalogGramsPerUnit: portion.gramsPerUnit, sourceModified: false,
+      }))).returning() : [];
+      return { food: { ...created, nutrients, portions }, replayed: false };
     });
     return res.status(result.replayed ? 200 : 201).json(result);
   });
@@ -247,23 +254,48 @@ export function registerNutritionRoutes(app: Express): void {
   app.post("/api/nutrition/foods/:foodId/portions", isAuthenticated, async (req: Request, res: Response) => {
     const foodId = Number(req.params.foodId); const parsed = portionSchema.safeParse(req.body); const userId = req.session.userId!;
     if (!Number.isInteger(foodId) || !parsed.success) return res.status(400).json({ error: "Invalid food portion." });
-    const [food] = await db.select({ id: nutritionFoods.id }).from(nutritionFoods).where(and(eq(nutritionFoods.id, foodId), eq(nutritionFoods.userId, userId))).limit(1);
-    if (!food) return res.status(404).json({ error: "Food not found." });
-    const [portion] = await db.insert(nutritionFoodPortions).values({ userId, foodId, ...parsed.data, source: "manual" }).returning();
+    const portion = await db.transaction(async (tx) => {
+      const [food] = await tx.select({ id: nutritionFoods.id }).from(nutritionFoods).where(and(eq(nutritionFoods.id, foodId), eq(nutritionFoods.userId, userId))).limit(1);
+      if (!food) return null;
+      const [created] = await tx.insert(nutritionFoodPortions).values({ userId, foodId, ...parsed.data, source: "manual" }).returning();
+      await tx.update(nutritionFoods).set({
+        catalogSourceModified: sql<boolean>`CASE WHEN ${nutritionFoods.catalogProviderId} IS NOT NULL THEN true ELSE ${nutritionFoods.catalogSourceModified} END`, updatedAt: new Date(),
+      }).where(and(eq(nutritionFoods.id, foodId), eq(nutritionFoods.userId, userId)));
+      return created;
+    });
+    if (!portion) return res.status(404).json({ error: "Food not found." });
     return res.status(201).json({ portion });
   });
 
   app.patch("/api/nutrition/food-portions/:id", isAuthenticated, async (req: Request, res: Response) => {
     const id = Number(req.params.id); const parsed = portionSchema.safeParse(req.body);
     if (!Number.isInteger(id) || !parsed.success) return res.status(400).json({ error: "Invalid food portion." });
-    const [portion] = await db.update(nutritionFoodPortions).set({ ...parsed.data, updatedAt: new Date() }).where(and(eq(nutritionFoodPortions.id, id), eq(nutritionFoodPortions.userId, req.session.userId!))).returning();
+    const portion = await db.transaction(async (tx) => {
+      const [updated] = await tx.update(nutritionFoodPortions).set({
+        ...parsed.data,
+        sourceModified: sql<boolean>`CASE WHEN ${nutritionFoodPortions.source} LIKE 'catalog:%' THEN true ELSE ${nutritionFoodPortions.sourceModified} END`,
+        updatedAt: new Date(),
+      }).where(and(eq(nutritionFoodPortions.id, id), eq(nutritionFoodPortions.userId, req.session.userId!))).returning();
+      if (!updated) return null;
+      await tx.update(nutritionFoods).set({
+        catalogSourceModified: sql<boolean>`CASE WHEN ${nutritionFoods.catalogProviderId} IS NOT NULL THEN true ELSE ${nutritionFoods.catalogSourceModified} END`, updatedAt: new Date(),
+      }).where(and(eq(nutritionFoods.id, updated.foodId), eq(nutritionFoods.userId, req.session.userId!)));
+      return updated;
+    });
     return portion ? res.json({ portion }) : res.status(404).json({ error: "Food portion not found." });
   });
 
   app.delete("/api/nutrition/food-portions/:id", isAuthenticated, async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: "Invalid food portion." });
-    const [portion] = await db.delete(nutritionFoodPortions).where(and(eq(nutritionFoodPortions.id, id), eq(nutritionFoodPortions.userId, req.session.userId!))).returning({ id: nutritionFoodPortions.id });
+    const portion = await db.transaction(async (tx) => {
+      const [deleted] = await tx.delete(nutritionFoodPortions).where(and(eq(nutritionFoodPortions.id, id), eq(nutritionFoodPortions.userId, req.session.userId!))).returning({ id: nutritionFoodPortions.id, foodId: nutritionFoodPortions.foodId });
+      if (!deleted) return null;
+      await tx.update(nutritionFoods).set({
+        catalogSourceModified: sql<boolean>`CASE WHEN ${nutritionFoods.catalogProviderId} IS NOT NULL THEN true ELSE ${nutritionFoods.catalogSourceModified} END`, updatedAt: new Date(),
+      }).where(and(eq(nutritionFoods.id, deleted.foodId), eq(nutritionFoods.userId, req.session.userId!)));
+      return deleted;
+    });
     return portion ? res.status(204).send() : res.status(404).json({ error: "Food portion not found." });
   });
 

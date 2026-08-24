@@ -3,17 +3,18 @@ import { z } from "zod";
 import { FoodCatalogError, foodCatalogAvailability, lookupFoodCatalogBarcode, searchFoodCatalog } from "../food-catalog";
 import { isAuthenticated } from "./middleware";
 
-const searchSchema = z.object({
+const initialSearchSchema = z.object({
   query: z.string().trim().min(2).max(80),
   territory: z.string().trim().min(2).max(16).default("US"),
   locale: z.string().trim().min(2).max(35).default("en-US"),
   limit: z.coerce.number().int().min(1).max(20).default(10),
-});
+}).strict();
+const searchSchema = z.union([initialSearchSchema, z.object({ cursor: z.string().min(80).max(4_000) }).strict()]);
 const barcodeSchema = z.string().trim().regex(/^\d{8,14}$/);
 
 function catalogFailure(error: unknown, res: Response) {
   if (error instanceof FoodCatalogError) {
-    const status = error.code === "unavailable" ? 503 : 502;
+    const status = error.code === "unavailable" ? 503 : error.code === "invalid_cursor" ? 400 : 502;
     return res.status(status).json({ error: error.message, code: error.code });
   }
   return res.status(502).json({ error: "The food catalog lookup failed.", code: "provider_failure" });
