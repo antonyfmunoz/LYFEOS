@@ -135,3 +135,36 @@ export function pasteSpreadsheetRange(sheet: SpreadsheetSheet, startAddress: str
     columnCount,
   };
 }
+
+type SpreadsheetCellFormat = NonNullable<SpreadsheetSheet["cells"][string]["format"]>;
+
+export function formatSpreadsheetRange(
+  sheet: SpreadsheetSheet,
+  startAddress: string,
+  endAddress: string,
+  patch: Partial<SpreadsheetCellFormat> | null,
+) {
+  const bounds = spreadsheetRangeBounds(startAddress, endAddress);
+  if (bounds.cellCount > MAX_RANGE_CELLS) throw new Error("A formatted range can contain at most 5,000 cells.");
+  if (bounds.endRow >= sheet.rowCount || bounds.endColumn >= sheet.columnCount) throw new Error("The selected range extends beyond this sheet.");
+  const cells = { ...sheet.cells };
+  let changedCellCount = 0;
+  for (let row = bounds.startRow; row <= bounds.endRow; row += 1) {
+    for (let column = bounds.startColumn; column <= bounds.endColumn; column += 1) {
+      const address = `${columnLabel(column)}${row + 1}`;
+      const cell = cells[address];
+      if (!cell) continue;
+      if (patch === null) cells[address] = { input: cell.input };
+      else {
+        const merged = { ...cell.format, ...patch };
+        const format: SpreadsheetCellFormat = {};
+        if (merged.bold) format.bold = true;
+        if (merged.italic) format.italic = true;
+        if (merged.align && merged.align !== "left") format.align = merged.align;
+        cells[address] = Object.keys(format).length ? { ...cell, format } : { input: cell.input };
+      }
+      changedCellCount += 1;
+    }
+  }
+  return { sheet: { ...sheet, cells }, changedCellCount };
+}

@@ -4,6 +4,11 @@ export const spreadsheetAddressPattern = /^[A-Z]{1,3}[1-9][0-9]{0,3}$/;
 
 export const spreadsheetCellSchema = z.object({
   input: z.string().max(10_000),
+  format: z.object({
+    bold: z.boolean().optional(),
+    italic: z.boolean().optional(),
+    align: z.enum(["left", "center", "right"]).optional(),
+  }).optional(),
 });
 
 export const spreadsheetSheetSchema = z.object({

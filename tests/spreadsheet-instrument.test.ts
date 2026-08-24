@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createEmptySpreadsheetDocument, nextSpreadsheetSheetName, removeSpreadsheetSheet, renameSpreadsheetSheet, spreadsheetDocumentSchema, uniqueSpreadsheetSheetName } from "../shared/spreadsheets";
 import { columnLabel, evaluateSpreadsheetCell, insertSpreadsheetAxis, parseCellAddress } from "../client/src/lib/spreadsheetFormula";
-import { createSpreadsheetSheetFromDelimited, parseSpreadsheetClipboard, parseSpreadsheetCsv, pasteSpreadsheetRange, serializeSpreadsheetRange, spreadsheetRangeBounds } from "../client/src/lib/spreadsheetRange";
+import { createSpreadsheetSheetFromDelimited, formatSpreadsheetRange, parseSpreadsheetClipboard, parseSpreadsheetCsv, pasteSpreadsheetRange, serializeSpreadsheetRange, spreadsheetRangeBounds } from "../client/src/lib/spreadsheetRange";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 
@@ -59,16 +59,16 @@ describe("Sheets instrument", () => {
     const sourceSheet = document.sheets[0];
     sourceSheet.cells = {
       A1: { input: "1" },
-      A2: { input: "2" },
+      A2: { input: "2", format: { bold: true, align: "right" } },
       B1: { input: "=SUM(A1:A2)" },
       C1: { input: "=B1+A2" },
     };
 
     const withRow = insertSpreadsheetAxis(sourceSheet, "row", 1);
     expect(withRow.rowCount).toBe(41);
-    expect(withRow.cells).toMatchObject({ A1: { input: "1" }, A3: { input: "2" }, B1: { input: "=SUM(A1:A3)" }, C1: { input: "=B1+A3" } });
+    expect(withRow.cells).toMatchObject({ A1: { input: "1" }, A3: { input: "2", format: { bold: true, align: "right" } }, B1: { input: "=SUM(A1:A3)" }, C1: { input: "=B1+A3" } });
     expect(withRow.cells.A2).toBeUndefined();
-    expect(sourceSheet.cells.A2).toEqual({ input: "2" });
+    expect(sourceSheet.cells.A2).toEqual({ input: "2", format: { bold: true, align: "right" } });
 
     const withColumn = insertSpreadsheetAxis(withRow, "column", 1);
     expect(withColumn.columnCount).toBe(11);
@@ -164,6 +164,26 @@ describe("Sheets instrument", () => {
     expect(() => parseSpreadsheetCsv("x".repeat(2_000_001))).toThrow("2,000,000 characters");
   });
 
+  it("applies governed formatting only to populated cells and clears it without changing inputs", () => {
+    const sheet = createEmptySpreadsheetDocument().sheets[0];
+    sheet.cells = { A1: { input: "Heading" }, B1: { input: "=1+2", format: { italic: true } } };
+    const formatted = formatSpreadsheetRange(sheet, "A1", "C2", { bold: true, align: "center" });
+    expect(formatted.changedCellCount).toBe(2);
+    expect(formatted.sheet.cells).toEqual({
+      A1: { input: "Heading", format: { bold: true, align: "center" } },
+      B1: { input: "=1+2", format: { bold: true, italic: true, align: "center" } },
+    });
+    expect(formatted.sheet.cells.C2).toBeUndefined();
+    expect(sheet.cells.A1).toEqual({ input: "Heading" });
+    expect(formatSpreadsheetRange(formatted.sheet, "A1", "B1", null).sheet.cells).toEqual({ A1: { input: "Heading" }, B1: { input: "=1+2" } });
+  });
+
+  it("rejects ungoverned cell formats in persisted documents", () => {
+    const document = createEmptySpreadsheetDocument();
+    document.sheets[0].cells.A1 = { input: "x", format: { align: "diagonal" } as any };
+    expect(spreadsheetDocumentSchema.safeParse(document).success).toBe(false);
+  });
+
   it("validates create and update payloads without accepting a caller-supplied owner", () => {
     const routes = source("server/routes/content.ts");
     expect(routes).toContain("createSpreadsheetRequestSchema.parse(req.body)");
@@ -215,5 +235,14 @@ describe("Sheets instrument", () => {
     expect(editor).toContain("nothing changes until you add the tab, review it, and save");
     expect(editor).toContain("Add as new tab");
     expect(editor).not.toContain("FormData");
+  });
+
+  it("renders governed selected-range formatting without changing transfer semantics", () => {
+    const editor = source("client/src/pages/SpreadsheetEditorPage.tsx");
+    expect(editor).toContain("formatSpreadsheetRange");
+    expect(editor).toContain("Toggle bold on selected populated cells");
+    expect(editor).toContain("Align selected populated cells center");
+    expect(editor).toContain("Clear formatting from selected populated cells");
+    expect(editor).toContain("clipboard and CSV/TSV transfer values and formulas, not presentation");
   });
 });

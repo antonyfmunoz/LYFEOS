@@ -51,7 +51,7 @@ export function insertSpreadsheetAxis(sheet: SpreadsheetSheet, axis: Spreadsheet
     const row = axis === "row" && parsed.row >= beforeIndex ? parsed.row + 1 : parsed.row;
     const shiftedAddress = `${columnLabel(column)}${row + 1}`;
     if (!spreadsheetAddressPattern.test(shiftedAddress)) throw new Error("A populated cell would exceed the supported sheet boundary.");
-    cells[shiftedAddress] = { input: shiftFormulaReferences(cell.input, axis, beforeIndex) };
+    cells[shiftedAddress] = { ...cell, input: shiftFormulaReferences(cell.input, axis, beforeIndex) };
   }
 
   return {

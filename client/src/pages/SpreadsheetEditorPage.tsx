@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ClipboardCopy, ClipboardPaste, Download, Plus, Save, Trash2, Upload } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, Bold, ClipboardCopy, ClipboardPaste, Download, Eraser, Italic, Plus, Save, Trash2, Upload } from "lucide-react";
 import type { SpreadsheetDocument, SpreadsheetSheet } from "@shared/spreadsheets";
 import { createEmptySpreadsheetDocument, nextSpreadsheetSheetName, normalizeSpreadsheetDocument, removeSpreadsheetSheet, renameSpreadsheetSheet, uniqueSpreadsheetSheetName } from "@shared/spreadsheets";
 import { columnLabel, evaluateSpreadsheetCell, insertSpreadsheetAxis, parseCellAddress } from "@/lib/spreadsheetFormula";
-import { createSpreadsheetSheetFromDelimited, pasteSpreadsheetRange, serializeSpreadsheetRange, spreadsheetRangeBounds } from "@/lib/spreadsheetRange";
+import { createSpreadsheetSheetFromDelimited, formatSpreadsheetRange, pasteSpreadsheetRange, serializeSpreadsheetRange, spreadsheetRangeBounds } from "@/lib/spreadsheetRange";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,7 +74,7 @@ export default function SpreadsheetEditorPage() {
   const updateDocument = (next: SpreadsheetDocument) => { setDocument(next); setDirty(true); };
   const setCell = (address: string, input: string) => {
     const cells = { ...activeSheet.cells };
-    if (input) cells[address] = { input };
+    if (input) cells[address] = { ...cells[address], input };
     else delete cells[address];
     updateDocument({ ...document, sheets: document.sheets.map((sheet) => sheet.id === activeSheet.id ? { ...sheet, cells } : sheet) });
   };
@@ -103,6 +103,7 @@ export default function SpreadsheetEditorPage() {
     }
   };
   const selectedPosition = parseCellAddress(selectedAddress) || { column: 0, row: 0 };
+  const activeCellFormat = activeSheet.cells[selectedAddress]?.format;
   const selectedRange = useMemo(() => spreadsheetRangeBounds(rangeAnchor, rangeEnd), [rangeAnchor, rangeEnd]);
   const columns = useMemo(() => Array.from({ length: activeSheet.columnCount }, (_, index) => columnLabel(index)), [activeSheet.columnCount]);
   const rows = useMemo(() => Array.from({ length: activeSheet.rowCount }, (_, index) => index + 1), [activeSheet.rowCount]);
@@ -138,6 +139,18 @@ export default function SpreadsheetEditorPage() {
       toast({ title: "Range pasted", description: `${pasted.rowCount} row${pasted.rowCount === 1 ? "" : "s"} × ${pasted.columnCount} column${pasted.columnCount === 1 ? "" : "s"}. Review before saving.` });
     } catch (error) {
       toast({ title: "Could not paste range", description: error instanceof Error ? error.message : "Clipboard reading failed.", variant: "destructive" });
+    }
+  };
+  const applyRangeFormat = (patch: Parameters<typeof formatSpreadsheetRange>[3]) => {
+    try {
+      const formatted = formatSpreadsheetRange(activeSheet, rangeAnchor, rangeEnd, patch);
+      if (!formatted.changedCellCount) {
+        toast({ title: "No populated cells selected", description: "Enter a value first, then apply formatting to it." });
+        return;
+      }
+      updateDocument({ ...document, sheets: document.sheets.map((sheet) => sheet.id === activeSheet.id ? formatted.sheet : sheet) });
+    } catch (error) {
+      toast({ title: "Could not format range", description: error instanceof Error ? error.message : "The selected cells could not be formatted.", variant: "destructive" });
     }
   };
   const readImportFile = async (file: File | undefined) => {
@@ -218,6 +231,12 @@ export default function SpreadsheetEditorPage() {
         <Button type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0" aria-label={`Copy selected range of ${selectedRange.cellCount} cells`} onClick={() => void copyRange()}><ClipboardCopy className="h-3.5 w-3.5" /></Button>
         <Button type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0" aria-label={`Paste range starting at ${selectedAddress}`} onClick={() => void pasteRange()}><ClipboardPaste className="h-3.5 w-3.5" /></Button>
         <Button type="button" size="sm" variant={extendSelection ? "default" : "outline"} className="h-8 shrink-0" aria-pressed={extendSelection} aria-label={`Extend range from ${rangeAnchor}`} onClick={() => setExtendSelection((current) => !current)}>Extend</Button>
+        <Button type="button" size="icon" variant={activeCellFormat?.bold ? "default" : "outline"} className="h-8 w-8 shrink-0" aria-label="Toggle bold on selected populated cells" aria-pressed={Boolean(activeCellFormat?.bold)} onClick={() => applyRangeFormat({ bold: !activeCellFormat?.bold })}><Bold className="h-3.5 w-3.5" /></Button>
+        <Button type="button" size="icon" variant={activeCellFormat?.italic ? "default" : "outline"} className="h-8 w-8 shrink-0" aria-label="Toggle italic on selected populated cells" aria-pressed={Boolean(activeCellFormat?.italic)} onClick={() => applyRangeFormat({ italic: !activeCellFormat?.italic })}><Italic className="h-3.5 w-3.5" /></Button>
+        <Button type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0" aria-label="Align selected populated cells left" onClick={() => applyRangeFormat({ align: "left" })}><AlignLeft className="h-3.5 w-3.5" /></Button>
+        <Button type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0" aria-label="Align selected populated cells center" onClick={() => applyRangeFormat({ align: "center" })}><AlignCenter className="h-3.5 w-3.5" /></Button>
+        <Button type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0" aria-label="Align selected populated cells right" onClick={() => applyRangeFormat({ align: "right" })}><AlignRight className="h-3.5 w-3.5" /></Button>
+        <Button type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0" aria-label="Clear formatting from selected populated cells" onClick={() => applyRangeFormat(null)}><Eraser className="h-3.5 w-3.5" /></Button>
       </div>
       <div className="overflow-auto max-h-[65vh]">
         <div className="grid w-max" style={{ gridTemplateColumns: `48px repeat(${columns.length}, 120px)` }}>
@@ -228,10 +247,12 @@ export default function SpreadsheetEditorPage() {
             ...columns.map((column) => {
               const address = `${column}${row}`;
               const raw = activeSheet.cells[address]?.input || "";
+              const format = activeSheet.cells[address]?.format;
               const display = raw.startsWith("=") ? evaluateSpreadsheetCell(document, activeSheet.id, address) : raw;
               const position = { row: row - 1, column: parseCellAddress(address)!.column };
               const inRange = position.row >= selectedRange.startRow && position.row <= selectedRange.endRow && position.column >= selectedRange.startColumn && position.column <= selectedRange.endColumn;
-              return <button key={address} type="button" title={raw || address} onClick={(event) => selectCell(address, event.shiftKey)} className={`h-9 overflow-hidden border-b border-r px-2 text-left text-xs ${selectedAddress === address ? "border-primary bg-primary/15 ring-1 ring-inset ring-primary" : inRange ? "border-primary/20 bg-primary/5" : "border-primary/10 hover:bg-primary/5"}`}><span className={display.startsWith("#") ? "text-destructive" : ""}>{display}</span></button>;
+              const alignment = format?.align === "center" ? "text-center" : format?.align === "right" ? "text-right" : "text-left";
+              return <button key={address} type="button" title={raw || address} onClick={(event) => selectCell(address, event.shiftKey)} className={`h-9 overflow-hidden border-b border-r px-2 text-xs ${alignment} ${selectedAddress === address ? "border-primary bg-primary/15 ring-1 ring-inset ring-primary" : inRange ? "border-primary/20 bg-primary/5" : "border-primary/10 hover:bg-primary/5"}`}><span className={`${display.startsWith("#") ? "text-destructive" : ""} ${format?.bold ? "font-semibold" : ""} ${format?.italic ? "italic" : ""}`}>{display}</span></button>;
             }),
           ])}
         </div>
@@ -246,6 +267,6 @@ export default function SpreadsheetEditorPage() {
         </div>
       </div>
     </div>
-    <p className="text-[11px] leading-relaxed text-muted-foreground">Shift-click, or choose Extend and then a cell on touch devices, to select a rectangular range for copy. Paste starts at the active cell and remains unsaved until you review and save. Insertions preserve populated cells and shift affected formula references. Formulas support cell references, +, −, ×, ÷, parentheses, and SUM, AVERAGE, MIN, or MAX. CSV export writes calculated formula results and protects text beginning with spreadsheet-executable prefixes.</p>
+    <p className="text-[11px] leading-relaxed text-muted-foreground">Shift-click, or choose Extend and then a cell on touch devices, to select a rectangular range for copy or formatting. Formatting applies only to populated cells; clipboard and CSV/TSV transfer values and formulas, not presentation. Paste starts at the active cell and remains unsaved until you review and save. Insertions preserve populated cells, formatting, and affected formula references. Formulas support cell references, +, −, ×, ÷, parentheses, and SUM, AVERAGE, MIN, or MAX. CSV export writes calculated formula results and protects text beginning with spreadsheet-executable prefixes.</p>
   </div>;
 }
