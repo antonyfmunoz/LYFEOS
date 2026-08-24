@@ -29,6 +29,7 @@ import { registerSupplementScheduleRoutes } from "./routes/supplement-schedules"
 import { registerMealPlanRoutes } from "./routes/meal-plans";
 import { registerHealthInsightRoutes } from "./routes/health-insights";
 import { registerHealthConnectionRoutes } from "./routes/health-connections";
+import { registerFoodCatalogRoutes } from "./routes/food-catalog";
 import { registerOperationalRoutes } from "./routes/operations";
 import { registerSearchRoutes } from "./routes/search";
 import { registerTableRoutes } from "./routes/tables";
@@ -48,6 +49,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       "/api/workout-templates", "/api/workout-programs", "/api/workout-program-sessions", "/api/recovery-activities",
       "/api/recovery-routines", "/api/exercises", "/api/supplement-schedules", "/api/ingredient-scans",
       "/api/ingredient-preferences",
+      "/api/food-catalog",
     ];
     if (privateHealthPrefixes.some((prefix) => req.path === prefix || req.path.startsWith(`${prefix}/`))) {
       res.setHeader("Cache-Control", "private, no-store, max-age=0");
@@ -159,6 +161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerMealPlanRoutes(app);
   registerHealthInsightRoutes(app);
   registerHealthConnectionRoutes(app);
+  registerFoodCatalogRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;

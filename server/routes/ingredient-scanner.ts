@@ -6,12 +6,14 @@ import { db } from "../db";
 import { normalizeIngredientKey, parseIngredientLabel } from "../ingredient-scanner";
 import { isAuthenticated } from "./middleware";
 import { parseExpectedResourceRevision } from "../revision-concurrency";
+import { verifyConfiguredFoodCatalogToken } from "../food-catalog";
 
 const scanSchema = z.object({
   captureMethod: z.literal("manual_label").default("manual_label"),
   productName: z.string().trim().min(1).max(160).nullable().optional(),
   barcode: z.string().trim().regex(/^[A-Za-z0-9-]{4,64}$/).nullable().optional(),
   rawIngredientsText: z.string().trim().min(1).max(20_000),
+  catalogLookupToken: z.string().min(80).max(100_000).optional(),
 });
 const preferenceSchema = z.object({
   displayName: z.string().trim().min(1).max(160),
@@ -82,13 +84,22 @@ export function registerIngredientScannerRoutes(app: Express): void {
   app.post("/api/ingredient-scans", isAuthenticated, async (req: Request, res: Response) => {
     const parsed = scanSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Enter a valid ingredient label.", details: parsed.error.flatten() });
-    const ingredients = parseIngredientLabel(parsed.data.rawIngredientsText);
+    const receipt = parsed.data.catalogLookupToken ? verifyConfiguredFoodCatalogToken(parsed.data.catalogLookupToken) : null;
+    if (parsed.data.catalogLookupToken && !receipt) return res.status(400).json({ error: "This catalog lookup is invalid or expired. Look up the product again before saving." });
+    if (receipt && !receipt.item.ingredientsText) return res.status(422).json({ error: "The catalog did not supply an ingredient label for this product. Enter the package label manually." });
+    const rawIngredientsText = receipt?.item.ingredientsText || parsed.data.rawIngredientsText;
+    const ingredients = parseIngredientLabel(rawIngredientsText);
     if (!ingredients.length) return res.status(400).json({ error: "No ingredients could be read from that label." });
     const userId = req.session.userId!;
     const scan = await db.transaction(async (tx) => {
       const [created] = await tx.insert(ingredientScans).values({
-        userId, captureMethod: parsed.data.captureMethod, productName: parsed.data.productName || null,
-        barcode: parsed.data.barcode || null, rawIngredientsText: parsed.data.rawIngredientsText,
+        userId, captureMethod: receipt ? "barcode" : parsed.data.captureMethod,
+        productName: receipt?.item.name || parsed.data.productName || null,
+        barcode: receipt?.item.barcode || parsed.data.barcode || null, rawIngredientsText,
+        catalogProviderId: receipt?.provider.id || null, catalogExternalId: receipt?.item.externalId || null,
+        catalogDatasetVersion: receipt?.provider.datasetVersion || null, catalogItemVersion: receipt?.item.itemVersion || null,
+        catalogAttributionText: receipt?.provider.attributionText || null, catalogAttributionUrl: receipt?.provider.attributionUrl || null,
+        catalogTerritory: receipt?.item.territory || null, catalogSourceModified: false,
         parseVersion: "v1", status: "reviewed",
       }).returning();
       const createdItems = await tx.insert(ingredientScanItems).values(ingredients.map((ingredient) => ({
@@ -116,7 +127,7 @@ export function registerIngredientScannerRoutes(app: Express): void {
       if (current.revision !== expectedRevision.revision) return { status: 409 as const, currentRevision: current.revision };
       const [scan] = await tx.update(ingredientScans).set({
         productName: parsed.data.productName || null, barcode: parsed.data.barcode || null, rawIngredientsText: parsed.data.rawIngredientsText,
-        parseVersion: "v1", revision: current.revision + 1, updatedAt: new Date(),
+        parseVersion: "v1", catalogSourceModified: Boolean(current.catalogProviderId), revision: current.revision + 1, updatedAt: new Date(),
       }).where(and(eq(ingredientScans.id, id), eq(ingredientScans.userId, userId))).returning();
       await tx.delete(ingredientScanItems).where(and(eq(ingredientScanItems.scanId, id), eq(ingredientScanItems.userId, userId)));
       const items = await tx.insert(ingredientScanItems).values(ingredients.map((ingredient) => ({

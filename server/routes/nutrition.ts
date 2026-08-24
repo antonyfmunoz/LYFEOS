@@ -8,6 +8,7 @@ import { dateInTimeZone, dayBounds, localDate, requestTimeContext } from "../hea
 import { nutrientDefinitions, nutrientKeys, nutritionContributions, nutritionDailyReport, nutritionDailyReportCsv, nutritionGramsFromInput, nutritionPeriodComparison, nutritionTotals, nutritionTrend } from "../nutrition";
 import { parseExpectedResourceRevision } from "../revision-concurrency";
 import { isAuthenticated } from "./middleware";
+import { verifyConfiguredFoodCatalogToken } from "../food-catalog";
 
 const daySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const nutritionReportDays = (value: unknown, fallback = 14) => {
@@ -31,6 +32,7 @@ const foodSchema = z.object({
   if (new Set(keys).size !== keys.length) context.addIssue({ code: z.ZodIssueCode.custom, message: "Each nutrient can be supplied only once." });
   if (!keys.includes("energy_kcal")) context.addIssue({ code: z.ZodIssueCode.custom, message: "Energy (kcal) is required for a diary food." });
 });
+const catalogImportSchema = z.object({ lookupToken: z.string().min(80).max(100_000) }).strict();
 const diarySchema = z.object({
   foodId: z.number().int().positive(), servingGrams: z.number().positive().max(100_000).optional(),
   quantity: z.number().positive().max(100_000).optional(), inputUnit: z.enum(["g", "serving", "ml", "portion"]).optional(),
@@ -173,6 +175,43 @@ export function registerNutritionRoutes(app: Express): void {
     return res.status(201).json({ food });
   });
 
+  app.post("/api/nutrition/foods/catalog-import", isAuthenticated, async (req: Request, res: Response) => {
+    const parsed = catalogImportSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Invalid catalog lookup receipt." });
+    const receipt = verifyConfiguredFoodCatalogToken(parsed.data.lookupToken);
+    if (!receipt) return res.status(400).json({ error: "This catalog lookup is invalid or expired. Search again before saving." });
+    const definitions = receipt.item.nutrients.map((nutrient) => ({ nutrient, definition: nutrientDefinitions[nutrient.nutrientKey as keyof typeof nutrientDefinitions] }));
+    if (!definitions.length || definitions.some(({ nutrient, definition }) => !definition || definition.unit !== nutrient.unit) || !receipt.item.nutrients.some((nutrient) => nutrient.nutrientKey === "energy_kcal")) {
+      return res.status(422).json({ error: "This catalog item does not provide a compatible, source-attributed LyfeOS nutrient set." });
+    }
+    const userId = req.session.userId!;
+    const result = await db.transaction(async (tx) => {
+      const [created] = await tx.insert(nutritionFoods).values({
+        userId, name: receipt.item.name, brand: receipt.item.brand || null, barcode: receipt.item.barcode || null,
+        source: "catalog", servingSizeGrams: receipt.item.servingSizeGrams || 100, favorite: false,
+        catalogProviderId: receipt.provider.id, catalogExternalId: receipt.item.externalId,
+        catalogDatasetVersion: receipt.provider.datasetVersion, catalogItemVersion: receipt.item.itemVersion,
+        catalogAttributionText: receipt.provider.attributionText, catalogAttributionUrl: receipt.provider.attributionUrl || null,
+        catalogTerritory: receipt.item.territory, catalogImportedAt: new Date(), catalogSourceModified: false,
+      }).onConflictDoNothing().returning();
+      if (!created) {
+        const [existing] = await tx.select().from(nutritionFoods).where(and(
+          eq(nutritionFoods.userId, userId), eq(nutritionFoods.catalogProviderId, receipt.provider.id), eq(nutritionFoods.catalogExternalId, receipt.item.externalId),
+          eq(nutritionFoods.catalogDatasetVersion, receipt.provider.datasetVersion), eq(nutritionFoods.catalogItemVersion, receipt.item.itemVersion),
+        )).limit(1);
+        if (!existing) throw new Error("Catalog import conflict without an owned record.");
+        const nutrients = await tx.select().from(nutritionFoodNutrients).where(eq(nutritionFoodNutrients.foodId, existing.id));
+        return { food: { ...existing, nutrients }, replayed: true };
+      }
+      const source = `catalog:${receipt.provider.id}:${receipt.provider.datasetVersion}:${receipt.item.itemVersion}`;
+      const nutrients = await tx.insert(nutritionFoodNutrients).values(receipt.item.nutrients.map((nutrient) => ({
+        foodId: created.id, nutrientKey: nutrient.nutrientKey, amountPer100g: nutrient.amountPer100g, unit: nutrient.unit, source,
+      }))).returning();
+      return { food: { ...created, nutrients }, replayed: false };
+    });
+    return res.status(result.replayed ? 200 : 201).json(result);
+  });
+
   app.patch("/api/nutrition/foods/:id", isAuthenticated, async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     const parsed = foodSchema.safeParse(req.body);
@@ -181,7 +220,9 @@ export function registerNutritionRoutes(app: Express): void {
       const [updated] = await tx.update(nutritionFoods).set({
         name: parsed.data.name, brand: parsed.data.brand || null, barcode: parsed.data.barcode || null,
         servingSizeGrams: parsed.data.servingSizeGrams, densityGramsPerMl: parsed.data.densityGramsPerMl || null, favorite: parsed.data.favorite ?? false,
-        note: parsed.data.note || null, updatedAt: new Date(),
+        note: parsed.data.note || null,
+        catalogSourceModified: sql<boolean>`CASE WHEN ${nutritionFoods.catalogProviderId} IS NOT NULL THEN true ELSE ${nutritionFoods.catalogSourceModified} END`,
+        updatedAt: new Date(),
       }).where(and(eq(nutritionFoods.id, id), eq(nutritionFoods.userId, req.session.userId!))).returning();
       if (!updated) return null;
       await tx.delete(nutritionFoodNutrients).where(eq(nutritionFoodNutrients.foodId, updated.id));

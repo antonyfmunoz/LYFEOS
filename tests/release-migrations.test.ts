@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 describe("release migration contract", () => {
   it("includes every post-baseline SQL migration in the Fly release runner", () => {
     const migrationIds = readdirSync(resolve(process.cwd(), "migrations"))
-      .filter((name) => /^00(?:0[9]|[1-9]\d)_.+\.sql$/.test(name))
+      .filter((name) => /^\d{4}_.+\.sql$/.test(name) && Number(name.slice(0, 4)) >= 9)
       .map((name) => name.replace(/\.sql$/, ""));
     const releaseRunner = readFileSync(resolve(process.cwd(), "server/release-migrate.ts"), "utf8");
 

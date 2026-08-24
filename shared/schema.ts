@@ -2631,13 +2631,27 @@ export const nutritionFoods = pgTable("nutrition_foods", {
   brand: text("brand"),
   barcode: text("barcode"),
   source: text("source").notNull().default("manual"),
+  catalogProviderId: text("catalog_provider_id"),
+  catalogExternalId: text("catalog_external_id"),
+  catalogDatasetVersion: text("catalog_dataset_version"),
+  catalogItemVersion: text("catalog_item_version"),
+  catalogAttributionText: text("catalog_attribution_text"),
+  catalogAttributionUrl: text("catalog_attribution_url"),
+  catalogTerritory: text("catalog_territory"),
+  catalogImportedAt: timestamp("catalog_imported_at"),
+  catalogSourceModified: boolean("catalog_source_modified").notNull().default(false),
   servingSizeGrams: real("serving_size_grams").notNull().default(100),
   densityGramsPerMl: real("density_grams_per_ml"),
   favorite: boolean("favorite").notNull().default(false),
   note: text("note"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => [index("nutrition_foods_user_name_idx").on(table.userId, table.name)]);
+}, (table) => [
+  index("nutrition_foods_user_name_idx").on(table.userId, table.name),
+  uniqueIndex("nutrition_foods_user_catalog_item_unique_idx").on(
+    table.userId, table.catalogProviderId, table.catalogExternalId, table.catalogDatasetVersion, table.catalogItemVersion,
+  ),
+]);
 
 export const nutritionFoodNutrients = pgTable("nutrition_food_nutrients", {
   id: serial("id").primaryKey(),
@@ -2751,6 +2765,14 @@ export const ingredientScans = pgTable("ingredient_scans", {
   barcode: text("barcode"),
   productName: text("product_name"),
   rawIngredientsText: text("raw_ingredients_text").notNull(),
+  catalogProviderId: text("catalog_provider_id"),
+  catalogExternalId: text("catalog_external_id"),
+  catalogDatasetVersion: text("catalog_dataset_version"),
+  catalogItemVersion: text("catalog_item_version"),
+  catalogAttributionText: text("catalog_attribution_text"),
+  catalogAttributionUrl: text("catalog_attribution_url"),
+  catalogTerritory: text("catalog_territory"),
+  catalogSourceModified: boolean("catalog_source_modified").notNull().default(false),
   parseVersion: text("parse_version").notNull().default("v1"),
   status: text("status").notNull().default("reviewed"),
   revision: integer("revision").notNull().default(1),

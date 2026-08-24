@@ -287,7 +287,8 @@ describe("health and fitness foundation", () => {
     expect(scanner).toContain('capture="environment"');
     expect(scanner).toContain("BarcodeDetectorApi");
     expect(scanner).toContain("processed on-device and is not uploaded");
-    expect(scanner).toContain("product-catalog lookup are not connected");
+    expect(scanner).toContain("Search product catalog");
+    expect(scanner).toContain("Catalog labels stay external until you explicitly save a private copy");
   });
 
   it("keeps structured workouts and exercise details in the release and private-account paths", () => {

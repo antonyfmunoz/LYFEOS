@@ -15,3 +15,8 @@ SENTRY_RELEASE=git-commit-or-semantic-release
 # Use the same random 32+ character value in Fly and the GitHub Actions
 # LYFEOS_MONITOR_TOKEN repository secret. Never expose it to the browser.
 LYFEOS_MONITOR_TOKEN=generate-a-random-32-byte-or-longer-value
+# Optional licensed food-catalog gateway. Keep the token server-side. Plain
+# HTTP is accepted only for localhost fixtures; production must use HTTPS.
+# FOOD_CATALOG_GATEWAY_URL=https://catalog-gateway.example.com
+# FOOD_CATALOG_GATEWAY_TOKEN=replace-with-server-token
+# FOOD_CATALOG_LOOKUP_SIGNING_SECRET=generate-a-random-32-byte-or-longer-value
