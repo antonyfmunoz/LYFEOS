@@ -9,6 +9,8 @@ export const spreadsheetCellSchema = z.object({
 export const spreadsheetSheetSchema = z.object({
   id: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
   name: z.string().trim().min(1).max(80),
+  rowCount: z.number().int().min(1).max(500).default(40),
+  columnCount: z.number().int().min(1).max(100).default(10),
   cells: z.record(z.string().regex(spreadsheetAddressPattern), spreadsheetCellSchema).refine(
     (cells) => Object.keys(cells).length <= 5_000,
     "A sheet can contain at most 5,000 populated cells.",
@@ -45,7 +47,7 @@ export type SpreadsheetSheet = z.infer<typeof spreadsheetSheetSchema>;
 
 export function createEmptySpreadsheetDocument(): SpreadsheetDocument {
   const id = `sheet_${Math.random().toString(36).slice(2, 12)}`;
-  return { version: 1, activeSheetId: id, sheets: [{ id, name: "Sheet 1", cells: {} }] };
+  return { version: 1, activeSheetId: id, sheets: [{ id, name: "Sheet 1", rowCount: 40, columnCount: 10, cells: {} }] };
 }
 
 export function normalizeSpreadsheetDocument(value: unknown): SpreadsheetDocument {

@@ -22,6 +22,46 @@ export function parseCellAddress(address: string): { column: number; row: number
   return { column: column - 1, row: Number(match[2]) - 1 };
 }
 
+type SpreadsheetInsertionAxis = "row" | "column";
+
+function shiftFormulaReferences(input: string, axis: SpreadsheetInsertionAxis, beforeIndex: number): string {
+  if (!input.startsWith("=")) return input;
+  return input.replace(/\b([A-Za-z]{1,3})([1-9][0-9]{0,3})\b/g, (reference) => {
+    const parsed = parseCellAddress(reference);
+    if (!parsed) return reference;
+    const column = axis === "column" && parsed.column >= beforeIndex ? parsed.column + 1 : parsed.column;
+    const row = axis === "row" && parsed.row >= beforeIndex ? parsed.row + 1 : parsed.row;
+    const shifted = `${columnLabel(column)}${row + 1}`;
+    if (!spreadsheetAddressPattern.test(shifted)) throw new Error("A formula reference would exceed the supported sheet boundary.");
+    return shifted;
+  });
+}
+
+export function insertSpreadsheetAxis(sheet: SpreadsheetSheet, axis: SpreadsheetInsertionAxis, beforeIndex: number): SpreadsheetSheet {
+  const dimension = axis === "row" ? sheet.rowCount : sheet.columnCount;
+  const maximum = axis === "row" ? 500 : 100;
+  if (!Number.isInteger(beforeIndex) || beforeIndex < 0 || beforeIndex >= dimension) throw new Error("Choose a visible row or column before inserting.");
+  if (dimension >= maximum) throw new Error(`This sheet already has the maximum supported ${axis} count.`);
+
+  const cells: SpreadsheetSheet["cells"] = {};
+  for (const [address, cell] of Object.entries(sheet.cells)) {
+    const parsed = parseCellAddress(address);
+    if (!parsed) throw new Error(`Invalid persisted cell address: ${address}`);
+    const column = axis === "column" && parsed.column >= beforeIndex ? parsed.column + 1 : parsed.column;
+    const row = axis === "row" && parsed.row >= beforeIndex ? parsed.row + 1 : parsed.row;
+    const shiftedAddress = `${columnLabel(column)}${row + 1}`;
+    if (!spreadsheetAddressPattern.test(shiftedAddress)) throw new Error("A populated cell would exceed the supported sheet boundary.");
+    cells[shiftedAddress] = { input: shiftFormulaReferences(cell.input, axis, beforeIndex) };
+  }
+
+  return {
+    ...sheet,
+    rowCount: axis === "row" ? sheet.rowCount + 1 : sheet.rowCount,
+    columnCount: axis === "column" ? sheet.columnCount + 1 : sheet.columnCount,
+    cells,
+  };
+}
+
 export function evaluateSpreadsheetCell(document: SpreadsheetDocument, sheetId: string, address: string): string {
   const sheet = document.sheets.find((candidate) => candidate.id === sheetId);
   if (!sheet || !spreadsheetAddressPattern.test(address)) return "";

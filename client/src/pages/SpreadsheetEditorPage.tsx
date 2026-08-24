@@ -4,7 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Download, Plus, Save } from "lucide-react";
 import type { SpreadsheetDocument } from "@shared/spreadsheets";
 import { createEmptySpreadsheetDocument, normalizeSpreadsheetDocument } from "@shared/spreadsheets";
-import { columnLabel, evaluateSpreadsheetCell } from "@/lib/spreadsheetFormula";
+import { columnLabel, evaluateSpreadsheetCell, insertSpreadsheetAxis, parseCellAddress } from "@/lib/spreadsheetFormula";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,9 +20,6 @@ type SpreadsheetRecord = {
   favorite: boolean;
   content: unknown;
 };
-
-const columns = Array.from({ length: 10 }, (_, index) => columnLabel(index));
-const rows = Array.from({ length: 40 }, (_, index) => index + 1);
 
 export default function SpreadsheetEditorPage() {
   const { spreadsheetId } = useParams();
@@ -75,8 +72,19 @@ export default function SpreadsheetEditorPage() {
   };
   const addSheet = () => {
     const id = `sheet_${Math.random().toString(36).slice(2, 12)}`;
-    updateDocument({ ...document, activeSheetId: id, sheets: [...document.sheets, { id, name: `Sheet ${document.sheets.length + 1}`, cells: {} }] });
+    updateDocument({ ...document, activeSheetId: id, sheets: [...document.sheets, { id, name: `Sheet ${document.sheets.length + 1}`, rowCount: 40, columnCount: 10, cells: {} }] });
     setSelectedAddress("A1");
+  };
+  const selectedPosition = parseCellAddress(selectedAddress) || { column: 0, row: 0 };
+  const columns = useMemo(() => Array.from({ length: activeSheet.columnCount }, (_, index) => columnLabel(index)), [activeSheet.columnCount]);
+  const rows = useMemo(() => Array.from({ length: activeSheet.rowCount }, (_, index) => index + 1), [activeSheet.rowCount]);
+  const insertAxis = (axis: "row" | "column") => {
+    try {
+      const shifted = insertSpreadsheetAxis(activeSheet, axis, axis === "row" ? selectedPosition.row : selectedPosition.column);
+      updateDocument({ ...document, sheets: document.sheets.map((sheet) => sheet.id === activeSheet.id ? shifted : sheet) });
+    } catch (error) {
+      toast({ title: `Could not insert ${axis}`, description: error instanceof Error ? error.message : "The sheet could not be changed.", variant: "destructive" });
+    }
   };
   const selectedResult = useMemo(() => evaluateSpreadsheetCell(document, activeSheet.id, selectedAddress), [activeSheet.id, document, selectedAddress]);
 
@@ -113,10 +121,12 @@ export default function SpreadsheetEditorPage() {
       <Textarea aria-label="Sheet description" value={description} maxLength={800} onChange={(event) => { setDescription(event.target.value); setDirty(true); }} placeholder="What is this sheet for?" className="min-h-9 resize-y py-2" />
     </div>
     <div className="rounded-xl border border-primary/15 bg-card/30 overflow-hidden">
-      <div className="flex items-center gap-2 border-b border-primary/15 p-2">
+      <div className="flex flex-wrap items-center gap-2 border-b border-primary/15 p-2">
         <span className="w-12 rounded border border-primary/15 bg-background/40 px-2 py-1 text-center font-mono text-xs">{selectedAddress}</span>
-        <Input aria-label="Cell input or formula" value={selectedInput} onChange={(event) => setCell(selectedAddress, event.target.value)} placeholder="Value or formula, for example =SUM(A1:A5)" className="h-8 font-mono text-xs" />
+        <Input aria-label="Cell input or formula" value={selectedInput} onChange={(event) => setCell(selectedAddress, event.target.value)} placeholder="Value or formula, for example =SUM(A1:A5)" className="h-8 min-w-52 flex-1 font-mono text-xs" />
         {selectedInput.startsWith("=") && <span className="max-w-40 truncate text-xs text-muted-foreground">= {selectedResult}</span>}
+        <Button type="button" size="sm" variant="outline" className="h-8 shrink-0" aria-label={`Insert row before row ${selectedPosition.row + 1}`} disabled={activeSheet.rowCount >= 500} onClick={() => insertAxis("row")}><Plus className="mr-1 h-3.5 w-3.5" />Row</Button>
+        <Button type="button" size="sm" variant="outline" className="h-8 shrink-0" aria-label={`Insert column before column ${columnLabel(selectedPosition.column)}`} disabled={activeSheet.columnCount >= 100} onClick={() => insertAxis("column")}><Plus className="mr-1 h-3.5 w-3.5" />Column</Button>
       </div>
       <div className="overflow-auto max-h-[65vh]">
         <div className="grid w-max" style={{ gridTemplateColumns: `48px repeat(${columns.length}, 120px)` }}>
@@ -138,6 +148,6 @@ export default function SpreadsheetEditorPage() {
         <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Add sheet tab" disabled={document.sheets.length >= 20} onClick={addSheet}><Plus className="h-4 w-4" /></Button>
       </div>
     </div>
-    <p className="text-[11px] leading-relaxed text-muted-foreground">Formulas support cell references, +, −, ×, ÷, parentheses, and SUM, AVERAGE, MIN, or MAX. CSV export writes calculated formula results and protects text beginning with spreadsheet-executable prefixes.</p>
+    <p className="text-[11px] leading-relaxed text-muted-foreground">Insertions preserve populated cells and shift affected formula references. Formulas support cell references, +, −, ×, ÷, parentheses, and SUM, AVERAGE, MIN, or MAX. CSV export writes calculated formula results and protects text beginning with spreadsheet-executable prefixes.</p>
   </div>;
 }
