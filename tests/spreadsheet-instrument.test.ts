@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createEmptySpreadsheetDocument, spreadsheetDocumentSchema } from "../shared/spreadsheets";
+import { createEmptySpreadsheetDocument, nextSpreadsheetSheetName, removeSpreadsheetSheet, renameSpreadsheetSheet, spreadsheetDocumentSchema } from "../shared/spreadsheets";
 import { columnLabel, evaluateSpreadsheetCell, insertSpreadsheetAxis, parseCellAddress } from "../client/src/lib/spreadsheetFormula";
 
 const source = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
@@ -82,6 +82,33 @@ describe("Sheets instrument", () => {
     expect(() => insertSpreadsheetAxis({ ...document.sheets[0], cells: { A9999: { input: "=A9999" } } }, "row", 0)).toThrow("supported sheet boundary");
   });
 
+  it("renames sheet tabs with trimmed unique names and keeps the source document unchanged", () => {
+    const document = createEmptySpreadsheetDocument();
+    const second = { ...document.sheets[0], id: "sheet_second", name: "Research", cells: {} };
+    document.sheets.push(second);
+    const renamed = renameSpreadsheetSheet(document, document.sheets[0].id, "  Planning  ");
+    expect(renamed.sheets.map((sheet) => sheet.name)).toEqual(["Planning", "Research"]);
+    expect(document.sheets[0].name).toBe("Sheet 1");
+    expect(() => renameSpreadsheetSheet(document, document.sheets[0].id, " research ")).toThrow("unique name");
+    expect(() => renameSpreadsheetSheet(document, "missing", "Valid")).toThrow("no longer exists");
+  });
+
+  it("removes only a requested tab, preserves cells in remaining tabs, and selects a deterministic neighbor", () => {
+    const document = createEmptySpreadsheetDocument();
+    const firstId = document.sheets[0].id;
+    document.sheets.push(
+      { ...document.sheets[0], id: "sheet_second", name: "Sheet 2", cells: { A1: { input: "kept" } } },
+      { ...document.sheets[0], id: "sheet_third", name: "Sheet 3", cells: {} },
+    );
+    document.activeSheetId = "sheet_second";
+    const removed = removeSpreadsheetSheet(document, "sheet_second");
+    expect(removed.activeSheetId).toBe("sheet_third");
+    expect(removed.sheets.map((sheet) => sheet.id)).toEqual([firstId, "sheet_third"]);
+    expect(document.sheets[1].cells.A1).toEqual({ input: "kept" });
+    expect(nextSpreadsheetSheetName(removed)).toBe("Sheet 2");
+    expect(() => removeSpreadsheetSheet(createEmptySpreadsheetDocument(), firstId)).toThrow("at least one sheet tab");
+  });
+
   it("validates create and update payloads without accepting a caller-supplied owner", () => {
     const routes = source("server/routes/content.ts");
     expect(routes).toContain("createSpreadsheetRequestSchema.parse(req.body)");
@@ -103,5 +130,14 @@ describe("Sheets instrument", () => {
     expect(editor).toContain("insertSpreadsheetAxis");
     expect(editor).toContain("Insert row before row");
     expect(editor).toContain("Insert column before column");
+  });
+
+  it("keeps tab rename and confirmed removal inside the existing editor", () => {
+    const editor = source("client/src/pages/SpreadsheetEditorPage.tsx");
+    expect(editor).toContain('aria-label="Active sheet name"');
+    expect(editor).toContain("renameSpreadsheetSheet");
+    expect(editor).toContain("removeSpreadsheetSheet");
+    expect(editor).toContain("window.confirm");
+    expect(editor).toContain("This is not permanent until you save");
   });
 });

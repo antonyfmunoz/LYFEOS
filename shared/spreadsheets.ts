@@ -54,3 +54,36 @@ export function normalizeSpreadsheetDocument(value: unknown): SpreadsheetDocumen
   const parsed = spreadsheetDocumentSchema.safeParse(value);
   return parsed.success ? parsed.data : createEmptySpreadsheetDocument();
 }
+
+export function nextSpreadsheetSheetName(document: SpreadsheetDocument): string {
+  const existing = new Set(document.sheets.map((sheet) => sheet.name.trim().toLocaleLowerCase()));
+  for (let index = 1; index <= 20; index += 1) {
+    const candidate = `Sheet ${index}`;
+    if (!existing.has(candidate.toLocaleLowerCase())) return candidate;
+  }
+  throw new Error("No additional sheet name is available.");
+}
+
+export function renameSpreadsheetSheet(document: SpreadsheetDocument, sheetId: string, requestedName: string): SpreadsheetDocument {
+  const name = requestedName.trim();
+  if (!name || name.length > 80) throw new Error("Sheet names must contain 1 to 80 characters.");
+  if (!document.sheets.some((sheet) => sheet.id === sheetId)) throw new Error("That sheet no longer exists.");
+  if (document.sheets.some((sheet) => sheet.id !== sheetId && sheet.name.trim().toLocaleLowerCase() === name.toLocaleLowerCase())) {
+    throw new Error("Each sheet tab needs a unique name.");
+  }
+  return spreadsheetDocumentSchema.parse({
+    ...document,
+    sheets: document.sheets.map((sheet) => sheet.id === sheetId ? { ...sheet, name } : sheet),
+  });
+}
+
+export function removeSpreadsheetSheet(document: SpreadsheetDocument, sheetId: string): SpreadsheetDocument {
+  if (document.sheets.length <= 1) throw new Error("A spreadsheet must keep at least one sheet tab.");
+  const removedIndex = document.sheets.findIndex((sheet) => sheet.id === sheetId);
+  if (removedIndex < 0) throw new Error("That sheet no longer exists.");
+  const sheets = document.sheets.filter((sheet) => sheet.id !== sheetId);
+  const activeSheetId = document.activeSheetId === sheetId
+    ? sheets[Math.min(removedIndex, sheets.length - 1)].id
+    : document.activeSheetId;
+  return spreadsheetDocumentSchema.parse({ ...document, activeSheetId, sheets });
+}

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Download, Plus, Save } from "lucide-react";
+import { Download, Plus, Save, Trash2 } from "lucide-react";
 import type { SpreadsheetDocument } from "@shared/spreadsheets";
-import { createEmptySpreadsheetDocument, normalizeSpreadsheetDocument } from "@shared/spreadsheets";
+import { createEmptySpreadsheetDocument, nextSpreadsheetSheetName, normalizeSpreadsheetDocument, removeSpreadsheetSheet, renameSpreadsheetSheet } from "@shared/spreadsheets";
 import { columnLabel, evaluateSpreadsheetCell, insertSpreadsheetAxis, parseCellAddress } from "@/lib/spreadsheetFormula";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ export default function SpreadsheetEditorPage() {
   const [category, setCategory] = useState("general");
   const [document, setDocument] = useState<SpreadsheetDocument>(() => createEmptySpreadsheetDocument());
   const [selectedAddress, setSelectedAddress] = useState("A1");
+  const [sheetNameDraft, setSheetNameDraft] = useState("Sheet 1");
   const [dirty, setDirty] = useState(isNew);
   usePageTitle(title || "Sheet");
   const query = useQuery<{ spreadsheet: SpreadsheetRecord }>({
@@ -62,6 +63,7 @@ export default function SpreadsheetEditorPage() {
     },
   });
   const activeSheet = document.sheets.find((sheet) => sheet.id === document.activeSheetId) || document.sheets[0];
+  useEffect(() => setSheetNameDraft(activeSheet.name), [activeSheet.id, activeSheet.name]);
   const selectedInput = activeSheet.cells[selectedAddress]?.input || "";
   const updateDocument = (next: SpreadsheetDocument) => { setDocument(next); setDirty(true); };
   const setCell = (address: string, input: string) => {
@@ -72,8 +74,25 @@ export default function SpreadsheetEditorPage() {
   };
   const addSheet = () => {
     const id = `sheet_${Math.random().toString(36).slice(2, 12)}`;
-    updateDocument({ ...document, activeSheetId: id, sheets: [...document.sheets, { id, name: `Sheet ${document.sheets.length + 1}`, rowCount: 40, columnCount: 10, cells: {} }] });
+    updateDocument({ ...document, activeSheetId: id, sheets: [...document.sheets, { id, name: nextSpreadsheetSheetName(document), rowCount: 40, columnCount: 10, cells: {} }] });
     setSelectedAddress("A1");
+  };
+  const renameActiveSheet = () => {
+    try {
+      updateDocument(renameSpreadsheetSheet(document, activeSheet.id, sheetNameDraft));
+    } catch (error) {
+      toast({ title: "Could not rename sheet", description: error instanceof Error ? error.message : "The sheet could not be renamed.", variant: "destructive" });
+    }
+  };
+  const removeActiveSheet = () => {
+    if (!window.confirm(`Remove “${activeSheet.name}” and its ${Object.keys(activeSheet.cells).length} populated cells? This is not permanent until you save.`)) return;
+    try {
+      const next = removeSpreadsheetSheet(document, activeSheet.id);
+      updateDocument(next);
+      setSelectedAddress("A1");
+    } catch (error) {
+      toast({ title: "Could not remove sheet", description: error instanceof Error ? error.message : "The sheet could not be removed.", variant: "destructive" });
+    }
   };
   const selectedPosition = parseCellAddress(selectedAddress) || { column: 0, row: 0 };
   const columns = useMemo(() => Array.from({ length: activeSheet.columnCount }, (_, index) => columnLabel(index)), [activeSheet.columnCount]);
@@ -143,9 +162,14 @@ export default function SpreadsheetEditorPage() {
           ])}
         </div>
       </div>
-      <div className="flex items-center gap-1 border-t border-primary/15 bg-background/40 p-2">
-        {document.sheets.map((sheet) => <button key={sheet.id} type="button" onClick={() => updateDocument({ ...document, activeSheetId: sheet.id })} className={`rounded px-3 py-1 text-xs ${sheet.id === activeSheet.id ? "bg-primary/20 text-primary" : "text-muted-foreground hover:bg-primary/10"}`}>{sheet.name}</button>)}
+      <div className="flex flex-wrap items-center gap-1 border-t border-primary/15 bg-background/40 p-2">
+        {document.sheets.map((sheet) => <button key={sheet.id} type="button" onClick={() => updateDocument({ ...document, activeSheetId: sheet.id })} className={`max-w-40 truncate rounded px-3 py-1 text-xs ${sheet.id === activeSheet.id ? "bg-primary/20 text-primary" : "text-muted-foreground hover:bg-primary/10"}`} title={sheet.name}>{sheet.name}</button>)}
         <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Add sheet tab" disabled={document.sheets.length >= 20} onClick={addSheet}><Plus className="h-4 w-4" /></Button>
+        <div className="ml-auto flex min-w-0 items-center gap-1">
+          <Input aria-label="Active sheet name" value={sheetNameDraft} maxLength={80} onChange={(event) => setSheetNameDraft(event.target.value)} className="h-7 w-36 text-xs" />
+          <Button type="button" size="sm" variant="outline" className="h-7" disabled={!sheetNameDraft.trim() || sheetNameDraft.trim() === activeSheet.name} onClick={renameActiveSheet}>Rename</Button>
+          <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-destructive" aria-label={`Remove sheet ${activeSheet.name}`} disabled={document.sheets.length <= 1} onClick={removeActiveSheet}><Trash2 className="h-4 w-4" /></Button>
+        </div>
       </div>
     </div>
     <p className="text-[11px] leading-relaxed text-muted-foreground">Insertions preserve populated cells and shift affected formula references. Formulas support cell references, +, −, ×, ÷, parentheses, and SUM, AVERAGE, MIN, or MAX. CSV export writes calculated formula results and protects text beginning with spreadsheet-executable prefixes.</p>
