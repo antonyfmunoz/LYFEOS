@@ -19,6 +19,9 @@ type MissionContractBundle = {
     purpose: string;
     expectedOutput: string;
     requiredEvidence: string[];
+    rubricDefinition: Array<{ id: string; requirement: string; guidance: string; weight: 1 | 2 | 3; required: boolean }>;
+    rubricVersion: number;
+    acceptanceContextSnapshot: { capturedAt?: string; capacity?: { availability?: string }; constraints?: string[] };
     stopConditions: string[];
     state: string;
     reviewMode: "self" | "human";
@@ -26,7 +29,13 @@ type MissionContractBundle = {
     escalationPath: string | null;
   };
   evidence: Array<{ id: number; sourceType: string; sourceReference: string | null; summary: string; confidence: "self_reported" | "low" | "medium" | "high" }>;
-  reviews: Array<{ id: number; decision: string; summary: string; reviewerType: "self" | "human" }>;
+  reviews: Array<{ id: number; decision: string; summary: string; reviewerType: "self" | "human"; reviewerUserId: number | null; rubricVersion: number }>;
+  appeals: Array<{ id: number; missionReviewId: number; reason: string; status: "open" | "withdrawn" | "upheld" | "reconsidered"; resolutionSummary: string | null; createdAt: string }>;
+  planningDecision: null | {
+    source: string;
+    context: { capturedAt: string; capacity: { availability: "low" | "steady" | "high" | "unknown" }; constraints: string[] };
+    calibration: { recommendedDifficulty: string; selectedDifficulty: string; selectedBy: string; confidence: string; rationale: string[] };
+  };
 };
 
 type MissionReviewInvitationBundle = {
@@ -100,6 +109,7 @@ export default function MissionDetailPage() {
   const [evidenceChecks, setEvidenceChecks] = useState<Record<string, boolean>>({});
   const [prerequisiteQuestId, setPrerequisiteQuestId] = useState("");
   const [latestReviewUrl, setLatestReviewUrl] = useState("");
+  const [appealReason, setAppealReason] = useState("");
   const invitationQuery = useQuery<MissionReviewInvitationBundle>({
     queryKey: ["/api/quests", questId, "review-invitations"],
     queryFn: () => apiRequest(`/api/quests/${questId}/review-invitations`),
@@ -174,7 +184,7 @@ export default function MissionDetailPage() {
       method: "POST",
       body: JSON.stringify({
         decision,
-        rubric: { evidenceChecks: (contractQuery.data?.contract?.requiredEvidence || []).map((requirement) => ({ requirement, met: evidenceChecks[requirement] === true })) },
+        rubric: { evidenceChecks: (contractQuery.data?.contract?.rubricDefinition || []).map((criterion) => ({ criterionId: criterion.id, requirement: criterion.requirement, met: evidenceChecks[criterion.requirement] === true })) },
         summary: reviewSummary,
       }),
     }),
@@ -188,6 +198,15 @@ export default function MissionDetailPage() {
         description: decision === "meets_evidence" ? "LyfeOS recorded the reviewed practice evidence; it is not external certification." : "Progression remains withheld until the declared evidence is met and reviewed.",
       });
     },
+  });
+  const createAppeal = useMutation({
+    mutationFn: () => apiRequest(`/api/quests/${questId}/review-appeals`, { method: "POST", body: JSON.stringify({ reason: appealReason }) }),
+    onSuccess: () => { setAppealReason(""); refreshContract(); toast({ title: "Reconsideration requested", description: "The authorized reviewer can now uphold or reconsider the revision decision." }); },
+    onError: (error: Error) => toast({ title: "Appeal was not created", description: error.message, variant: "destructive" }),
+  });
+  const withdrawAppeal = useMutation({
+    mutationFn: (appealId: number) => apiRequest(`/api/quests/${questId}/review-appeals/${appealId}`, { method: "DELETE" }),
+    onSuccess: () => { refreshContract(); toast({ title: "Appeal withdrawn" }); },
   });
   const addDependency = useMutation({
     mutationFn: (dependencyQuestId: number) => apiRequest(`/api/quests/${questId}/dependencies`, {
@@ -269,6 +288,8 @@ export default function MissionDetailPage() {
   };
   const declaredEvidenceRequirements = contractQuery.data?.contract?.requiredEvidence || [];
   const allEvidenceRequirementsChecked = declaredEvidenceRequirements.every((requirement) => evidenceChecks[requirement] === true);
+  const latestHumanRevision = contractQuery.data?.reviews.find((review) => review.reviewerType === "human" && review.decision === "revisions_needed");
+  const openAppeal = contractQuery.data?.appeals.find((appeal) => appeal.status === "open");
   const dependencyIds = new Set((dependencyQuery.data?.dependencies || []).map((dependency) => dependency.prerequisiteQuestId));
   const availablePrerequisites = events.filter((event) => {
     const eventId = Number(event.id);
@@ -475,6 +496,17 @@ export default function MissionDetailPage() {
                 </div>
                 {contractQuery.data?.contract ? <span className="rounded-full border border-primary/30 px-2 py-1 text-xs text-primary">{contractQuery.data.contract.state.replaceAll("_", " ")}</span> : null}
               </div>
+              {contractQuery.data?.planningDecision && <div className="rounded-md border border-primary/10 bg-background/30 p-3 text-xs text-muted-foreground">
+                <div className="flex flex-wrap gap-2">
+                  <span className="font-mono uppercase tracking-[0.1em] text-primary/80">Creation context</span>
+                  <span>Capacity: {contractQuery.data.planningDecision.context.capacity.availability}</span>
+                  <span>Selected rank: {contractQuery.data.planningDecision.calibration.selectedDifficulty}</span>
+                  <span>Suggested rank: {contractQuery.data.planningDecision.calibration.recommendedDifficulty}</span>
+                  <span>Evidence confidence: {contractQuery.data.planningDecision.calibration.confidence}</span>
+                </div>
+                {contractQuery.data.planningDecision.calibration.rationale?.slice(0, 2).map((reason) => <p key={reason} className="mt-1 text-[10px] leading-relaxed">• {reason}</p>)}
+                <p className="mt-1 text-[10px]">Captured when this mission was created from {contractQuery.data.planningDecision.source}. This explains the initial scope; it is not a competence verdict.</p>
+              </div>}
               {contractQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading proof plan…</p> : !contractQuery.data?.contract ? (
                 <div className="grid gap-2">
                   <Input value={purpose} onChange={(event) => setPurpose(event.target.value)} placeholder="Why does this mission matter?" />
@@ -501,7 +533,11 @@ export default function MissionDetailPage() {
                 <div className="space-y-3 text-sm">
                   <p><span className="text-muted-foreground">Purpose:</span> {contractQuery.data.contract.purpose}</p>
                   <p><span className="text-muted-foreground">Expected proof:</span> {contractQuery.data.contract.expectedOutput}</p>
-                  {contractQuery.data.contract.requiredEvidence.length ? <p><span className="text-muted-foreground">Declared evidence:</span> {contractQuery.data.contract.requiredEvidence.join(" · ")}</p> : null}
+                  {contractQuery.data.contract.acceptanceContextSnapshot?.capturedAt ? <p className="text-xs text-muted-foreground">Accepted with capacity recorded as {contractQuery.data.contract.acceptanceContextSnapshot.capacity?.availability || "unknown"} on {new Date(contractQuery.data.contract.acceptanceContextSnapshot.capturedAt).toLocaleString()}. This context can explain later right-sizing; it does not lock the plan.</p> : null}
+                  {contractQuery.data.contract.requiredEvidence.length ? <div>
+                    <p><span className="text-muted-foreground">Evidence rubric v{contractQuery.data.contract.rubricVersion}:</span></p>
+                    <ul className="mt-1 space-y-1 text-xs text-muted-foreground">{contractQuery.data.contract.rubricDefinition.map((criterion) => <li key={criterion.id} className="rounded border border-primary/10 bg-background/20 p-2"><span className="text-foreground">{criterion.requirement}</span> · weight {criterion.weight}{criterion.required ? " · required" : ""}<br /><span className="text-[11px]">{criterion.guidance}</span></li>)}</ul>
+                  </div> : null}
                   <p><span className="text-muted-foreground">Risk:</span> {contractQuery.data.contract.riskLevel}</p>
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     <span className="text-muted-foreground">Review:</span>
@@ -570,6 +606,18 @@ export default function MissionDetailPage() {
                     </Button>
                     </div>
                     <p className="text-[11px] leading-relaxed text-muted-foreground">A self-review records your own assessment and can unlock LyfeOS practice progression. It is not external certification or verification of competence.</p>
+                  </div> : null}
+                  {latestHumanRevision ? <div className="border-t border-primary/10 pt-3 space-y-2">
+                    <p className="text-xs font-medium">Human-review reconsideration</p>
+                    <p className="text-[11px] text-muted-foreground">If the reviewer misunderstood the submitted evidence or a criterion, request one explicit reconsideration. This does not grant progression or erase the original review.</p>
+                    {openAppeal ? <div className="rounded-md border border-amber-300/20 bg-amber-300/5 p-2 text-xs">
+                      <p className="text-amber-100">Appeal open</p><p className="mt-1 text-muted-foreground">{openAppeal.reason}</p>
+                      <Button size="sm" variant="ghost" className="mt-1 h-7 px-2 text-xs" disabled={withdrawAppeal.isPending} onClick={() => withdrawAppeal.mutate(openAppeal.id)}>Withdraw appeal</Button>
+                    </div> : <>
+                      <Textarea value={appealReason} onChange={(event) => setAppealReason(event.target.value)} placeholder="Identify the evidence or rubric criterion you want the reviewer to reconsider…" className="min-h-20" maxLength={2000} />
+                      <Button size="sm" variant="outline" disabled={appealReason.trim().length < 10 || createAppeal.isPending} onClick={() => createAppeal.mutate()}>{createAppeal.isPending ? "Requesting…" : "Request reconsideration"}</Button>
+                    </>}
+                    {contractQuery.data.appeals.filter((appeal) => appeal.status !== "open").slice(0, 3).map((appeal) => <p key={appeal.id} className="text-[11px] text-muted-foreground">Appeal {appeal.status.replaceAll("_", " ")}{appeal.resolutionSummary ? ` · ${appeal.resolutionSummary}` : ""}</p>)}
                   </div> : null}
                 </div>
               )}

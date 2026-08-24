@@ -133,6 +133,29 @@ describe("mission lifecycle wiring", () => {
     expect(panel).toContain("Update inputs");
   });
 
+  it("captures decision context for assistant proposals and every canonical mission creation", () => {
+    const lifecycle = readSource("server/mission-lifecycle.ts");
+    const chat = readSource("server/replit_integrations/chat/routes.ts");
+    const detail = readSource("client/src/pages/MissionDetailPage.tsx");
+    expect(lifecycle).toContain("planningContextSnapshot");
+    expect(lifecycle).toContain("difficultyCalibration");
+    expect(chat).toContain("CURRENT DECISION CONTEXT");
+    expect(chat).toContain("planningContextSnapshot");
+    expect(detail).toContain("Creation context");
+    expect(detail).toContain("Accepted with capacity recorded as");
+  });
+
+  it("selects only capability-linked practice and exposes non-punitive remediation", () => {
+    const threads = readSource("server/routes/transformation-threads.ts");
+    const intelligence = readSource("server/transformation-intelligence.ts");
+    const panel = readSource("client/src/components/dashboard/TransformationThreadPanel.tsx");
+    expect(threads).toContain("selectNextPracticeMission");
+    expect(intelligence).toContain("skillNodeIds.includes(input.skillNodeId)");
+    expect(intelligence).toContain("buildMissionSupportPlan");
+    expect(panel).toContain("Suggested scope: Rank");
+    expect(intelligence).toContain("does not change the mission");
+  });
+
   it("uses a session-bound opaque anti-forgery state for Google OAuth", () => {
     const google = readSource("server/routes/google.ts");
     expect(google).toContain("crypto.randomUUID()");

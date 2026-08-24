@@ -541,7 +541,7 @@ export function registerHealthInsightRoutes(app: Express): void {
       const prepared = await prepareMissionCreation({
         userId, title: draft.title, category: draft.category, experienceReward: 25, completed: false,
         description: "Created after you confirmed a private Health planning draft. Health values and evidence references remain in Health.",
-      });
+      }, { source: "ui" });
       const result = await db.transaction(async (tx) => {
         await tx.execute(sql`SELECT id FROM health_planning_drafts WHERE id = ${id} AND user_id = ${userId} FOR UPDATE`);
         const [current] = await tx.select().from(healthPlanningDrafts).where(and(

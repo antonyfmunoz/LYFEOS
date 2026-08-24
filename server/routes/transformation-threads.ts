@@ -3,7 +3,7 @@ import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db";
 import { storage } from "../storage";
-import { missionContracts, missionDeferrals, personalCapabilities, questSkillContributions, quests, skillEdges, skillNodes, transformationThreadEvidence, transformationThreads, userActivityEvents } from "@shared/schema";
+import { missionContracts, missionDeferrals, missionEvidence, missionReviews, personalCapabilities, questSkillContributions, quests, skillEdges, skillNodes, transformationThreadEvidence, transformationThreads, userActivityEvents } from "@shared/schema";
 import { isAuthenticated } from "./middleware";
 import { recordTransformationThreadEvidence } from "../transformation-thread-evidence";
 import { getProgressionSummary, refreshProgressionState } from "../progression";
@@ -11,6 +11,7 @@ import { buildSkillGraph, recommendNextSkill, type SkillMasteryRequirements, typ
 import { ensurePersonalCapability } from "../capabilities";
 import { prepareMissionCreation } from "../mission-lifecycle";
 import { buildPlanningContextSnapshot, type PlanningContextSnapshot } from "../context-snapshot";
+import { buildMissionSupportPlan, calibrateMissionDifficulty, missionFitsResources, selectNextPracticeMission, type PracticeMissionCandidate } from "../transformation-intelligence";
 
 type StarterMission = {
   title: string;
@@ -243,8 +244,8 @@ export function registerTransformationThreadRoutes(app: Express): void {
       .limit(1);
     if (!thread) return res.json({ thread: null });
 
-    const [linkedMissions, evidence, skills, progression, completedSkillMissions, stats] = await Promise.all([
-      db.select({ id: quests.id, title: quests.title, completed: quests.completed, energyCost: quests.energyCost, timeCost: quests.timeCost, attentionCost: quests.attentionCost })
+    const [linkedMissions, evidence, skills, progression, completedSkillMissions, stats, profile, dailyLog] = await Promise.all([
+      db.select({ id: quests.id, title: quests.title, completed: quests.completed, difficulty: quests.difficulty, energyCost: quests.energyCost, timeCost: quests.timeCost, attentionCost: quests.attentionCost })
         .from(quests)
         .where(and(eq(quests.userId, userId), eq(quests.transformationThreadId, thread.id))),
       db.select()
@@ -274,6 +275,8 @@ export function registerTransformationThreadRoutes(app: Express): void {
           isNotNull(missionContracts.progressionAppliedAt),
         )),
       storage.getUserStats(userId),
+      storage.getUserProfile(userId),
+      storage.getUserDailyLogByDate(userId, new Date()),
     ]);
     const skillsWithHistory = skills.map(({ skill, recordedExperience, recordedLevel }) => ({
       ...skill,
@@ -295,20 +298,78 @@ export function registerTransformationThreadRoutes(app: Express): void {
     const skillGraph = buildSkillGraph({ skills: skillsWithHistory, completedMissionCountBySkill, reviewCount });
     const recommendedSkill = recommendNextSkill(skillGraph);
     const unfinishedMissions = linkedMissions.filter((mission) => !mission.completed);
-    const capacityFit = (mission: typeof unfinishedMissions[number]) =>
-      (mission.energyCost || 0) <= (stats?.energyPointsCurrent ?? Number.MAX_SAFE_INTEGER)
-      && (mission.timeCost || 0) <= (stats?.timeTokensCurrent ?? Number.MAX_SAFE_INTEGER)
-      && (mission.attentionCost || 0) <= (stats?.attentionTokensCurrent ?? Number.MAX_SAFE_INTEGER);
-    const recommendedMission = recommendedSkill
-      ? unfinishedMissions.find(capacityFit) || unfinishedMissions[0]
-      : undefined;
-    const recommendationFitsCapacity = recommendedMission ? capacityFit(recommendedMission) : true;
-    const deferralCount = recommendedMission
-      ? (await db.select({ id: missionDeferrals.id }).from(missionDeferrals).where(and(
-        eq(missionDeferrals.userId, userId),
-        eq(missionDeferrals.questId, recommendedMission.id),
-      ))).length
-      : 0;
+    const unfinishedIds = unfinishedMissions.map((mission) => mission.id);
+    const [candidateContributions, candidateDeferrals, candidateReviews, candidateEvidence, candidateContracts] = unfinishedIds.length > 0
+      ? await Promise.all([
+        db.select({ questId: questSkillContributions.questId, skillNodeId: questSkillContributions.skillNodeId })
+          .from(questSkillContributions)
+          .where(and(eq(questSkillContributions.userId, userId), inArray(questSkillContributions.questId, unfinishedIds))),
+        db.select({ questId: missionDeferrals.questId }).from(missionDeferrals)
+          .where(and(eq(missionDeferrals.userId, userId), inArray(missionDeferrals.questId, unfinishedIds))),
+        db.select({ questId: missionContracts.questId, decision: missionReviews.decision })
+          .from(missionReviews)
+          .innerJoin(missionContracts, eq(missionContracts.id, missionReviews.missionContractId))
+          .where(and(eq(missionReviews.userId, userId), inArray(missionContracts.questId, unfinishedIds))),
+        db.select({ questId: missionContracts.questId })
+          .from(missionEvidence)
+          .innerJoin(missionContracts, eq(missionContracts.id, missionEvidence.missionContractId))
+          .where(and(eq(missionEvidence.userId, userId), inArray(missionContracts.questId, unfinishedIds))),
+        db.select({ questId: missionContracts.questId, requiredEvidence: missionContracts.requiredEvidence })
+          .from(missionContracts)
+          .where(and(eq(missionContracts.userId, userId), inArray(missionContracts.questId, unfinishedIds))),
+      ])
+      : [[], [], [], [], []];
+    const groupedCount = <T extends { questId: number }>(rows: T[]) => rows.reduce((map, row) => map.set(row.questId, (map.get(row.questId) || 0) + 1), new Map<number, number>());
+    const deferralsByQuest = groupedCount(candidateDeferrals);
+    const revisionsByQuest = groupedCount(candidateReviews.filter((review) => review.decision === "revisions_needed"));
+    const evidenceByQuest = groupedCount(candidateEvidence);
+    const skillsByQuest = candidateContributions.reduce((map, row) => {
+      map.set(row.questId, [...(map.get(row.questId) || []), row.skillNodeId]);
+      return map;
+    }, new Map<number, number[]>());
+    const requiredEvidenceByQuest = new Map(candidateContracts.map((contract) => [
+      contract.questId,
+      Array.isArray(contract.requiredEvidence) ? contract.requiredEvidence.length : 0,
+    ]));
+    const candidates: PracticeMissionCandidate[] = unfinishedMissions.map((mission) => ({
+      ...mission,
+      skillNodeIds: skillsByQuest.get(mission.id) || [],
+      deferralCount: deferralsByQuest.get(mission.id) || 0,
+      revisionCount: revisionsByQuest.get(mission.id) || 0,
+      evidenceCount: evidenceByQuest.get(mission.id) || 0,
+    }));
+    const currentPlanningContext = buildPlanningContextSnapshot({ profile, stats, dailyLog });
+    const skillCandidates = recommendedSkill ? candidates.filter((mission) => mission.skillNodeIds.includes(recommendedSkill.id)) : [];
+    const difficultyCalibration = recommendedSkill ? calibrateMissionDifficulty({
+      classifiedDifficulty: "S",
+      explicitlySelected: false,
+      reviewedExperience: recommendedSkill.experience,
+      reviewedMissions: recommendedSkill.completedMissionCount,
+      revisionReviews: skillCandidates.reduce((total, mission) => total + mission.revisionCount, 0),
+      deferrals: skillCandidates.reduce((total, mission) => total + mission.deferralCount, 0),
+      context: currentPlanningContext,
+    }) : null;
+    const availableResources = {
+      energy: stats?.energyPointsCurrent,
+      time: stats?.timeTokensCurrent,
+      attention: stats?.attentionTokensCurrent,
+    };
+    const recommendedMission = recommendedSkill && difficultyCalibration
+      ? selectNextPracticeMission({
+        skillNodeId: recommendedSkill.id,
+        recommendedDifficulty: difficultyCalibration.recommendedDifficulty,
+        candidates,
+        available: availableResources,
+      })
+      : null;
+    const recommendationFitsCapacity = recommendedMission ? missionFitsResources(recommendedMission, availableResources) : true;
+    const supportPlan = recommendedMission ? buildMissionSupportPlan({
+      fitsCurrentCapacity: recommendationFitsCapacity,
+      deferralCount: recommendedMission.deferralCount,
+      revisionCount: recommendedMission.revisionCount,
+      evidenceRequired: requiredEvidenceByQuest.get(recommendedMission.id) || 0,
+      evidenceRecorded: recommendedMission.evidenceCount,
+    }) : null;
     res.json({
       thread: {
         ...thread,
@@ -328,12 +389,19 @@ export function registerTransformationThreadRoutes(app: Express): void {
             skillNodeId: recommendedSkill.id,
             skillName: recommendedSkill.name,
             questId: recommendedMission?.id || null,
-            deferralCount,
+            deferralCount: recommendedMission?.deferralCount || 0,
+            revisionCount: recommendedMission?.revisionCount || 0,
             title: recommendedMission?.title || `Practice ${recommendedSkill.name}`,
             description: recommendedMission
               ? `${recommendationFitsCapacity ? "This mission fits your currently available capacity." : "This is the next linked mission, but its listed cost exceeds your currently available capacity—defer, reduce, or revise it before beginning."} Complete it, then record what you observed.`
               : `Create one real-world mission for this unlocked skill and define the evidence you will record.`,
             fitsCurrentCapacity: recommendationFitsCapacity,
+            planningContext: currentPlanningContext,
+            difficultyCalibration,
+            supportPlan,
+            selectionBasis: recommendedMission
+              ? "This mission is explicitly linked to the recommended capability and is the closest available fit to the evidence-calibrated scope."
+              : "No unfinished mission is explicitly linked to this capability. Create one and declare its proof before practice begins.",
           } : null,
         },
         progression,
@@ -574,7 +642,7 @@ export function registerTransformationThreadRoutes(app: Express): void {
         dueDate: index === 0 ? today : null,
         sortOrder: index,
         linkedItems: [{ type: "transformation-thread", id: thread.id, rationale: mission.rationale }],
-      })));
+      }, { source: "system" })));
       const createdMissions = await db.transaction(async (tx) => {
         const inserted = preparedStarterMissions.length > 0
           ? await tx.insert(quests).values(preparedStarterMissions).returning()
@@ -604,6 +672,9 @@ export function registerTransformationThreadRoutes(app: Express): void {
             capabilityTargets: (starterMissions[index]?.skillContributions || []).map((contribution) => contribution.key),
             prerequisites: [],
             requiredEvidence: ["A short observation or artifact showing what happened."],
+            rubricDefinition: [{ id: "criterion-1", requirement: "A short observation or artifact showing what happened.", guidance: "Compare the submitted observation or artifact with the starter mission's expected output.", weight: 1, required: true }],
+            rubricVersion: 1,
+            acceptanceContextSnapshot: quest.planningContextSnapshot,
             reviewMode: "self",
             riskLevel: "low",
             stopConditions: [],

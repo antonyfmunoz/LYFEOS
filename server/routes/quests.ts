@@ -109,7 +109,7 @@ export function registerQuestRoutes(app: Express): void {
     });
   };
 
-  const ensurePracticeContract = async (quest: Pick<Quest, "id" | "userId" | "title">, skillNodeIds: number[]) => {
+  const ensurePracticeContract = async (quest: Pick<Quest, "id" | "userId" | "title" | "planningContextSnapshot">, skillNodeIds: number[]) => {
     const selectedSkills = await db.select({ name: skillNodes.name })
       .from(skillNodes)
       .where(and(eq(skillNodes.userId, quest.userId), inArray(skillNodes.id, skillNodeIds)));
@@ -121,6 +121,9 @@ export function registerQuestRoutes(app: Express): void {
       capabilityTargets: selectedSkills.map((skill) => skill.name),
       prerequisites: [],
       requiredEvidence: ["A short observation or artifact showing what happened."],
+      rubricDefinition: [{ id: "criterion-1", requirement: "A short observation or artifact showing what happened.", guidance: "Compare the submitted observation or artifact with the mission's expected output.", weight: 1, required: true }],
+      rubricVersion: 1,
+      acceptanceContextSnapshot: quest.planningContextSnapshot,
       reviewMode: "self",
       riskLevel: "low",
       stopConditions: [],

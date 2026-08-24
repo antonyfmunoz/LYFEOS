@@ -2,19 +2,29 @@ import type { Express, Request, Response } from "express";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db";
-import { missionContracts, missionDependencies, missionEvidence, missionReviewInvitations, missionReviews, quests } from "@shared/schema";
+import { missionContracts, missionDependencies, missionEvidence, missionReviewAppeals, missionReviewInvitations, missionReviews, quests, users } from "@shared/schema";
 import { isAuthenticated } from "./middleware";
 import { applyReviewedMissionProgression, revokeReviewedMissionProgression } from "../mission-lifecycle";
 import { wouldCreateMissionDependencyCycle } from "../mission-dependencies";
-import { validateEvidenceChecks } from "../mission-review-authorization";
+import { normalizeRubricDefinition, validateEvidenceChecks } from "../mission-review-authorization";
+import { storage } from "../storage";
+import { buildPlanningContextSnapshot } from "../context-snapshot";
 
 const textList = z.array(z.string().trim().min(1).max(280)).max(8);
+const rubricCriterionSchema = z.object({
+  id: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+  requirement: z.string().trim().min(1).max(280),
+  guidance: z.string().trim().min(1).max(500),
+  weight: z.number().int().min(1).max(3),
+  required: z.boolean().default(true),
+});
 const contractSchema = z.object({
   purpose: z.string().trim().min(3).max(800),
   expectedOutput: z.string().trim().min(3).max(1200),
   capabilityTargets: textList.default([]),
   prerequisites: textList.default([]),
   requiredEvidence: textList.default([]),
+  rubricDefinition: z.array(rubricCriterionSchema).max(8).optional(),
   reviewMode: z.enum(["self", "human"]).default("self"),
   riskLevel: z.enum(["low", "medium", "high"]).default("low"),
   stopConditions: textList.default([]),
@@ -31,8 +41,10 @@ const reviewSchema = z.object({
   decision: z.enum(["meets_evidence", "revisions_needed"]),
   rubric: z.object({
     evidenceChecks: z.array(z.object({
+      criterionId: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/).optional(),
       requirement: z.string().trim().min(1).max(280),
       met: z.boolean(),
+      note: z.string().trim().max(500).optional(),
     })).max(8).default([]),
   }).default({ evidenceChecks: [] }),
   summary: z.string().trim().min(3).max(2000),
@@ -41,6 +53,19 @@ const dependencySchema = z.object({
   prerequisiteQuestId: z.number().int().positive(),
 });
 const reviewModeSchema = z.object({ reviewMode: z.enum(["self", "human"]) });
+const appealSchema = z.object({ reason: z.string().trim().min(10).max(2000) });
+const appealResolutionSchema = z.object({
+  decision: z.enum(["upheld", "reconsidered"]),
+  summary: z.string().trim().min(3).max(2000),
+  rubric: z.object({
+    evidenceChecks: z.array(z.object({
+      criterionId: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/).optional(),
+      requirement: z.string().trim().min(1).max(280),
+      met: z.boolean(),
+      note: z.string().trim().max(500).optional(),
+    })).max(8).default([]),
+  }).default({ evidenceChecks: [] }),
+});
 
 async function ownedQuest(questId: number, userId: number) {
   const [quest] = await db.select({ id: quests.id, completed: quests.completed })
@@ -51,12 +76,23 @@ async function ownedQuest(questId: number, userId: number) {
 async function contractBundle(questId: number, userId: number) {
   const [contract] = await db.select().from(missionContracts)
     .where(and(eq(missionContracts.questId, questId), eq(missionContracts.userId, userId))).limit(1);
-  if (!contract) return { contract: null, evidence: [], reviews: [] };
-  const [evidence, reviews] = await Promise.all([
+  const [quest] = await db.select({
+    planningContextSnapshot: quests.planningContextSnapshot,
+    difficultyCalibration: quests.difficultyCalibration,
+    planningDecisionSource: quests.planningDecisionSource,
+  }).from(quests).where(and(eq(quests.id, questId), eq(quests.userId, userId))).limit(1);
+  const planningDecision = quest ? {
+    context: quest.planningContextSnapshot,
+    calibration: quest.difficultyCalibration,
+    source: quest.planningDecisionSource,
+  } : null;
+  if (!contract) return { contract: null, evidence: [], reviews: [], appeals: [], planningDecision };
+  const [evidence, reviews, appeals] = await Promise.all([
     db.select().from(missionEvidence).where(and(eq(missionEvidence.missionContractId, contract.id), eq(missionEvidence.userId, userId))).orderBy(desc(missionEvidence.submittedAt)),
     db.select().from(missionReviews).where(and(eq(missionReviews.missionContractId, contract.id), eq(missionReviews.userId, userId))).orderBy(desc(missionReviews.createdAt)),
+    db.select().from(missionReviewAppeals).where(and(eq(missionReviewAppeals.missionContractId, contract.id), eq(missionReviewAppeals.userId, userId))).orderBy(desc(missionReviewAppeals.createdAt)),
   ]);
-  return { contract, evidence, reviews };
+  return { contract, evidence, reviews, appeals, planningDecision };
 }
 
 async function dependencyBundle(questId: number, userId: number) {
@@ -76,6 +112,136 @@ async function dependencyBundle(questId: number, userId: number) {
 }
 
 export function registerMissionContractRoutes(app: Express): void {
+  app.get("/api/mission-review-appeals/assigned", isAuthenticated, async (req: Request, res: Response) => {
+    const rows = await db.select({
+      appeal: missionReviewAppeals,
+      missionTitle: quests.title,
+      ownerDisplayName: users.displayName,
+      reviewSummary: missionReviews.summary,
+      reviewRubric: missionReviews.rubric,
+      reviewRubricVersion: missionReviews.rubricVersion,
+      expectedOutput: missionContracts.expectedOutput,
+      requiredEvidence: missionContracts.requiredEvidence,
+      rubricDefinition: missionContracts.rubricDefinition,
+      rubricVersion: missionContracts.rubricVersion,
+    }).from(missionReviewAppeals)
+      .innerJoin(missionReviews, eq(missionReviews.id, missionReviewAppeals.missionReviewId))
+      .innerJoin(missionContracts, eq(missionContracts.id, missionReviewAppeals.missionContractId))
+      .innerJoin(quests, eq(quests.id, missionContracts.questId))
+      .innerJoin(users, eq(users.id, missionReviewAppeals.userId))
+      .where(and(eq(missionReviewAppeals.reviewerUserId, req.session.userId!), eq(missionReviewAppeals.status, "open")))
+      .orderBy(desc(missionReviewAppeals.createdAt));
+    const contractIds = rows.map((row) => row.appeal.missionContractId);
+    const evidence = contractIds.length ? await db.select({
+      missionContractId: missionEvidence.missionContractId,
+      id: missionEvidence.id,
+      sourceType: missionEvidence.sourceType,
+      sourceReference: missionEvidence.sourceReference,
+      summary: missionEvidence.summary,
+      confidence: missionEvidence.confidence,
+      submittedAt: missionEvidence.submittedAt,
+    }).from(missionEvidence).where(inArray(missionEvidence.missionContractId, contractIds)).orderBy(desc(missionEvidence.submittedAt)) : [];
+    return res.json({
+      appeals: rows.map((row) => ({
+        ...row.appeal,
+        missionTitle: row.missionTitle,
+        ownerDisplayName: row.ownerDisplayName || "LyfeOS user",
+        reviewSummary: row.reviewSummary,
+        expectedOutput: row.expectedOutput,
+        requiredEvidence: row.requiredEvidence,
+        rubricDefinition: row.reviewRubric && typeof row.reviewRubric === "object" && !Array.isArray(row.reviewRubric) && Array.isArray((row.reviewRubric as Record<string, unknown>).definition)
+          ? (row.reviewRubric as Record<string, unknown>).definition
+          : row.rubricDefinition,
+        rubricVersion: row.reviewRubricVersion,
+        evidence: evidence.filter((item) => item.missionContractId === row.appeal.missionContractId),
+      })),
+    });
+  });
+
+  app.post("/api/mission-review-appeals/:appealId/resolve", isAuthenticated, async (req: Request, res: Response) => {
+    const appealId = Number(req.params.appealId);
+    if (!Number.isInteger(appealId)) return res.status(400).json({ error: "Invalid review appeal." });
+    const parsed = appealResolutionSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Invalid appeal resolution.", details: parsed.error.flatten() });
+    const [row] = await db.select({
+      appeal: missionReviewAppeals,
+      contract: missionContracts,
+      questId: quests.id,
+      challengedReviewRubric: missionReviews.rubric,
+      challengedReviewRubricVersion: missionReviews.rubricVersion,
+    }).from(missionReviewAppeals)
+      .innerJoin(missionContracts, eq(missionContracts.id, missionReviewAppeals.missionContractId))
+      .innerJoin(missionReviews, eq(missionReviews.id, missionReviewAppeals.missionReviewId))
+      .innerJoin(quests, eq(quests.id, missionContracts.questId))
+      .where(and(
+        eq(missionReviewAppeals.id, appealId),
+        eq(missionReviewAppeals.reviewerUserId, req.session.userId!),
+        eq(missionReviewAppeals.status, "open"),
+      )).limit(1);
+    if (!row) return res.status(404).json({ error: "Open review appeal not found." });
+    const challengedRubricDefinition = row.challengedReviewRubric && typeof row.challengedReviewRubric === "object" && !Array.isArray(row.challengedReviewRubric)
+      && Array.isArray((row.challengedReviewRubric as Record<string, unknown>).definition)
+      ? (row.challengedReviewRubric as Record<string, unknown>).definition
+      : row.contract.rubricDefinition;
+    if (parsed.data.decision === "reconsidered") {
+      const validation = validateEvidenceChecks(
+        row.contract.requiredEvidence,
+        parsed.data.rubric.evidenceChecks,
+        "meets_evidence",
+        challengedRubricDefinition,
+      );
+      if (!validation.ok) return res.status(validation.status).json({ error: validation.error });
+    }
+    const resolved = await db.transaction(async (tx) => {
+      const [claimed] = await tx.update(missionReviewAppeals).set({
+        status: parsed.data.decision,
+        resolutionSummary: parsed.data.summary,
+        resolvedAt: new Date(),
+      }).where(and(eq(missionReviewAppeals.id, appealId), eq(missionReviewAppeals.status, "open"))).returning();
+      if (!claimed) return null;
+      let resolutionReviewId: number | null = null;
+      if (parsed.data.decision === "reconsidered") {
+        const [resolutionReview] = await tx.insert(missionReviews).values({
+          userId: row.appeal.userId,
+          missionContractId: row.contract.id,
+          reviewerType: "human",
+          reviewerUserId: req.session.userId!,
+          decision: "meets_evidence",
+          rubric: { ...parsed.data.rubric, definition: challengedRubricDefinition },
+          rubricVersion: row.challengedReviewRubricVersion,
+          summary: `Appeal reconsidered: ${parsed.data.summary}`,
+        }).returning({ id: missionReviews.id });
+        resolutionReviewId = resolutionReview.id;
+        await tx.update(missionContracts).set({ state: "reviewed", updatedAt: new Date() }).where(eq(missionContracts.id, row.contract.id));
+      }
+      return { appeal: claimed, resolutionReviewId };
+    });
+    if (!resolved) return res.status(409).json({ error: "This appeal was already resolved or withdrawn." });
+    try {
+      const progression = parsed.data.decision === "reconsidered"
+        ? await applyReviewedMissionProgression({ questId: row.questId, userId: row.appeal.userId, reviewSummary: parsed.data.summary })
+        : { applied: false, skillExperienceAwarded: 0 };
+      return res.json({ appeal: resolved.appeal, progression });
+    } catch (error) {
+      // A reconsideration is not final unless its competence progression is
+      // durable too. Restore the appeal and contract so the reviewer can retry
+      // instead of leaving an accepted review with missing progression.
+      if (parsed.data.decision === "reconsidered" && resolved.resolutionReviewId) {
+        await db.transaction(async (tx) => {
+          await tx.delete(missionReviews).where(eq(missionReviews.id, resolved.resolutionReviewId!));
+          await tx.update(missionContracts).set({ state: "revisions_needed", updatedAt: new Date() })
+            .where(eq(missionContracts.id, row.contract.id));
+          await tx.update(missionReviewAppeals).set({
+            status: "open",
+            resolutionSummary: null,
+            resolvedAt: null,
+          }).where(and(eq(missionReviewAppeals.id, appealId), eq(missionReviewAppeals.status, "reconsidered")));
+        });
+      }
+      throw error;
+    }
+  });
+
   app.get("/api/quests/:questId/contract", isAuthenticated, async (req: Request, res: Response) => {
     const questId = Number(req.params.questId);
     if (!Number.isInteger(questId)) return res.status(400).json({ error: "Invalid mission." });
@@ -137,18 +303,31 @@ export function registerMissionContractRoutes(app: Express): void {
     const parsed = contractSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Invalid mission contract.", details: parsed.error.flatten() });
     const input = parsed.data;
-    const [existing] = await db.select({ progressionAppliedAt: missionContracts.progressionAppliedAt })
+    const [existing] = await db.select({
+      progressionAppliedAt: missionContracts.progressionAppliedAt,
+      rubricDefinition: missionContracts.rubricDefinition,
+      rubricVersion: missionContracts.rubricVersion,
+    })
       .from(missionContracts)
       .where(and(eq(missionContracts.questId, questId), eq(missionContracts.userId, req.session.userId!)))
       .limit(1);
     if (existing?.progressionAppliedAt) {
       return res.status(409).json({ error: "Reopen this reviewed mission before changing the contract that supports its recorded progression." });
     }
+    const rubricDefinition = normalizeRubricDefinition(input.requiredEvidence, input.rubricDefinition);
+    const rubricChanged = existing && JSON.stringify(existing.rubricDefinition) !== JSON.stringify(rubricDefinition);
+    const rubricVersion = existing ? existing.rubricVersion + (rubricChanged ? 1 : 0) : 1;
+    const [profile, stats, dailyLog] = await Promise.all([
+      storage.getUserProfile(req.session.userId!),
+      storage.getUserStats(req.session.userId!),
+      storage.getUserDailyLogByDate(req.session.userId!, new Date()),
+    ]);
+    const acceptanceContextSnapshot = buildPlanningContextSnapshot({ profile, stats, dailyLog });
     const [contract] = await db.insert(missionContracts).values({
-      userId: req.session.userId!, questId, ...input, escalationPath: input.escalationPath || null,
+      userId: req.session.userId!, questId, ...input, rubricDefinition, rubricVersion, acceptanceContextSnapshot, escalationPath: input.escalationPath || null,
     }).onConflictDoUpdate({
       target: missionContracts.questId,
-      set: { ...input, escalationPath: input.escalationPath || null, updatedAt: new Date() },
+      set: { ...input, rubricDefinition, rubricVersion, acceptanceContextSnapshot, escalationPath: input.escalationPath || null, updatedAt: new Date() },
     }).returning();
     return res.json({ contract });
   });
@@ -207,10 +386,17 @@ export function registerMissionContractRoutes(app: Express): void {
     if (contract.reviewMode === "human") return res.status(409).json({ error: "This mission requires an authorized human reviewer; self-review is not sufficient." });
     const evidence = await db.select({ id: missionEvidence.id }).from(missionEvidence).where(and(eq(missionEvidence.missionContractId, contract.id), eq(missionEvidence.userId, req.session.userId!))).limit(1);
     if (!evidence.length) return res.status(409).json({ error: "Add evidence before reviewing this mission." });
-    const validation = validateEvidenceChecks(contract.requiredEvidence, parsed.data.rubric.evidenceChecks, parsed.data.decision);
+    const validation = validateEvidenceChecks(contract.requiredEvidence, parsed.data.rubric.evidenceChecks, parsed.data.decision, contract.rubricDefinition);
     if (!validation.ok) return res.status(validation.status).json({ error: validation.error });
     const [review] = await db.transaction(async (tx) => {
-      const [created] = await tx.insert(missionReviews).values({ userId: req.session.userId!, missionContractId: contract.id, reviewerType: "self", ...parsed.data }).returning();
+      const [created] = await tx.insert(missionReviews).values({
+        userId: req.session.userId!,
+        missionContractId: contract.id,
+        reviewerType: "self",
+        ...parsed.data,
+        rubric: { ...parsed.data.rubric, definition: contract.rubricDefinition },
+        rubricVersion: contract.rubricVersion,
+      }).returning();
       await tx.update(missionContracts).set({ state: parsed.data.decision === "meets_evidence" ? "reviewed" : "revisions_needed", updatedAt: new Date() }).where(eq(missionContracts.id, contract.id));
       return [created];
     });
@@ -218,5 +404,59 @@ export function registerMissionContractRoutes(app: Express): void {
       ? await applyReviewedMissionProgression({ questId, userId: req.session.userId!, reviewSummary: parsed.data.summary })
       : await revokeReviewedMissionProgression({ questId, userId: req.session.userId!, reason: `Evidence review requested revisions: ${parsed.data.summary}` });
     return res.status(201).json({ review, progression });
+  });
+
+  app.post("/api/quests/:questId/review-appeals", isAuthenticated, async (req: Request, res: Response) => {
+    const questId = Number(req.params.questId);
+    if (!Number.isInteger(questId)) return res.status(400).json({ error: "Invalid mission." });
+    const parsed = appealSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Explain what evidence or criterion should be reconsidered." });
+    const userId = req.session.userId!;
+    const [latest] = await db.select({
+      review: missionReviews,
+      contractId: missionContracts.id,
+    }).from(missionReviews)
+      .innerJoin(missionContracts, eq(missionContracts.id, missionReviews.missionContractId))
+      .innerJoin(quests, eq(quests.id, missionContracts.questId))
+      .where(and(
+        eq(quests.id, questId),
+        eq(quests.userId, userId),
+        eq(missionReviews.userId, userId),
+        eq(missionReviews.reviewerType, "human"),
+        eq(missionReviews.decision, "revisions_needed"),
+        eq(missionContracts.state, "revisions_needed"),
+      )).orderBy(desc(missionReviews.createdAt)).limit(1);
+    if (!latest?.review.reviewerUserId) return res.status(409).json({ error: "Only a revision decision from an authorized human reviewer can be appealed." });
+    try {
+      const [appeal] = await db.insert(missionReviewAppeals).values({
+        userId,
+        missionContractId: latest.contractId,
+        missionReviewId: latest.review.id,
+        reviewerUserId: latest.review.reviewerUserId,
+        reason: parsed.data.reason,
+      }).returning();
+      return res.status(201).json({ appeal });
+    } catch (error) {
+      if ((error as { code?: string }).code === "23505") return res.status(409).json({ error: "An open appeal already exists for this review." });
+      throw error;
+    }
+  });
+
+  app.delete("/api/quests/:questId/review-appeals/:appealId", isAuthenticated, async (req: Request, res: Response) => {
+    const questId = Number(req.params.questId);
+    const appealId = Number(req.params.appealId);
+    if (!Number.isInteger(questId) || !Number.isInteger(appealId)) return res.status(400).json({ error: "Invalid review appeal." });
+    const [withdrawn] = await db.update(missionReviewAppeals).set({ status: "withdrawn", resolvedAt: new Date() })
+      .where(and(
+        eq(missionReviewAppeals.id, appealId),
+        eq(missionReviewAppeals.userId, req.session.userId!),
+        eq(missionReviewAppeals.status, "open"),
+        inArray(missionReviewAppeals.missionContractId, db.select({ id: missionContracts.id }).from(missionContracts).where(and(
+          eq(missionContracts.questId, questId),
+          eq(missionContracts.userId, req.session.userId!),
+        ))),
+      )).returning({ id: missionReviewAppeals.id });
+    if (!withdrawn) return res.status(404).json({ error: "Open review appeal not found." });
+    return res.status(204).send();
   });
 }

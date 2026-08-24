@@ -152,6 +152,6 @@ describe("LyfeOS native Messages convergence", () => {
     expect(workflow).toContain("node dist/release-migrate.js");
     expect(workflow).toContain('second_pass="$(node dist/release-migrate.js)"');
     expect(workflow).toContain("LYFEOS_TEST_ENV: isolated");
-    expect(workflow).toContain("npx vitest run tests/api-messages-convergence.test.ts");
+    expect(workflow).toContain("npx vitest run tests/api-messages-convergence.test.ts tests/api-transformation-intelligence.test.ts");
   });
 });

@@ -10,6 +10,7 @@ import * as cheerio from 'cheerio';
 import { detectRelevantLayers, searchKnowledgeBase, getLayerById, KNOWLEDGE_LAYERS } from "./knowledge-base";
 import { resolveAIContextPreferences, resolveAIVisibleDisplayName } from "../../ai-context-preferences";
 import { buildCalendarMissionWindow } from "@shared/calendar";
+import { buildPlanningContextSnapshot } from "../../context-snapshot";
 
 const anthropic = new Anthropic({
   apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
@@ -157,9 +158,14 @@ function buildSystemPrompt(ctx: NOVAContext): string {
   const avgPhysical = safeAvg(recentLogs, 'physicalState');
   const avgEmotional = safeAvg(recentLogs, 'emotionalState');
 
-  const todayLog = recentLogs[0];
-
   const todayDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+  const todayLog = recentLogs.find((log: any) => {
+    const date = new Date(log.date);
+    return !Number.isNaN(date.getTime())
+      && date.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }) === todayDate;
+  });
+  const planningSnapshot = buildPlanningContextSnapshot({ profile, stats, dailyLog: todayLog });
+
   const upcomingEvents = missions
     .filter((m: any) => !m.completed && !m.deletedAt && m.startDate && m.startDate >= todayDate)
     .sort((a: any, b: any) => (a.startDate || '').localeCompare(b.startDate || ''))
@@ -252,6 +258,14 @@ ${contextPreferences.planning ? `
 10-Year Vision: ${profile?.vision10Year || 'Not set'}
 10-Year Legacy: ${profile?.vision10YearLegacy || 'Not set'}
 Current Goals: ${JSON.stringify(profile?.currentGoals || [])}` : "Planning context is private unless the Player enables it."}
+
+=== CURRENT DECISION CONTEXT ===
+${contextPreferences.planning ? `Focus: ${planningSnapshot.focus || 'Not declared'}
+Declared weekly hours: ${planningSnapshot.declaredWeeklyHours ?? 'Not declared'}
+Capacity availability: ${contextPreferences.dailyState ? planningSnapshot.capacity.availability : 'Private unless daily-state context is enabled'}
+Constraints: ${planningSnapshot.constraints.length ? planningSnapshot.constraints.join(' | ') : 'None declared'}
+Captured for this proposal: ${planningSnapshot.capturedAt}
+Use this context to right-size proposals. Treat it as user-editable planning input, not a diagnosis or command.` : 'Decision context is private unless the Player enables planning context.'}
 
 === VISION MILESTONES ===
 ${contextPreferences.planning ? Object.entries(goalsByHorizon).map(([horizon, goals]) => {
@@ -757,11 +771,18 @@ function pendingActionPreview(toolName: string, input: unknown): string {
 async function executeTool(toolName: string, input: any, userId: number): Promise<string> {
   let recordId: number | undefined;
   try {
+    const [profile, stats, dailyLog] = await Promise.all([
+      storage.getUserProfile(userId),
+      storage.getUserStats(userId),
+      storage.getUserDailyLogByDate(userId, new Date()),
+    ]);
+    const planningContextSnapshot = buildPlanningContextSnapshot({ profile, stats, dailyLog });
     const [record] = await db.insert(aiActionRecords).values({
       userId,
       toolName,
       risk: toolRisk(toolName),
       inputSummary: actionInputSummary(input),
+      planningContextSnapshot,
     }).returning({ id: aiActionRecords.id });
     recordId = record.id;
   } catch {

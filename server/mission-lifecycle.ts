@@ -1,8 +1,8 @@
-import { and, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { db } from "./db";
 import { storage } from "./storage";
 import { logger } from "./utils";
-import { missionContracts, missionDeferrals, missionDependencies, personalCapabilities, questSkillContributions, quests, skillNodes, skillProgressionEvents, type Quest } from "@shared/schema";
+import { missionContracts, missionDeferrals, missionDependencies, missionReviews, personalCapabilities, questSkillContributions, quests, skillNodes, skillProgressionEvents, type Quest } from "@shared/schema";
 import { recordTransformationThreadEvidence } from "./transformation-thread-evidence";
 import { refreshProgressionState } from "./progression";
 import { queueLinkedWorkItemState } from "./cross-product";
@@ -11,6 +11,8 @@ import { calculateMissionCosts } from "./routes/middleware";
 import { classifyMission } from "./utils";
 import type { InsertQuest } from "@shared/schema";
 import { capabilityLevelForExperience } from "./capabilities";
+import { buildPlanningContextSnapshot } from "./context-snapshot";
+import { calibrateMissionDifficulty } from "./transformation-intelligence";
 
 /** The sole completion/reopening path for a LyfeOS mission. */
 export type MissionLifecycleSource = "ui" | "ai" | "onboarding" | "umh" | "system";
@@ -25,7 +27,10 @@ export class MissionLifecycleError extends Error {
  * costing, and activity provenance regardless of whether it came from the UI
  * or the assistant. Federation creation stays transactional with its inbound
  * command receipt and has a dedicated adapter. */
-export async function prepareMissionCreation(questInput: InsertQuest): Promise<InsertQuest> {
+export async function prepareMissionCreation(
+  questInput: InsertQuest,
+  options: { source?: MissionLifecycleSource } = {},
+): Promise<typeof quests.$inferInsert> {
   const { attentionCost, timeCost, energyCost } = calculateMissionCosts(
     questInput.startDate || null,
     questInput.startTime || null,
@@ -37,15 +42,81 @@ export async function prepareMissionCreation(questInput: InsertQuest): Promise<I
     questInput.description,
     { category: questInput.category || "general", difficulty: questInput.difficulty || "D" },
   );
+  const [profile, stats, dailyLog] = await Promise.all([
+    storage.getUserProfile(questInput.userId),
+    storage.getUserStats(questInput.userId),
+    storage.getUserDailyLogByDate(questInput.userId, new Date()),
+  ]);
+  const planningContextSnapshot = buildPlanningContextSnapshot({ profile, stats, dailyLog });
+  let reviewedExperience = 0;
+  let reviewedMissions = 0;
+  let revisionReviews = 0;
+  if (questInput.transformationThreadId) {
+    const threadSkills = await db.select({
+      id: skillNodes.id,
+      kind: skillNodes.kind,
+      capabilityId: skillNodes.capabilityId,
+      capabilityExperience: personalCapabilities.experience,
+    }).from(skillNodes)
+      .leftJoin(personalCapabilities, and(
+        eq(personalCapabilities.id, skillNodes.capabilityId),
+        eq(personalCapabilities.userId, questInput.userId),
+      ))
+      .where(and(
+        eq(skillNodes.userId, questInput.userId),
+        eq(skillNodes.transformationThreadId, questInput.transformationThreadId),
+      ));
+    const focusSkill = threadSkills.find((skill) => skill.kind === "primary") || threadSkills[0];
+    reviewedExperience = focusSkill?.capabilityExperience || 0;
+    if (focusSkill?.capabilityId) {
+      const [progressionEvents, revisions] = await Promise.all([
+        db.select({ questId: skillProgressionEvents.questId, delta: skillProgressionEvents.experienceDelta })
+          .from(skillProgressionEvents)
+          .innerJoin(skillNodes, eq(skillNodes.id, skillProgressionEvents.skillNodeId))
+          .where(and(
+            eq(skillProgressionEvents.userId, questInput.userId),
+            eq(skillNodes.capabilityId, focusSkill.capabilityId),
+          )),
+        db.select({ reviewId: missionReviews.id })
+          .from(missionReviews)
+          .innerJoin(missionContracts, eq(missionContracts.id, missionReviews.missionContractId))
+          .innerJoin(quests, eq(quests.id, missionContracts.questId))
+          .innerJoin(questSkillContributions, eq(questSkillContributions.questId, quests.id))
+          .innerJoin(skillNodes, eq(skillNodes.id, questSkillContributions.skillNodeId))
+          .where(and(
+            eq(missionReviews.userId, questInput.userId),
+            eq(missionReviews.decision, "revisions_needed"),
+            eq(skillNodes.capabilityId, focusSkill.capabilityId),
+          )),
+      ]);
+      const netByMission = new Map<number, number>();
+      for (const event of progressionEvents) {
+        if (event.questId !== null) netByMission.set(event.questId, (netByMission.get(event.questId) || 0) + event.delta);
+      }
+      reviewedMissions = Array.from(netByMission.values()).filter((total) => total > 0).length;
+      revisionReviews = new Set(revisions.map((review) => review.reviewId)).size;
+    }
+  }
+  const difficultyCalibration = calibrateMissionDifficulty({
+    classifiedDifficulty: classification.difficulty,
+    explicitlySelected: questInput.difficulty !== undefined && questInput.difficulty !== null,
+    reviewedExperience,
+    reviewedMissions,
+    revisionReviews,
+    context: planningContextSnapshot,
+  });
   return {
     ...questInput,
     completed: false,
     completedAt: null,
     category: classification.category,
-    difficulty: classification.difficulty,
+    difficulty: difficultyCalibration.selectedDifficulty,
     attentionCost,
     timeCost,
     energyCost,
+    planningContextSnapshot,
+    difficultyCalibration,
+    planningDecisionSource: options.source || "system",
   };
 }
 
@@ -73,7 +144,7 @@ async function dispatchMissionAutomations(input: {
 export async function createMissionLifecycle(input: InsertQuest & { source: MissionLifecycleSource; suppressAutomations?: boolean }) {
   const { source, suppressAutomations = false, ...questInput } = input;
   const shouldComplete = questInput.completed === true;
-  const quest = await storage.createQuest(await prepareMissionCreation(questInput));
+  const quest = await storage.createQuest(await prepareMissionCreation(questInput, { source }));
   storage.logActivityEvent(quest.userId, "mission_created", { questId: quest.id, title: quest.title, source }).catch(() => {});
   if (!suppressAutomations) {
     await dispatchMissionAutomations({ userId: quest.userId, triggerType: "mission_created", quest, idempotencyReference: String(quest.id) });
@@ -183,14 +254,13 @@ async function applyQuestSkillProgression(input: {
   direction: 1 | -1;
   sourceType: "mission_evidence_review" | "mission_evidence_reversal";
   evidenceSummary: string;
+  progressionRevision: number;
 }): Promise<number> {
-  const { quest, direction, sourceType, evidenceSummary } = input;
-  const contributions = await db.select({
+  const { quest, direction, sourceType, evidenceSummary, progressionRevision } = input;
+  const contributionRefs = await db.select({
     skillNodeId: questSkillContributions.skillNodeId,
     experienceAmount: questSkillContributions.experienceAmount,
-    currentExperience: skillNodes.experience,
     capabilityId: skillNodes.capabilityId,
-    capabilityExperience: personalCapabilities.experience,
   })
     .from(questSkillContributions)
     .innerJoin(skillNodes, eq(skillNodes.id, questSkillContributions.skillNodeId))
@@ -201,8 +271,30 @@ async function applyQuestSkillProgression(input: {
       eq(skillNodes.userId, quest.userId),
     ));
 
-  if (contributions.length === 0) return 0;
+  if (contributionRefs.length === 0) return 0;
   await db.transaction(async (tx) => {
+    const skillIds = contributionRefs.map((contribution) => contribution.skillNodeId);
+    await tx.select({ id: skillNodes.id }).from(skillNodes)
+      .where(and(eq(skillNodes.userId, quest.userId), inArray(skillNodes.id, skillIds)))
+      .for("update");
+    const capabilityIds = Array.from(new Set(contributionRefs.flatMap((contribution) => contribution.capabilityId === null ? [] : [contribution.capabilityId])));
+    if (capabilityIds.length) await tx.select({ id: personalCapabilities.id }).from(personalCapabilities)
+      .where(and(eq(personalCapabilities.userId, quest.userId), inArray(personalCapabilities.id, capabilityIds)))
+      .for("update");
+    const contributions = await tx.select({
+      skillNodeId: questSkillContributions.skillNodeId,
+      experienceAmount: questSkillContributions.experienceAmount,
+      currentExperience: skillNodes.experience,
+      capabilityId: skillNodes.capabilityId,
+      capabilityExperience: personalCapabilities.experience,
+    }).from(questSkillContributions)
+      .innerJoin(skillNodes, eq(skillNodes.id, questSkillContributions.skillNodeId))
+      .leftJoin(personalCapabilities, eq(personalCapabilities.id, skillNodes.capabilityId))
+      .where(and(
+        eq(questSkillContributions.questId, quest.id),
+        eq(questSkillContributions.userId, quest.userId),
+        eq(skillNodes.userId, quest.userId),
+      ));
     const capabilityDeltas = new Map<number, { currentExperience: number; delta: number }>();
     for (const contribution of contributions) {
       const delta = contribution.experienceAmount * direction;
@@ -210,12 +302,23 @@ async function applyQuestSkillProgression(input: {
       await tx.update(skillNodes)
         .set({ experience: nextExperience, level: skillLevelForExperience(nextExperience), updatedAt: new Date() })
         .where(and(eq(skillNodes.id, contribution.skillNodeId), eq(skillNodes.userId, quest.userId)));
+      const [creditedEvent] = direction === -1
+        ? await tx.select({ id: skillProgressionEvents.id }).from(skillProgressionEvents).where(and(
+          eq(skillProgressionEvents.userId, quest.userId),
+          eq(skillProgressionEvents.skillNodeId, contribution.skillNodeId),
+          eq(skillProgressionEvents.questId, quest.id),
+          eq(skillProgressionEvents.sourceType, "mission_evidence_review"),
+          eq(skillProgressionEvents.progressionRevision, progressionRevision),
+        )).orderBy(desc(skillProgressionEvents.createdAt)).limit(1)
+        : [];
       await tx.insert(skillProgressionEvents).values({
         userId: quest.userId,
         skillNodeId: contribution.skillNodeId,
         questId: quest.id,
         transformationThreadId: quest.transformationThreadId || null,
         sourceType,
+        progressionRevision,
+        reversalOfId: creditedEvent?.id || null,
         experienceDelta: delta,
         evidenceSummary,
       });
@@ -234,7 +337,7 @@ async function applyQuestSkillProgression(input: {
         .where(and(eq(personalCapabilities.id, capabilityId), eq(personalCapabilities.userId, quest.userId)));
     }
   });
-  return contributions.reduce((total, contribution) => total + contribution.experienceAmount, 0);
+  return contributionRefs.reduce((total, contribution) => total + contribution.experienceAmount, 0);
 }
 
 /**
@@ -248,20 +351,20 @@ export async function applyReviewedMissionProgression(input: { questId: number; 
     .limit(1);
   if (!quest?.completed) return { skillExperienceAwarded: 0, applied: false };
 
-  let claimed = false;
+  let claimedRevision: number | null = null;
   await db.transaction(async (tx) => {
     const [contract] = await tx.update(missionContracts)
-      .set({ progressionAppliedAt: new Date(), updatedAt: new Date() })
+      .set({ progressionAppliedAt: new Date(), progressionRevision: sql`${missionContracts.progressionRevision} + 1`, updatedAt: new Date() })
       .where(and(
         eq(missionContracts.questId, input.questId),
         eq(missionContracts.userId, input.userId),
         eq(missionContracts.state, "reviewed"),
         isNull(missionContracts.progressionAppliedAt),
       ))
-      .returning({ id: missionContracts.id });
-    claimed = Boolean(contract);
+      .returning({ revision: missionContracts.progressionRevision });
+    claimedRevision = contract?.revision ?? null;
   });
-  if (!claimed) return { skillExperienceAwarded: 0, applied: false };
+  if (claimedRevision === null) return { skillExperienceAwarded: 0, applied: false };
 
   try {
     const skillExperienceAwarded = await applyQuestSkillProgression({
@@ -269,6 +372,7 @@ export async function applyReviewedMissionProgression(input: { questId: number; 
       direction: 1,
       sourceType: "mission_evidence_review",
       evidenceSummary: `Evidence review confirmed: ${input.reviewSummary}`,
+      progressionRevision: claimedRevision,
     });
     if (quest.transformationThreadId) {
       await recordTransformationThreadEvidence({
@@ -283,7 +387,7 @@ export async function applyReviewedMissionProgression(input: { questId: number; 
     return { skillExperienceAwarded, applied: true, progression };
   } catch (error) {
     await db.update(missionContracts)
-      .set({ progressionAppliedAt: null, updatedAt: new Date() })
+      .set({ progressionAppliedAt: null, progressionRevision: sql`GREATEST(0, ${missionContracts.progressionRevision} - 1)`, updatedAt: new Date() })
       .where(and(eq(missionContracts.questId, input.questId), eq(missionContracts.userId, input.userId)))
       .catch(() => {});
     throw error;
@@ -303,17 +407,29 @@ export async function revokeReviewedMissionProgression(input: { questId: number;
       eq(missionContracts.userId, input.userId),
       isNotNull(missionContracts.progressionAppliedAt),
     ))
-    .returning({ id: missionContracts.id });
+    .returning({ id: missionContracts.id, progressionRevision: missionContracts.progressionRevision });
   if (!contract) return { skillExperienceAwarded: 0, revoked: false };
 
-  const skillExperienceAwarded = await applyQuestSkillProgression({
-    quest,
-    direction: -1,
-    sourceType: "mission_evidence_reversal",
-    evidenceSummary: input.reason,
-  });
-  const progression = await refreshProgressionState(quest.userId, `mission:${quest.id}:evidence-reversed`);
-  return { skillExperienceAwarded, revoked: true, progression };
+  try {
+    const skillExperienceAwarded = await applyQuestSkillProgression({
+      quest,
+      direction: -1,
+      sourceType: "mission_evidence_reversal",
+      evidenceSummary: input.reason,
+      progressionRevision: contract.progressionRevision,
+    });
+    const progression = await refreshProgressionState(quest.userId, `mission:${quest.id}:evidence-reversed`);
+    return { skillExperienceAwarded, revoked: true, progression };
+  } catch (error) {
+    await db.update(missionContracts).set({ progressionAppliedAt: new Date(), updatedAt: new Date() })
+      .where(and(
+        eq(missionContracts.id, contract.id),
+        eq(missionContracts.userId, input.userId),
+        isNull(missionContracts.progressionAppliedAt),
+        eq(missionContracts.progressionRevision, contract.progressionRevision),
+      )).catch(() => {});
+    throw error;
+  }
 }
 
 function missionXp(quest: Quest): number {

@@ -51,7 +51,28 @@ type TransformationThread = {
       completedMissionCount: number;
       threadExperience: number;
     }>;
-    nextPractice: null | { skillNodeId: number; skillName: string; questId: number | null; deferralCount: number; title: string; description: string; fitsCurrentCapacity: boolean };
+    nextPractice: null | {
+      skillNodeId: number;
+      skillName: string;
+      questId: number | null;
+      deferralCount: number;
+      revisionCount: number;
+      title: string;
+      description: string;
+      fitsCurrentCapacity: boolean;
+      selectionBasis: string;
+      planningContext: { capturedAt: string; capacity: { availability: "low" | "steady" | "high" | "unknown" } };
+      difficultyCalibration: {
+        recommendedDifficulty: "D" | "C" | "B" | "A" | "S";
+        confidence: "limited" | "developing" | "strong";
+        rationale: string[];
+      };
+      supportPlan: null | {
+        headline: string;
+        actions: Array<{ type: string; label: string; explanation: string }>;
+        disclosure: string;
+      };
+    };
   };
   progression?: { level: number; rank: { name: string; color: string }; badges: Array<{ key: string; name: string; description: string }>; competenceSignals: { practicingSkills: number; evidenceBackedSkills: number; note: string } };
 };
@@ -364,7 +385,19 @@ export function TransformationThreadPanel() {
                 <p className="text-[10px] font-mono uppercase tracking-[0.12em] text-primary">Recommended next practice · {nextPractice.skillName}</p>
                 <p className="mt-1 text-sm text-foreground">{nextPractice.title}</p>
                 <p className={`mt-1 text-xs ${nextPractice.fitsCurrentCapacity ? "text-muted-foreground" : "text-amber-200"}`}>{nextPractice.description}</p>
+                <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+                  <span className="rounded-full border border-primary/20 px-2 py-1">Suggested scope: Rank {nextPractice.difficultyCalibration.recommendedDifficulty}</span>
+                  <span className="rounded-full border border-primary/20 px-2 py-1">Evidence confidence: {nextPractice.difficultyCalibration.confidence}</span>
+                  <span className="rounded-full border border-primary/20 px-2 py-1">Current capacity: {nextPractice.planningContext.capacity.availability}</span>
+                </div>
+                <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">{nextPractice.selectionBasis}</p>
+                {nextPractice.difficultyCalibration.rationale.slice(0, 2).map((reason) => <p key={reason} className="mt-1 text-[10px] leading-relaxed text-muted-foreground">• {reason}</p>)}
                 {nextPractice.deferralCount >= 2 && <p className="mt-2 text-[11px] leading-relaxed text-amber-200">This mission has been deferred {nextPractice.deferralCount} times. That is a scheduling signal, not a failure—consider reducing its scope, changing its timing, or asking for support.</p>}
+                {nextPractice.supportPlan && <div className="mt-2 rounded-md border border-amber-300/20 bg-amber-300/5 p-2">
+                  <p className="text-xs text-amber-100">{nextPractice.supportPlan.headline}</p>
+                  <ul className="mt-1 space-y-1 text-[11px] text-muted-foreground">{nextPractice.supportPlan.actions.map((action) => <li key={action.type}><span className="text-foreground">{action.label}:</span> {action.explanation}</li>)}</ul>
+                  <p className="mt-1 text-[10px] text-muted-foreground">{nextPractice.supportPlan.disclosure}</p>
+                </div>}
                 {nextPractice.questId && (
                   <div className="mt-2 flex flex-wrap gap-2">
                     <Link href={`/mission/${nextPractice.questId}`} className="inline-flex h-8 items-center justify-center rounded-md border border-primary/30 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10">Review or right-size mission</Link>

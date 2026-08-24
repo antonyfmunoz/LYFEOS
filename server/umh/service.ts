@@ -99,7 +99,7 @@ export async function executeMissionCreateCommand(
     externalId: command.id,
     externalSource: "umh",
     missionStatus: "confirmed",
-  });
+  }, { source: "umh" });
 
   try {
     return await db.transaction(async (tx) => {

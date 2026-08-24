@@ -72,7 +72,7 @@ jobs:
             echo "$second_pass"
             exit 1
           fi
-      - name: Exercise authenticated native Messages journeys
+      - name: Exercise authenticated Messages and transformation journeys
         shell: bash
         env:
           NODE_ENV: production
@@ -105,9 +105,9 @@ jobs:
           fi
 
           test_status=0
-          npx vitest run tests/api-messages-convergence.test.ts || test_status=$?
+          npx vitest run tests/api-messages-convergence.test.ts tests/api-transformation-intelligence.test.ts || test_status=$?
           if [ "$test_status" -ne 0 ]; then
-            echo "Messages integration failed. Server log:"
+            echo "Authenticated integration qualification failed. Server log:"
             cat "$server_log"
           fi
           exit "$test_status"

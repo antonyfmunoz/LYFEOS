@@ -21,10 +21,12 @@ describe("private capability registry", () => {
     expect(releaseMigration).toContain('ALTER TABLE "skill_nodes" ADD COLUMN IF NOT EXISTS "capability_id"');
   });
 
-  it("chooses a next Thread mission using current capacity when one fits", () => {
+  it("chooses a skill-linked next Thread mission using calibrated difficulty and current capacity", () => {
     const threads = readFileSync(resolve(process.cwd(), "server/routes/transformation-threads.ts"), "utf8");
-    expect(threads).toContain("const capacityFit");
-    expect(threads).toContain("unfinishedMissions.find(capacityFit)");
+    expect(threads).toContain("selectNextPracticeMission");
+    expect(threads).toContain("mission.skillNodeIds.includes(recommendedSkill.id)");
+    expect(threads).toContain("recommendedDifficulty: difficultyCalibration.recommendedDifficulty");
+    expect(threads).toContain("missionFitsResources");
     expect(threads).toContain("fitsCurrentCapacity");
   });
 

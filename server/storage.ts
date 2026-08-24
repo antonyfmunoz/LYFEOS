@@ -79,7 +79,7 @@ export interface IStorage {
   // Quest methods
   getQuests(userId: number): Promise<Quest[]>;
   getQuest(id: number): Promise<Quest | undefined>;
-  createQuest(quest: InsertQuest): Promise<Quest>;
+  createQuest(quest: typeof quests.$inferInsert): Promise<Quest>;
   updateQuest(id: number, quest: Partial<InsertQuest>): Promise<Quest>;
   toggleQuestCompletion(id: number): Promise<{ quest: Quest; statsUpdated: boolean; levelUp: boolean }>;
   recalculateXP(userId: number): Promise<{ level: number; experienceCurrent: number; experienceMax: number; totalXP: number }>;
@@ -785,7 +785,7 @@ export class DatabaseStorage implements IStorage {
     return quest;
   }
   
-  async createQuest(quest: InsertQuest): Promise<Quest> {
+  async createQuest(quest: typeof quests.$inferInsert): Promise<Quest> {
     const [newQuest] = await db
       .insert(quests)
       .values(quest)

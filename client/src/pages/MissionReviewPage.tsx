@@ -13,8 +13,21 @@ type ReviewBundle = {
   invitation: { id: number; status: string; expiresAt: string; accepted: boolean };
   owner: { displayName: string };
   mission: { id: number; title: string; completed: boolean };
-  contract: { purpose: string; expectedOutput: string; requiredEvidence: string[]; riskLevel: string; stopConditions: string[]; escalationPath: string | null };
+  contract: { purpose: string; expectedOutput: string; requiredEvidence: string[]; rubricDefinition: Array<{ id: string; requirement: string; guidance: string; weight: number; required: boolean }>; rubricVersion: number; riskLevel: string; stopConditions: string[]; escalationPath: string | null };
   evidence: Array<{ id: number; sourceType: string; sourceReference: string | null; summary: string; confidence: string; submittedAt: string }>;
+};
+
+type AssignedAppeal = {
+  id: number;
+  missionTitle: string;
+  ownerDisplayName: string;
+  reason: string;
+  reviewSummary: string;
+  expectedOutput: string;
+  requiredEvidence: string[];
+  rubricDefinition: Array<{ id: string; requirement: string; guidance: string; weight: number; required: boolean }>;
+  rubricVersion: number;
+  evidence: ReviewBundle["evidence"];
 };
 
 const tokenStorageKey = "lyfeos-pending-review-token";
@@ -36,6 +49,8 @@ export default function MissionReviewPage() {
   const [token, setToken] = useState("");
   const [summary, setSummary] = useState("");
   const [checks, setChecks] = useState<Record<string, boolean>>({});
+  const [appealSummaries, setAppealSummaries] = useState<Record<number, string>>({});
+  const [appealChecks, setAppealChecks] = useState<Record<number, Record<string, boolean>>>({});
 
   useEffect(() => {
     const hashToken = new URLSearchParams(window.location.hash.replace(/^#/, "")).get("token");
@@ -54,6 +69,11 @@ export default function MissionReviewPage() {
     enabled: isAuthenticated && token.length > 0,
     retry: false,
   });
+  const assignedAppeals = useQuery<{ appeals: AssignedAppeal[] }>({
+    queryKey: ["/api/mission-review-appeals/assigned"],
+    queryFn: () => apiRequest("/api/mission-review-appeals/assigned"),
+    enabled: isAuthenticated,
+  });
   useEffect(() => {
     const requirements = reviewQuery.data?.contract.requiredEvidence || [];
     setChecks(Object.fromEntries(requirements.map((requirement) => [requirement, false])));
@@ -70,7 +90,7 @@ export default function MissionReviewPage() {
       body: JSON.stringify({
         decision,
         summary,
-        rubric: { evidenceChecks: (reviewQuery.data?.contract.requiredEvidence || []).map((requirement) => ({ requirement, met: checks[requirement] === true })) },
+        rubric: { evidenceChecks: (reviewQuery.data?.contract.rubricDefinition || []).map((criterion) => ({ criterionId: criterion.id, requirement: criterion.requirement, met: checks[criterion.requirement] === true })) },
       }),
     }),
     onSuccess: (_result, decision) => {
@@ -79,8 +99,40 @@ export default function MissionReviewPage() {
       toast({ title: decision === "meets_evidence" ? "Review recorded" : "Revision requested", description: "Your decision is now part of this mission's evidence history." });
     },
   });
+  const resolveAppeal = useMutation({
+    mutationFn: ({ appeal, decision }: { appeal: AssignedAppeal; decision: "upheld" | "reconsidered" }) => apiRequest(`/api/mission-review-appeals/${appeal.id}/resolve`, {
+      method: "POST",
+      body: JSON.stringify({
+        decision,
+        summary: appealSummaries[appeal.id] || "",
+        rubric: { evidenceChecks: appeal.rubricDefinition.map((criterion) => ({ criterionId: criterion.id, requirement: criterion.requirement, met: appealChecks[appeal.id]?.[criterion.requirement] === true })) },
+      }),
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/mission-review-appeals/assigned"] });
+      toast({ title: "Appeal resolution recorded", description: "The original review and this explicit resolution remain in the evidence history." });
+    },
+  });
 
   if (isLoading) return <div className="min-h-[100dvh] bg-background" />;
+  if (!token && isAuthenticated) return <ReviewShell>
+    <div><p className="text-xs uppercase tracking-[0.12em] text-primary">Assigned reconsiderations</p><p className="mt-1 text-sm text-muted-foreground">Resolve only reviews you previously issued. The original decision remains preserved.</p></div>
+    {assignedAppeals.isLoading ? <p className="text-sm text-muted-foreground">Loading assigned appeals…</p> : assignedAppeals.data?.appeals.length ? assignedAppeals.data.appeals.map((appeal) => {
+      const checked = appealChecks[appeal.id] || {};
+      const allRequiredMet = appeal.rubricDefinition.filter((criterion) => criterion.required).every((criterion) => checked[criterion.requirement]);
+      const summaryValue = appealSummaries[appeal.id] || "";
+      return <div key={appeal.id} className="rounded-lg border border-primary/15 bg-background/30 p-3 space-y-3">
+        <div><p className="text-xs text-primary">{appeal.ownerDisplayName}</p><h2 className="font-orbitron text-lg">{appeal.missionTitle}</h2><p className="mt-1 text-xs text-muted-foreground">Expected output: {appeal.expectedOutput}</p></div>
+        <p className="text-sm"><span className="text-muted-foreground">Appeal:</span> {appeal.reason}</p>
+        <p className="text-xs text-muted-foreground">Original review: {appeal.reviewSummary}</p>
+        <div className="space-y-1">{appeal.evidence.map((item) => <p key={item.id} className="rounded border border-primary/10 p-2 text-xs">{item.summary} <span className="text-muted-foreground">· {item.sourceType.replaceAll("_", " ")}</span></p>)}</div>
+        <div className="space-y-2">{appeal.rubricDefinition.map((criterion) => <label key={criterion.id} className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={checked[criterion.requirement] === true} onChange={(event) => setAppealChecks((current) => ({ ...current, [appeal.id]: { ...(current[appeal.id] || {}), [criterion.requirement]: event.target.checked } }))} /><span>{criterion.requirement}<span className="block text-[11px] text-muted-foreground">{criterion.guidance} · weight {criterion.weight}</span></span></label>)}</div>
+        <Textarea value={summaryValue} onChange={(event) => setAppealSummaries((current) => ({ ...current, [appeal.id]: event.target.value }))} placeholder="Explain why the original decision stands or why the evidence now meets the rubric." className="min-h-24" />
+        <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={summaryValue.trim().length < 3 || resolveAppeal.isPending} onClick={() => resolveAppeal.mutate({ appeal, decision: "upheld" })}>Uphold revision</Button><Button disabled={summaryValue.trim().length < 3 || !allRequiredMet || resolveAppeal.isPending} onClick={() => resolveAppeal.mutate({ appeal, decision: "reconsidered" })}>Reconsider—evidence met</Button></div>
+      </div>;
+    }) : <p className="text-sm text-muted-foreground">No open review appeals are assigned to you.</p>}
+    <Link href="/dashboard"><Button variant="outline">Return to LyfeOS</Button></Link>
+  </ReviewShell>;
   if (!token) return <ReviewShell><p className="text-sm text-muted-foreground">This review link is incomplete. Ask the mission owner to create a new link.</p></ReviewShell>;
   if (!isAuthenticated) return <ReviewShell>
     <p className="text-sm text-muted-foreground">Sign in to bind this private review invitation to your LyfeOS account. The mission owner cannot use their own link.</p>
@@ -120,9 +172,9 @@ export default function MissionReviewPage() {
       </div>
       {data.contract.requiredEvidence.length > 0 && <div className="space-y-2">
         <h3 className="font-orbitron text-sm">DECLARED REQUIREMENTS</h3>
-        {data.contract.requiredEvidence.map((requirement) => <label key={requirement} className="flex items-start gap-2 text-sm">
-          <input type="checkbox" checked={checks[requirement] === true} onChange={(event) => setChecks((current) => ({ ...current, [requirement]: event.target.checked }))} className="mt-1" />
-          <span>{requirement}</span>
+        {data.contract.rubricDefinition.map((criterion) => <label key={criterion.id} className="flex items-start gap-2 text-sm">
+          <input type="checkbox" checked={checks[criterion.requirement] === true} onChange={(event) => setChecks((current) => ({ ...current, [criterion.requirement]: event.target.checked }))} className="mt-1" />
+          <span>{criterion.requirement}<span className="block text-[11px] text-muted-foreground">{criterion.guidance} · weight {criterion.weight}{criterion.required ? " · required" : ""}</span></span>
         </label>)}
       </div>}
       <Textarea value={summary} onChange={(event) => setSummary(event.target.value)} placeholder="Explain what the evidence supports and what, if anything, must be revised." className="min-h-28" />

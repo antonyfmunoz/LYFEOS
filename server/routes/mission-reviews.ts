@@ -24,8 +24,10 @@ const reviewSchema = z.object({
   decision: z.enum(["meets_evidence", "revisions_needed"]),
   rubric: z.object({
     evidenceChecks: z.array(z.object({
+      criterionId: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/).optional(),
       requirement: z.string().trim().min(1).max(280),
       met: z.boolean(),
+      note: z.string().trim().max(500).optional(),
     })).max(8).default([]),
   }).default({ evidenceChecks: [] }),
   summary: z.string().trim().min(3).max(2000),
@@ -177,6 +179,8 @@ export function registerMissionReviewRoutes(app: Express): void {
         purpose: row.contract.purpose,
         expectedOutput: row.contract.expectedOutput,
         requiredEvidence: row.contract.requiredEvidence,
+        rubricDefinition: row.contract.rubricDefinition,
+        rubricVersion: row.contract.rubricVersion,
         riskLevel: row.contract.riskLevel,
         stopConditions: row.contract.stopConditions,
         escalationPath: row.contract.escalationPath,
@@ -219,7 +223,7 @@ export function registerMissionReviewRoutes(app: Express): void {
     const evidence = await db.select({ id: missionEvidence.id }).from(missionEvidence)
       .where(and(eq(missionEvidence.missionContractId, row.contract.id), eq(missionEvidence.userId, row.invitation.ownerUserId))).limit(1);
     if (!evidence.length) return res.status(409).json({ error: "The mission owner must add evidence before it can be reviewed." });
-    const validation = validateEvidenceChecks(row.contract.requiredEvidence, parsed.data.rubric.evidenceChecks, parsed.data.decision);
+    const validation = validateEvidenceChecks(row.contract.requiredEvidence, parsed.data.rubric.evidenceChecks, parsed.data.decision, row.contract.rubricDefinition);
     if (!validation.ok) return res.status(validation.status).json({ error: validation.error });
     const review = await db.transaction(async (tx) => {
       const [claimed] = await tx.update(missionReviewInvitations).set({ status: "completed", completedAt: new Date() })
@@ -236,6 +240,8 @@ export function registerMissionReviewRoutes(app: Express): void {
         reviewerUserId: req.session.userId!,
         reviewInvitationId: row.invitation.id,
         ...parsed.data,
+        rubric: { ...parsed.data.rubric, definition: row.contract.rubricDefinition },
+        rubricVersion: row.contract.rubricVersion,
       }).returning();
       await tx.update(missionContracts).set({
         state: parsed.data.decision === "meets_evidence" ? "reviewed" : "revisions_needed",

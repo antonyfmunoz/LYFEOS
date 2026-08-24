@@ -470,6 +470,8 @@ export const skillProgressionEvents = pgTable("skill_progression_events", {
   questId: integer("quest_id").references(() => quests.id, { onDelete: "set null" }),
   transformationThreadId: integer("transformation_thread_id").references(() => transformationThreads.id, { onDelete: "set null" }),
   sourceType: text("source_type").notNull(), // mission_evidence_review | mission_evidence_reversal
+  progressionRevision: integer("progression_revision").notNull().default(1),
+  reversalOfId: integer("reversal_of_id"),
   experienceDelta: integer("experience_delta").notNull(),
   evidenceSummary: text("evidence_summary").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -571,6 +573,12 @@ export const quests = pgTable("quests", {
   // Internal idempotency/provenance key for lifecycle adapters. It is never
   // inferred from user health data and is unique only within the owning user.
   lifecycleKey: text("lifecycle_key"),
+  // Immutable-at-creation planning inputs and calibration make it possible to
+  // explain why a mission received its initial scope. These fields are server
+  // controlled and intentionally omitted from insertQuestSchema.
+  planningContextSnapshot: jsonb("planning_context_snapshot").notNull().default({}),
+  difficultyCalibration: jsonb("difficulty_calibration").notNull().default({}),
+  planningDecisionSource: text("planning_decision_source").notNull().default("ui"),
   viewId: integer("view_id"),
   viewColumn: text("view_column"),
   deletedAt: timestamp("deleted_at"),
@@ -592,6 +600,9 @@ export const missionContracts = pgTable("mission_contracts", {
   capabilityTargets: jsonb("capability_targets").notNull().default([]),
   prerequisites: jsonb("prerequisites").notNull().default([]),
   requiredEvidence: jsonb("required_evidence").notNull().default([]),
+  rubricDefinition: jsonb("rubric_definition").notNull().default([]),
+  rubricVersion: integer("rubric_version").notNull().default(1),
+  acceptanceContextSnapshot: jsonb("acceptance_context_snapshot").notNull().default({}),
   reviewMode: text("review_mode").notNull().default("self"), // self | human
   riskLevel: text("risk_level").notNull().default("low"), // low | medium | high
   stopConditions: jsonb("stop_conditions").notNull().default([]),
@@ -600,6 +611,7 @@ export const missionContracts = pgTable("mission_contracts", {
   // Set only after a completed mission's declared evidence receives a positive
   // review. It is the idempotency and audit marker for capability progression.
   progressionAppliedAt: timestamp("progression_applied_at"),
+  progressionRevision: integer("progression_revision").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => [
@@ -683,10 +695,31 @@ export const missionReviews = pgTable("mission_reviews", {
   reviewInvitationId: integer("review_invitation_id").references(() => missionReviewInvitations.id, { onDelete: "set null" }),
   decision: text("decision").notNull(), // meets_evidence | revisions_needed
   rubric: jsonb("rubric").notNull().default({}),
+  rubricVersion: integer("rubric_version").notNull().default(1),
   summary: text("summary").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("mission_reviews_contract_created_idx").on(table.missionContractId, table.createdAt),
+]);
+
+// A human-review appeal is an explicit request for reconsideration, not a
+// silent rewrite. Only the mission owner can open/withdraw it and only the
+// reviewer who issued the challenged review can resolve it.
+export const missionReviewAppeals = pgTable("mission_review_appeals", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  missionContractId: integer("mission_contract_id").notNull().references(() => missionContracts.id, { onDelete: "cascade" }),
+  missionReviewId: integer("mission_review_id").notNull().references(() => missionReviews.id, { onDelete: "cascade" }),
+  reviewerUserId: integer("reviewer_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  reason: text("reason").notNull(),
+  status: text("status").notNull().default("open"), // open | withdrawn | upheld | reconsidered
+  resolutionSummary: text("resolution_summary"),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("mission_review_appeals_open_review_unique_idx").on(table.missionReviewId).where(sql`${table.status} = 'open'`),
+  index("mission_review_appeals_owner_created_idx").on(table.userId, table.createdAt),
+  index("mission_review_appeals_reviewer_status_idx").on(table.reviewerUserId, table.status, table.createdAt),
 ]);
 
 // AI Messages table
@@ -2145,6 +2178,7 @@ export const aiActionRecords = pgTable("ai_action_records", {
   risk: text("risk").notNull().default("low"),
   state: text("state").notNull().default("started"), // started | succeeded | rejected | failed
   inputSummary: jsonb("input_summary").notNull().default({}),
+  planningContextSnapshot: jsonb("planning_context_snapshot").notNull().default({}),
   outcomeSummary: text("outcome_summary"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   completedAt: timestamp("completed_at"),

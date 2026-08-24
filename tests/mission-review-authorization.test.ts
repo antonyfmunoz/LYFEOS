@@ -5,6 +5,7 @@ import {
   createMissionReviewToken,
   hashMissionReviewToken,
   missionReviewTokenMatches,
+  normalizeRubricDefinition,
   validateEvidenceChecks,
 } from "../server/mission-review-authorization";
 
@@ -36,6 +37,25 @@ describe("mission review authorization", () => {
     expect(validateEvidenceChecks(["artifact"], [{ requirement: "artifact", met: true }], "meets_evidence")).toEqual({ ok: true });
   });
 
+  it("normalizes a versionable weighted rubric without dropping declared evidence", () => {
+    expect(normalizeRubricDefinition(["artifact", "observation"], [
+      { id: "artifact", requirement: "artifact", guidance: "Inspect the submitted work.", weight: 3, required: true },
+      { id: "observation", requirement: "observation", guidance: "Compare the recorded outcome.", weight: 2, required: true },
+    ])).toEqual([
+      { id: "artifact", requirement: "artifact", guidance: "Inspect the submitted work.", weight: 3, required: true },
+      { id: "observation", requirement: "observation", guidance: "Compare the recorded outcome.", weight: 2, required: true },
+    ]);
+  });
+
+  it("accepts criterion IDs while still requiring every rubric decision", () => {
+    expect(validateEvidenceChecks(
+      ["artifact"],
+      [{ criterionId: "proof", requirement: "artifact", met: true }],
+      "meets_evidence",
+      [{ id: "proof", requirement: "artifact", guidance: "Inspect it.", weight: 2, required: true }],
+    )).toEqual({ ok: true });
+  });
+
   it("binds a scoped invitation to a different authenticated principal", () => {
     const routes = source("server/routes/mission-reviews.ts");
     expect(routes).toContain('row.invitation.ownerUserId === req.session.userId');
@@ -59,5 +79,14 @@ describe("mission review authorization", () => {
     expect(migration).toContain('CREATE TABLE IF NOT EXISTS "mission_review_invitations"');
     expect(migration).toContain('"reviewer_user_id" integer REFERENCES "users"("id")');
     expect(release).toContain('id: "0094_mission_review_authorization"');
+  });
+
+  it("ships versioned rubrics, reversals, and scoped appeals through both migration paths", () => {
+    const migration = source("migrations/0100_transformation_intelligence.sql");
+    const release = source("server/release-migrate.ts");
+    expect(migration).toContain('"rubric_definition" jsonb');
+    expect(migration).toContain('"reversal_of_id" integer REFERENCES "skill_progression_events"');
+    expect(migration).toContain('CREATE TABLE IF NOT EXISTS "mission_review_appeals"');
+    expect(release).toContain('id: "0100_transformation_intelligence"');
   });
 });
